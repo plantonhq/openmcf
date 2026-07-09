@@ -9,19 +9,19 @@ import "dev/planton/shared/options/options.proto";
 // **AzureApplicationInsightsSpec** defines the configuration for creating an
 // Azure Application Insights resource.
 //
-// Application Insights is Azure's Application Performance Management (APM) service.
-// It provides deep observability into web applications and services -- tracking
-// request rates, response times, failure rates, dependency calls, exceptions,
-// page views, and custom telemetry. It is the standard APM layer in Azure, consumed
-// by Function Apps, Web Apps, Container Apps, and any application instrumented with
-// the Application Insights SDK or OpenTelemetry.
+// Application Insights is Azure's Application Performance Management (APM)
+// service. It provides deep observability into web applications and services --
+// tracking request rates, response times, failure rates, dependency calls,
+// exceptions, page views, and custom telemetry. It is the standard APM layer in
+// Azure, consumed by Function Apps, Web Apps, Container Apps, and any
+// application instrumented with the Application Insights SDK or OpenTelemetry.
 //
-// This resource requires a Log Analytics Workspace (workspace-based Application
-// Insights). Classic (non-workspace) Application Insights is deprecated by Microsoft
-// and is not supported by this component.
-//
-// This spec follows the 80/20 principle: exposing the essential fields that cover
-// the vast majority of deployment scenarios while keeping the configuration minimal.
+// This component models workspace-based Application Insights only: telemetry is
+// stored in a Log Analytics Workspace the component references. Classic
+// (non-workspace) Application Insights was retired by Azure in February 2024,
+// so the workspace binding is required here even though the underlying API
+// still tolerates its absence for migrated legacy resources. Once set, the
+// workspace binding can be moved to another workspace but never removed.
 message AzureApplicationInsightsSpec {
   // The Azure region where Application Insights will be deployed.
   // Examples: "eastus", "westus2", "westeurope", "southeastasia".
@@ -40,40 +40,36 @@ message AzureApplicationInsightsSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
   ];
 
-  // The name of the Application Insights resource.
-  // Must be unique within the resource group.
-  // Length: 1 to 260 characters.
-  string name = 3 [
+  // The name of the Application Insights resource. Unique within the resource
+  // group. Length: 1 to 260 characters.
+  //
+  // **ForceNew**: Changing this destroys and recreates the resource -- and the
+  // instrumentation key and connection string with it. Treat the name as
+  // permanent once applications are wired to the resource.
+  string application_insights_name = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 260
   ];
 
-  // The type of application being monitored.
-  // Uses exact Azure API values -- no conversion needed in IaC modules.
-  // - "web": Web applications (ASP.NET, Spring Boot, Django, Express, etc.)
-  // - "java": Java applications (standalone, not web)
-  // - "Node.JS": Node.js applications
-  // - "other": All other application types
-  // Default: web
-  // Note: This field is ForceNew in Azure -- changing it requires resource recreation.
-  optional string application_type = 4 [
-    (buf.validate.field).string = {
-      in: [
-        "web",
-        "java",
-        "Node.JS",
-        "other"
-      ]
-    },
-    (dev.planton.shared.options.default) = "web"
-  ];
+  // The type of application being monitored. This sets the resource's kind and
+  // shapes which experiences the portal surfaces (server-side APM views,
+  // mobile analytics, etc.). Unspecified deploys WEB -- the right choice for
+  // web applications and services of any language, and the value the vast
+  // majority of resources use. OpenTelemetry-instrumented workloads should
+  // also use WEB.
+  //
+  // **ForceNew**: Changing this destroys and recreates the resource.
+  AzureApplicationInsightsApplicationType application_type = 4 [(buf.validate.field).enum.defined_only = true];
 
-  // The Log Analytics Workspace to store Application Insights data.
-  // Required -- workspace-based Application Insights is the only supported mode.
-  // Classic (non-workspace) Application Insights is deprecated by Microsoft.
-  // Can be a literal workspace resource ID or a reference to an
-  // AzureLogAnalyticsWorkspace output.
+  // The Log Analytics Workspace that stores this resource's telemetry.
+  // Required -- workspace-based Application Insights is the only mode Azure
+  // still supports for new resources. Can be a literal workspace ARM ID or a
+  // reference to an AzureLogAnalyticsWorkspace output.
+  //
+  // Once set, the binding can be repointed to a different workspace (telemetry
+  // flows to the new workspace from that moment; history stays in the old one)
+  // but can never be removed.
   dev.planton.shared.foreignkey.v1.StringValueOrRef workspace_id = 5 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureLogAnalyticsWorkspace,
@@ -82,7 +78,9 @@ message AzureApplicationInsightsSpec {
 
   // The number of days to retain telemetry data.
   // Azure only allows specific values: 30, 60, 90, 120, 180, 270, 365, 550, 730.
-  // Free tier includes 90 days. Beyond that, retention is billed per GB per month.
+  // For workspace-based resources the effective retention is governed by the
+  // workspace; this value applies to the classic-experience tables and is kept
+  // aligned with the workspace's retention in most estates.
   // Default: 90
   optional int32 retention_in_days = 6 [
     (buf.validate.field).int32 = {
@@ -102,24 +100,103 @@ message AzureApplicationInsightsSpec {
   ];
 
   // The daily telemetry data cap in GB.
-  // When the cap is reached, telemetry ingestion stops until the next UTC day.
-  // Set to control costs in development or staging environments.
+  // When the cap is reached, telemetry ingestion stops until the next UTC day --
+  // a cost guard that is also a data-loss dial; size it above normal daily
+  // volume in production.
   // Default: 100 (Azure's default)
   optional double daily_data_cap_in_gb = 7 [
     (buf.validate.field).double.gte = 0,
     (dev.planton.shared.options.default) = "100"
   ];
 
+  // Whether a notification email is sent when the daily data cap is reached.
+  // Default: true (be told when telemetry starts being dropped)
+  optional bool daily_data_cap_notifications_enabled = 8 [(dev.planton.shared.options.default) = "true"];
+
   // The percentage of telemetry data to sample (0-100).
-  // Reducing sampling percentage lowers data volume and cost while still providing
-  // statistically representative telemetry. Common production values are 25-50%.
-  // Set to 100 for full fidelity (all telemetry collected).
+  // Reducing sampling percentage lowers data volume and cost while still
+  // providing statistically representative telemetry. Common production values
+  // are 25-50%. Set to 100 for full fidelity (all telemetry collected).
   // Default: 100
-  optional double sampling_percentage = 8 [
+  optional double sampling_percentage = 9 [
     (buf.validate.field).double = {
       gte: 0
       lte: 100
     },
     (dev.planton.shared.options.default) = "100"
   ];
+
+  // Whether client IP addresses are masked to 0.0.0.0 in stored telemetry.
+  // Azure's default is to mask (GDPR-friendly); set false to store real client
+  // IPs -- only do this deliberately, with privacy review, when geo/diagnostic
+  // fidelity genuinely requires it.
+  // Default: true (mask client IPs)
+  optional bool ip_masking_enabled = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether local authentication (instrumentation-key-only ingestion) is
+  // allowed in addition to Microsoft Entra ID. Set false for a keyless
+  // posture: SDKs must then authenticate with Entra identities and a bare
+  // instrumentation key no longer authorizes ingestion.
+  // Default: true (Azure's default; most SDK setups still ingest by key)
+  optional bool local_authentication_enabled = 11 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether the resource accepts telemetry ingestion over the public internet.
+  // Set false to force ingestion through Azure Monitor Private Link Scope
+  // (AMPLS) private endpoints only.
+  // Default: true (Azure's default)
+  optional bool internet_ingestion_enabled = 12 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether the resource serves telemetry queries over the public internet.
+  // Set false to force queries through Azure Monitor Private Link Scope
+  // (AMPLS) private endpoints only.
+  // Default: true (Azure's default)
+  optional bool internet_query_enabled = 13 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether the .NET Profiler and Snapshot Debugger must write to a
+  // customer-owned storage account (BYO storage) instead of Microsoft-managed
+  // storage. Only relevant for regulated estates with data-residency
+  // requirements on profiler artifacts; the storage account is linked to the
+  // resource outside this spec.
+  bool force_customer_storage_for_profiler = 14;
+
+  // Tags to apply to the resource, merged over the Planton-derived
+  // metadata tags (user values win on key conflicts). ARM tags are Azure's
+  // first-class governance surface -- Azure Policy enforces them and
+  // Microsoft Cost Management groups by them.
+  map<string, string> tags = 15;
+}
+
+// The type of application being monitored. Values map to Azure's exact
+// case-sensitive API strings in the IaC modules (e.g. NODE_JS -> "Node.JS",
+// MOBILE_CENTER -> "MobileCenter"); an unmatched value would be treated as
+// ASP.NET by Azure, so the vocabulary is closed here.
+enum AzureApplicationInsightsApplicationType {
+  // Not specified -- deploys WEB, the right choice for web applications and
+  // services of any language.
+  azure_application_insights_application_type_unspecified = 0;
+
+  // Web applications and services (ASP.NET, Spring Boot, Django, Express,
+  // and anything OpenTelemetry-instrumented).
+  WEB = 1;
+
+  // Java applications (standalone, not web).
+  JAVA = 2;
+
+  // Node.js applications.
+  NODE_JS = 3;
+
+  // General/other application types.
+  OTHER = 4;
+
+  // iOS applications.
+  IOS = 5;
+
+  // Windows Phone applications (legacy).
+  PHONE = 6;
+
+  // Windows Store applications (legacy).
+  STORE = 7;
+
+  // App Center-managed applications.
+  MOBILE_CENTER = 8;
 }

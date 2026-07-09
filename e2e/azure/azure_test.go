@@ -777,6 +777,60 @@ func TestAzureContainerAppEnvironmentDaprComponent_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurecontainerappenvironmentdaprcomponent", "terraform")
 }
 
+// --- Azure Log Analytics Workspace (fixture RG -> pay-as-you-go workspace with retention + quota dials) ---
+
+func TestAzureLogAnalyticsWorkspace_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureloganalyticsworkspace", "pulumi")
+}
+func TestAzureLogAnalyticsWorkspace_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureloganalyticsworkspace", "terraform")
+}
+
+// --- Azure Application Insights (composed: fixture RG -> fixture workspace -> workspace-based component) ---
+
+func TestAzureApplicationInsights_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureapplicationinsights", "pulumi")
+}
+func TestAzureApplicationInsights_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureapplicationinsights", "terraform")
+}
+
+// --- Azure Monitor Diagnostic Setting (composed: fixture RG -> fixture workspace routing its own audit logs into itself) ---
+
+func TestAzureMonitorDiagnosticSetting_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitordiagnosticsetting", "pulumi")
+}
+func TestAzureMonitorDiagnosticSetting_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitordiagnosticsetting", "terraform")
+}
+
+// --- Azure Monitor Action Group (fixture RG -> multi-receiver global notification hub) ---
+
+func TestAzureMonitorActionGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitoractiongroup", "pulumi")
+}
+func TestAzureMonitorActionGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitoractiongroup", "terraform")
+}
+
+// --- Azure Monitor Metric Alert (composed: fixture RG -> fixture action group + scenario-local storage account -> static-threshold rule) ---
+
+func TestAzureMonitorMetricAlert_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitormetricalert", "pulumi")
+}
+func TestAzureMonitorMetricAlert_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitormetricalert", "terraform")
+}
+
+// --- Azure Monitor Scheduled Query Alert (composed: fixture RG -> fixture workspace + fixture action group -> row-count KQL rule) ---
+
+func TestAzureMonitorScheduledQueryAlert_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitorscheduledqueryalert", "pulumi")
+}
+func TestAzureMonitorScheduledQueryAlert_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitorscheduledqueryalert", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

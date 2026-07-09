@@ -1,0 +1,20 @@
+# Stream a resource's security-relevant logs to an Event Hub -- the
+# integration path for external SIEMs (Splunk, QRadar, Elastic) and
+# streaming pipelines.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorDiagnosticSetting
+metadata:
+  name: my-siem-stream
+spec:
+  settingName: stream-to-siem
+  targetResourceId:
+    valueFrom:
+      kind: AzureKeyVault
+      name: my-app-vault
+      fieldPath: status.outputs.key_vault_id
+  enabledLogs:
+    - categoryGroup: audit
+  enabledMetrics:
+    - category: AllMetrics
+  eventhubAuthorizationRuleId: /subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.EventHub/namespaces/<namespace>/authorizationRules/RootManageSharedAccessKey
+  eventhubName: siem-ingest

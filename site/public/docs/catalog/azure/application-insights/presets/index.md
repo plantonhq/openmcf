@@ -10,12 +10,12 @@ order: 200
 presets:
   - slug: "01-standard"
     rank: "01"
-    title: "Standard Application Insights"
-    excerpt: "This preset creates an Azure Application Insights resource with full telemetry collection (100% sampling), 90-day retention, and 100 GB daily cap. This is the standard configuration for development..."
+    title: "Standard Web Application Insights"
+    excerpt: "This preset creates a workspace-based Application Insights resource for a web application at full telemetry fidelity -- the default APM shape. Its `connection_string` output is what Function Apps,..."
   - slug: "02-production-sampled"
     rank: "02"
-    title: "Production Application Insights with Sampling"
-    excerpt: "This preset creates an Azure Application Insights resource with 25% adaptive sampling and a 10 GB daily ingestion cap. This is the cost-optimized configuration for high-traffic production workloads..."
+    title: "Production Application Insights (Sampled, Cost-Controlled)"
+    excerpt: "This preset creates a production APM resource with the cost levers engaged: 50% sampling, a 10 GB daily cap with notification, one-year retention, and Entra-only ingestion."
 ---
 
 # Application Insights Presets

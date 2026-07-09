@@ -1,0 +1,38 @@
+# Automation action group -- machine receivers: an Entra-authenticated
+# webhook into the incident platform and an Azure Function for
+# programmatic remediation. No humans in this group; pair it with an
+# on-call group on the same alert rules.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorActionGroup
+metadata:
+  name: my-platform-automation
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: my-observability-rg
+      fieldPath: status.outputs.resource_group_name
+  shortName: PltAutomate
+  webhookReceivers:
+    - name: incident-platform
+      # Use a real endpoint on a domain you own -- Azure validates webhook
+      # URIs server-side and rejects placeholder domains (example.com is
+      # blocked with WebhookServiceUriBlocked).
+      serviceUri: https://hooks.yourcompany.com/azure-alerts
+      useCommonAlertSchema: true
+      aadAuth:
+        # Replace with your Entra application's object ID (a valid example
+        # value -- angle-bracket placeholders fail the UUID validation).
+        objectId: 11111111-2222-3333-4444-555555555555
+  azureFunctionReceivers:
+    - name: auto-remediate
+      functionAppResourceId:
+        valueFrom:
+          kind: AzureFunctionApp
+          name: my-ops-functions
+          fieldPath: status.outputs.function_app_id
+      functionName: HandleAlert
+      httpTriggerUrl: https://my-ops-functions.azurewebsites.net/api/HandleAlert
+      useCommonAlertSchema: true
+  tags:
+    team: platform

@@ -2090,6 +2090,97 @@ func TestStackOutputsConformance(t *testing.T) {
 				"dapr_component_id", "component_name",
 			},
 		},
+		{
+			// AzureLogAnalyticsWorkspace: workspace_id (the ARM id) is the FK
+			// seam App Insights / AKS / Container Apps / diagnostic settings
+			// reference; workspace_customer_id is the agent-facing GUID the
+			// provider confusingly calls workspace_id.
+			name: "AzureLogAnalyticsWorkspace",
+			kind: cloudresourcekind.CloudResourceKind_AzureLogAnalyticsWorkspace,
+			rawOutputs: map[string]interface{}{
+				"workspace_id":          "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/obs-rg/providers/Microsoft.OperationalInsights/workspaces/platform-law",
+				"workspace_name":        "platform-law",
+				"workspace_customer_id": "11111111-2222-3333-4444-555555555555",
+				"resource_group_name":   "obs-rg",
+				"primary_shared_key":    "cHJpbWFyeS1rZXk=",
+				"secondary_shared_key":  "c2Vjb25kYXJ5LWtleQ==",
+				"identity_principal_id": "99999999-8888-7777-6666-555555555555",
+			},
+			mustPopulate: []string{
+				"workspace_id", "workspace_name", "workspace_customer_id",
+				"resource_group_name", "primary_shared_key",
+				"secondary_shared_key", "identity_principal_id",
+			},
+		},
+		{
+			// AzureApplicationInsights: connection_string is the seam the
+			// app-hosting kinds reference.
+			name: "AzureApplicationInsights",
+			kind: cloudresourcekind.CloudResourceKind_AzureApplicationInsights,
+			rawOutputs: map[string]interface{}{
+				"application_insights_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/obs-rg/providers/Microsoft.Insights/components/platform-appinsights",
+				"application_insights_name": "platform-appinsights",
+				"instrumentation_key":       "22222222-3333-4444-5555-666666666666",
+				"connection_string":         "InstrumentationKey=22222222-3333-4444-5555-666666666666;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/",
+				"app_id":                    "77777777-8888-9999-aaaa-bbbbbbbbbbbb",
+			},
+			mustPopulate: []string{
+				"application_insights_id", "application_insights_name",
+				"instrumentation_key", "connection_string", "app_id",
+			},
+		},
+		{
+			// AzureMonitorDiagnosticSetting: the id is the CONSTRUCTED ARM
+			// extension-resource id (the provider's own state id is a
+			// "{target}|{name}" composite no API consumes).
+			name: "AzureMonitorDiagnosticSetting",
+			kind: cloudresourcekind.CloudResourceKind_AzureMonitorDiagnosticSetting,
+			rawOutputs: map[string]interface{}{
+				"diagnostic_setting_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/obs-rg/providers/Microsoft.KeyVault/vaults/app-vault/providers/Microsoft.Insights/diagnosticSettings/route-to-law",
+				"diagnostic_setting_name": "route-to-law",
+				"target_resource_id":      "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/obs-rg/providers/Microsoft.KeyVault/vaults/app-vault",
+			},
+			mustPopulate: []string{
+				"diagnostic_setting_id", "diagnostic_setting_name", "target_resource_id",
+			},
+		},
+		{
+			// AzureMonitorActionGroup: action_group_id is the seam alert
+			// rules reference.
+			name: "AzureMonitorActionGroup",
+			kind: cloudresourcekind.CloudResourceKind_AzureMonitorActionGroup,
+			rawOutputs: map[string]interface{}{
+				"action_group_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/obs-rg/providers/Microsoft.Insights/actionGroups/platform-oncall",
+				"action_group_name": "platform-oncall",
+			},
+			mustPopulate: []string{
+				"action_group_id", "action_group_name",
+			},
+		},
+		{
+			name: "AzureMonitorMetricAlert",
+			kind: cloudresourcekind.CloudResourceKind_AzureMonitorMetricAlert,
+			rawOutputs: map[string]interface{}{
+				"metric_alert_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/obs-rg/providers/Microsoft.Insights/metricAlerts/storage-availability",
+				"metric_alert_name": "storage-availability",
+			},
+			mustPopulate: []string{
+				"metric_alert_id", "metric_alert_name",
+			},
+		},
+		{
+			name: "AzureMonitorScheduledQueryAlert",
+			kind: cloudresourcekind.CloudResourceKind_AzureMonitorScheduledQueryAlert,
+			rawOutputs: map[string]interface{}{
+				"scheduled_query_alert_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/obs-rg/providers/Microsoft.Insights/scheduledQueryRules/error-spike",
+				"scheduled_query_alert_name": "error-spike",
+				"identity_principal_id":      "33333333-4444-5555-6666-777777777777",
+			},
+			mustPopulate: []string{
+				"scheduled_query_alert_id", "scheduled_query_alert_name",
+				"identity_principal_id",
+			},
+		},
 	}
 
 	for _, tc := range cases {

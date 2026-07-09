@@ -167,6 +167,10 @@ import (
 	azuremanagedredisv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremanagedredis/v1"
 	azuremanagedredisaccesspolicyassignmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremanagedredisaccesspolicyassignment/v1"
 	azuremanagedredisgeoreplicationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremanagedredisgeoreplication/v1"
+	azuremonitoractiongroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremonitoractiongroup/v1"
+	azuremonitordiagnosticsettingv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremonitordiagnosticsetting/v1"
+	azuremonitormetricalertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremonitormetricalert/v1"
+	azuremonitorscheduledqueryalertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremonitorscheduledqueryalert/v1"
 	azuremssqldatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremssqldatabase/v1"
 	azuremssqlelasticpoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremssqlelasticpool/v1"
 	azuremssqlserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremssqlserver/v1"
@@ -659,6 +663,10 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureManagedRedis:                         &azuremanagedredisv1.AzureManagedRedis{},
 	cloudresourcekind.CloudResourceKind_AzureManagedRedisAccessPolicyAssignment:   &azuremanagedredisaccesspolicyassignmentv1.AzureManagedRedisAccessPolicyAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureManagedRedisGeoReplication:           &azuremanagedredisgeoreplicationv1.AzureManagedRedisGeoReplication{},
+	cloudresourcekind.CloudResourceKind_AzureMonitorActionGroup:                   &azuremonitoractiongroupv1.AzureMonitorActionGroup{},
+	cloudresourcekind.CloudResourceKind_AzureMonitorDiagnosticSetting:             &azuremonitordiagnosticsettingv1.AzureMonitorDiagnosticSetting{},
+	cloudresourcekind.CloudResourceKind_AzureMonitorMetricAlert:                   &azuremonitormetricalertv1.AzureMonitorMetricAlert{},
+	cloudresourcekind.CloudResourceKind_AzureMonitorScheduledQueryAlert:           &azuremonitorscheduledqueryalertv1.AzureMonitorScheduledQueryAlert{},
 	cloudresourcekind.CloudResourceKind_AzureMssqlDatabase:                        &azuremssqldatabasev1.AzureMssqlDatabase{},
 	cloudresourcekind.CloudResourceKind_AzureMssqlElasticPool:                     &azuremssqlelasticpoolv1.AzureMssqlElasticPool{},
 	cloudresourcekind.CloudResourceKind_AzureMssqlServer:                          &azuremssqlserverv1.AzureMssqlServer{},

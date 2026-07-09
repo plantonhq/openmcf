@@ -1,0 +1,26 @@
+# Offline-plan test manifest. Exercises the deep seams: a category AND a
+# category-group log entry, a metric entry, and three destinations at
+# once (workspace with the Dedicated table layout, storage archival, and
+# an Event Hub stream with a named hub).
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorDiagnosticSetting
+metadata:
+  name: test-diag
+  org: test-org
+  env: dev
+spec:
+  settingName: route-to-observability
+  targetResourceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.KeyVault/vaults/test-vault
+  enabledLogs:
+    - category: AuditEvent
+    - categoryGroup: allLogs
+  enabledMetrics:
+    - category: AllMetrics
+  logAnalyticsWorkspaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.OperationalInsights/workspaces/test-law
+  logAnalyticsDestinationType: DEDICATED
+  storageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/testarchive
+  eventhubAuthorizationRuleId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.EventHub/namespaces/test-ns/authorizationRules/RootManageSharedAccessKey
+  eventhubName: diagnostics

@@ -21,30 +21,36 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AzureApplicationInsightsStackOutputs contains the outputs from a deployed
-// Application Insights resource.
+// **AzureApplicationInsightsStackOutputs** captures the outputs of provisioning
+// an Azure Application Insights resource.
 //
-// These outputs are consumed by downstream resources such as AzureFunctionApp,
-// AzureLinuxWebApp, and AzureContainerApp to wire up APM telemetry.
+// The `connection_string` output is the composition seam: AzureFunctionApp,
+// AzureLinuxWebApp, and AzureContainerAppEnvironment (Dapr instrumentation)
+// reference it to wire applications to this APM resource.
 type AzureApplicationInsightsStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Azure Resource Manager ID of the Application Insights resource.
-	AppInsightsId string `protobuf:"bytes,1,opt,name=app_insights_id,json=appInsightsId,proto3" json:"app_insights_id,omitempty"`
-	// The instrumentation key for classic SDK configuration.
-	// This is a sensitive value used by the Application Insights SDK to identify
-	// which resource to send telemetry to. While still functional, Microsoft
-	// recommends using the connection_string instead for new applications.
-	InstrumentationKey string `protobuf:"bytes,2,opt,name=instrumentation_key,json=instrumentationKey,proto3" json:"instrumentation_key,omitempty"`
-	// The connection string for SDK configuration.
-	// This is the recommended way to configure Application Insights SDKs.
-	// It contains the instrumentation key, ingestion endpoint, and other
-	// configuration in a single string.
-	// Referenced by: AzureFunctionApp, AzureLinuxWebApp, AzureContainerApp (via env var).
-	ConnectionString string `protobuf:"bytes,3,opt,name=connection_string,json=connectionString,proto3" json:"connection_string,omitempty"`
-	// The Application ID for API access.
-	// Used when programmatically querying Application Insights data via the
-	// Application Insights REST API.
-	AppId         string `protobuf:"bytes,4,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/components/{name}
+	// Referenced by metric alerts (web-test availability criteria) and
+	// diagnostic settings targeting this resource.
+	ApplicationInsightsId string `protobuf:"bytes,1,opt,name=application_insights_id,json=applicationInsightsId,proto3" json:"application_insights_id,omitempty"`
+	// The name of the Application Insights resource.
+	ApplicationInsightsName string `protobuf:"bytes,2,opt,name=application_insights_name,json=applicationInsightsName,proto3" json:"application_insights_name,omitempty"`
+	// The instrumentation key for classic SDK configuration. Secret-bearing:
+	// it authorizes telemetry ingestion while local authentication is enabled.
+	// Microsoft recommends the connection_string for new applications; the key
+	// remains for SDKs that have not migrated.
+	InstrumentationKey string `protobuf:"bytes,3,opt,name=instrumentation_key,json=instrumentationKey,proto3" json:"instrumentation_key,omitempty"`
+	// The connection string for SDK configuration. Secret-bearing: contains the
+	// instrumentation key plus the ingestion endpoint in a single string -- the
+	// recommended way to configure Application Insights and OpenTelemetry SDKs.
+	// Referenced by: AzureFunctionApp, AzureLinuxWebApp, and
+	// AzureContainerAppEnvironment (Dapr telemetry).
+	ConnectionString string `protobuf:"bytes,4,opt,name=connection_string,json=connectionString,proto3" json:"connection_string,omitempty"`
+	// The Application ID for API access -- used when programmatically querying
+	// telemetry via the Application Insights REST API. Not a secret (queries
+	// additionally require an API key or Entra token).
+	AppId         string `protobuf:"bytes,5,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -79,9 +85,16 @@ func (*AzureApplicationInsightsStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azureapplicationinsights_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AzureApplicationInsightsStackOutputs) GetAppInsightsId() string {
+func (x *AzureApplicationInsightsStackOutputs) GetApplicationInsightsId() string {
 	if x != nil {
-		return x.AppInsightsId
+		return x.ApplicationInsightsId
+	}
+	return ""
+}
+
+func (x *AzureApplicationInsightsStackOutputs) GetApplicationInsightsName() string {
+	if x != nil {
+		return x.ApplicationInsightsName
 	}
 	return ""
 }
@@ -111,12 +124,13 @@ var File_dev_planton_provider_azure_azureapplicationinsights_v1_stack_outputs_pr
 
 const file_dev_planton_provider_azure_azureapplicationinsights_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Jdev/planton/provider/azure/azureapplicationinsights/v1/stack_outputs.proto\x126dev.planton.provider.azure.azureapplicationinsights.v1\"\xc3\x01\n" +
-	"$AzureApplicationInsightsStackOutputs\x12&\n" +
-	"\x0fapp_insights_id\x18\x01 \x01(\tR\rappInsightsId\x12/\n" +
-	"\x13instrumentation_key\x18\x02 \x01(\tR\x12instrumentationKey\x12+\n" +
-	"\x11connection_string\x18\x03 \x01(\tR\x10connectionString\x12\x15\n" +
-	"\x06app_id\x18\x04 \x01(\tR\x05appIdB\xc3\x03\n" +
+	"Jdev/planton/provider/azure/azureapplicationinsights/v1/stack_outputs.proto\x126dev.planton.provider.azure.azureapplicationinsights.v1\"\x8f\x02\n" +
+	"$AzureApplicationInsightsStackOutputs\x126\n" +
+	"\x17application_insights_id\x18\x01 \x01(\tR\x15applicationInsightsId\x12:\n" +
+	"\x19application_insights_name\x18\x02 \x01(\tR\x17applicationInsightsName\x12/\n" +
+	"\x13instrumentation_key\x18\x03 \x01(\tR\x12instrumentationKey\x12+\n" +
+	"\x11connection_string\x18\x04 \x01(\tR\x10connectionString\x12\x15\n" +
+	"\x06app_id\x18\x05 \x01(\tR\x05appIdB\xc3\x03\n" +
 	":com.dev.planton.provider.azure.azureapplicationinsights.v1B\x11StackOutputsProtoP\x01Zsgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureapplicationinsights/v1;azureapplicationinsightsv1\xa2\x02\x05DPPAA\xaa\x026Dev.Planton.Provider.Azure.Azureapplicationinsights.V1\xca\x026Dev\\Planton\\Provider\\Azure\\Azureapplicationinsights\\V1\xe2\x02BDev\\Planton\\Provider\\Azure\\Azureapplicationinsights\\V1\\GPBMetadata\xea\x02;Dev::Planton::Provider::Azure::Azureapplicationinsights::V1b\x06proto3"
 
 var (

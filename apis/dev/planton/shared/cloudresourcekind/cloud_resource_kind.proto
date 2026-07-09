@@ -1013,15 +1013,60 @@ enum CloudResourceKind {
     id_prefix: "azcadapr"
     prerequisites: [AzureContainerAppEnvironment]
   }];
+  // AzureResourceGroup is a prerequisite because the workspace is created
+  // inside a referenced resource group that must already exist.
   AzureLogAnalyticsWorkspace = 450 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azlaw"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureLogAnalyticsWorkspace is a prerequisite because workspace-based
+  // Application Insights stores its telemetry in a referenced workspace
+  // (the resource group chains transitively through the workspace).
   AzureApplicationInsights = 451 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azai"
+    prerequisites: [AzureLogAnalyticsWorkspace]
+  }];
+  // AzureLogAnalyticsWorkspace is a prerequisite because the setting's
+  // scenarios route a fixture workspace's telemetry (the workspace doubles
+  // as target and destination); the target itself is polymorphic.
+  AzureMonitorDiagnosticSetting = 452 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmondiag"
+    prerequisites: [AzureLogAnalyticsWorkspace]
+  }];
+  // AzureResourceGroup is a prerequisite because the action group is
+  // created inside a referenced resource group that must already exist.
+  AzureMonitorActionGroup = 453 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmonag"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureMonitorActionGroup is a prerequisite because a metric alert's
+  // actions fire into a referenced action group (the resource group chains
+  // transitively); alert scopes are polymorphic.
+  AzureMonitorMetricAlert = 454 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmalert"
+    prerequisites: [AzureMonitorActionGroup]
+  }];
+  // AzureLogAnalyticsWorkspace is a prerequisite because the rule queries a
+  // referenced workspace scope; AzureMonitorActionGroup because its action
+  // fires into a referenced action group.
+  AzureMonitorScheduledQueryAlert = 455 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsqalert"
+    prerequisites: [
+      AzureLogAnalyticsWorkspace,
+      AzureMonitorActionGroup
+    ]
   }];
   // AzureResourceGroup is a prerequisite because the identity is created
   // inside a referenced resource group that must already exist.

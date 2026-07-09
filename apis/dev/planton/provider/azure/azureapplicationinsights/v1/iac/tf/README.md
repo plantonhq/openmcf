@@ -1,52 +1,25 @@
-# AzureApplicationInsights Terraform Module
+# AzureApplicationInsights - Terraform Module
 
-## Overview
-
-This Terraform module provisions an Azure Application Insights resource using the
-`azurerm` provider. It creates a single `azurerm_application_insights` with configurable
-application type, workspace integration, retention, daily cap, and sampling percentage.
+Terraform implementation for the AzureApplicationInsights deployment
+component.
 
 ## Resources Created
 
-- `azurerm_application_insights.main` -- the Application Insights resource
+- `azurerm_application_insights.main` -- the workspace-based component,
+  carrying the application type, workspace binding, retention/sampling/
+  cap dials, privacy/auth/network posture, and merged governance tags
 
-## Variables
+## Variable Highlights
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `metadata` | object | Planton metadata (name, org, env) |
-| `spec` | object | Application Insights specification |
+| Variable | Notes |
+| --- | --- |
+| `spec.application_type` | Proto enum value name mapped in `locals.tf` to Azure's CASE-SENSITIVE strings ("Node.JS", "MobileCenter"); absent deploys "web". ForceNew |
+| `spec.workspace_id` | The resolved workspace ARM id; repointable, never removable once set |
+| `spec.daily_data_cap_in_gb` + notifications toggle | Applied by the provider through a separate billing API call after create |
+| `spec.ip_masking_enabled` etc. | v5-positive presence-modeled booleans; explicit false survives to the wire |
 
 ## Outputs
 
-| Output | Description | Sensitive |
-|--------|-------------|-----------|
-| `app_insights_id` | Azure Resource Manager ID | No |
-| `instrumentation_key` | Instrumentation key | Yes |
-| `connection_string` | SDK connection string | Yes |
-| `app_id` | Application ID for API access | No |
-
-## Usage
-
-```hcl
-module "app_insights" {
-  source = "./iac/tf"
-
-  metadata = {
-    name = "platform-ai"
-    org  = "mycompany"
-    env  = "production"
-  }
-
-  spec = {
-    region              = "eastus"
-    resource_group      = "prod-monitoring-rg"
-    name                = "prod-platform-ai"
-    application_type    = "web"
-    workspace_id        = "/subscriptions/.../workspaces/prod-law"
-    retention_in_days   = 90
-    daily_data_cap_in_gb = 100
-    sampling_percentage = 50
-  }
-}
-```
+`application_insights_id`, `application_insights_name`,
+`instrumentation_key` (sensitive), `connection_string` (sensitive -- the
+seam app kinds reference), `app_id`.

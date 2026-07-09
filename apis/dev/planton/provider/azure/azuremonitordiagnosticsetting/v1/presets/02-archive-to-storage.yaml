@@ -1,0 +1,21 @@
+# Archive a resource's audit trail to a storage account -- the cheap
+# long-term retention destination for compliance windows measured in
+# years. Pairs with the account's lifecycle rules for tiering.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorDiagnosticSetting
+metadata:
+  name: my-audit-archive
+spec:
+  settingName: archive-audit-trail
+  targetResourceId:
+    valueFrom:
+      kind: AzureKeyVault
+      name: my-app-vault
+      fieldPath: status.outputs.key_vault_id
+  enabledLogs:
+    - categoryGroup: audit
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: my-archive-account
+      fieldPath: status.outputs.storage_account_id

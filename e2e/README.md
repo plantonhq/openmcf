@@ -352,6 +352,21 @@ default-rule-set IDs are bare numerics (`942100`) -- an inferred bare
 `300700` was rejected by ARM on both engines with "managed rule IDs are
 not supported".
 
+### Placeholder domains in receiver/endpoint URLs are server-validated
+
+When a fixture (or preset, or hack manifest) carries a URL the SERVICE
+will call back to -- a notification webhook, an alert receiver, an
+integration endpoint -- do not use documentation placeholder domains.
+Some services validate the URI server-side at create and reject blocked
+domains outright: Azure Monitor action groups return 400
+`WebhookServiceUriBlocked` for webhook receivers on `example.com`, on
+both engines, while every offline gate passes (the schema only checks
+the http/https scheme). Use a real domain the fixture plausibly owns
+(the project's own domain works; the service does not probe the URL at
+create, it only screens the domain). Presets and hack manifests should
+carry a domain-you-own shape (e.g. `hooks.yourcompany.com`) so users
+never copy a blocked placeholder.
+
 ### Vendor-constant casing: an SDK constant's Go identifier is not its wire value
 
 When a module maps a spec enum to a provider's string vocabulary, read

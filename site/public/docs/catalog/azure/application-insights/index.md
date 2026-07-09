@@ -8,20 +8,20 @@ componentName: "azureapplicationinsights"
 
 # Azure Application Insights
 
-Deploys an Azure Application Insights resource backed by a Log Analytics Workspace, with configurable application type, data retention, daily ingestion cap, and sampling percentage. The component exports the connection string, instrumentation key, and application ID consumed by downstream compute resources for APM telemetry.
+Deploys a workspace-based Azure Application Insights resource -- the APM layer for web apps, functions, and container apps. Telemetry lands in a referenced Log Analytics Workspace; the resource's connection string is what applications are configured with.
 
 ## What Gets Created
 
 When you deploy an AzureApplicationInsights resource, Planton provisions:
 
-- **Application Insights** — an `appinsights.Insights` resource in the specified region and resource group, configured with the chosen application type, retention period, daily data cap, and sampling percentage, linked to a Log Analytics Workspace
-- **Azure Tags** — resource metadata tags applied to the Application Insights resource for tracking and governance (resource name, kind, organization, environment)
+- **Application Insights component** -- an `azurerm_application_insights` bound to your Log Analytics Workspace, carrying the application type, retention, sampling, cost caps, and privacy/auth/network posture
+- **Azure Tags** -- Planton-derived governance tags merged with your own (your values win)
 
 ## Prerequisites
 
 - **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure Resource Group** where the Application Insights resource will be created (can reference an AzureResourceGroup resource)
-- **A Log Analytics Workspace** for storing telemetry data (can reference an AzureLogAnalyticsWorkspace resource). Classic (non-workspace) Application Insights is deprecated by Microsoft and is not supported.
+- **An AzureLogAnalyticsWorkspace** to store the telemetry (classic, workspace-less mode was retired by Azure) -- referenced through `workspaceId`
+- **An Azure Resource Group** (can reference an AzureResourceGroup resource)
 
 ## Quick Start
 
@@ -31,190 +31,45 @@ Create a file `app-insights.yaml`:
 apiVersion: azure.planton.dev/v1
 kind: AzureApplicationInsights
 metadata:
-  name: my-app-insights
+  name: web-app-insights
   labels:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureApplicationInsights.my-app-insights
-spec:
-  region: eastus
-  resourceGroup: my-rg
-  name: my-app-insights
-  workspaceId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.OperationalInsights/workspaces/my-workspace
-```
-
-Deploy:
-
-```shell
-planton apply -f app-insights.yaml
-```
-
-This creates a workspace-based Application Insights resource with the default application type (`web`), 90-day retention, 100 GB daily data cap, and 100% sampling (full fidelity).
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region for the Application Insights resource (e.g., `eastus`, `westeurope`). Should match the region of the applications being monitored. | Required, minimum length 1 |
-| `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `name` | `string` | Name of the Application Insights resource. Must be unique within the resource group. | Required, 1-260 characters |
-| `workspaceId` | `StringValueOrRef` | Log Analytics Workspace resource ID. Can reference an AzureLogAnalyticsWorkspace resource via `valueFrom`. Workspace-based mode is the only supported mode. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `applicationType` | `string` | `web` | The type of application being monitored. Values: `web` (web applications), `java` (standalone Java), `Node.JS` (Node.js applications), `other` (all other types). This field is ForceNew in Azure -- changing it requires resource recreation. |
-| `retentionInDays` | `int32` | `90` | Number of days to retain telemetry data. Allowed values: 30, 60, 90, 120, 180, 270, 365, 550, 730. Free tier includes 90 days; beyond that, retention is billed per GB per month. |
-| `dailyDataCapInGb` | `double` | `100` | Daily telemetry ingestion cap in GB. When the cap is reached, ingestion stops until the next UTC day. Useful for controlling costs in development or staging environments. Minimum: 0. |
-| `samplingPercentage` | `double` | `100` | Percentage of telemetry data to sample (0-100). Reducing sampling lowers data volume and cost while still providing statistically representative telemetry. Common production values are 25-50%. Set to 100 for full fidelity. |
-
-## Examples
-
-### Basic Web Application Monitoring
-
-A minimal Application Insights resource for monitoring a web application in development:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureApplicationInsights
-metadata:
-  name: dev-web-insights
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureApplicationInsights.dev-web-insights
-spec:
-  region: eastus
-  resourceGroup: dev-rg
-  name: dev-web-insights
-  workspaceId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dev-rg/providers/Microsoft.OperationalInsights/workspaces/dev-workspace
-```
-
-### Cost-Controlled Staging Environment
-
-An Application Insights resource with a low daily data cap and reduced retention for a staging environment:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureApplicationInsights
-metadata:
-  name: staging-insights
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AzureApplicationInsights.staging-insights
-spec:
-  region: westeurope
-  resourceGroup: staging-rg
-  name: staging-insights
-  workspaceId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/staging-rg/providers/Microsoft.OperationalInsights/workspaces/staging-workspace
-  applicationType: web
-  retentionInDays: 30
-  dailyDataCapInGb: 5
-  samplingPercentage: 50
-```
-
-### Production with Full Retention
-
-A production Application Insights resource with extended retention and full-fidelity telemetry:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureApplicationInsights
-metadata:
-  name: prod-insights
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureApplicationInsights.prod-insights
-spec:
-  region: eastus
-  resourceGroup: prod-rg
-  name: prod-insights
-  workspaceId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.OperationalInsights/workspaces/prod-workspace
-  applicationType: web
-  retentionInDays: 365
-  dailyDataCapInGb: 100
-  samplingPercentage: 100
-```
-
-### Node.js Application with Sampled Telemetry
-
-An Application Insights resource configured for a Node.js application with 25% sampling to reduce costs at scale:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureApplicationInsights
-metadata:
-  name: nodejs-insights
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureApplicationInsights.nodejs-insights
-spec:
-  region: southeastasia
-  resourceGroup: api-rg
-  name: nodejs-insights
-  workspaceId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/api-rg/providers/Microsoft.OperationalInsights/workspaces/api-workspace
-  applicationType: "Node.JS"
-  retentionInDays: 90
-  dailyDataCapInGb: 25
-  samplingPercentage: 25
-```
-
-### Using Foreign Key References
-
-Reference Planton-managed resources for the resource group and Log Analytics Workspace instead of hardcoding values:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureApplicationInsights
-metadata:
-  name: ref-insights
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureApplicationInsights.ref-insights
+    pulumi.planton.dev/stack.name: dev.AzureApplicationInsights.web-app-insights
 spec:
   region: eastus
   resourceGroup:
     valueFrom:
       kind: AzureResourceGroup
-      name: my-rg
-      field: status.outputs.resource_group_name
-  name: ref-insights
+      name: observability-rg
+      fieldPath: status.outputs.resource_group_name
+  applicationInsightsName: web-app-insights
+  applicationType: WEB
   workspaceId:
     valueFrom:
       kind: AzureLogAnalyticsWorkspace
-      name: my-workspace
-      field: status.outputs.workspace_id
-  retentionInDays: 90
+      name: platform-logs
+      fieldPath: status.outputs.workspace_id
 ```
 
-## Stack Outputs
+Deploy it:
 
-After deployment, the following outputs are available in `status.outputs`:
+```bash
+planton pulumi up --manifest app-insights.yaml
+```
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `appInsightsId` | `string` | Azure Resource Manager ID of the Application Insights resource |
-| `instrumentationKey` | `string` | Instrumentation key for classic SDK configuration. Sensitive. Microsoft recommends using `connectionString` for new applications. |
-| `connectionString` | `string` | Connection string for SDK configuration. Contains the instrumentation key, ingestion endpoint, and other configuration in a single string. This is the recommended way to configure Application Insights SDKs. Referenced by AzureFunctionApp, AzureLinuxWebApp, and AzureContainerApp. |
-| `appId` | `string` | Application ID for programmatic access to Application Insights data via the REST API |
+## Common Configurations
 
-## Related Components
+- **Production cost control**: `samplingPercentage: 50` + `dailyDataCapInGb: 10` -- representative telemetry at a fraction of the volume; the cap email warns before data drops silently
+- **Keyless ingestion**: `localAuthenticationEnabled: false` -- SDKs authenticate with Entra identities; a bare instrumentation key stops working
+- **Private-link only**: `internetIngestionEnabled: false` + `internetQueryEnabled: false` (requires Azure Monitor Private Link Scope)
+- **Real client IPs**: `ipMaskingEnabled: false` -- only with privacy review; Azure masks to 0.0.0.0 by default
 
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group for Application Insights placement
-- [AzureLogAnalyticsWorkspace](/docs/catalog/azure/log-analytics-workspace) -- provides the workspace for storing telemetry data
-- [AzureFunctionApp](/docs/catalog/azure/function-app) -- references the connection string for APM telemetry
-- [AzureLinuxWebApp](/docs/catalog/azure/linux-web-app) -- references the connection string for APM telemetry
-- [AzureContainerApp](/docs/catalog/azure/container-app) -- references the connection string for APM telemetry
+## Key Outputs
+
+| Output | Use |
+| --- | --- |
+| `connection_string` | What apps are configured with -- Function Apps, Web Apps, and Container Apps reference it |
+| `application_insights_id` | The ARM ID web-test metric alerts and diagnostic settings target |
+| `app_id` | The identifier for REST-API telemetry queries |

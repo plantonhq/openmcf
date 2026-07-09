@@ -91,6 +91,18 @@ HANDLING OPTIONAL FIELDS WITH DEFAULTS
   engine plans a destructive replacement or fights the service, while the other engine
   silently no-ops — an audit-only divergence no offline gate catches. Document the
   "false means leave it to the provider" contract on the spec field.
+- **ENUM WIRE MAPS: map the UNSPECIFIED row to the default wire value whenever
+  unspecified is legal.** A Go `map[Enum]string` lookup on a missing key silently
+  returns `""`, and `pulumi.String("")` SENDS the empty string — the provider rejects it
+  at deploy ("expected X to be one of [...], got ") or, worse, the service
+  misinterprets it. No offline gate catches this: `go build`, spec tests, and even the
+  Terraform plan all pass (the TF module's `locals.tf` idiom uses an explicit
+  `!= null && != ""` fallback, so only the Pulumi engine fails). For every enum field
+  where 0/unspecified is legal (a friendly-default enum), either add an explicit
+  unspecified row to the wire map carrying the default wire value, or guard the lookup
+  and skip the argument when the provider's own default should apply — and mirror
+  whichever posture the Terraform module has. Required enums (`not_in: [0]`) don't need
+  the row: validation stops unspecified before the module runs.
 - PULUMI OUTPUT TYPING: an `ApplyT` applier's input parameter type must match the SDK
   output's element type EXACTLY (a `func(addr *string)` applier on a `StringOutput`
   panics `applier's first input parameter must be assignable from string` at deploy
