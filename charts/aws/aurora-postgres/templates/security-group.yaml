@@ -1,0 +1,28 @@
+# The database's own security group — the network contract in one place: the
+# PostgreSQL port, from the application range, and nothing else. Databases
+# never share a general-purpose security group; a dedicated one makes "who
+# can reach the database" auditable at a glance and changeable without
+# touching anything else.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSecurityGroup
+metadata:
+  name: "{{ values.cluster_name }}-sg"
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    value: "{{ values.vpc_id }}"
+  description: "PostgreSQL access to {{ values.cluster_name }} from the application network"
+
+  ingress:
+    - description: "PostgreSQL from the application range"
+      protocol: tcp
+      fromPort: 5432
+      toPort: 5432
+      ipv4Cidrs:
+        - "{{ values.app_cidr }}"
+
+  # No egress rules — deny-all outbound. A database answers queries; it does
+  # not call out. If you later use outbound integrations (the aws_s3
+  # extension, aws_lambda invocation), add the specific egress those need
+  # rather than restoring allow-all.
