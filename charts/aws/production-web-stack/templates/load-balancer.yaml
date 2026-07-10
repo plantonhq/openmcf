@@ -1,0 +1,140 @@
+# The traffic front door: an internet-facing ALB on the public tier, an
+# IP-mode target group, and listeners whose shape follows the custom-domain
+# toggle — HTTPS + redirect with a domain, plain HTTP before one exists.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsAlb
+metadata:
+  name: "{{ values.stack_name }}-alb"
+spec:
+  region: "{{ values.aws_region }}"
+  subnets:
+{% for az in values.availability_zones %}
+    - valueFrom:
+        kind: AwsSubnet
+        name: "{{ values.stack_name }}-public-{{ az }}"
+        fieldPath: status.outputs.subnet_id
+{% endfor %}
+  securityGroups:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: "{{ values.stack_name }}-alb-sg"
+        fieldPath: status.outputs.security_group_id
+  # The front door of a production stack does not get deleted by a stray
+  # destroy — protection is unconditional here (the database has its own
+  # dial).
+  deleteProtectionEnabled: true
+{% if values.waf_enabled | bool %}
+  webAclArn:
+    valueFrom:
+      kind: AwsWafWebAcl
+      name: "{{ values.stack_name }}-waf"
+      fieldPath: status.outputs.web_acl_arn
+{% endif %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsLbTargetGroup
+metadata:
+  name: "{{ values.stack_name }}-tg"
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: "{{ values.stack_name }}-vpc"
+      fieldPath: status.outputs.vpc_id
+  # ip mode: Fargate tasks register by task IP — there are no instances.
+  targetType: ip
+  port: {{ values.container_port }}
+  protocol: HTTP
+  # 60s instead of the 300s default — deployment and scale-in dead time,
+  # not a correctness knob, for short web requests.
+  deregistrationDelaySeconds: 60
+  healthCheck:
+    protocol: HTTP
+    path: "{{ values.health_check_path }}"
+    intervalSeconds: 15
+    timeoutSeconds: 5
+    healthyThreshold: 3
+    unhealthyThreshold: 3
+    matcher: "200-399"
+{% if values.custom_domain_enabled | bool %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsLbListener
+metadata:
+  name: "{{ values.stack_name }}-https"
+spec:
+  region: "{{ values.aws_region }}"
+  loadBalancerArn:
+    valueFrom:
+      kind: AwsAlb
+      name: "{{ values.stack_name }}-alb"
+      fieldPath: status.outputs.load_balancer_arn
+  port: 443
+  protocol: HTTPS
+  # The chart's own certificate (dns.yaml) — issued against the domain via
+  # DNS validation before anything references it.
+  certificateArn:
+    valueFrom:
+      kind: AwsCertManagerCert
+      name: "{{ values.stack_name }}-cert"
+      fieldPath: status.outputs.cert_arn
+  sslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+  defaultActions:
+    - type: forward
+      forward:
+        targetGroups:
+          - arn:
+              valueFrom:
+                kind: AwsLbTargetGroup
+                name: "{{ values.stack_name }}-tg"
+                fieldPath: status.outputs.target_group_arn
+---
+# With HTTPS on, port 80's only job is the permanent redirect.
+apiVersion: aws.planton.dev/v1
+kind: AwsLbListener
+metadata:
+  name: "{{ values.stack_name }}-http"
+spec:
+  region: "{{ values.aws_region }}"
+  loadBalancerArn:
+    valueFrom:
+      kind: AwsAlb
+      name: "{{ values.stack_name }}-alb"
+      fieldPath: status.outputs.load_balancer_arn
+  port: 80
+  protocol: HTTP
+  defaultActions:
+    - type: redirect
+      redirect:
+        protocol: HTTPS
+        port: "443"
+        statusCode: HTTP_301
+{% else %}
+---
+# Bootstrap posture: plain HTTP on the ALB's generated DNS name until a
+# domain exists. Flip custom_domain_enabled the moment you have one.
+apiVersion: aws.planton.dev/v1
+kind: AwsLbListener
+metadata:
+  name: "{{ values.stack_name }}-http"
+spec:
+  region: "{{ values.aws_region }}"
+  loadBalancerArn:
+    valueFrom:
+      kind: AwsAlb
+      name: "{{ values.stack_name }}-alb"
+      fieldPath: status.outputs.load_balancer_arn
+  port: 80
+  protocol: HTTP
+  defaultActions:
+    - type: forward
+      forward:
+        targetGroups:
+          - arn:
+              valueFrom:
+                kind: AwsLbTargetGroup
+                name: "{{ values.stack_name }}-tg"
+                fieldPath: status.outputs.target_group_arn
+{% endif %}
