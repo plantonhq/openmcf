@@ -1,0 +1,56 @@
+# The S3 bucket that stores Terraform/OpenTofu state files. State is the most
+# security-sensitive artifact IaC produces — it carries every resource attribute,
+# including ones providers mark sensitive — so this bucket ships locked down:
+# private by policy AND by ACL, encrypted at rest, and versioned so a corrupted
+# or mistakenly-overwritten state file is always recoverable.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsS3Bucket
+metadata:
+  # The bucket's name IS the resource name. S3 names are global across all AWS
+  # accounts, which is why the default value carries an org prefix.
+  name: "{{ values.bucket_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+
+  # Versioning is the state backend's undo button: every write keeps the prior
+  # state object as a noncurrent version, so `terraform state push` mistakes,
+  # partial writes, and corruption are recoverable by restoring a version.
+  # Both Terraform and OpenTofu docs call versioning strongly recommended for
+  # state buckets.
+  versioningStatus: Enabled
+
+  # SSE-S3 (AES256) encrypts every state object at rest with zero key
+  # management and zero cost. If your compliance posture requires a
+  # customer-managed KMS key with its own rotation and access policy, deploy
+  # an AwsKmsKey and switch sseAlgorithm to aws:kms with kmsKeyId referencing
+  # it — the spec models that arm directly.
+  encryption:
+    sseAlgorithm: AES256
+
+  # All four public-access guards on: state must never be publicly readable,
+  # and these account-independent guards make a future misconfigured bucket
+  # policy or ACL inert instead of an incident.
+  publicAccessBlock:
+    blockPublicAcls: true
+    blockPublicPolicy: true
+    ignorePublicAcls: true
+    restrictPublicBuckets: true
+
+  lifecycleRules:
+    # Versioning without cleanup grows storage forever: every plan/apply cycle
+    # writes a new state version. This rule keeps the 30 most recent noncurrent
+    # versions indefinitely (a deep undo history) and expires anything older
+    # than 90 days beyond those — bounding cost while keeping every version a
+    # team would realistically restore.
+    - id: bound-noncurrent-versions
+      status: Enabled
+      noncurrentVersionExpiration:
+        noncurrentDays: 90
+        newerNoncurrentVersions: 30
+    # Interrupted multipart uploads (a killed CI job mid-state-write) leave
+    # invisible billable parts behind; a week is long enough to resume any
+    # legitimate upload.
+    - id: abort-stale-multipart-uploads
+      status: Enabled
+      abortIncompleteMultipartUploadDays: 7

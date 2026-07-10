@@ -60,4 +60,6 @@ components in this repo.
   not baked into the chart. Omit the label and let each resource inherit the
   deploying organization's choice.
 
-Authoring guidance for these charts lives in [`_rules/charts/`](../_rules/charts).
+Authoring guidance for these charts lives in [`_rules/charts/`](../_rules/charts) —
+start with `forge-planton-infra-chart.mdc`, the authoring bar every chart in this
+catalog is held to.
