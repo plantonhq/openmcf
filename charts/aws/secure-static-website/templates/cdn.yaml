@@ -1,0 +1,88 @@
+# The CloudFront distribution — the site's actual front door. It terminates
+# TLS, caches at the edge, and is the only identity the bucket trusts.
+# CloudFront is a global service; us-east-1 is its administrative home region
+# (which is also why the certificate and WAF it consumes must live there).
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsCloudFront
+metadata:
+  name: "{{ values.site_name }}-cdn"
+spec:
+  region: us-east-1
+
+  origins:
+    - originId: s3-site
+      # The REGIONAL S3 endpoint (bucket.s3.<region>.amazonaws.com), not the
+      # global one — the global endpoint answers with redirects while a new
+      # bucket's DNS propagates, which surfaces as intermittent 307s through
+      # the CDN.
+      domainName: "{{ values.bucket_name }}.s3.{{ values.aws_region }}.amazonaws.com"
+      s3Origin:
+        # Provisions an Origin Access Control and attaches it to this origin:
+        # CloudFront signs origin fetches with SigV4, which is what the bucket
+        # policy's cloudfront.amazonaws.com grant admits. The bucket needs no
+        # public access of any kind.
+        createOriginAccessControl: true
+
+  defaultCacheBehavior:
+    targetOriginId: s3-site
+    # Browsers arriving on http get a 301 to https rather than a refusal —
+    # the right posture for a public website.
+    viewerProtocolPolicy: redirect-to-https
+    compress: true
+    # Managed-CachingOptimized: AWS's managed cache policy tuned for static
+    # content (long TTLs, no cookies/queries in the cache key). Referencing
+    # the managed policy id means AWS maintains the tuning, not you.
+    cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+
+  # Serve /index.html when the domain root is requested.
+  defaultRootObject: index.html
+
+  # Dual-stack: publish AAAA-capable edges (the matching AAAA alias record is
+  # created in dns.yaml when the custom domain is on).
+  isIpv6Enabled: true
+
+  # Edge-location coverage vs cost — see the parameter description.
+  priceClass: "{{ values.price_class }}"
+{% if values.custom_domain_enabled | bool %}
+
+  aliases:
+    - "{{ values.domain_name }}"
+
+  viewerCertificate:
+    # The ACM certificate from dns.yaml (us-east-1, DNS-validated). Custom
+    # domains REQUIRE a certificate arm — CloudFront's default *.cloudfront.net
+    # certificate cannot cover your domain.
+    acmCertificateArn:
+      valueFrom:
+        kind: AwsCertManagerCert
+        name: "{{ values.site_name }}-cert"
+        fieldPath: status.outputs.cert_arn
+    # SNI is free and every browser this decade supports it; the alternative
+    # (dedicated-IP "vip") costs $600/month and exists for legacy clients.
+    sslSupportMethod: sni-only
+    minimumProtocolVersion: TLSv1.2_2021
+{% endif %}
+{% if values.waf_enabled | bool %}
+
+  # CLOUDFRONT-scope web ACLs are addressed by ARN (never bare id) — the ref
+  # reads the ACL's arn output directly.
+  webAclArn:
+    valueFrom:
+      kind: AwsWafWebAcl
+      name: "{{ values.site_name }}-waf"
+      fieldPath: status.outputs.web_acl_arn
+{% endif %}
+{% if values.spa_mode | bool %}
+
+  # With OAC, S3 answers 403 (not 404) for keys that do not exist, because
+  # the caller lacks ListBucket. Mapping it to 200 /index.html hands unknown
+  # paths to the client-side router — the standard SPA contract.
+  customErrorResponses:
+    - errorCode: 403
+      responseCode: 200
+      responsePagePath: /index.html
+      # Short TTL so a path that starts existing (a new deploy) stops being
+      # served the shell almost immediately.
+      errorCachingMinTtlSeconds: 60
+{% endif %}
