@@ -10,6 +10,17 @@ spec:
   # Correctness is machine-proven by the E2E import round-trip (deploy a
   # fixture, set state aside, re-import blind, plan must show zero diff) --
   # never by review alone.
+  #
+  # cloud_control_type_name is the scan-side correspondence: the
+  # CloudFormation type name under which a read-only account scan (the Cloud
+  # Control API) reports this resource. It is declared ONLY for types
+  # verified listable via `aws cloudcontrol list-resources` with no extra
+  # list parameters; a covered type may legitimately carry none because it
+  # is unlistable (AWS::IAM::RolePolicy does not support LIST), needs
+  # scoping input Cloud Control cannot default (AWS::EC2::VPCCidrBlock
+  # requires a ResourceModel), or exists only as properties of a parent
+  # type's model (every S3 satellite except the bucket policy). Consumers
+  # treat absence as "not discoverable by scanning", never as an error.
   resource_types:
     # --- S3 ------------------------------------------------------------------
     # Every S3 satellite imports by the bucket name; several accept optional
@@ -18,6 +29,7 @@ spec:
     - terraform_type: aws_s3_bucket
       pulumi_type: aws:s3/bucketV2:BucketV2
       id_format: "{bucket}"
+      cloud_control_type_name: AWS::S3::Bucket
       # force_destroy is engine behavior (empty-before-delete), not a bucket
       # property -- import can never carry it, so post-import plans showing
       # only this attribute are clean.
@@ -44,6 +56,7 @@ spec:
     - terraform_type: aws_s3_bucket_policy
       pulumi_type: aws:s3/bucketPolicy:BucketPolicy
       id_format: "{bucket}"
+      cloud_control_type_name: AWS::S3::BucketPolicy
     - terraform_type: aws_s3_bucket_lifecycle_configuration
       pulumi_type: aws:s3/bucketLifecycleConfigurationV2:BucketLifecycleConfigurationV2
       id_format: "{bucket}"
@@ -83,6 +96,7 @@ spec:
     - terraform_type: aws_vpc
       pulumi_type: aws:ec2/vpc:Vpc
       id_format: "{vpc_id}"
+      cloud_control_type_name: AWS::EC2::VPC
     - terraform_type: aws_vpc_ipv4_cidr_block_association
       pulumi_type: aws:ec2/vpcIpv4CidrBlockAssociation:VpcIpv4CidrBlockAssociation
       id_format: "{cidr_association_id}"
@@ -94,6 +108,7 @@ spec:
     - terraform_type: aws_security_group
       pulumi_type: aws:ec2/securityGroup:SecurityGroup
       id_format: "{security_group_id}"
+      cloud_control_type_name: AWS::EC2::SecurityGroup
       # revoke_rules_on_delete is engine delete behavior (revoke every rule
       # before deleting, for groups other groups reference) -- EC2 never
       # reports it, so it can never round-trip through import.
@@ -103,6 +118,7 @@ spec:
     - terraform_type: aws_ecr_repository
       pulumi_type: aws:ecr/repository:Repository
       id_format: "{repository_name}"
+      cloud_control_type_name: AWS::ECR::Repository
       # force_delete mirrors S3's force_destroy: engine-only delete behavior.
       config_only_attributes: [force_delete]
     - terraform_type: aws_ecr_lifecycle_policy
@@ -113,12 +129,15 @@ spec:
     - terraform_type: aws_subnet
       pulumi_type: aws:ec2/subnet:Subnet
       id_format: "{subnet_id}"
+      cloud_control_type_name: AWS::EC2::Subnet
     - terraform_type: aws_route_table
       pulumi_type: aws:ec2/routeTable:RouteTable
       id_format: "{route_table_id}"
+      cloud_control_type_name: AWS::EC2::RouteTable
     - terraform_type: aws_route_table_association
       pulumi_type: aws:ec2/routeTableAssociation:RouteTableAssociation
       id_format: "{subnet_id}/{route_table_id}"
+      cloud_control_type_name: AWS::EC2::SubnetRouteTableAssociation
       notes: >-
         Subnet associations import by "subnet-id/rtb-id" (gateway
         associations use "igw-id/rtb-id" -- not a shape Planton modules
@@ -128,16 +147,19 @@ spec:
     - terraform_type: aws_internet_gateway
       pulumi_type: aws:ec2/internetGateway:InternetGateway
       id_format: "{internet_gateway_id}"
+      cloud_control_type_name: AWS::EC2::InternetGateway
 
     # --- NAT gateway -----------------------------------------------------------
     - terraform_type: aws_nat_gateway
       pulumi_type: aws:ec2/natGateway:NatGateway
       id_format: "{nat_gateway_id}"
+      cloud_control_type_name: AWS::EC2::NatGateway
 
     # --- IAM role (role + inline policies + managed-policy attachments) -------
     - terraform_type: aws_iam_role
       pulumi_type: aws:iam/role:Role
       id_format: "{role_name}"
+      cloud_control_type_name: AWS::IAM::Role
       # force_detach_policies is engine delete behavior (detach before
       # delete), never readable from IAM -- same class as S3's force_destroy.
       config_only_attributes: [force_detach_policies]
@@ -152,6 +174,7 @@ spec:
     - terraform_type: aws_dynamodb_table
       pulumi_type: aws:dynamodb/table:Table
       id_format: "{table_name}"
+      cloud_control_type_name: AWS::DynamoDB::Table
     - terraform_type: aws_dynamodb_resource_policy
       pulumi_type: aws:dynamodb/resourcePolicy:ResourcePolicy
       id_format: "{table_arn}"
@@ -175,6 +198,7 @@ spec:
     - terraform_type: aws_sqs_queue
       pulumi_type: aws:sqs/queue:Queue
       id_format: "{queue_url}"
+      cloud_control_type_name: AWS::SQS::Queue
       notes: >-
         The full queue URL ("https://sqs.<region>.amazonaws.com/<account>/
         <name>"), not the queue name or ARN.
@@ -183,6 +207,7 @@ spec:
     - terraform_type: aws_sns_topic
       pulumi_type: aws:sns/topic:Topic
       id_format: "{topic_arn}"
+      cloud_control_type_name: AWS::SNS::Topic
     - terraform_type: aws_sns_topic_data_protection_policy
       pulumi_type: aws:sns/dataProtectionPolicy:DataProtectionPolicy
       id_format: "{topic_arn}"
@@ -191,6 +216,7 @@ spec:
     - terraform_type: aws_kms_key
       pulumi_type: aws:kms/key:Key
       id_format: "{kms_key_id}"
+      cloud_control_type_name: AWS::KMS::Key
       notes: >-
         The key id (UUID), not the alias or ARN. Imported keys also need
         their policy/rotation read back, which the import's refresh does.
@@ -200,6 +226,7 @@ spec:
     - terraform_type: aws_kms_alias
       pulumi_type: aws:kms/alias:Alias
       id_format: "{kms_alias_name}"
+      cloud_control_type_name: AWS::KMS::Alias
       notes: >-
         The full alias name including the "alias/" prefix
         (e.g. "alias/my-key-alias").

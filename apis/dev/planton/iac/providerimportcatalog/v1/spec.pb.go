@@ -114,8 +114,19 @@ type ResourceTypeImportId struct {
 	// never exist cloud-side at all, normalized values do -- and future drift
 	// surfaces will want to explain them differently.
 	WriteNormalizedAttributes []string `protobuf:"bytes,6,rep,name=write_normalized_attributes,json=writeNormalizedAttributes,proto3" json:"write_normalized_attributes,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// CloudFormation type name for the same provider resource
+	// (e.g. "AWS::S3::Bucket") -- the declared correspondence between what a
+	// read-only account scan reports (the Cloud Control API lists resources
+	// by these names) and what IaC state holds (terraform_type/pulumi_type).
+	// Only set for types VERIFIED listable via Cloud Control's ListResources
+	// without extra list parameters; types that are unlistable, that require
+	// additional scoping input, or that exist only as properties of a parent
+	// type's model (e.g. the S3 bucket satellites) carry no name here and are
+	// therefore structurally invisible to scans -- consumers must treat their
+	// absence as "not discoverable", never as an error.
+	CloudControlTypeName string `protobuf:"bytes,7,opt,name=cloud_control_type_name,json=cloudControlTypeName,proto3" json:"cloud_control_type_name,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *ResourceTypeImportId) Reset() {
@@ -190,13 +201,20 @@ func (x *ResourceTypeImportId) GetWriteNormalizedAttributes() []string {
 	return nil
 }
 
+func (x *ResourceTypeImportId) GetCloudControlTypeName() string {
+	if x != nil {
+		return x.CloudControlTypeName
+	}
+	return ""
+}
+
 var File_dev_planton_iac_providerimportcatalog_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_iac_providerimportcatalog_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"3dev/planton/iac/providerimportcatalog/v1/spec.proto\x12(dev.planton.iac.providerimportcatalog.v1\"\x82\x01\n" +
 	"\x19ProviderImportCatalogSpec\x12e\n" +
-	"\x0eresource_types\x18\x01 \x03(\v2>.dev.planton.iac.providerimportcatalog.v1.ResourceTypeImportIdR\rresourceTypes\"\x87\x02\n" +
+	"\x0eresource_types\x18\x01 \x03(\v2>.dev.planton.iac.providerimportcatalog.v1.ResourceTypeImportIdR\rresourceTypes\"\xbe\x02\n" +
 	"\x14ResourceTypeImportId\x12%\n" +
 	"\x0eterraform_type\x18\x01 \x01(\tR\rterraformType\x12\x1f\n" +
 	"\vpulumi_type\x18\x02 \x01(\tR\n" +
@@ -204,7 +222,8 @@ const file_dev_planton_iac_providerimportcatalog_v1_spec_proto_rawDesc = "" +
 	"\tid_format\x18\x03 \x01(\tR\bidFormat\x12\x14\n" +
 	"\x05notes\x18\x04 \x01(\tR\x05notes\x124\n" +
 	"\x16config_only_attributes\x18\x05 \x03(\tR\x14configOnlyAttributes\x12>\n" +
-	"\x1bwrite_normalized_attributes\x18\x06 \x03(\tR\x19writeNormalizedAttributesB\xe2\x02\n" +
+	"\x1bwrite_normalized_attributes\x18\x06 \x03(\tR\x19writeNormalizedAttributes\x125\n" +
+	"\x17cloud_control_type_name\x18\a \x01(\tR\x14cloudControlTypeNameB\xe2\x02\n" +
 	",com.dev.planton.iac.providerimportcatalog.v1B\tSpecProtoP\x01Zbgithub.com/plantonhq/planton/apis/dev/planton/iac/providerimportcatalog/v1;providerimportcatalogv1\xa2\x02\x04DPIP\xaa\x02(Dev.Planton.Iac.Providerimportcatalog.V1\xca\x02(Dev\\Planton\\Iac\\Providerimportcatalog\\V1\xe2\x024Dev\\Planton\\Iac\\Providerimportcatalog\\V1\\GPBMetadata\xea\x02,Dev::Planton::Iac::Providerimportcatalog::V1b\x06proto3"
 
 var (
