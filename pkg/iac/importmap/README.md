@@ -75,7 +75,12 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 ## Adding a kind
 
 1. Add the component's resource types (with import-ID formats) to the
-   provider catalog if absent; declare any config-only attributes.
+   provider catalog if absent; declare any config-only attributes. When a
+   type is listable via Cloud Control (`aws cloudcontrol list-resources
+   --type-name ...` succeeds without extra parameters -- verify
+   empirically, never assume), also declare its `cloud_control_type_name`:
+   it is the scan-side correspondence account scanning and the mapping
+   eval harness (`pkg/iac/mappingeval`) translate through.
 2. Author `{component}/v1/iac/import-map.yaml` naming each placeholder's
    derivations (prefer derivable sources; `where_to_find` is mandatory when
    nothing derives). The file's presence enrolls the component in every

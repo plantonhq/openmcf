@@ -54,4 +54,15 @@ message ResourceTypeImportId {
   // never exist cloud-side at all, normalized values do -- and future drift
   // surfaces will want to explain them differently.
   repeated string write_normalized_attributes = 6;
+  // CloudFormation type name for the same provider resource
+  // (e.g. "AWS::S3::Bucket") -- the declared correspondence between what a
+  // read-only account scan reports (the Cloud Control API lists resources
+  // by these names) and what IaC state holds (terraform_type/pulumi_type).
+  // Only set for types VERIFIED listable via Cloud Control's ListResources
+  // without extra list parameters; types that are unlistable, that require
+  // additional scoping input, or that exist only as properties of a parent
+  // type's model (e.g. the S3 bucket satellites) carry no name here and are
+  // therefore structurally invisible to scans -- consumers must treat their
+  // absence as "not discoverable", never as an error.
+  string cloud_control_type_name = 7;
 }

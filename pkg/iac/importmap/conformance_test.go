@@ -22,6 +22,10 @@ import (
 
 var tfResourcePattern = regexp.MustCompile(`(?m)^resource\s+"([a-z0-9_]+)"\s+"`)
 
+// cloudControlTypeNamePattern is the CloudFormation type-name shape
+// (e.g. "AWS::S3::Bucket") that Cloud Control keys its list/get calls on.
+var cloudControlTypeNamePattern = regexp.MustCompile(`^[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}$`)
+
 // TestImportMapConformance validates every authored import recipe against the
 // module sources it maps, offline:
 //
@@ -91,6 +95,28 @@ func TestImportMapConformance(t *testing.T) {
 					t.Errorf("%s catalog: %s declares an empty write_normalized_attributes entry", provider, rt.GetTerraformType())
 				}
 			}
+		}
+
+		// The scan-side correspondence must be well-formed and unambiguous:
+		// ground-truth building and mapping proposals translate between what
+		// a scan reports (Cloud Control type names) and what IaC state holds
+		// (terraform types), so two terraform types claiming the same Cloud
+		// Control type would make that translation a guess.
+		cloudControlClaims := map[string]string{}
+		for _, rt := range catalog.GetSpec().GetResourceTypes() {
+			ccType := rt.GetCloudControlTypeName()
+			if ccType == "" {
+				continue
+			}
+			if !cloudControlTypeNamePattern.MatchString(ccType) {
+				t.Errorf("%s catalog: %s declares malformed cloud_control_type_name %q (want e.g. AWS::S3::Bucket)",
+					provider, rt.GetTerraformType(), ccType)
+			}
+			if prior, dup := cloudControlClaims[ccType]; dup {
+				t.Errorf("%s catalog: cloud_control_type_name %q claimed by both %s and %s -- the scan-to-state translation must be unambiguous",
+					provider, ccType, prior, rt.GetTerraformType())
+			}
+			cloudControlClaims[ccType] = rt.GetTerraformType()
 		}
 
 		for _, component := range components {
