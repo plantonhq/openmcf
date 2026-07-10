@@ -122,6 +122,35 @@ the README. Conventions:
   spec.proto is the single source of truth — read it before writing the template,
   never infer fields from another chart or an older manifest.
 
+Renderer mechanics that charts rely on (all verified against the offline
+validator, which is strict-or-stricter than the control plane's engine):
+
+- **Per-AZ / per-item striping**: loop over a `list` param and index its
+  companion lists by position — `{% for az in values.availability_zones %}` with
+  `{{ values.public_subnet_cidrs[loop.index0] }}`. Index-matched lists MUST say
+  so in each param's description ("entry N serves AZ N"), because nothing else
+  enforces the pairing. Literal indexing (`values.availability_zones[0]`) also
+  works for "the first one" placements.
+- **Bool params interpolate directly into bool manifest fields**
+  (`deletionProtection: {{ values.my_toggle }}`): engines differ on rendered
+  casing (`True` vs `true`) but both parse as YAML booleans — do not build
+  string ternaries around it.
+- **FK fields without a `default_kind` need the full `valueFrom`** (kind + name
+  + fieldPath). Deliberately polymorphic references (e.g. a route target whose
+  kind is selected by a sibling enum) resolve nothing by default — writing the
+  explicit ref is the designed usage, not a workaround.
+- **Struct-typed spec fields (inline policy documents) cannot carry
+  `valueFrom`** — a Struct holds plain JSON, not references, and outputs of
+  not-yet-created resources cannot appear in it anyway. Feed cross-resource
+  values inside Structs from render-time params instead (e.g. an account id
+  scoping a service-principal condition), and teach the post-deploy tightening
+  in the README when an exact-ARN form exists.
+- **A flipped toggle can change how OTHER resources compose** — design the
+  else-branch of every dependent, not just the toggled resource itself (e.g.
+  subnets that stop owning route tables when NAT is off make a gateway endpoint
+  attach to the VPC main route table instead). The validator flips each bool
+  once precisely to force both compositions to render.
+
 ### README.md
 
 To the same bar as a component's docs: what the chart provisions and for whom
