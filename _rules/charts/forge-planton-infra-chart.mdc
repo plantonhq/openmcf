@@ -145,6 +145,28 @@ validator, which is strict-or-stricter than the control plane's engine):
   values inside Structs from render-time params instead (e.g. an account id
   scoping a service-principal condition), and teach the post-deploy tightening
   in the README when an exact-ARN form exists.
+- **Outputs only feed `StringValueOrRef` fields — every other field type takes
+  render-time literals.** A plain `string`, `repeated string` (a DNS record's
+  `values`), or `map<string,string>` (an alarm's `dimensions`, a pipeline
+  action's `configuration`) cannot carry a `valueFrom`; the typed loader
+  rejects the object where it expects a scalar. When a composition genuinely
+  needs a deploy-time output inside such a field, do not fake it: either close
+  the loop with render-time naming the chart controls on both sides (a
+  pipeline action naming the chart's own build project), design around
+  render-stable values (alarm dimensions from the chart's own resource names,
+  never from `arn_suffix`-class outputs), or make it an explicit day-2 recipe
+  in the README with the exact outputs to read — a template that renders a
+  placeholder where a real value belongs is a silent-failure ship.
+- **Toggles whose combination an API rule constrains are guarded together in
+  the template.** When flag A is only legal alongside flag B (auto-deployments
+  only with a watchable private registry, for example), render A's field
+  inside `{% if values.b | bool and values.a | bool %}` so the API's own rule
+  is mirrored at render time and every independent single flip stays valid —
+  the validator flips one bool at a time against defaults, so a pair that is
+  only valid together is a design defect. Negated arms use
+  `{% if not (values.x | bool) %}`, which is also how a chart owns an
+  either/or shape the protos deliberately leave un-CEL'd (one compute arm OR
+  the other, plus the neighbors that must not render beside the active arm).
 - **A flipped toggle can change how OTHER resources compose** — design the
   else-branch of every dependent, not just the toggled resource itself (e.g.
   subnets that stop owning route tables when NAT is off make a gateway endpoint
