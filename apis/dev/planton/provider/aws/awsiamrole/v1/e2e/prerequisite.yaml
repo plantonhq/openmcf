@@ -430,3 +430,32 @@ spec:
         Principal:
           Service: codepipeline.amazonaws.com
         Action: sts:AssumeRole
+---
+# SageMaker execution role: trusts sagemaker.amazonaws.com. The domain's
+# default_user_settings.execution_role_arn is validated for assumability at
+# CreateDomain; the E2E lane never launches an app, so the trust policy is
+# the load-bearing part and no data-plane permissions are attached.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-sagemaker-execution-role
+  id: planton-oss-e2e-sagemaker-execution-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for SageMaker Studio execution
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: sagemaker.amazonaws.com
+        Action: sts:AssumeRole

@@ -126,7 +126,11 @@ secret OR a cross-resource reference, never plaintext).
 A field whose NAME merely *looks* like a secret (a public key, an access-key *id*, a resource
 *name*, a key *algorithm*) is NOT a secret -- exempt it with
 `(dev.planton.shared.options.sensitive_exempt_reason) = "<why>"`. Never set both options on one
-field.
+field. Exempt only what the gate actually flags: the guard matches by name PATTERN, and an
+exemption on a field the pattern never matches (e.g. `secret_arn` -- `*_arn` names are treated
+as references, not secrets) is itself a gate failure ("pointless exemption"). Run
+`planton secret-coverage --check` first and annotate from its report; for unflagged
+reference-carrying names, let the field comment state the not-secret rationale instead.
 
 This is identified in rule 001 and applied in rule 002. The ratcheting gate
 `planton secret-coverage --check` fails the build on any unannotated secret-looking field, so a
@@ -362,7 +366,13 @@ prerequisites, and deploy in topological order — so annotating the top of a
 chain is enough. Unknown kinds and self-references fail loudly. Singular AND
 repeated `StringValueOrRef` fields both resolve, refs nested inside (repeated)
 spec messages resolve too, and a repeated list can mix literals with
-references.
+references. Audit the annotation against EVERY `valueFrom` kind the scenario
+references: a reference to a kind that is neither a registry prerequisite nor
+annotated stays UNRESOLVED, and the failure mode is engine-asymmetric and
+live-only — the Terraform lane fails at apply with "Null value found in list"
+(the tfvars renderer emits a null element for the unresolved ref) while the
+Pulumi module silently sends an empty string, which some AWS APIs accept, so a
+green Pulumi lane can mask the gap until the Terraform lane runs.
 
 **Install manifests declare their own composed fixtures the same way.** The
 resolver also reads the `planton.dev/e2e-prerequisites` annotation on each

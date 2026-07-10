@@ -1,0 +1,46 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awssagemakerdomain
+spec:
+  # A SageMaker domain under live E2E: two lanes.
+  #
+  # - minimal: the required-only shape (IAM auth, fixture subnets + execution
+  #   role) with homeEfsRetentionPolicy Delete so the domain's auto-created
+  #   EFS home file system is destroyed with it -- the zero-orphan teardown
+  #   contract.
+  # - full-surface: every arm provable on an IAM-auth domain without
+  #   external infrastructure -- tag propagation, per-user CloudTrail
+  #   attribution, Docker access, JupyterLab/JupyterServer/CodeEditor/
+  #   TensorBoard baselines with idle shutdown, sharing to the shared S3
+  #   bucket fixture (scenario-declared prerequisite), both inheritance
+  #   planes (user + space), POSIX identity, Studio UI hiding, and the
+  #   role-free Canvas governance arms.
+  #
+  # Excluded from live lanes with reasons (proven by spec tests + the
+  # offline plan/preview gate against iac/hack/manifest.yaml):
+  # - SSO auth + trusted identity propagation: need an IAM Identity Center
+  #   instance the e2e account does not run (the AMP-workspace class).
+  # - RStudio (domain + app + RSession): needs a Posit license through AWS
+  #   License Manager.
+  # - custom_images / custom_file_system_configs: need pre-registered
+  #   SageMaker Images and an EFS with reachable mount targets.
+  # - Canvas role-bearing arms (EMR Serverless, Bedrock, Forecast, OAuth):
+  #   need service-scoped roles or SaaS credentials.
+  #
+  # Verification is DescribeDomain keyed on domain_id; deletion is
+  # asynchronous (the Deleting status counts as absent; DeleteFailed fails
+  # the lane so a real orphan is investigated, never silently passed).
+  #
+  # Live dual-engine run: Pulumi full-surface 11m18s / minimal 9m43s;
+  # Terraform full-surface 11m45s / minimal 9m24s (each incl. the shared
+  # VPC/subnet/role/S3/SG fixture chains; the domain itself creates in
+  # ~2-3 min and deletes with its EFS in ~2-4 min); zero-orphan sweep
+  # clean -- the Delete retention policy removed the auto-created EFS
+  # home file system in every lane.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 45

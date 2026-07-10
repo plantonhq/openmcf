@@ -1,6 +1,6 @@
 # AwsSagemakerDomain — Technical Reference
 
-Comprehensive technical documentation for the AwsSagemakerDomain deployment component in Planton. This document covers SageMaker Studio architecture, authentication modes, networking, storage, cost model, app types, idle management, Docker access, service limits, security, common patterns, and the v2 roadmap.
+Comprehensive technical documentation for the AwsSagemakerDomain deployment component in Planton. This document covers SageMaker Studio architecture, authentication modes, networking, storage, cost model, app types, idle management, Docker access, service limits, security, common patterns, and the companion resources that join the domain.
 
 ---
 
@@ -17,7 +17,7 @@ Comprehensive technical documentation for the AwsSagemakerDomain deployment comp
 9. [Service Limits](#service-limits)
 10. [Security Model](#security-model)
 11. [Common Patterns](#common-patterns)
-12. [v2 Roadmap](#v2-roadmap)
+12. [Companion Resources](#companion-resources)
 
 ---
 
@@ -251,12 +251,23 @@ The classic Jupyter Server interface. Being superseded by JupyterLab.
 
 ### Code Editor
 
-VS Code-based editor available in newer Studio versions.
+VS Code (Code-OSS) in the browser, for teams that prefer a full code editor over
+the notebook-first experience.
 
 | Feature | Detail |
 |---------|--------|
 | **Interface** | VS Code in the browser |
-| **Status** | Not modeled in v1 — available in Studio but not configurable via domain settings |
+| **Configuration** | `codeEditorAppSettings` — same resource-spec, lifecycle, custom-image, and idle-shutdown controls as JupyterLab |
+| **Instance types** | `ml.t3.medium` to GPU instances, like JupyterLab |
+
+### TensorBoard, RSession, RStudio, and Canvas
+
+| App | Configuration | Notes |
+|-----|---------------|-------|
+| **TensorBoard** | `tensorBoardAppSettings` | Training-run visualization; resource spec only |
+| **RSession** | `rSessionAppSettings` | R kernels behind RStudio; requires RStudio on the domain |
+| **RStudio Server Pro** | `rStudioServerProDomainSettings` (domain activation) + `rStudioServerProAppSettings` (per-user access) | Requires a Posit license via AWS License Manager |
+| **Canvas** | `canvasAppSettings` | No-code ML: direct deploy, EMR Serverless, Bedrock generative AI, SaaS OAuth connectors, Kendra, model registry, forecasting, workspace location |
 
 ---
 
@@ -273,9 +284,12 @@ SageMaker monitors user activity to determine if an app instance is idle:
 
 ### Configuration Strategy
 
+Configuring `idleSettings` is what enables idle shutdown — omit the block to leave
+instances running until manually stopped. All three timeouts are required together
+(AWS rejects a partial block):
+
 | Setting | Recommended Value | Purpose |
 |---------|------------------|---------|
-| `lifecycleManagement` | `ENABLED` | Always enable for production |
 | `idleTimeoutInMinutes` | 120 (2 hours) | Balance cost savings vs restart friction |
 | `minIdleTimeoutInMinutes` | 60 (1 hour) | Prevent disruptive short timeouts |
 | `maxIdleTimeoutInMinutes` | 480 (8 hours) | Prevent users from disabling shutdown |
@@ -516,46 +530,33 @@ Each environment references its own VPC, security groups, and KMS keys via `valu
 
 ---
 
-## v2 Roadmap
+## Companion Resources
 
-Features under consideration for future versions of the AwsSagemakerDomain API:
+The domain is the root of the SageMaker resource family. The pieces below are
+deliberately separate from the domain because they have independent lifecycles,
+are many-per-domain, or belong to separate product surfaces. All of them join
+the domain through its `domain_id` output.
 
-### User Profiles (AwsSagemakerUserProfile)
+### User Profiles
 
-- Per-user overrides of domain defaults (execution role, security groups, app settings).
-- User-specific lifecycle configurations.
-- Granular IAM policies per user.
-- Modeled as a companion resource kind that references the domain.
+Per-user membership and overrides of the domain defaults (execution role,
+security groups, app settings). Many per domain, each with its own lifecycle —
+created and deleted as team members come and go, without touching the domain.
 
-### Spaces (AwsSagemakerSpace)
+### Spaces
 
-- Shared collaborative environments within a domain.
-- Private spaces for individual work with dedicated EBS volumes.
-- Space-level app configurations.
-- Space ownership and sharing controls.
+Shared collaborative environments (and private spaces with dedicated EBS
+volumes) inside a domain. The domain's `defaultSpaceSettings` block sets the
+baseline every space inherits; the spaces themselves are runtime resources.
 
-### RStudio Server Pro
+### Studio Lifecycle Configs, Images, and App Image Configs
 
-- RStudio IDE integration for R-based data science teams.
-- Requires RStudio license and separate package manager configuration.
-- Different resource spec model (RStudio-specific instance types).
+Startup scripts and custom kernel images are referenced by ARN/name from the
+domain's resource specs and `customImages` lists. They version and roll
+independently of the domain.
 
-### SageMaker Canvas
+### MLflow Tracking Server, Pipelines, Model Registry, Feature Store, Endpoints
 
-- No-code ML interface for business analysts.
-- AutoML model building without writing code.
-- Separate app type with distinct settings.
-
-### Code Editor (VS Code)
-
-- VS Code in the browser as an alternative to JupyterLab.
-- Configurable via domain settings (extensions, settings sync).
-
-### Advanced Features Under Evaluation
-
-- **Model Registry integration** — domain-level model governance policies.
-- **Feature Store** — domain-level feature group access controls.
-- **Pipeline defaults** — default pipeline execution roles and storage.
-- **Custom file systems** — mount additional EFS or FSx volumes beyond the home directory.
-- **Resource quotas** — per-user compute budgets and instance type restrictions.
-- **Tagging policies** — auto-tagging of all domain-created resources for cost allocation.
+Separate SageMaker product surfaces with their own sizing, lifecycle, and
+access models — the domain gives the humans a workspace; these give the models
+a lifecycle.
