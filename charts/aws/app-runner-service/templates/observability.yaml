@@ -1,0 +1,18 @@
+# The observability configuration is another shared, versioned companion
+# resource: it declares X-Ray tracing, and the SERVICE opts in by
+# referencing it — the reference is the enable switch, so removing the
+# reference (not deleting the config) is how a service opts back out.
+{% if values.observability_enabled | bool %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsAppRunnerObservabilityConfiguration
+metadata:
+  name: "{{ values.service_name }}-tracing"
+spec:
+  region: "{{ values.aws_region }}"
+  traceConfiguration:
+    # AWSXRAY is the only vendor App Runner supports; the config resource
+    # exists so the tracing decision is shared and versioned rather than
+    # a per-service flag.
+    vendor: AWSXRAY
+{% endif %}
