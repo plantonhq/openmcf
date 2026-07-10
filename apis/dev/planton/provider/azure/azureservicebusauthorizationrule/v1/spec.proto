@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureservicebusauthorizationrule.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureServiceBusAuthorizationRuleSpec** defines a SAS
+// (shared-access-signature) authorization rule for Azure Service Bus: a
+// named credential with listen/send/manage rights, scoped to exactly one
+// of a namespace, a queue, or a topic.
+//
+// Authorization rules are how applications get least-privilege connection
+// strings -- a sender service holds a send-only rule on its one queue, a
+// worker holds a listen-only rule, and neither can touch anything else in
+// the namespace. The rule's keys and connection strings surface as
+// sensitive outputs; regenerating keys rotates every client using them.
+//
+// **The scope is the polymorphism**: set exactly one of `namespace_id`
+// (namespace-wide rights -- every entity), `queue_id` (that queue only),
+// or `topic_id` (that topic only). Azure models these as three ARM types
+// with identical shapes; this kind dispatches to the right one from
+// whichever parent is set. The scope is fixed at creation.
+//
+// **Rights contract** (Azure's own): at least one of listen/send/manage
+// must be true, and manage requires BOTH listen and send.
+//
+// For a keyless posture, skip SAS rules entirely: disable the namespace's
+// local_auth_enabled and grant Entra identities data-plane roles via
+// AzureRoleAssignment -- SAS keys stop working namespace-wide.
+//
+// **ForceNew fields**: `rule_name` and the parent scope.
+message AzureServiceBusAuthorizationRuleSpec {
+  // The rule's name -- unique within its scope, up to 50 characters.
+  // Starts and ends with a letter or number; letters, numbers, periods,
+  // hyphens, and underscores in between. "RootManageSharedAccessKey" is
+  // reserved for the namespace's built-in root rule.
+  //
+  // **ForceNew**: changing the name replaces the rule and regenerates its
+  // keys.
+  string rule_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 50,
+    (buf.validate.field).cel = {
+      id: "service_bus_auth_rule_name_format"
+      message: "rule_name must be up to 50 characters of letters, numbers, periods, hyphens, and underscores, starting and ending with a letter or number"
+      expression: "this.matches('^[a-zA-Z0-9]$') || this.matches('^[a-zA-Z0-9][-._a-zA-Z0-9]{0,48}[a-zA-Z0-9]$')"
+    },
+    (buf.validate.field).cel = {
+      id: "service_bus_auth_rule_name_not_root"
+      message: "RootManageSharedAccessKey is the namespace's built-in root rule -- its keys already surface as AzureServiceBusNamespace outputs; mint a differently-named rule for scoped access"
+      expression: "this != 'RootManageSharedAccessKey'"
+    }
+  ];
+
+  // Namespace-wide scope: rights over EVERY queue and topic in the
+  // namespace, by ARM ID. References an AzureServiceBusNamespace's
+  // namespace_id output. Set exactly one of namespace_id, queue_id, or
+  // topic_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureServiceBusNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.namespace_id"
+  ];
+
+  // Single-queue scope: rights over one queue only, by ARM ID. References
+  // an AzureServiceBusQueue's queue_id output. The least-privilege choice
+  // for point-to-point workloads.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef queue_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureServiceBusQueue,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_id"
+  ];
+
+  // Single-topic scope: rights over one topic (and receiving through its
+  // subscriptions), by ARM ID. References an AzureServiceBusTopic's
+  // topic_id output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef topic_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureServiceBusTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_id"
+  ];
+
+  // Whether this rule may RECEIVE messages (and browse/peek) within its
+  // scope.
+  // Default: false
+  optional bool listen = 5;
+
+  // Whether this rule may SEND messages within its scope.
+  // Default: false
+  optional bool send = 6;
+
+  // Whether this rule may MANAGE entities within its scope (create and
+  // delete queues/topics/subscriptions). Requires listen AND send --
+  // manage is a superset, never a standalone right.
+  // Default: false
+  optional bool manage = 7;
+
+  option (buf.validate.message).cel = {
+    id: "service_bus_auth_rule_exactly_one_scope"
+    message: "set exactly one scope -- namespace_id for namespace-wide rights, queue_id for one queue, or topic_id for one topic"
+    expression: "(has(this.namespace_id) ? 1 : 0) + (has(this.queue_id) ? 1 : 0) + (has(this.topic_id) ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "service_bus_auth_rule_at_least_one_right"
+    message: "grant at least one right -- listen, send, or manage (a rule with no rights would be an unusable credential)"
+    expression: "this.listen || this.send || this.manage"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "service_bus_auth_rule_manage_requires_listen_send"
+    message: "manage is a superset right -- Azure requires listen and send to both be true alongside it"
+    expression: "!this.manage || (this.listen && this.send)"
+  };
+}

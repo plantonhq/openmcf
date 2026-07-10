@@ -1109,15 +1109,49 @@ enum CloudResourceKind {
     id_prefix: "azfic"
     prerequisites: [AzureUserAssignedIdentity]
   }];
+  // AzureResourceGroup is a prerequisite because a Service Bus namespace is
+  // created inside a referenced resource group in composed environments.
+  // The namespace is the container every Service Bus messaging entity
+  // (queue, topic, subscription, authorization rule, geo-DR pairing)
+  // nests under. The child kinds deliberately declare NO registry
+  // prerequisite: namespace names are globally unique with a post-delete
+  // name hold, so E2E composes them with scenario-local namespace
+  // fixtures instead of a shared recreate-per-scenario prerequisite.
   AzureServiceBusNamespace = 470 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azsb"
+    prerequisites: [AzureResourceGroup]
   }];
   AzureEventHubNamespace = 471 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azeh"
+  }];
+  AzureServiceBusQueue = 472 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsbque"
+  }];
+  AzureServiceBusTopic = 473 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsbtop"
+  }];
+  AzureServiceBusSubscription = 474 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsbsub"
+  }];
+  AzureServiceBusAuthorizationRule = 475 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsbauth"
+  }];
+  AzureServiceBusDisasterRecoveryConfig = 476 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsbdr"
   }];
 
   // --- CDN / Front Door ---

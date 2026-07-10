@@ -15,7 +15,10 @@ spec:
   shortName: PltAutomate
   webhookReceivers:
     - name: incident-platform
-      serviceUri: https://events.example.com/azure-alerts
+      # Use a real endpoint on a domain you own -- Azure validates webhook
+      # URIs server-side and rejects placeholder domains (example.com is
+      # blocked with WebhookServiceUriBlocked).
+      serviceUri: https://hooks.yourcompany.com/azure-alerts
       useCommonAlertSchema: true
       aadAuth:
         # Replace with your Entra application's object ID (a valid example

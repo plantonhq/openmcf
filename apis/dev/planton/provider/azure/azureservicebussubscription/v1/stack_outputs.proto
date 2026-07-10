@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureservicebussubscription.v1;
+
+// **AzureServiceBusSubscriptionStackOutputs** captures the outputs of
+// provisioning a Service Bus subscription.
+message AzureServiceBusSubscriptionStackOutputs {
+  // The Azure Resource Manager ID of the subscription.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.ServiceBus/namespaces/{ns}/topics/{topic}/subscriptions/{name}
+  string subscription_id = 1;
+
+  // The subscription's name -- what consumers reference (together with
+  // the topic name) when receiving.
+  string subscription_name = 2;
+
+  // The name of the topic the subscription attaches to, parsed from the
+  // resolved topic ID.
+  string topic_name = 3;
+
+  // The name of the Service Bus namespace, parsed from the resolved topic
+  // ID -- saves consumers a second reference when they need the
+  // namespace/topic/subscription triple.
+  string namespace_name = 4;
+}

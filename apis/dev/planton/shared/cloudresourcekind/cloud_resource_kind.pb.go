@@ -420,8 +420,21 @@ const (
 	// resource group arrives transitively through the identity's own
 	// prerequisite declaration.)
 	CloudResourceKind_AzureFederatedIdentityCredential CloudResourceKind = 463
-	CloudResourceKind_AzureServiceBusNamespace         CloudResourceKind = 470
-	CloudResourceKind_AzureEventHubNamespace           CloudResourceKind = 471
+	// AzureResourceGroup is a prerequisite because a Service Bus namespace is
+	// created inside a referenced resource group in composed environments.
+	// The namespace is the container every Service Bus messaging entity
+	// (queue, topic, subscription, authorization rule, geo-DR pairing)
+	// nests under. The child kinds deliberately declare NO registry
+	// prerequisite: namespace names are globally unique with a post-delete
+	// name hold, so E2E composes them with scenario-local namespace
+	// fixtures instead of a shared recreate-per-scenario prerequisite.
+	CloudResourceKind_AzureServiceBusNamespace              CloudResourceKind = 470
+	CloudResourceKind_AzureEventHubNamespace                CloudResourceKind = 471
+	CloudResourceKind_AzureServiceBusQueue                  CloudResourceKind = 472
+	CloudResourceKind_AzureServiceBusTopic                  CloudResourceKind = 473
+	CloudResourceKind_AzureServiceBusSubscription           CloudResourceKind = 474
+	CloudResourceKind_AzureServiceBusAuthorizationRule      CloudResourceKind = 475
+	CloudResourceKind_AzureServiceBusDisasterRecoveryConfig CloudResourceKind = 476
 	// AzureResourceGroup is a prerequisite because a Front Door profile is
 	// created inside a referenced resource group in composed environments.
 	// The profile is the container every Front Door delivery resource
@@ -967,6 +980,11 @@ var (
 		463:  "AzureFederatedIdentityCredential",
 		470:  "AzureServiceBusNamespace",
 		471:  "AzureEventHubNamespace",
+		472:  "AzureServiceBusQueue",
+		473:  "AzureServiceBusTopic",
+		474:  "AzureServiceBusSubscription",
+		475:  "AzureServiceBusAuthorizationRule",
+		476:  "AzureServiceBusDisasterRecoveryConfig",
 		480:  "AzureFrontDoorProfile",
 		481:  "AzureFrontDoorEndpoint",
 		482:  "AzureFrontDoorOriginGroup",
@@ -1436,6 +1454,11 @@ var (
 		"AzureFederatedIdentityCredential":          463,
 		"AzureServiceBusNamespace":                  470,
 		"AzureEventHubNamespace":                    471,
+		"AzureServiceBusQueue":                      472,
+		"AzureServiceBusTopic":                      473,
+		"AzureServiceBusSubscription":               474,
+		"AzureServiceBusAuthorizationRule":          475,
+		"AzureServiceBusDisasterRecoveryConfig":     476,
 		"AzureFrontDoorProfile":                     480,
 		"AzureFrontDoorEndpoint":                    481,
 		"AzureFrontDoorOriginGroup":                 482,
@@ -2015,7 +2038,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x81\xaa\x01\n" +
+	"\x02v1\x10\x01*\x8f\xac\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2164,11 +2187,15 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x19AzureUserAssignedIdentity\x10\xcc\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azid:\x02\x90\x03\x12.\n" +
 	"\x13AzureRoleAssignment\x10\xcd\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x04azra:\x04\x90\x03\xcc\x03\x12,\n" +
 	"\x13AzureRoleDefinition\x10\xce\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azrd:\x02\x90\x03\x12:\n" +
-	" AzureFederatedIdentityCredential\x10\xcf\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azfic:\x02\xcc\x03\x12-\n" +
-	"\x18AzureServiceBusNamespace\x10\xd6\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azsb\x12+\n" +
+	" AzureFederatedIdentityCredential\x10\xcf\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azfic:\x02\xcc\x03\x121\n" +
+	"\x18AzureServiceBusNamespace\x10\xd6\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azsb:\x02\x90\x03\x12+\n" +
 	"\x16AzureEventHubNamespace\x10\xd7\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azeh\x120\n" +
+	"\b\r\x10\x01\"\x04azeh\x12,\n" +
+	"\x14AzureServiceBusQueue\x10\xd8\x03\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazsbque\x12,\n" +
+	"\x14AzureServiceBusTopic\x10\xd9\x03\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazsbtop\x123\n" +
+	"\x1bAzureServiceBusSubscription\x10\xda\x03\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazsbsub\x129\n" +
+	" AzureServiceBusAuthorizationRule\x10\xdb\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazsbauth\x12<\n" +
+	"%AzureServiceBusDisasterRecoveryConfig\x10\xdc\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azsbdr\x120\n" +
 	"\x15AzureFrontDoorProfile\x10\xe0\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x04azfd0\x01:\x02\x90\x03\x120\n" +
 	"\x16AzureFrontDoorEndpoint\x10\xe1\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azfde:\x02\xe0\x03\x124\n" +
 	"\x19AzureFrontDoorOriginGroup\x10\xe2\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azfdog:\x02\xe0\x03\x12.\n" +

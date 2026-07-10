@@ -383,6 +383,26 @@ whose casing is irregular, so the offline plan gate and the live suite
 keep it covered -- a mapping row no fixture uses is dead code that
 validation cannot see.
 
+### Service-created default sub-resources cannot be adopted declaratively
+
+Some Azure services auto-create a well-known child resource the moment a
+parent exists -- Service Bus subscriptions get a catch-all filter rule
+named `$Default`, and similar service-created defaults exist elsewhere.
+It is tempting to model "replace the default" as declaring a resource
+with the same name, expecting ARM's CreateOrUpdate to upsert it. That
+never reaches ARM: both engines' azurerm create paths run an
+import-existence check first and fail with "a resource with the ID ...
+already exists -- needs to be imported" (live-confirmed on both engines;
+the check exists precisely so Terraform-model tools never silently adopt
+state they did not create). The honest modeling: reserve the
+service-created name in the spec (a CEL rejecting it with a message that
+teaches the alternative), document declared siblings as ADDITIVE
+alongside the default, and teach the one-time out-of-band removal (an
+`az` CLI delete) where restrictive behavior is wanted. No offline gate
+catches this class -- the plan renders fine and only the live create
+collides -- so treat every "declare over a service-created default"
+design as suspect until a live run proves it.
+
 ### "no stack named ..." for a fixture that just deployed: backend state loss, not a module defect
 
 When a scenario fails at DEPENDENCIES-UP with `failed to read outputs for

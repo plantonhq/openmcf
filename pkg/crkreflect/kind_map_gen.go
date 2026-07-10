@@ -192,7 +192,12 @@ import (
 	azureroleassignmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureroleassignment/v1"
 	azureroledefinitionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureroledefinition/v1"
 	azureroutetablev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureroutetable/v1"
+	azureservicebusauthorizationrulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureservicebusauthorizationrule/v1"
+	azureservicebusdisasterrecoveryconfigv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureservicebusdisasterrecoveryconfig/v1"
 	azureservicebusnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureservicebusnamespace/v1"
+	azureservicebusqueuev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureservicebusqueue/v1"
+	azureservicebussubscriptionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureservicebussubscription/v1"
+	azureservicebustopicv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureservicebustopic/v1"
 	azureserviceplanv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureserviceplan/v1"
 	azurestorageaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestorageaccount/v1"
 	azurestoragecontainerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestoragecontainer/v1"
@@ -688,7 +693,12 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureRoleAssignment:                       &azureroleassignmentv1.AzureRoleAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureRoleDefinition:                       &azureroledefinitionv1.AzureRoleDefinition{},
 	cloudresourcekind.CloudResourceKind_AzureRouteTable:                           &azureroutetablev1.AzureRouteTable{},
+	cloudresourcekind.CloudResourceKind_AzureServiceBusAuthorizationRule:          &azureservicebusauthorizationrulev1.AzureServiceBusAuthorizationRule{},
+	cloudresourcekind.CloudResourceKind_AzureServiceBusDisasterRecoveryConfig:     &azureservicebusdisasterrecoveryconfigv1.AzureServiceBusDisasterRecoveryConfig{},
 	cloudresourcekind.CloudResourceKind_AzureServiceBusNamespace:                  &azureservicebusnamespacev1.AzureServiceBusNamespace{},
+	cloudresourcekind.CloudResourceKind_AzureServiceBusQueue:                      &azureservicebusqueuev1.AzureServiceBusQueue{},
+	cloudresourcekind.CloudResourceKind_AzureServiceBusSubscription:               &azureservicebussubscriptionv1.AzureServiceBusSubscription{},
+	cloudresourcekind.CloudResourceKind_AzureServiceBusTopic:                      &azureservicebustopicv1.AzureServiceBusTopic{},
 	cloudresourcekind.CloudResourceKind_AzureServicePlan:                          &azureserviceplanv1.AzureServicePlan{},
 	cloudresourcekind.CloudResourceKind_AzureStorageAccount:                       &azurestorageaccountv1.AzureStorageAccount{},
 	cloudresourcekind.CloudResourceKind_AzureStorageContainer:                     &azurestoragecontainerv1.AzureStorageContainer{},

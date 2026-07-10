@@ -24,9 +24,12 @@ const (
 )
 
 // AzureServiceBusNamespace is the top-level API resource for an Azure Service
-// Bus namespace. Azure Service Bus provides fully managed enterprise message
-// brokering with message queues and publish-subscribe topics for decoupling
-// applications and services.
+// Bus namespace -- the container and billing boundary for enterprise
+// messaging. The namespace sets the pricing tier, network posture,
+// encryption, and authentication mode; the messaging entities compose onto
+// it as first-class kinds (AzureServiceBusQueue, AzureServiceBusTopic,
+// AzureServiceBusSubscription, AzureServiceBusAuthorizationRule,
+// AzureServiceBusDisasterRecoveryConfig).
 type AzureServiceBusNamespace struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version

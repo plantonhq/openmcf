@@ -1,0 +1,3 @@
+name: azure-service-bus-disaster-recovery-config
+runtime: go
+description: Pulumi program for Azure Service Bus geo-disaster-recovery pairing

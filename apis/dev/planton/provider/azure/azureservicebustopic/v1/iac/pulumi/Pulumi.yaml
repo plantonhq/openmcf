@@ -1,0 +1,3 @@
+name: azure-service-bus-topic
+runtime: go
+description: Pulumi program for Azure Service Bus topic

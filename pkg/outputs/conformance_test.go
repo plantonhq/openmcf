@@ -2181,6 +2181,120 @@ func TestStackOutputsConformance(t *testing.T) {
 				"identity_principal_id",
 			},
 		},
+		{
+			// AzureServiceBusNamespace: namespace_id is the parent seam every
+			// Service Bus child kind references (queue, topic, authorization
+			// rule, geo-DR pairing); the root SAS rule's four credential
+			// faces are the quick-start connection surface.
+			name: "AzureServiceBusNamespace",
+			kind: cloudresourcekind.CloudResourceKind_AzureServiceBusNamespace,
+			rawOutputs: map[string]interface{}{
+				"namespace_id":                        "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/msg-rg/providers/Microsoft.ServiceBus/namespaces/orders-bus",
+				"namespace_name":                      "orders-bus",
+				"endpoint":                            "https://orders-bus.servicebus.windows.net:443/",
+				"identity_principal_id":               "55555555-6666-7777-8888-999999999999",
+				"default_primary_connection_string":   "Endpoint=sb://orders-bus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=base64key==",
+				"default_secondary_connection_string": "Endpoint=sb://orders-bus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=base64key2==",
+				"default_primary_key":                 "base64key==",
+				"default_secondary_key":               "base64key2==",
+			},
+			mustPopulate: []string{
+				"namespace_id", "namespace_name", "endpoint",
+				"identity_principal_id", "default_primary_connection_string",
+				"default_secondary_connection_string", "default_primary_key",
+				"default_secondary_key",
+			},
+		},
+		{
+			// AzureServiceBusQueue: queue_id is the data-plane RBAC scope and
+			// the parent seam queue-scoped SAS rules reference; the
+			// namespace/queue name pair is what SDK clients and function
+			// bindings consume.
+			name: "AzureServiceBusQueue",
+			kind: cloudresourcekind.CloudResourceKind_AzureServiceBusQueue,
+			rawOutputs: map[string]interface{}{
+				"queue_id":       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/msg-rg/providers/Microsoft.ServiceBus/namespaces/orders-bus/queues/orders",
+				"queue_name":     "orders",
+				"namespace_name": "orders-bus",
+			},
+			mustPopulate: []string{
+				"queue_id", "queue_name", "namespace_name",
+			},
+		},
+		{
+			// AzureServiceBusTopic: topic_id is the parent seam subscriptions
+			// and topic-scoped SAS rules reference.
+			name: "AzureServiceBusTopic",
+			kind: cloudresourcekind.CloudResourceKind_AzureServiceBusTopic,
+			rawOutputs: map[string]interface{}{
+				"topic_id":       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/msg-rg/providers/Microsoft.ServiceBus/namespaces/orders-bus/topics/events",
+				"topic_name":     "events",
+				"namespace_name": "orders-bus",
+			},
+			mustPopulate: []string{
+				"topic_id", "topic_name", "namespace_name",
+			},
+		},
+		{
+			// AzureServiceBusSubscription: consumers receive by the
+			// namespace/topic/subscription triple.
+			name: "AzureServiceBusSubscription",
+			kind: cloudresourcekind.CloudResourceKind_AzureServiceBusSubscription,
+			rawOutputs: map[string]interface{}{
+				"subscription_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/msg-rg/providers/Microsoft.ServiceBus/namespaces/orders-bus/topics/events/subscriptions/audit",
+				"subscription_name": "audit",
+				"topic_name":        "events",
+				"namespace_name":    "orders-bus",
+			},
+			mustPopulate: []string{
+				"subscription_id", "subscription_name", "topic_name",
+				"namespace_name",
+			},
+		},
+		{
+			// AzureServiceBusAuthorizationRule: authorization_rule_id is the
+			// seam the geo-DR pairing's alias_authorization_rule_id consumes;
+			// the six key/connection-string faces are the least-privilege
+			// credential surface applications hold.
+			name: "AzureServiceBusAuthorizationRule",
+			kind: cloudresourcekind.CloudResourceKind_AzureServiceBusAuthorizationRule,
+			rawOutputs: map[string]interface{}{
+				"authorization_rule_id":             "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/msg-rg/providers/Microsoft.ServiceBus/namespaces/orders-bus/queues/orders/authorizationRules/orders-sender",
+				"rule_name":                         "orders-sender",
+				"primary_key":                       "base64key==",
+				"secondary_key":                     "base64key2==",
+				"primary_connection_string":         "Endpoint=sb://orders-bus.servicebus.windows.net/;SharedAccessKeyName=orders-sender;SharedAccessKey=base64key==;EntityPath=orders",
+				"secondary_connection_string":       "Endpoint=sb://orders-bus.servicebus.windows.net/;SharedAccessKeyName=orders-sender;SharedAccessKey=base64key2==;EntityPath=orders",
+				"primary_connection_string_alias":   "",
+				"secondary_connection_string_alias": "",
+			},
+			mustPopulate: []string{
+				"authorization_rule_id", "rule_name", "primary_key",
+				"secondary_key", "primary_connection_string",
+				"secondary_connection_string",
+			},
+		},
+		{
+			// AzureServiceBusDisasterRecoveryConfig: the alias connection
+			// strings are what DR-aware clients hold -- they survive a
+			// failover without reconfiguration.
+			name: "AzureServiceBusDisasterRecoveryConfig",
+			kind: cloudresourcekind.CloudResourceKind_AzureServiceBusDisasterRecoveryConfig,
+			rawOutputs: map[string]interface{}{
+				"disaster_recovery_config_id":       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/msg-rg/providers/Microsoft.ServiceBus/namespaces/orders-bus-eastus/disasterRecoveryConfigs/orders-bus-alias",
+				"alias_name":                        "orders-bus-alias",
+				"primary_connection_string_alias":   "Endpoint=sb://orders-bus-alias.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=base64key==",
+				"secondary_connection_string_alias": "Endpoint=sb://orders-bus-alias.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=base64key2==",
+				"default_primary_key":               "base64key==",
+				"default_secondary_key":             "base64key2==",
+			},
+			mustPopulate: []string{
+				"disaster_recovery_config_id", "alias_name",
+				"primary_connection_string_alias",
+				"secondary_connection_string_alias", "default_primary_key",
+				"default_secondary_key",
+			},
+		},
 	}
 
 	for _, tc := range cases {

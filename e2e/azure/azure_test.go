@@ -831,6 +831,50 @@ func TestAzureMonitorScheduledQueryAlert_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremonitorscheduledqueryalert", "terraform")
 }
 
+// --- Azure Service Bus family (namespace container + entities + SAS credentials + geo-DR) ---
+
+func TestAzureServiceBusNamespace_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureservicebusnamespace", "pulumi")
+}
+func TestAzureServiceBusNamespace_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureservicebusnamespace", "terraform")
+}
+
+func TestAzureServiceBusQueue_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureservicebusqueue", "pulumi")
+}
+func TestAzureServiceBusQueue_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureservicebusqueue", "terraform")
+}
+
+func TestAzureServiceBusTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureservicebustopic", "pulumi")
+}
+func TestAzureServiceBusTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureservicebustopic", "terraform")
+}
+
+func TestAzureServiceBusSubscription_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureservicebussubscription", "pulumi")
+}
+func TestAzureServiceBusSubscription_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureservicebussubscription", "terraform")
+}
+
+func TestAzureServiceBusAuthorizationRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureservicebusauthorizationrule", "pulumi")
+}
+func TestAzureServiceBusAuthorizationRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureservicebusauthorizationrule", "terraform")
+}
+
+func TestAzureServiceBusDisasterRecoveryConfig_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureservicebusdisasterrecoveryconfig", "pulumi")
+}
+func TestAzureServiceBusDisasterRecoveryConfig_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureservicebusdisasterrecoveryconfig", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

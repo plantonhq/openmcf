@@ -1,0 +1,3 @@
+name: azure-service-bus-queue
+runtime: go
+description: Pulumi program for Azure Service Bus queue
