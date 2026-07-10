@@ -1,0 +1,74 @@
+# Managed NAT egress for the private subnets. A NAT gateway never creates its
+# own address — the Elastic IP is a first-class resource referenced by
+# allocation id, so it survives gateway replacement (the public IP your
+# partners allowlist does not change when a gateway is rebuilt).
+#
+# Two layouts, chosen by nat_gateway_per_az (see values.yaml for the cost and
+# failure-mode trade-off):
+#   off (default): one EIP + one NAT gateway in the first AZ's public subnet,
+#                  shared by every private subnet.
+#   on:            one EIP + one NAT gateway per AZ, each serving its own
+#                  AZ's private subnet.
+{% if values.nat_gateway_enabled | bool %}
+{% if values.nat_gateway_per_az | bool %}
+{% for az in values.availability_zones %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsElasticIp
+metadata:
+  name: "{{ values.network_name }}-nat-eip-{{ az }}"
+spec:
+  region: "{{ values.aws_region }}"
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsNatGateway
+metadata:
+  name: "{{ values.network_name }}-nat-{{ az }}"
+spec:
+  region: "{{ values.aws_region }}"
+  # A public NAT gateway must live in a PUBLIC subnet: it translates private
+  # traffic, then egresses through the internet gateway on that subnet's
+  # route table.
+  connectivityType: public
+  subnetId:
+    valueFrom:
+      kind: AwsSubnet
+      name: "{{ values.network_name }}-public-{{ az }}"
+      fieldPath: status.outputs.subnet_id
+  allocationId:
+    valueFrom:
+      kind: AwsElasticIp
+      name: "{{ values.network_name }}-nat-eip-{{ az }}"
+      fieldPath: status.outputs.allocation_id
+{% endfor %}
+{% else %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsElasticIp
+metadata:
+  name: "{{ values.network_name }}-nat-eip"
+spec:
+  region: "{{ values.aws_region }}"
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsNatGateway
+metadata:
+  name: "{{ values.network_name }}-nat"
+spec:
+  region: "{{ values.aws_region }}"
+  connectivityType: public
+  # The shared gateway is placed in the first AZ's public subnet — with a
+  # single gateway there is no placement that avoids cross-AZ traffic, so the
+  # first AZ is simply the deterministic choice.
+  subnetId:
+    valueFrom:
+      kind: AwsSubnet
+      name: "{{ values.network_name }}-public-{{ values.availability_zones[0] }}"
+      fieldPath: status.outputs.subnet_id
+  allocationId:
+    valueFrom:
+      kind: AwsElasticIp
+      name: "{{ values.network_name }}-nat-eip"
+      fieldPath: status.outputs.allocation_id
+{% endif %}
+{% endif %}
