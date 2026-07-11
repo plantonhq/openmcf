@@ -159,6 +159,35 @@ func TestScorerDetectsUnaccountedResource(t *testing.T) {
 	}
 }
 
+func TestScorerCountsUnproposedInstanceEdges(t *testing.T) {
+	root := repoRoot(t)
+	gt := buildGroundTruth(t, root)
+	report := scoreBaseline(t, root, gt, func(p *proposalv1.ImportMappingProposal) {
+		// Drop the subnet instance entirely -- it carries two of the
+		// suite's three value_from edges (its vpc and its route's gateway
+		// target). Skipping a resource must never let a proposer escape
+		// its ref debt: the spec axis already counts an unproposed
+		// instance's leaves as missing, and the refs axis must mirror it
+		// rather than silently shrinking the denominator.
+		kept := p.GetSpec().GetResources()[:0]
+		for _, r := range p.GetSpec().GetResources() {
+			if !claims(r, fixtureSubnetID) {
+				kept = append(kept, r)
+			}
+		}
+		p.Spec.Resources = kept
+	})
+	if report.Perfect() {
+		t.Fatal("dropping a ref-carrying instance must not score perfect")
+	}
+	if report.Refs.GroundTruthEdges != 3 {
+		t.Fatalf("unproposed instance's edges must stay in the denominator: want 3 ground-truth edges, got %d", report.Refs.GroundTruthEdges)
+	}
+	if len(report.Refs.MissingEdges) != 2 {
+		t.Fatalf("want the dropped subnet's 2 edges missing, got %v", report.Refs.MissingEdges)
+	}
+}
+
 func TestScorerFlagsNameDerivabilityBreak(t *testing.T) {
 	root := repoRoot(t)
 	gt := buildGroundTruth(t, root)
@@ -294,7 +323,12 @@ func buildGroundTruth(t *testing.T, root string) *mappingeval.GroundTruth {
 
 func proposeFromFixture(t *testing.T, root string) *proposalv1.ImportMappingProposal {
 	t.Helper()
-	proposal, err := baseline.Propose(loadFixtureScan(t))
+	scan := loadFixtureScan(t)
+	// The offline pipeline mirrors the live lane exactly: fingerprints are
+	// redacted between scan and proposer, so the exam's honesty is a
+	// property of the pipeline, not of the recorded fixture.
+	mappingeval.RedactSeedFingerprints(scan)
+	proposal, err := baseline.Propose(scan)
 	if err != nil {
 		t.Fatalf("baseline proposer: %v", err)
 	}

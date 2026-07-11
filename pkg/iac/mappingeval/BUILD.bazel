@@ -7,6 +7,7 @@ go_library(
         "knowledge.go",
         "match.go",
         "proposal.go",
+        "redact.go",
         "refedges.go",
         "report.go",
         "score.go",
@@ -34,7 +35,11 @@ go_library(
 
 go_test(
     name = "mappingeval_test",
-    srcs = ["harness_test.go"],
+    srcs = [
+        "harness_test.go",
+        "messy_floor_test.go",
+        "redact_test.go",
+    ],
     data = glob(["testdata/**"]),
     deps = [
         ":mappingeval",

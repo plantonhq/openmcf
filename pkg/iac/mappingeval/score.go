@@ -57,7 +57,7 @@ func Score(gt *GroundTruth, proposal *LoadedProposal, opts ScoreOptions) *Report
 
 	scoreGrouping(gt, proposal, universe, matchedGT, report)
 	scoreSpecs(matches, gt, proposal, opts, report)
-	scoreRefs(matches, matchedGT, report)
+	scoreRefs(matches, gt, matchedGT, report)
 	scoreCoverage(gt, proposal, universe, report)
 	checkNameDerivedIdentity(matches, opts, report)
 
@@ -319,7 +319,7 @@ func countMissingLeavesInMessage(gtMsg protoreflect.Message, path, instanceName 
 // edge's target. A literal (or nothing) where the ground truth has an edge
 // is a miss; a proposed edge with no ground-truth counterpart costs
 // precision.
-func scoreRefs(matches []InstanceMatch, matchedGT map[string]*InstanceMatch, report *Report) {
+func scoreRefs(matches []InstanceMatch, gt *GroundTruth, matchedGT map[string]*InstanceMatch, report *Report) {
 	for _, m := range matches {
 		gtEdges, err := ExtractRefEdges(m.GroundTruth.Manifest)
 		if err != nil {
@@ -375,6 +375,29 @@ func scoreRefs(matches []InstanceMatch, matchedGT map[string]*InstanceMatch, rep
 				Instance:  m.Proposed.Name,
 				FieldPath: propEdge.FieldPath,
 				Detail:    "proposal references " + propEdge.TargetName + " where the ground truth has a literal or nothing",
+			})
+		}
+	}
+
+	// Ground-truth instances with no match at all still owe their edges:
+	// an unproposed instance's wiring is missing, not exempt. Without this
+	// (mirroring the spec axis's countMissingLeaves), skipping a resource
+	// would silently shrink the denominator and a proposer could escape
+	// its ref debt by proposing less.
+	for _, instance := range gt.Instances {
+		if _, matched := matchedGT[instance.Name]; matched {
+			continue
+		}
+		gtEdges, err := ExtractRefEdges(instance.Manifest)
+		if err != nil {
+			continue // the manifest loaded once already; unreachable in practice
+		}
+		for _, gtEdge := range gtEdges {
+			report.Refs.GroundTruthEdges++
+			report.Refs.MissingEdges = append(report.Refs.MissingEdges, EdgeFinding{
+				Instance:  instance.Name,
+				FieldPath: gtEdge.FieldPath,
+				Detail:    "ground truth references " + gtEdge.TargetName + "; the instance was never proposed",
 			})
 		}
 	}

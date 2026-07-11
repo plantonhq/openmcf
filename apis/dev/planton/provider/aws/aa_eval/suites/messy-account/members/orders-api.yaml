@@ -1,0 +1,29 @@
+# The orders API container registry: an uncovered kind whose lifecycle
+# policy is a second module resource with NO Cloud Control correspondence
+# -- it lands in the instance's structurally-invisible ledger, the honesty
+# class the report must state rather than silently shrink. The policy's
+# CONTENT rides the repository's own scanned model (LifecyclePolicy), so
+# the spec fields stay reconstructable.
+apiVersion: aws.planton.dev/v1
+kind: AwsEcrRepo
+metadata:
+  name: orders-api
+  id: orders-api
+  org: planton-oss
+  env: prod
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsecrrepo
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  repositoryName: orders-api
+  imageImmutable: true
+  scanOnPush: true
+  forceDelete: true
+  lifecyclePolicy:
+    expireUntaggedAfterDays: 14
+    maxImageCount: 100

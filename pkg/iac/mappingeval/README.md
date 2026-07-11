@@ -19,12 +19,16 @@ MappingEvalSuite    deploy →   read-only scan (inventory)    Score(gt, proposa
 
 - **`MappingEvalSuite`** (`qa.planton.dev/v1`,
   `{provider}/aa_eval/suites/*.yaml`): an ordered list of fixture manifests
-  (existing, E2E-proven scenarios — suites compose proven fixtures, never
-  invent parallel ones) plus the scan scope. Deploying it yields the
-  **ground truth**: per instance, the manifest as authored (references
-  unresolved) and the scan-visible cloud resources it owns (read from its
-  IaC state, translated to scan coordinates through the provider import
-  catalog's `cloud_control_type_name`).
+  plus the scan scope. A member is a manifest for a **live-proven
+  component** — either an existing E2E scenario or a suite-owned fixture
+  (under `suites/<name>/members/`); either way the deployment code is the
+  same module the component's own E2E lane proves, and the suite's live
+  lane proves the composition. Suites never invent parallel deployment
+  paths. Deploying one yields the **ground truth**: per instance, the
+  manifest as authored (references unresolved) and the scan-visible cloud
+  resources it owns (read from its IaC state, translated to scan
+  coordinates through the provider import catalog's
+  `cloud_control_type_name`).
 - **`inventory.Scanner`**: the blind side's only window — Cloud Control
   list/get keyed by CloudFormation type names, mirroring the platform's
   inventory capability shape, with **declared per-type enrichments**
@@ -40,14 +44,54 @@ MappingEvalSuite    deploy →   read-only scan (inventory)    Score(gt, proposa
   shape. Nothing is ever created from a proposal without an explicit human
   gate.
 - **`baseline.Propose`**: the deterministic reference mapper. Pinned to a
-  **perfect score** on the seeded suites — any drop is a harness, recipe,
-  or scanner regression, never model variance — and the floor an AI mapper
-  must beat before it earns the fuzzy cases. Its mappers are deliberately
-  bounded to the suites' kinds; generalizing hand-written mapping code is
-  exactly the infeasible work the AI proposer exists to replace.
+  **perfect score** on network-staples and to a **specific imperfect
+  score** on messy-account (see "The two exams") — any drift in either pin
+  is a harness, recipe, or scanner regression, never model variance. Its
+  mappers are deliberately bounded to the staples' kinds; generalizing
+  hand-written mapping code is exactly the infeasible work the AI proposer
+  exists to replace.
 - **`Score`**: the grader. Entirely structural — driven by the kinds' own
   proto schemas and the shared `StringValueOrRef` encoding — so it works
   for any component on any provider with zero per-kind grading code.
+
+## The two exams
+
+| Suite | Purpose | Baseline pin |
+|-------|---------|--------------|
+| `network-staples` | proves the **instrument**: on a clean, well-signaled account, the whole chain (seed, scan, propose, score) works end to end | PERFECT |
+| `messy-account` | measures **headroom**: an account shaped like a real company's — look-alike prod/staging networks (identical CIDRs), an uncovered tier (security group, KMS key + alias, DynamoDB, ECR), cross-service `value_from` edges into the KMS key | a specific IMPERFECT report — **the floor** |
+
+The floor's authoritative record is the pinned offline test
+(`TestBaselineFloorOnMessyAccount`) and each live run's report artifact.
+**Beating the floor** means strictly higher grouping/spec/refs recall
+without introducing what the baseline never produces: duplicate claims,
+misassignments, wrong-target edges, unaccounted resources, or
+name-derivability breaks. The baseline is honest even where it is blind —
+everything it cannot map is *declared* unmapped, never silently dropped —
+and that honesty is part of the bar. (There is deliberately no blended
+numeric score or comparator machinery yet; it becomes worth building when a
+second proposer exists.)
+
+### Exam-fairness rule for suite members
+
+Every spec field a member sets must be reconstructable from the
+scan-visible + enriched surface. A field driving scan-invisible state (the
+staples lane's SNS-policy lesson) would make the exam count a leaf NO
+scan-driven proposer could ever match — permanently deflating the ceiling
+instead of testing judgment. When a new member's field turns out invisible
+on the live lane, either drop the field from the member or add a declared
+enrichment.
+
+### Seeding-fingerprint redaction
+
+Planton's own modules tag everything they deploy
+(`planton.ai/resource-kind`, `planton.ai/environment`, ...) — on a seeded
+exam account those tags ARE the answer key. Both eval lanes (offline and
+live) apply `RedactSeedFingerprints` between scan and proposer, so the
+account presents exactly as a stranger's: `Name` tags and realistic user
+tags stay; only the deploy machinery's identity tags leave. The redaction
+is a property of the PIPELINE, not of any recorded fixture, and it is never
+a general tag scrubber.
 
 ## The axes
 
@@ -55,7 +99,7 @@ MappingEvalSuite    deploy →   read-only scan (inventory)    Score(gt, proposa
 |------|----------|------|
 | grouping | did each discovered resource land in the right instance? | claims vs ground-truth ownership (precision + recall) |
 | spec | do the manifests reconstruct the declared settings? | recall over the leaves the ground-truth spec sets |
-| refs | are dependencies wired as references, not frozen literals? | edges at the same spec location, targets translated through instance matching |
+| refs | are dependencies wired as references, not frozen literals? | edges at the same spec location, targets translated through instance matching; an UNPROPOSED instance's edges stay in the denominator (skipping a resource never shrinks the ref debt) |
 | coverage | is everything accounted for? | claimed / declared-unmapped / **unaccounted** (the silent gap) |
 
 Plus one declared name rule: names are never scored (instances match by
@@ -82,18 +126,21 @@ breaks the downstream zero-typing import and is flagged.
 
 ## Proofs
 
-- **Offline** (`harness_test.go`, runs in `make test`, creds-free): the
-  recorded-shape scan fixture drives the baseline, whose proposal must
-  score perfect against the ground truth assembled from the real
-  network-staples suite manifests — and hand-mutated proposals prove every
-  axis **discriminates** (mis-grouping, literal-instead-of-ref, wrong spec
-  value, duplicate claims, silent gaps, name-derivability breaks each
-  produce their specific finding). An exam nothing can fail is not an exam.
-- **Live** (`TestMappingEval_NetworkStaples`, opt-in via
+- **Offline** (`harness_test.go` + `messy_floor_test.go`, run in
+  `make test`, creds-free): recorded-shape scan fixtures drive the
+  baseline, whose proposal must score perfect on the staples fixture and
+  exactly the pinned floor on the messy fixture — and hand-mutated
+  proposals prove every axis **discriminates** (mis-grouping,
+  literal-instead-of-ref, wrong spec value, duplicate claims, silent gaps,
+  dropped ref-carrying instances, name-derivability breaks each produce
+  their specific finding). An exam nothing can fail is not an exam.
+- **Live** (`TestMappingEval_NetworkStaples` +
+  `TestMappingEval_MessyAccount`, opt-in via
   `PLANTON_E2E_MAPPING_EVAL=1`): the same chain against a real account —
-  deploy the suite, scan blind, propose, score, assert perfect, destroy
-  everything. Create-and-destroy with ambient credentials; artifacts (scan,
-  proposal, report) recorded via `PLANTON_E2E_MAPPING_EVAL_ARTIFACTS`.
+  deploy the suite, scan blind, redact fingerprints, propose, score, assert
+  the suite's pin (perfect / the floor), destroy everything.
+  Create-and-destroy with ambient credentials; artifacts (scan, proposal,
+  report per suite) recorded via `PLANTON_E2E_MAPPING_EVAL_ARTIFACTS`.
 
 ## Plugging in a proposer
 

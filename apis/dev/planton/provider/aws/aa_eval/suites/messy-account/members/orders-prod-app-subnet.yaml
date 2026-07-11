@@ -1,0 +1,37 @@
+# The production application subnet: a routed subnet (subnet + owned route
+# table + association -- a three-resource instance) whose default route
+# targets the production internet gateway. Its staging twin carries the
+# SAME availability zone and CIDR inside the look-alike staging VPC, so
+# assigning this subnet to the right network requires reading containment
+# (VpcId), not settings.
+apiVersion: aws.planton.dev/v1
+kind: AwsSubnet
+metadata:
+  name: orders-prod-app-subnet
+  id: orders-prod-app-subnet
+  org: planton-oss
+  env: prod
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssubnet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: orders-prod-vpc
+      fieldPath: status.outputs.vpc_id
+  availabilityZone: us-west-2a
+  cidrBlock: 10.20.1.0/24
+  routes:
+    - destinationCidrBlock: 0.0.0.0/0
+      targetType: internet_gateway
+      targetId:
+        valueFrom:
+          kind: AwsInternetGateway
+          name: orders-prod-igw
+          fieldPath: status.outputs.internet_gateway_id
