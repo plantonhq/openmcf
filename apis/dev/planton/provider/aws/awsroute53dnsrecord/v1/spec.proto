@@ -45,10 +45,14 @@ message AwsRoute53DnsRecordSpec {
   //   - "example.com" for the zone apex
   //   - "www.example.com" for a subdomain
   //   - "*.example.com" for a wildcard (catch-all subdomains)
+  //   - "_dmarc.example.com" / "_sip._tcp.example.com" — underscore-prefixed
+  //     labels, the convention for records that configure services rather
+  //     than name hosts (DMARC/DKIM email authentication, SRV service
+  //     discovery, ACME challenges); Route 53 accepts them like any label.
   // Route 53 normalizes the trailing dot automatically.
   string name = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {pattern: "^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,}|[A-Za-z0-9\\-\\.]+)$"}
+    (buf.validate.field).string = {pattern: "^(?:\\*\\.[A-Za-z0-9_\\-\\.]+|[A-Za-z0-9_\\-\\.]+\\.[A-Za-z]{2,}|[A-Za-z0-9_\\-\\.]+)$"}
   ];
 
   // The DNS record type. All Route 53 resource record set types are

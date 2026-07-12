@@ -58,6 +58,10 @@ type AwsRoute53DnsRecordSpec struct {
 	//   - "example.com" for the zone apex
 	//   - "www.example.com" for a subdomain
 	//   - "*.example.com" for a wildcard (catch-all subdomains)
+	//   - "_dmarc.example.com" / "_sip._tcp.example.com" — underscore-prefixed
+	//     labels, the convention for records that configure services rather
+	//     than name hosts (DMARC/DKIM email authentication, SRV service
+	//     discovery, ACME challenges); Route 53 accepts them like any label.
 	//
 	// Route 53 normalizes the trailing dot automatically.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
@@ -948,11 +952,11 @@ var File_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto protoreflect
 
 const file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	":dev/planton/provider/aws/awsroute53dnsrecord/v1/spec.proto\x12/dev.planton.provider.aws.awsroute53dnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x85\x10\n" +
+	":dev/planton/provider/aws/awsroute53dnsrecord/v1/spec.proto\x12/dev.planton.provider.aws.awsroute53dnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x88\x10\n" +
 	"\x17AwsRoute53DnsRecordSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12r\n" +
-	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12h\n" +
-	"\x04name\x18\x03 \x01(\tBT\xbaHQ\xc8\x01\x01rL2J^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,}|[A-Za-z0-9\\-\\.]+)$R\x04name\x12w\n" +
+	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12k\n" +
+	"\x04name\x18\x03 \x01(\tBW\xbaHT\xc8\x01\x01rO2M^(?:\\*\\.[A-Za-z0-9_\\-\\.]+|[A-Za-z0-9_\\-\\.]+\\.[A-Za-z]{2,}|[A-Za-z0-9_\\-\\.]+)$R\x04name\x12w\n" +
 	"\x04type\x18\x04 \x01(\tBc\xbaH`\xc8\x01\x01r[R\x01AR\x04AAAAR\x03CAAR\x05CNAMER\x02DSR\x05HTTPSR\x02MXR\x05NAPTRR\x02NSR\x03PTRR\x03SOAR\x03SPFR\x03SRVR\x05SSHFPR\x04SVCBR\x04TLSAR\x03TXTR\x04type\x12\x93\x01\n" +
 	"\x03ttl\x18\x05 \x01(\x05B\x80\x01\xbaH}\xba\x01z\n" +
 	"\x0fttl.valid_range\x12Jttl must be 0 (alias records) or between 1 and 604800 seconds (1 week max)\x1a\x1bthis >= 0 && this <= 604800R\x03ttl\x12\x16\n" +
