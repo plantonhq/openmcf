@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "awsscan",
+    srcs = ["adapter.go"],
+    importpath = "github.com/plantonhq/planton/pkg/iac/envpartition/awsscan",
+    visibility = ["//visibility:public"],
+    deps = ["//pkg/iac/envpartition"],
+)
+
+go_test(
+    name = "awsscan_test",
+    srcs = ["adapter_test.go"],
+    embed = [":awsscan"],
+)

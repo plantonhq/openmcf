@@ -171,14 +171,24 @@ func edgeTargetExists(edge RefEdge, namesByKind map[cloudresourcekind.CloudResou
 
 // manifestMetadataName reads metadata.name off a typed KRM message.
 func manifestMetadataName(m proto.Message) string {
+	return manifestMetadataField(m, "name")
+}
+
+// manifestMetadataEnv reads metadata.env off a typed KRM message -- the
+// surface the partition axis grades.
+func manifestMetadataEnv(m proto.Message) string {
+	return manifestMetadataField(m, "env")
+}
+
+func manifestMetadataField(m proto.Message, field protoreflect.Name) string {
 	top := m.ProtoReflect()
 	metadataField := top.Descriptor().Fields().ByName("metadata")
 	if metadataField == nil || metadataField.Kind() != protoreflect.MessageKind {
 		return ""
 	}
-	nameField := metadataField.Message().Fields().ByName("name")
-	if nameField == nil {
+	valueField := metadataField.Message().Fields().ByName(field)
+	if valueField == nil {
 		return ""
 	}
-	return top.Get(metadataField).Message().Get(nameField).String()
+	return top.Get(metadataField).Message().Get(valueField).String()
 }

@@ -23,8 +23,12 @@
 #
 # Members are suite-owned fixtures (members/) for live-proven components:
 # the modules are the same ones the components' own e2e lanes prove; this
-# suite's live lane proves the composition. Environments ride
-# metadata.env (prod/staging) as the future partition-scoring fixture.
+# suite's live lane proves the composition. Environments ride metadata.env
+# (prod/staging) as the partition-scoring answer key: this is the ONE suite
+# that grades environment assignment, because its member names deliberately
+# carry recoverable env tokens (orders-prod-*, orders-stg-*) while the
+# token-less members (the archive bucket, the uncovered tier) stay honestly
+# owed -- the AI mapper's headroom on this axis.
 #
 # Deliberately excluded kinds: awsiamrole and awsnatgateway live in the
 # identity-and-egress suite instead. Keeping them out of THIS suite is
@@ -61,3 +65,4 @@ spec:
       manifest_path: apis/dev/planton/provider/aws/aa_eval/suites/messy-account/members/orders-archive-bucket.yaml
   scan_scope:
     region: us-west-2
+  grade_environment_partition: true

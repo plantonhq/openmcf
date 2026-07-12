@@ -45,9 +45,18 @@ type MappingEvalSuiteSpec struct {
 	// a single region, with the resource-type allowlist derived from the
 	// provider import catalog's declared Cloud Control type names rather
 	// than authored here.
-	ScanScope     *ScanScope `protobuf:"bytes,2,opt,name=scan_scope,json=scanScope,proto3" json:"scan_scope,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ScanScope *ScanScope `protobuf:"bytes,2,opt,name=scan_scope,json=scanScope,proto3" json:"scan_scope,omitempty"`
+	// Grades environment assignment (each proposed manifest's metadata.env
+	// against the member manifest's) as its own scoring axis. Declared, never
+	// inferred, because it is an exam-fairness call: enable it ONLY when the
+	// members' environments were authored as answer keys recoverable from the
+	// redacted scan (e.g. name tokens like "-prod-"/"-stg-"). Fixture
+	// manifests also carry operational environments that leave no scan-visible
+	// trace once seeding fingerprints are redacted; grading those would put
+	// debt in the denominator no proposer, however good, could ever pay.
+	GradeEnvironmentPartition bool `protobuf:"varint,3,opt,name=grade_environment_partition,json=gradeEnvironmentPartition,proto3" json:"grade_environment_partition,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *MappingEvalSuiteSpec) Reset() {
@@ -92,6 +101,13 @@ func (x *MappingEvalSuiteSpec) GetScanScope() *ScanScope {
 		return x.ScanScope
 	}
 	return nil
+}
+
+func (x *MappingEvalSuiteSpec) GetGradeEnvironmentPartition() bool {
+	if x != nil {
+		return x.GradeEnvironmentPartition
+	}
+	return false
 }
 
 // SuiteMember is one fixture deployment: a component kind plus the manifest
@@ -203,11 +219,12 @@ var File_dev_planton_qa_mappingevalsuite_v1_spec_proto protoreflect.FileDescript
 
 const file_dev_planton_qa_mappingevalsuite_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-dev/planton/qa/mappingevalsuite/v1/spec.proto\x12\"dev.planton.qa.mappingevalsuite.v1\"\xaf\x01\n" +
+	"-dev/planton/qa/mappingevalsuite/v1/spec.proto\x12\"dev.planton.qa.mappingevalsuite.v1\"\xef\x01\n" +
 	"\x14MappingEvalSuiteSpec\x12I\n" +
 	"\amembers\x18\x01 \x03(\v2/.dev.planton.qa.mappingevalsuite.v1.SuiteMemberR\amembers\x12L\n" +
 	"\n" +
-	"scan_scope\x18\x02 \x01(\v2-.dev.planton.qa.mappingevalsuite.v1.ScanScopeR\tscanScope\"P\n" +
+	"scan_scope\x18\x02 \x01(\v2-.dev.planton.qa.mappingevalsuite.v1.ScanScopeR\tscanScope\x12>\n" +
+	"\x1bgrade_environment_partition\x18\x03 \x01(\bR\x19gradeEnvironmentPartition\"P\n" +
 	"\vSuiteMember\x12\x1c\n" +
 	"\tcomponent\x18\x01 \x01(\tR\tcomponent\x12#\n" +
 	"\rmanifest_path\x18\x02 \x01(\tR\fmanifestPath\"#\n" +

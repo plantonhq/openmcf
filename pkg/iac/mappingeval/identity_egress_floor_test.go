@@ -152,6 +152,15 @@ func TestBaselineFloorOnIdentityAndEgress(t *testing.T) {
 	if len(report.NameDerivability) != 0 {
 		t.Fatalf("no matched instance breaks name-derived identity: %v", report.NameDerivability)
 	}
+
+	// This suite does NOT declare partition grading: its members' env
+	// ("ops") leaves no scan-visible trace once seeding fingerprints are
+	// redacted -- an answer key no proposer could recover is not a fair
+	// exam. The axis must stay vacuously ungraded and the floor must hold
+	// without it.
+	if report.Partition.Graded || report.Partition.GroundTruthInstances != 0 {
+		t.Fatalf("identity-and-egress must not grade partition: %+v", report.Partition)
+	}
 }
 
 // TestScorerComparesRepeatedRefLiterals proves the repeated-reference leaf

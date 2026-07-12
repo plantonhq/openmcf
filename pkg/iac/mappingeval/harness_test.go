@@ -59,6 +59,13 @@ func TestBaselineScoresPerfectOnFixture(t *testing.T) {
 	if len(report.Coverage.OutOfUniverseClaims) == 0 {
 		t.Error("expected the default VPC's claim to be reported as out-of-universe")
 	}
+	// This suite does NOT declare partition grading (its members' env is
+	// e2e seeding bookkeeping with no scan-visible signal -- unbeatable
+	// debt, not an answer key), so the axis must stay vacuously ungraded
+	// and the PERFECT pin must hold without it.
+	if report.Partition.Graded || report.Partition.GroundTruthInstances != 0 {
+		t.Fatalf("network-staples must not grade partition: %+v", report.Partition)
+	}
 }
 
 func TestScorerDetectsMisgrouping(t *testing.T) {

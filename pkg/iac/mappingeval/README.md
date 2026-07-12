@@ -14,7 +14,8 @@ seed (answer key)              blind side                    grade
 ──────────────────             ─────────────────────────     ─────────────────
 MappingEvalSuite    deploy →   read-only scan (inventory)    Score(gt, proposal)
 (known manifests)              → proposer                    grouping / spec /
-= GroundTruth                  → ImportMappingProposal       refs / coverage
+= GroundTruth                  → ImportMappingProposal       refs / partition /
+                                                             coverage
 ```
 
 - **`MappingEvalSuite`** (`qa.planton.dev/v1`,
@@ -59,15 +60,16 @@ MappingEvalSuite    deploy →   read-only scan (inventory)    Score(gt, proposa
 | Suite | Purpose | Baseline pin |
 |-------|---------|--------------|
 | `network-staples` | proves the **instrument**: on a clean, well-signaled account, the whole chain (seed, scan, propose, score) works end to end | PERFECT |
-| `messy-account` | measures **headroom**: an account shaped like a real company's — look-alike prod/staging networks (identical CIDRs), an uncovered tier (security group, KMS key + alias, DynamoDB, ECR), cross-service `value_from` edges into the KMS key | a specific IMPERFECT report — **a floor** |
+| `messy-account` | measures **headroom**: an account shaped like a real company's — look-alike prod/staging networks (identical CIDRs), an uncovered tier (security group, KMS key + alias, DynamoDB, ECR), cross-service `value_from` edges into the KMS key. The ONE suite that grades the **partition axis** (its member names carry recoverable env tokens) | a specific IMPERFECT report — **a floor** |
 | `identity-and-egress` | completes **coverage**: the last two import-recipe kinds (IAM role, NAT gateway) under examination — with it, **every kind that carries an import recipe appears in at least one exam**. Adds the first global-service scan (IAM lists the whole account; noise is the norm), the first `nat_gateway` route target, and a second name-derived-identity kind beside S3 | a specific IMPERFECT report — **a floor** |
 
 Each floor's authoritative record is its pinned offline test
 (`TestBaselineFloorOnMessyAccount`, `TestBaselineFloorOnIdentityAndEgress`)
 and each live run's report artifact. **Beating a floor** means strictly
-higher grouping/spec/refs recall without introducing what the baseline
-never produces: duplicate claims, misassignments, wrong-target edges,
-unaccounted resources, or name-derivability breaks. The baseline is honest
+higher grouping/spec/refs/partition recall without introducing what the
+baseline never produces: duplicate claims, misassignments, wrong-target
+edges, wrong environments, unaccounted resources, or name-derivability
+breaks. The baseline is honest
 even where it is blind — everything it cannot map is *declared* unmapped,
 never silently dropped — and that honesty is part of the bar. (There is
 deliberately no blended numeric score or comparator machinery yet; it
@@ -111,7 +113,20 @@ a general tag scrubber.
 | grouping | did each discovered resource land in the right instance? | claims vs ground-truth ownership (precision + recall) |
 | spec | do the manifests reconstruct the declared settings? | recall over the leaves the ground-truth spec sets |
 | refs | are dependencies wired as references, not frozen literals? | edges at the same spec location, targets translated through instance matching; an UNPROPOSED instance's edges stay in the denominator (skipping a resource never shrinks the ref debt) |
+| partition | did each manifest land in the right environment? | each proposed manifest's `metadata.env` vs the ground truth's, over the ground-truth instances that set one (unproposed instances owe theirs). Wrong-env is the worst class (it poisons env-scoped references); honest unassignment reads as missing; proposed-env-where-none is informational |
 | coverage | is everything accounted for? | claimed / declared-unmapped / **unaccounted** (the silent gap) |
+
+The partition axis is **suite-declared** (`grade_environment_partition` on
+the suite spec) — an exam-fairness call, never inferred: fixture manifests
+also carry operational environments (e2e bookkeeping) that leave no
+scan-visible trace once seeding fingerprints are redacted, and owing those
+would put debt in the denominator no proposer could ever pay. The baseline
+recovers environments through the deterministic partition engine
+(`pkg/iac/envpartition`, untaught default rule — name tokens and
+containment; the authoritative-tag tier is exactly what redaction removes
+on a seeded account) and stamps `metadata.env` only where the engine
+assigned. It never guesses an environment, exactly as it never guesses a
+grouping.
 
 Plus one declared name rule: names are never scored (instances match by
 kind + claim overlap — a blind proposer cannot know internal names), except
@@ -150,8 +165,9 @@ lists, so element count never inflates the denominator) and its
   exactly the pinned floor on the messy fixture — and hand-mutated
   proposals prove every axis **discriminates** (mis-grouping,
   literal-instead-of-ref, wrong spec value, duplicate claims, silent gaps,
-  dropped ref-carrying instances, name-derivability breaks each produce
-  their specific finding). An exam nothing can fail is not an exam.
+  dropped ref-carrying instances, name-derivability breaks, wrong and
+  missing environments each produce their specific finding). An exam
+  nothing can fail is not an exam.
 - **Live** (`TestMappingEval_NetworkStaples` +
   `TestMappingEval_MessyAccount` + `TestMappingEval_IdentityAndEgress`,
   opt-in via `PLANTON_E2E_MAPPING_EVAL=1`): the same chain against a real

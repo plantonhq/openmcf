@@ -27,6 +27,16 @@ message MappingEvalSuiteSpec {
   // provider import catalog's declared Cloud Control type names rather
   // than authored here.
   ScanScope scan_scope = 2;
+
+  // Grades environment assignment (each proposed manifest's metadata.env
+  // against the member manifest's) as its own scoring axis. Declared, never
+  // inferred, because it is an exam-fairness call: enable it ONLY when the
+  // members' environments were authored as answer keys recoverable from the
+  // redacted scan (e.g. name tokens like "-prod-"/"-stg-"). Fixture
+  // manifests also carry operational environments that leave no scan-visible
+  // trace once seeding fingerprints are redacted; grading those would put
+  // debt in the denominator no proposer, however good, could ever pay.
+  bool grade_environment_partition = 3;
 }
 
 // SuiteMember is one fixture deployment: a component kind plus the manifest

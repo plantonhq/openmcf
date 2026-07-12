@@ -103,6 +103,23 @@ func TestMappingEval_MessyAccount(t *testing.T) {
 	if len(report.NameDerivability) != 0 {
 		t.Fatalf("the bucket keeps its name-derived identity: %v", report.NameDerivability)
 	}
+	// Partition: the ONE graded suite. The untaught baseline recovers
+	// prod/staging from the member names' env tokens; the token-less
+	// bucket and the four unproposed instances are owed; nothing is
+	// assigned WRONG. Mirrors the offline pin -- the denominator derives
+	// from the suite's fixed members, so live and offline must agree.
+	if !report.Partition.Graded {
+		t.Fatal("the messy suite declares partition grading; the axis must be graded")
+	}
+	if report.Partition.GroundTruthInstances != 11 || report.Partition.Correct != 6 || len(report.Partition.MissingEnv) != 5 {
+		t.Fatalf("partition floor drifted: want 6/11 assigned with 5 missing, got %d/%d with %d\nmissing: %v\nwrong: %v",
+			report.Partition.Correct, report.Partition.GroundTruthInstances, len(report.Partition.MissingEnv),
+			report.Partition.MissingEnv, report.Partition.WrongEnv)
+	}
+	if len(report.Partition.WrongEnv) != 0 || len(report.Partition.ExtraEnv) != 0 {
+		t.Fatalf("the baseline must never assign a wrong or extra environment: %v / %v",
+			report.Partition.WrongEnv, report.Partition.ExtraEnv)
+	}
 }
 
 // TestMappingEval_IdentityAndEgress is the live proof of the COVERAGE exam:
@@ -233,6 +250,9 @@ func runMappingEvalChain(t *testing.T, suiteName string) *mappingeval.Report {
 	if err != nil {
 		t.Fatalf("deriving score options: %v", err)
 	}
+	// The partition axis is suite-declared (exam fairness: only suites
+	// whose member envs are recoverable answer keys grade it).
+	scoreOptions.GradeEnvironmentPartition = suite.Suite.GetSpec().GetGradeEnvironmentPartition()
 	report := mappingeval.Score(groundTruth, loaded, scoreOptions)
 	writeArtifact(t, suiteName+"-report.json", func() ([]byte, error) { return json.MarshalIndent(report, "", "  ") })
 	t.Logf("mapping eval report (%s):\n%s", suiteName, report.Summary())

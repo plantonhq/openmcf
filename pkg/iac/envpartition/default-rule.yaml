@@ -1,0 +1,41 @@
+# The untaught state: the vocabulary the partition engine applies before a
+# human has confirmed a rule for the account. It recognizes the common
+# real-world environment tags and name tokens, plus the tag Planton itself
+# writes on every deploy (planton.ai/environment) -- one vocabulary serving
+# both directions: a Planton-deployed resource self-identifies on re-scan,
+# and a user can force any resource into an environment by stamping that
+# same tag in their cloud console.
+#
+# A taught rule is an edited copy of this document (the review gate's
+# corrections become overrides; renamed environments replace definitions),
+# so the untaught and taught states differ only in data.
+#
+# Deliberately conservative: every token here must be unambiguous enough
+# that a whole-token match in a resource name is a genuine environment
+# signal. Do not add fashionable-but-ambiguous words (e.g. "live") without
+# considering what else a name token could mean.
+apiVersion: iac.planton.dev/v1
+kind: EnvironmentPartitionRule
+metadata:
+  name: default
+spec:
+  authoritative_tag_keys:
+    - planton.ai/environment
+    - env
+    - environment
+    - stage
+  environments:
+    - name: prod
+      tokens: [prod, prd, production]
+    - name: staging
+      tokens: [staging, stage, stg]
+    - name: dev
+      tokens: [dev, development]
+    - name: qa
+      tokens: [qa]
+    - name: test
+      tokens: [test, testing]
+    - name: uat
+      tokens: [uat]
+    - name: sandbox
+      tokens: [sandbox, sbx]

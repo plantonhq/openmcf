@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package dev.planton.iac.environmentpartitionrule.v1;
+
+// EnvironmentPartitionRuleSpec is the declared vocabulary for assigning
+// discovered account resources to environments. A deterministic engine
+// applies it with a strict precedence ladder -- deterministic user intent
+// always outranks inference:
+//
+//   1. Per-resource OVERRIDES (a human's direct correction, recorded at a
+//      review gate). Beats everything, including a stale tag.
+//   2. AUTHORITATIVE TAGS: when a resource carries one of the declared tag
+//      keys, the tag's value IS the environment -- normalized through the
+//      environment definitions when it matches a declared token, accepted
+//      literally otherwise (a tag value of "ops" names an "ops" environment
+//      even if no definition declares it). Explicit keys are trusted
+//      wholesale; inference below never runs for a tagged resource.
+//   3. NAME TOKENS: whole tokens of human-authored name surfaces (the Name
+//      tag, name-shaped identifiers) matched against the environment
+//      definitions' tokens. Only DECLARED tokens ever match -- an
+//      undeclared name fragment never spawns an environment, and opaque
+//      cloud identifiers are never tokenized (a random id can embed a
+//      misleading substring).
+//   4. CONTAINMENT INHERITANCE: a resource with no signal of its own
+//      inherits its network container's assignment. A resource whose own
+//      signal disagrees with its container keeps its own signal; the
+//      engine flags the conflict for review.
+//
+// A resource none of the tiers reach stays honestly UNASSIGNED (the review
+// gate's business) unless the rule declares a fallback environment. The
+// engine never guesses: a wrong environment poisons every env-scoped
+// reference and the resource graph itself, so false confidence is the one
+// failure mode this contract refuses to allow.
+message EnvironmentPartitionRuleSpec {
+  // Tag keys whose value names the resource's environment (tier 2).
+  // Matching is exact on the key. Order carries no meaning: authoritative
+  // keys are expected to agree, and resources whose authoritative tags
+  // disagree with each other are flagged, never guessed.
+  repeated string authoritative_tag_keys = 1;
+
+  // The environments this rule recognizes for INFERENCE, each with the
+  // tokens that identify it. Tokens serve two purposes: normalizing
+  // authoritative tag values to the canonical name (tier 2: "prd" -> prod)
+  // and matching name tokens (tier 3). Inference only ever assigns
+  // environments declared here.
+  repeated EnvironmentDefinition environments = 2;
+
+  // Disables tier 4 (containment inheritance). Inheritance is on by
+  // default because it only ever fires for resources with no signal of
+  // their own -- the safest inference tier.
+  bool disable_containment_inheritance = 3;
+
+  // Optional environment for resources no tier reaches. Absent means
+  // unassigned resources stay unassigned -- the honest default; a review
+  // gate owns the remainder.
+  string fallback_environment = 4;
+
+  // Per-resource assignments taught by a human (tier 1). These are what a
+  // review gate's corrections become; they outrank every other signal.
+  repeated PartitionOverride overrides = 5;
+}
+
+// EnvironmentDefinition declares one environment and the tokens that
+// identify it.
+message EnvironmentDefinition {
+  // The canonical environment name assignments carry (and the Planton
+  // environment the imported resources will land in), e.g. "prod".
+  string name = 1;
+  // Whole tokens that identify this environment in tag values and
+  // human-authored names, e.g. [prod, prd, production]. Matched exactly
+  // and case-insensitively, never as substrings.
+  repeated string tokens = 2;
+}
+
+// PartitionOverride pins one discovered resource to an environment,
+// identified by the same coordinates the read-only inventory scan reports.
+message PartitionOverride {
+  // CloudFormation resource type name, e.g. "AWS::S3::Bucket".
+  string type_name = 1;
+  // The type's primary identifier as reported by the scan.
+  string identifier = 2;
+  // The environment this resource belongs to -- the human's direct word.
+  string environment = 3;
+}

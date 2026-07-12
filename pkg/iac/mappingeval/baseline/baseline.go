@@ -26,6 +26,8 @@ import (
 
 	"github.com/pkg/errors"
 	proposalv1 "github.com/plantonhq/planton/apis/dev/planton/iac/importmappingproposal/v1"
+	"github.com/plantonhq/planton/pkg/iac/envpartition"
+	"github.com/plantonhq/planton/pkg/iac/envpartition/awsscan"
 	"github.com/plantonhq/planton/pkg/iac/mappingeval"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -51,6 +53,7 @@ func Propose(scan *mappingeval.Scan) (*proposalv1.ImportMappingProposal, error) 
 		byType:    map[string][]mappingeval.ScannedResource{},
 		claimed:   map[mappingeval.AccountResourceRef]bool{},
 		nameByRef: map[mappingeval.AccountResourceRef]string{},
+		envByRef:  partitionScan(scan),
 	}
 	for _, r := range scan.Resources {
 		b.byType[r.TypeName] = append(b.byType[r.TypeName], r)
@@ -92,6 +95,47 @@ type builder struct {
 	// later mappers can reference producers (a subnet's vpc_id -> the VPC
 	// instance that claims that vpc id).
 	nameByRef map[mappingeval.AccountResourceRef]string
+	// envByRef is the deterministic partition of the scan under the
+	// UNTAUGHT default rule ("" = honestly unassigned). Resources are
+	// partitioned; manifests aggregate (see instanceEnv).
+	envByRef map[mappingeval.AccountResourceRef]string
+}
+
+// partitionScan runs the environment partition engine over the whole scan
+// with the untaught default rule. The baseline stamps metadata.env only
+// from these assignments -- it never guesses an environment, exactly as it
+// never guesses a grouping.
+func partitionScan(scan *mappingeval.Scan) map[mappingeval.AccountResourceRef]string {
+	resources := make([]envpartition.Resource, 0, len(scan.Resources))
+	for _, r := range scan.Resources {
+		resources = append(resources, awsscan.Adapt(r.TypeName, r.Identifier, r.Properties))
+	}
+	result := envpartition.Partition(envpartition.DefaultRule(), resources)
+	envByRef := make(map[mappingeval.AccountResourceRef]string, len(result.Assignments))
+	for _, a := range result.Assignments {
+		envByRef[mappingeval.AccountResourceRef{TypeName: a.TypeName, Identifier: a.Identifier}] = a.Environment
+	}
+	return envByRef
+}
+
+// instanceEnv aggregates the claimed resources' assignments into the
+// instance's environment: the unique environment the assigned claims agree
+// on. Unassigned claims carry no vote (no signal is not a veto); claims
+// assigned to DIFFERENT environments mean the instance's environment is
+// genuinely ambiguous, so the honest answer is none at all.
+func (b *builder) instanceEnv(claims []mappingeval.AccountResourceRef) string {
+	env := ""
+	for _, claim := range claims {
+		claimEnv := b.envByRef[claim]
+		if claimEnv == "" {
+			continue
+		}
+		if env != "" && env != claimEnv {
+			return ""
+		}
+		env = claimEnv
+	}
+	return env
 }
 
 func (b *builder) mapVPCs() {
@@ -320,12 +364,19 @@ func unmappedReason(r mappingeval.ScannedResource) string {
 	}
 }
 
-// emit records one proposed instance and indexes its claims.
+// emit records one proposed instance and indexes its claims. metadata.env
+// rides only when the partition engine assigned the claimed resources an
+// environment (see instanceEnv) -- an unpartitioned instance honestly
+// carries none.
 func (b *builder) emit(kind, name string, spec map[string]any, rationale string, claims ...mappingeval.AccountResourceRef) {
+	metadata := map[string]any{"name": name}
+	if env := b.instanceEnv(claims); env != "" {
+		metadata["env"] = env
+	}
 	manifest, err := structpb.NewStruct(map[string]any{
 		"apiVersion": "aws.planton.dev/v1",
 		"kind":       kind,
-		"metadata":   map[string]any{"name": name},
+		"metadata":   metadata,
 		"spec":       spec,
 	})
 	if err != nil {

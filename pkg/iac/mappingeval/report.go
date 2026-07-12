@@ -12,6 +12,7 @@ type Report struct {
 	Grouping         GroupingScore             `json:"grouping"`
 	Spec             SpecScore                 `json:"spec"`
 	Refs             RefScore                  `json:"refs"`
+	Partition        PartitionScore            `json:"partition"`
 	Coverage         Coverage                  `json:"coverage"`
 	NameDerivability []NameDerivabilityFinding `json:"nameDerivability,omitempty"`
 	Instances        []InstanceReport          `json:"instances"`
@@ -107,6 +108,46 @@ type EdgeFinding struct {
 	Detail    string `json:"detail"`
 }
 
+// PartitionScore grades environment assignment: each proposed manifest's
+// metadata.env against its ground-truth counterpart's. Graded only on
+// suites that DECLARE it (grade_environment_partition) -- an exam-fairness
+// rule: fixture manifests also carry operational environments that leave no
+// scan-visible trace, and owing those would be debt no proposer could pay.
+type PartitionScore struct {
+	// Graded reports whether the suite declared this axis. When false the
+	// score is vacuously zero and Perfect() ignores it.
+	Graded bool `json:"graded"`
+	// GroundTruthInstances counts the ground-truth instances that set
+	// metadata.env -- the denominator. Unproposed instances owe theirs
+	// (mirroring the spec and refs axes: skipping a resource never
+	// shrinks a denominator).
+	GroundTruthInstances int `json:"groundTruthInstances"`
+	// Correct counts matched instances whose proposed env equals the
+	// ground truth's.
+	Correct int `json:"correct"`
+
+	// WrongEnv: matched instances assigned to a DIFFERENT environment --
+	// the worst class (a wrong split poisons env-scoped references).
+	WrongEnv []EnvFinding `json:"wrongEnv,omitempty"`
+	// MissingEnv: ground-truth env owed but not delivered (the proposal
+	// left env empty, or never proposed the instance). Honest
+	// unassignment lands here -- visible, never penalized as wrong.
+	MissingEnv []EnvFinding `json:"missingEnv,omitempty"`
+	// ExtraEnv: proposal sets env where the ground truth has none --
+	// informational, mirroring spec proposer-extra.
+	ExtraEnv []EnvFinding `json:"extraEnv,omitempty"`
+}
+
+// Recall is Correct over GroundTruthInstances.
+func (p PartitionScore) Recall() float64 { return ratio(p.Correct, p.GroundTruthInstances) }
+
+// EnvFinding locates one environment-assignment observation.
+type EnvFinding struct {
+	Instance string `json:"instance"`
+	Expected string `json:"expected,omitempty"`
+	Actual   string `json:"actual,omitempty"`
+}
+
 // Coverage is the honesty ledger over the scored universe.
 type Coverage struct {
 	UniverseSize      int `json:"universeSize"`
@@ -146,9 +187,9 @@ type InstanceReport struct {
 
 // Perfect reports whether the proposal reconstructed the ground truth
 // completely: every universe resource correctly grouped, every scored spec
-// leaf matched, every edge wired, nothing unaccounted, no name-derivability
-// breaks. The deterministic baseline is pinned to this bar on the seeded
-// suites.
+// leaf matched, every edge wired, every graded environment assigned,
+// nothing unaccounted, no name-derivability breaks. The deterministic
+// baseline is pinned to this bar on the seeded suites.
 func (r *Report) Perfect() bool {
 	return r.Grouping.Correct == r.Grouping.UniverseSize &&
 		r.Grouping.InUniverseClaims == r.Grouping.UniverseSize &&
@@ -156,6 +197,8 @@ func (r *Report) Perfect() bool {
 		len(r.Spec.Mismatched) == 0 && len(r.Spec.Missing) == 0 &&
 		r.Refs.CorrectEdges == r.Refs.GroundTruthEdges &&
 		len(r.Refs.WrongTargetEdges) == 0 && len(r.Refs.UnexpectedEdges) == 0 &&
+		r.Partition.Correct == r.Partition.GroundTruthInstances &&
+		len(r.Partition.WrongEnv) == 0 &&
 		len(r.Coverage.Unaccounted) == 0 &&
 		len(r.NameDerivability) == 0
 }
@@ -175,6 +218,11 @@ func (r *Report) Summary() string {
 	fmt.Fprintf(&b, "\nrefs: %d/%d edges wired (recall %.2f, precision %.2f; %d missing, %d wrong-target, %d unexpected)",
 		r.Refs.CorrectEdges, r.Refs.GroundTruthEdges, r.Refs.Recall(), r.Refs.Precision(),
 		len(r.Refs.MissingEdges), len(r.Refs.WrongTargetEdges), len(r.Refs.UnexpectedEdges))
+	if r.Partition.Graded {
+		fmt.Fprintf(&b, "\npartition: %d/%d environments assigned (recall %.2f; %d wrong, %d missing, %d extra informational)",
+			r.Partition.Correct, r.Partition.GroundTruthInstances, r.Partition.Recall(),
+			len(r.Partition.WrongEnv), len(r.Partition.MissingEnv), len(r.Partition.ExtraEnv))
+	}
 	fmt.Fprintf(&b, "\ncoverage: %d/%d universe resources claimed, %d declared unmapped, %d unaccounted, %d out-of-universe claims (informational)",
 		r.Coverage.ClaimedInUniverse, r.Coverage.UniverseSize,
 		len(r.Coverage.UnmappedInUniverse), len(r.Coverage.Unaccounted), len(r.Coverage.OutOfUniverseClaims))

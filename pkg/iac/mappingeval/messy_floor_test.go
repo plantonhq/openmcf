@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	proposalv1 "github.com/plantonhq/planton/apis/dev/planton/iac/importmappingproposal/v1"
 	"github.com/plantonhq/planton/pkg/iac/mappingeval"
 	"github.com/plantonhq/planton/pkg/iac/mappingeval/baseline"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // The messy-account suite is the exam with HEADROOM: where network-staples
@@ -58,7 +60,7 @@ func TestMessyAccountSuiteLoads(t *testing.T) {
 func TestBaselineFloorOnMessyAccount(t *testing.T) {
 	root := repoRoot(t)
 	gt := buildMessyGroundTruth(t, root)
-	report := scoreMessyBaseline(t, root, gt)
+	report := scoreMessyBaseline(t, root, gt, nil)
 
 	if report.Perfect() {
 		t.Fatal("the messy-account suite exists BECAUSE the baseline cannot ace it; a perfect score means the exam lost its headroom")
@@ -154,6 +156,85 @@ func TestBaselineFloorOnMessyAccount(t *testing.T) {
 	if len(report.NameDerivability) != 0 {
 		t.Fatalf("the bucket keeps its name-derived identity: %v", report.NameDerivability)
 	}
+
+	// Partition: this is the ONE suite that grades environment assignment.
+	// The untaught baseline recovers prod/staging from the member names'
+	// env tokens (orders-prod-*, orders-stg-* -- stg normalizes to
+	// staging); the token-less bucket plus the four unproposed instances
+	// stay honestly owed. Zero wrong is part of the floor: the baseline
+	// never assigns a WRONG environment, exactly as it never wires a
+	// wrong edge.
+	if !report.Partition.Graded {
+		t.Fatal("the messy suite declares partition grading; the axis must be graded")
+	}
+	if report.Partition.GroundTruthInstances != 11 || report.Partition.Correct != 6 {
+		t.Fatalf("partition floor drifted: want 6/11 environments assigned, got %d/%d\nmissing: %v\nwrong: %v",
+			report.Partition.Correct, report.Partition.GroundTruthInstances,
+			report.Partition.MissingEnv, report.Partition.WrongEnv)
+	}
+	if len(report.Partition.WrongEnv) != 0 || len(report.Partition.ExtraEnv) != 0 {
+		t.Fatalf("the baseline must never assign a wrong or extra environment: %v / %v",
+			report.Partition.WrongEnv, report.Partition.ExtraEnv)
+	}
+	owedEnv := map[string]bool{
+		messyBucketName:        true, // no env token in its name
+		"orders-prod-data-key": true, // unproposed (uncovered tier)
+		"orders-prod-app-sg":   true,
+		"orders-prod-table":    true,
+		"orders-api":           true,
+	}
+	if len(report.Partition.MissingEnv) != len(owedEnv) {
+		t.Fatalf("want %d owed environments, got %v", len(owedEnv), report.Partition.MissingEnv)
+	}
+	for _, finding := range report.Partition.MissingEnv {
+		if !owedEnv[finding.Instance] {
+			t.Fatalf("unexpected owed environment on %q (full: %v)", finding.Instance, report.Partition.MissingEnv)
+		}
+	}
+}
+
+// TestPartitionAxisDiscriminates proves the new axis catches each defect
+// class specifically -- an exam nothing can fail is not an exam.
+func TestPartitionAxisDiscriminates(t *testing.T) {
+	root := repoRoot(t)
+	gt := buildMessyGroundTruth(t, root)
+
+	// Wrong environment: cross-file the prod VPC into staging. The worst
+	// class -- it must surface as wrong-env, not blend into missing.
+	report := scoreMessyBaseline(t, root, gt, func(p *proposalv1.ImportMappingProposal) {
+		setManifestEnv(t, p, messyProdVpcID, "staging")
+	})
+	if len(report.Partition.WrongEnv) != 1 || report.Partition.WrongEnv[0].Instance != "orders-prod-vpc" {
+		t.Fatalf("want exactly the prod VPC wrong-env, got %v", report.Partition.WrongEnv)
+	}
+	if report.Partition.Correct != 5 {
+		t.Fatalf("correct must drop to 5, got %d", report.Partition.Correct)
+	}
+
+	// Missing environment: strip the staging VPC's env. Honest
+	// unassignment where the answer was recoverable is owed, not wrong.
+	report = scoreMessyBaseline(t, root, gt, func(p *proposalv1.ImportMappingProposal) {
+		setManifestEnv(t, p, messyStgVpcID, "")
+	})
+	if len(report.Partition.WrongEnv) != 0 {
+		t.Fatalf("a missing env must not read as wrong: %v", report.Partition.WrongEnv)
+	}
+	if len(report.Partition.MissingEnv) != 6 || report.Partition.Correct != 5 {
+		t.Fatalf("want 6 missing / 5 correct after stripping the staging VPC's env, got %d missing / %d correct",
+			len(report.Partition.MissingEnv), report.Partition.Correct)
+	}
+}
+
+// setManifestEnv rewrites (or removes) metadata.env on the proposed
+// instance claiming the identifier.
+func setManifestEnv(t *testing.T, p *proposalv1.ImportMappingProposal, claimIdentifier, env string) {
+	t.Helper()
+	metadata := resourceClaiming(t, p, claimIdentifier).GetManifest().GetFields()["metadata"].GetStructValue()
+	if env == "" {
+		delete(metadata.Fields, "env")
+		return
+	}
+	metadata.Fields["env"] = structpb.NewStringValue(env)
 }
 
 // --- messy-suite helpers ----------------------------------------------------
@@ -223,13 +304,16 @@ func buildMessyGroundTruth(t *testing.T, root string) *mappingeval.GroundTruth {
 	return gt
 }
 
-func scoreMessyBaseline(t *testing.T, root string, gt *mappingeval.GroundTruth) *mappingeval.Report {
+func scoreMessyBaseline(t *testing.T, root string, gt *mappingeval.GroundTruth, mutate func(*proposalv1.ImportMappingProposal)) *mappingeval.Report {
 	t.Helper()
 	scan := loadMessyFixtureScan(t)
 	mappingeval.RedactSeedFingerprints(scan)
 	proposal, err := baseline.Propose(scan)
 	if err != nil {
 		t.Fatalf("baseline proposer: %v", err)
+	}
+	if mutate != nil {
+		mutate(proposal)
 	}
 	loaded, err := mappingeval.ParseProposal(proposal)
 	if err != nil {
@@ -239,6 +323,9 @@ func scoreMessyBaseline(t *testing.T, root string, gt *mappingeval.GroundTruth) 
 	if err != nil {
 		t.Fatalf("score options: %v", err)
 	}
+	// The partition axis is suite-declared, never assumed: the flag comes
+	// off the loaded suite exactly as the live lane reads it.
+	opts.GradeEnvironmentPartition = loadMessySuite(t, root).Suite.GetSpec().GetGradeEnvironmentPartition()
 	return mappingeval.Score(gt, loaded, opts)
 }
 

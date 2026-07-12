@@ -38,6 +38,12 @@ type ScoreOptions struct {
 	// scored; this is the one declared exception -- breaking the derivation
 	// breaks the downstream zero-typing import.
 	NameDerivedIdentity map[cloudresourcekind.CloudResourceKind]string
+
+	// GradeEnvironmentPartition enables the partition axis. Unlike the
+	// members above it derives from the SUITE (grade_environment_partition),
+	// not the catalog: whether member environments are recoverable answer
+	// keys is an exam-design fact, declared per suite.
+	GradeEnvironmentPartition bool
 }
 
 // Score grades a proposal against the ground truth. See the package doc for
@@ -58,6 +64,7 @@ func Score(gt *GroundTruth, proposal *LoadedProposal, opts ScoreOptions) *Report
 	scoreGrouping(gt, proposal, universe, matchedGT, report)
 	scoreSpecs(matches, gt, proposal, opts, report)
 	scoreRefs(matches, gt, matchedGT, report)
+	scorePartition(gt, matchedGT, opts, report)
 	scoreCoverage(gt, proposal, universe, report)
 	checkNameDerivedIdentity(matches, opts, report)
 
@@ -420,6 +427,51 @@ func scoreRefs(matches []InstanceMatch, gt *GroundTruth, matchedGT map[string]*I
 				Instance:  instance.Name,
 				FieldPath: gtEdge.FieldPath,
 				Detail:    "ground truth references " + gtEdge.TargetName + "; the instance was never proposed",
+			})
+		}
+	}
+}
+
+// scorePartition grades environment assignment on suites that declare it:
+// each ground-truth instance that sets metadata.env owes that environment
+// on its proposed counterpart. Instances are walked in ground-truth order
+// (deterministic reports). Wrong beats missing in severity -- a wrong
+// environment poisons env-scoped references, while honest unassignment is
+// exactly what the review gate exists to resolve. A proposed env where the
+// ground truth has none is informational, mirroring spec proposer-extra.
+func scorePartition(gt *GroundTruth, matchedGT map[string]*InstanceMatch, opts ScoreOptions, report *Report) {
+	if !opts.GradeEnvironmentPartition {
+		return
+	}
+	report.Partition.Graded = true
+	for _, instance := range gt.Instances {
+		gtEnv := manifestMetadataEnv(instance.Manifest)
+		match, matched := matchedGT[instance.Name]
+		var propEnv string
+		if matched {
+			propEnv = manifestMetadataEnv(match.Proposed.Manifest)
+		}
+
+		if gtEnv == "" {
+			if propEnv != "" {
+				report.Partition.ExtraEnv = append(report.Partition.ExtraEnv, EnvFinding{
+					Instance: instance.Name, Actual: propEnv,
+				})
+			}
+			continue
+		}
+
+		report.Partition.GroundTruthInstances++
+		switch {
+		case propEnv == gtEnv:
+			report.Partition.Correct++
+		case propEnv == "":
+			report.Partition.MissingEnv = append(report.Partition.MissingEnv, EnvFinding{
+				Instance: instance.Name, Expected: gtEnv,
+			})
+		default:
+			report.Partition.WrongEnv = append(report.Partition.WrongEnv, EnvFinding{
+				Instance: instance.Name, Expected: gtEnv, Actual: propEnv,
 			})
 		}
 	}
