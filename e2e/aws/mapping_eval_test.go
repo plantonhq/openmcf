@@ -105,6 +105,68 @@ func TestMappingEval_MessyAccount(t *testing.T) {
 	}
 }
 
+// TestMappingEval_IdentityAndEgress is the live proof of the COVERAGE exam:
+// the identity-and-egress suite brings the last two import-recipe kinds
+// (IAM role, NAT gateway) under examination, so every recipe kind appears
+// in at least one exam. Like the messy lane, this pins the baseline's
+// imperfect floor by class and count -- universe-derived numbers only. The
+// IAM scan is the first GLOBAL-service scan a live lane performs: it lists
+// every role in the account, and all of that noise must stay informational.
+func TestMappingEval_IdentityAndEgress(t *testing.T) {
+	report := runMappingEvalChain(t, "identity-and-egress")
+
+	if report.Perfect() {
+		t.Fatal("the identity-and-egress suite carries kinds the baseline deliberately does not map; a perfect score means the exam lost its headroom")
+	}
+	// Grouping: the network tier (VPC + both subnets incl. the routed
+	// subnet's table and association) lands correctly; the NAT gateway and
+	// the role are unclaimed. Nothing is misassigned or double-claimed.
+	if report.Grouping.UniverseSize != 7 || report.Grouping.Correct != 5 || report.Grouping.InUniverseClaims != 5 {
+		t.Fatalf("grouping floor drifted: want 5/7 correct with 5 in-universe claims, got %d/%d with %d\n%s",
+			report.Grouping.Correct, report.Grouping.UniverseSize, report.Grouping.InUniverseClaims, report.Summary())
+	}
+	if len(report.Grouping.Misassigned) != 0 || len(report.Grouping.DuplicateClaims) != 0 {
+		t.Fatalf("the baseline must never misassign or double-claim: %v / %v",
+			report.Grouping.Misassigned, report.Grouping.DuplicateClaims)
+	}
+	if len(report.Grouping.Unclaimed) != 2 {
+		t.Fatalf("want the NAT gateway + role unclaimed, got %v", report.Grouping.Unclaimed)
+	}
+	// Coverage: both uncovered resources are DECLARED unmapped; zero
+	// unaccounted is part of the floor (honesty even where blind).
+	if len(report.Coverage.Unaccounted) != 0 {
+		t.Fatalf("the baseline accounts for everything it sees; unaccounted: %v", report.Coverage.Unaccounted)
+	}
+	if len(report.Coverage.UnmappedInUniverse) != 2 {
+		t.Fatalf("want the NAT gateway + role declared unmapped, got %v", report.Coverage.UnmappedInUniverse)
+	}
+	// Refs: the two vpcId edges hold; the two edges touching the NAT
+	// gateway (its subnet_id, the route's nat_gateway target) are owed;
+	// nothing is wired WRONG.
+	if report.Refs.GroundTruthEdges != 4 || report.Refs.CorrectEdges != 2 || len(report.Refs.MissingEdges) != 2 {
+		t.Fatalf("refs floor drifted: want 2/4 edges with 2 missing, got %d/%d with %d\n%v",
+			report.Refs.CorrectEdges, report.Refs.GroundTruthEdges, len(report.Refs.MissingEdges), report.Refs.MissingEdges)
+	}
+	if len(report.Refs.WrongTargetEdges) != 0 || len(report.Refs.UnexpectedEdges) != 0 {
+		t.Fatalf("the baseline never wires a WRONG edge: %v / %v",
+			report.Refs.WrongTargetEdges, report.Refs.UnexpectedEdges)
+	}
+	// Spec: what the baseline reconstructs, it reconstructs correctly; the
+	// missing leaves belong to the two instances it never proposed. The
+	// leaf counts derive from the suite's fixed manifests, so live and
+	// offline must agree.
+	if len(report.Spec.Mismatched) != 0 {
+		t.Fatalf("the baseline never writes a wrong value: %v", report.Spec.Mismatched)
+	}
+	if report.Spec.GroundTruthLeaves != 21 || report.Spec.Matched != 12 {
+		t.Fatalf("spec floor drifted: want 12/21 leaves matched, got %d/%d\nmissing: %v\nmismatched: %v",
+			report.Spec.Matched, report.Spec.GroundTruthLeaves, report.Spec.Missing, report.Spec.Mismatched)
+	}
+	if len(report.NameDerivability) != 0 {
+		t.Fatalf("no matched instance breaks name-derived identity: %v", report.NameDerivability)
+	}
+}
+
 // runMappingEvalChain runs the full live chain for one suite: deploy the
 // answer key (teardown ALWAYS runs and its failure fails the test -- leaked
 // fixtures are a real cost), scan the region blind over the derived type

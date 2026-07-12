@@ -195,7 +195,23 @@ func diffSpecMessages(gtMsg, propMsg protoreflect.Message, path, instanceName st
 			recordLeaf(spec, fieldPath, instanceName, "<map>", conditional(equal, "<map>", "<different map>"), propSet)
 		case fd.IsList():
 			gtList := gtMsg.Get(fd).List()
-			if fd.Kind() == protoreflect.MessageKind && !isRefListOfScalars(fd) {
+			if isRefListOfScalars(fd) {
+				// A repeated StringValueOrRef participates exactly like its
+				// singular form: literal arms are ONE whole-list spec leaf
+				// (mirroring scalar lists, so element count never moves the
+				// denominator); value_from arms are edges, the refs axis's
+				// business. A list carrying only edges contributes nothing
+				// here.
+				gtLiterals := refListLiterals(gtList)
+				if len(gtLiterals) == 0 {
+					continue
+				}
+				propSet := propMsg.Has(fd)
+				equal := propSet && stringSlicesEqual(gtLiterals, refListLiterals(propMsg.Get(fd).List()))
+				recordLeaf(spec, fieldPath, instanceName, "<list>", conditional(equal, "<list>", "<different list>"), propSet)
+				continue
+			}
+			if fd.Kind() == protoreflect.MessageKind {
 				propSet := propMsg.Has(fd)
 				var propList protoreflect.List
 				if propSet {
@@ -204,14 +220,8 @@ func diffSpecMessages(gtMsg, propMsg protoreflect.Message, path, instanceName st
 				for j := 0; j < gtList.Len(); j++ {
 					elementPath := fieldPath + "[" + strconv.Itoa(j) + "]"
 					if !propSet || j >= propList.Len() {
-						if isRefMessage(fd.Message()) {
-							continue // repeated refs are edge territory
-						}
 						countMissingLeavesInMessage(gtList.Get(j).Message(), elementPath, instanceName, excluded, spec)
 						continue
-					}
-					if isRefMessage(fd.Message()) {
-						continue // repeated refs are edge territory
 					}
 					diffSpecMessages(gtList.Get(j).Message(), propList.Get(j).Message(), elementPath, instanceName, excluded, spec)
 				}
@@ -249,6 +259,12 @@ func collectExtraLeaves(gtMsg, propMsg protoreflect.Message, path, instanceName 
 	for i := 0; i < fields.Len(); i++ {
 		fd := fields.Get(i)
 		if !propMsg.Has(fd) || excluded[string(fd.Name())] || isRefField(fd) {
+			continue
+		}
+		// A repeated ref carrying only value_from arms is pure edge
+		// territory (the refs axis reports unexpected edges); only its
+		// literal arms are spec material.
+		if isRefListOfScalars(fd) && len(refListLiterals(propMsg.Get(fd).List())) == 0 {
 			continue
 		}
 		fieldPath := joinPath(path, string(fd.Name()))
@@ -296,7 +312,13 @@ func countMissingLeavesInMessage(gtMsg protoreflect.Message, path, instanceName 
 		case fd.IsMap(), fd.IsList() && fd.Kind() != protoreflect.MessageKind:
 			recordLeaf(spec, fieldPath, instanceName, "<collection>", "", false)
 		case fd.IsList():
-			if isRefMessage(fd.Message()) {
+			if isRefListOfScalars(fd) {
+				// Same rule as the matched path: literal arms are one
+				// whole-list leaf (owed here), value_from arms are edges
+				// (owed by the refs axis's unmatched-instance accounting).
+				if len(refListLiterals(gtMsg.Get(fd).List())) > 0 {
+					recordLeaf(spec, fieldPath, instanceName, "<list>", "", false)
+				}
 				continue
 			}
 			list := gtMsg.Get(fd).List()
@@ -483,8 +505,13 @@ func specMessage(top protoreflect.Message) protoreflect.Message {
 	return top.Get(specField).Message()
 }
 
+// isRefField reports a SINGULAR StringValueOrRef field. Repeated refs are
+// deliberately excluded: they are graded elementwise (each element's
+// literal arm is a spec leaf, each value_from arm an edge), so callers
+// must reach their list handling -- treating the whole list as one ref
+// here would panic on the list value.
 func isRefField(fd protoreflect.FieldDescriptor) bool {
-	return fd.Kind() == protoreflect.MessageKind && !fd.IsMap() && string(fd.Message().FullName()) == stringValueOrRefFullName
+	return fd.Kind() == protoreflect.MessageKind && !fd.IsMap() && !fd.IsList() && string(fd.Message().FullName()) == stringValueOrRefFullName
 }
 
 func isRefMessage(md protoreflect.MessageDescriptor) bool {
@@ -493,6 +520,32 @@ func isRefMessage(md protoreflect.MessageDescriptor) bool {
 
 func isRefListOfScalars(fd protoreflect.FieldDescriptor) bool {
 	return fd.IsList() && fd.Kind() == protoreflect.MessageKind && isRefMessage(fd.Message())
+}
+
+// refListLiterals extracts the literal arms of a repeated StringValueOrRef,
+// in order. value_from arms are deliberately absent -- they are edges.
+func refListLiterals(list protoreflect.List) []string {
+	var literals []string
+	for i := 0; i < list.Len(); i++ {
+		ref, ok := list.Get(i).Message().Interface().(*foreignkeyv1.StringValueOrRef)
+		if !ok || ref.GetValueFrom() != nil {
+			continue
+		}
+		literals = append(literals, ref.GetValue())
+	}
+	return literals
+}
+
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func scalarListsEqual(a, b protoreflect.List) bool {

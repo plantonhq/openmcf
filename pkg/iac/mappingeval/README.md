@@ -45,32 +45,43 @@ MappingEvalSuite    deploy →   read-only scan (inventory)    Score(gt, proposa
   gate.
 - **`baseline.Propose`**: the deterministic reference mapper. Pinned to a
   **perfect score** on network-staples and to a **specific imperfect
-  score** on messy-account (see "The two exams") — any drift in either pin
-  is a harness, recipe, or scanner regression, never model variance. Its
-  mappers are deliberately bounded to the staples' kinds; generalizing
+  score** on each of the other exams (see "The exams") — any drift in any
+  pin is a harness, recipe, or scanner regression, never model variance.
+  Its mappers are deliberately bounded to the staples' kinds; generalizing
   hand-written mapping code is exactly the infeasible work the AI proposer
   exists to replace.
 - **`Score`**: the grader. Entirely structural — driven by the kinds' own
   proto schemas and the shared `StringValueOrRef` encoding — so it works
   for any component on any provider with zero per-kind grading code.
 
-## The two exams
+## The exams
 
 | Suite | Purpose | Baseline pin |
 |-------|---------|--------------|
 | `network-staples` | proves the **instrument**: on a clean, well-signaled account, the whole chain (seed, scan, propose, score) works end to end | PERFECT |
-| `messy-account` | measures **headroom**: an account shaped like a real company's — look-alike prod/staging networks (identical CIDRs), an uncovered tier (security group, KMS key + alias, DynamoDB, ECR), cross-service `value_from` edges into the KMS key | a specific IMPERFECT report — **the floor** |
+| `messy-account` | measures **headroom**: an account shaped like a real company's — look-alike prod/staging networks (identical CIDRs), an uncovered tier (security group, KMS key + alias, DynamoDB, ECR), cross-service `value_from` edges into the KMS key | a specific IMPERFECT report — **a floor** |
+| `identity-and-egress` | completes **coverage**: the last two import-recipe kinds (IAM role, NAT gateway) under examination — with it, **every kind that carries an import recipe appears in at least one exam**. Adds the first global-service scan (IAM lists the whole account; noise is the norm), the first `nat_gateway` route target, and a second name-derived-identity kind beside S3 | a specific IMPERFECT report — **a floor** |
 
-The floor's authoritative record is the pinned offline test
-(`TestBaselineFloorOnMessyAccount`) and each live run's report artifact.
-**Beating the floor** means strictly higher grouping/spec/refs recall
-without introducing what the baseline never produces: duplicate claims,
-misassignments, wrong-target edges, unaccounted resources, or
-name-derivability breaks. The baseline is honest even where it is blind —
-everything it cannot map is *declared* unmapped, never silently dropped —
-and that honesty is part of the bar. (There is deliberately no blended
-numeric score or comparator machinery yet; it becomes worth building when a
-second proposer exists.)
+Each floor's authoritative record is its pinned offline test
+(`TestBaselineFloorOnMessyAccount`, `TestBaselineFloorOnIdentityAndEgress`)
+and each live run's report artifact. **Beating a floor** means strictly
+higher grouping/spec/refs recall without introducing what the baseline
+never produces: duplicate claims, misassignments, wrong-target edges,
+unaccounted resources, or name-derivability breaks. The baseline is honest
+even where it is blind — everything it cannot map is *declared* unmapped,
+never silently dropped — and that honesty is part of the bar. (There is
+deliberately no blended numeric score or comparator machinery yet; it
+becomes worth building when a second proposer exists.)
+
+### Global services and scan noise
+
+Region scopes nothing on a global service: scanning `AWS::IAM::Role` lists
+every role in the account — service-linked roles, other projects, the scan
+runner's own identity plumbing. This is not a problem to filter away; it is
+what a stranger's account genuinely looks like on that tier, and the
+universe-only honesty rules below are exactly what keep the grade
+trustworthy through it. The identity-and-egress fixture deliberately
+carries service-linked and foreign roles so the offline floor proves it.
 
 ### Exam-fairness rule for suite members
 
@@ -105,8 +116,15 @@ a general tag scrubber.
 Plus one declared name rule: names are never scored (instances match by
 kind + claim overlap — a blind proposer cannot know internal names), except
 where a kind's import recipe derives its import id `from_metadata_name`
-(S3: the manifest name IS the bucket name) — breaking that derivation
-breaks the downstream zero-typing import and is flagged.
+(S3: the manifest name IS the bucket name; IAM roles: the manifest name IS
+the role name) — breaking that derivation breaks the downstream zero-typing
+import and is flagged.
+
+One encoding note on the spec axis: a repeated `StringValueOrRef` field
+(e.g. a role's managed policy ARNs) participates exactly like its singular
+form — its literal arms are ONE whole-list spec leaf (mirroring scalar
+lists, so element count never inflates the denominator) and its
+`value_from` arms are edges, the refs axis's business.
 
 ## Honesty rules (what keeps scores trustworthy on a shared account)
 
@@ -135,10 +153,10 @@ breaks the downstream zero-typing import and is flagged.
   dropped ref-carrying instances, name-derivability breaks each produce
   their specific finding). An exam nothing can fail is not an exam.
 - **Live** (`TestMappingEval_NetworkStaples` +
-  `TestMappingEval_MessyAccount`, opt-in via
-  `PLANTON_E2E_MAPPING_EVAL=1`): the same chain against a real account —
-  deploy the suite, scan blind, redact fingerprints, propose, score, assert
-  the suite's pin (perfect / the floor), destroy everything.
+  `TestMappingEval_MessyAccount` + `TestMappingEval_IdentityAndEgress`,
+  opt-in via `PLANTON_E2E_MAPPING_EVAL=1`): the same chain against a real
+  account — deploy the suite, scan blind, redact fingerprints, propose,
+  score, assert the suite's pin (perfect / its floor), destroy everything.
   Create-and-destroy with ambient credentials; artifacts (scan, proposal,
   report per suite) recorded via `PLANTON_E2E_MAPPING_EVAL_ARTIFACTS`.
 

@@ -37,6 +37,7 @@ go_test(
     name = "mappingeval_test",
     srcs = [
         "harness_test.go",
+        "identity_egress_floor_test.go",
         "messy_floor_test.go",
         "redact_test.go",
     ],

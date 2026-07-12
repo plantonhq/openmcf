@@ -26,11 +26,11 @@
 # suite's live lane proves the composition. Environments ride
 # metadata.env (prod/staging) as the future partition-scoring fixture.
 #
-# Deliberately excluded kinds: awsiamrole (IAM is global -- scanning
-# AWS::IAM::Role on the shared account drowns the exam in out-of-universe
-# noise; structural invisibility is already exercised by the registry's
-# lifecycle policy) and awsnatgateway (slow, costly, needs an EIP, and
-# tests nothing the routed subnet does not).
+# Deliberately excluded kinds: awsiamrole and awsnatgateway live in the
+# identity-and-egress suite instead. Keeping them out of THIS suite is
+# still right -- the global IAM scan's account-wide noise and the NAT
+# gateway's deploy time belong in the coverage exam, not layered onto the
+# disambiguation exam -- and this suite's pinned floor stays undisturbed.
 apiVersion: qa.planton.dev/v1
 kind: MappingEvalSuite
 metadata:

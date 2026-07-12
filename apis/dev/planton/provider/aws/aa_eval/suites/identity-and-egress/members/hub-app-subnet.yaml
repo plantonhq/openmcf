@@ -1,0 +1,36 @@
+# The application subnet: a routed three-resource instance (subnet + owned
+# route table + association) whose route to the internal corporate range
+# targets the NAT gateway -- the first nat_gateway route target in any
+# exam. The deterministic baseline wires only internet-gateway targets, so
+# this edge is guaranteed headroom for a smarter proposer.
+apiVersion: aws.planton.dev/v1
+kind: AwsSubnet
+metadata:
+  name: hub-app-subnet
+  id: hub-app-subnet
+  org: planton-oss
+  env: ops
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssubnet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: hub-vpc
+      fieldPath: status.outputs.vpc_id
+  availabilityZone: us-west-2b
+  cidrBlock: 10.30.1.0/24
+  routes:
+    - destinationCidrBlock: 192.168.0.0/16
+      targetType: nat_gateway
+      targetId:
+        valueFrom:
+          kind: AwsNatGateway
+          name: hub-egress-nat
+          fieldPath: status.outputs.nat_gateway_id

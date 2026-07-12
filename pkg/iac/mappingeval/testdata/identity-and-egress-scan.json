@@ -1,0 +1,295 @@
+{
+  "region": "us-west-2",
+  "resources": [
+    {
+      "typeName": "AWS::EC2::VPC",
+      "identifier": "vpc-0hub111fixture0001",
+      "properties": {
+        "VpcId": "vpc-0hub111fixture0001",
+        "CidrBlock": "10.30.0.0/16",
+        "EnableDnsSupport": true,
+        "EnableDnsHostnames": true,
+        "InstanceTenancy": "default",
+        "Tags": [
+          {"Key": "Name", "Value": "hub-vpc"},
+          {"Key": "planton.ai/resource", "Value": "true"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsVpc"},
+          {"Key": "planton.ai/environment", "Value": "ops"},
+          {"Key": "managed-by", "Value": "planton-e2e"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::VPC",
+      "identifier": "vpc-0hubdefault000001",
+      "properties": {
+        "VpcId": "vpc-0hubdefault000001",
+        "CidrBlock": "172.31.0.0/16",
+        "EnableDnsSupport": true,
+        "EnableDnsHostnames": true,
+        "InstanceTenancy": "default",
+        "Tags": []
+      }
+    },
+    {
+      "typeName": "AWS::EC2::Subnet",
+      "identifier": "subnet-0hub222natfix001",
+      "properties": {
+        "SubnetId": "subnet-0hub222natfix001",
+        "VpcId": "vpc-0hub111fixture0001",
+        "AvailabilityZone": "us-west-2a",
+        "CidrBlock": "10.30.0.0/24",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {"Key": "Name", "Value": "hub-nat-subnet"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsSubnet"},
+          {"Key": "planton.ai/environment", "Value": "ops"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::Subnet",
+      "identifier": "subnet-0hub444appfix001",
+      "properties": {
+        "SubnetId": "subnet-0hub444appfix001",
+        "VpcId": "vpc-0hub111fixture0001",
+        "AvailabilityZone": "us-west-2b",
+        "CidrBlock": "10.30.1.0/24",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {"Key": "Name", "Value": "hub-app-subnet"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsSubnet"},
+          {"Key": "planton.ai/environment", "Value": "ops"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::Subnet",
+      "identifier": "subnet-0hubdefault00001",
+      "properties": {
+        "SubnetId": "subnet-0hubdefault00001",
+        "VpcId": "vpc-0hubdefault000001",
+        "AvailabilityZone": "us-west-2a",
+        "CidrBlock": "172.31.0.0/20",
+        "MapPublicIpOnLaunch": true,
+        "Tags": []
+      }
+    },
+    {
+      "typeName": "AWS::EC2::NatGateway",
+      "identifier": "nat-0hub333egress0001",
+      "properties": {
+        "NatGatewayId": "nat-0hub333egress0001",
+        "SubnetId": "subnet-0hub222natfix001",
+        "VpcId": "vpc-0hub111fixture0001",
+        "ConnectivityType": "private",
+        "Tags": [
+          {"Key": "Name", "Value": "hub-egress-nat"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsNatGateway"},
+          {"Key": "planton.ai/environment", "Value": "ops"},
+          {"Key": "managed-by", "Value": "planton-e2e"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::RouteTable",
+      "identifier": "rtb-0hub555appfix001",
+      "properties": {
+        "RouteTableId": "rtb-0hub555appfix001",
+        "VpcId": "vpc-0hub111fixture0001",
+        "Routes": [
+          {"DestinationCidrBlock": "10.30.0.0/16", "GatewayId": "local"},
+          {"DestinationCidrBlock": "192.168.0.0/16", "NatGatewayId": "nat-0hub333egress0001"}
+        ],
+        "Associations": [
+          {"RouteTableAssociationId": "rtbassoc-0hub666afx01", "SubnetId": "subnet-0hub444appfix001"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::RouteTable",
+      "identifier": "rtb-0hubmain001fix001",
+      "properties": {
+        "RouteTableId": "rtb-0hubmain001fix001",
+        "VpcId": "vpc-0hub111fixture0001",
+        "Routes": [
+          {"DestinationCidrBlock": "10.30.0.0/16", "GatewayId": "local"}
+        ],
+        "Associations": [
+          {"RouteTableAssociationId": "rtbassoc-0hubmain1f01", "Main": true}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::RouteTable",
+      "identifier": "rtb-0hubmain002dflt01",
+      "properties": {
+        "RouteTableId": "rtb-0hubmain002dflt01",
+        "VpcId": "vpc-0hubdefault000001",
+        "Routes": [
+          {"DestinationCidrBlock": "172.31.0.0/16", "GatewayId": "local"}
+        ],
+        "Associations": [
+          {"RouteTableAssociationId": "rtbassoc-0hubmain2d01", "Main": true}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SubnetRouteTableAssociation",
+      "identifier": "rtbassoc-0hub666afx01",
+      "properties": {
+        "RouteTableId": "rtb-0hub555appfix001",
+        "SubnetId": "subnet-0hub444appfix001"
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SubnetRouteTableAssociation",
+      "identifier": "rtbassoc-0hubmain1f01",
+      "properties": {
+        "RouteTableId": "rtb-0hubmain001fix001"
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SubnetRouteTableAssociation",
+      "identifier": "rtbassoc-0hubmain2d01",
+      "properties": {
+        "RouteTableId": "rtb-0hubmain002dflt01"
+      }
+    },
+    {
+      "typeName": "AWS::IAM::Role",
+      "identifier": "hub-ci-deployer",
+      "properties": {
+        "RoleName": "hub-ci-deployer",
+        "RoleId": "AROA4QKBDLZ4FIXTURE01",
+        "Arn": "arn:aws:iam::123456789012:role/ci/hub-ci-deployer",
+        "Path": "/ci/",
+        "Description": "CI deployment role for the hub account",
+        "MaxSessionDuration": 7200,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {"Service": "codebuild.amazonaws.com"},
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/ReadOnlyAccess"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "deploy-artifacts-access",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": ["s3:GetObject", "s3:PutObject"],
+                  "Resource": "arn:aws:s3:::hub-deploy-artifacts/*"
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {"Key": "Name", "Value": "hub-ci-deployer"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsIamRole"},
+          {"Key": "planton.ai/environment", "Value": "ops"},
+          {"Key": "managed-by", "Value": "planton-e2e"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::IAM::Role",
+      "identifier": "AWSServiceRoleForSupport",
+      "properties": {
+        "RoleName": "AWSServiceRoleForSupport",
+        "RoleId": "AROA4QKBDLZ4NOISE0001",
+        "Arn": "arn:aws:iam::123456789012:role/aws-service-role/support.amazonaws.com/AWSServiceRoleForSupport",
+        "Path": "/aws-service-role/support.amazonaws.com/",
+        "Description": "Enables resource access for AWS to provide billing, administrative and support services",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {"Service": "support.amazonaws.com"},
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/aws-service-role/AWSSupportServiceRolePolicy"
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::IAM::Role",
+      "identifier": "AWSServiceRoleForAmazonEKS",
+      "properties": {
+        "RoleName": "AWSServiceRoleForAmazonEKS",
+        "RoleId": "AROA4QKBDLZ4NOISE0002",
+        "Arn": "arn:aws:iam::123456789012:role/aws-service-role/eks.amazonaws.com/AWSServiceRoleForAmazonEKS",
+        "Path": "/aws-service-role/eks.amazonaws.com/",
+        "Description": "Allows Amazon EKS to call AWS services on your behalf",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {"Service": "eks.amazonaws.com"},
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/aws-service-role/AmazonEKSServiceRolePolicy"
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::IAM::Role",
+      "identifier": "legacy-app-server-role",
+      "properties": {
+        "RoleName": "legacy-app-server-role",
+        "RoleId": "AROA4QKBDLZ4NOISE0003",
+        "Arn": "arn:aws:iam::123456789012:role/legacy-app-server-role",
+        "Path": "/",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {"Service": "ec2.amazonaws.com"},
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "legacy-app-access",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:ListBucket",
+                  "Resource": "arn:aws:s3:::legacy-app-data"
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {"Key": "team", "Value": "platform"}
+        ]
+      }
+    }
+  ]
+}
