@@ -88,6 +88,18 @@ placeholder. Therefore:
 - **Verify before committing**: `curl -s -o /dev/null -w "%{http_code}" <iconUrl>`
   must print `200`. Never copy an iconUrl from another chart without verifying it
   — stale asset conventions 404.
+- **When the right kind's logo 404s, publish it — never settle for a
+  wrong-identity icon.** The asset source of truth is the platform repo
+  (`product/apis/ai/planton/infrahub/cloudresource/v1/assets/provider/<provider>/<kind-dir>/v1/logo.svg`),
+  served from the `planton-assets` Cloudflare R2 bucket under the `apis/` prefix
+  (`make -C product/apis upload-api-resource-icons` syncs the whole tree; a
+  single object can also be PUT via the Cloudflare R2 API with a
+  `CLOUDFLARE_API_TOKEN`). Source the official provider architecture icon,
+  stage it in the platform repo AND publish it, then verify. Two traps: a kind
+  directory existing in the platform tree does not mean its logo is live (the
+  sync runs manually — sweep with curl, not by listing the tree), and the CDN
+  negative-caches 404s — after uploading, purge the zone cache for the asset
+  prefix (the purge target/API in `product/apis/Makefile`) before re-verifying.
 
 ### values.yaml
 
@@ -202,6 +214,17 @@ go build -o /tmp/planton . && /tmp/planton chart validate charts/<provider>/<cha
 runs protovalidate (constraints + CEL), and resolves every `valueFrom`
 reference. All variants must pass. Icon URLs are verified separately with the
 curl check above (they are outside the validator's scope).
+
+**A validation failure can be the COMPONENT's defect — fix it at the root,
+never bend the chart around it.** Charts exercise compositions the component's
+own tests may never have tried; when a rendered manifest that faithfully
+follows a spec's documented composition is rejected (e.g. a validation pattern
+that forbids names the spec's own field comments promise to support), the spec
+is wrong. Fix the component — spec rule + regression test case + regenerated
+stubs, in its own commit — rebuild the working-tree CLI, and re-validate.
+Working around a component defect inside a chart (a renamed record, a dropped
+resource, a placeholder) ships the defect to every other consumer and hides it
+from the component's owner.
 
 The server-side `planton chart build` / `chart publish` (Platform CLI) remains
 the engine-of-record gate for publishing — see `@publish-planton-infra-charts`.
