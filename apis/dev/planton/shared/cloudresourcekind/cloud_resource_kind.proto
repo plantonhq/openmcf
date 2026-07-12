@@ -636,10 +636,13 @@ enum CloudResourceKind {
     id_prefix: "acr"
     prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because the DNS zone is created
+  // inside a referenced resource group that must already exist.
   AzureDnsZone = 404 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azdns"
+    prerequisites: [AzureResourceGroup]
   }];
   // AzureResourceGroup is a prerequisite because a key vault is created
   // inside a referenced resource group in composed environments.
@@ -683,10 +686,15 @@ enum CloudResourceKind {
     id_prefix: "azsa"
     prerequisites: [AzureResourceGroup]
   }];
+  // AzureDnsZone is a prerequisite because a record set is created inside
+  // a referenced zone (the resource group chains transitively through the
+  // zone). Public DNS zone names are not globally unique, so a shared
+  // zone fixture is safe to recreate across scenarios.
   AzureDnsRecord = 410 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azdrec"
+    prerequisites: [AzureDnsZone]
   }];
   // AzureVirtualNetwork is a prerequisite because a subnet is an ARM child
   // of a referenced network -- the network must exist before the subnet can
@@ -1037,6 +1045,22 @@ enum CloudResourceKind {
     provider: azure
     version: v1
     id_prefix: "azcadapr"
+    prerequisites: [AzureContainerAppEnvironment]
+  }];
+  // AzureContainerAppEnvironment is a prerequisite because the
+  // certificate is stored on a referenced environment.
+  AzureContainerAppEnvironmentCertificate = 448 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcacert"
+    prerequisites: [AzureContainerAppEnvironment]
+  }];
+  // AzureContainerAppEnvironment is a prerequisite because the managed
+  // certificate is provisioned on a referenced environment.
+  AzureContainerAppEnvironmentManagedCertificate = 449 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcamgcert"
     prerequisites: [AzureContainerAppEnvironment]
   }];
   // AzureResourceGroup is a prerequisite because the workspace is created
@@ -1491,6 +1515,19 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azmsqlfog"
     prerequisites: [AzureMssqlServer]
+  }];
+
+  // --- App-hosting continuation (the app-hosting sub-band 440-449 is
+  // full; this kind extends the Container Apps family) ---
+
+  // AzureContainerApp is a prerequisite because the domain binding lives
+  // in a referenced app's ingress configuration (the environment and
+  // resource group chain transitively through the app).
+  AzureContainerAppCustomDomain = 525 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcadom"
+    prerequisites: [AzureContainerApp]
   }];
 
   // 600–799: GCP resources

@@ -10,54 +10,35 @@ import (
 
 type Locals struct {
 	AzureDnsRecord    *azurednsrecordv1.AzureDnsRecord
-	AzureTags         map[string]string
-	ZoneName          string
 	ResourceGroupName string
-	RecordName        string
-	TTL               int
-	MxPriority        int
+	ZoneName          string
+	AzureTags         map[string]string
 }
 
 func initializeLocals(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordStackInput) *Locals {
 	locals := &Locals{}
 
 	locals.AzureDnsRecord = stackInput.Target
+
 	target := stackInput.Target
-	spec := target.Spec
 
-	// Extract zone_name from literal or value_from
-	if spec.ZoneName != nil {
-		if spec.ZoneName.GetValue() != "" {
-			locals.ZoneName = spec.ZoneName.GetValue()
-		} else if spec.ZoneName.GetValueFrom() != nil {
-			// The value_from reference would be resolved by the CLI before reaching here
-			// For now, we'll handle the literal case
-			locals.ZoneName = ""
-		}
-	}
-
-	// The resource_group field is a StringValueOrRef. The platform middleware resolves
-	// valueFrom references before IaC modules run, so .GetValue() always returns the
-	// resolved literal string.
+	// resource_group and zone_name are StringValueOrRef fields. The
+	// platform middleware resolves valueFrom references before IaC modules
+	// run, so .GetValue() always returns the resolved literal string.
 	locals.ResourceGroupName = target.Spec.ResourceGroup.GetValue()
-	locals.RecordName = spec.Name
+	locals.ZoneName = target.Spec.ZoneName.GetValue()
 
-	// Set TTL with default value
-	if spec.TtlSeconds != nil {
-		locals.TTL = int(*spec.TtlSeconds)
-	} else {
-		locals.TTL = 300 // Default TTL
-	}
-
-	// Set MX Priority with default value
-	if spec.MxPriority != nil {
-		locals.MxPriority = int(*spec.MxPriority)
-	} else {
-		locals.MxPriority = 10 // Default MX priority
-	}
-
-	// Create Azure tags for resource tagging
+	// Metadata-derived tags first, then the user's spec tags merged over
+	// them: user tags deliberately win so an org's governance conventions
+	// (cost center, owner) can override the derived values where they
+	// collide. Record-set tags land in ARM's record-set metadata.
 	locals.AzureTags = map[string]string{
+		// PARITY-EXCEPTION: resource_kind here is the lowered
+		// CloudResourceKind enum string and resource_id is omitted when
+		// metadata.id is empty, while the Terraform module emits the
+		// family-wide snake-case literal and falls back to metadata.name.
+		// Output-neutral (tags never feed stack outputs); aligning the two
+		// shapes is a family-wide convention change, not a per-kind fix.
 		"resource":      "true",
 		"resource_name": target.Metadata.Name,
 		"resource_kind": strings.ToLower(cloudresourcekind.CloudResourceKind_AzureDnsRecord.String()),
@@ -73,6 +54,10 @@ func initializeLocals(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDns
 
 	if target.Metadata.Env != "" {
 		locals.AzureTags["environment"] = target.Metadata.Env
+	}
+
+	for key, value := range target.Spec.Tags {
+		locals.AzureTags[key] = value
 	}
 
 	return locals

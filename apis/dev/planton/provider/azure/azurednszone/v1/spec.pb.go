@@ -9,7 +9,6 @@ package azurednszonev1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
-	dnsrecordtype "github.com/plantonhq/planton/apis/dev/planton/shared/networking/enums/dnsrecordtype"
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -25,19 +24,54 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzureDnsZoneSpec** defines the configuration for creating an Azure DNS Zone.
-// This specifies the minimal parameters needed for an Azure DNS zone, including the DNS domain name
-// and the Azure Resource Group in which the zone will reside. Optionally, DNS records can be provided.
+// **AzureDnsZoneSpec** defines the configuration for creating an Azure
+// public DNS zone: an internet-facing, authoritative DNS zone hosted on
+// Azure's global anycast name-server fleet.
+//
+// The zone is deliberately just the zone -- an empty record container plus
+// its Start of Authority settings. Records are declared through standalone
+// AzureDnsRecord resources referencing this zone's zone_name output, one
+// resource per record set, added and removed without touching the zone.
+//
+// Creating a zone does NOT make it authoritative on the internet: Azure
+// assigns four name servers (the name_servers output), and the domain only
+// resolves through this zone once those name servers are configured at the
+// domain's registrar (or as NS records in the parent zone, for subdomain
+// delegation). The same zone name can exist in many subscriptions at once --
+// each copy gets a different name-server set, and only the delegated one
+// answers the internet.
+//
+// **Note:** Public DNS zones are global Azure resources -- they have no
+// region. This is why this spec omits the `region` field that other Azure
+// resources include. For name resolution inside virtual networks, use
+// AzurePrivateDnsZone instead.
 type AzureDnsZoneSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The DNS zone name (e.g., "example.com"). Do not include a trailing dot.
+	// The DNS zone name, e.g. "example.com" or "team.example.com" for a
+	// delegated subdomain zone. Do not include a trailing dot. Changing the
+	// name replaces the zone -- and with it every record it contains and the
+	// assigned name-server set, so a rename breaks the registrar delegation
+	// until it is updated.
 	ZoneName string `protobuf:"bytes,1,opt,name=zone_name,json=zoneName,proto3" json:"zone_name,omitempty"`
-	// The Azure Resource Group where the DNS Zone will be created.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
+	// The Azure resource group the DNS zone will be created in. Can be a
+	// literal resource-group name or a reference to an AzureResourceGroup's
+	// name output. The resource group only governs the zone's ARM lifecycle
+	// (who can manage it); it has no effect on DNS resolution.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// (Optional) DNS records to pre-populate in the zone. Each record includes type, name, values, and TTL.
-	// If no records are provided, the zone will be created empty (common when external systems manage DNS records).
-	Records       []*AzureDnsRecord `protobuf:"bytes,3,rep,name=records,proto3" json:"records,omitempty"`
+	// Customize the zone's Start of Authority record. Nearly every
+	// deployment leaves this unset and takes Azure's defaults; set it only
+	// when operational tooling requires a specific contact email or
+	// negative-caching behavior. Azure creates the SOA record with the zone
+	// either way; this block edits the fields Azure allows to change (the
+	// SOA host name is always Azure's own and is not configurable).
+	SoaRecord *AzureDnsZoneSoaRecord `protobuf:"bytes,3,opt,name=soa_record,json=soaRecord,proto3" json:"soa_record,omitempty"`
+	// Free-form tags applied to the zone, merged over the Planton-derived
+	// resource tags (organization, environment, resource id); a user tag
+	// with the same key wins. Tags are Azure's governance surface -- Azure
+	// Policy enforces them and Microsoft Cost Management groups by them --
+	// so carry your org's ownership/cost-center conventions here. Updatable
+	// in place.
+	Tags          map[string]string `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -86,45 +120,72 @@ func (x *AzureDnsZoneSpec) GetResourceGroup() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureDnsZoneSpec) GetRecords() []*AzureDnsRecord {
+func (x *AzureDnsZoneSpec) GetSoaRecord() *AzureDnsZoneSoaRecord {
 	if x != nil {
-		return x.Records
+		return x.SoaRecord
 	}
 	return nil
 }
 
-// **AzureDnsRecord** represents a DNS record to be added to the Azure DNS Zone.
-// It includes the record type, the record name (usually a fully qualified domain name ending with a dot),
-// one or more record values, and an optional TTL (Time To Live) in seconds.
-type AzureDnsRecord struct {
+func (x *AzureDnsZoneSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+// Customization of the zone's Start of Authority (SOA) record. Field
+// defaults mirror what Azure creates when the block is omitted entirely,
+// so a partially-specified block and Azure's own values deploy
+// identically. All fields update in place.
+type AzureDnsZoneSoaRecord struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The DNS record type (e.g., A, AAAA, CNAME, TXT, MX).
-	RecordType dnsrecordtype.DnsRecordType `protobuf:"varint,1,opt,name=record_type,json=recordType,proto3,enum=dev.planton.shared.networking.enums.dnsrecordtype.DnsRecordType" json:"record_type,omitempty"`
-	// The name of the DNS record. This can be a fully qualified domain name (ending with a dot, e.g., "www.example.com.")
-	// or a relative name within the zone (e.g., "www" for "www.example.com"). An empty name "@" denotes the zone root.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// The list of values for the DNS record. For example, IP addresses for A/AAAA records, or hostnames for CNAME records (each CNAME value should end with a dot).
-	Values []string `protobuf:"bytes,3,rep,name=values,proto3" json:"values,omitempty"`
-	// The Time To Live (TTL) for the DNS record, in seconds.
-	TtlSeconds    *int32 `protobuf:"varint,4,opt,name=ttl_seconds,json=ttlSeconds,proto3,oneof" json:"ttl_seconds,omitempty"`
+	// The email contact for the zone, in SOA host format: dots instead of
+	// "@" (e.g. "dnsadmin.example.com" for dnsadmin@example.com). Azure's
+	// default is "azuredns-hostmaster.microsoft.com".
+	Email string `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	// Seconds a secondary name server considers the zone valid without a
+	// successful refresh. Azure's default is 2419200 (28 days).
+	ExpireTime *int64 `protobuf:"varint,2,opt,name=expire_time,json=expireTime,proto3,oneof" json:"expire_time,omitempty"`
+	// Negative-caching TTL: how long resolvers cache a "name does not
+	// exist" answer, in seconds. Azure's default is 300. The one field with
+	// real operational impact -- raising it slows how quickly newly-created
+	// records become visible to clients that asked before the record
+	// existed.
+	MinimumTtl *int64 `protobuf:"varint,3,opt,name=minimum_ttl,json=minimumTtl,proto3,oneof" json:"minimum_ttl,omitempty"`
+	// Seconds between secondary refresh attempts. Azure's default is 3600.
+	RefreshTime *int64 `protobuf:"varint,4,opt,name=refresh_time,json=refreshTime,proto3,oneof" json:"refresh_time,omitempty"`
+	// Seconds a secondary waits before retrying a failed refresh. Azure's
+	// default is 300.
+	RetryTime *int64 `protobuf:"varint,5,opt,name=retry_time,json=retryTime,proto3,oneof" json:"retry_time,omitempty"`
+	// The zone's serial number. Azure does not auto-increment serials on
+	// record changes (its name servers replicate internally), so this is
+	// cosmetic metadata for tooling that inspects the SOA. Azure's default
+	// is 1.
+	SerialNumber *int64 `protobuf:"varint,6,opt,name=serial_number,json=serialNumber,proto3,oneof" json:"serial_number,omitempty"`
+	// TTL of the SOA record itself, in seconds. Azure's default is 3600.
+	Ttl *int64 `protobuf:"varint,7,opt,name=ttl,proto3,oneof" json:"ttl,omitempty"`
+	// Tags applied to the SOA record set (distinct from the zone's own
+	// tags). Rarely used; exists because ARM models record-set metadata.
+	Tags          map[string]string `protobuf:"bytes,8,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AzureDnsRecord) Reset() {
-	*x = AzureDnsRecord{}
+func (x *AzureDnsZoneSoaRecord) Reset() {
+	*x = AzureDnsZoneSoaRecord{}
 	mi := &file_dev_planton_provider_azure_azurednszone_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureDnsRecord) String() string {
+func (x *AzureDnsZoneSoaRecord) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureDnsRecord) ProtoMessage() {}
+func (*AzureDnsZoneSoaRecord) ProtoMessage() {}
 
-func (x *AzureDnsRecord) ProtoReflect() protoreflect.Message {
+func (x *AzureDnsZoneSoaRecord) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_azure_azurednszone_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -136,58 +197,106 @@ func (x *AzureDnsRecord) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureDnsRecord.ProtoReflect.Descriptor instead.
-func (*AzureDnsRecord) Descriptor() ([]byte, []int) {
+// Deprecated: Use AzureDnsZoneSoaRecord.ProtoReflect.Descriptor instead.
+func (*AzureDnsZoneSoaRecord) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurednszone_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AzureDnsRecord) GetRecordType() dnsrecordtype.DnsRecordType {
+func (x *AzureDnsZoneSoaRecord) GetEmail() string {
 	if x != nil {
-		return x.RecordType
-	}
-	return dnsrecordtype.DnsRecordType(0)
-}
-
-func (x *AzureDnsRecord) GetName() string {
-	if x != nil {
-		return x.Name
+		return x.Email
 	}
 	return ""
 }
 
-func (x *AzureDnsRecord) GetValues() []string {
-	if x != nil {
-		return x.Values
-	}
-	return nil
-}
-
-func (x *AzureDnsRecord) GetTtlSeconds() int32 {
-	if x != nil && x.TtlSeconds != nil {
-		return *x.TtlSeconds
+func (x *AzureDnsZoneSoaRecord) GetExpireTime() int64 {
+	if x != nil && x.ExpireTime != nil {
+		return *x.ExpireTime
 	}
 	return 0
+}
+
+func (x *AzureDnsZoneSoaRecord) GetMinimumTtl() int64 {
+	if x != nil && x.MinimumTtl != nil {
+		return *x.MinimumTtl
+	}
+	return 0
+}
+
+func (x *AzureDnsZoneSoaRecord) GetRefreshTime() int64 {
+	if x != nil && x.RefreshTime != nil {
+		return *x.RefreshTime
+	}
+	return 0
+}
+
+func (x *AzureDnsZoneSoaRecord) GetRetryTime() int64 {
+	if x != nil && x.RetryTime != nil {
+		return *x.RetryTime
+	}
+	return 0
+}
+
+func (x *AzureDnsZoneSoaRecord) GetSerialNumber() int64 {
+	if x != nil && x.SerialNumber != nil {
+		return *x.SerialNumber
+	}
+	return 0
+}
+
+func (x *AzureDnsZoneSoaRecord) GetTtl() int64 {
+	if x != nil && x.Ttl != nil {
+		return *x.Ttl
+	}
+	return 0
+}
+
+func (x *AzureDnsZoneSoaRecord) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
 }
 
 var File_dev_planton_provider_azure_azurednszone_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurednszone_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"5dev/planton/provider/azure/azurednszone/v1/spec.proto\x12*dev.planton.provider.azure.azurednszone.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1aGdev/planton/shared/networking/enums/dnsrecordtype/dns_record_type.proto\x1a(dev/planton/shared/options/options.proto\"\x94\x03\n" +
-	"\x10AzureDnsZoneSpec\x12\x9a\x01\n" +
-	"\tzone_name\x18\x01 \x01(\tB}\xbaHz\xba\x01t\n" +
-	"\tzone_name\x128Zone name must be a valid DNS domain (e.g., example.com)\x1a-this.matches('^(?:[a-z0-9-]+[.])+[a-z]{2,}$')\xc8\x01\x01R\bzoneName\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12T\n" +
-	"\arecords\x18\x03 \x03(\v2:.dev.planton.provider.azure.azurednszone.v1.AzureDnsRecordR\arecords\"\xc4\x03\n" +
-	"\x0eAzureDnsRecord\x12i\n" +
-	"\vrecord_type\x18\x01 \x01(\x0e2@.dev.planton.shared.networking.enums.dnsrecordtype.DnsRecordTypeB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"recordType\x12\xe6\x01\n" +
-	"\x04name\x18\x02 \x01(\tB\xd1\x01\xbaH\xcd\x01\xba\x01\xc6\x01\n" +
-	"\vrecord_name\x12DRecord name should be a valid DNS name. Use a trailing dot for FQDN.\x1aqthis.matches('^(?:[*][.])?(?:[_a-z0-9](?:[_a-z0-9-]{0,61}[a-z0-9])?[.])+(?:[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?)?$')\xc8\x01\x01R\x04name\x12 \n" +
-	"\x06values\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06values\x12,\n" +
-	"\vttl_seconds\x18\x04 \x01(\x05B\x06\x8a\xa6\x1d\x0260H\x00R\n" +
-	"ttlSeconds\x88\x01\x01B\x0e\n" +
-	"\f_ttl_secondsB\xe7\x02\n" +
+	"5dev/planton/provider/azure/azurednszone/v1/spec.proto\x12*dev.planton.provider.azure.azurednszone.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfe\a\n" +
+	"\x10AzureDnsZoneSpec\x12\xc6\x02\n" +
+	"\tzone_name\x18\x01 \x01(\tB\xa8\x02\xbaH\xa4\x02\xba\x01\x9d\x02\n" +
+	"\x1aazure_dns_zone_name_format\x12\x9a\x01Zone name must be a DNS domain name of at least two dot-separated labels, e.g. example.com -- lowercase letters, digits, and hyphens, with no trailing dot\x1abthis.matches('^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$')\xc8\x01\x01R\bzoneName\x12\x8c\x01\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12`\n" +
+	"\n" +
+	"soa_record\x18\x03 \x01(\v2A.dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSoaRecordR\tsoaRecord\x12Z\n" +
+	"\x04tags\x18\x04 \x03(\v2F.dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x9a\x02\xbaH\x96\x02\x1a\x93\x02\n" +
+	")azure_dns_zone_name_plus_soa_email_length\x12\x8f\x01The zone name and the SOA email together cannot exceed 253 characters (Azure combines them into the SOA record) -- shorten the soa_record.email\x1aT!has(this.soa_record) || (size(this.zone_name) + size(this.soa_record.email)) <= 253\"\x94\b\n" +
+	"\x15AzureDnsZoneSoaRecord\x12\xc3\x03\n" +
+	"\x05email\x18\x01 \x01(\tB\xac\x03\xbaH\xa8\x03\xba\x01\xa1\x03\n" +
+	"\x1fazure_dns_zone_soa_email_format\x12\xdb\x01SOA email must use dots instead of @ (e.g. dnsadmin.example.com for dnsadmin@example.com), contain only letters, digits, dots, underscores, and hyphens, and have 2-34 dot-separated segments of at most 63 characters each\x1a\x9f\x01this.matches('^[a-zA-Z0-9._-]+$') && !this.contains('..') && size(this.split('.')) >= 2 && size(this.split('.')) <= 34 && this.split('.').all(s, size(s) <= 63)\xc8\x01\x01R\x05email\x128\n" +
+	"\vexpire_time\x18\x02 \x01(\x03B\x12\xbaH\x04\"\x02(\x00\x8a\xa6\x1d\a2419200H\x00R\n" +
+	"expireTime\x88\x01\x01\x124\n" +
+	"\vminimum_ttl\x18\x03 \x01(\x03B\x0e\xbaH\x04\"\x02(\x00\x8a\xa6\x1d\x03300H\x01R\n" +
+	"minimumTtl\x88\x01\x01\x127\n" +
+	"\frefresh_time\x18\x04 \x01(\x03B\x0f\xbaH\x04\"\x02(\x00\x8a\xa6\x1d\x043600H\x02R\vrefreshTime\x88\x01\x01\x122\n" +
+	"\n" +
+	"retry_time\x18\x05 \x01(\x03B\x0e\xbaH\x04\"\x02(\x00\x8a\xa6\x1d\x03300H\x03R\tretryTime\x88\x01\x01\x126\n" +
+	"\rserial_number\x18\x06 \x01(\x03B\f\xbaH\x04\"\x02(\x00\x8a\xa6\x1d\x011H\x04R\fserialNumber\x88\x01\x01\x12,\n" +
+	"\x03ttl\x18\a \x01(\x03B\x15\xbaH\n" +
+	"\"\b\x18\xff\xff\xff\xff\a(\x00\x8a\xa6\x1d\x043600H\x05R\x03ttl\x88\x01\x01\x12_\n" +
+	"\x04tags\x18\b \x03(\v2K.dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSoaRecord.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x0e\n" +
+	"\f_expire_timeB\x0e\n" +
+	"\f_minimum_ttlB\x0f\n" +
+	"\r_refresh_timeB\r\n" +
+	"\v_retry_timeB\x10\n" +
+	"\x0e_serial_numberB\x06\n" +
+	"\x04_ttlB\xe7\x02\n" +
 	".com.dev.planton.provider.azure.azurednszone.v1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurednszone/v1;azurednszonev1\xa2\x02\x05DPPAA\xaa\x02*Dev.Planton.Provider.Azure.Azurednszone.V1\xca\x02*Dev\\Planton\\Provider\\Azure\\Azurednszone\\V1\xe2\x026Dev\\Planton\\Provider\\Azure\\Azurednszone\\V1\\GPBMetadata\xea\x02/Dev::Planton::Provider::Azure::Azurednszone::V1b\x06proto3"
 
 var (
@@ -202,22 +311,24 @@ func file_dev_planton_provider_azure_azurednszone_v1_spec_proto_rawDescGZIP() []
 	return file_dev_planton_provider_azure_azurednszone_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurednszone_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_azure_azurednszone_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_azure_azurednszone_v1_spec_proto_goTypes = []any{
-	(*AzureDnsZoneSpec)(nil),         // 0: dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSpec
-	(*AzureDnsRecord)(nil),           // 1: dev.planton.provider.azure.azurednszone.v1.AzureDnsRecord
-	(*v1.StringValueOrRef)(nil),      // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(dnsrecordtype.DnsRecordType)(0), // 3: dev.planton.shared.networking.enums.dnsrecordtype.DnsRecordType
+	(*AzureDnsZoneSpec)(nil),      // 0: dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSpec
+	(*AzureDnsZoneSoaRecord)(nil), // 1: dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSoaRecord
+	nil,                           // 2: dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSpec.TagsEntry
+	nil,                           // 3: dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSoaRecord.TagsEntry
+	(*v1.StringValueOrRef)(nil),   // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azurednszone_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSpec.records:type_name -> dev.planton.provider.azure.azurednszone.v1.AzureDnsRecord
-	3, // 2: dev.planton.provider.azure.azurednszone.v1.AzureDnsRecord.record_type:type_name -> dev.planton.shared.networking.enums.dnsrecordtype.DnsRecordType
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	4, // 0: dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSpec.soa_record:type_name -> dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSoaRecord
+	2, // 2: dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSpec.tags:type_name -> dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSpec.TagsEntry
+	3, // 3: dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSoaRecord.tags:type_name -> dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSoaRecord.TagsEntry
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurednszone_v1_spec_proto_init() }
@@ -232,7 +343,7 @@ func file_dev_planton_provider_azure_azurednszone_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurednszone_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azurednszone_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

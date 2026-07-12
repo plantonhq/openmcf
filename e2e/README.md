@@ -120,6 +120,22 @@ holding a frontend in the fixture subnet) blocks the entire reverse teardown
 chain behind it. Destroying a stack whose update failed is safe; it removes
 whatever was actually created.
 
+### Bare polymorphic references need an explicit `kind:` in scenario valueFrom
+
+Reference resolution determines the referenced kind from the `valueFrom.kind`
+field, falling back to the spec field's `default_kind` annotation. A **bare
+polymorphic reference** (a `StringValueOrRef` deliberately carrying NO
+`default_kind` because no kind dominates -- alias-record targets, diagnostic
+setting targets, metric-alert scopes) has no fallback, and the resolver leaves
+a kind-less reference on such a field UNTOUCHED rather than erroring. The
+module then receives an unresolved ref, sends nothing (or an empty string),
+and the failure surfaces at DEPLOY as a provider validation error that reads
+like a module defect ("one of either X or Y must be specified"). In scenario
+manifests, every reference on a bare polymorphic field must therefore carry
+the explicit `kind:` alongside `name:` and `fieldPath:` -- no offline gate
+catches the omission, because the manifest validates and the plan renders
+without it.
+
 ## E2E Profiles
 
 Profiles are KRM-style YAML files (`apiVersion: qa.planton.dev/v1`) that

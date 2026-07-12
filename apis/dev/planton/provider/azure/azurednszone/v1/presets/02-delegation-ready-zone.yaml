@@ -1,0 +1,18 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureDnsZone
+metadata:
+  name: my-delegation-ready-zone
+spec:
+  zoneName: example.com
+  resourceGroup:
+    value: <your-resource-group>
+  soaRecord:
+    # SOA email format: dots instead of @ (dnsadmin@your-domain.com).
+    email: dnsadmin.example.com
+    # Faster negative-caching (default 300): newly created records become
+    # visible to resolvers that asked before the record existed within a
+    # minute.
+    minimumTtl: 60
+  tags:
+    team: platform
+    cost-center: shared-infrastructure

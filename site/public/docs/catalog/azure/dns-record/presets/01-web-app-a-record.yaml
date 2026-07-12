@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureDnsRecord
+metadata:
+  name: my-web-app-a-record
+spec:
+  resourceGroup:
+    value: <your-resource-group>
+  zoneName:
+    value: example.com
+  name: www
+  # 5 minutes: fast enough to move traffic, cheap enough to serve.
+  ttlSeconds: 300
+  a:
+    addresses:
+      - 203.0.113.10

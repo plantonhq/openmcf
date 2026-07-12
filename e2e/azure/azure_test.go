@@ -987,6 +987,45 @@ func TestAzureEventHubNamespaceCustomerManagedKey_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureeventhubnamespacecustomermanagedkey", "terraform")
 }
 
+// --- Azure public DNS (fixture RG -> zone with SOA customization; fixture zone -> typed record sets incl. the alias-A seam) ---
+
+func TestAzureDnsZone_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurednszone", "pulumi")
+}
+func TestAzureDnsZone_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurednszone", "terraform")
+}
+
+func TestAzureDnsRecord_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurednsrecord", "pulumi")
+}
+func TestAzureDnsRecord_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurednsrecord", "terraform")
+}
+
+// --- Azure Container Apps TLS/domain family (fixture environment -> BYO certificate; managed certificate + custom domain are profile-deferred: both block on public-DNS domain validation) ---
+
+func TestAzureContainerAppEnvironmentCertificate_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappenvironmentcertificate", "pulumi")
+}
+func TestAzureContainerAppEnvironmentCertificate_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappenvironmentcertificate", "terraform")
+}
+
+func TestAzureContainerAppEnvironmentManagedCertificate_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappenvironmentmanagedcertificate", "pulumi")
+}
+func TestAzureContainerAppEnvironmentManagedCertificate_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappenvironmentmanagedcertificate", "terraform")
+}
+
+func TestAzureContainerAppCustomDomain_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappcustomdomain", "pulumi")
+}
+func TestAzureContainerAppCustomDomain_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappcustomdomain", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

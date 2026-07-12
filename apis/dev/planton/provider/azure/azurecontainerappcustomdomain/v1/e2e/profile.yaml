@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurecontainerappcustomdomain
+spec:
+  # Azure validates domain ownership against PUBLIC DNS while creating
+  # the binding: the asuid TXT record (carrying the app's verification
+  # id) must resolve on the open internet, which requires a
+  # registrar-delegated domain the test tenant does not own -- an Azure
+  # DNS zone alone is not publicly resolvable, so the create operation
+  # fails at the Azure layer regardless of certificate flow. The
+  # component closes on its offline gate (spec tests, full tofu plan
+  # proving both count-gated variants, parity audit, outputs
+  # conformance). Unblock path: delegate any real (sub)domain to an
+  # Azure DNS zone in the test subscription, point the scenario's
+  # domain_name at it, publish the asuid TXT + CNAME records, and this
+  # scenario runs unchanged.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Custom-domain binding blocks on Azure validating the asuid TXT
+    record against public DNS; the test tenant owns no
+    registrar-delegated domain, so the create operation cannot complete.
+    Offline gate green; scenario ships ready-to-run once a delegated
+    domain exists.
+  validated_provisioners: []
+  timeout_minutes: 60

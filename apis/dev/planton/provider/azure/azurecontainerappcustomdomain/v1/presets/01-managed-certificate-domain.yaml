@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppCustomDomain
+metadata:
+  name: my-managed-certificate-domain
+spec:
+  domainName: app.example.com
+  containerAppId:
+    valueFrom:
+      kind: AzureContainerApp
+      name: <your-app>
+      fieldPath: status.outputs.container_app_id
+  # No certificate fields: the Azure-managed flow. Deploy an
+  # AzureContainerAppEnvironmentManagedCertificate for the same hostname
+  # after this binding -- Azure attaches it automatically once issued.

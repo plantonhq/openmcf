@@ -1,0 +1,36 @@
+# SRV AzureDnsRecord scenario: a SIP service locator on the fixture zone
+# with real priority/weight/port/target values -- proving the typed SRV
+# entry end to end (each field is user-declared, never synthesized) and
+# the underscore-led service name the record-name contract admits.
+apiVersion: azure.planton.dev/v1
+kind: AzureDnsRecord
+metadata:
+  name: planton-oss-e2e-azurednsrecord-srv
+  id: planton-oss-e2e-azurednsrecord-srv
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurednsrecord
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  zoneName:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-dnszone
+  name: _sip._tcp
+  ttlSeconds: 300
+  srv:
+    - priority: 0
+      weight: 5
+      port: 5060
+      target: sip1.planton-e2e-fixture.example.com
+    - priority: 10
+      weight: 10
+      port: 5061
+      target: sip2.planton-e2e-fixture.example.com

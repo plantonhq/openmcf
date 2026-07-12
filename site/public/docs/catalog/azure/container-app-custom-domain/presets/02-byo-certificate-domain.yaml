@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppCustomDomain
+metadata:
+  name: my-byo-certificate-domain
+spec:
+  domainName: app.example.com
+  containerAppId:
+    valueFrom:
+      kind: AzureContainerApp
+      name: <your-app>
+      fieldPath: status.outputs.container_app_id
+  containerAppEnvironmentCertificateId:
+    valueFrom:
+      kind: AzureContainerAppEnvironmentCertificate
+      name: <your-certificate>
+      fieldPath: status.outputs.certificate_id
+  # SNI_ENABLED serves TLS for the hostname with the referenced
+  # certificate -- the standard choice for every BYO binding.
+  certificateBindingType: SNI_ENABLED

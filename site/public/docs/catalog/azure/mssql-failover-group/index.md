@@ -76,7 +76,7 @@ After deployment, point applications at `status.outputs.read_write_listener_endp
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `databaseIds` | `StringValueOrRef[]` | `[]` | Databases on the primary to replicate. Default `AzureMssqlDatabase` references. |
-| `readonlyEndpointFailoverPolicyEnabled` | `bool` | `true` | Fail over the read-only listener too. |
+| `readonlyEndpointFailoverPolicyEnabled` | `bool` | `false` | Fail over the read-only listener too (disabled when unset). |
 | `tags` | `map(string)` | `{}` | User tags, merged over Planton-derived tags (user wins). |
 
 ## Stack Outputs

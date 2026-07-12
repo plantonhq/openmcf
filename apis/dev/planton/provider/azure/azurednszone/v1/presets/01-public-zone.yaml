@@ -1,8 +1,10 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureDnsZone
 metadata:
-  name: my-dns-zone
+  name: my-public-zone
 spec:
-  zoneName: <your-domain.com>
+  zoneName: example.com
   resourceGroup:
-    value: "<your-resource-group-name>"
+    value: <your-resource-group>
+  tags:
+    team: platform

@@ -2181,6 +2181,89 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AzureContainerAppEnvironmentCertificate: certificate_id is the
+			// binding seam AzureContainerAppCustomDomain consumes; the
+			// certificate facts feed expiry monitoring.
+			name: "AzureContainerAppEnvironmentCertificate",
+			kind: cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironmentCertificate,
+			rawOutputs: map[string]interface{}{
+				"certificate_id":  "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.App/managedEnvironments/app-env/certificates/app.example.com",
+				"subject_name":    "CN=app.example.com",
+				"issuer":          "CN=R11, O=Let's Encrypt, C=US",
+				"issue_date":      "2026-07-01T00:00:00+00:00",
+				"expiration_date": "2026-09-29T00:00:00+00:00",
+				"thumbprint":      "A1B2C3D4E5F60718293A4B5C6D7E8F9012345678",
+			},
+			mustPopulate: []string{
+				"certificate_id", "subject_name", "issuer",
+				"issue_date", "expiration_date", "thumbprint",
+			},
+		},
+		{
+			// AzureContainerAppEnvironmentManagedCertificate:
+			// certificate_id identifies the Azure-issued certificate;
+			// validation_token is informational once issuance completes.
+			name: "AzureContainerAppEnvironmentManagedCertificate",
+			kind: cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironmentManagedCertificate,
+			rawOutputs: map[string]interface{}{
+				"certificate_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.App/managedEnvironments/app-env/managedCertificates/app-example-com",
+				"validation_token": "0123456789abcdef0123456789abcdef",
+			},
+			mustPopulate: []string{
+				"certificate_id", "validation_token",
+			},
+		},
+		{
+			// AzureContainerAppCustomDomain: custom_domain_id is the
+			// providers' synthetic binding identifier (the binding lives
+			// inside the app's ingress configuration, not as its own ARM
+			// resource). managed_certificate_id is legitimately empty for
+			// bring-your-own bindings and until Azure attaches the managed
+			// certificate, so it is not asserted.
+			name: "AzureContainerAppCustomDomain",
+			kind: cloudresourcekind.CloudResourceKind_AzureContainerAppCustomDomain,
+			rawOutputs: map[string]interface{}{
+				"custom_domain_id":       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.App/containerApps/web-app/customDomainName/app.example.com",
+				"managed_certificate_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.App/managedEnvironments/app-env/managedCertificates/app-example-com",
+			},
+			mustPopulate: []string{
+				"custom_domain_id", "managed_certificate_id",
+			},
+		},
+		{
+			// AzureDnsZone: zone_name (with resource_group_name) is the join
+			// key AzureDnsRecord addresses record sets through; zone_id is
+			// the ARM seam for kinds watching the zone (Front Door custom
+			// domains, AKS web-app routing); name_servers is the registrar
+			// delegation handoff.
+			name: "AzureDnsZone",
+			kind: cloudresourcekind.CloudResourceKind_AzureDnsZone,
+			rawOutputs: map[string]interface{}{
+				"zone_id":                   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dns-rg/providers/Microsoft.Network/dnsZones/example.com",
+				"zone_name":                 "example.com",
+				"resource_group_name":       "dns-rg",
+				"name_servers":              []interface{}{"ns1-05.azure-dns.com.", "ns2-05.azure-dns.net.", "ns3-05.azure-dns.org.", "ns4-05.azure-dns.info."},
+				"max_number_of_record_sets": 10000,
+			},
+			mustPopulate: []string{
+				"zone_id", "zone_name", "resource_group_name",
+				"name_servers", "max_number_of_record_sets",
+			},
+		},
+		{
+			// AzureDnsRecord: record_id embeds the record type as its own
+			// ARM path segment; fqdn is DNS's own trailing-dot spelling.
+			name: "AzureDnsRecord",
+			kind: cloudresourcekind.CloudResourceKind_AzureDnsRecord,
+			rawOutputs: map[string]interface{}{
+				"record_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dns-rg/providers/Microsoft.Network/dnsZones/example.com/MX/@",
+				"fqdn":      "example.com.",
+			},
+			mustPopulate: []string{
+				"record_id", "fqdn",
+			},
+		},
+		{
 			// AzureLogAnalyticsWorkspace: workspace_id (the ARM id) is the FK
 			// seam App Insights / AKS / Container Apps / diagnostic settings
 			// reference; workspace_customer_id is the agent-facing GUID the

@@ -1,246 +1,264 @@
 package module
 
 import (
-	"fmt"
+	"strconv"
 
 	"github.com/pkg/errors"
 	azurednsrecordv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurednsrecord/v1"
-	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider"
 	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/dns"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// caaTagWireValues maps the spec's CAA tag enum value names to Azure's
+// wire vocabulary -- the provider validates the lowercase form
+// case-sensitively.
+var caaTagWireValues = map[string]string{
+	"ISSUE":        "issue",
+	"ISSUEWILD":    "issuewild",
+	"IODEF":        "iodef",
+	"CONTACTEMAIL": "contactemail",
+}
+
+// Resources creates one DNS record set in an Azure public DNS zone.
+//
+// The record type is whichever typed payload the spec carries (validation
+// guarantees exactly one), so exactly one branch below runs. Azure's
+// management plane addresses record sets by (resource group, zone name,
+// type, record name) -- there is no ARM-id addressing mode for record
+// sets on either engine.
+//
+// Alias records (A/AAAA/CNAME only): when the payload carries
+// target_resource_id instead of literal values, Azure keeps the answer in
+// sync with the referenced resource -- no drift window when a Public IP's
+// address changes, and a way to point the zone APEX at an Azure resource
+// where DNS itself forbids CNAME.
 func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
-	azureProviderConfig := stackInput.ProviderConfig
 
-	// Create azure provider using the credentials from the input
-	azureProvider, err := azure.NewProvider(ctx,
-		"azure",
-		&azure.ProviderArgs{
-			ClientId:       pulumi.String(azureProviderConfig.ClientId),
-			ClientSecret:   pulumi.String(azureProviderConfig.ClientSecret),
-			SubscriptionId: pulumi.String(azureProviderConfig.SubscriptionId),
-			TenantId:       pulumi.String(azureProviderConfig.TenantId),
-		})
+	// Build the Azure provider from the stack input via the shared builder, which resolves
+	// the right credential mechanism (static client secret, keyless web identity, or ambient chain).
+	azureProvider, err := pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to create azure provider")
 	}
 
 	spec := locals.AzureDnsRecord.Spec
-	recordType := spec.Type
-	recordName := locals.RecordName
-	zoneName := locals.ZoneName
-	resourceGroup := locals.ResourceGroupName
-	ttl := locals.TTL
 
-	var recordId pulumi.IDOutput
+	// The platform materializes the proto default (300) before the module
+	// runs; the presence guard is a same-value safety net for direct
+	// stack-input paths, never a different fallback.
+	ttl := 300
+	if spec.TtlSeconds != nil {
+		ttl = int(*spec.TtlSeconds)
+	}
+
+	// Exactly one record resource materializes; both its ARM id and its
+	// fqdn flatten onto the same stack outputs regardless of type.
+	var recordId pulumi.StringOutput
 	var fqdn pulumi.StringOutput
 
-	// Create the appropriate DNS record based on record type
-	switch recordType {
-	case azurednsrecordv1.AzureDnsRecordSpec_A:
-		record, err := dns.NewARecord(ctx,
-			"dns-a-record",
-			&dns.ARecordArgs{
-				Name:              pulumi.String(recordName),
-				ZoneName:          pulumi.String(zoneName),
-				ResourceGroupName: pulumi.String(resourceGroup),
-				Ttl:               pulumi.Int(ttl),
-				Records:           pulumi.ToStringArray(spec.Values),
-				Tags:              pulumi.ToStringMap(locals.AzureTags),
-			},
-			pulumi.Provider(azureProvider))
+	switch {
+	case spec.A != nil:
+		args := &dns.ARecordArgs{
+			Name:              pulumi.String(spec.Name),
+			ZoneName:          pulumi.String(locals.ZoneName),
+			ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+			Ttl:               pulumi.Int(ttl),
+			Tags:              pulumi.ToStringMap(locals.AzureTags),
+		}
+		// Spec validation guarantees exactly one of addresses/alias; the
+		// unused argument stays nil so the provider never sees an
+		// empty-but-present value.
+		if len(spec.A.Addresses) > 0 {
+			args.Records = pulumi.ToStringArray(spec.A.Addresses)
+		}
+		if spec.A.TargetResourceId != nil && spec.A.TargetResourceId.GetValue() != "" {
+			args.TargetResourceId = pulumi.String(spec.A.TargetResourceId.GetValue())
+		}
+		created, err := dns.NewARecord(ctx, "main", args, pulumi.Provider(azureProvider))
 		if err != nil {
-			return errors.Wrapf(err, "failed to create A record %s", recordName)
+			return errors.Wrapf(err, "failed to create a record %s", spec.Name)
 		}
-		recordId = record.ID()
-		fqdn = record.Fqdn
+		recordId = created.ID().ToStringOutput()
+		fqdn = created.Fqdn
 
-	case azurednsrecordv1.AzureDnsRecordSpec_AAAA:
-		record, err := dns.NewAaaaRecord(ctx,
-			"dns-aaaa-record",
-			&dns.AaaaRecordArgs{
-				Name:              pulumi.String(recordName),
-				ZoneName:          pulumi.String(zoneName),
-				ResourceGroupName: pulumi.String(resourceGroup),
-				Ttl:               pulumi.Int(ttl),
-				Records:           pulumi.ToStringArray(spec.Values),
-				Tags:              pulumi.ToStringMap(locals.AzureTags),
-			},
-			pulumi.Provider(azureProvider))
+	case spec.Aaaa != nil:
+		args := &dns.AaaaRecordArgs{
+			Name:              pulumi.String(spec.Name),
+			ZoneName:          pulumi.String(locals.ZoneName),
+			ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+			Ttl:               pulumi.Int(ttl),
+			Tags:              pulumi.ToStringMap(locals.AzureTags),
+		}
+		if len(spec.Aaaa.Addresses) > 0 {
+			args.Records = pulumi.ToStringArray(spec.Aaaa.Addresses)
+		}
+		if spec.Aaaa.TargetResourceId != nil && spec.Aaaa.TargetResourceId.GetValue() != "" {
+			args.TargetResourceId = pulumi.String(spec.Aaaa.TargetResourceId.GetValue())
+		}
+		created, err := dns.NewAaaaRecord(ctx, "main", args, pulumi.Provider(azureProvider))
 		if err != nil {
-			return errors.Wrapf(err, "failed to create AAAA record %s", recordName)
+			return errors.Wrapf(err, "failed to create aaaa record %s", spec.Name)
 		}
-		recordId = record.ID()
-		fqdn = record.Fqdn
+		recordId = created.ID().ToStringOutput()
+		fqdn = created.Fqdn
 
-	case azurednsrecordv1.AzureDnsRecordSpec_CNAME:
-		if len(spec.Values) == 0 {
-			return errors.New("CNAME record requires at least one value")
+	case spec.Cname != nil:
+		args := &dns.CNameRecordArgs{
+			Name:              pulumi.String(spec.Name),
+			ZoneName:          pulumi.String(locals.ZoneName),
+			ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+			Ttl:               pulumi.Int(ttl),
+			Tags:              pulumi.ToStringMap(locals.AzureTags),
 		}
-		record, err := dns.NewCNameRecord(ctx,
-			"dns-cname-record",
-			&dns.CNameRecordArgs{
-				Name:              pulumi.String(recordName),
-				ZoneName:          pulumi.String(zoneName),
-				ResourceGroupName: pulumi.String(resourceGroup),
-				Ttl:               pulumi.Int(ttl),
-				Record:            pulumi.String(spec.Values[0]),
-				Tags:              pulumi.ToStringMap(locals.AzureTags),
-			},
-			pulumi.Provider(azureProvider))
+		if spec.Cname.Value != "" {
+			args.Record = pulumi.String(spec.Cname.Value)
+		}
+		if spec.Cname.TargetResourceId != nil && spec.Cname.TargetResourceId.GetValue() != "" {
+			args.TargetResourceId = pulumi.String(spec.Cname.TargetResourceId.GetValue())
+		}
+		created, err := dns.NewCNameRecord(ctx, "main", args, pulumi.Provider(azureProvider))
 		if err != nil {
-			return errors.Wrapf(err, "failed to create CNAME record %s", recordName)
+			return errors.Wrapf(err, "failed to create cname record %s", spec.Name)
 		}
-		recordId = record.ID()
-		fqdn = record.Fqdn
+		recordId = created.ID().ToStringOutput()
+		fqdn = created.Fqdn
 
-	case azurednsrecordv1.AzureDnsRecordSpec_MX:
-		mxRecords := make(dns.MxRecordRecordArray, 0)
-		for _, value := range spec.Values {
+	case len(spec.Mx) > 0:
+		// Each entry carries its own preference, so multi-server mail
+		// setups (10 primary / 20 secondary) express exactly. The
+		// provider's preference field is string-typed; the spec's integer
+		// is converted here.
+		mxRecords := make(dns.MxRecordRecordArray, 0, len(spec.Mx))
+		for _, entry := range spec.Mx {
 			mxRecords = append(mxRecords, &dns.MxRecordRecordArgs{
-				Preference: pulumi.String(fmt.Sprintf("%d", locals.MxPriority)),
-				Exchange:   pulumi.String(value),
+				Preference: pulumi.String(strconv.Itoa(int(entry.GetPreference()))),
+				Exchange:   pulumi.String(entry.Exchange),
 			})
 		}
-		record, err := dns.NewMxRecord(ctx,
-			"dns-mx-record",
-			&dns.MxRecordArgs{
-				Name:              pulumi.String(recordName),
-				ZoneName:          pulumi.String(zoneName),
-				ResourceGroupName: pulumi.String(resourceGroup),
-				Ttl:               pulumi.Int(ttl),
-				Records:           mxRecords,
-				Tags:              pulumi.ToStringMap(locals.AzureTags),
-			},
-			pulumi.Provider(azureProvider))
+		created, err := dns.NewMxRecord(ctx, "main", &dns.MxRecordArgs{
+			Name:              pulumi.String(spec.Name),
+			ZoneName:          pulumi.String(locals.ZoneName),
+			ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+			Ttl:               pulumi.Int(ttl),
+			Records:           mxRecords,
+			Tags:              pulumi.ToStringMap(locals.AzureTags),
+		}, pulumi.Provider(azureProvider))
 		if err != nil {
-			return errors.Wrapf(err, "failed to create MX record %s", recordName)
+			return errors.Wrapf(err, "failed to create mx record %s", spec.Name)
 		}
-		recordId = record.ID()
-		fqdn = record.Fqdn
+		recordId = created.ID().ToStringOutput()
+		fqdn = created.Fqdn
 
-	case azurednsrecordv1.AzureDnsRecordSpec_TXT:
-		txtRecords := make(dns.TxtRecordRecordArray, 0)
-		for _, value := range spec.Values {
+	case len(spec.Srv) > 0:
+		srvRecords := make(dns.SrvRecordRecordArray, 0, len(spec.Srv))
+		for _, entry := range spec.Srv {
+			srvRecords = append(srvRecords, &dns.SrvRecordRecordArgs{
+				Priority: pulumi.Int(int(entry.GetPriority())),
+				Weight:   pulumi.Int(int(entry.GetWeight())),
+				Port:     pulumi.Int(int(entry.GetPort())),
+				Target:   pulumi.String(entry.Target),
+			})
+		}
+		created, err := dns.NewSrvRecord(ctx, "main", &dns.SrvRecordArgs{
+			Name:              pulumi.String(spec.Name),
+			ZoneName:          pulumi.String(locals.ZoneName),
+			ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+			Ttl:               pulumi.Int(ttl),
+			Records:           srvRecords,
+			Tags:              pulumi.ToStringMap(locals.AzureTags),
+		}, pulumi.Provider(azureProvider))
+		if err != nil {
+			return errors.Wrapf(err, "failed to create srv record %s", spec.Name)
+		}
+		recordId = created.ID().ToStringOutput()
+		fqdn = created.Fqdn
+
+	case len(spec.Caa) > 0:
+		caaRecords := make(dns.CaaRecordRecordArray, 0, len(spec.Caa))
+		for _, entry := range spec.Caa {
+			caaRecords = append(caaRecords, &dns.CaaRecordRecordArgs{
+				Flags: pulumi.Int(int(entry.GetFlags())),
+				Tag:   pulumi.String(caaTagWireValues[entry.Tag.String()]),
+				Value: pulumi.String(entry.Value),
+			})
+		}
+		created, err := dns.NewCaaRecord(ctx, "main", &dns.CaaRecordArgs{
+			Name:              pulumi.String(spec.Name),
+			ZoneName:          pulumi.String(locals.ZoneName),
+			ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+			Ttl:               pulumi.Int(ttl),
+			Records:           caaRecords,
+			Tags:              pulumi.ToStringMap(locals.AzureTags),
+		}, pulumi.Provider(azureProvider))
+		if err != nil {
+			return errors.Wrapf(err, "failed to create caa record %s", spec.Name)
+		}
+		recordId = created.ID().ToStringOutput()
+		fqdn = created.Fqdn
+
+	case len(spec.Txt) > 0:
+		// Values up to 4096 characters are legal: the provider
+		// transparently splits each into the 254-character strings DNS
+		// requires and reassembles them on read.
+		txtRecords := make(dns.TxtRecordRecordArray, 0, len(spec.Txt))
+		for _, value := range spec.Txt {
 			txtRecords = append(txtRecords, &dns.TxtRecordRecordArgs{
 				Value: pulumi.String(value),
 			})
 		}
-		record, err := dns.NewTxtRecord(ctx,
-			"dns-txt-record",
-			&dns.TxtRecordArgs{
-				Name:              pulumi.String(recordName),
-				ZoneName:          pulumi.String(zoneName),
-				ResourceGroupName: pulumi.String(resourceGroup),
-				Ttl:               pulumi.Int(ttl),
-				Records:           txtRecords,
-				Tags:              pulumi.ToStringMap(locals.AzureTags),
-			},
-			pulumi.Provider(azureProvider))
+		created, err := dns.NewTxtRecord(ctx, "main", &dns.TxtRecordArgs{
+			Name:              pulumi.String(spec.Name),
+			ZoneName:          pulumi.String(locals.ZoneName),
+			ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+			Ttl:               pulumi.Int(ttl),
+			Records:           txtRecords,
+			Tags:              pulumi.ToStringMap(locals.AzureTags),
+		}, pulumi.Provider(azureProvider))
 		if err != nil {
-			return errors.Wrapf(err, "failed to create TXT record %s", recordName)
+			return errors.Wrapf(err, "failed to create txt record %s", spec.Name)
 		}
-		recordId = record.ID()
-		fqdn = record.Fqdn
+		recordId = created.ID().ToStringOutput()
+		fqdn = created.Fqdn
 
-	case azurednsrecordv1.AzureDnsRecordSpec_NS:
-		record, err := dns.NewNsRecord(ctx,
-			"dns-ns-record",
-			&dns.NsRecordArgs{
-				Name:              pulumi.String(recordName),
-				ZoneName:          pulumi.String(zoneName),
-				ResourceGroupName: pulumi.String(resourceGroup),
-				Ttl:               pulumi.Int(ttl),
-				Records:           pulumi.ToStringArray(spec.Values),
-				Tags:              pulumi.ToStringMap(locals.AzureTags),
-			},
-			pulumi.Provider(azureProvider))
+	case len(spec.Ns) > 0:
+		// Delegates a CHILD subdomain to another zone's name servers.
+		// The zone's own apex NS records are Azure-managed.
+		created, err := dns.NewNsRecord(ctx, "main", &dns.NsRecordArgs{
+			Name:              pulumi.String(spec.Name),
+			ZoneName:          pulumi.String(locals.ZoneName),
+			ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+			Ttl:               pulumi.Int(ttl),
+			Records:           pulumi.ToStringArray(spec.Ns),
+			Tags:              pulumi.ToStringMap(locals.AzureTags),
+		}, pulumi.Provider(azureProvider))
 		if err != nil {
-			return errors.Wrapf(err, "failed to create NS record %s", recordName)
+			return errors.Wrapf(err, "failed to create ns record %s", spec.Name)
 		}
-		recordId = record.ID()
-		fqdn = record.Fqdn
+		recordId = created.ID().ToStringOutput()
+		fqdn = created.Fqdn
 
-	case azurednsrecordv1.AzureDnsRecordSpec_SRV:
-		srvRecords := make(dns.SrvRecordRecordArray, 0)
-		for _, value := range spec.Values {
-			// SRV records should be in format "priority weight port target"
-			// For simplicity, we'll use defaults
-			srvRecords = append(srvRecords, &dns.SrvRecordRecordArgs{
-				Priority: pulumi.Int(10),
-				Weight:   pulumi.Int(10),
-				Port:     pulumi.Int(80),
-				Target:   pulumi.String(value),
-			})
-		}
-		record, err := dns.NewSrvRecord(ctx,
-			"dns-srv-record",
-			&dns.SrvRecordArgs{
-				Name:              pulumi.String(recordName),
-				ZoneName:          pulumi.String(zoneName),
-				ResourceGroupName: pulumi.String(resourceGroup),
-				Ttl:               pulumi.Int(ttl),
-				Records:           srvRecords,
-				Tags:              pulumi.ToStringMap(locals.AzureTags),
-			},
-			pulumi.Provider(azureProvider))
+	case len(spec.Ptr) > 0:
+		created, err := dns.NewPtrRecord(ctx, "main", &dns.PtrRecordArgs{
+			Name:              pulumi.String(spec.Name),
+			ZoneName:          pulumi.String(locals.ZoneName),
+			ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+			Ttl:               pulumi.Int(ttl),
+			Records:           pulumi.ToStringArray(spec.Ptr),
+			Tags:              pulumi.ToStringMap(locals.AzureTags),
+		}, pulumi.Provider(azureProvider))
 		if err != nil {
-			return errors.Wrapf(err, "failed to create SRV record %s", recordName)
+			return errors.Wrapf(err, "failed to create ptr record %s", spec.Name)
 		}
-		recordId = record.ID()
-		fqdn = record.Fqdn
-
-	case azurednsrecordv1.AzureDnsRecordSpec_CAA:
-		caaRecords := make(dns.CaaRecordRecordArray, 0)
-		for _, value := range spec.Values {
-			caaRecords = append(caaRecords, &dns.CaaRecordRecordArgs{
-				Flags: pulumi.Int(0),
-				Tag:   pulumi.String("issue"),
-				Value: pulumi.String(value),
-			})
-		}
-		record, err := dns.NewCaaRecord(ctx,
-			"dns-caa-record",
-			&dns.CaaRecordArgs{
-				Name:              pulumi.String(recordName),
-				ZoneName:          pulumi.String(zoneName),
-				ResourceGroupName: pulumi.String(resourceGroup),
-				Ttl:               pulumi.Int(ttl),
-				Records:           caaRecords,
-				Tags:              pulumi.ToStringMap(locals.AzureTags),
-			},
-			pulumi.Provider(azureProvider))
-		if err != nil {
-			return errors.Wrapf(err, "failed to create CAA record %s", recordName)
-		}
-		recordId = record.ID()
-		fqdn = record.Fqdn
-
-	case azurednsrecordv1.AzureDnsRecordSpec_PTR:
-		record, err := dns.NewPtrRecord(ctx,
-			"dns-ptr-record",
-			&dns.PtrRecordArgs{
-				Name:              pulumi.String(recordName),
-				ZoneName:          pulumi.String(zoneName),
-				ResourceGroupName: pulumi.String(resourceGroup),
-				Ttl:               pulumi.Int(ttl),
-				Records:           pulumi.ToStringArray(spec.Values),
-				Tags:              pulumi.ToStringMap(locals.AzureTags),
-			},
-			pulumi.Provider(azureProvider))
-		if err != nil {
-			return errors.Wrapf(err, "failed to create PTR record %s", recordName)
-		}
-		recordId = record.ID()
-		fqdn = record.Fqdn
+		recordId = created.ID().ToStringOutput()
+		fqdn = created.Fqdn
 
 	default:
-		return errors.Errorf("unsupported DNS record type: %s", recordType.String())
+		// Unreachable: spec validation requires exactly one payload.
+		return errors.New("no record payload present in spec")
 	}
 
-	// Export stack outputs
 	ctx.Export(OpRecordId, recordId)
 	ctx.Export(OpFqdn, fqdn)
 

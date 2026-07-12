@@ -8,206 +8,189 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestAzureDnsRecordSpec(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "AzureDnsRecordSpec Custom Validation Tests")
+	ginkgo.RunSpecs(t, "AzureDnsRecordSpec Validation Tests")
 }
 
-func stringRef(s string) *foreignkeyv1.StringValueOrRef {
-	return &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: s}}
+// literal builds a StringValueOrRef carrying a literal value.
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
 }
 
-var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
+// ref builds a StringValueOrRef carrying a value_from reference.
+func ref(name string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{Name: name},
+		},
+	}
+}
+
+func int32Ptr(v int32) *int32 { return &v }
+
+// validResource returns a minimal valid AzureDnsRecord (an A record) that
+// individual cases then mutate into the shape under test.
+func validResource() *AzureDnsRecord {
+	return &AzureDnsRecord{
+		ApiVersion: "azure.planton.dev/v1",
+		Kind:       "AzureDnsRecord",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "www-a-record",
+		},
+		Spec: &AzureDnsRecordSpec{
+			ResourceGroup: literal("my-rg"),
+			ZoneName:      ref("my-zone"),
+			Name:          "www",
+			A: &AzureDnsARecord{
+				Addresses: []string{"203.0.113.10"},
+			},
+		},
+	}
+}
+
+var _ = ginkgo.Describe("AzureDnsRecordSpec Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
 		ginkgo.Context("azure_dns_record", func() {
 
-			ginkgo.It("should not return a validation error for minimal valid A record", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-a-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:   AzureDnsRecordSpec_A,
-						Name:   "www",
-						Values: []string{"192.0.2.1"},
-					},
+			ginkgo.It("should not return a validation error for a minimal A record", func() {
+				err := protovalidate.Validate(validResource())
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a multi-address A record with a TTL and tags", func() {
+				input := validResource()
+				input.Spec.A.Addresses = []string{"203.0.113.10", "203.0.113.11"}
+				ttl := int32(60)
+				input.Spec.TtlSeconds = &ttl
+				input.Spec.Tags = map[string]string{"team": "web"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept an alias A record at the zone apex", func() {
+				input := validResource()
+				input.Spec.Name = "@"
+				input.Spec.A = &AzureDnsARecord{
+					TargetResourceId: ref("frontend-public-ip"),
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for zone apex record using @", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "apex-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:   AzureDnsRecordSpec_A,
-						Name:   "@",
-						Values: []string{"192.0.2.1"},
-					},
+			ginkgo.It("should accept an AAAA record", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Aaaa = &AzureDnsAaaaRecord{
+					Addresses: []string{"2001:db8::1"},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for wildcard record", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "wildcard-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:   AzureDnsRecordSpec_A,
-						Name:   "*",
-						Values: []string{"192.0.2.1"},
-					},
+			ginkgo.It("should accept a CNAME record with a literal target", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Cname = &AzureDnsCnameRecord{Value: "myapp.azurefd.net"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept an alias CNAME record", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Cname = &AzureDnsCnameRecord{
+					TargetResourceId: literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Cdn/profiles/p/afdEndpoints/e"),
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for MX record with priority", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "mx-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:       AzureDnsRecordSpec_MX,
-						Name:       "@",
-						Values:     []string{"mail.example.com"},
-						MxPriority: proto.Int32(10),
-					},
+			ginkgo.It("should accept an MX record set with multiple preferences", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Name = "@"
+				input.Spec.Mx = []*AzureDnsMxEntry{
+					{Preference: int32Ptr(10), Exchange: "mail1.example.com"},
+					{Preference: int32Ptr(20), Exchange: "mail2.example.com"},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for CNAME record", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "cname-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:   AzureDnsRecordSpec_CNAME,
-						Name:   "alias",
-						Values: []string{"target.example.com"},
-					},
+			ginkgo.It("should accept a null-MX entry with preference 0", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Name = "@"
+				input.Spec.Mx = []*AzureDnsMxEntry{
+					{Preference: int32Ptr(0), Exchange: "."},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for TXT record", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "txt-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:   AzureDnsRecordSpec_TXT,
-						Name:   "@",
-						Values: []string{"v=spf1 include:_spf.google.com ~all"},
-					},
+			ginkgo.It("should accept an SRV record on an underscore service name", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Name = "_sip._tcp"
+				input.Spec.Srv = []*AzureDnsSrvEntry{
+					{Priority: int32Ptr(0), Weight: int32Ptr(5), Port: int32Ptr(5060), Target: "sip.example.com"},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for nested subdomain", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "nested-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:   AzureDnsRecordSpec_A,
-						Name:   "api.v1",
-						Values: []string{"192.0.2.1"},
-					},
+			ginkgo.It("should accept a CAA record set", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Name = "@"
+				input.Spec.Caa = []*AzureDnsCaaEntry{
+					{Flags: int32Ptr(0), Tag: AzureDnsCaaTag_ISSUE, Value: "letsencrypt.org"},
+					{Flags: int32Ptr(0), Tag: AzureDnsCaaTag_IODEF, Value: "mailto:security@example.com"},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for zone_name using value_from", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "ref-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-								ValueFrom: &foreignkeyv1.ValueFromRef{
-									Name: "my-azure-zone",
-								},
-							},
-						},
-						Type:   AzureDnsRecordSpec_A,
-						Name:   "www",
-						Values: []string{"192.0.2.1"},
-					},
+			ginkgo.It("should accept a TXT record with a long value", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Name = "_dmarc"
+				longValue := make([]byte, 1000)
+				for i := range longValue {
+					longValue[i] = 'a'
 				}
+				input.Spec.Txt = []string{"v=DMARC1; p=reject;", string(longValue)}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept an NS delegation record", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Name = "team"
+				input.Spec.Ns = []string{"ns1-01.azure-dns.com.", "ns2-01.azure-dns.net."}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a PTR record", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Name = "10"
+				input.Spec.Ptr = []string{"host.example.com"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a wildcard record name", func() {
+				input := validResource()
+				input.Spec.Name = "*.app"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -217,158 +200,174 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 	ginkgo.Describe("When invalid input is passed", func() {
 		ginkgo.Context("azure_dns_record", func() {
 
-			ginkgo.It("should return a validation error when resource_group is missing", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:   AzureDnsRecordSpec_A,
-						Name:   "www",
-						Values: []string{"192.0.2.1"},
-					},
+			ginkgo.It("should return a validation error when no payload is set", func() {
+				input := validResource()
+				input.Spec.A = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when two payloads are set", func() {
+				input := validResource()
+				input.Spec.Cname = &AzureDnsCnameRecord{Value: "target.example.com"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an A record with neither addresses nor alias", func() {
+				input := validResource()
+				input.Spec.A = &AzureDnsARecord{}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an A record with both addresses and alias", func() {
+				input := validResource()
+				input.Spec.A = &AzureDnsARecord{
+					Addresses:        []string{"203.0.113.10"},
+					TargetResourceId: ref("frontend-public-ip"),
 				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an A record with an invalid IPv4 address", func() {
+				input := validResource()
+				input.Spec.A.Addresses = []string{"999.0.113.10"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an AAAA record with an IPv4 address", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Aaaa = &AzureDnsAaaaRecord{Addresses: []string{"203.0.113.10"}}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a CNAME with both value and alias", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Cname = &AzureDnsCnameRecord{
+					Value:            "target.example.com",
+					TargetResourceId: ref("cdn-endpoint"),
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an empty CNAME payload", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Cname = &AzureDnsCnameRecord{}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an MX entry without a preference", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Mx = []*AzureDnsMxEntry{{Exchange: "mail.example.com"}}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an MX entry without an exchange", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Mx = []*AzureDnsMxEntry{{Preference: int32Ptr(10)}}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an out-of-range MX preference", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Mx = []*AzureDnsMxEntry{{Preference: int32Ptr(70000), Exchange: "mail.example.com"}}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an SRV entry missing its port", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Name = "_sip._tcp"
+				input.Spec.Srv = []*AzureDnsSrvEntry{
+					{Priority: int32Ptr(0), Weight: int32Ptr(5), Target: "sip.example.com"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an SRV entry with an out-of-range port", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Name = "_sip._tcp"
+				input.Spec.Srv = []*AzureDnsSrvEntry{
+					{Priority: int32Ptr(0), Weight: int32Ptr(5), Port: int32Ptr(70000), Target: "sip.example.com"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a CAA entry with an unspecified tag", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Caa = []*AzureDnsCaaEntry{
+					{Flags: int32Ptr(0), Value: "letsencrypt.org"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a CAA entry with out-of-range flags", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Caa = []*AzureDnsCaaEntry{
+					{Flags: int32Ptr(300), Tag: AzureDnsCaaTag_ISSUE, Value: "letsencrypt.org"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a TXT value over 4096 characters", func() {
+				input := validResource()
+				input.Spec.A = nil
+				tooLong := make([]byte, 4097)
+				for i := range tooLong {
+					tooLong[i] = 'a'
+				}
+				input.Spec.Txt = []string{string(tooLong)}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an invalid record name", func() {
+				input := validResource()
+				input.Spec.Name = "Not A Record!"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a negative TTL", func() {
+				input := validResource()
+				ttl := int32(-1)
+				input.Spec.TtlSeconds = &ttl
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when zone_name is missing", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						Type:          AzureDnsRecordSpec_A,
-						Name:          "www",
-						Values:        []string{"192.0.2.1"},
-					},
-				}
+				input := validResource()
+				input.Spec.ZoneName = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when record_type is unspecified", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:   AzureDnsRecordSpec_record_type_unspecified,
-						Name:   "www",
-						Values: []string{"192.0.2.1"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when name is missing", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:   AzureDnsRecordSpec_A,
-						Values: []string{"192.0.2.1"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when values is empty", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:   AzureDnsRecordSpec_A,
-						Name:   "www",
-						Values: []string{},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when mx_priority is set for non-MX record", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:       AzureDnsRecordSpec_A,
-						Name:       "www",
-						Values:     []string{"192.0.2.1"},
-						MxPriority: proto.Int32(10),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error for invalid TTL (0)", func() {
-				input := &AzureDnsRecord{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AzureDnsRecordSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-						ZoneName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "example.com",
-							},
-						},
-						Type:       AzureDnsRecordSpec_A,
-						Name:       "www",
-						Values:     []string{"192.0.2.1"},
-						TtlSeconds: proto.Int32(0),
-					},
-				}
+			ginkgo.It("should return a validation error when resource_group is missing", func() {
+				input := validResource()
+				input.Spec.ResourceGroup = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

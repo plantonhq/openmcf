@@ -52,6 +52,18 @@ Quick checklist for every `message:` string:
 
 Reject and rewrite any message that is terse, generic, or exposes implementation details.
 
+RequiredWith MIRRORS ARGUMENT PRESENCE, NOT VALUE PRESENCE
+When mirroring a provider schema's `RequiredWith` pairing as a CEL, remember it
+requires the paired ARGUMENT to be present in configuration -- an EMPTY value can
+be legal (e.g. a certificate blob paired with a password argument, where
+passwordless bundles exist and the provider's own acceptance fixtures include
+one). A both-or-neither CEL over string values (`(a == '') == (b == '')`) turns
+such a pairing into an INVENTED rule that rejects legal empty-value shapes.
+Before pairing values, check the provider's acceptance-test fixtures for
+empty-value usage; when empty is legal, validate only the direction that is a
+genuine contradiction (the dependent value without its anchor) and have both
+modules send the possibly-empty paired argument whenever the anchor is set.
+
 SUCCESS
 - Build succeeds with validations (`build_succeeded: true`).
 - No schema changes.

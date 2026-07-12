@@ -1,0 +1,27 @@
+# AzureDnsZone install profile used as a prerequisite by AzureDnsRecord
+# (declared via prerequisites: [AzureDnsZone] in the kind registry). The
+# E2E harness deploys this document (via the zone's Pulumi module),
+# captures its outputs under its manifest name, and resolves dependents'
+# zone_name references against them. The resource group arrives
+# transitively through this kind's own AzureResourceGroup prerequisite.
+# Public DNS zone names are not globally unique and are never delegated
+# for this test domain, so sequential recreate across scenarios is safe.
+apiVersion: azure.planton.dev/v1
+kind: AzureDnsZone
+metadata:
+  name: planton-oss-e2e-azure-fixture-dnszone
+  id: planton-oss-e2e-azure-fixture-dnszone
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurednszone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zoneName: planton-e2e-fixture.example.com
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
