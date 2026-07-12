@@ -143,6 +143,15 @@ validator, which is strict-or-stricter than the control plane's engine):
   so in each param's description ("entry N serves AZ N"), because nothing else
   enforces the pairing. Literal indexing (`values.availability_zones[0]`) also
   works for "the first one" placements.
+- **Arithmetic and template-literal lists render fine** (verified through the
+  validator): a `number` param can feed a differently-scaled field via inline
+  arithmetic (`{{ values.scan_limit_gib * 1073741824 }}` — let users think in
+  the unit humans use and convert to the unit the API takes), and a family of
+  near-identical resources can loop over an inline literal list with filters
+  (`{% for service in ["sts", "ecr.api"] %}` +
+  `{{ service | replace('.', '-') }}` for name-safe identifiers) when the set
+  is the CHART's design decision, not user input — parameterize only what a
+  user should change.
 - **Bool params interpolate directly into bool manifest fields**
   (`deletionProtection: {{ values.my_toggle }}`): engines differ on rendered
   casing (`True` vs `true`) but both parse as YAML booleans — do not build
