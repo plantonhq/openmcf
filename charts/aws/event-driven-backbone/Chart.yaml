@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: AWS Event-Driven Backbone
+spec:
+  selector:
+    kind: platform
+  description: The event backbone for decoupled services — a custom EventBridge bus routing to a durable SQS work queue with a locked-down DLQ, optional SNS fan-out, and an optional Lambda consumer.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/aws/awseventbridgebus/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/aws/event-driven-backbone
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/aws/event-driven-backbone/README.md

@@ -1,0 +1,14 @@
+# The backbone's own event bus. A CUSTOM bus, deliberately not the
+# account's default bus: your domain events get their own namespace with
+# its own rules and its own access story, instead of sharing the default
+# bus with every AWS service event in the account. Producers publish here
+# with PutEvents; consumers never talk to the bus directly — routing
+# below decides who sees what.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsEventBridgeBus
+metadata:
+  name: "{{ values.backbone_name }}-bus"
+spec:
+  region: "{{ values.aws_region }}"
+  description: "Domain event bus for {{ values.event_source_prefix }} events"
