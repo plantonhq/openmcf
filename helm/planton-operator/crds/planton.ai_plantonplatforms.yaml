@@ -23,6 +23,10 @@ spec:
       jsonPath: .status.version
       name: Version
       type: string
+    - description: Web console URL once ingress is admitted
+      jsonPath: .status.consoleUrl
+      name: URL
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -329,18 +333,73 @@ spec:
                   ingress configures external access to the Planton web console and API.
                   When disabled, use kubectl port-forward for access.
                 properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      annotations are added to the Ingress resource for controller-specific
+                      behavior. They take precedence over the operator's own defaults.
+                    type: object
                   enabled:
                     default: false
                     description: |-
-                      enabled controls whether Ingress resources are created.
+                      enabled controls whether an Ingress resource is created.
                       When false, use kubectl port-forward for access.
                     type: boolean
                   hostname:
                     description: |-
-                      hostname is the base domain for Planton services (e.g., "planton.example.com").
-                      Required when enabled is true.
+                      hostname is the domain Planton is served at (e.g., "planton.example.com").
+                      When empty, the operator derives a hostname from the ingress controller's
+                      published address (an IP becomes a sslip.io magic-DNS name; a load
+                      balancer DNS name is used directly) and reports it in status.consoleUrl.
+                      The derived hostname is a zero-setup convenience for evaluation, not a
+                      production endpoint.
                     type: string
+                  ingressClassName:
+                    description: |-
+                      ingressClassName selects which ingress controller serves Planton.
+                      When empty, the cluster's default IngressClass is used.
+                    type: string
+                  tls:
+                    description: |-
+                      tls enables HTTPS. When absent, Planton is served over plain HTTP and
+                      the ingress component's status notes the connection is unencrypted.
+                    properties:
+                      issuer:
+                        description: |-
+                          issuer references a cert-manager Issuer or ClusterIssuer that obtains
+                          and renews the certificate automatically. Requires cert-manager to be
+                          installed in the cluster.
+                        properties:
+                          kind:
+                            default: Issuer
+                            description: kind of the issuer resource.
+                            enum:
+                            - Issuer
+                            - ClusterIssuer
+                            type: string
+                          name:
+                            description: name of the Issuer or ClusterIssuer.
+                            minLength: 1
+                            type: string
+                        required:
+                        - name
+                        type: object
+                      secretName:
+                        description: |-
+                          secretName references an existing kubernetes.io/tls Secret in the same
+                          namespace holding the certificate for the hostname.
+                        type: string
+                    type: object
+                    x-kubernetes-validations:
+                    - message: exactly one of secretName or issuer must be set
+                      rule: has(self.secretName) != has(self.issuer)
                 type: object
+                x-kubernetes-validations:
+                - message: 'tls requires hostname: a certificate cannot be brought
+                    or issued for an auto-derived hostname'
+                  rule: '!has(self.tls) || (has(self.hostname) && self.hostname !=
+                    "")'
               license:
                 description: |-
                   license holds an optional license key for enterprise features.
@@ -413,6 +472,25 @@ spec:
                     - phase
                     type: object
                   controlPlane:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  ingress:
                     description: ComponentStatus describes the observed state of an
                       individual component.
                     properties:
@@ -646,6 +724,12 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              consoleUrl:
+                description: |-
+                  consoleUrl is the URL the web console is reachable at once ingress is
+                  configured and admitted. The platform tells you your URL -- with an
+                  auto-derived hostname this is where the derived address is published.
+                type: string
               phase:
                 description: phase is the high-level lifecycle phase of the entire
                   deployment.

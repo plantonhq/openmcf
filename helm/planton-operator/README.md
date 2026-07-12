@@ -42,6 +42,31 @@ Apply it with `kubectl apply -f` and watch progress:
 kubectl get plantonplatform -w
 ```
 
+### Publishing Planton at a URL
+
+External access is a friction ladder in `spec.ingress` -- each rung is one field
+up from the last, and every rung is a working deployment:
+
+```yaml
+spec:
+  ingress:
+    enabled: true                # rung 1: URL auto-derived from the ingress
+                                 #   controller's address (magic DNS), plain HTTP
+    hostname: planton.corp.com   # rung 2: your hostname, plain HTTP
+    ingressClassName: nginx      # optional; omit to use the cluster default
+    tls:                         # rung 3/4: HTTPS
+      secretName: planton-tls    #   EITHER a kubernetes.io/tls Secret you bring
+      # issuer:                  #   OR a cert-manager issuer
+      #   name: lets-encrypt
+      #   kind: ClusterIssuer
+```
+
+One hostname serves the web console and the API the browser calls. The platform
+reports its URL in `status.consoleUrl` (the `URL` column of
+`kubectl get plantonplatform`), and the ingress component's status explains any
+misconfiguration in plain language (missing class, missing TLS secret,
+cert-manager not installed).
+
 ## Configuration
 
 | Parameter | Description | Default |
