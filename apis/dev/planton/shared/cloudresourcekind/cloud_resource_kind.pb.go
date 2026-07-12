@@ -428,13 +428,25 @@ const (
 	// prerequisite: namespace names are globally unique with a post-delete
 	// name hold, so E2E composes them with scenario-local namespace
 	// fixtures instead of a shared recreate-per-scenario prerequisite.
-	CloudResourceKind_AzureServiceBusNamespace              CloudResourceKind = 470
+	CloudResourceKind_AzureServiceBusNamespace CloudResourceKind = 470
+	// AzureResourceGroup is a prerequisite because an Event Hub namespace is
+	// created inside a referenced resource group in composed environments.
+	// The namespace is the container every Event Hubs entity (event hub,
+	// consumer group, authorization rule, schema group, geo-DR pairing,
+	// customer-managed key) nests under. The child kinds deliberately
+	// declare NO registry prerequisite: namespace names are globally unique
+	// with a post-delete name hold, so E2E composes them with scenario-local
+	// namespace fixtures instead of a shared recreate-per-scenario
+	// prerequisite.
 	CloudResourceKind_AzureEventHubNamespace                CloudResourceKind = 471
 	CloudResourceKind_AzureServiceBusQueue                  CloudResourceKind = 472
 	CloudResourceKind_AzureServiceBusTopic                  CloudResourceKind = 473
 	CloudResourceKind_AzureServiceBusSubscription           CloudResourceKind = 474
 	CloudResourceKind_AzureServiceBusAuthorizationRule      CloudResourceKind = 475
 	CloudResourceKind_AzureServiceBusDisasterRecoveryConfig CloudResourceKind = 476
+	CloudResourceKind_AzureEventHub                         CloudResourceKind = 477
+	CloudResourceKind_AzureEventHubConsumerGroup            CloudResourceKind = 478
+	CloudResourceKind_AzureEventHubAuthorizationRule        CloudResourceKind = 479
 	// AzureResourceGroup is a prerequisite because a Front Door profile is
 	// created inside a referenced resource group in composed environments.
 	// The profile is the container every Front Door delivery resource
@@ -522,6 +534,15 @@ const (
 	CloudResourceKind_AzureManagedRedis                       CloudResourceKind = 510
 	CloudResourceKind_AzureManagedRedisGeoReplication         CloudResourceKind = 511
 	CloudResourceKind_AzureManagedRedisAccessPolicyAssignment CloudResourceKind = 512
+	CloudResourceKind_AzureEventHubDisasterRecoveryConfig     CloudResourceKind = 520
+	CloudResourceKind_AzureEventHubSchemaGroup                CloudResourceKind = 521
+	// AzureResourceGroup is a prerequisite because a dedicated Event Hubs
+	// cluster is created inside a referenced resource group in composed
+	// environments. Note: clusters cannot be deleted for 4 hours after
+	// creation (Azure's moratorium), so E2E treats this kind as
+	// offline-gated.
+	CloudResourceKind_AzureEventHubCluster                     CloudResourceKind = 522
+	CloudResourceKind_AzureEventHubNamespaceCustomerManagedKey CloudResourceKind = 523
 	// 600–799: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
 	CloudResourceKind_GcpCloudCdn                   CloudResourceKind = 601
@@ -985,6 +1006,9 @@ var (
 		474:  "AzureServiceBusSubscription",
 		475:  "AzureServiceBusAuthorizationRule",
 		476:  "AzureServiceBusDisasterRecoveryConfig",
+		477:  "AzureEventHub",
+		478:  "AzureEventHubConsumerGroup",
+		479:  "AzureEventHubAuthorizationRule",
 		480:  "AzureFrontDoorProfile",
 		481:  "AzureFrontDoorEndpoint",
 		482:  "AzureFrontDoorOriginGroup",
@@ -1012,6 +1036,10 @@ var (
 		510:  "AzureManagedRedis",
 		511:  "AzureManagedRedisGeoReplication",
 		512:  "AzureManagedRedisAccessPolicyAssignment",
+		520:  "AzureEventHubDisasterRecoveryConfig",
+		521:  "AzureEventHubSchemaGroup",
+		522:  "AzureEventHubCluster",
+		523:  "AzureEventHubNamespaceCustomerManagedKey",
 		600:  "GcpArtifactRegistryRepo",
 		601:  "GcpCloudCdn",
 		602:  "GcpCloudFunction",
@@ -1459,6 +1487,9 @@ var (
 		"AzureServiceBusSubscription":               474,
 		"AzureServiceBusAuthorizationRule":          475,
 		"AzureServiceBusDisasterRecoveryConfig":     476,
+		"AzureEventHub":                             477,
+		"AzureEventHubConsumerGroup":                478,
+		"AzureEventHubAuthorizationRule":            479,
 		"AzureFrontDoorProfile":                     480,
 		"AzureFrontDoorEndpoint":                    481,
 		"AzureFrontDoorOriginGroup":                 482,
@@ -1486,6 +1517,10 @@ var (
 		"AzureManagedRedis":                         510,
 		"AzureManagedRedisGeoReplication":           511,
 		"AzureManagedRedisAccessPolicyAssignment":   512,
+		"AzureEventHubDisasterRecoveryConfig":       520,
+		"AzureEventHubSchemaGroup":                  521,
+		"AzureEventHubCluster":                      522,
+		"AzureEventHubNamespaceCustomerManagedKey":  523,
 		"GcpArtifactRegistryRepo":                   600,
 		"GcpCloudCdn":                               601,
 		"GcpCloudFunction":                          602,
@@ -2038,7 +2073,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x8f\xac\x01\n" +
+	"\x02v1\x10\x01*\x86\xaf\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2188,14 +2223,16 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x13AzureRoleAssignment\x10\xcd\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x04azra:\x04\x90\x03\xcc\x03\x12,\n" +
 	"\x13AzureRoleDefinition\x10\xce\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azrd:\x02\x90\x03\x12:\n" +
 	" AzureFederatedIdentityCredential\x10\xcf\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azfic:\x02\xcc\x03\x121\n" +
-	"\x18AzureServiceBusNamespace\x10\xd6\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azsb:\x02\x90\x03\x12+\n" +
-	"\x16AzureEventHubNamespace\x10\xd7\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azeh\x12,\n" +
+	"\x18AzureServiceBusNamespace\x10\xd6\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azsb:\x02\x90\x03\x12/\n" +
+	"\x16AzureEventHubNamespace\x10\xd7\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azeh:\x02\x90\x03\x12,\n" +
 	"\x14AzureServiceBusQueue\x10\xd8\x03\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazsbque\x12,\n" +
 	"\x14AzureServiceBusTopic\x10\xd9\x03\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazsbtop\x123\n" +
 	"\x1bAzureServiceBusSubscription\x10\xda\x03\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazsbsub\x129\n" +
 	" AzureServiceBusAuthorizationRule\x10\xdb\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazsbauth\x12<\n" +
-	"%AzureServiceBusDisasterRecoveryConfig\x10\xdc\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azsbdr\x120\n" +
+	"%AzureServiceBusDisasterRecoveryConfig\x10\xdc\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azsbdr\x12$\n" +
+	"\rAzureEventHub\x10\xdd\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azehub\x121\n" +
+	"\x1aAzureEventHubConsumerGroup\x10\xde\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azehcg\x127\n" +
+	"\x1eAzureEventHubAuthorizationRule\x10\xdf\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazehauth\x120\n" +
 	"\x15AzureFrontDoorProfile\x10\xe0\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x04azfd0\x01:\x02\x90\x03\x120\n" +
 	"\x16AzureFrontDoorEndpoint\x10\xe1\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azfde:\x02\xe0\x03\x124\n" +
 	"\x19AzureFrontDoorOriginGroup\x10\xe2\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azfdog:\x02\xe0\x03\x12.\n" +
@@ -2227,7 +2264,11 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x1eAzureCosmosdbSqlRoleAssignment\x10\xf9\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\vazcsqlrasgn\x12.\n" +
 	"\x11AzureManagedRedis\x10\xfe\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazmredis:\x02\x90\x03\x12;\n" +
 	"\x1fAzureManagedRedisGeoReplication\x10\xff\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\vazmredisgeo\x12E\n" +
-	"'AzureManagedRedisAccessPolicyAssignment\x10\x80\x04\x1a\x17\xa2\xf7\x04\x13\b\r\x10\x01\"\razmredisgrant\x12.\n" +
+	"'AzureManagedRedisAccessPolicyAssignment\x10\x80\x04\x1a\x17\xa2\xf7\x04\x13\b\r\x10\x01\"\razmredisgrant\x12:\n" +
+	"#AzureEventHubDisasterRecoveryConfig\x10\x88\x04\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azehdr\x12/\n" +
+	"\x18AzureEventHubSchemaGroup\x10\x89\x04\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azehsg\x120\n" +
+	"\x14AzureEventHubCluster\x10\x8a\x04\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazehclu:\x02\x90\x03\x12@\n" +
+	"(AzureEventHubNamespaceCustomerManagedKey\x10\x8b\x04\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazehcmk\x12.\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x12\"\n" +
 	"\vGcpCloudCdn\x10\xd9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcdn\x12(\n" +
 	"\x10GcpCloudFunction\x10\xda\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\acldfunc\x12\"\n" +

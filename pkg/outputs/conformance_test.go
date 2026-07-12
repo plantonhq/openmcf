@@ -2295,6 +2295,136 @@ func TestStackOutputsConformance(t *testing.T) {
 				"default_secondary_key",
 			},
 		},
+		{
+			// AzureEventHubNamespace: namespace_id is the parent seam every
+			// Event Hubs child kind references (hub, authorization rule,
+			// schema group, geo-DR pairing, CMK); the root SAS rule's
+			// credential faces (incl. the geo-DR alias pair) are the
+			// quick-start connection surface.
+			name: "AzureEventHubNamespace",
+			kind: cloudresourcekind.CloudResourceKind_AzureEventHubNamespace,
+			rawOutputs: map[string]interface{}{
+				"namespace_id":                              "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/stream-rg/providers/Microsoft.EventHub/namespaces/telemetry-hubs",
+				"namespace_name":                            "telemetry-hubs",
+				"identity_principal_id":                     "55555555-6666-7777-8888-999999999999",
+				"default_primary_connection_string":         "Endpoint=sb://telemetry-hubs.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=base64key==",
+				"default_secondary_connection_string":       "Endpoint=sb://telemetry-hubs.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=base64key2==",
+				"default_primary_key":                       "base64key==",
+				"default_secondary_key":                     "base64key2==",
+				"default_primary_connection_string_alias":   "",
+				"default_secondary_connection_string_alias": "",
+			},
+			mustPopulate: []string{
+				"namespace_id", "namespace_name", "identity_principal_id",
+				"default_primary_connection_string",
+				"default_secondary_connection_string", "default_primary_key",
+				"default_secondary_key",
+			},
+		},
+		{
+			// AzureEventHub: event_hub_id is the parent seam consumer groups
+			// and hub-scoped SAS rules reference; partition_ids is the
+			// repeated output partition-aware consumers enumerate.
+			name: "AzureEventHub",
+			kind: cloudresourcekind.CloudResourceKind_AzureEventHub,
+			rawOutputs: map[string]interface{}{
+				"event_hub_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/stream-rg/providers/Microsoft.EventHub/namespaces/telemetry-hubs/eventhubs/telemetry",
+				"event_hub_name": "telemetry",
+				"partition_ids":  []interface{}{"0", "1", "2", "3"},
+			},
+			mustPopulate: []string{
+				"event_hub_id", "event_hub_name", "partition_ids",
+			},
+		},
+		{
+			// AzureEventHubConsumerGroup: the group name is what consumer
+			// applications pass to their SDK client alongside the hub name.
+			name: "AzureEventHubConsumerGroup",
+			kind: cloudresourcekind.CloudResourceKind_AzureEventHubConsumerGroup,
+			rawOutputs: map[string]interface{}{
+				"consumer_group_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/stream-rg/providers/Microsoft.EventHub/namespaces/telemetry-hubs/eventhubs/telemetry/consumergroups/analytics",
+				"consumer_group_name": "analytics",
+			},
+			mustPopulate: []string{
+				"consumer_group_id", "consumer_group_name",
+			},
+		},
+		{
+			// AzureEventHubAuthorizationRule: identical credential faces
+			// regardless of scope; the alias pair is only populated when a
+			// geo-DR pairing exists.
+			name: "AzureEventHubAuthorizationRule",
+			kind: cloudresourcekind.CloudResourceKind_AzureEventHubAuthorizationRule,
+			rawOutputs: map[string]interface{}{
+				"authorization_rule_id":             "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/stream-rg/providers/Microsoft.EventHub/namespaces/telemetry-hubs/eventhubs/telemetry/authorizationRules/producer-send",
+				"rule_name":                         "producer-send",
+				"primary_key":                       "base64key==",
+				"secondary_key":                     "base64key2==",
+				"primary_connection_string":         "Endpoint=sb://telemetry-hubs.servicebus.windows.net/;SharedAccessKeyName=producer-send;SharedAccessKey=base64key==;EntityPath=telemetry",
+				"secondary_connection_string":       "Endpoint=sb://telemetry-hubs.servicebus.windows.net/;SharedAccessKeyName=producer-send;SharedAccessKey=base64key2==;EntityPath=telemetry",
+				"primary_connection_string_alias":   "",
+				"secondary_connection_string_alias": "",
+			},
+			mustPopulate: []string{
+				"authorization_rule_id", "rule_name", "primary_key",
+				"secondary_key", "primary_connection_string",
+				"secondary_connection_string",
+			},
+		},
+		{
+			// AzureEventHubDisasterRecoveryConfig: alias credentials
+			// deliberately live on the namespace/authorization-rule kinds
+			// (Azure's own surface) -- this kind exports the pairing
+			// identity only.
+			name: "AzureEventHubDisasterRecoveryConfig",
+			kind: cloudresourcekind.CloudResourceKind_AzureEventHubDisasterRecoveryConfig,
+			rawOutputs: map[string]interface{}{
+				"disaster_recovery_config_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/stream-rg/providers/Microsoft.EventHub/namespaces/telemetry-hubs/disasterRecoveryConfigs/telemetry-alias",
+				"alias_name":                  "telemetry-alias",
+			},
+			mustPopulate: []string{
+				"disaster_recovery_config_id", "alias_name",
+			},
+		},
+		{
+			// AzureEventHubSchemaGroup: the group name is what
+			// schema-registry serializers address at runtime.
+			name: "AzureEventHubSchemaGroup",
+			kind: cloudresourcekind.CloudResourceKind_AzureEventHubSchemaGroup,
+			rawOutputs: map[string]interface{}{
+				"schema_group_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/stream-rg/providers/Microsoft.EventHub/namespaces/telemetry-hubs/schemagroups/telemetry-schemas",
+				"schema_group_name": "telemetry-schemas",
+			},
+			mustPopulate: []string{
+				"schema_group_id", "schema_group_name",
+			},
+		},
+		{
+			// AzureEventHubCluster: cluster_id is the seam a namespace's
+			// dedicated_cluster_id references for single-tenant placement.
+			name: "AzureEventHubCluster",
+			kind: cloudresourcekind.CloudResourceKind_AzureEventHubCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/stream-rg/providers/Microsoft.EventHub/clusters/streaming-dedicated",
+				"cluster_name": "streaming-dedicated",
+			},
+			mustPopulate: []string{
+				"cluster_id", "cluster_name",
+			},
+		},
+		{
+			// AzureEventHubNamespaceCustomerManagedKey: the configuration is
+			// a property of the namespace (no ARM object of its own), so its
+			// identity output is the namespace's ARM id.
+			name: "AzureEventHubNamespaceCustomerManagedKey",
+			kind: cloudresourcekind.CloudResourceKind_AzureEventHubNamespaceCustomerManagedKey,
+			rawOutputs: map[string]interface{}{
+				"customer_managed_key_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/stream-rg/providers/Microsoft.EventHub/namespaces/telemetry-hubs",
+			},
+			mustPopulate: []string{
+				"customer_managed_key_id",
+			},
+		},
 	}
 
 	for _, tc := range cases {

@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureeventhubdisasterrecoveryconfig
+spec:
+  # The scenario composes fixture RG -> TWO scenario-local STANDARD
+  # namespaces in DIFFERENT regions (eastus primary + westus2 partner --
+  # Azure requires different regions and an empty partner; Event Hubs
+  # geo-DR runs on STANDARD, so the lane needs no premium tier), pairs
+  # them under the alias, verifies the pairing via the ARM API, destroys
+  # (the provider break-pairs, deletes, and polls until both the config
+  # 404s and the alias name frees), and verifies it is gone -- on both
+  # provisioners. The name-release wait makes destroys take minutes by
+  # the service's own design.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 40

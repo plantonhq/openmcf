@@ -17,6 +17,12 @@ func TestAzureMonitorDiagnosticSettingSpec(t *testing.T) {
 
 // buildValidDiagnosticSetting returns a minimal valid resource; tests mutate
 // copies of it to probe individual rules.
+func literal(v string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: v},
+	}
+}
+
 func buildValidDiagnosticSetting() *AzureMonitorDiagnosticSetting {
 	return &AzureMonitorDiagnosticSetting{
 		ApiVersion: "azure.planton.dev/v1",
@@ -78,8 +84,8 @@ var _ = ginkgo.Describe("AzureMonitorDiagnosticSettingSpec Validation Tests", fu
 		ginkgo.It("should accept an event hub destination with a named hub", func() {
 			input := buildValidDiagnosticSetting()
 			input.Spec.LogAnalyticsWorkspaceId = nil
-			input.Spec.EventhubAuthorizationRuleId = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.EventHub/namespaces/ns/authorizationRules/RootManageSharedAccessKey"
-			input.Spec.EventhubName = "diagnostics"
+			input.Spec.EventhubAuthorizationRuleId = literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.EventHub/namespaces/ns/authorizationRules/RootManageSharedAccessKey")
+			input.Spec.EventhubName = literal("diagnostics")
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
@@ -169,7 +175,7 @@ var _ = ginkgo.Describe("AzureMonitorDiagnosticSettingSpec Validation Tests", fu
 
 		ginkgo.It("should reject an event hub name without an authorization rule", func() {
 			input := buildValidDiagnosticSetting()
-			input.Spec.EventhubName = "diagnostics"
+			input.Spec.EventhubName = literal("diagnostics")
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("authorization rule"))

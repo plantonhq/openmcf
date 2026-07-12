@@ -22,5 +22,7 @@ spec:
   logAnalyticsDestinationType: DEDICATED
   storageAccountId:
     value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/testarchive
-  eventhubAuthorizationRuleId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.EventHub/namespaces/test-ns/authorizationRules/RootManageSharedAccessKey
-  eventhubName: diagnostics
+  eventhubAuthorizationRuleId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.EventHub/namespaces/test-ns/authorizationRules/RootManageSharedAccessKey
+  eventhubName:
+    value: diagnostics

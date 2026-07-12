@@ -172,7 +172,7 @@ func Resources(ctx *pulumi.Context, stackInput *azuremonitoractiongroupv1.AzureM
 		for _, receiver := range spec.EventHubReceivers {
 			receiverArgs := monitoring.ActionGroupEventHubReceiverArgs{
 				Name:                 pulumi.String(receiver.Name),
-				EventHubName:         pulumi.String(receiver.EventHubName),
+				EventHubName:         pulumi.String(receiver.EventHubName.GetValue()),
 				EventHubNamespace:    pulumi.String(receiver.EventHubNamespace.GetValue()),
 				UseCommonAlertSchema: pulumi.Bool(receiver.UseCommonAlertSchema),
 			}

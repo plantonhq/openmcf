@@ -144,7 +144,14 @@ import (
 	azurecosmosdbsqlroledefinitionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecosmosdbsqlroledefinition/v1"
 	azurednsrecordv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurednsrecord/v1"
 	azurednszonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurednszone/v1"
+	azureeventhubv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhub/v1"
+	azureeventhubauthorizationrulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubauthorizationrule/v1"
+	azureeventhubclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubcluster/v1"
+	azureeventhubconsumergroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubconsumergroup/v1"
+	azureeventhubdisasterrecoveryconfigv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubdisasterrecoveryconfig/v1"
 	azureeventhubnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubnamespace/v1"
+	azureeventhubnamespacecustomermanagedkeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubnamespacecustomermanagedkey/v1"
+	azureeventhubschemagroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubschemagroup/v1"
 	azurefederatedidentitycredentialv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefederatedidentitycredential/v1"
 	azurefrontdoorcustomdomainv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorcustomdomain/v1"
 	azurefrontdoorendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorendpoint/v1"
@@ -645,7 +652,14 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleDefinition:            &azurecosmosdbsqlroledefinitionv1.AzureCosmosdbSqlRoleDefinition{},
 	cloudresourcekind.CloudResourceKind_AzureDnsRecord:                            &azurednsrecordv1.AzureDnsRecord{},
 	cloudresourcekind.CloudResourceKind_AzureDnsZone:                              &azurednszonev1.AzureDnsZone{},
+	cloudresourcekind.CloudResourceKind_AzureEventHub:                             &azureeventhubv1.AzureEventHub{},
+	cloudresourcekind.CloudResourceKind_AzureEventHubAuthorizationRule:            &azureeventhubauthorizationrulev1.AzureEventHubAuthorizationRule{},
+	cloudresourcekind.CloudResourceKind_AzureEventHubCluster:                      &azureeventhubclusterv1.AzureEventHubCluster{},
+	cloudresourcekind.CloudResourceKind_AzureEventHubConsumerGroup:                &azureeventhubconsumergroupv1.AzureEventHubConsumerGroup{},
+	cloudresourcekind.CloudResourceKind_AzureEventHubDisasterRecoveryConfig:       &azureeventhubdisasterrecoveryconfigv1.AzureEventHubDisasterRecoveryConfig{},
 	cloudresourcekind.CloudResourceKind_AzureEventHubNamespace:                    &azureeventhubnamespacev1.AzureEventHubNamespace{},
+	cloudresourcekind.CloudResourceKind_AzureEventHubNamespaceCustomerManagedKey:  &azureeventhubnamespacecustomermanagedkeyv1.AzureEventHubNamespaceCustomerManagedKey{},
+	cloudresourcekind.CloudResourceKind_AzureEventHubSchemaGroup:                  &azureeventhubschemagroupv1.AzureEventHubSchemaGroup{},
 	cloudresourcekind.CloudResourceKind_AzureFederatedIdentityCredential:          &azurefederatedidentitycredentialv1.AzureFederatedIdentityCredential{},
 	cloudresourcekind.CloudResourceKind_AzureFrontDoorCustomDomain:                &azurefrontdoorcustomdomainv1.AzureFrontDoorCustomDomain{},
 	cloudresourcekind.CloudResourceKind_AzureFrontDoorEndpoint:                    &azurefrontdoorendpointv1.AzureFrontDoorEndpoint{},

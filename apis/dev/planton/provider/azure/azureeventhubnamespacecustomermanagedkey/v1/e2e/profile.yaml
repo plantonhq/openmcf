@@ -1,0 +1,30 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureeventhubnamespacecustomermanagedkey
+spec:
+  # Live E2E is EXCLUDED for this kind: CMK requires single-tenant
+  # namespace capacity -- a dedicated cluster (blocked by the cluster
+  # kind's 4-hour deletion moratorium) or a PREMIUM namespace -- plus a
+  # purge-protected Key Vault whose recycle-bin hold outlives the run,
+  # a key, an identity, and a wrap/unwrap grant. On top of the fixture
+  # cost, the kind is ADD-ONLY by Azure's own contract: CMK cannot be
+  # removed once applied, so verify-absent after destroy is meaningless
+  # (the provider's delete is a deliberate no-op) and the encrypted
+  # fixture namespace itself must be destroyed to clean up. The
+  # component stands on its green offline gate: 100% parity audit, full
+  # tofu plan rendering the key array + identity + infrastructure
+  # encryption seams, spec tests covering every validation rule, and
+  # the outputs conformance case.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    CMK needs single-tenant capacity (a dedicated cluster -- itself
+    live-blocked by the 4-hour deletion moratorium -- or a PREMIUM
+    namespace) plus a purge-protected vault chain, and the configuration
+    is add-only by Azure's contract (the provider's delete is a no-op,
+    so a destroy phase cannot be verified). Closed on the offline gate;
+    the scenario shape is exercised end-to-end by the hack manifest's
+    full plan render.
+  validated_provisioners: []
+  timeout_minutes: 30

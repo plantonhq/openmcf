@@ -875,6 +875,64 @@ func TestAzureServiceBusDisasterRecoveryConfig_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureservicebusdisasterrecoveryconfig", "terraform")
 }
 
+// --- Azure Event Hubs family (namespace container + hubs + consumer groups + SAS credentials + schema registry + geo-DR + dedicated cluster + CMK) ---
+
+func TestAzureEventHubNamespace_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubnamespace", "pulumi")
+}
+func TestAzureEventHubNamespace_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubnamespace", "terraform")
+}
+
+func TestAzureEventHub_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhub", "pulumi")
+}
+func TestAzureEventHub_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhub", "terraform")
+}
+
+func TestAzureEventHubConsumerGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubconsumergroup", "pulumi")
+}
+func TestAzureEventHubConsumerGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubconsumergroup", "terraform")
+}
+
+func TestAzureEventHubAuthorizationRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubauthorizationrule", "pulumi")
+}
+func TestAzureEventHubAuthorizationRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubauthorizationrule", "terraform")
+}
+
+func TestAzureEventHubSchemaGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubschemagroup", "pulumi")
+}
+func TestAzureEventHubSchemaGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubschemagroup", "terraform")
+}
+
+func TestAzureEventHubDisasterRecoveryConfig_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubdisasterrecoveryconfig", "pulumi")
+}
+func TestAzureEventHubDisasterRecoveryConfig_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubdisasterrecoveryconfig", "terraform")
+}
+
+func TestAzureEventHubCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubcluster", "pulumi")
+}
+func TestAzureEventHubCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubcluster", "terraform")
+}
+
+func TestAzureEventHubNamespaceCustomerManagedKey_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubnamespacecustomermanagedkey", "pulumi")
+}
+func TestAzureEventHubNamespaceCustomerManagedKey_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventhubnamespacecustomermanagedkey", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

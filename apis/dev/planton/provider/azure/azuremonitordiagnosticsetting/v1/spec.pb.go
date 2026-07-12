@@ -141,15 +141,16 @@ type AzureMonitorDiagnosticSettingSpec struct {
 	StorageAccountId *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=storage_account_id,json=storageAccountId,proto3" json:"storage_account_id,omitempty"`
 	// The Event Hub namespace authorization rule that authorizes streaming the
 	// selected telemetry to Event Hubs -- the destination for SIEMs and
-	// external analytics systems. Format:
-	// /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.EventHub/namespaces/{ns}/authorizationRules/{rule}
-	// (a NAMESPACE-level rule, e.g. RootManageSharedAccessKey). Pass a literal
-	// ARM ID; pair with eventhub_name to pick a specific hub.
-	EventhubAuthorizationRuleId string `protobuf:"bytes,8,opt,name=eventhub_authorization_rule_id,json=eventhubAuthorizationRuleId,proto3" json:"eventhub_authorization_rule_id,omitempty"`
+	// external analytics systems. A NAMESPACE-scoped rule with send rights.
+	// Can be a literal ARM ID or a reference to an
+	// AzureEventHubAuthorizationRule output; pair with eventhub_name to pick
+	// a specific hub.
+	EventhubAuthorizationRuleId *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=eventhub_authorization_rule_id,json=eventhubAuthorizationRuleId,proto3" json:"eventhub_authorization_rule_id,omitempty"`
 	// The Event Hub (within the authorized namespace) to stream to. When
 	// empty, Azure routes to a default hub per category. Only meaningful with
-	// eventhub_authorization_rule_id.
-	EventhubName string `protobuf:"bytes,9,opt,name=eventhub_name,json=eventhubName,proto3" json:"eventhub_name,omitempty"`
+	// eventhub_authorization_rule_id. Can be a literal name or a reference to
+	// an AzureEventHub output.
+	EventhubName *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=eventhub_name,json=eventhubName,proto3" json:"eventhub_name,omitempty"`
 	// The ARM ID of an Azure Native ISV partner solution (for example Elastic
 	// or Datadog resources created through Azure Marketplace) to send the
 	// selected telemetry to. Pass the literal ARM ID of the partner resource.
@@ -237,18 +238,18 @@ func (x *AzureMonitorDiagnosticSettingSpec) GetStorageAccountId() *v1.StringValu
 	return nil
 }
 
-func (x *AzureMonitorDiagnosticSettingSpec) GetEventhubAuthorizationRuleId() string {
+func (x *AzureMonitorDiagnosticSettingSpec) GetEventhubAuthorizationRuleId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.EventhubAuthorizationRuleId
 	}
-	return ""
+	return nil
 }
 
-func (x *AzureMonitorDiagnosticSettingSpec) GetEventhubName() string {
+func (x *AzureMonitorDiagnosticSettingSpec) GetEventhubName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.EventhubName
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureMonitorDiagnosticSettingSpec) GetPartnerSolutionId() string {
@@ -369,7 +370,7 @@ var File_dev_planton_provider_azure_azuremonitordiagnosticsetting_v1_spec_proto 
 
 const file_dev_planton_provider_azure_azuremonitordiagnosticsetting_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/azure/azuremonitordiagnosticsetting/v1/spec.proto\x12;dev.planton.provider.azure.azuremonitordiagnosticsetting.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa1\x10\n" +
+	"Fdev/planton/provider/azure/azuremonitordiagnosticsetting/v1/spec.proto\x12;dev.planton.provider.azure.azuremonitordiagnosticsetting.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdf\x11\n" +
 	"!AzureMonitorDiagnosticSettingSpec\x12\xbb\x01\n" +
 	"\fsetting_name\x18\x01 \x01(\tB\x97\x01\xbaH\x93\x01\xba\x01\x85\x01\n" +
 	"\x1fdiagnostic_setting_name_charset\x12Bdiagnostic setting name may not contain any of < > * % & : \\ ? + /\x1a\x1e!this.matches('[<>*%&:\\\\?+/]')\xc8\x01\x01r\x05\x10\x01\x18\x84\x02R\vsettingName\x12h\n" +
@@ -378,14 +379,14 @@ const file_dev_planton_provider_azure_azuremonitordiagnosticsetting_v1_spec_prot
 	"\x0fenabled_metrics\x18\x04 \x03(\v2`.dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingMetricR\x0eenabledMetrics\x12\x95\x01\n" +
 	"\x1alog_analytics_workspace_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\x17logAnalyticsWorkspaceId\x12\xc4\x01\n" +
 	"\x1elog_analytics_destination_type\x18\x06 \x01(\x0e2u.dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingLogAnalyticsDestinationTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x1blogAnalyticsDestinationType\x12\x8c\x01\n" +
-	"\x12storage_account_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12C\n" +
-	"\x1eeventhub_authorization_rule_id\x18\b \x01(\tR\x1beventhubAuthorizationRuleId\x12#\n" +
-	"\reventhub_name\x18\t \x01(\tR\feventhubName\x12.\n" +
+	"\x12storage_account_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xa6\x01\n" +
+	"\x1eeventhub_authorization_rule_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xdf\x03\x92\xd4a$status.outputs.authorization_rule_idR\x1beventhubAuthorizationRuleId\x12\x7f\n" +
+	"\reventhub_name\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xdd\x03\x92\xd4a\x1dstatus.outputs.event_hub_nameR\feventhubName\x12.\n" +
 	"\x13partner_solution_id\x18\n" +
-	" \x01(\tR\x11partnerSolutionId:\xbc\x06\xbaH\xb8\x06\x1a\xd8\x01\n" +
-	"(diagnostic_setting_at_least_one_category\x12kenable at least one log or metric category -- a diagnostic setting that routes nothing is rejected by Azure\x1a?this.enabled_logs.size() > 0 || this.enabled_metrics.size() > 0\x1a\xdf\x02\n" +
-	"+diagnostic_setting_at_least_one_destination\x12\x99\x01route the telemetry somewhere: set at least one of log_analytics_workspace_id, storage_account_id, eventhub_authorization_rule_id, or partner_solution_id\x1a\x93\x01has(this.log_analytics_workspace_id) || has(this.storage_account_id) || this.eventhub_authorization_rule_id != '' || this.partner_solution_id != ''\x1a\xf8\x01\n" +
-	".diagnostic_setting_eventhub_name_requires_rule\x12\x7feventhub_name picks a hub within the namespace that eventhub_authorization_rule_id authorizes -- set the authorization rule too\x1aEthis.eventhub_name == '' || this.eventhub_authorization_rule_id != ''\"\xcf\x02\n" +
+	" \x01(\tR\x11partnerSolutionId:\xba\x06\xbaH\xb6\x06\x1a\xd8\x01\n" +
+	"(diagnostic_setting_at_least_one_category\x12kenable at least one log or metric category -- a diagnostic setting that routes nothing is rejected by Azure\x1a?this.enabled_logs.size() > 0 || this.enabled_metrics.size() > 0\x1a\xde\x02\n" +
+	"+diagnostic_setting_at_least_one_destination\x12\x99\x01route the telemetry somewhere: set at least one of log_analytics_workspace_id, storage_account_id, eventhub_authorization_rule_id, or partner_solution_id\x1a\x92\x01has(this.log_analytics_workspace_id) || has(this.storage_account_id) || has(this.eventhub_authorization_rule_id) || this.partner_solution_id != ''\x1a\xf7\x01\n" +
+	".diagnostic_setting_eventhub_name_requires_rule\x12\x7feventhub_name picks a hub within the namespace that eventhub_authorization_rule_id authorizes -- set the authorization rule too\x1aD!has(this.eventhub_name) || has(this.eventhub_authorization_rule_id)\"\xcf\x02\n" +
 	" AzureMonitorDiagnosticSettingLog\x12\x1a\n" +
 	"\bcategory\x18\x01 \x01(\tR\bcategory\x12%\n" +
 	"\x0ecategory_group\x18\x02 \x01(\tR\rcategoryGroup:\xe7\x01\xbaH\xe3\x01\x1a\xe0\x01\n" +
@@ -427,11 +428,13 @@ var file_dev_planton_provider_azure_azuremonitordiagnosticsetting_v1_spec_proto_
 	4, // 3: dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingSpec.log_analytics_workspace_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0, // 4: dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingSpec.log_analytics_destination_type:type_name -> dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingLogAnalyticsDestinationType
 	4, // 5: dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingSpec.storage_account_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	4, // 6: dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingSpec.eventhub_authorization_rule_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 7: dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingSpec.eventhub_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azuremonitordiagnosticsetting_v1_spec_proto_init() }

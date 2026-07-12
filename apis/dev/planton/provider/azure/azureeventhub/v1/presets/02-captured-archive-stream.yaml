@@ -1,0 +1,34 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHub
+metadata:
+  name: my-archived-stream
+spec:
+  namespaceId:
+    valueFrom:
+      kind: AzureEventHubNamespace
+      name: my-telemetry-hubs
+      fieldPath: status.outputs.namespace_id
+  eventHubName: audit-events
+  partitionCount: 4
+  messageRetention: 7
+  # Capture: every event lands in Blob Storage as Avro on a 5-minute /
+  # 300 MB cadence -- the streaming-to-batch bridge with no consumer
+  # application to run. Cold storage outlives the hub's retention
+  # window.
+  captureDescription:
+    enabled: true
+    encoding: AVRO
+    intervalInSeconds: 300
+    skipEmptyArchives: true
+    destination:
+      archiveNameFormat: "{Namespace}/{EventHub}/{PartitionId}/{Year}/{Month}/{Day}/{Hour}/{Minute}/{Second}"
+      blobContainerName:
+        valueFrom:
+          kind: AzureStorageContainer
+          name: my-capture-container
+          fieldPath: status.outputs.container_name
+      storageAccountId:
+        valueFrom:
+          kind: AzureStorageAccount
+          name: my-capture-account
+          fieldPath: status.outputs.storage_account_id

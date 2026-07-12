@@ -221,6 +221,18 @@ To use HashiCorp Terraform instead:
 PLANTON_E2E_TF_BINARY=terraform make e2e-test-kubernetes-terraform-tier1
 ```
 
+### Background suite lanes: smoke-check the launch, never trust nohup blindly
+
+Long real-cloud suites are best launched as background processes writing to a
+log file (a crashed observer then loses only observation, never the run). One
+failure mode recurs: a `nohup`-spawned child of a short-lived shell can be
+reaped with its parent BEFORE the suite starts, leaving a zero-byte log and no
+error -- the launch "succeeds" and nothing runs. After launching any background
+lane, smoke-check it within a minute: the PID must still be alive AND the log
+must be non-empty (the harness prints its authentication line first). If the
+process is gone with an empty log, relaunch under a supervised/managed shell
+rather than retrying `nohup` from another transient shell.
+
 ### Long-running Azure components (AKS)
 
 AKS clusters take roughly 5–10 minutes to create and a similar time to delete.

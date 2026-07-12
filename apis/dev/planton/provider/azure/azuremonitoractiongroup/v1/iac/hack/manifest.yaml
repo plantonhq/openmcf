@@ -64,7 +64,8 @@ spec:
       useCommonAlertSchema: true
   eventHubReceivers:
     - name: siem
-      eventHubName: alerts
+      eventHubName:
+        value: alerts
       eventHubNamespace:
         value: test-alerts-ns
       subscriptionId: 00000000-0000-0000-0000-000000000000

@@ -1123,10 +1123,20 @@ enum CloudResourceKind {
     id_prefix: "azsb"
     prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because an Event Hub namespace is
+  // created inside a referenced resource group in composed environments.
+  // The namespace is the container every Event Hubs entity (event hub,
+  // consumer group, authorization rule, schema group, geo-DR pairing,
+  // customer-managed key) nests under. The child kinds deliberately
+  // declare NO registry prerequisite: namespace names are globally unique
+  // with a post-delete name hold, so E2E composes them with scenario-local
+  // namespace fixtures instead of a shared recreate-per-scenario
+  // prerequisite.
   AzureEventHubNamespace = 471 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azeh"
+    prerequisites: [AzureResourceGroup]
   }];
   AzureServiceBusQueue = 472 [(kind_meta) = {
     provider: azure
@@ -1152,6 +1162,21 @@ enum CloudResourceKind {
     provider: azure
     version: v1
     id_prefix: "azsbdr"
+  }];
+  AzureEventHub = 477 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehub"
+  }];
+  AzureEventHubConsumerGroup = 478 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehcg"
+  }];
+  AzureEventHubAuthorizationRule = 479 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehauth"
   }];
 
   // --- CDN / Front Door ---
@@ -1376,6 +1401,37 @@ enum CloudResourceKind {
     provider: azure
     version: v1
     id_prefix: "azmredisgrant"
+  }];
+
+  // --- Event Hubs continuation (the messaging sub-band 470-479 is full;
+  // these kinds complete the Event Hubs family) ---
+
+  AzureEventHubDisasterRecoveryConfig = 520 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehdr"
+  }];
+  AzureEventHubSchemaGroup = 521 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehsg"
+  }];
+
+  // AzureResourceGroup is a prerequisite because a dedicated Event Hubs
+  // cluster is created inside a referenced resource group in composed
+  // environments. Note: clusters cannot be deleted for 4 hours after
+  // creation (Azure's moratorium), so E2E treats this kind as
+  // offline-gated.
+  AzureEventHubCluster = 522 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehclu"
+    prerequisites: [AzureResourceGroup]
+  }];
+  AzureEventHubNamespaceCustomerManagedKey = 523 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehcmk"
   }];
 
   // 600–799: GCP resources

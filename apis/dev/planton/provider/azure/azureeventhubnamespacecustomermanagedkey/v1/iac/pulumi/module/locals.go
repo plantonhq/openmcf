@@ -1,0 +1,28 @@
+package module
+
+import (
+	azureeventhubnamespacecustomermanagedkeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubnamespacecustomermanagedkey/v1"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+type Locals struct {
+	AzureEventHubNamespaceCustomerManagedKey *azureeventhubnamespacecustomermanagedkeyv1.AzureEventHubNamespaceCustomerManagedKey
+	EventhubNamespaceId                      string
+}
+
+func initializeLocals(ctx *pulumi.Context, stackInput *azureeventhubnamespacecustomermanagedkeyv1.AzureEventHubNamespaceCustomerManagedKeyStackInput) *Locals {
+	locals := &Locals{}
+
+	locals.AzureEventHubNamespaceCustomerManagedKey = stackInput.Target
+
+	// The eventhub_namespace_id field is a StringValueOrRef. The platform
+	// middleware resolves valueFrom references before IaC modules run, so
+	// .GetValue() always returns the resolved literal ARM id.
+	locals.EventhubNamespaceId = stackInput.Target.Spec.EventhubNamespaceId.GetValue()
+
+	// The CMK configuration carries no Azure tags: it is a property of the
+	// namespace, not an ARM object of its own, so the platform's identity
+	// tags live on the namespace (and its cluster).
+
+	return locals
+}

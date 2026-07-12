@@ -73,11 +73,11 @@ func Resources(ctx *pulumi.Context, stackInput *azuremonitordiagnosticsettingv1.
 	if spec.StorageAccountId.GetValue() != "" {
 		settingArgs.StorageAccountId = pulumi.String(spec.StorageAccountId.GetValue())
 	}
-	if spec.EventhubAuthorizationRuleId != "" {
-		settingArgs.EventhubAuthorizationRuleId = pulumi.String(spec.EventhubAuthorizationRuleId)
+	if spec.EventhubAuthorizationRuleId.GetValue() != "" {
+		settingArgs.EventhubAuthorizationRuleId = pulumi.String(spec.EventhubAuthorizationRuleId.GetValue())
 	}
-	if spec.EventhubName != "" {
-		settingArgs.EventhubName = pulumi.String(spec.EventhubName)
+	if spec.EventhubName.GetValue() != "" {
+		settingArgs.EventhubName = pulumi.String(spec.EventhubName.GetValue())
 	}
 	if spec.PartnerSolutionId != "" {
 		settingArgs.PartnerSolutionId = pulumi.String(spec.PartnerSolutionId)

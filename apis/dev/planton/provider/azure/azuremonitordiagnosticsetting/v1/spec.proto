@@ -89,16 +89,23 @@ message AzureMonitorDiagnosticSettingSpec {
 
   // The Event Hub namespace authorization rule that authorizes streaming the
   // selected telemetry to Event Hubs -- the destination for SIEMs and
-  // external analytics systems. Format:
-  // /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.EventHub/namespaces/{ns}/authorizationRules/{rule}
-  // (a NAMESPACE-level rule, e.g. RootManageSharedAccessKey). Pass a literal
-  // ARM ID; pair with eventhub_name to pick a specific hub.
-  string eventhub_authorization_rule_id = 8;
+  // external analytics systems. A NAMESPACE-scoped rule with send rights.
+  // Can be a literal ARM ID or a reference to an
+  // AzureEventHubAuthorizationRule output; pair with eventhub_name to pick
+  // a specific hub.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef eventhub_authorization_rule_id = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHubAuthorizationRule,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.authorization_rule_id"
+  ];
 
   // The Event Hub (within the authorized namespace) to stream to. When
   // empty, Azure routes to a default hub per category. Only meaningful with
-  // eventhub_authorization_rule_id.
-  string eventhub_name = 9;
+  // eventhub_authorization_rule_id. Can be a literal name or a reference to
+  // an AzureEventHub output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef eventhub_name = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.event_hub_name"
+  ];
 
   // The ARM ID of an Azure Native ISV partner solution (for example Elastic
   // or Datadog resources created through Azure Marketplace) to send the
@@ -114,13 +121,13 @@ message AzureMonitorDiagnosticSettingSpec {
   option (buf.validate.message).cel = {
     id: "diagnostic_setting_at_least_one_destination"
     message: "route the telemetry somewhere: set at least one of log_analytics_workspace_id, storage_account_id, eventhub_authorization_rule_id, or partner_solution_id"
-    expression: "has(this.log_analytics_workspace_id) || has(this.storage_account_id) || this.eventhub_authorization_rule_id != '' || this.partner_solution_id != ''"
+    expression: "has(this.log_analytics_workspace_id) || has(this.storage_account_id) || has(this.eventhub_authorization_rule_id) || this.partner_solution_id != ''"
   };
 
   option (buf.validate.message).cel = {
     id: "diagnostic_setting_eventhub_name_requires_rule"
     message: "eventhub_name picks a hub within the namespace that eventhub_authorization_rule_id authorizes -- set the authorization rule too"
-    expression: "this.eventhub_name == '' || this.eventhub_authorization_rule_id != ''"
+    expression: "!has(this.eventhub_name) || has(this.eventhub_authorization_rule_id)"
   };
 }
 

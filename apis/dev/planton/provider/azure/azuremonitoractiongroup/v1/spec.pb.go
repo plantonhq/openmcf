@@ -952,8 +952,10 @@ type AzureMonitorActionGroupEventHubReceiver struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The receiver's name, unique within the action group.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The name of the Event Hub to stream to.
-	EventHubName string `protobuf:"bytes,2,opt,name=event_hub_name,json=eventHubName,proto3" json:"event_hub_name,omitempty"`
+	// The name of the Event Hub to stream to. Can be a literal name or a
+	// reference to an AzureEventHub output (the hub must live in the
+	// namespace below).
+	EventHubName *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=event_hub_name,json=eventHubName,proto3" json:"event_hub_name,omitempty"`
 	// The name of the Event Hub namespace holding the hub. Can be a literal
 	// name or a reference to an AzureEventHubNamespace output.
 	EventHubNamespace *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=event_hub_namespace,json=eventHubNamespace,proto3" json:"event_hub_namespace,omitempty"`
@@ -1006,11 +1008,11 @@ func (x *AzureMonitorActionGroupEventHubReceiver) GetName() string {
 	return ""
 }
 
-func (x *AzureMonitorActionGroupEventHubReceiver) GetEventHubName() string {
+func (x *AzureMonitorActionGroupEventHubReceiver) GetEventHubName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.EventHubName
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureMonitorActionGroupEventHubReceiver) GetEventHubNamespace() *v1.StringValueOrRef {
@@ -1231,12 +1233,11 @@ const file_dev_planton_provider_azure_azuremonitoractiongroup_v1_spec_proto_rawD
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x7f\n" +
 	"\arole_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\xce\x03\x92\xd4a#status.outputs.role_definition_guidR\x06roleId\x125\n" +
-	"\x17use_common_alert_schema\x18\x03 \x01(\bR\x14useCommonAlertSchema\"\xa7\x06\n" +
+	"\x17use_common_alert_schema\x18\x03 \x01(\bR\x14useCommonAlertSchema\"\xfe\x06\n" +
 	"'AzureMonitorActionGroupEventHubReceiver\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x120\n" +
-	"\x0eevent_hub_name\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\feventHubName\x12\x90\x01\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x86\x01\n" +
+	"\x0eevent_hub_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd\x03\x92\xd4a\x1dstatus.outputs.event_hub_nameR\feventHubName\x12\x90\x01\n" +
 	"\x13event_hub_namespace\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xd7\x03\x92\xd4a\x1dstatus.outputs.namespace_nameR\x11eventHubNamespace\x12\xf3\x01\n" +
 	"\ttenant_id\x18\x04 \x01(\tB\xd5\x01\xbaH\xd1\x01\xba\x01\xcd\x01\n" +
 	"\"action_group_event_hub_tenant_uuid\x12:tenant_id must be a UUID (the Entra tenant's directory ID)\x1akthis == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')R\btenantId\x12\xe9\x01\n" +
@@ -1302,12 +1303,13 @@ var file_dev_planton_provider_azure_azuremonitoractiongroup_v1_spec_proto_depIdx
 	5,  // 13: dev.planton.provider.azure.azuremonitoractiongroup.v1.AzureMonitorActionGroupWebhookReceiver.aad_auth:type_name -> dev.planton.provider.azure.azuremonitoractiongroup.v1.AzureMonitorActionGroupWebhookAadAuth
 	14, // 14: dev.planton.provider.azure.azuremonitoractiongroup.v1.AzureMonitorActionGroupAzureFunctionReceiver.function_app_resource_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	14, // 15: dev.planton.provider.azure.azuremonitoractiongroup.v1.AzureMonitorActionGroupArmRoleReceiver.role_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 16: dev.planton.provider.azure.azuremonitoractiongroup.v1.AzureMonitorActionGroupEventHubReceiver.event_hub_namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	14, // 16: dev.planton.provider.azure.azuremonitoractiongroup.v1.AzureMonitorActionGroupEventHubReceiver.event_hub_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 17: dev.planton.provider.azure.azuremonitoractiongroup.v1.AzureMonitorActionGroupEventHubReceiver.event_hub_namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azuremonitoractiongroup_v1_spec_proto_init() }

@@ -1,0 +1,37 @@
+# Minimal AzureEventHubNamespace scenario: a STANDARD namespace in the
+# fixture resource group with elastic throughput (auto-inflate + ceiling),
+# a DENY firewall admitting one IP range (proving the folded rule set and
+# its separate ARM operation), and user tags -- proving the tier mapping,
+# the root SAS credential outputs, and the tag merge on both engines.
+# PREMIUM seams (processing units, dedicated-cluster placement) are
+# offline-covered; see the E2E profile.
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHubNamespace
+metadata:
+  name: planton-oss-e2e-azureeventhubnamespace-smoke
+  id: planton-oss-e2e-azureeventhubnamespace-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventhubnamespace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  namespaceName: pltn-oss-e2e-ehns-smoke
+  sku: STANDARD
+  autoInflateEnabled: true
+  maximumThroughputUnits: 4
+  networkRuleSets:
+    defaultAction: DENY
+    trustedServiceAccessEnabled: true
+    ipRules:
+      - 203.0.113.0/24
+  tags:
+    purpose: e2e-smoke

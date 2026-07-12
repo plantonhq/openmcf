@@ -104,7 +104,7 @@ var _ = ginkgo.Describe("AzureMonitorActionGroupSpec Validation Tests", func() {
 			input.Spec.EventHubReceivers = []*AzureMonitorActionGroupEventHubReceiver{
 				{
 					Name:              "siem",
-					EventHubName:      "alerts",
+					EventHubName:      literal("alerts"),
 					EventHubNamespace: literal("alerts-ns"),
 					SubscriptionId:    "00000000-0000-0000-0000-000000000000",
 				},
@@ -242,7 +242,7 @@ var _ = ginkgo.Describe("AzureMonitorActionGroupSpec Validation Tests", func() {
 			input.Spec.EventHubReceivers = []*AzureMonitorActionGroupEventHubReceiver{
 				{
 					Name:              "siem",
-					EventHubName:      "alerts",
+					EventHubName:      literal("alerts"),
 					EventHubNamespace: literal("alerts-ns"),
 					SubscriptionId:    "not-a-uuid",
 				},

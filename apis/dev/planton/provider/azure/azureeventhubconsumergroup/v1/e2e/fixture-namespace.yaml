@@ -1,0 +1,25 @@
+# Dedicated AzureEventHubNamespace for the consumer-group scenario only.
+# Namespace names are globally unique in Azure with a post-delete name
+# hold, so each scenario that creates and destroys its own parent
+# namespace carries a distinct name.
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHubNamespace
+metadata:
+  name: planton-oss-e2e-ehcg-fixture-namespace
+  id: planton-oss-e2e-ehcg-fixture-namespace
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventhubnamespace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  namespaceName: pltn-oss-e2e-ehcg-fx
+  sku: STANDARD

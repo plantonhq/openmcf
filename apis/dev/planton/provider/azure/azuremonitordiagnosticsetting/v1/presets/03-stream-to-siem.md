@@ -9,8 +9,8 @@ This preset streams a resource's audit logs and metrics to an Event Hub -- the s
 
 ## Key Configuration Choices
 
-- **Namespace-level authorization rule** -- the `eventhubAuthorizationRuleId` is a NAMESPACE rule (e.g. RootManageSharedAccessKey), not a hub-level one; `eventhubName` then picks the hub
-- **Named hub** (`eventhubName: siem-ingest`) -- omit it to let Azure route to a default hub per category; name it when the SIEM consumes one known hub
+- **Namespace-level authorization rule** -- the `eventhubAuthorizationRuleId` references a NAMESPACE-scoped `AzureEventHubAuthorizationRule` with send rights (never a hub-scoped one -- Azure requires the namespace scope here); `eventhubName` then picks the hub
+- **Named hub** (`eventhubName` referencing an `AzureEventHub`) -- omit it to let Azure route to a default hub per category; name it when the SIEM consumes one known hub
 - **Audit group + metrics** -- the typical SIEM selection; widen to `allLogs` when the SIEM ingests everything
 
 ## Placeholders to Replace
@@ -18,7 +18,8 @@ This preset streams a resource's audit logs and metrics to an Event Hub -- the s
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `my-app-vault` | The resource whose telemetry is streamed | Any kind's status outputs (`*_id`) |
-| `<subscription-id>`, `<rg>`, `<namespace>` | The Event Hub namespace's authorization rule path | The Event Hub namespace in the portal, or `AzureEventHubNamespace` outputs |
+| `my-siem-sender` | The namespace-scoped SAS rule authorizing the stream | An `AzureEventHubAuthorizationRule` in the same manifest set |
+| `my-siem-hub` | The hub the SIEM consumes | An `AzureEventHub` in the same manifest set |
 
 ## Related Presets
 

@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureeventhubcluster
+spec:
+  # Live E2E is EXCLUDED for this kind by the service's own rule: Azure
+  # forbids deleting a dedicated Event Hubs cluster for 4 HOURS after
+  # creation (the deletion moratorium), so an ephemeral
+  # create-verify-destroy cycle is impossible inside any reasonable
+  # window -- the destroy phase would spin against
+  # ClusterMoratoriumInEffect for hours at dedicated-tier cost. The
+  # component stands on its green offline gate: 100% parity audit, full
+  # tofu plan rendering the composed Dedicated sku, spec tests covering
+  # every validation rule, and the outputs conformance case.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Azure's 4-hour deletion moratorium on new dedicated clusters makes an
+    ephemeral create-verify-destroy run impossible by the service's own
+    rule (destroys of young clusters retry against
+    ClusterMoratoriumInEffect for hours, billing dedicated capacity units
+    the whole time). Closed on the offline gate; a live proof would need
+    a deliberate long-window run against a cluster older than 4 hours.
+  validated_provisioners: []
+  timeout_minutes: 30
