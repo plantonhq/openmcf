@@ -191,16 +191,24 @@ message AzureManagedDiskSpec {
     ]
   }];
 
-  // The customer-managed-key disk encryption set encrypting this disk,
-  // by ARM ID. Plain ARM ID: disk encryption sets are not modeled as a
-  // Planton kind yet. Conflicts with secure_vm_disk_encryption_set_id.
-  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/diskEncryptionSets/{name}
-  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_encryption_set_id = 24;
+  // The customer-managed-key disk encryption set encrypting this disk.
+  // A disk encryption set by ARM ID, or a reference to an
+  // AzureDiskEncryptionSet's output. Conflicts with
+  // secure_vm_disk_encryption_set_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_encryption_set_id = 24 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDiskEncryptionSet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.disk_encryption_set_id"
+  ];
 
   // For CONFIDENTIAL_VM_DISK_ENCRYPTED_WITH_CUSTOMER_KEY security: the
-  // disk encryption set encrypting the confidential VM's guest state, by
-  // ARM ID. Conflicts with disk_encryption_set_id. Fixed at creation.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef secure_vm_disk_encryption_set_id = 25;
+  // disk encryption set encrypting the confidential VM's guest state.
+  // A disk encryption set by ARM ID, or a reference to an
+  // AzureDiskEncryptionSet's output. Conflicts with
+  // disk_encryption_set_id. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secure_vm_disk_encryption_set_id = 25 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDiskEncryptionSet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.disk_encryption_set_id"
+  ];
 
   // The confidential-VM security profile for OS disks of confidential
   // VMs. Leave unspecified for everything else. When set to

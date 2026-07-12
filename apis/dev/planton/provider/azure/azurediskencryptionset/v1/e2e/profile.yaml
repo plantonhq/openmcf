@@ -1,0 +1,28 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurediskencryptionset
+spec:
+  # Live E2E is EXCLUDED for this kind by an Azure service rule that
+  # collides with the suite's zero-orphan requirement: a disk encryption
+  # set requires its backing Key Vault to have PURGE PROTECTION enabled,
+  # and a purge-protected vault CANNOT be purged on teardown -- Azure holds
+  # the soft-deleted vault (and its name) for the retention period (7+
+  # days), so an ephemeral create-verify-destroy cycle cannot leave zero
+  # orphans. Every other Azure vault-bearing lane purges the vault on
+  # destroy; this one structurally cannot. The component stands on its
+  # green offline gate: 100% parity audit, full tofu plan rendering the
+  # identity block, key reference, encryption type, and rotation flag, spec
+  # tests covering every validation rule, and the outputs conformance case.
+  # A live proof would need a throwaway subscription where a 7-day
+  # soft-deleted-vault residue is acceptable.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    A disk encryption set requires a purge-protection-enabled Key Vault,
+    which cannot be purged on teardown (Azure enforces a 7+ day retention),
+    so an ephemeral create-verify-destroy cycle cannot reach zero orphans in
+    the shared test subscription. Closed on the offline gate; the scenario
+    and fixtures ship ready-to-run for a throwaway subscription.
+  validated_provisioners: []
+  timeout_minutes: 30

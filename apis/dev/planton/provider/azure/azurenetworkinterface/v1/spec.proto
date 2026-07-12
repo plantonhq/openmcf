@@ -119,12 +119,14 @@ message AzureNetworkInterfaceSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_security_group_id"
   ];
 
-  // Application security groups this NIC joins, by ARM ID. ASG membership
-  // lets NSG rules target workload groups ("web-servers", "databases")
-  // instead of IP ranges. Plain ARM IDs: application security groups are
-  // not modeled as a Planton kind yet.
-  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/applicationSecurityGroups/{name}
-  repeated string application_security_group_ids = 13;
+  // Application security groups this NIC joins. ASG membership lets NSG
+  // rules target workload groups ("web-servers", "databases") instead of
+  // IP ranges. Each entry is an application security group by ARM ID, or a
+  // reference to an AzureApplicationSecurityGroup's output.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef application_security_group_ids = 13 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.application_security_group_id"
+  ];
 
   // Free-form tags applied to the NIC, merged over the Planton-derived
   // resource tags (organization, environment, resource id); a user tag

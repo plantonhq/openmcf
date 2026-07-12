@@ -239,7 +239,12 @@ const (
 	CloudResourceKind_AzureNetworkSecurityGroup CloudResourceKind = 412
 	// AzureResourceGroup is a prerequisite because a public IP is created
 	// inside a referenced resource group in composed environments.
-	CloudResourceKind_AzurePublicIp        CloudResourceKind = 413
+	CloudResourceKind_AzurePublicIp CloudResourceKind = 413
+	// AzureSubnet is a prerequisite because a private endpoint draws its
+	// private IP from a referenced subnet (the virtual network and resource
+	// group chain transitively through the subnet's own prerequisite). The
+	// connection target is polymorphic and the DNS zones / ASGs are optional,
+	// so none of those are prerequisites.
 	CloudResourceKind_AzurePrivateEndpoint CloudResourceKind = 414
 	// AzureResourceGroup is a prerequisite because a private DNS zone is created
 	// inside a referenced resource group in composed environments.
@@ -300,6 +305,16 @@ const (
 	// inside a referenced resource group; the Application Gateways that
 	// attach the policy reference it, never the reverse.
 	CloudResourceKind_AzureWebApplicationFirewallPolicy CloudResourceKind = 427
+	// AzureResourceGroup is a prerequisite because an application security
+	// group is created inside a referenced resource group; network
+	// interfaces, scale-set IP configurations, and NSG security rules
+	// reference the group, never the reverse.
+	CloudResourceKind_AzureApplicationSecurityGroup CloudResourceKind = 428
+	// AzureKeyVaultKey is a prerequisite because a disk encryption set wraps
+	// customer data with a referenced key -- the key (and its vault, which
+	// chains transitively) must exist before the set can resolve the key URL
+	// at create time.
+	CloudResourceKind_AzureDiskEncryptionSet CloudResourceKind = 429
 	// AzureResourceGroup is a prerequisite because a server is created inside
 	// a referenced resource group (VNet injection additionally references a
 	// delegated subnet and a private DNS zone, but neither is universally
@@ -402,6 +417,15 @@ const (
 	// referenced workspace scope; AzureMonitorActionGroup because its action
 	// fires into a referenced action group.
 	CloudResourceKind_AzureMonitorScheduledQueryAlert CloudResourceKind = 455
+	// AzureMonitorActionGroup is a prerequisite because an activity log
+	// alert's actions fire into a referenced action group (the resource
+	// group chains transitively). The alert itself is subscription-global
+	// and its scopes are polymorphic.
+	CloudResourceKind_AzureMonitorActivityLogAlert CloudResourceKind = 456
+	// AzureApplicationInsights is a prerequisite because a standard web test
+	// binds to a referenced Application Insights component (the resource
+	// group chains transitively through the component).
+	CloudResourceKind_AzureApplicationInsightsStandardWebTest CloudResourceKind = 457
 	// AzureResourceGroup is a prerequisite because the identity is created
 	// inside a referenced resource group that must already exist.
 	CloudResourceKind_AzureUserAssignedIdentity CloudResourceKind = 460
@@ -543,6 +567,11 @@ const (
 	// offline-gated.
 	CloudResourceKind_AzureEventHubCluster                     CloudResourceKind = 522
 	CloudResourceKind_AzureEventHubNamespaceCustomerManagedKey CloudResourceKind = 523
+	// AzureMssqlServer is a prerequisite because a failover group is created
+	// on a referenced primary logical server and points at a partner server;
+	// the primary (and its resource group, which chains transitively) must
+	// exist before the group can be written.
+	CloudResourceKind_AzureMssqlFailoverGroup CloudResourceKind = 524
 	// 600–799: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
 	CloudResourceKind_GcpCloudCdn                   CloudResourceKind = 601
@@ -971,6 +1000,8 @@ var (
 		425:  "AzureKeyVaultKey",
 		426:  "AzureKeyVaultCertificate",
 		427:  "AzureWebApplicationFirewallPolicy",
+		428:  "AzureApplicationSecurityGroup",
+		429:  "AzureDiskEncryptionSet",
 		430:  "AzurePostgresqlFlexibleServer",
 		431:  "AzureRedisCache",
 		432:  "AzureCosmosdbAccount",
@@ -995,6 +1026,8 @@ var (
 		453:  "AzureMonitorActionGroup",
 		454:  "AzureMonitorMetricAlert",
 		455:  "AzureMonitorScheduledQueryAlert",
+		456:  "AzureMonitorActivityLogAlert",
+		457:  "AzureApplicationInsightsStandardWebTest",
 		460:  "AzureUserAssignedIdentity",
 		461:  "AzureRoleAssignment",
 		462:  "AzureRoleDefinition",
@@ -1040,6 +1073,7 @@ var (
 		521:  "AzureEventHubSchemaGroup",
 		522:  "AzureEventHubCluster",
 		523:  "AzureEventHubNamespaceCustomerManagedKey",
+		524:  "AzureMssqlFailoverGroup",
 		600:  "GcpArtifactRegistryRepo",
 		601:  "GcpCloudCdn",
 		602:  "GcpCloudFunction",
@@ -1452,6 +1486,8 @@ var (
 		"AzureKeyVaultKey":                          425,
 		"AzureKeyVaultCertificate":                  426,
 		"AzureWebApplicationFirewallPolicy":         427,
+		"AzureApplicationSecurityGroup":             428,
+		"AzureDiskEncryptionSet":                    429,
 		"AzurePostgresqlFlexibleServer":             430,
 		"AzureRedisCache":                           431,
 		"AzureCosmosdbAccount":                      432,
@@ -1476,6 +1512,8 @@ var (
 		"AzureMonitorActionGroup":                   453,
 		"AzureMonitorMetricAlert":                   454,
 		"AzureMonitorScheduledQueryAlert":           455,
+		"AzureMonitorActivityLogAlert":              456,
+		"AzureApplicationInsightsStandardWebTest":   457,
 		"AzureUserAssignedIdentity":                 460,
 		"AzureRoleAssignment":                       461,
 		"AzureRoleDefinition":                       462,
@@ -1521,6 +1559,7 @@ var (
 		"AzureEventHubSchemaGroup":                  521,
 		"AzureEventHubCluster":                      522,
 		"AzureEventHubNamespaceCustomerManagedKey":  523,
+		"AzureMssqlFailoverGroup":                   524,
 		"GcpArtifactRegistryRepo":                   600,
 		"GcpCloudCdn":                               601,
 		"GcpCloudFunction":                          602,
@@ -2073,7 +2112,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x86\xaf\x01\n" +
+	"\x02v1\x10\x01*\xb0\xb1\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2177,9 +2216,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x0eAzureDnsRecord\x10\x9a\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azdrec\x12%\n" +
 	"\vAzureSubnet\x10\x9b\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azsub:\x02\x96\x03\x123\n" +
 	"\x19AzureNetworkSecurityGroup\x10\x9c\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05aznsg:\x02\x90\x03\x12'\n" +
-	"\rAzurePublicIp\x10\x9d\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azpip:\x02\x90\x03\x12)\n" +
-	"\x14AzurePrivateEndpoint\x10\x9e\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azpe\x12.\n" +
+	"\rAzurePublicIp\x10\x9d\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azpip:\x02\x90\x03\x12-\n" +
+	"\x14AzurePrivateEndpoint\x10\x9e\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azpe:\x02\x9b\x03\x12.\n" +
 	"\x13AzurePrivateDnsZone\x10\x9f\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azpdns:\x02\x90\x03\x121\n" +
 	"\x17AzureApplicationGateway\x10\xa0\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azagw:\x02\x9b\x03\x12*\n" +
 	"\x11AzureLoadBalancer\x10\xa1\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azlb:\x02\x90\x03\x12(\n" +
@@ -2193,7 +2231,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x1bAzureVirtualMachineScaleSet\x10\xa8\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azvmss:\x02\x9b\x03\x12,\n" +
 	"\x10AzureKeyVaultKey\x10\xa9\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazkvkey:\x02\x95\x03\x125\n" +
 	"\x18AzureKeyVaultCertificate\x10\xaa\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazkvcert:\x02\x95\x03\x12>\n" +
-	"!AzureWebApplicationFirewallPolicy\x10\xab\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazwafpol:\x02\x90\x03\x126\n" +
+	"!AzureWebApplicationFirewallPolicy\x10\xab\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazwafpol:\x02\x90\x03\x127\n" +
+	"\x1dAzureApplicationSecurityGroup\x10\xac\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azasg:\x02\x90\x03\x120\n" +
+	"\x16AzureDiskEncryptionSet\x10\xad\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azdes:\x02\xa9\x03\x126\n" +
 	"\x1dAzurePostgresqlFlexibleServer\x10\xae\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azpg:\x02\x90\x03\x12)\n" +
 	"\x0fAzureRedisCache\x10\xaf\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azred:\x02\x90\x03\x12.\n" +
 	"\x14AzureCosmosdbAccount\x10\xb0\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azcdb:\x02\x90\x03\x12+\n" +
@@ -2218,7 +2258,10 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x1dAzureMonitorDiagnosticSetting\x10\xc4\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x10\x01\"\tazmondiag:\x02\xc2\x03\x123\n" +
 	"\x17AzureMonitorActionGroup\x10\xc5\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazmonag:\x02\x90\x03\x124\n" +
 	"\x17AzureMonitorMetricAlert\x10\xc6\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazmalert:\x02\xc5\x03\x12?\n" +
-	"\x1fAzureMonitorScheduledQueryAlert\x10\xc7\x03\x1a\x19\xa2\xf7\x04\x15\b\r\x10\x01\"\tazsqalert:\x04\xc2\x03\xc5\x03\x122\n" +
+	"\x1fAzureMonitorScheduledQueryAlert\x10\xc7\x03\x1a\x19\xa2\xf7\x04\x15\b\r\x10\x01\"\tazsqalert:\x04\xc2\x03\xc5\x03\x12;\n" +
+	"\x1cAzureMonitorActivityLogAlert\x10\xc8\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x10\x01\"\n" +
+	"azactalert:\x02\xc5\x03\x12E\n" +
+	"'AzureApplicationInsightsStandardWebTest\x10\xc9\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x10\x01\"\tazwebtest:\x02\xc3\x03\x122\n" +
 	"\x19AzureUserAssignedIdentity\x10\xcc\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azid:\x02\x90\x03\x12.\n" +
 	"\x13AzureRoleAssignment\x10\xcd\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x04azra:\x04\x90\x03\xcc\x03\x12,\n" +
 	"\x13AzureRoleDefinition\x10\xce\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azrd:\x02\x90\x03\x12:\n" +
@@ -2268,7 +2311,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"#AzureEventHubDisasterRecoveryConfig\x10\x88\x04\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azehdr\x12/\n" +
 	"\x18AzureEventHubSchemaGroup\x10\x89\x04\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azehsg\x120\n" +
 	"\x14AzureEventHubCluster\x10\x8a\x04\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazehclu:\x02\x90\x03\x12@\n" +
-	"(AzureEventHubNamespaceCustomerManagedKey\x10\x8b\x04\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazehcmk\x12.\n" +
+	"(AzureEventHubNamespaceCustomerManagedKey\x10\x8b\x04\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazehcmk\x125\n" +
+	"\x17AzureMssqlFailoverGroup\x10\x8c\x04\x1a\x17\xa2\xf7\x04\x13\b\r\x10\x01\"\tazmsqlfog:\x02\xb1\x03\x12.\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x12\"\n" +
 	"\vGcpCloudCdn\x10\xd9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcdn\x12(\n" +
 	"\x10GcpCloudFunction\x10\xda\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\acldfunc\x12\"\n" +

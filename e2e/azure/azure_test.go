@@ -187,6 +187,60 @@ func TestAzurePublicIpPrefix_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurepublicipprefix", "terraform")
 }
 
+// --- Azure Application Security Group (empty micro-segmentation anchor in the fixture RG) ---
+
+func TestAzureApplicationSecurityGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureapplicationsecuritygroup", "pulumi")
+}
+func TestAzureApplicationSecurityGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureapplicationsecuritygroup", "terraform")
+}
+
+// --- Azure Private Endpoint (composed: fixture subnet + scenario-local storage target + blob privatelink zone) ---
+
+func TestAzurePrivateEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivateendpoint", "pulumi")
+}
+func TestAzurePrivateEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivateendpoint", "terraform")
+}
+
+// --- Azure Disk Encryption Set (profile-deferred: purge-protected vault cannot teardown to zero orphans) ---
+
+func TestAzureDiskEncryptionSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurediskencryptionset", "pulumi")
+}
+func TestAzureDiskEncryptionSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurediskencryptionset", "terraform")
+}
+
+// --- Azure MSSQL Failover Group (composed: shared primary + scenario-local partner + database) ---
+
+func TestAzureMssqlFailoverGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremssqlfailovergroup", "pulumi")
+}
+func TestAzureMssqlFailoverGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremssqlfailovergroup", "terraform")
+}
+
+// --- Azure Monitor Activity Log Alert (composed: fixture action group -> administrative alert) ---
+
+func TestAzureMonitorActivityLogAlert_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitoractivitylogalert", "pulumi")
+}
+func TestAzureMonitorActivityLogAlert_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitoractivitylogalert", "terraform")
+}
+
+// --- Azure Application Insights Standard Web Test (composed: fixture App Insights -> web test) ---
+
+func TestAzureApplicationInsightsStandardWebTest_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureapplicationinsightsstandardwebtest", "pulumi")
+}
+func TestAzureApplicationInsightsStandardWebTest_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureapplicationinsightsstandardwebtest", "terraform")
+}
+
 // --- Azure NAT Gateway (composed: extra public-IP + prefix fixtures -> gateway with both association forms) ---
 
 func TestAzureNatGateway_Pulumi(t *testing.T) {

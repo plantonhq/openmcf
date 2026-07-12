@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azuremssqlfailovergroup.v1;
+
+import "dev/planton/provider/azure/azuremssqlfailovergroup/v1/api.proto";
+import "dev/planton/provider/azure/provider.proto";
+
+// AzureMssqlFailoverGroupStackInput is the input to the IaC modules
+// (Pulumi/Terraform). It contains the target resource definition and Azure
+// provider credentials.
+message AzureMssqlFailoverGroupStackInput {
+  // The failover group resource to deploy.
+  AzureMssqlFailoverGroup target = 1;
+
+  // Azure provider configuration (credentials).
+  dev.planton.provider.azure.AzureProviderConfig provider_config = 2;
+}

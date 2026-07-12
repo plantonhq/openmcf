@@ -1,0 +1,24 @@
+# The user-assigned identity the disk encryption set uses to unwrap its
+# key. Using a user-assigned identity (rather than system-assigned) lets the
+# Key Vault crypto grant be applied BEFORE the set exists, avoiding the
+# system-assigned chicken-and-egg.
+apiVersion: azure.planton.dev/v1
+kind: AzureUserAssignedIdentity
+metadata:
+  name: planton-oss-e2e-des-uai
+  id: planton-oss-e2e-des-uai
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureuserassignedidentity
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-des-uai

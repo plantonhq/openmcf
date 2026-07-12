@@ -133,8 +133,11 @@ func Resources(ctx *pulumi.Context, stackInput *azureaksclusterv1.AzureAksCluste
 		clusterArgs.RunCommandEnabled = pulumi.Bool(true)
 	}
 
-	if spec.DiskEncryptionSetId != "" {
-		clusterArgs.DiskEncryptionSetId = pulumi.String(spec.DiskEncryptionSetId)
+	// The disk encryption set reference resolves to a literal ARM ID before
+	// the module runs, so GetValue() returns the resolved id for both a
+	// literal and a valueFrom reference.
+	if spec.DiskEncryptionSetId != nil && spec.DiskEncryptionSetId.GetValue() != "" {
+		clusterArgs.DiskEncryptionSetId = pulumi.String(spec.DiskEncryptionSetId.GetValue())
 	}
 	if spec.EdgeZone != "" {
 		clusterArgs.EdgeZone = pulumi.String(spec.EdgeZone)

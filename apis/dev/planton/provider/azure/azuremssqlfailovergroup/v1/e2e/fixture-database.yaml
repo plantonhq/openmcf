@@ -1,0 +1,24 @@
+# A small database on the shared primary server for the failover group to
+# replicate -- an S0 (Standard DTU) database, the cheapest tier that
+# supports geo-replication. Databases in a failover group must live on the
+# primary server.
+apiVersion: azure.planton.dev/v1
+kind: AzureMssqlDatabase
+metadata:
+  name: planton-oss-e2e-fog-db
+  id: planton-oss-e2e-fog-db
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremssqldatabase
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  serverId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sql
+  databaseName: fogdb
+  skuName: S0

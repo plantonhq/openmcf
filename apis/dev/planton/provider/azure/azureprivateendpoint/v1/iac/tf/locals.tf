@@ -1,21 +1,38 @@
 locals {
-  resource_id = var.metadata.id
+  resource_id = (
+    var.metadata.id != null && var.metadata.id != ""
+    ? var.metadata.id
+    : var.metadata.name
+  )
 
+  # PARITY-EXCEPTION: resource_kind here is the family-wide snake-case
+  # literal and resource_id falls back to metadata.name, while the Pulumi
+  # module emits the lowered CloudResourceKind enum string and omits
+  # resource_id when metadata.id is empty. Output-neutral (tags never feed
+  # stack outputs); aligning the two shapes is a family-wide convention
+  # change, not a per-kind fix.
   base_tags = {
-    resource      = "true"
-    resource_name = var.metadata.name
-    resource_kind = "azureprivateendpoint"
+    "resource"      = "true"
+    "resource_id"   = local.resource_id
+    "resource_kind" = "azure_private_endpoint"
+    "resource_name" = var.metadata.name
   }
 
-  org_tag = var.metadata.org != "" ? { organization = var.metadata.org } : {}
-  env_tag = var.metadata.env != "" ? { environment = var.metadata.env } : {}
-  id_tag  = local.resource_id != "" ? { resource_id = local.resource_id } : {}
+  org_tag = (
+    var.metadata.org != null && var.metadata.org != ""
+  ) ? { "organization" = var.metadata.org } : {}
 
-  final_tags = merge(local.base_tags, local.org_tag, local.env_tag, local.id_tag, var.metadata.tags)
+  env_tag = (
+    var.metadata.env != null && var.metadata.env != ""
+  ) ? { "environment" = var.metadata.env } : {}
 
-  # Connection name derived from the resource metadata name
-  connection_name = "${var.metadata.name}-connection"
+  # Metadata-derived tags first, then the user's spec tags merged over them:
+  # user tags deliberately win so an org's governance conventions can
+  # override the derived values where they collide.
+  final_tags = merge(local.base_tags, local.org_tag, local.env_tag, var.spec.tags)
 
-  # DNS zone group name derived from the resource metadata name
-  dns_zone_group_name = "${var.metadata.name}-dns-zone-group"
+  # The connection and DNS zone group names are internal handles Azure
+  # requires but nothing references; derive them from the endpoint name.
+  connection_name     = "${var.spec.name}-connection"
+  dns_zone_group_name = "${var.spec.name}-dns-zone-group"
 }

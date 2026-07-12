@@ -289,12 +289,13 @@ message AzureMonitorMetricAlertDynamicCriteria {
 
 // An Application Insights web-test availability condition.
 message AzureMonitorMetricAlertWebTestCriteria {
-  // The ARM ID of the Application Insights availability (web) test whose
-  // failures the rule watches. Pass the literal ARM ID of the test
-  // (Microsoft.Insights/webTests/{name}).
-  string web_test_id = 1 [
+  // The Application Insights availability (web) test whose failures the
+  // rule watches. Defaults to referencing an
+  // AzureApplicationInsightsStandardWebTest's web_test_id output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef web_test_id = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationInsightsStandardWebTest,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.web_test_id"
   ];
 
   // The Application Insights resource the web test belongs to. Can be a

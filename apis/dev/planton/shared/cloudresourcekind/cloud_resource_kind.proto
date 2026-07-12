@@ -714,10 +714,16 @@ enum CloudResourceKind {
     id_prefix: "azpip"
     prerequisites: [AzureResourceGroup]
   }];
+  // AzureSubnet is a prerequisite because a private endpoint draws its
+  // private IP from a referenced subnet (the virtual network and resource
+  // group chain transitively through the subnet's own prerequisite). The
+  // connection target is polymorphic and the DNS zones / ASGs are optional,
+  // so none of those are prerequisites.
   AzurePrivateEndpoint = 414 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azpe"
+    prerequisites: [AzureSubnet]
   }];
   // AzureResourceGroup is a prerequisite because a private DNS zone is created
   // inside a referenced resource group in composed environments.
@@ -845,6 +851,26 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azwafpol"
     prerequisites: [AzureResourceGroup]
+  }];
+  // AzureResourceGroup is a prerequisite because an application security
+  // group is created inside a referenced resource group; network
+  // interfaces, scale-set IP configurations, and NSG security rules
+  // reference the group, never the reverse.
+  AzureApplicationSecurityGroup = 428 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azasg"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureKeyVaultKey is a prerequisite because a disk encryption set wraps
+  // customer data with a referenced key -- the key (and its vault, which
+  // chains transitively) must exist before the set can resolve the key URL
+  // at create time.
+  AzureDiskEncryptionSet = 429 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azdes"
+    prerequisites: [AzureKeyVaultKey]
   }];
   // AzureResourceGroup is a prerequisite because a server is created inside
   // a referenced resource group (VNet injection additionally references a
@@ -1067,6 +1093,25 @@ enum CloudResourceKind {
       AzureLogAnalyticsWorkspace,
       AzureMonitorActionGroup
     ]
+  }];
+  // AzureMonitorActionGroup is a prerequisite because an activity log
+  // alert's actions fire into a referenced action group (the resource
+  // group chains transitively). The alert itself is subscription-global
+  // and its scopes are polymorphic.
+  AzureMonitorActivityLogAlert = 456 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azactalert"
+    prerequisites: [AzureMonitorActionGroup]
+  }];
+  // AzureApplicationInsights is a prerequisite because a standard web test
+  // binds to a referenced Application Insights component (the resource
+  // group chains transitively through the component).
+  AzureApplicationInsightsStandardWebTest = 457 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azwebtest"
+    prerequisites: [AzureApplicationInsights]
   }];
   // AzureResourceGroup is a prerequisite because the identity is created
   // inside a referenced resource group that must already exist.
@@ -1432,6 +1477,20 @@ enum CloudResourceKind {
     provider: azure
     version: v1
     id_prefix: "azehcmk"
+  }];
+
+  // --- Databases continuation (the databases sub-band 430-439 is full;
+  // this kind extends the SQL family) ---
+
+  // AzureMssqlServer is a prerequisite because a failover group is created
+  // on a referenced primary logical server and points at a partner server;
+  // the primary (and its resource group, which chains transitively) must
+  // exist before the group can be written.
+  AzureMssqlFailoverGroup = 524 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmsqlfog"
+    prerequisites: [AzureMssqlServer]
   }];
 
   // 600–799: GCP resources

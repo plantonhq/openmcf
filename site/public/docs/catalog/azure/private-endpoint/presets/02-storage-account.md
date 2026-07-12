@@ -26,7 +26,7 @@ This preset creates an Azure Private Endpoint that connects an Azure Storage Acc
 
 - **Sub-resource: blob** (`subresourceNames: [blob]`) -- Targets the blob sub-resource of the Storage Account. Use `table`, `queue`, or `file` for other storage services (each requires a separate private endpoint)
 - **Auto-approved connection** -- The connection is auto-approved (not manual). The private endpoint owner must have appropriate permissions on the target storage account
-- **DNS zone group** (`privateDnsZoneId`) -- Automatically registers an A-record in the specified `privatelink.blob.core.windows.net` zone so that `youraccount.blob.core.windows.net` resolves to the private IP
+- **DNS zone group** (`privateDnsZoneIds`) -- Automatically registers an A-record in the specified `privatelink.blob.core.windows.net` zone so that `youraccount.blob.core.windows.net` resolves to the private IP
 - **Dynamic IP allocation** -- The private endpoint receives a private IP dynamically from the specified subnet
 
 ## Placeholders to Replace

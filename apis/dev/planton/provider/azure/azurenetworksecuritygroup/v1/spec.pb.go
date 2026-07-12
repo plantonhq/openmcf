@@ -381,11 +381,10 @@ type AzureNetworkSecurityGroupRule struct {
 	SourceAddressPrefixes []string `protobuf:"bytes,12,rep,name=source_address_prefixes,json=sourceAddressPrefixes,proto3" json:"source_address_prefixes,omitempty"`
 	// The source as application security group membership -- identity-based
 	// addressing that follows workloads as they scale instead of pinning
-	// CIDRs. Plain ARM IDs (up to 10): application security groups are not
-	// yet modeled as a Planton kind. At most one source addressing style may
-	// be set.
-	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/applicationSecurityGroups/{name}
-	SourceApplicationSecurityGroupIds []string `protobuf:"bytes,13,rep,name=source_application_security_group_ids,json=sourceApplicationSecurityGroupIds,proto3" json:"source_application_security_group_ids,omitempty"`
+	// CIDRs. Each entry is an application security group by ARM ID, or a
+	// reference to an AzureApplicationSecurityGroup's output (up to 10). At
+	// most one source addressing style may be set.
+	SourceApplicationSecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,13,rep,name=source_application_security_group_ids,json=sourceApplicationSecurityGroupIds,proto3" json:"source_application_security_group_ids,omitempty"`
 	// The destination as a single prefix: a CIDR, an IP, a service tag, or
 	// "*". Service tags and "*" only work here, not in the plural form. At
 	// most one destination addressing style may be set; all unset means any.
@@ -393,9 +392,11 @@ type AzureNetworkSecurityGroupRule struct {
 	// The destination as multiple CIDRs/IPs. Service tags are not accepted
 	// in the list form. At most one destination addressing style may be set.
 	DestinationAddressPrefixes []string `protobuf:"bytes,15,rep,name=destination_address_prefixes,json=destinationAddressPrefixes,proto3" json:"destination_address_prefixes,omitempty"`
-	// The destination as application security group membership. Plain ARM
-	// IDs (up to 10). At most one destination addressing style may be set.
-	DestinationApplicationSecurityGroupIds []string `protobuf:"bytes,16,rep,name=destination_application_security_group_ids,json=destinationApplicationSecurityGroupIds,proto3" json:"destination_application_security_group_ids,omitempty"`
+	// The destination as application security group membership. Each entry
+	// is an application security group by ARM ID, or a reference to an
+	// AzureApplicationSecurityGroup's output (up to 10). At most one
+	// destination addressing style may be set.
+	DestinationApplicationSecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,16,rep,name=destination_application_security_group_ids,json=destinationApplicationSecurityGroupIds,proto3" json:"destination_application_security_group_ids,omitempty"`
 	unknownFields                          protoimpl.UnknownFields
 	sizeCache                              protoimpl.SizeCache
 }
@@ -514,7 +515,7 @@ func (x *AzureNetworkSecurityGroupRule) GetSourceAddressPrefixes() []string {
 	return nil
 }
 
-func (x *AzureNetworkSecurityGroupRule) GetSourceApplicationSecurityGroupIds() []string {
+func (x *AzureNetworkSecurityGroupRule) GetSourceApplicationSecurityGroupIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.SourceApplicationSecurityGroupIds
 	}
@@ -535,7 +536,7 @@ func (x *AzureNetworkSecurityGroupRule) GetDestinationAddressPrefixes() []string
 	return nil
 }
 
-func (x *AzureNetworkSecurityGroupRule) GetDestinationApplicationSecurityGroupIds() []string {
+func (x *AzureNetworkSecurityGroupRule) GetDestinationApplicationSecurityGroupIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.DestinationApplicationSecurityGroupIds
 	}
@@ -557,7 +558,7 @@ const file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_ra
 	"\x04tags\x18\x05 \x03(\v2`.dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xaa\x13\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xfe\x14\n" +
 	"\x1dAzureNetworkSecurityGroupRule\x12 \n" +
 	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x8c\x01R\vdescription\x12)\n" +
@@ -572,13 +573,13 @@ const file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_ra
 	"\x17destination_port_ranges\x18\n" +
 	" \x03(\tR\x15destinationPortRanges\x127\n" +
 	"\x15source_address_prefix\x18\v \x01(\tH\x02R\x13sourceAddressPrefix\x88\x01\x01\x126\n" +
-	"\x17source_address_prefixes\x18\f \x03(\tR\x15sourceAddressPrefixes\x12Z\n" +
-	"%source_application_security_group_ids\x18\r \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\n" +
-	"R!sourceApplicationSecurityGroupIds\x12A\n" +
+	"\x17source_address_prefixes\x18\f \x03(\tR\x15sourceAddressPrefixes\x12\xc3\x01\n" +
+	"%source_application_security_group_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x05\x92\x01\x02\x10\n" +
+	"\x88\xd4a\xac\x03\x92\xd4a,status.outputs.application_security_group_idR!sourceApplicationSecurityGroupIds\x12A\n" +
 	"\x1adestination_address_prefix\x18\x0e \x01(\tH\x03R\x18destinationAddressPrefix\x88\x01\x01\x12@\n" +
-	"\x1cdestination_address_prefixes\x18\x0f \x03(\tR\x1adestinationAddressPrefixes\x12d\n" +
-	"*destination_application_security_group_ids\x18\x10 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\n" +
-	"R&destinationApplicationSecurityGroupIds:\x80\t\xbaH\xfc\b\x1a\xc1\x01\n" +
+	"\x1cdestination_address_prefixes\x18\x0f \x03(\tR\x1adestinationAddressPrefixes\x12\xcd\x01\n" +
+	"*destination_application_security_group_ids\x18\x10 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x05\x92\x01\x02\x10\n" +
+	"\x88\xd4a\xac\x03\x92\xd4a,status.outputs.application_security_group_idR&destinationApplicationSecurityGroupIds:\x80\t\xbaH\xfc\b\x1a\xc1\x01\n" +
 	"\x19source_ports_single_style\x12^Set source ports as either source_port_range or source_port_ranges, not both (unset means any)\x1aD!(has(this.source_port_range) && this.source_port_ranges.size() > 0)\x1a\xcb\x01\n" +
 	"\x1ddestination_ports_exactly_one\x12[Set exactly one of destination_port_range or destination_port_ranges (use \"*\" for any port)\x1aMhas(this.destination_port_range) != (this.destination_port_ranges.size() > 0)\x1a\xde\x02\n" +
 	"\x1bsource_address_single_style\x12\x97\x01Set at most one source addressing style: source_address_prefix, source_address_prefixes, or source_application_security_group_ids (all unset means any)\x1a\xa4\x01(has(this.source_address_prefix) ? 1 : 0) + (this.source_address_prefixes.size() > 0 ? 1 : 0) + (this.source_application_security_group_ids.size() > 0 ? 1 : 0) <= 1\x1a\x86\x03\n" +
@@ -635,11 +636,13 @@ var file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_depI
 	0, // 3: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRule.direction:type_name -> dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleDirection
 	1, // 4: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRule.access:type_name -> dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleAccess
 	2, // 5: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRule.protocol:type_name -> dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleProtocol
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	6, // 6: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRule.source_application_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // 7: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRule.destination_application_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_init() }

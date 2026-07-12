@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureprivateendpoint
+spec:
+  # The composed scenario deploys the fixture subnet (registry prerequisite,
+  # which brings the virtual network and resource group), plus a
+  # scenario-local storage account (the private link target, blob
+  # sub-resource) and a private DNS zone (privatelink.blob.core.windows.net)
+  # as extra fixtures. The endpoint connects to the account's blob endpoint,
+  # registers its IP in the zone via the DNS zone group, and the verifier
+  # confirms the endpoint exists via the ARM API, then destroys and confirms
+  # it is gone -- on both provisioners. Private endpoints provision in a few
+  # minutes; the storage account and zone are quick.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 25

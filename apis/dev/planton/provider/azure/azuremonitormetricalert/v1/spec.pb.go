@@ -763,10 +763,10 @@ func (x *AzureMonitorMetricAlertDynamicCriteria) GetSkipMetricValidation() bool 
 // An Application Insights web-test availability condition.
 type AzureMonitorMetricAlertWebTestCriteria struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ARM ID of the Application Insights availability (web) test whose
-	// failures the rule watches. Pass the literal ARM ID of the test
-	// (Microsoft.Insights/webTests/{name}).
-	WebTestId string `protobuf:"bytes,1,opt,name=web_test_id,json=webTestId,proto3" json:"web_test_id,omitempty"`
+	// The Application Insights availability (web) test whose failures the
+	// rule watches. Defaults to referencing an
+	// AzureApplicationInsightsStandardWebTest's web_test_id output.
+	WebTestId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=web_test_id,json=webTestId,proto3" json:"web_test_id,omitempty"`
 	// The Application Insights resource the web test belongs to. Can be a
 	// literal ARM ID or a reference to an AzureApplicationInsights output.
 	ComponentId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=component_id,json=componentId,proto3" json:"component_id,omitempty"`
@@ -808,11 +808,11 @@ func (*AzureMonitorMetricAlertWebTestCriteria) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azuremonitormetricalert_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *AzureMonitorMetricAlertWebTestCriteria) GetWebTestId() string {
+func (x *AzureMonitorMetricAlertWebTestCriteria) GetWebTestId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.WebTestId
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureMonitorMetricAlertWebTestCriteria) GetComponentId() *v1.StringValueOrRef {
@@ -1029,10 +1029,9 @@ const file_dev_planton_provider_azure_azuremonitormetricalert_v1_spec_proto_rawD
 	"\x16skip_metric_validation\x18\n" +
 	" \x01(\bR\x14skipMetricValidationB\x19\n" +
 	"\x17_evaluation_total_countB\x1b\n" +
-	"\x19_evaluation_failure_count\"\xa0\x02\n" +
-	"&AzureMonitorMetricAlertWebTestCriteria\x12*\n" +
-	"\vweb_test_id\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\twebTestId\x12\x8c\x01\n" +
+	"\x19_evaluation_failure_count\"\xf3\x02\n" +
+	"&AzureMonitorMetricAlertWebTestCriteria\x12}\n" +
+	"\vweb_test_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9\x03\x92\xd4a\x1astatus.outputs.web_test_idR\twebTestId\x12\x8c\x01\n" +
 	"\fcomponent_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\xbaH\x03\xc8\x01\x01\x88\xd4a\xc3\x03\x92\xd4a&status.outputs.application_insights_idR\vcomponentId\x12;\n" +
 	"\x15failed_location_count\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x13failedLocationCount\"\xf4\x01\n" +
 	" AzureMonitorMetricAlertDimension\x12\x1e\n" +
@@ -1120,15 +1119,16 @@ var file_dev_planton_provider_azure_azuremonitormetricalert_v1_spec_proto_depIdx
 	1,  // 11: dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertDynamicCriteria.operator:type_name -> dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertOperator
 	2,  // 12: dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertDynamicCriteria.alert_sensitivity:type_name -> dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertSensitivity
 	8,  // 13: dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertDynamicCriteria.dimensions:type_name -> dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertDimension
-	12, // 14: dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertWebTestCriteria.component_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 15: dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertDimension.operator:type_name -> dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertDimensionOperator
-	12, // 16: dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertAction.action_group_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // 17: dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertAction.webhook_properties:type_name -> dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertAction.WebhookPropertiesEntry
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	12, // 14: dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertWebTestCriteria.web_test_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 15: dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertWebTestCriteria.component_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 16: dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertDimension.operator:type_name -> dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertDimensionOperator
+	12, // 17: dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertAction.action_group_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 18: dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertAction.webhook_properties:type_name -> dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertAction.WebhookPropertiesEntry
+	19, // [19:19] is the sub-list for method output_type
+	19, // [19:19] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azuremonitormetricalert_v1_spec_proto_init() }

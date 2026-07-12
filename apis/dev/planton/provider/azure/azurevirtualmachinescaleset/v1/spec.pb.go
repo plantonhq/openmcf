@@ -2410,14 +2410,14 @@ type AzureVirtualMachineScaleSetOsDisk struct {
 	// Fixed at creation.
 	DiffDiskSettings *AzureVirtualMachineScaleSetDiffDiskSettings `protobuf:"bytes,4,opt,name=diff_disk_settings,json=diffDiskSettings,proto3" json:"diff_disk_settings,omitempty"`
 	// Customer-managed-key encryption: the disk encryption set encrypting
-	// instances' OS disks, by ARM ID. Plain ARM ID: disk encryption sets
-	// are not modeled as a Planton kind yet. Conflicts with
+	// instances' OS disks. A disk encryption set by ARM ID, or a reference
+	// to an AzureDiskEncryptionSet's output. Conflicts with
 	// secure_vm_disk_encryption_set_id.
-	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/diskEncryptionSets/{name}
 	DiskEncryptionSetId *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=disk_encryption_set_id,json=diskEncryptionSetId,proto3" json:"disk_encryption_set_id,omitempty"`
 	// UNIFORM only, for confidential instances with customer-key
 	// guest-state encryption: the disk encryption set for the
-	// VMGuestState blob, by ARM ID. Requires security_encryption_type;
+	// VMGuestState blob. A disk encryption set by ARM ID, or a reference to
+	// an AzureDiskEncryptionSet's output. Requires security_encryption_type;
 	// conflicts with disk_encryption_set_id. Fixed at creation.
 	SecureVmDiskEncryptionSetId *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=secure_vm_disk_encryption_set_id,json=secureVmDiskEncryptionSetId,proto3" json:"secure_vm_disk_encryption_set_id,omitempty"`
 	// UNIFORM only: confidential-VM encryption of the instance guest
@@ -2592,8 +2592,9 @@ type AzureVirtualMachineScaleSetDataDisk struct {
 	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
 	// Write Accelerator for this disk (M-series + Premium + caching NONE).
 	WriteAcceleratorEnabled bool `protobuf:"varint,7,opt,name=write_accelerator_enabled,json=writeAcceleratorEnabled,proto3" json:"write_accelerator_enabled,omitempty"`
-	// Customer-managed-key encryption for instances' data disks, by disk
-	// encryption set ARM ID.
+	// Customer-managed-key encryption for instances' data disks. A disk
+	// encryption set by ARM ID, or a reference to an AzureDiskEncryptionSet's
+	// output.
 	DiskEncryptionSetId *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=disk_encryption_set_id,json=diskEncryptionSetId,proto3" json:"disk_encryption_set_id,omitempty"`
 	// For ULTRA_SSD_LRS / PREMIUM_V2_LRS: the dialed IOPS.
 	UltraSsdDiskIopsReadWrite *int64 `protobuf:"varint,9,opt,name=ultra_ssd_disk_iops_read_write,json=ultraSsdDiskIopsReadWrite,proto3,oneof" json:"ultra_ssd_disk_iops_read_write,omitempty"`
@@ -2933,9 +2934,11 @@ type AzureVirtualMachineScaleSetIpConfiguration struct {
 	// ID. Reference a pool through the gateway's name-keyed map output,
 	// e.g. valueFrom fieldPath "status.outputs.backend_address_pool_ids.web".
 	ApplicationGatewayBackendAddressPoolIds []*v1.StringValueOrRef `protobuf:"bytes,7,rep,name=application_gateway_backend_address_pool_ids,json=applicationGatewayBackendAddressPoolIds,proto3" json:"application_gateway_backend_address_pool_ids,omitempty"`
-	// Application security groups instances join (up to 20), by ARM ID,
-	// so NSG rules can target the fleet as a workload group.
-	ApplicationSecurityGroupIds []string `protobuf:"bytes,8,rep,name=application_security_group_ids,json=applicationSecurityGroupIds,proto3" json:"application_security_group_ids,omitempty"`
+	// Application security groups instances join (up to 20), so NSG rules
+	// can target the fleet as a workload group. Each entry is an application
+	// security group by ARM ID, or a reference to an
+	// AzureApplicationSecurityGroup's output.
+	ApplicationSecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,8,rep,name=application_security_group_ids,json=applicationSecurityGroupIds,proto3" json:"application_security_group_ids,omitempty"`
 	// Give every instance its own public IP, stamped from this template.
 	// For fleets reached through a load balancer or gateway leave it
 	// unset -- the production shape.
@@ -3023,7 +3026,7 @@ func (x *AzureVirtualMachineScaleSetIpConfiguration) GetApplicationGatewayBacken
 	return nil
 }
 
-func (x *AzureVirtualMachineScaleSetIpConfiguration) GetApplicationSecurityGroupIds() []string {
+func (x *AzureVirtualMachineScaleSetIpConfiguration) GetApplicationSecurityGroupIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.ApplicationSecurityGroupIds
 	}
@@ -4731,16 +4734,16 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"4AzureVirtualMachineScaleSetAdditionalUnattendContent\x12\x87\x01\n" +
 	"\asetting\x18\x01 \x01(\x0e2e.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUnattendSettingB\x06\xbaH\x03\xc8\x01\x01R\asetting\x12$\n" +
 	"\acontent\x18\x02 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\acontent\"\xc6\f\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\acontent\"\xa8\r\n" +
 	"!AzureVirtualMachineScaleSetOsDisk\x12\x83\x01\n" +
 	"\acaching\x18\x01 \x01(\x0e2a.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetDiskCachingB\x06\xbaH\x03\xc8\x01\x01R\acaching\x12\xa8\x01\n" +
 	"\x14storage_account_type\x18\x02 \x01(\x0e2n.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetOsDiskStorageAccountTypeB\x06\xbaH\x03\xc8\x01\x01R\x12storageAccountType\x121\n" +
 	"\fdisk_size_gb\x18\x03 \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\xff\x1f(\x01H\x00R\n" +
 	"diskSizeGb\x88\x01\x01\x12\x94\x01\n" +
-	"\x12diff_disk_settings\x18\x04 \x01(\v2f.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetDiffDiskSettingsR\x10diffDiskSettings\x12g\n" +
-	"\x16disk_encryption_set_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x13diskEncryptionSetId\x12y\n" +
-	" secure_vm_disk_encryption_set_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x1bsecureVmDiskEncryptionSetId\x12\xa6\x01\n" +
+	"\x12diff_disk_settings\x18\x04 \x01(\v2f.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetDiffDiskSettingsR\x10diffDiskSettings\x12\x97\x01\n" +
+	"\x16disk_encryption_set_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12\xa9\x01\n" +
+	" secure_vm_disk_encryption_set_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x1bsecureVmDiskEncryptionSetId\x12\xa6\x01\n" +
 	"\x18security_encryption_type\x18\a \x01(\x0e2l.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecurityEncryptionTypeR\x16securityEncryptionType\x12:\n" +
 	"\x19write_accelerator_enabled\x18\b \x01(\bR\x17writeAcceleratorEnabled:\xcb\x04\xbaH\xc7\x04\x1a\xce\x01\n" +
 	"%vmss_os_disk_encryption_sets_conflict\x12Rdisk_encryption_set_id and secure_vm_disk_encryption_set_id are mutually exclusive\x1aQ!(has(this.disk_encryption_set_id) && has(this.secure_vm_disk_encryption_set_id))\x1a\xc6\x01\n" +
@@ -4748,7 +4751,7 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	".vmss_ephemeral_os_disk_needs_read_only_caching\x12Dan ephemeral OS disk (diff_disk_settings) requires caching READ_ONLY\x1a2!has(this.diff_disk_settings) || this.caching == 2B\x0f\n" +
 	"\r_disk_size_gb\"\xb5\x01\n" +
 	"+AzureVirtualMachineScaleSetDiffDiskSettings\x12\x85\x01\n" +
-	"\tplacement\x18\x01 \x01(\x0e2g.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetDiffDiskPlacementR\tplacement\"\xa3\n" +
+	"\tplacement\x18\x01 \x01(\x0e2g.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetDiffDiskPlacementR\tplacement\"\xd4\n" +
 	"\n" +
 	"#AzureVirtualMachineScaleSetDataDisk\x12$\n" +
 	"\x03lun\x18\x01 \x01(\x05B\r\xbaH\n" +
@@ -4759,8 +4762,8 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\x14storage_account_type\x18\x04 \x01(\x0e2p.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetDataDiskStorageAccountTypeB\x06\xbaH\x03\xc8\x01\x01R\x12storageAccountType\x12\x8f\x01\n" +
 	"\rcreate_option\x18\x05 \x01(\x0e2j.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetDataDiskCreateOptionR\fcreateOption\x12\x12\n" +
 	"\x04name\x18\x06 \x01(\tR\x04name\x12:\n" +
-	"\x19write_accelerator_enabled\x18\a \x01(\bR\x17writeAcceleratorEnabled\x12g\n" +
-	"\x16disk_encryption_set_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x13diskEncryptionSetId\x12O\n" +
+	"\x19write_accelerator_enabled\x18\a \x01(\bR\x17writeAcceleratorEnabled\x12\x97\x01\n" +
+	"\x16disk_encryption_set_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12O\n" +
 	"\x1eultra_ssd_disk_iops_read_write\x18\t \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x01R\x19ultraSsdDiskIopsReadWrite\x88\x01\x01\x12O\n" +
 	"\x1eultra_ssd_disk_mbps_read_write\x18\n" +
 	" \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x02R\x19ultraSsdDiskMbpsReadWrite\x88\x01\x01:\xb5\x02\xbaH\xb1\x02\x1a\xae\x02\n" +
@@ -4786,7 +4789,7 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\x0eauxiliary_mode\x18\b \x01(\x0e2c.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAuxiliaryModeR\rauxiliaryMode\x12\x87\x01\n" +
 	"\rauxiliary_sku\x18\t \x01(\x0e2b.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAuxiliarySkuR\fauxiliarySku:\x86\x03\xbaH\x82\x03\x1a\xa6\x01\n" +
 	"\"vmss_nic_auxiliary_mode_sku_paired\x12Gauxiliary_mode and auxiliary_sku must be set together (both or neither)\x1a7(this.auxiliary_mode == 0) == (this.auxiliary_sku == 0)\x1a\xd6\x01\n" +
-	"5vmss_nic_first_ip_configuration_primary_when_multiple\x12Twhen a NIC template has multiple ip_configurations, the first must be marked primary\x1aGthis.ip_configurations.size() <= 1 || this.ip_configurations[0].primary\"\xd6\b\n" +
+	"5vmss_nic_first_ip_configuration_primary_when_multiple\x12Twhen a NIC template has multiple ip_configurations, the first must be marked primary\x1aGthis.ip_configurations.size() <= 1 || this.ip_configurations[0].primary\"\xc0\t\n" +
 	"*AzureVirtualMachineScaleSetIpConfiguration\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x18\n" +
@@ -4795,8 +4798,8 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\aversion\x18\x04 \x01(\x0e2_.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpVersionR\aversion\x12\xaf\x01\n" +
 	"&load_balancer_backend_address_pool_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xa1\x03\x92\xd4a\x1fstatus.outputs.backend_pool_idsR!loadBalancerBackendAddressPoolIds\x12\xa3\x01\n" +
 	"\"load_balancer_inbound_nat_rule_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xa1\x03\x92\xd4a\x1bstatus.outputs.nat_rule_idsR\x1dloadBalancerInboundNatRuleIds\x12\xc3\x01\n" +
-	",application_gateway_backend_address_pool_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xa0\x03\x92\xd4a'status.outputs.backend_address_pool_idsR'applicationGatewayBackendAddressPoolIds\x12M\n" +
-	"\x1eapplication_security_group_ids\x18\b \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x14R\x1bapplicationSecurityGroupIds\x12\x91\x01\n" +
+	",application_gateway_backend_address_pool_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xa0\x03\x92\xd4a'status.outputs.backend_address_pool_idsR'applicationGatewayBackendAddressPoolIds\x12\xb6\x01\n" +
+	"\x1eapplication_security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x05\x92\x01\x02\x10\x14\x88\xd4a\xac\x03\x92\xd4a,status.outputs.application_security_group_idR\x1bapplicationSecurityGroupIds\x12\x91\x01\n" +
 	"\x11public_ip_address\x18\t \x01(\v2e.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddressR\x0fpublicIpAddress\"\xd9\x04\n" +
 	"*AzureVirtualMachineScaleSetPublicIpAddress\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12*\n" +
@@ -5160,30 +5163,31 @@ var file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_de
 	60, // 56: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpConfiguration.load_balancer_backend_address_pool_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	60, // 57: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpConfiguration.load_balancer_inbound_nat_rule_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	60, // 58: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpConfiguration.application_gateway_backend_address_pool_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	37, // 59: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpConfiguration.public_ip_address:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress
-	8,  // 60: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress.version:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpVersion
-	60, // 61: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress.public_ip_prefix_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	38, // 62: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress.ip_tags:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpTag
-	9,  // 63: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.mode:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradeMode
-	40, // 64: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.rolling:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetRollingUpgradePolicy
-	41, // 65: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.automatic_os_upgrade:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAutomaticOsUpgrade
-	60, // 66: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.health_probe_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // 67: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpot.eviction_policy:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetEvictionPolicy
-	43, // 68: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpot.restore:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpotRestore
-	44, // 69: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpot.priority_mix:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPriorityMix
-	10, // 70: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentity.type:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentityType
-	60, // 71: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 72: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAutomaticInstanceRepair.action:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetRepairAction
-	50, // 73: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetExtension.protected_settings_from_key_vault:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault
-	60, // 74: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault.source_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 75: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetScaleIn.rule:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetScaleInRule
-	60, // 76: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecret.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	55, // 77: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecret.certificates:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecretCertificate
-	78, // [78:78] is the sub-list for method output_type
-	78, // [78:78] is the sub-list for method input_type
-	78, // [78:78] is the sub-list for extension type_name
-	78, // [78:78] is the sub-list for extension extendee
-	0,  // [0:78] is the sub-list for field type_name
+	60, // 59: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpConfiguration.application_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	37, // 60: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpConfiguration.public_ip_address:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress
+	8,  // 61: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress.version:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpVersion
+	60, // 62: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress.public_ip_prefix_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	38, // 63: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress.ip_tags:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpTag
+	9,  // 64: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.mode:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradeMode
+	40, // 65: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.rolling:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetRollingUpgradePolicy
+	41, // 66: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.automatic_os_upgrade:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAutomaticOsUpgrade
+	60, // 67: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.health_probe_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 68: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpot.eviction_policy:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetEvictionPolicy
+	43, // 69: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpot.restore:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpotRestore
+	44, // 70: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpot.priority_mix:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPriorityMix
+	10, // 71: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentity.type:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentityType
+	60, // 72: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 73: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAutomaticInstanceRepair.action:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetRepairAction
+	50, // 74: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetExtension.protected_settings_from_key_vault:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault
+	60, // 75: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault.source_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 76: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetScaleIn.rule:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetScaleInRule
+	60, // 77: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecret.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	55, // 78: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecret.certificates:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecretCertificate
+	79, // [79:79] is the sub-list for method output_type
+	79, // [79:79] is the sub-list for method input_type
+	79, // [79:79] is the sub-list for extension type_name
+	79, // [79:79] is the sub-list for extension extendee
+	0,  // [0:79] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_init() }

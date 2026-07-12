@@ -327,12 +327,14 @@ message AzureAksClusterSpec {
   // it off to force all access through audited kubeconfig paths.
   optional bool run_command_enabled = 47 [(dev.planton.shared.options.default) = "true"];
 
-  // ARM id of a Disk Encryption Set for encrypting node OS disks and
-  // persistent volumes with a customer-managed key. Plain ARM id (no
-  // Planton kind models disk encryption sets). Changing it replaces the
-  // cluster.
-  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/diskEncryptionSets/{name}
-  string disk_encryption_set_id = 48;
+  // A Disk Encryption Set for encrypting node OS disks and persistent
+  // volumes with a customer-managed key. A disk encryption set by ARM ID,
+  // or a reference to an AzureDiskEncryptionSet's output. Changing it
+  // replaces the cluster.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_encryption_set_id = 48 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDiskEncryptionSet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.disk_encryption_set_id"
+  ];
 
   // Deploy the cluster into an Azure Extended Zone (edge location) close
   // to end users, e.g. "losangeles". Leave unset for the standard region

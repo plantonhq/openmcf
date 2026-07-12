@@ -943,6 +943,96 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AzureApplicationSecurityGroup: the group's ARM id is the
+			// composition seam -- NIC ip configurations, scale-set network
+			// profiles, and NSG rules reference it to declare membership or
+			// target the group.
+			name: "AzureApplicationSecurityGroup",
+			kind: cloudresourcekind.CloudResourceKind_AzureApplicationSecurityGroup,
+			rawOutputs: map[string]interface{}{
+				"application_security_group_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/applicationSecurityGroups/web-tier",
+				"application_security_group_name": "web-tier",
+			},
+			mustPopulate: []string{
+				"application_security_group_id", "application_security_group_name",
+			},
+		},
+		{
+			// AzurePrivateEndpoint: the endpoint's ARM id, its private IP
+			// (the address the service FQDN resolves to inside the VNet),
+			// and the auto-created NIC's id.
+			name: "AzurePrivateEndpoint",
+			kind: cloudresourcekind.CloudResourceKind_AzurePrivateEndpoint,
+			rawOutputs: map[string]interface{}{
+				"private_endpoint_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/privateEndpoints/pg-pe",
+				"private_endpoint_name": "pg-pe",
+				"private_ip_address":    "10.0.1.10",
+				"network_interface_id":  "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/networkInterfaces/pg-pe-nic",
+			},
+			mustPopulate: []string{
+				"private_endpoint_id", "private_endpoint_name", "private_ip_address", "network_interface_id",
+			},
+		},
+		{
+			// AzureDiskEncryptionSet: the set's ARM id (referenced by disks,
+			// VMs, and scale sets) plus the system-assigned identity's
+			// principal/tenant (the grant target for Key Vault crypto access).
+			name: "AzureDiskEncryptionSet",
+			kind: cloudresourcekind.CloudResourceKind_AzureDiskEncryptionSet,
+			rawOutputs: map[string]interface{}{
+				"disk_encryption_set_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Compute/diskEncryptionSets/prod-des",
+				"disk_encryption_set_name": "prod-des",
+				"identity_principal_id":    "11111111-2222-3333-4444-555555555555",
+				"identity_tenant_id":       "99999999-8888-7777-6666-555555555555",
+			},
+			mustPopulate: []string{
+				"disk_encryption_set_id", "disk_encryption_set_name",
+			},
+		},
+		{
+			// AzureMssqlFailoverGroup: the group's ARM id plus the
+			// DNS-composed listener endpoints -- the read-write listener is
+			// the failover-following connection target downstream apps use.
+			name: "AzureMssqlFailoverGroup",
+			kind: cloudresourcekind.CloudResourceKind_AzureMssqlFailoverGroup,
+			rawOutputs: map[string]interface{}{
+				"failover_group_id":            "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Sql/servers/primary/failoverGroups/prod-sql-fog",
+				"failover_group_name":          "prod-sql-fog",
+				"read_write_listener_endpoint": "prod-sql-fog.database.windows.net",
+				"read_only_listener_endpoint":  "prod-sql-fog.secondary.database.windows.net",
+			},
+			mustPopulate: []string{
+				"failover_group_id", "failover_group_name", "read_write_listener_endpoint", "read_only_listener_endpoint",
+			},
+		},
+		{
+			// AzureMonitorActivityLogAlert: the alert's ARM id and name.
+			name: "AzureMonitorActivityLogAlert",
+			kind: cloudresourcekind.CloudResourceKind_AzureMonitorActivityLogAlert,
+			rawOutputs: map[string]interface{}{
+				"activity_log_alert_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Insights/activityLogAlerts/vm-delete-alert",
+				"activity_log_alert_name": "vm-delete-alert",
+			},
+			mustPopulate: []string{
+				"activity_log_alert_id", "activity_log_alert_name",
+			},
+		},
+		{
+			// AzureApplicationInsightsStandardWebTest: the test's ARM id
+			// (referenced by a metric alert's web-test criteria), its name,
+			// and the synthetic monitor id.
+			name: "AzureApplicationInsightsStandardWebTest",
+			kind: cloudresourcekind.CloudResourceKind_AzureApplicationInsightsStandardWebTest,
+			rawOutputs: map[string]interface{}{
+				"web_test_id":          "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Insights/webTests/homepage-health",
+				"web_test_name":        "homepage-health",
+				"synthetic_monitor_id": "homepage-health",
+			},
+			mustPopulate: []string{
+				"web_test_id", "web_test_name", "synthetic_monitor_id",
+			},
+		},
+		{
 			// AzureLoadBalancer: the name-keyed maps are the composition
 			// seams -- backend_pool_ids is what NIC ip_configurations and
 			// scale-set network profiles join, nat_rule_ids is what a NIC's

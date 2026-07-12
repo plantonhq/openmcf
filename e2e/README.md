@@ -285,6 +285,22 @@ az rest --method get \
 ```
 
 Microsoft.Sql has no public equivalent — fall back to one live attempt.
+Verified on the test subscription: `eastus` is blocked for Microsoft.Sql
+logical servers (`ProvisioningDisabled`) while `westus3` and `centralus`
+are clean.
+
+Microsoft.Sql adds its own TRANSIENT failure shape on top of the
+restriction class: a logical-server create in a CLEAN region can return
+`OperationTimedOut` ("The operation timed out and automatically rolled
+back. Please retry the operation."). The rollback is asynchronous — for
+several minutes afterward the half-created server is invisible to
+`az sql server show`/`az resource list` yet still blocks its resource
+group's deletion (`ResourceDeletionFailed`), and an explicit
+`az sql server delete` answers `DropLogicalServerAlreadyInProgress`. A
+`pulumi destroy` of the resource-group stack issued during that window
+can hang far past the RG-delete norm. Treat it as transient: kill the
+hung destroy if needed, wait for the in-progress drop to finish (the RG
+delete then succeeds), and retry the lane — do not debug the module.
 A server may live in a different region than its resource group, so the
 shared fixture RG serves unchanged when a scenario pins a different
 region. True subscription-wide gates do exist (the quota-increase link
@@ -560,6 +576,14 @@ owns two responsibilities beyond wiring verifiers:
 
 ### Authoring verifiers and prerequisite fixtures
 
+- **Never name a verifier (or any production `.go` file) with a `_test.go`
+  suffix.** Go treats every file ending in `_test.go` as a test file and
+  excludes it from the normal package build, so a verifier in, say,
+  `foo_web_test.go` compiles fine under `go test` but is INVISIBLE to
+  `go build` — the registration in `verifier.go` then fails with a
+  bewildering "undefined: fooVerifier" even though the type is plainly
+  defined. Name such files to avoid the suffix (e.g.
+  `application_insights_standard_webtest.go`, not `..._web_test.go`).
 - **Every kind that appears in another kind's `kind_meta.prerequisites` needs its
   own verifier registered in the provider harness** — the dependency deployer
   verifies each fixture right after installing it, so a missing verifier fails the

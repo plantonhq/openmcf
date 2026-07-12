@@ -1,0 +1,48 @@
+# Composed AzureApplicationInsightsStandardWebTest scenario: a web test
+# bound to the fixture Application Insights component, pinging a public URL
+# from one Azure region.
+#
+# Application Insights is the registry prerequisite (bringing its Log
+# Analytics workspace and resource group transitively). This proves the
+# component FK, the request block, and the geo-location wiring -- the
+# web_test_id and synthetic_monitor_id outputs must populate on both
+# engines. The test targets microsoft.com so the run needs no
+# subscription-owned endpoint; web tests provision in seconds.
+apiVersion: azure.planton.dev/v1
+kind: AzureApplicationInsightsStandardWebTest
+metadata:
+  name: planton-oss-e2e-azureapplicationinsightsstandardwebtest-smoke
+  id: planton-oss-e2e-azureapplicationinsightsstandardwebtest-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureapplicationinsightsstandardwebtest
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-webtest-smoke
+  region: eastus
+  applicationInsightsId:
+    valueFrom:
+      name: planton-oss-e2e-azureai-smoke
+  frequency: 300
+  timeout: 30
+  request:
+    url: https://microsoft.com
+    httpVerb: GET
+  validationRules:
+    expectedStatusCode: 200
+    sslCheckEnabled: true
+    sslCertRemainingLifetime: 7
+  geoLocations:
+    - us-tx-sn1-azr
+  description: E2E smoke -- pings microsoft.com from one region
+  tags:
+    e2e-suite: azure
+    purpose: smoke

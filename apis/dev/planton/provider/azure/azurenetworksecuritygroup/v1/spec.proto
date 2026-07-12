@@ -167,11 +167,14 @@ message AzureNetworkSecurityGroupRule {
 
   // The source as application security group membership -- identity-based
   // addressing that follows workloads as they scale instead of pinning
-  // CIDRs. Plain ARM IDs (up to 10): application security groups are not
-  // yet modeled as a Planton kind. At most one source addressing style may
-  // be set.
-  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/applicationSecurityGroups/{name}
-  repeated string source_application_security_group_ids = 13 [(buf.validate.field).repeated.max_items = 10];
+  // CIDRs. Each entry is an application security group by ARM ID, or a
+  // reference to an AzureApplicationSecurityGroup's output (up to 10). At
+  // most one source addressing style may be set.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_application_security_group_ids = 13 [
+    (buf.validate.field).repeated.max_items = 10,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.application_security_group_id"
+  ];
 
   // The destination as a single prefix: a CIDR, an IP, a service tag, or
   // "*". Service tags and "*" only work here, not in the plural form. At
@@ -182,9 +185,15 @@ message AzureNetworkSecurityGroupRule {
   // in the list form. At most one destination addressing style may be set.
   repeated string destination_address_prefixes = 15;
 
-  // The destination as application security group membership. Plain ARM
-  // IDs (up to 10). At most one destination addressing style may be set.
-  repeated string destination_application_security_group_ids = 16 [(buf.validate.field).repeated.max_items = 10];
+  // The destination as application security group membership. Each entry
+  // is an application security group by ARM ID, or a reference to an
+  // AzureApplicationSecurityGroup's output (up to 10). At most one
+  // destination addressing style may be set.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef destination_application_security_group_ids = 16 [
+    (buf.validate.field).repeated.max_items = 10,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.application_security_group_id"
+  ];
 
   option (buf.validate.message).cel = {
     id: "source_ports_single_style"

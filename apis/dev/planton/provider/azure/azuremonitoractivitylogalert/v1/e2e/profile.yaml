@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuremonitoractivitylogalert
+spec:
+  # The scenario deploys the fixture action group (registry prerequisite,
+  # which brings the fixture resource group), then an administrative
+  # activity log alert scoped to the fixture resource group that notifies
+  # the action group. The verifier confirms the alert exists via the ARM
+  # API, then destroys and confirms it is gone -- on both provisioners.
+  # Activity log alerts are metadata-only (global) and provision in seconds.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15

@@ -1,0 +1,24 @@
+# The private link target for the endpoint scenario: a storage account
+# whose blob sub-resource the endpoint connects to. Storage account names
+# are globally unique (3-24 lowercase alphanumerics, no hyphens).
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageAccount
+metadata:
+  name: planton-oss-e2e-pe-target-account
+  id: planton-oss-e2e-pe-target-account
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestorageaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  accountName: pltnosse2epetgt
+  replicationType: LRS

@@ -1815,15 +1815,15 @@ type AzureVirtualMachineOsDisk struct {
 	// Presence makes the OS disk ephemeral. Fixed at creation.
 	DiffDiskSettings *AzureVirtualMachineDiffDiskSettings `protobuf:"bytes,5,opt,name=diff_disk_settings,json=diffDiskSettings,proto3" json:"diff_disk_settings,omitempty"`
 	// Customer-managed-key encryption: the disk encryption set encrypting
-	// the OS disk, by ARM ID. Plain ARM ID: disk encryption sets are not
-	// modeled as a Planton kind yet. Conflicts with
+	// the OS disk. A disk encryption set by ARM ID, or a reference to an
+	// AzureDiskEncryptionSet's output. Conflicts with
 	// secure_vm_disk_encryption_set_id.
-	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/diskEncryptionSets/{name}
 	DiskEncryptionSetId *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=disk_encryption_set_id,json=diskEncryptionSetId,proto3" json:"disk_encryption_set_id,omitempty"`
 	// For confidential VMs with customer-key guest-state encryption: the
-	// disk encryption set for the VMGuestState blob, by ARM ID. Requires
-	// security_encryption_type; conflicts with disk_encryption_set_id.
-	// Fixed at creation.
+	// disk encryption set for the VMGuestState blob. A disk encryption set
+	// by ARM ID, or a reference to an AzureDiskEncryptionSet's output.
+	// Requires security_encryption_type; conflicts with
+	// disk_encryption_set_id. Fixed at creation.
 	SecureVmDiskEncryptionSetId *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=secure_vm_disk_encryption_set_id,json=secureVmDiskEncryptionSetId,proto3" json:"secure_vm_disk_encryption_set_id,omitempty"`
 	// Confidential-VM encryption of the VM guest state: VM_GUEST_STATE_ONLY
 	// encrypts just the guest-state blob; DISK_WITH_VM_GUEST_STATE also
@@ -3090,8 +3090,7 @@ const file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDesc 
 	",AzureVirtualMachineAdditionalUnattendContent\x12w\n" +
 	"\asetting\x18\x01 \x01(\x0e2U.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineUnattendSettingB\x06\xbaH\x03\xc8\x01\x01R\asetting\x12$\n" +
 	"\acontent\x18\x02 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\acontent\"\xe0\n" +
-	"\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\acontent\"\xc2\v\n" +
 	"\x19AzureVirtualMachineOsDisk\x12s\n" +
 	"\acaching\x18\x01 \x01(\x0e2Q.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiskCachingB\x06\xbaH\x03\xc8\x01\x01R\acaching\x12\x98\x01\n" +
 	"\x14storage_account_type\x18\x02 \x01(\x0e2^.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDiskStorageAccountTypeB\x06\xbaH\x03\xc8\x01\x01R\x12storageAccountType\x121\n" +
@@ -3099,9 +3098,9 @@ const file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDesc 
 	"\xbaH\a\x1a\x05\x18\xff\x1f(\x01H\x00R\n" +
 	"diskSizeGb\x88\x01\x01\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x84\x01\n" +
-	"\x12diff_disk_settings\x18\x05 \x01(\v2V.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiffDiskSettingsR\x10diffDiskSettings\x12g\n" +
-	"\x16disk_encryption_set_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x13diskEncryptionSetId\x12y\n" +
-	" secure_vm_disk_encryption_set_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x1bsecureVmDiskEncryptionSetId\x12\x96\x01\n" +
+	"\x12diff_disk_settings\x18\x05 \x01(\v2V.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiffDiskSettingsR\x10diffDiskSettings\x12\x97\x01\n" +
+	"\x16disk_encryption_set_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12\xa9\x01\n" +
+	" secure_vm_disk_encryption_set_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x1bsecureVmDiskEncryptionSetId\x12\x96\x01\n" +
 	"\x18security_encryption_type\x18\b \x01(\x0e2\\.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecurityEncryptionTypeR\x16securityEncryptionType\x12:\n" +
 	"\x19write_accelerator_enabled\x18\t \x01(\bR\x17writeAcceleratorEnabled:\x9a\x03\xbaH\x96\x03\x1a\xcc\x01\n" +
 	"#vm_os_disk_encryption_sets_conflict\x12Rdisk_encryption_set_id and secure_vm_disk_encryption_set_id are mutually exclusive\x1aQ!(has(this.disk_encryption_set_id) && has(this.secure_vm_disk_encryption_set_id))\x1a\xc4\x01\n" +

@@ -726,17 +726,23 @@ message AzureVirtualMachineScaleSetOsDisk {
   AzureVirtualMachineScaleSetDiffDiskSettings diff_disk_settings = 4;
 
   // Customer-managed-key encryption: the disk encryption set encrypting
-  // instances' OS disks, by ARM ID. Plain ARM ID: disk encryption sets
-  // are not modeled as a Planton kind yet. Conflicts with
+  // instances' OS disks. A disk encryption set by ARM ID, or a reference
+  // to an AzureDiskEncryptionSet's output. Conflicts with
   // secure_vm_disk_encryption_set_id.
-  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/diskEncryptionSets/{name}
-  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_encryption_set_id = 5;
+  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_encryption_set_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDiskEncryptionSet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.disk_encryption_set_id"
+  ];
 
   // UNIFORM only, for confidential instances with customer-key
   // guest-state encryption: the disk encryption set for the
-  // VMGuestState blob, by ARM ID. Requires security_encryption_type;
+  // VMGuestState blob. A disk encryption set by ARM ID, or a reference to
+  // an AzureDiskEncryptionSet's output. Requires security_encryption_type;
   // conflicts with disk_encryption_set_id. Fixed at creation.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef secure_vm_disk_encryption_set_id = 6;
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secure_vm_disk_encryption_set_id = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDiskEncryptionSet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.disk_encryption_set_id"
+  ];
 
   // UNIFORM only: confidential-VM encryption of the instance guest
   // state. VM_GUEST_STATE_ONLY encrypts just the guest-state blob;
@@ -819,9 +825,13 @@ message AzureVirtualMachineScaleSetDataDisk {
   // Write Accelerator for this disk (M-series + Premium + caching NONE).
   bool write_accelerator_enabled = 7;
 
-  // Customer-managed-key encryption for instances' data disks, by disk
-  // encryption set ARM ID.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_encryption_set_id = 8;
+  // Customer-managed-key encryption for instances' data disks. A disk
+  // encryption set by ARM ID, or a reference to an AzureDiskEncryptionSet's
+  // output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_encryption_set_id = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDiskEncryptionSet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.disk_encryption_set_id"
+  ];
 
   // For ULTRA_SSD_LRS / PREMIUM_V2_LRS: the dialed IOPS.
   optional int64 ultra_ssd_disk_iops_read_write = 9 [(buf.validate.field).int64.gte = 1];
@@ -959,9 +969,15 @@ message AzureVirtualMachineScaleSetIpConfiguration {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.backend_address_pool_ids"
   ];
 
-  // Application security groups instances join (up to 20), by ARM ID,
-  // so NSG rules can target the fleet as a workload group.
-  repeated string application_security_group_ids = 8 [(buf.validate.field).repeated.max_items = 20];
+  // Application security groups instances join (up to 20), so NSG rules
+  // can target the fleet as a workload group. Each entry is an application
+  // security group by ARM ID, or a reference to an
+  // AzureApplicationSecurityGroup's output.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef application_security_group_ids = 8 [
+    (buf.validate.field).repeated.max_items = 20,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.application_security_group_id"
+  ];
 
   // Give every instance its own public IP, stamped from this template.
   // For fleets reached through a load balancer or gateway leave it

@@ -2347,12 +2347,11 @@ type AzureAksClusterSpec struct {
 	// network reach. Azure's default is enabled; hardened environments turn
 	// it off to force all access through audited kubeconfig paths.
 	RunCommandEnabled *bool `protobuf:"varint,47,opt,name=run_command_enabled,json=runCommandEnabled,proto3,oneof" json:"run_command_enabled,omitempty"`
-	// ARM id of a Disk Encryption Set for encrypting node OS disks and
-	// persistent volumes with a customer-managed key. Plain ARM id (no
-	// Planton kind models disk encryption sets). Changing it replaces the
-	// cluster.
-	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/diskEncryptionSets/{name}
-	DiskEncryptionSetId string `protobuf:"bytes,48,opt,name=disk_encryption_set_id,json=diskEncryptionSetId,proto3" json:"disk_encryption_set_id,omitempty"`
+	// A Disk Encryption Set for encrypting node OS disks and persistent
+	// volumes with a customer-managed key. A disk encryption set by ARM ID,
+	// or a reference to an AzureDiskEncryptionSet's output. Changing it
+	// replaces the cluster.
+	DiskEncryptionSetId *v1.StringValueOrRef `protobuf:"bytes,48,opt,name=disk_encryption_set_id,json=diskEncryptionSetId,proto3" json:"disk_encryption_set_id,omitempty"`
 	// Deploy the cluster into an Azure Extended Zone (edge location) close
 	// to end users, e.g. "losangeles". Leave unset for the standard region
 	// -- the overwhelmingly common case. Changing it replaces the cluster.
@@ -2754,11 +2753,11 @@ func (x *AzureAksClusterSpec) GetRunCommandEnabled() bool {
 	return false
 }
 
-func (x *AzureAksClusterSpec) GetDiskEncryptionSetId() string {
+func (x *AzureAksClusterSpec) GetDiskEncryptionSetId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.DiskEncryptionSetId
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureAksClusterSpec) GetEdgeZone() string {
@@ -6471,7 +6470,7 @@ var File_dev_planton_provider_azure_azureakscluster_v1_spec_proto protoreflect.F
 
 const file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8dev/planton/provider/azure/azureakscluster/v1/spec.proto\x12-dev.planton.provider.azure.azureakscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc2>\n" +
+	"8dev/planton/provider/azure/azureakscluster/v1/spec.proto\x12-dev.planton.provider.azure.azureakscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa7?\n" +
 	"\x13AzureAksClusterSpec\x12\x8c\x01\n" +
 	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x1e\n" +
 	"\x06region\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12\xf9\x01\n" +
@@ -6524,8 +6523,8 @@ const file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc = ""
 	"\x1cimage_cleaner_interval_hours\x18- \x01(\x05B\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
 	" aks_image_cleaner_interval_range\x128Image Cleaner interval must be between 24 and 2160 hours\x1a)this == 0 || (this >= 24 && this <= 2160)R\x19imageCleanerIntervalHours\x122\n" +
 	"\x15cost_analysis_enabled\x18. \x01(\bR\x13costAnalysisEnabled\x12=\n" +
-	"\x13run_command_enabled\x18/ \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x11runCommandEnabled\x88\x01\x01\x123\n" +
-	"\x16disk_encryption_set_id\x180 \x01(\tR\x13diskEncryptionSetId\x12\x1b\n" +
+	"\x13run_command_enabled\x18/ \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x11runCommandEnabled\x88\x01\x01\x12\x97\x01\n" +
+	"\x16disk_encryption_set_id\x180 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12\x1b\n" +
 	"\tedge_zone\x181 \x01(\tR\bedgeZone\x12.\n" +
 	"\x13node_resource_group\x182 \x01(\tR\x11nodeResourceGroup\x12V\n" +
 	"#custom_ca_trust_certificates_base64\x183 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\n" +
@@ -7245,81 +7244,82 @@ var file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_depIdxs = []in
 	70,  // 28: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.http_proxy_config:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterHttpProxyConfig
 	71,  // 29: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.linux_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxProfile
 	72,  // 30: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.windows_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile
-	74,  // 31: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.bootstrap_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile
-	75,  // 32: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.node_provisioning_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile
-	76,  // 33: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.upgrade_override:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUpgradeOverride
-	77,  // 34: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.tags:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.TagsEntry
-	81,  // 35: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.vnet_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	81,  // 36: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.pod_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,   // 37: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.os_disk_type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOsDiskType
-	3,   // 38: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.kubelet_disk_type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletDiskType
-	4,   // 39: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.os_sku:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOsSku
-	78,  // 40: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.node_labels:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.NodeLabelsEntry
-	81,  // 41: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.node_public_ip_prefix_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,   // 42: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.gpu_instance:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterGpuInstance
-	6,   // 43: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.gpu_driver:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterGpuDriver
-	7,   // 44: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.scale_down_mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterScaleDownMode
-	8,   // 45: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.workload_runtime:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWorkloadRuntime
-	38,  // 46: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.kubelet_config:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletConfig
-	39,  // 47: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.linux_os_config:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig
-	41,  // 48: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.node_network_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile
-	43,  // 49: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.upgrade_settings:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePoolUpgradeSettings
-	79,  // 50: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.tags:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.TagsEntry
-	9,   // 51: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletConfig.cpu_manager_policy:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterCpuManagerPolicy
-	10,  // 52: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletConfig.topology_manager_policy:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTopologyManagerPolicy
-	40,  // 53: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig.sysctl_config:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSysctlConfig
-	11,  // 54: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig.transparent_huge_page:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTransparentHugePage
-	12,  // 55: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig.transparent_huge_page_defrag:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTransparentHugePageDefrag
-	42,  // 56: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile.allowed_host_ports:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAllowedHostPorts
-	80,  // 57: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile.node_public_ip_tags:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile.NodePublicIpTagsEntry
-	13,  // 58: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAllowedHostPorts.protocol:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterHostPortProtocol
-	14,  // 59: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePoolUpgradeSettings.undrainable_node_behavior:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUndrainableNodeBehavior
-	15,  // 60: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentity.type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentityType
-	81,  // 61: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	81,  // 62: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletIdentity.user_assigned_identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	81,  // 63: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterApiServerAccessProfile.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16,  // 64: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.network_plugin:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPlugin
-	17,  // 65: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.network_plugin_mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginMode
-	18,  // 66: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.network_policy:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPolicy
-	19,  // 67: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.network_data_plane:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkDataPlane
-	20,  // 68: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.ip_versions:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIpVersion
-	21,  // 69: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.outbound_type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOutboundType
-	49,  // 70: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.load_balancer_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile
-	50,  // 71: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.nat_gateway_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNatGatewayProfile
-	51,  // 72: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.advanced_networking:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAdvancedNetworking
-	81,  // 73: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile.outbound_ip_prefix_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	81,  // 74: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile.outbound_ip_address_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	22,  // 75: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile.backend_pool_type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerBackendPoolType
-	23,  // 76: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoScalerProfile.expander:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoscalerExpander
-	54,  // 77: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindow.allowed:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowAllowed
-	55,  // 78: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindow.not_allowed:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowNotAllowed
-	26,  // 79: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowAllowed.day:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekDay
-	27,  // 80: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule.frequency:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceFrequency
-	26,  // 81: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule.day_of_week:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekDay
-	28,  // 82: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule.week_index:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekIndex
-	55,  // 83: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule.not_allowed:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowNotAllowed
-	81,  // 84: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOmsAgent.log_analytics_workspace_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	81,  // 85: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMicrosoftDefender.log_analytics_workspace_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	81,  // 86: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIngressApplicationGateway.gateway_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	81,  // 87: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIngressApplicationGateway.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	81,  // 88: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWebAppRouting.dns_zone_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29,  // 89: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWebAppRouting.default_nginx_controller:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNginxDefaultController
-	30,  // 90: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshProfile.mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshMode
-	66,  // 91: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshProfile.certificate_authority:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthority
-	81,  // 92: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthority.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	81,  // 93: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyManagementService.key_vault_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	31,  // 94: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyManagementService.key_vault_network_access:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultNetworkAccess
-	32,  // 95: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile.license:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsLicense
-	73,  // 96: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile.gmsa:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsGmsa
-	33,  // 97: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile.artifact_source:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapArtifactSource
-	81,  // 98: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile.container_registry_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	34,  // 99: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile.mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningMode
-	35,  // 100: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile.default_node_pools:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningDefaultPools
-	101, // [101:101] is the sub-list for method output_type
-	101, // [101:101] is the sub-list for method input_type
-	101, // [101:101] is the sub-list for extension type_name
-	101, // [101:101] is the sub-list for extension extendee
-	0,   // [0:101] is the sub-list for field type_name
+	81,  // 31: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.disk_encryption_set_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	74,  // 32: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.bootstrap_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile
+	75,  // 33: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.node_provisioning_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile
+	76,  // 34: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.upgrade_override:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUpgradeOverride
+	77,  // 35: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.tags:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.TagsEntry
+	81,  // 36: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.vnet_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 37: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.pod_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,   // 38: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.os_disk_type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOsDiskType
+	3,   // 39: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.kubelet_disk_type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletDiskType
+	4,   // 40: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.os_sku:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOsSku
+	78,  // 41: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.node_labels:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.NodeLabelsEntry
+	81,  // 42: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.node_public_ip_prefix_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,   // 43: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.gpu_instance:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterGpuInstance
+	6,   // 44: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.gpu_driver:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterGpuDriver
+	7,   // 45: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.scale_down_mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterScaleDownMode
+	8,   // 46: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.workload_runtime:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWorkloadRuntime
+	38,  // 47: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.kubelet_config:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletConfig
+	39,  // 48: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.linux_os_config:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig
+	41,  // 49: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.node_network_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile
+	43,  // 50: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.upgrade_settings:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePoolUpgradeSettings
+	79,  // 51: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.tags:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.TagsEntry
+	9,   // 52: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletConfig.cpu_manager_policy:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterCpuManagerPolicy
+	10,  // 53: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletConfig.topology_manager_policy:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTopologyManagerPolicy
+	40,  // 54: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig.sysctl_config:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSysctlConfig
+	11,  // 55: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig.transparent_huge_page:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTransparentHugePage
+	12,  // 56: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig.transparent_huge_page_defrag:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTransparentHugePageDefrag
+	42,  // 57: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile.allowed_host_ports:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAllowedHostPorts
+	80,  // 58: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile.node_public_ip_tags:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile.NodePublicIpTagsEntry
+	13,  // 59: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAllowedHostPorts.protocol:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterHostPortProtocol
+	14,  // 60: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePoolUpgradeSettings.undrainable_node_behavior:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUndrainableNodeBehavior
+	15,  // 61: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentity.type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentityType
+	81,  // 62: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 63: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletIdentity.user_assigned_identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 64: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterApiServerAccessProfile.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16,  // 65: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.network_plugin:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPlugin
+	17,  // 66: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.network_plugin_mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginMode
+	18,  // 67: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.network_policy:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPolicy
+	19,  // 68: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.network_data_plane:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkDataPlane
+	20,  // 69: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.ip_versions:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIpVersion
+	21,  // 70: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.outbound_type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOutboundType
+	49,  // 71: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.load_balancer_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile
+	50,  // 72: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.nat_gateway_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNatGatewayProfile
+	51,  // 73: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.advanced_networking:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAdvancedNetworking
+	81,  // 74: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile.outbound_ip_prefix_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 75: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile.outbound_ip_address_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22,  // 76: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile.backend_pool_type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerBackendPoolType
+	23,  // 77: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoScalerProfile.expander:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoscalerExpander
+	54,  // 78: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindow.allowed:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowAllowed
+	55,  // 79: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindow.not_allowed:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowNotAllowed
+	26,  // 80: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowAllowed.day:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekDay
+	27,  // 81: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule.frequency:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceFrequency
+	26,  // 82: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule.day_of_week:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekDay
+	28,  // 83: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule.week_index:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekIndex
+	55,  // 84: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule.not_allowed:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowNotAllowed
+	81,  // 85: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOmsAgent.log_analytics_workspace_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 86: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMicrosoftDefender.log_analytics_workspace_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 87: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIngressApplicationGateway.gateway_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 88: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIngressApplicationGateway.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 89: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWebAppRouting.dns_zone_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29,  // 90: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWebAppRouting.default_nginx_controller:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNginxDefaultController
+	30,  // 91: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshProfile.mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshMode
+	66,  // 92: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshProfile.certificate_authority:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthority
+	81,  // 93: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthority.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 94: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyManagementService.key_vault_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	31,  // 95: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyManagementService.key_vault_network_access:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultNetworkAccess
+	32,  // 96: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile.license:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsLicense
+	73,  // 97: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile.gmsa:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsGmsa
+	33,  // 98: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile.artifact_source:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapArtifactSource
+	81,  // 99: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile.container_registry_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34,  // 100: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile.mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningMode
+	35,  // 101: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile.default_node_pools:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningDefaultPools
+	102, // [102:102] is the sub-list for method output_type
+	102, // [102:102] is the sub-list for method input_type
+	102, // [102:102] is the sub-list for extension type_name
+	102, // [102:102] is the sub-list for extension extendee
+	0,   // [0:102] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_init() }

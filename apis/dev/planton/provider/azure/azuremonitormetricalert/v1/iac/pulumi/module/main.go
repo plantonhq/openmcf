@@ -119,7 +119,7 @@ func Resources(ctx *pulumi.Context, stackInput *azuremonitormetricalertv1.AzureM
 	// Insights availability test fails from N locations.
 	if spec.WebTestAvailabilityCriteria != nil {
 		alertArgs.ApplicationInsightsWebTestLocationAvailabilityCriteria = &monitoring.MetricAlertApplicationInsightsWebTestLocationAvailabilityCriteriaArgs{
-			WebTestId:           pulumi.String(spec.WebTestAvailabilityCriteria.WebTestId),
+			WebTestId:           pulumi.String(spec.WebTestAvailabilityCriteria.WebTestId.GetValue()),
 			ComponentId:         pulumi.String(spec.WebTestAvailabilityCriteria.ComponentId.GetValue()),
 			FailedLocationCount: pulumi.Int(int(spec.WebTestAvailabilityCriteria.FailedLocationCount)),
 		}

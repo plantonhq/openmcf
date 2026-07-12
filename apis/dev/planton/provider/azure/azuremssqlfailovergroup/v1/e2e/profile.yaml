@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuremssqlfailovergroup
+spec:
+  # The composed scenario uses the shared MSSQL server fixture (westus3
+  # registry prerequisite) as the primary, plus a scenario-local partner
+  # server in a DIFFERENT region (eastus) and a scenario-local database on
+  # the primary as extra fixtures. The group replicates the database to the
+  # partner; the verifier confirms the group exists via the ARM API, then
+  # destroys and confirms it is gone -- on both provisioners. Logical
+  # servers provision in minutes and are free; the database is a small S0.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 40

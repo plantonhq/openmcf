@@ -336,12 +336,11 @@ type AzureNetworkInterfaceSpec struct {
 	// alone -- the common case; attach here when one workload needs rules
 	// its subnet neighbors must not share.
 	NetworkSecurityGroupId *v1.StringValueOrRef `protobuf:"bytes,12,opt,name=network_security_group_id,json=networkSecurityGroupId,proto3" json:"network_security_group_id,omitempty"`
-	// Application security groups this NIC joins, by ARM ID. ASG membership
-	// lets NSG rules target workload groups ("web-servers", "databases")
-	// instead of IP ranges. Plain ARM IDs: application security groups are
-	// not modeled as a Planton kind yet.
-	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/applicationSecurityGroups/{name}
-	ApplicationSecurityGroupIds []string `protobuf:"bytes,13,rep,name=application_security_group_ids,json=applicationSecurityGroupIds,proto3" json:"application_security_group_ids,omitempty"`
+	// Application security groups this NIC joins. ASG membership lets NSG
+	// rules target workload groups ("web-servers", "databases") instead of
+	// IP ranges. Each entry is an application security group by ARM ID, or a
+	// reference to an AzureApplicationSecurityGroup's output.
+	ApplicationSecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,13,rep,name=application_security_group_ids,json=applicationSecurityGroupIds,proto3" json:"application_security_group_ids,omitempty"`
 	// Free-form tags applied to the NIC, merged over the Planton-derived
 	// resource tags (organization, environment, resource id); a user tag
 	// with the same key wins. Tags are Azure's governance surface -- Azure
@@ -466,7 +465,7 @@ func (x *AzureNetworkInterfaceSpec) GetNetworkSecurityGroupId() *v1.StringValueO
 	return nil
 }
 
-func (x *AzureNetworkInterfaceSpec) GetApplicationSecurityGroupIds() []string {
+func (x *AzureNetworkInterfaceSpec) GetApplicationSecurityGroupIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.ApplicationSecurityGroupIds
 	}
@@ -659,7 +658,7 @@ var File_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto protoref
 
 const file_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/azure/azurenetworkinterface/v1/spec.proto\x123dev.planton.provider.azure.azurenetworkinterface.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb4\x10\n" +
+	">dev/planton/provider/azure/azurenetworkinterface/v1/spec.proto\x123dev.planton.provider.azure.azurenetworkinterface.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa0\x11\n" +
 	"\x19AzureNetworkInterfaceSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -676,8 +675,8 @@ const file_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto_rawDes
 	"\rauxiliary_sku\x18\n" +
 	" \x01(\x0e2V.dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceAuxiliarySkuR\fauxiliarySku\x12\x1b\n" +
 	"\tedge_zone\x18\v \x01(\tR\bedgeZone\x12\xa0\x01\n" +
-	"\x19network_security_group_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\x9c\x03\x92\xd4a(status.outputs.network_security_group_idR\x16networkSecurityGroupId\x12C\n" +
-	"\x1eapplication_security_group_ids\x18\r \x03(\tR\x1bapplicationSecurityGroupIds\x12l\n" +
+	"\x19network_security_group_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\x9c\x03\x92\xd4a(status.outputs.network_security_group_idR\x16networkSecurityGroupId\x12\xae\x01\n" +
+	"\x1eapplication_security_group_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\x88\xd4a\xac\x03\x92\xd4a,status.outputs.application_security_group_idR\x1bapplicationSecurityGroupIds\x12l\n" +
 	"\x04tags\x18\x0e \x03(\v2X.dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -753,19 +752,20 @@ var file_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto_depIdxs 
 	2,  // 2: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceSpec.auxiliary_mode:type_name -> dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceAuxiliaryMode
 	3,  // 3: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceSpec.auxiliary_sku:type_name -> dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceAuxiliarySku
 	7,  // 4: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceSpec.network_security_group_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 5: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceSpec.tags:type_name -> dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceSpec.TagsEntry
-	7,  // 6: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0,  // 7: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.private_ip_allocation:type_name -> dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfacePrivateIpAllocation
-	1,  // 8: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.private_ip_version:type_name -> dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfacePrivateIpVersion
-	7,  // 9: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.public_ip_address_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 10: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.load_balancer_backend_address_pool_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 11: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.load_balancer_inbound_nat_rule_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 12: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.application_gateway_backend_address_pool_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	7,  // 5: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceSpec.application_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 6: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceSpec.tags:type_name -> dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceSpec.TagsEntry
+	7,  // 7: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 8: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.private_ip_allocation:type_name -> dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfacePrivateIpAllocation
+	1,  // 9: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.private_ip_version:type_name -> dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfacePrivateIpVersion
+	7,  // 10: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.public_ip_address_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 11: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.load_balancer_backend_address_pool_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 12: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.load_balancer_inbound_nat_rule_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 13: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.application_gateway_backend_address_pool_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto_init() }

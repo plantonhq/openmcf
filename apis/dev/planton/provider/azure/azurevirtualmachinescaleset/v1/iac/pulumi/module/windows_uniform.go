@@ -181,8 +181,8 @@ func createUniformWindows(ctx *pulumi.Context, locals *Locals, azureProvider pul
 			if pools := refValues(config.ApplicationGatewayBackendAddressPoolIds); len(pools) > 0 {
 				configArgs.ApplicationGatewayBackendAddressPoolIds = pools
 			}
-			if len(config.ApplicationSecurityGroupIds) > 0 {
-				configArgs.ApplicationSecurityGroupIds = pulumi.ToStringArray(config.ApplicationSecurityGroupIds)
+			if asgs := refValues(config.ApplicationSecurityGroupIds); len(asgs) > 0 {
+				configArgs.ApplicationSecurityGroupIds = asgs
 			}
 			if pip := config.PublicIpAddress; pip != nil {
 				pipArgs := compute.WindowsVirtualMachineScaleSetNetworkInterfaceIpConfigurationPublicIpAddressArgs{

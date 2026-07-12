@@ -120,13 +120,15 @@ func Resources(ctx *pulumi.Context, stackInput *azurenetworkinterfacev1.AzureNet
 	}
 
 	// Join the NIC to its application security groups so NSG rules can
-	// target workload groups instead of IP ranges.
-	for i, asgId := range spec.ApplicationSecurityGroupIds {
+	// target workload groups instead of IP ranges. ASG references resolve
+	// to literal ARM IDs before the module runs, so GetValue() returns the
+	// resolved id for both a literal and a valueFrom reference.
+	for i, asg := range spec.ApplicationSecurityGroupIds {
 		if _, err := network.NewNetworkInterfaceApplicationSecurityGroupAssociation(ctx,
 			fmt.Sprintf("%s-asg-%d", spec.Name, i),
 			&network.NetworkInterfaceApplicationSecurityGroupAssociationArgs{
 				NetworkInterfaceId:         createdNetworkInterface.ID(),
-				ApplicationSecurityGroupId: pulumi.String(asgId),
+				ApplicationSecurityGroupId: pulumi.String(asg.GetValue()),
 			},
 			pulumi.Provider(azureProvider)); err != nil {
 			return errors.Wrapf(err, "failed to associate application security group %d with network interface %s", i, spec.Name)

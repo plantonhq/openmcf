@@ -61,9 +61,17 @@ func Resources(ctx *pulumi.Context, stackInput *azurenetworksecuritygroupv1.Azur
 		// (single prefix, prefix list, or application security groups).
 		// All unset means any -- "*" is sent so both engines deploy the
 		// identical rule.
+		// Application security group references are resolved to literal ARM
+		// IDs by the platform middleware before the module runs, so
+		// GetValue() returns the resolved id for both a literal and a
+		// valueFrom reference.
 		switch {
 		case len(rule.SourceApplicationSecurityGroupIds) > 0:
-			ruleArgs.SourceApplicationSecurityGroupIds = pulumi.ToStringArray(rule.SourceApplicationSecurityGroupIds)
+			sourceAsgIds := make([]string, 0, len(rule.SourceApplicationSecurityGroupIds))
+			for _, asg := range rule.SourceApplicationSecurityGroupIds {
+				sourceAsgIds = append(sourceAsgIds, asg.GetValue())
+			}
+			ruleArgs.SourceApplicationSecurityGroupIds = pulumi.ToStringArray(sourceAsgIds)
 		case len(rule.SourceAddressPrefixes) > 0:
 			ruleArgs.SourceAddressPrefixes = pulumi.ToStringArray(rule.SourceAddressPrefixes)
 		case rule.SourceAddressPrefix != nil:
@@ -73,7 +81,11 @@ func Resources(ctx *pulumi.Context, stackInput *azurenetworksecuritygroupv1.Azur
 		}
 		switch {
 		case len(rule.DestinationApplicationSecurityGroupIds) > 0:
-			ruleArgs.DestinationApplicationSecurityGroupIds = pulumi.ToStringArray(rule.DestinationApplicationSecurityGroupIds)
+			destAsgIds := make([]string, 0, len(rule.DestinationApplicationSecurityGroupIds))
+			for _, asg := range rule.DestinationApplicationSecurityGroupIds {
+				destAsgIds = append(destAsgIds, asg.GetValue())
+			}
+			ruleArgs.DestinationApplicationSecurityGroupIds = pulumi.ToStringArray(destAsgIds)
 		case len(rule.DestinationAddressPrefixes) > 0:
 			ruleArgs.DestinationAddressPrefixes = pulumi.ToStringArray(rule.DestinationAddressPrefixes)
 		case rule.DestinationAddressPrefix != nil:

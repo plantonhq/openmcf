@@ -97,56 +97,71 @@ endpoint, _ := network.NewPrivateEndpoint(ctx, "pg-pe", &network.PrivateEndpoint
 })
 ```
 
-## Why Planton Bundles Endpoint + DNS Zone Group
+## Why the DNS Zone Group Is Part of the Endpoint
 
-Per DD03 (Composite Bundling Rules), a private endpoint without DNS zone group registration won't resolve correctly in the VNet. The service FQDN will resolve to the public IP instead of the private one, causing clients to bypass the private endpoint entirely.
+A private endpoint without DNS zone group registration does not resolve
+correctly inside the VNet: the service FQDN resolves to the PUBLIC IP
+instead of the private one, and clients silently bypass the private
+endpoint entirely. Because that guarantee must be atomic, the DNS zone
+group is part of this resource rather than a separate node -- the endpoint
+and its A-record registration deploy together or not at all. The private
+DNS zones themselves are first-class (`AzurePrivateDnsZone`) and referenced
+here by id; `private_dns_zone_ids` accepts one or more so a single endpoint
+can register into every zone a client population needs.
 
-The bundling follows the same reasoning as:
-- AzureNetworkSecurityGroup (NSG + rules -- rules are the substance)
-- AzureUserAssignedIdentity (identity + role assignments -- assignments are the substance)
-- AzurePrivateDnsZone (zone + VNet link -- link is the substance)
+The zone group is optional only for the case where DNS is managed
+externally (custom DNS servers, a hub-spoke forwarder). When present, every
+referenced zone gets an A record for the endpoint's private IP.
 
-However, the DNS zone group is **optional** in this component because:
-1. Some organizations manage DNS externally (e.g., custom DNS servers)
-2. Some scenarios don't require DNS resolution (direct IP access)
-3. Flexibility is needed for advanced networking patterns
+## Field Mapping (azurerm → spec)
 
-## 80/20 Scoping Rationale
-
-### What's Included
-
-| Feature | Rationale |
-|---------|-----------|
-| Private endpoint creation | Core resource |
-| Optional DNS zone group | Enables seamless DNS resolution (80/20 case) |
-| Auto-approved connections | Manual connections require approval workflows (edge case) |
-| Dynamic IP allocation | Standard pattern; static IP is niche |
-| Polymorphic `private_connection_resource_id` | Supports all Azure PaaS services via StringValueOrRef |
-| Sub-resource names | Required for proper service targeting |
-| Tags | Standard Azure resource management |
-
-### What's Excluded
-
-| Feature | Rationale |
-|---------|-----------|
-| Static IP assignment | Dynamic allocation is the standard pattern; static IP is niche |
-| Manual connection approval | Requires request messages and owner approval; edge case |
-| Multiple DNS zone groups | Single zone group covers 99% of use cases |
-| Custom connection names | Auto-derived from metadata.name follows established patterns |
-| Application security groups | Advanced networking feature, very niche |
-| Request message | Only needed for manual connections (excluded) |
+| azurerm | spec | Notes |
+|---|---|---|
+| `name` | `name` | Required, ForceNew |
+| `location` | `region` | Required, ForceNew |
+| `resource_group_name` | `resource_group` | FK → AzureResourceGroup |
+| `subnet_id` | `subnet_id` | FK → AzureSubnet, ForceNew |
+| `private_service_connection` (MaxItems 1) | `private_service_connection` message | Folded singular block |
+| `.private_connection_resource_id` XOR `.private_connection_resource_alias` | `.private_connection_resource_id` / `.connection_alias` | ExactlyOneOf → message CEL |
+| `.subresource_names` | `.subresource_names` | ForceNew |
+| `.is_manual_connection` | `.is_manual_connection` | Required in azurerm; optional bool here (defaults false) |
+| `.request_message` | `.request_message` | Paired with manual (CustomizeDiff → message CEL) |
+| `private_dns_zone_group` (MaxItems 1) | `private_dns_zone_ids` | Group name auto-derived; the id list is the substance |
+| `ip_configuration` | `ip_configurations` | Static IP assignments |
+| `custom_network_interface_name` | `custom_network_interface_name` | ForceNew |
+| ASG association (member-side resource) | `application_security_group_ids` | Realized as association resources both engines |
+| `tags` | `tags` | User tags merged over Planton-derived tags |
+| `private_service_connection.0.private_ip_address` (computed) | `private_ip_address` output | |
+| `network_interface.0.id` (computed) | `network_interface_id` output | |
 
 ## Design Decisions
 
-**Polymorphic `private_connection_resource_id`**: This field accepts any Azure resource ID that supports Private Link. No `default_kind` annotation is used because the target can be PostgreSQL, MySQL, Key Vault, Storage, Cosmos DB, Redis, or any other Private Link-enabled service. The flexibility enables the component to work across all Azure PaaS services.
+**Polymorphic connection target.** `private_connection_resource_id` carries
+no `default_kind` because the target can be any Private Link-enabled service
+(PostgreSQL, MySQL, Key Vault, Storage, Cosmos DB, Redis, SQL, ...).
+Reference the service's own output id with an explicit `kind`/`fieldPath` in
+composed environments. `connection_alias` is the alternative when the target
+is exposed through a Private Link Service alias (a partner's cross-tenant
+service); the two are mutually exclusive (message CEL).
 
-**Hardcoded auto-approval**: `is_manual_connection` is hardcoded to `false` in IaC modules. Auto-approved connections are the 80/20 case; manual connections require request messages and owner approval workflows, adding spec complexity for an edge case.
+**Manual-approval flow modeled.** `is_manual_connection` + `request_message`
+support cross-tenant and cross-subscription connections that need the target
+owner's approval. The provider's CustomizeDiff pairing -- request message
+required iff manual -- is front-loaded as a message CEL so the error is
+caught at validation, not apply.
 
-**No static IP**: The `ip_configuration` field (static IP assignment) is omitted per 80/20 scoping. Dynamic allocation from the subnet is the standard pattern, and static IP assignment is a niche requirement.
+**Static IP assignments modeled.** `ip_configurations` pins sub-resources to
+fixed addresses when firewall allowlists or hard-coded DNS require it; leave
+empty for dynamic allocation (the common case).
 
-**Auto-derived names**: Private service connection name and DNS zone group name are auto-derived from `metadata.name` in IaC modules, following the pattern established by AzurePrivateDnsZone (VNet link name auto-derived). This reduces spec complexity and avoids naming conflicts.
+**ASG membership member-side.** Azure models application security group
+membership from the member side, as its own association resource. The spec
+exposes `application_security_group_ids`; both engines realize each as an
+association resource.
 
-**Optional DNS zone group**: The DNS zone group is optional to support flexible DNS management patterns. When provided, it automatically registers the private IP as an A-record in the specified zone. When omitted, DNS is managed externally or via custom configuration.
+**Auto-derived internal names.** The private service connection name and DNS
+zone group name are internal handles Azure requires but nothing references;
+both are derived from the endpoint name to keep the spec free of noise.
 
 ## Best Practices
 
@@ -154,7 +169,7 @@ However, the DNS zone group is **optional** in this component because:
 
 2. **One endpoint per service instance** -- Each database, Key Vault, or Storage Account instance should have its own private endpoint. Don't try to share endpoints across instances.
 
-3. **Always use DNS zone groups** -- Unless you have a specific reason to manage DNS externally, always provide `private_dns_zone_id` to enable seamless DNS resolution.
+3. **Always use DNS zone groups** -- Unless you have a specific reason to manage DNS externally, always provide `private_dns_zone_ids` to enable seamless DNS resolution.
 
 4. **Match zone names exactly** -- For Private Link, the DNS zone name must exactly match Azure's predefined name for the service (e.g., `privatelink.postgres.database.azure.com`). A typo means DNS resolution fails silently.
 
@@ -162,14 +177,15 @@ However, the DNS zone group is **optional** in this component because:
 
 6. **Region must match subnet** -- The private endpoint's region must match the subnet's region. Subnets inherit their region from the parent VNet.
 
-## Downstream Consumers
+## Composition Seams
 
-```
-AzurePrivateEndpoint
-└── (leaf resource -- no current downstream consumers)
-```
-
-AzurePrivateEndpoint is currently a leaf resource in the infra chart DAG. No other Planton resources reference its outputs. However, the outputs (`private_endpoint_id`, `private_ip_address`, `network_interface_id`) are essential for operational visibility and potential future consumers.
+The endpoint consumes references on four sides: `subnet_id` →
+`AzureSubnet`, `private_service_connection.private_connection_resource_id` →
+any Private Link-enabled service (polymorphic), `private_dns_zone_ids` →
+`AzurePrivateDnsZone`, and `application_security_group_ids` →
+`AzureApplicationSecurityGroup`. Its outputs (`private_endpoint_id`,
+`private_endpoint_name`, `private_ip_address`, `network_interface_id`) are
+available for operational visibility and downstream references.
 
 ## Infra Chart Integration
 
@@ -184,7 +200,7 @@ VPC → Subnet → PrivateDnsZone → Database Server → PrivateEndpoint → DN
 Each database server (PostgreSQL, MySQL, MSSQL, Redis) gets its own private endpoint. The endpoint is wired to:
 1. The subnet (for private IP allocation)
 2. The database server (via `private_connection_resource_id`)
-3. The corresponding private DNS zone (via `private_dns_zone_id`)
+3. The corresponding private DNS zone (via `private_dns_zone_ids`)
 
 The DNS zone group automatically registers the private IP as an A-record in the zone, ensuring the database FQDN resolves to the private IP within the VNet.
 

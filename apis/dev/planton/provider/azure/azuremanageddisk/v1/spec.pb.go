@@ -537,14 +537,16 @@ type AzureManagedDiskSpec struct {
 	// PREMIUM_V2_LRS/ULTRA_SSD_LRS only. Azure's default is 4096; choose
 	// 512 only for legacy applications that require it. Fixed at creation.
 	LogicalSectorSize *int32 `protobuf:"varint,23,opt,name=logical_sector_size,json=logicalSectorSize,proto3,oneof" json:"logical_sector_size,omitempty"`
-	// The customer-managed-key disk encryption set encrypting this disk,
-	// by ARM ID. Plain ARM ID: disk encryption sets are not modeled as a
-	// Planton kind yet. Conflicts with secure_vm_disk_encryption_set_id.
-	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/diskEncryptionSets/{name}
+	// The customer-managed-key disk encryption set encrypting this disk.
+	// A disk encryption set by ARM ID, or a reference to an
+	// AzureDiskEncryptionSet's output. Conflicts with
+	// secure_vm_disk_encryption_set_id.
 	DiskEncryptionSetId *v1.StringValueOrRef `protobuf:"bytes,24,opt,name=disk_encryption_set_id,json=diskEncryptionSetId,proto3" json:"disk_encryption_set_id,omitempty"`
 	// For CONFIDENTIAL_VM_DISK_ENCRYPTED_WITH_CUSTOMER_KEY security: the
-	// disk encryption set encrypting the confidential VM's guest state, by
-	// ARM ID. Conflicts with disk_encryption_set_id. Fixed at creation.
+	// disk encryption set encrypting the confidential VM's guest state.
+	// A disk encryption set by ARM ID, or a reference to an
+	// AzureDiskEncryptionSet's output. Conflicts with
+	// disk_encryption_set_id. Fixed at creation.
 	SecureVmDiskEncryptionSetId *v1.StringValueOrRef `protobuf:"bytes,25,opt,name=secure_vm_disk_encryption_set_id,json=secureVmDiskEncryptionSetId,proto3" json:"secure_vm_disk_encryption_set_id,omitempty"`
 	// The confidential-VM security profile for OS disks of confidential
 	// VMs. Leave unspecified for everything else. When set to
@@ -869,7 +871,7 @@ var File_dev_planton_provider_azure_azuremanageddisk_v1_spec_proto protoreflect.
 
 const file_dev_planton_provider_azure_azuremanageddisk_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/azure/azuremanageddisk/v1/spec.proto\x12.dev.planton.provider.azure.azuremanageddisk.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf24\n" +
+	"9dev/planton/provider/azure/azuremanageddisk/v1/spec.proto\x12.dev.planton.provider.azure.azuremanageddisk.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd45\n" +
 	"\x14AzureManagedDiskSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -900,9 +902,9 @@ const file_dev_planton_provider_azure_azuremanageddisk_v1_spec_proto_rawDesc = "
 	"max_shares\x18\x15 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\n" +
 	"(\x02H\x05R\tmaxShares\x88\x01\x01\x12;\n" +
 	"\x1aon_demand_bursting_enabled\x18\x16 \x01(\bR\x17onDemandBurstingEnabled\x12@\n" +
-	"\x13logical_sector_size\x18\x17 \x01(\x05B\v\xbaH\b\x1a\x060\x80\x040\x80 H\x06R\x11logicalSectorSize\x88\x01\x01\x12g\n" +
-	"\x16disk_encryption_set_id\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x13diskEncryptionSetId\x12y\n" +
-	" secure_vm_disk_encryption_set_id\x18\x19 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x1bsecureVmDiskEncryptionSetId\x12q\n" +
+	"\x13logical_sector_size\x18\x17 \x01(\x05B\v\xbaH\b\x1a\x060\x80\x040\x80 H\x06R\x11logicalSectorSize\x88\x01\x01\x12\x97\x01\n" +
+	"\x16disk_encryption_set_id\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12\xa9\x01\n" +
+	" secure_vm_disk_encryption_set_id\x18\x19 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x1bsecureVmDiskEncryptionSetId\x12q\n" +
 	"\rsecurity_type\x18\x1a \x01(\x0e2L.dev.planton.provider.azure.azuremanageddisk.v1.AzureManagedDiskSecurityTypeR\fsecurityType\x124\n" +
 	"\x16trusted_launch_enabled\x18\x1b \x01(\bR\x14trustedLaunchEnabled\x12\x87\x01\n" +
 	"\x15network_access_policy\x18\x1c \x01(\x0e2S.dev.planton.provider.azure.azuremanageddisk.v1.AzureManagedDiskNetworkAccessPolicyR\x13networkAccessPolicy\x12$\n" +

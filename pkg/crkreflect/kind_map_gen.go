@@ -129,6 +129,8 @@ import (
 	azureaksnodepoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureaksnodepool/v1"
 	azureapplicationgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureapplicationgateway/v1"
 	azureapplicationinsightsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureapplicationinsights/v1"
+	azureapplicationinsightsstandardwebtestv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureapplicationinsightsstandardwebtest/v1"
+	azureapplicationsecuritygroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureapplicationsecuritygroup/v1"
 	azurecontainerappv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecontainerapp/v1"
 	azurecontainerappenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecontainerappenvironment/v1"
 	azurecontainerappenvironmentdaprcomponentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecontainerappenvironmentdaprcomponent/v1"
@@ -142,6 +144,7 @@ import (
 	azurecosmosdbsqldatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecosmosdbsqldatabase/v1"
 	azurecosmosdbsqlroleassignmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecosmosdbsqlroleassignment/v1"
 	azurecosmosdbsqlroledefinitionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecosmosdbsqlroledefinition/v1"
+	azurediskencryptionsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurediskencryptionset/v1"
 	azurednsrecordv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurednsrecord/v1"
 	azurednszonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurednszone/v1"
 	azureeventhubv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhub/v1"
@@ -175,11 +178,13 @@ import (
 	azuremanagedredisaccesspolicyassignmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremanagedredisaccesspolicyassignment/v1"
 	azuremanagedredisgeoreplicationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremanagedredisgeoreplication/v1"
 	azuremonitoractiongroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremonitoractiongroup/v1"
+	azuremonitoractivitylogalertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremonitoractivitylogalert/v1"
 	azuremonitordiagnosticsettingv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremonitordiagnosticsetting/v1"
 	azuremonitormetricalertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremonitormetricalert/v1"
 	azuremonitorscheduledqueryalertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremonitorscheduledqueryalert/v1"
 	azuremssqldatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremssqldatabase/v1"
 	azuremssqlelasticpoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremssqlelasticpool/v1"
+	azuremssqlfailovergroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremssqlfailovergroup/v1"
 	azuremssqlserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremssqlserver/v1"
 	azuremysqlflexibleserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremysqlflexibleserver/v1"
 	azurenatgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurenatgateway/v1"
@@ -637,6 +642,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureAksNodePool:                          &azureaksnodepoolv1.AzureAksNodePool{},
 	cloudresourcekind.CloudResourceKind_AzureApplicationGateway:                   &azureapplicationgatewayv1.AzureApplicationGateway{},
 	cloudresourcekind.CloudResourceKind_AzureApplicationInsights:                  &azureapplicationinsightsv1.AzureApplicationInsights{},
+	cloudresourcekind.CloudResourceKind_AzureApplicationInsightsStandardWebTest:   &azureapplicationinsightsstandardwebtestv1.AzureApplicationInsightsStandardWebTest{},
+	cloudresourcekind.CloudResourceKind_AzureApplicationSecurityGroup:             &azureapplicationsecuritygroupv1.AzureApplicationSecurityGroup{},
 	cloudresourcekind.CloudResourceKind_AzureContainerApp:                         &azurecontainerappv1.AzureContainerApp{},
 	cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironment:              &azurecontainerappenvironmentv1.AzureContainerAppEnvironment{},
 	cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironmentDaprComponent: &azurecontainerappenvironmentdaprcomponentv1.AzureContainerAppEnvironmentDaprComponent{},
@@ -650,6 +657,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlDatabase:                  &azurecosmosdbsqldatabasev1.AzureCosmosdbSqlDatabase{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleAssignment:            &azurecosmosdbsqlroleassignmentv1.AzureCosmosdbSqlRoleAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleDefinition:            &azurecosmosdbsqlroledefinitionv1.AzureCosmosdbSqlRoleDefinition{},
+	cloudresourcekind.CloudResourceKind_AzureDiskEncryptionSet:                    &azurediskencryptionsetv1.AzureDiskEncryptionSet{},
 	cloudresourcekind.CloudResourceKind_AzureDnsRecord:                            &azurednsrecordv1.AzureDnsRecord{},
 	cloudresourcekind.CloudResourceKind_AzureDnsZone:                              &azurednszonev1.AzureDnsZone{},
 	cloudresourcekind.CloudResourceKind_AzureEventHub:                             &azureeventhubv1.AzureEventHub{},
@@ -683,11 +691,13 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureManagedRedisAccessPolicyAssignment:   &azuremanagedredisaccesspolicyassignmentv1.AzureManagedRedisAccessPolicyAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureManagedRedisGeoReplication:           &azuremanagedredisgeoreplicationv1.AzureManagedRedisGeoReplication{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorActionGroup:                   &azuremonitoractiongroupv1.AzureMonitorActionGroup{},
+	cloudresourcekind.CloudResourceKind_AzureMonitorActivityLogAlert:              &azuremonitoractivitylogalertv1.AzureMonitorActivityLogAlert{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorDiagnosticSetting:             &azuremonitordiagnosticsettingv1.AzureMonitorDiagnosticSetting{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorMetricAlert:                   &azuremonitormetricalertv1.AzureMonitorMetricAlert{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorScheduledQueryAlert:           &azuremonitorscheduledqueryalertv1.AzureMonitorScheduledQueryAlert{},
 	cloudresourcekind.CloudResourceKind_AzureMssqlDatabase:                        &azuremssqldatabasev1.AzureMssqlDatabase{},
 	cloudresourcekind.CloudResourceKind_AzureMssqlElasticPool:                     &azuremssqlelasticpoolv1.AzureMssqlElasticPool{},
+	cloudresourcekind.CloudResourceKind_AzureMssqlFailoverGroup:                   &azuremssqlfailovergroupv1.AzureMssqlFailoverGroup{},
 	cloudresourcekind.CloudResourceKind_AzureMssqlServer:                          &azuremssqlserverv1.AzureMssqlServer{},
 	cloudresourcekind.CloudResourceKind_AzureMysqlFlexibleServer:                  &azuremysqlflexibleserverv1.AzureMysqlFlexibleServer{},
 	cloudresourcekind.CloudResourceKind_AzureNatGateway:                           &azurenatgatewayv1.AzureNatGateway{},

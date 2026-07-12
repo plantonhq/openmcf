@@ -26,7 +26,7 @@ This preset creates a Private Endpoint for Azure Key Vault, enabling private net
 
 - **Subresource: vault** (`subresourceNames: [vault]`) -- Connects to the Key Vault's data plane (secrets, keys, certificates). This is the only subresource for Key Vault
 - **Subnet** (`subnetId`) -- The private endpoint's NIC is placed in this subnet with a private IP. Use a dedicated "private-endpoints" subnet or a shared services subnet
-- **Private DNS Zone** (`privateDnsZoneId`) -- Must be `privatelink.vaultcore.azure.net` for Key Vault DNS resolution. Create with `AzurePrivateDnsZone`
+- **Private DNS Zone** (`privateDnsZoneIds`) -- Must be `privatelink.vaultcore.azure.net` for Key Vault DNS resolution. Create with `AzurePrivateDnsZone`
 - **Key Vault firewall** -- After creating the private endpoint, disable public access on the Key Vault (`networkAcls.defaultAction: Deny`) to ensure all access goes through the private endpoint
 
 ## Placeholders to Replace
