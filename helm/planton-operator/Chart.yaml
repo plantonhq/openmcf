@@ -7,7 +7,7 @@ version: 0.2.0
 # built in the platform repo and published to ghcr.io/plantonhq/planton/operator;
 # keep this pinned to a known-good published tag (bump deliberately when a new
 # operator image is released).
-appVersion: "v0.0.32-selfhosted-preview"
+appVersion: "v0.0.33-selfhosted-preview"
 home: https://github.com/plantonhq/planton
 sources:
   - https://github.com/plantonhq/planton
