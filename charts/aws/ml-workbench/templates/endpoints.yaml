@@ -1,0 +1,70 @@
+# The VPC endpoints that make VPC-only mode actually work. With Studio's
+# internet path removed, every AWS call a notebook makes must ride a private
+# endpoint — a VpcOnly domain without these launches apps that hang on their
+# first API call. This is the full set the domain's own documentation
+# requires: SageMaker API + runtime (control plane and inference), STS (role
+# assumption), CloudWatch Logs (log delivery), ECR API + Docker (image
+# metadata and pulls), Service Catalog (SageMaker Projects), and S3.
+#
+# The interface endpoints resolve their services' PUBLIC DNS names to
+# in-VPC addresses (privateDnsEnabled, backed by the VPC's two DNS
+# switches in network.yaml), so unmodified SDKs inside notebooks just work.
+# Each interface endpoint bills per AZ-hour; S3 rides a FREE gateway
+# endpoint on the VPC main route table — which is exactly the table the
+# chart's routeless subnets use.
+{% if values.vpc_only_enabled | bool %}
+{% for service in ["sagemaker.api", "sagemaker.runtime", "sts", "logs", "ecr.api", "ecr.dkr", "servicecatalog"] %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsVpcEndpoint
+metadata:
+  name: "{{ values.workbench_name }}-vpce-{{ service | replace('.', '-') }}"
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: "{{ values.workbench_name }}-vpc"
+      fieldPath: status.outputs.vpc_id
+  endpointType: Interface
+  serviceName: "com.amazonaws.{{ values.aws_region }}.{{ service }}"
+  privateDnsEnabled: true
+  subnetIds:
+{% for az in values.availability_zones %}
+    - valueFrom:
+        kind: AwsSubnet
+        name: "{{ values.workbench_name }}-{{ az }}"
+        fieldPath: status.outputs.subnet_id
+{% endfor %}
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: "{{ values.workbench_name }}-endpoints-sg"
+        fieldPath: status.outputs.security_group_id
+{% endfor %}
+---
+# S3 rides the free gateway endpoint. Gateway endpoints attach to route
+# tables, not subnets — and because the workbench subnets declare no inline
+# routes, they ride the VPC MAIN route table, so that is the table to
+# attach (the subnets' own route_table_id outputs are deliberately empty in
+# this shape; the explicit reference below overrides the field's
+# subnet-oriented default).
+apiVersion: aws.planton.dev/v1
+kind: AwsVpcEndpoint
+metadata:
+  name: "{{ values.workbench_name }}-vpce-s3"
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: "{{ values.workbench_name }}-vpc"
+      fieldPath: status.outputs.vpc_id
+  endpointType: Gateway
+  serviceName: "com.amazonaws.{{ values.aws_region }}.s3"
+  routeTableIds:
+    - valueFrom:
+        kind: AwsVpc
+        name: "{{ values.workbench_name }}-vpc"
+        fieldPath: status.outputs.main_route_table_id
+{% endif %}

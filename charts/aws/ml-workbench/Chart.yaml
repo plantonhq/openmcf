@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: AWS ML Workbench
+spec:
+  selector:
+    kind: platform
+  description: SageMaker Studio ready for a team — a domain with idle auto-shutdown so forgotten notebooks stop billing, a least-privilege execution role, a versioned artifacts bucket, and a one-toggle VPC-only mode that ships every endpoint Studio actually needs to run without internet.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/aws/awssagemakerdomain/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/aws/ml-workbench
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/aws/ml-workbench/README.md

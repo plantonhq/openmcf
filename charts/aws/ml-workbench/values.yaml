@@ -1,0 +1,103 @@
+params:
+  # ── Placement ───────────────────────────────────────────────────────────
+  - name: aws_region
+    description: >
+      AWS region for the workbench. Keep it where the training data lives —
+      SageMaker jobs read from S3 constantly, and cross-region reads pay
+      transfer on every epoch.
+    value: us-east-1
+
+  # ── Identity ────────────────────────────────────────────────────────────
+  - name: workbench_name
+    description: >
+      Name for the SageMaker domain and the prefix for its companion
+      resources (VPC, subnets, execution role, security groups, endpoints).
+      Lowercase letters, digits, and hyphens.
+    value: ml-workbench
+
+  - name: artifacts_bucket_name
+    description: >
+      Globally unique name for the S3 bucket that stores datasets, model
+      artifacts, and notebook outputs. S3 bucket names are global across
+      all AWS accounts, so carry an org prefix (e.g. <org>-ml-artifacts) —
+      a generic name will already be taken.
+    value: my-org-ml-artifacts
+
+  # ── Network (the chart's own, dedicated to the workbench) ───────────────
+  - name: availability_zones
+    type: list
+    description: >
+      Two availability zones for the domain's subnets — SageMaker
+      recommends a multi-AZ footprint so apps keep launching through a
+      zonal outage. Entry N pairs with entry N of subnet_cidrs.
+    value:
+      - us-east-1a
+      - us-east-1b
+
+  - name: subnet_cidrs
+    type: list
+    description: >
+      CIDR blocks for the workbench subnets, index-matched to
+      availability_zones (entry N serves AZ N). Size generously: every
+      Studio app in VPC-only mode consumes an ENI address here. Must fit
+      inside vpc_cidr.
+    value:
+      - 10.64.1.0/24
+      - 10.64.2.0/24
+
+  - name: vpc_cidr
+    description: >
+      CIDR block for the workbench's dedicated VPC. Pick a range that does
+      not overlap networks you may later connect to (peering, transit
+      gateway) — renumbering a VPC means recreating it.
+    value: 10.64.0.0/16
+
+  # ── Cost control ─────────────────────────────────────────────────────────
+  - name: idle_shutdown_minutes
+    type: number
+    description: >
+      Minutes of inactivity before JupyterLab and Code Editor apps stop
+      automatically — the control that keeps a notebook forgotten on
+      Friday from billing all weekend. Applies as the domain default for
+      every user profile; users can tune their own timeout within
+      60-525600 minutes. 120 keeps a lunch break alive but not an
+      overnight.
+    value: 120
+
+  # ── Data retention ───────────────────────────────────────────────────────
+  - name: home_efs_retention
+    description: >
+      What happens to the domain's home-directory EFS volume (every user's
+      notebooks and files) when the DOMAIN is deleted: "Retain" keeps the
+      file system (recover files later, delete it by hand when sure) —
+      "Delete" removes it with the domain (clean teardown for disposable
+      workbenches). Fixed at creation.
+    value: Retain
+
+  # ── Feature toggles ─────────────────────────────────────────────────────
+  - name: vpc_only_enabled
+    type: bool
+    description: >
+      Lock Studio traffic inside the VPC (appNetworkAccessType VpcOnly):
+      notebooks lose direct internet, data exfiltration paths close, and
+      every byte becomes visible to VPC Flow Logs — the posture regulated
+      workloads (HIPAA, SOC2, PCI) require. The chart then provisions
+      everything Studio needs to actually function without internet: the
+      inter-app security group and the full set of VPC endpoints
+      (SageMaker API/runtime, STS, CloudWatch Logs, ECR, Service Catalog,
+      and an S3 gateway). Off = PublicInternetOnly: notebooks reach PyPI,
+      GitHub, and Docker Hub directly through the SageMaker service
+      network — the friction-free default for teams without a compliance
+      driver. Interface endpoints bill per AZ-hour (~$60/month for this
+      set across two AZs), which is the honest cost of the locked-down
+      posture.
+    value: false
+
+  - name: force_destroy
+    type: bool
+    description: >
+      Allow teardown to delete the artifacts bucket even when it still
+      contains objects. Keep OFF for anything real — trained models and
+      datasets are expensive to reproduce; turn on only for disposable
+      environments.
+    value: false

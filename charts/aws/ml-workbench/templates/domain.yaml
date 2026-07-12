@@ -1,0 +1,84 @@
+# The SageMaker Studio domain — the workbench itself. One domain serves the
+# whole team: each member gets a user profile (a day-2 CLI one-liner in the
+# README) inheriting these defaults, a private home directory on the
+# domain's EFS volume, and the execution role from iam.yaml.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSagemakerDomain
+metadata:
+  name: "{{ values.workbench_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+
+  # IAM auth: users are IAM principals opening Studio through the console
+  # or presigned URLs — the shape that works in every account with zero
+  # directory prerequisites. Organizations on IAM Identity Center switch
+  # this to SSO (a create-time decision, so it is stated here rather than
+  # parameterized: flipping it replaces the domain).
+  authMode: IAM
+
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: "{{ values.workbench_name }}-vpc"
+      fieldPath: status.outputs.vpc_id
+  subnetIds:
+{% for az in values.availability_zones %}
+    - valueFrom:
+        kind: AwsSubnet
+        name: "{{ values.workbench_name }}-{{ az }}"
+        fieldPath: status.outputs.subnet_id
+{% endfor %}
+{% if values.vpc_only_enabled | bool %}
+
+  # The locked-down arm: every app's traffic stays on this VPC's ENIs —
+  # no direct internet from notebooks, flows visible to VPC Flow Logs,
+  # AWS calls carried by the endpoints in endpoints.yaml.
+  appNetworkAccessType: VpcOnly
+{% else %}
+
+  # The friction-free arm: Studio's outbound (PyPI, GitHub, Docker Hub)
+  # rides the SageMaker service network; the VPC carries only EFS and
+  # inter-app traffic. Stated explicitly rather than defaulted so the
+  # posture is visible in the manifest.
+  appNetworkAccessType: PublicInternetOnly
+{% endif %}
+
+  # What happens to the team's home directories when the DOMAIN is
+  # deleted — "Retain" (recoverable, delete the EFS by hand when sure) or
+  # "Delete" (clean teardown). Create-time-only, hence a parameter users
+  # set deliberately.
+  homeEfsRetentionPolicy: "{{ values.home_efs_retention }}"
+
+  defaultUserSettings:
+    executionRoleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: "{{ values.workbench_name }}-execution"
+        fieldPath: status.outputs.role_arn
+{% if values.vpc_only_enabled | bool %}
+    # Every app ENI carries the inter-app group from network.yaml — the
+    # membership that lets kernels, apps, and EFS mounts reach each other
+    # and nothing else.
+    securityGroupIds:
+      - valueFrom:
+          kind: AwsSecurityGroup
+          name: "{{ values.workbench_name }}-studio-sg"
+          fieldPath: status.outputs.security_group_id
+{% endif %}
+
+    # Idle auto-shutdown, the workbench's single biggest cost control: a
+    # notebook left running on Friday stops billing after the timeout
+    # instead of all weekend. AWS requires the full trio whenever idle
+    # settings are sent — the default every profile inherits, plus the
+    # bounds users may tune their own timeout within.
+    jupyterLabAppSettings:
+      idleSettings:
+        idleTimeoutInMinutes: {{ values.idle_shutdown_minutes }}
+        minIdleTimeoutInMinutes: 60
+        maxIdleTimeoutInMinutes: 525600
+    codeEditorAppSettings:
+      idleSettings:
+        idleTimeoutInMinutes: {{ values.idle_shutdown_minutes }}
+        minIdleTimeoutInMinutes: 60
+        maxIdleTimeoutInMinutes: 525600
