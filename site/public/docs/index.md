@@ -50,6 +50,12 @@ Copy-paste-ready manifest examples:
 
 - **[Manifest Gallery](/docs/examples/manifest-gallery)** - Curated manifests across AWS, GCP, Azure, Kubernetes, and more
 
+## Self-Hosting
+
+Run the full Planton platform on your own Kubernetes cluster:
+
+- **[Self-Hosting Planton](/docs/self-hosting)** - Install the operator, apply one manifest, and reach a running platform at your own URL
+
 ## Contributing
 
 Join the Planton community:
