@@ -1,0 +1,91 @@
+params:
+  # ── Placement ───────────────────────────────────────────────────────────
+  - name: aws_region
+    description: >
+      AWS region for the cluster and its security groups. Producers and
+      consumers should run in the same region — Kafka clients are chatty,
+      and cross-region broker traffic pays in both latency and transfer
+      cost.
+    value: us-east-1
+
+  # ── Identity ────────────────────────────────────────────────────────────
+  - name: cluster_name
+    description: >
+      Name for the MSK cluster and the prefix for its companion resources
+      (the client and cluster security groups). Lowercase letters, digits,
+      and hyphens.
+    value: my-kafka
+
+  # ── Network attachment ──────────────────────────────────────────────────
+  - name: vpc_id
+    description: >
+      The VPC the cluster's security groups are created in — the same VPC
+      the broker subnets below belong to. When composing with the
+      network-foundation chart in the same environment, you can reference
+      the VPC by name instead — see the README's composition section.
+    value: vpc-0123456789abcdef0
+
+  - name: broker_subnet_ids
+    description: >
+      Subnets the brokers (or serverless ENIs) are placed in — use PRIVATE
+      subnets in DIFFERENT availability zones; Kafka has no business being
+      addressable from the internet. Two subnets fit the default broker
+      count; the provisioned arm requires the broker count to be a multiple
+      of this list's length. When composing with network-foundation, swap
+      the literals for references to its private subnets (README shows
+      how).
+    type: list
+    value:
+      - subnet-0123456789abcdef0
+      - subnet-0123456789abcdef1
+
+  # ── Provisioned-arm sizing (used only while provisioned_enabled is true) ─
+  - name: kafka_version
+    description: >
+      Apache Kafka version for provisioned brokers. Pinning keeps rebuilt
+      environments deterministic; upgrades are in-place, downgrades replace
+      the cluster. Ignored by the serverless arm (AWS runs the engine).
+    value: "3.6.0"
+
+  - name: broker_count
+    type: number
+    description: >
+      Total brokers across all zones — MSK requires a multiple of the
+      broker-subnet count (2 subnets -> 2, 4, 6...). Brokers can be added
+      later but never removed, so start small: 2 covers development and
+      modest production; 3-zone/3-broker is the availability sweet spot.
+      Only used while provisioned_enabled is true.
+    value: 2
+
+  - name: broker_instance_type
+    type: string
+    description: >
+      Broker compute for the provisioned arm. kafka.t3.small is the
+      cheapest way to run real brokers (dev/test); kafka.m7g.large is the
+      production entry point (Graviton price/performance). Changing it
+      later is an in-place rolling update. Only used while
+      provisioned_enabled is true.
+    value: kafka.m7g.large
+
+  - name: broker_storage_gib
+    type: number
+    description: >
+      EBS volume size per broker in GiB. Sized to retention: throughput
+      (MB/s) x retention window x replication factor, divided across
+      brokers. Grows in place, never shrinks. Only used while
+      provisioned_enabled is true.
+    value: 100
+
+  # ── Feature toggles ─────────────────────────────────────────────────────
+  - name: provisioned_enabled
+    type: bool
+    description: >
+      Run a provisioned MSK cluster (broker instances you size and pay for
+      hourly) instead of MSK Serverless (per-GB throughput billing, zero
+      broker management, scales to zero cost while idle). Serverless is the
+      right default until throughput is steady and high enough that
+      broker-hour pricing wins — roughly sustained multi-MB/s around the
+      clock; the README carries the crossover math. Both arms authenticate
+      clients with IAM on port 9098, so producers and consumers move
+      between them without config changes beyond the bootstrap string.
+    value: false
