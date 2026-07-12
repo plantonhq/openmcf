@@ -1,0 +1,96 @@
+# The pager wire: alarms on the sender's REPUTATION — bounce and
+# complaint rates as SES computes them for this configuration set
+# (published because the set enables reputation metrics). These are the
+# two numbers SES itself acts on: cross them for long enough and AWS
+# pauses the account's sending. The alarms fire at the thresholds where
+# AWS starts paying attention, leaving room to react before enforcement.
+# The dimension is the chart's own rendered set name — stable from the
+# first deploy. This alerts topic is the HUMAN channel; the feedback
+# topic in configuration-set.yaml is the machine channel, kept separate
+# so a bounce storm pages once instead of once per bounce.
+{% if values.alarms_enabled | bool %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSnsTopic
+metadata:
+  name: "{{ values.sender_name }}-alerts"
+spec:
+  region: "{{ values.aws_region }}"
+  displayName: "{{ values.sender_name }} alerts"
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSnsSubscription
+metadata:
+  name: "{{ values.sender_name }}-alerts-email"
+spec:
+  region: "{{ values.aws_region }}"
+  topicArn:
+    valueFrom:
+      kind: AwsSnsTopic
+      name: "{{ values.sender_name }}-alerts"
+      fieldPath: status.outputs.topic_arn
+  protocol: email
+  # Email subscriptions require a one-time confirmation click — AWS
+  # sends it on creation, and no alert is delivered until it is
+  # confirmed.
+  endpoint:
+    value: "{{ values.alert_email }}"
+---
+# Bounce rate at 5% — AWS's own "under review" line is 10% with warnings
+# from 5%. A healthy transactional sender lives under 2%; sustained 5%
+# means a bad address source or a broken list, and a human must find it.
+apiVersion: aws.planton.dev/v1
+kind: AwsCloudwatchAlarm
+metadata:
+  name: "{{ values.sender_name }}-bounce-rate"
+spec:
+  region: "{{ values.aws_region }}"
+  namespace: AWS/SES
+  metricName: Reputation.BounceRate
+  dimensions:
+    # SES publishes per-set reputation under this dimension key (quoted
+    # — the key itself contains a colon).
+    "ses:configuration-set": "{{ values.sender_name }}-config"
+  statistic: Average
+  # Reputation metrics move slowly (they are rolling rates, not counts)
+  # — an hourly window avoids alarm flapping on tiny volumes.
+  period: 3600
+  comparisonOperator: GreaterThanOrEqualToThreshold
+  # The metric is a 0-1 fraction: 0.05 = 5%.
+  threshold: 0.05
+  evaluationPeriods: 1
+  treatMissingData: notBreaching
+  alarmDescription: "{{ values.sender_name }}: bounce rate at 5% - prune the address source now, AWS reviews senders from here"
+  alarmActions:
+    - valueFrom:
+        kind: AwsSnsTopic
+        name: "{{ values.sender_name }}-alerts"
+        fieldPath: status.outputs.topic_arn
+---
+# Complaint rate at 0.1% — AWS's warning line; review starts at 0.5%.
+# Complaints are recipients marking mail as spam: at one in a thousand,
+# something about consent or content is already wrong.
+apiVersion: aws.planton.dev/v1
+kind: AwsCloudwatchAlarm
+metadata:
+  name: "{{ values.sender_name }}-complaint-rate"
+spec:
+  region: "{{ values.aws_region }}"
+  namespace: AWS/SES
+  metricName: Reputation.ComplaintRate
+  dimensions:
+    "ses:configuration-set": "{{ values.sender_name }}-config"
+  statistic: Average
+  period: 3600
+  comparisonOperator: GreaterThanOrEqualToThreshold
+  # 0.001 = 0.1% — one complaint per thousand delivered messages.
+  threshold: 0.001
+  evaluationPeriods: 1
+  treatMissingData: notBreaching
+  alarmDescription: "{{ values.sender_name }}: complaint rate at 0.1% - recipients are marking mail as spam, review consent and content"
+  alarmActions:
+    - valueFrom:
+        kind: AwsSnsTopic
+        name: "{{ values.sender_name }}-alerts"
+        fieldPath: status.outputs.topic_arn
+{% endif %}
