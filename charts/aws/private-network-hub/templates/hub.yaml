@@ -1,0 +1,28 @@
+# The hub itself. Both default-route-table dials are OFF — the load-bearing
+# decision of this chart: with them on, AWS auto-associates and
+# auto-propagates every attachment into one shared table and every spoke can
+# reach every other spoke implicitly. Explicit membership (attachments pinned
+# out of the default table, associated to their own domain tables in
+# routing.yaml) is what makes BOTH of this chart's postures — segmentation
+# and deliberate interconnection — expressible and auditable. These dials are
+# also effectively immutable: AWS replaces the gateway (and every attachment
+# with it) when either flips from disabled to enabled, so starting explicit
+# is the only shape that keeps its options open.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsTransitGateway
+metadata:
+  name: "{{ values.hub_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+  description: "Network hub: {{ values.hub_name }}"
+
+  # Immutable BGP identity for future VPN/Direct-Connect attachments.
+  amazonSideAsn: {{ values.amazon_side_asn }}
+
+  defaultRouteTableAssociation: false
+  defaultRouteTablePropagation: false
+
+  # Cross-VPC DNS: instances resolve each other's private hostnames through
+  # the hub — connectivity without name resolution is half a network.
+  dnsSupport: true
