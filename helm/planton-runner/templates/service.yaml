@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "planton-runner.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "planton-runner.labels" . | nindent 4 }}
+spec:
+  # ClusterIP only -- the runner receives traffic through the reverse tunnel,
+  # not through Kubernetes networking. This Service exists for health monitoring
+  # and kubectl port-forward debugging.
+  type: ClusterIP
+  selector:
+    {{- include "planton-runner.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: health
+      port: 8093
+      targetPort: health
+      protocol: TCP

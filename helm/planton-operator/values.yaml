@@ -1,0 +1,61 @@
+# -- Planton Operator Helm Chart values.
+# See README.md for full documentation.
+
+image:
+  # -- Container image repository.
+  repository: ghcr.io/plantonhq/planton/operator
+  # -- Container image tag (defaults to chart appVersion).
+  tag: ""
+  # -- Image pull policy.
+  pullPolicy: IfNotPresent
+
+# -- Optional image pull secrets for private registries.
+imagePullSecrets: []
+
+# -- Override the release name prefix used in resource names.
+nameOverride: ""
+# -- Override the full resource name (disables prefix generation).
+fullnameOverride: ""
+
+# -- Number of operator replicas. Use 2+ with leader election for HA.
+replicaCount: 1
+
+leaderElection:
+  # -- Enable leader election for controller manager.
+  # Required when running multiple replicas for high availability.
+  enabled: true
+
+healthProbe:
+  # -- Port for health check endpoints (/healthz and /readyz).
+  port: 8081
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+serviceAccount:
+  # -- Create a ServiceAccount for the operator pod.
+  create: true
+  # -- Annotations for the ServiceAccount (e.g., for IRSA or Workload Identity).
+  annotations: {}
+  # -- Override the ServiceAccount name. Defaults to the release fullname.
+  name: ""
+
+# -- Additional labels to apply to all resources.
+commonLabels: {}
+
+# -- Additional annotations for the Deployment pod template.
+podAnnotations: {}
+
+# -- Node selector for pod scheduling.
+nodeSelector: {}
+
+# -- Tolerations for pod scheduling.
+tolerations: []
+
+# -- Affinity rules for pod scheduling.
+affinity: {}

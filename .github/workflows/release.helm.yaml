@@ -1,0 +1,101 @@
+# =============================================================================
+# Publish Helm Charts (OCI)
+# =============================================================================
+# Publishes the Helm charts under helm/ (planton-operator, planton-runner) to
+# GitHub Container Registry as OCI artifacts:
+#
+#   oci://ghcr.io/plantonhq/charts/<chart>
+#
+# These are real Helm charts that deploy Planton's Kubernetes artifacts (the
+# operator and the runner). They are distinct from the InfraChart catalog under
+# charts/, which is Planton's own blueprint format published via release.charts.yaml.
+#
+# Versioning model (chart-owns-its-version, publish-on-change):
+#   - Each chart carries its own semantic Chart.yaml `version`. `appVersion` pins
+#     the image the chart deploys (built in the platform repo). The chart version
+#     is NOT tied to this repo's release tag.
+#   - Bump a chart's Chart.yaml `version` when you change the chart; the next push
+#     to main publishes that version. Already-published versions are immutable and
+#     skipped, so re-runs are safe.
+#
+# Behavior (mirrors build.ci-image.yaml):
+#   - Pull request touching helm/**  -> lint + package only (verify; no push).
+#   - Push to main touching helm/**   -> lint + package + push new versions.
+#   - Manual dispatch                 -> same as push.
+#
+# The newly created GHCR chart packages are private by default; make them public
+# (org package settings) for anonymous `helm install`.
+# =============================================================================
+
+name: release.helm
+
+on:
+  pull_request:
+    paths:
+      - 'helm/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'helm/**'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: release-helm-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OCI_REPO: ghcr.io/plantonhq/charts
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.0
+
+      # Log in only when we intend to push (main / manual dispatch). PRs from
+      # forks can't access packages: write anyway, so PR runs stay verify-only.
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Lint, package, and (on main/dispatch) publish charts
+        run: |
+          set -euo pipefail
+          PUSH="true"
+          [ "${{ github.event_name }}" = "pull_request" ] && PUSH="false"
+          mkdir -p /tmp/helm-pkg
+
+          for chart in helm/*/; do
+            name="$(basename "${chart}")"
+            version="$(helm show chart "${chart}" | awk '/^version:/{print $2; exit}')"
+            echo "===================================================="
+            echo "Chart: ${name}  version: ${version}  push: ${PUSH}"
+            echo "===================================================="
+
+            # credentials.existingSecret placeholder satisfies the runner chart's
+            # required-credentials guard during lint; the operator chart ignores it.
+            helm lint "${chart}" --set credentials.existingSecret=lint-placeholder
+            helm package "${chart}" --destination /tmp/helm-pkg
+
+            if [ "${PUSH}" = "true" ]; then
+              # Immutability: never overwrite an already-published version.
+              if helm show chart "oci://${OCI_REPO}/${name}" --version "${version}" >/dev/null 2>&1; then
+                echo "chart ${name} ${version} already published; skipping"
+              else
+                helm push "/tmp/helm-pkg/${name}-${version}.tgz" "oci://${OCI_REPO}"
+                echo "Pushed oci://${OCI_REPO}/${name}:${version}"
+              fi
+            fi
+          done

@@ -1,0 +1,669 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: plantonplatforms.planton.ai
+spec:
+  group: planton.ai
+  names:
+    kind: PlantonPlatform
+    listKind: PlantonPlatformList
+    plural: plantonplatforms
+    singular: plantonplatform
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: Deployment lifecycle phase
+      jsonPath: .status.phase
+      name: Phase
+      type: string
+    - description: Deployed platform version
+      jsonPath: .status.version
+      name: Version
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          PlantonPlatform is the Schema for deploying a complete Planton platform
+          on any Kubernetes cluster. A single PlantonPlatform resource orchestrates
+          the full stack: data layer, supporting services, and application layer.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              PlantonPlatformSpec defines the desired state of a self-hosted Planton deployment.
+              A minimal spec requires only the version field; all other fields have sensible defaults.
+            properties:
+              components:
+                description: |-
+                  components toggles optional platform capabilities that are disabled by default
+                  to keep the minimal deployment footprint small.
+                properties:
+                  authorization:
+                    description: |-
+                      authorization deploys OpenFGA and switches the control plane to
+                      policy-engine authorization (fine-grained RBAC). Disabled by default: the
+                      control plane runs the built-in allow-owner authorization arm, which needs
+                      no OpenFGA. Enable this for multi-tenant, per-resource access control.
+                    properties:
+                      enabled:
+                        default: false
+                        description: enabled controls whether this component is deployed.
+                        type: boolean
+                    type: object
+                  graph:
+                    description: |-
+                      graph configures Neo4j for relationship graph queries.
+                      Disabled by default.
+                    properties:
+                      enabled:
+                        default: false
+                        description: enabled controls whether Neo4j is deployed.
+                        type: boolean
+                      storageSize:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        default: 10Gi
+                        description: storageSize is the persistent volume size for
+                          Neo4j data.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  search:
+                    description: |-
+                      search configures Apache Solr deployment for full-text search.
+                      Disabled by default. Includes ZooKeeper for coordination.
+                    properties:
+                      enabled:
+                        default: false
+                        description: enabled controls whether Solr is deployed.
+                        type: boolean
+                      mode:
+                        allOf:
+                        - enum:
+                          - standalone
+                          - operator
+                        - enum:
+                          - standalone
+                          - operator
+                        default: standalone
+                        description: |-
+                          mode controls how Solr is deployed.
+                          "standalone" (default): Bitnami Solr Helm chart with bundled ZooKeeper
+                            subchart. No sub-operators required. Suitable for development and
+                            evaluation.
+                          "operator": Apache Solr Operator with SolrCloud CRD and operator-managed
+                            ZooKeeper. The Solr Operator is deployed automatically unless
+                            spec.prerequisites.solrOperator is set to "skip".
+                        type: string
+                      storageSize:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        default: 10Gi
+                        description: storageSize is the persistent volume size for
+                          Solr data.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      zookeeper:
+                        description: |-
+                          zookeeper configures the ZooKeeper instances used by Solr.
+                          Only applicable in standalone mode (ZooKeeper subchart).
+                          In operator mode, ZooKeeper is managed by the Solr Operator.
+                        properties:
+                          replicas:
+                            default: 1
+                            description: replicas is the number of ZooKeeper instances.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          storageSize:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            default: 5Gi
+                            description: storageSize is the persistent volume size
+                              for each ZooKeeper instance.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                        type: object
+                    type: object
+                  tekton:
+                    description: tekton enables Tekton for CI/CD pipelines.
+                    properties:
+                      enabled:
+                        default: false
+                        description: enabled controls whether this component is deployed.
+                        type: boolean
+                    type: object
+                  vault:
+                    description: |-
+                      vault configures OpenBAO (open-source Vault fork) for secrets management.
+                      Disabled by default.
+                    properties:
+                      enabled:
+                        default: false
+                        description: enabled controls whether OpenBAO is deployed.
+                        type: boolean
+                      initMode:
+                        allOf:
+                        - enum:
+                          - auto
+                          - manual
+                        - enum:
+                          - auto
+                          - manual
+                        default: auto
+                        description: |-
+                          initMode controls how OpenBAO is initialized after deployment.
+                          "auto" (default): the operator calls /sys/init and /sys/unseal
+                            automatically, storing unseal keys and root token in a Kubernetes
+                            Secret ({crName}-openbao-init). Convenient for dev and Kind clusters.
+                          "manual": the operator deploys the chart but leaves initialization
+                            to the user. The component reports Deploying until manually
+                            initialized and unsealed.
+                        type: string
+                      storageSize:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        default: 10Gi
+                        description: storageSize is the persistent volume size for
+                          OpenBAO data.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
+              console:
+                description: |-
+                  console configures the Planton web console (Next.js).
+                  The console is always deployed. Image defaults to the official
+                  GHCR image tagged with spec.version.
+                properties:
+                  externalConfigSecretName:
+                    description: |-
+                      externalConfigSecretName references a user-created Secret in the same
+                      namespace containing external configuration (Auth0, NextAuth, etc.).
+                      All keys in the Secret are injected as environment variables via envFrom.
+                    type: string
+                  image:
+                    description: image overrides the default container image for the
+                      web console.
+                    properties:
+                      repository:
+                        description: |-
+                          repository is the full container image repository
+                          (e.g., "ghcr.io/plantonhq/planton/control-plane").
+                        type: string
+                      tag:
+                        description: tag overrides the image tag. Defaults to spec.version
+                          when empty.
+                        type: string
+                    type: object
+                  replicas:
+                    default: 1
+                    description: replicas sets the number of web console pods.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                type: object
+              controlPlane:
+                description: |-
+                  controlPlane configures the Planton control plane monolith.
+                  The control plane is always deployed. Image defaults to the official
+                  GHCR image tagged with spec.version.
+                properties:
+                  externalConfigSecretName:
+                    description: |-
+                      externalConfigSecretName references a user-created Secret in the same
+                      namespace containing external service credentials (Auth0, Stripe,
+                      GitHub, etc.). All keys in the Secret are injected as environment
+                      variables via envFrom. The control plane will fail to start without
+                      this configuration when running with the real (non-placeholder) image.
+                    type: string
+                  image:
+                    description: image overrides the default container image for the
+                      control plane.
+                    properties:
+                      repository:
+                        description: |-
+                          repository is the full container image repository
+                          (e.g., "ghcr.io/plantonhq/planton/control-plane").
+                        type: string
+                      tag:
+                        description: tag overrides the image tag. Defaults to spec.version
+                          when empty.
+                        type: string
+                    type: object
+                  replicas:
+                    default: 1
+                    description: replicas sets the number of control plane pods.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                type: object
+              database:
+                description: database configures storage sizing for the data layer.
+                properties:
+                  postgresql:
+                    description: |-
+                      postgresql configures storage for the three PostgreSQL instances
+                      (api-resources, fga, temporal).
+                    properties:
+                      mode:
+                        allOf:
+                        - enum:
+                          - standalone
+                          - operator
+                        - enum:
+                          - standalone
+                          - operator
+                        default: standalone
+                        description: |-
+                          mode controls how PostgreSQL is deployed.
+                          "standalone" (default): Bitnami PostgreSQL Helm chart, single instance
+                            with all databases. Lightweight, no external operator dependencies.
+                            Suitable for development, evaluation, and Kind clusters.
+                          "operator": Zalando Postgres Operator with 3 dedicated PostgreSQL
+                            clusters (planton, fga, temporal). Supports HA, automated failover,
+                            and backups. The Zalando operator is deployed automatically unless
+                            spec.prerequisites.postgresOperator is set to "skip".
+                        type: string
+                      replicas:
+                        default: 1
+                        description: |-
+                          replicas is the number of PostgreSQL instances per cluster (primary + replicas).
+                          Only used in operator mode. Ignored in standalone mode (always 1).
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      storageSize:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        default: 10Gi
+                        description: storageSize is the persistent volume size for
+                          each PostgreSQL instance.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  redis:
+                    description: redis configures storage for the Redis instance.
+                    properties:
+                      storageSize:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        default: 1Gi
+                        description: storageSize is the persistent volume size for
+                          the Redis instance.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
+              ingress:
+                description: |-
+                  ingress configures external access to the Planton web console and API.
+                  When disabled, use kubectl port-forward for access.
+                properties:
+                  enabled:
+                    default: false
+                    description: |-
+                      enabled controls whether Ingress resources are created.
+                      When false, use kubectl port-forward for access.
+                    type: boolean
+                  hostname:
+                    description: |-
+                      hostname is the base domain for Planton services (e.g., "planton.example.com").
+                      Required when enabled is true.
+                    type: string
+                type: object
+              license:
+                description: |-
+                  license holds an optional license key for enterprise features.
+                  Without a license key, Planton runs in Community mode.
+                properties:
+                  key:
+                    description: key is the Planton enterprise license key.
+                    type: string
+                type: object
+              prerequisites:
+                description: |-
+                  prerequisites controls how the operator deploys its own dependencies
+                  (sub-operators like Zalando Postgres Operator). Defaults to auto-detection.
+                properties:
+                  postgresOperator:
+                    default: auto
+                    description: |-
+                      postgresOperator controls deployment of the Zalando Postgres Operator.
+                      "auto" (default): detect if installed, deploy if missing.
+                      "skip": assume already installed, do not deploy.
+                    enum:
+                    - auto
+                    - skip
+                    type: string
+                  solrOperator:
+                    default: auto
+                    description: |-
+                      solrOperator controls deployment of the Apache Solr Operator.
+                      "auto" (default): detect if installed, deploy if missing.
+                      "skip": assume already installed, do not deploy.
+                      Only relevant when spec.components.search.mode is "operator".
+                    enum:
+                    - auto
+                    - skip
+                    type: string
+                type: object
+              version:
+                description: |-
+                  version is the Planton platform version to deploy (e.g., "v1.0.0", "latest").
+                  All components are deployed at this version to ensure compatibility.
+                minLength: 1
+                type: string
+            required:
+            - version
+            type: object
+          status:
+            description: PlantonPlatformStatus defines the observed state of a PlantonPlatform
+              deployment.
+            properties:
+              components:
+                description: components reports the status of each individual component.
+                properties:
+                  console:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  controlPlane:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  nats:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  neo4j:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  openBao:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  openFGA:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  postgresql:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  redis:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  solr:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  temporal:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                type: object
+              conditions:
+                description: |-
+                  conditions represent the latest available observations of the deployment's state.
+                  Standard condition types: DataLayerReady, SupportingServicesReady, ApplicationReady.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              phase:
+                description: phase is the high-level lifecycle phase of the entire
+                  deployment.
+                enum:
+                - Pending
+                - Deploying
+                - Ready
+                - Error
+                - Upgrading
+                type: string
+              version:
+                description: version is the currently deployed Planton platform version.
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
