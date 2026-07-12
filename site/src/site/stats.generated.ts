@@ -8,7 +8,7 @@
  */
 export const generatedStats = {
   /** Annotated cloud-resource kinds (catalog breadth). */
-  components: 409,
+  components: 428,
   /** Cloud providers in the catalog. */
   providers: 17,
   /** Ready-made infra charts (stacks). */

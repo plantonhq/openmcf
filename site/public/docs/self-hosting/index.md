@@ -9,7 +9,7 @@ order: 55
 
 Planton runs on your own Kubernetes cluster. You install a Kubernetes operator with one Helm command, apply a manifest that is a few lines of YAML, and the operator deploys and manages the entire platform — database, cache, message bus, workflow engine, API backend, and web console — then reports the health of every piece back through the manifest's status.
 
-> **Preview status.** The self-hosted platform is in active preview. Today's build installs, reaches `Ready`, and serves the web console at your own URL. Sign-in is the next milestone and arrives in an upcoming preview build — until then the console loads but you cannot log in. This page grows as each milestone lands.
+> **Preview status.** The self-hosted platform is in active preview. Today's build installs, reaches `Ready`, serves the web console at your own URL, and — when ingress is enabled — deploys a bundled identity server so your team can sign in with no external identity setup. This page grows as each milestone lands.
 
 ## How It Works
 
@@ -26,6 +26,7 @@ flowchart TD
         temporal["Temporal"]
         cp["Control Plane\n(API backend)"]
         console["Web Console"]
+        idp["Identity Server\n(Keycloak)"]
     end
     statusNode["kubectl get plantonplatform\nPHASE: Ready + per-component status\n+ your console URL"]
 
@@ -36,6 +37,7 @@ flowchart TD
     operator --> temporal
     operator --> cp
     operator --> console
+    operator --> idp
     operator --> statusNode
 ```
 
@@ -109,7 +111,7 @@ Without any networking configuration, reach the console over a port-forward tunn
 kubectl -n planton port-forward svc/planton-console 8080:80
 ```
 
-Then open `http://localhost:8080`. The console loads; sign-in arrives in an upcoming preview build (see the status note at the top of this page).
+Then open `http://localhost:8080`. The console loads in local single-user mode — multi-user sign-in deploys automatically when you enable ingress (below).
 
 ## Publish at Your Own URL
 
@@ -154,6 +156,25 @@ planton   Ready   v0.0.33-selfhosted-preview   https://planton.example.com      
 ```
 
 If the ingress is misconfigured — the named ingress class does not exist, there is no default class, the TLS Secret is missing, or cert-manager is not installed — the `ingress` entry in `status.components` explains exactly what is wrong and what to do, in plain language. You can also enable ingress later by editing the manifest of an already-running platform; the operator reconciles the change.
+
+Enabling ingress also deploys the bundled identity server on the same hostname under `/idp` — a published platform is always authenticated. There is no separate identity configuration step.
+
+## Sign In
+
+Once ingress is enabled and the platform is `Ready`, open `<your URL>/login`. The first admin user's credentials are generated and stored in a Kubernetes Secret:
+
+```bash
+kubectl -n planton get secret planton-identity-admin-user \
+  -o jsonpath='{.data.username}' | base64 -d; echo
+kubectl -n planton get secret planton-identity-admin-user \
+  -o jsonpath='{.data.password}' | base64 -d; echo
+```
+
+Keycloak forces a password change at first sign-in. After you sign in, the console provisions your Planton account automatically.
+
+To add more users, use the identity server's admin console at `<your URL>/idp/admin`. Bootstrap admin credentials are in the Secret `planton-identity-bootstrap-admin` (username `admin`).
+
+**Cluster prerequisite:** pods must be able to reach the platform's own public URL from inside the cluster (the API validates sign-in tokens against that address). Most clusters satisfy this; if yours does not, the `identity` entry in `status.components` explains the failure.
 
 ## If Something Is Stuck
 
