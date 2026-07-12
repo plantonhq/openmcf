@@ -1,0 +1,43 @@
+# The Athena workgroup — the query surface of the lakehouse, and where the
+# spend controls live. Athena bills per TB scanned, so the workgroup enforces
+# a per-query scan ceiling and pins where results go; enforcement means a
+# client cannot quietly override either from its own session settings.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsAthenaWorkgroup
+metadata:
+  name: "{{ values.lake_bucket_name }}-workgroup"
+spec:
+  region: "{{ values.aws_region }}"
+  description: "Lakehouse queries over s3://{{ values.lake_bucket_name }} ({{ values.database_name }})"
+
+  # Workgroup settings override anything a client sets per-session — without
+  # this, the scan limit and the result location below are suggestions, not
+  # controls.
+  enforceWorkgroupConfiguration: true
+
+  # Per-query metrics (data scanned, run time, queue time) in CloudWatch —
+  # the raw material for "which query is burning the budget" questions.
+  publishCloudwatchMetricsEnabled: true
+
+  # The spend guard: Athena cancels any query that scans more than this.
+  # The parameter is expressed in GiB and converted to the bytes the API
+  # takes; 0 removes the limit.
+  bytesScannedCutoffPerQuery: {{ values.query_scan_limit_gib * 1073741824 }}
+{% if values.managed_results_enabled | bool %}
+
+  # AWS-managed result storage: free, encrypted with an AWS-owned key, and
+  # auto-deleted after 24 hours. The block's presence is the enable switch.
+  # Athena forbids combining this with an S3 output location, which is why
+  # the results bucket does not render in this arm.
+  managedQueryResults: {}
+{% else %}
+
+  # Customer-managed results in the chart's dedicated results bucket
+  # (storage.yaml), encrypted and expired on the schedule the team controls.
+  # The URI is a plain string by the spec's design; the chart owns the
+  # bucket name, so it is closed at render time.
+  resultConfiguration:
+    outputLocation: "s3://{{ values.lake_bucket_name }}-query-results/results/"
+    encryptionOption: SSE_S3
+{% endif %}
