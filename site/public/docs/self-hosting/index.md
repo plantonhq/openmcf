@@ -54,7 +54,7 @@ Everything is public — the operator chart and all platform images pull anonymo
 
 ```bash
 helm install planton-operator oci://ghcr.io/plantonhq/charts/planton-operator \
-  --version 0.2.0 \
+  --version 0.3.0 \
   --namespace planton-operator-system --create-namespace
 ```
 
@@ -80,7 +80,7 @@ metadata:
   name: planton
   namespace: planton
 spec:
-  version: v0.0.33-selfhosted-preview
+  version: v0.0.34-selfhosted-preview
 EOF
 ```
 
@@ -92,7 +92,7 @@ kubectl get plantonplatform planton -n planton -w
 
 ```text
 NAME      PHASE   VERSION                      URL   AGE
-planton   Ready   v0.0.33-selfhosted-preview         8m
+planton   Ready   v0.0.34-selfhosted-preview         8m
 ```
 
 The `URL` column stays empty until you configure ingress (below).
@@ -131,7 +131,7 @@ metadata:
   name: planton
   namespace: planton
 spec:
-  version: v0.0.33-selfhosted-preview
+  version: v0.0.34-selfhosted-preview
   ingress:
     enabled: true
     # hostname: planton.example.com    # rung 2: your own domain
@@ -154,7 +154,7 @@ kubectl get plantonplatform planton -n planton
 
 ```text
 NAME      PHASE   VERSION                      URL                                    AGE
-planton   Ready   v0.0.33-selfhosted-preview   https://planton.example.com            9m
+planton   Ready   v0.0.34-selfhosted-preview   https://planton.example.com            9m
 ```
 
 If the ingress is misconfigured — the named ingress class does not exist, there is no default class, the TLS Secret is missing, or cert-manager is not installed — the `ingress` entry in `status.components` explains exactly what is wrong and what to do, in plain language. You can also enable ingress later by editing the manifest of an already-running platform; the operator reconciles the change.

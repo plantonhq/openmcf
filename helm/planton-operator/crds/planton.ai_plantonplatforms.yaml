@@ -60,6 +60,55 @@ spec:
               PlantonPlatformSpec defines the desired state of a self-hosted Planton deployment.
               A minimal spec requires only the version field; all other fields have sensible defaults.
             properties:
+              bootstrap:
+                description: |-
+                  bootstrap seeds the first-boot workspace when sign-in is enabled: a
+                  default organization with a starter environment, and the admins who own
+                  it. The first declared admin to sign in lands inside a ready workspace
+                  as its owner and the install's platform operator -- no create-org
+                  ceremony. Every field is optional; defaults produce an organization and
+                  environment both named "default", with spec.identity.adminEmail as the
+                  sole admin.
+                properties:
+                  admins:
+                    description: |-
+                      admins are the emails granted organization ownership AND the install's
+                      platform-operator role -- at boot when their account already exists, or
+                      the moment they first sign in. Editing this list takes effect on the
+                      next control-plane restart (declarative, never fire-once). Defaults to
+                      [spec.identity.adminEmail] when that field is set.
+                    items:
+                      type: string
+                    type: array
+                  environment:
+                    description: environment is the starter environment seeded inside
+                      the organization.
+                    properties:
+                      name:
+                        description: name is the environment's display name. Defaults
+                          to the slug.
+                        type: string
+                      slug:
+                        default: default
+                        description: slug is the environment's URL-safe identifier
+                          within the organization.
+                        type: string
+                    type: object
+                  organization:
+                    description: organization is the default organization every declared
+                      admin owns.
+                    properties:
+                      name:
+                        description: name is the organization's display name. Defaults
+                          to the slug.
+                        type: string
+                      slug:
+                        default: default
+                        description: slug is the organization's URL-safe identifier
+                          (also its id).
+                        type: string
+                    type: object
+                type: object
               components:
                 description: |-
                   components toggles optional platform capabilities that are disabled by default
@@ -328,6 +377,44 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                 type: object
+              identity:
+                description: |-
+                  identity tunes the bundled identity server (Keycloak) that provides
+                  browser sign-in. Identity is not a toggle: it deploys whenever ingress is
+                  enabled (a published platform is always authenticated) and is absent
+                  without ingress (kubectl-gated port-forward access). Every field is
+                  optional -- a plain `ingress.enabled: true` install gets working
+                  multi-user sign-in with zero identity configuration.
+                properties:
+                  adminEmail:
+                    description: |-
+                      adminEmail is the real person's login email for the first admin user
+                      seeded into the realm. Their generated one-time password lands in the
+                      {crName}-identity-admin-user Secret; first sign-in forces a password
+                      change and asks for their name. When unset, NO sign-in user is seeded
+                      (there is deliberately no generic pre-baked admin identity) -- the
+                      component status says so plainly and names this field as the way in.
+                    type: string
+                  image:
+                    description: image overrides the default Keycloak container image.
+                    properties:
+                      repository:
+                        description: |-
+                          repository is the full container image repository
+                          (e.g., "ghcr.io/plantonhq/planton/control-plane").
+                        type: string
+                      tag:
+                        description: tag overrides the image tag. Defaults to spec.version
+                          when empty.
+                        type: string
+                    type: object
+                  realm:
+                    default: planton
+                    description: |-
+                      realm is the Keycloak realm name that holds Planton's users and the
+                      console's OIDC client.
+                    type: string
+                type: object
               ingress:
                 description: |-
                   ingress configures external access to the Planton web console and API.
@@ -472,6 +559,25 @@ spec:
                     - phase
                     type: object
                   controlPlane:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  identity:
                     description: ComponentStatus describes the observed state of an
                       individual component.
                     properties:
