@@ -7,19 +7,22 @@ order: 55
 
 # Self-Hosting Planton
 
-Planton runs on your own Kubernetes cluster. You install a Kubernetes operator with one Helm command, apply a manifest that is a few lines of YAML, and the operator deploys and manages the entire platform — database, cache, message bus, workflow engine, API backend, and web console — then reports the health of every piece back through the manifest's status.
+Planton runs on your own Kubernetes cluster. You install a Kubernetes operator with one Helm command, apply a manifest that is a few lines of YAML, and the operator deploys and manages the entire platform — database, cache, message bus, workflow engine, API backend, web console, and a bundled identity server for sign-in — then reports the health of every piece back through the manifest's status.
 
-> **Preview status.** The self-hosted platform is in active preview. Today's build installs, reaches `Ready`, serves the web console at your own URL, and — when ingress is enabled — deploys a bundled identity server so your team can sign in with no external identity setup. This page grows as each milestone lands.
+> **Preview status.** The self-hosted platform is in active preview. Today's build installs, reaches `Ready`, and gives your team multi-user sign-in with **zero networking setup** — one port-forward command opens a fully working, signed-in Planton. Publish it at your own URL with HTTPS whenever you are ready. This page grows as each milestone lands.
 
 ## How It Works
 
 The operator watches for a `PlantonPlatform` resource. When you apply one, it deploys every platform component into the manifest's namespace, wires them together, and keeps them converged. You never install or configure the individual components yourself.
+
+Every install has exactly one **front door** serving the console, the API, and sign-in on a single origin: a built-in gateway you reach over `kubectl port-forward` (the default — no networking required), or your cluster's ingress controller at your own hostname. Moving from one to the other is a manifest edit, not a re-architecture.
 
 ```mermaid
 flowchart TD
     manifest["PlantonPlatform manifest\n(a few lines of YAML)"]
     operator["Planton Operator\n(installed once, via Helm)"]
     subgraph platformNs [your namespace]
+        door["Front door\n(built-in gateway or your ingress)"]
         pg["PostgreSQL"]
         redis["Redis"]
         nats["NATS"]
@@ -31,6 +34,7 @@ flowchart TD
     statusNode["kubectl get plantonplatform\nPHASE: Ready + per-component status\n+ your console URL"]
 
     manifest --> operator
+    operator --> door
     operator --> pg
     operator --> redis
     operator --> nats
@@ -39,6 +43,9 @@ flowchart TD
     operator --> console
     operator --> idp
     operator --> statusNode
+    door --> console
+    door --> cp
+    door --> idp
 ```
 
 Everything is public — the operator chart and all platform images pull anonymously. No account, no license key, no image pull secret.
@@ -54,7 +61,7 @@ Everything is public — the operator chart and all platform images pull anonymo
 
 ```bash
 helm install planton-operator oci://ghcr.io/plantonhq/charts/planton-operator \
-  --version 0.3.0 \
+  --version 0.4.0 \
   --namespace planton-operator-system --create-namespace
 ```
 
@@ -66,7 +73,7 @@ kubectl get pods -n planton-operator-system -w
 
 ## Deploy Planton
 
-Create a namespace and apply a minimal `PlantonPlatform` manifest. The version is the only required field — storage sizes and optional components all have sensible defaults:
+Create a namespace and apply a minimal `PlantonPlatform` manifest. Set `adminEmail` to **your** email — the first admin is a real person, not a generic built-in account:
 
 ```bash
 kubectl create namespace planton
@@ -80,7 +87,9 @@ metadata:
   name: planton
   namespace: planton
 spec:
-  version: v0.0.34-selfhosted-preview
+  version: v0.0.35-selfhosted-preview
+  identity:
+    adminEmail: you@example.com
 EOF
 ```
 
@@ -91,11 +100,11 @@ kubectl get plantonplatform planton -n planton -w
 ```
 
 ```text
-NAME      PHASE   VERSION                      URL   AGE
-planton   Ready   v0.0.34-selfhosted-preview         8m
+NAME      PHASE   VERSION                      URL                     AGE
+planton   Ready   v0.0.35-selfhosted-preview   http://localhost:8080   8m
 ```
 
-The `URL` column stays empty until you configure ingress (below).
+The `URL` column shows where your front door will answer — `http://localhost:8080` in port-forward mode, or your own hostname once you enable ingress (below).
 
 Every component reports its own health with a plain-language message. If anything is stuck, this is the first place to look:
 
@@ -103,19 +112,28 @@ Every component reports its own health with a plain-language message. If anythin
 kubectl get plantonplatform planton -n planton -o jsonpath='{.status.components}' | jq
 ```
 
-## Open the Console
+## Open Planton and Sign In
 
-Without any networking configuration, reach the console over a port-forward tunnel:
+No networking setup is needed. One port-forward to the built-in front door serves everything — the console, the API, and sign-in — on a single origin (run it in its own terminal and leave it running):
 
 ```bash
-kubectl -n planton port-forward svc/planton-console 8080:80
+kubectl -n planton port-forward svc/planton-gateway 8080:80
 ```
 
-Then open `http://localhost:8080`. The console loads in local single-user mode — multi-user sign-in deploys automatically when you enable ingress (below).
+Open `http://localhost:8080` and sign in as **`admin`**. The generated one-time password is in a Kubernetes Secret:
+
+```bash
+kubectl -n planton get secret planton-identity-admin-user \
+  -o jsonpath='{.data.password}' | base64 -d; echo
+```
+
+First sign-in asks you to set your own password and your name on one screen — **keep the email as shown**: it is the email you declared in the manifest, and it is how the platform knows you are the admin. Then you pick a username — and you land inside your organization, ready to work (the [Sign In](#sign-in) section below covers the seeded workspace and adding teammates).
+
+The local port matters: sign-in addresses are pinned to it. Keep the default `8080`, or set `spec.gateway.localPort` if it clashes with something on your machine — the `gateway` entry in `status.components` always prints the exact port-forward command to use.
 
 ## Publish at Your Own URL
 
-Instead of a tunnel, the operator can publish Planton through your cluster's ingress controller. This is a ladder — every rung works, and each line you add takes you one rung up:
+When you outgrow the port-forward, the operator publishes Planton through your cluster's ingress controller instead — same platform, same sign-in, at a real address your whole team can reach. This is a ladder — every rung works, and each line you add takes you one rung up:
 
 1. **`enabled: true` alone** — the operator derives a working URL from your ingress controller's public address (no DNS setup) and serves plain HTTP. Meant for evaluation.
 2. **Add `hostname`** — Planton is served at your own domain, plain HTTP.
@@ -131,7 +149,7 @@ metadata:
   name: planton
   namespace: planton
 spec:
-  version: v0.0.34-selfhosted-preview
+  version: v0.0.35-selfhosted-preview
   ingress:
     enabled: true
     # hostname: planton.example.com    # rung 2: your own domain
@@ -146,7 +164,7 @@ spec:
     adminEmail: you@example.com        # YOUR login -- the first admin is a real person
 ```
 
-One hostname serves both the console pages and the API calls the browser makes — there is no second endpoint to configure. The platform tells you its URL:
+One hostname serves the console pages, the API calls the browser makes, and sign-in — there is no second endpoint to configure. The platform tells you its URL:
 
 ```bash
 kubectl get plantonplatform planton -n planton
@@ -154,25 +172,23 @@ kubectl get plantonplatform planton -n planton
 
 ```text
 NAME      PHASE   VERSION                      URL                                    AGE
-planton   Ready   v0.0.34-selfhosted-preview   https://planton.example.com            9m
+planton   Ready   v0.0.35-selfhosted-preview   https://planton.example.com            9m
 ```
 
-If the ingress is misconfigured — the named ingress class does not exist, there is no default class, the TLS Secret is missing, or cert-manager is not installed — the `ingress` entry in `status.components` explains exactly what is wrong and what to do, in plain language. You can also enable ingress later by editing the manifest of an already-running platform; the operator reconciles the change.
+If the ingress is misconfigured — the named ingress class does not exist, there is no default class, the TLS Secret is missing, or cert-manager is not installed — the `ingress` entry in `status.components` explains exactly what is wrong and what to do, in plain language.
 
-Enabling ingress also deploys the bundled identity server on the same hostname under `/idp` — a published platform is always authenticated. There is no separate identity configuration step.
+**Pick your address before your team signs in.** Sign-in addresses are provisioned for the front door the platform first boots with. Switching later — port-forward to ingress, or changing the hostname — is detected, and the `identity` entry in `status.components` explains what to update; the simplest evaluation-time fix is a fresh install at the new address.
 
 ## Sign In
 
-Once ingress is enabled and the platform is `Ready`, open `<your URL>/login`. There is no generic built-in admin account — the `adminEmail` you declared in the manifest is the first user, and their generated one-time password is stored in a Kubernetes Secret:
+Sign-in works the same through either front door — open your URL (the `URL` column) and sign in as **`admin`** (or the email you declared; the form accepts both). The account belongs to the real person named by `adminEmail` in the manifest — there is no generic built-in admin identity. The generated one-time password is stored in a Kubernetes Secret:
 
 ```bash
-kubectl -n planton get secret planton-identity-admin-user \
-  -o jsonpath='{.data.username}' | base64 -d; echo
 kubectl -n planton get secret planton-identity-admin-user \
   -o jsonpath='{.data.password}' | base64 -d; echo
 ```
 
-First sign-in asks you to set your own password and your name on one screen. Then pick a username — and you land inside your organization, ready to work.
+First sign-in asks you to set your own password and your name on one screen — **keep the email as shown** (it is how the platform recognizes you as the admin). Then pick a username — and you land inside your organization, ready to work.
 
 **Your first sign-in lands in your organization.** The platform seeds a default organization with a starter environment at boot, and the declared admin becomes its owner and the install's platform operator — there is no create-an-organization ceremony. The workspace is configurable through an optional `bootstrap` block:
 
@@ -187,8 +203,6 @@ spec:
 Everyone in `admins` is granted organization ownership and the platform-operator role — at boot if their account already exists, or the moment they first sign in. The list is declarative: edit it and the platform reconciles on the next restart.
 
 To add teammates, use the identity server's admin console at `<your URL>/idp/admin` (bootstrap admin credentials are in the Secret `planton-identity-bootstrap-admin`, username `admin`). Teammates sign in and land in the same organization: a self-hosted install trusts every signed-in user with the shared workspace, while admin declarations stay explicit.
-
-**Cluster prerequisite:** pods must be able to reach the platform's own public URL from inside the cluster (the API validates sign-in tokens against that address). Most clusters satisfy this; if yours does not, the `identity` entry in `status.components` explains the failure.
 
 ## If Something Is Stuck
 
