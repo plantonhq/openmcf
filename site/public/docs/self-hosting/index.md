@@ -7,9 +7,9 @@ order: 55
 
 # Self-Hosting Planton
 
-Planton runs on your own Kubernetes cluster. You install a Kubernetes operator with one Helm command, apply a manifest that is a few lines of YAML, and the operator deploys and manages the entire platform — database, cache, message bus, workflow engine, API backend, web console, and a bundled identity server for sign-in — then reports the health of every piece back through the manifest's status.
+Planton runs on your own Kubernetes cluster. You install a Kubernetes operator with one Helm command, apply a manifest that is a few lines of YAML, and the operator deploys and manages the entire platform — database, cache, message bus, workflow engine, API backend, web console, a bundled identity server for sign-in, and a built-in runner that executes your infrastructure deployments — then reports the health of every piece back through the manifest's status.
 
-> **Preview status.** The self-hosted platform is in active preview. Today's build installs, reaches `Ready`, and gives your team multi-user sign-in with **zero networking setup** — one port-forward command opens a fully working, signed-in Planton. Publish it at your own URL with HTTPS whenever you are ready. This page grows as each milestone lands.
+> **Preview status.** The self-hosted platform is in active preview. Today's build installs, reaches `Ready`, gives your team multi-user sign-in with **zero networking setup** — one port-forward command opens a fully working, signed-in Planton — and **deploys real infrastructure** through a built-in runner that works out of the box. Publish it at your own URL with HTTPS whenever you are ready. This page grows as each milestone lands.
 
 ## How It Works
 
@@ -30,6 +30,7 @@ flowchart TD
         cp["Control Plane\n(API backend)"]
         console["Web Console"]
         idp["Identity Server\n(Keycloak)"]
+        runner["Runner\n(executes deploys)"]
     end
     statusNode["kubectl get plantonplatform\nPHASE: Ready + per-component status\n+ your console URL"]
 
@@ -42,6 +43,7 @@ flowchart TD
     operator --> cp
     operator --> console
     operator --> idp
+    operator --> runner
     operator --> statusNode
     door --> console
     door --> cp
@@ -203,6 +205,75 @@ spec:
 Everyone in `admins` is granted organization ownership and the platform-operator role — at boot if their account already exists, or the moment they first sign in. The list is declarative: edit it and the platform reconciles on the next restart.
 
 To add teammates, use the identity server's admin console at `<your URL>/idp/admin` (bootstrap admin credentials are in the Secret `planton-identity-bootstrap-admin`, username `admin`). Teammates sign in and land in the same organization: a self-hosted install trusts every signed-in user with the shared workspace, while admin declarations stay explicit.
+
+## Deploy Real Infrastructure
+
+Every install ships with a built-in **runner** — the worker pod that executes IaC deployments (OpenTofu) for cloud resources you create through the console. It is deployed by default with zero configuration: at first boot the platform registers the runner, issues its credential, and seeds sensible deploy defaults (OpenTofu as the engine, IaC state kept on a persistent volume inside your cluster). There is no registration ceremony and nothing to wire up.
+
+The only thing the platform cannot invent is a **cloud identity** for the runner to deploy with — and by design it never stores one. Cloud connections created in the console are secret-free: they record *which* account to deploy to, while the identity comes ambiently from the runner pod itself. There are two ways to give it one:
+
+### Path 1: Workload identity (recommended on EKS, GKE, AKS)
+
+Annotate the runner's ServiceAccount with your cloud's identity binding. No keys exist anywhere — the cloud provider issues short-lived credentials to the pod directly:
+
+```yaml
+spec:
+  runner:
+    serviceAccountAnnotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/planton-runner
+      # GKE:  iam.gke.io/gcp-service-account: planton-runner@project.iam.gserviceaccount.com
+      # AKS:  azure.workload.identity/client-id: <client-id>
+```
+
+For EKS, the referenced IAM role needs a trust policy for your cluster's OIDC provider (the standard IRSA setup):
+
+```json
+{
+  "Effect": "Allow",
+  "Principal": { "Federated": "arn:aws:iam::111122223333:oidc-provider/oidc.eks.<region>.amazonaws.com/id/<cluster-id>" },
+  "Action": "sts:AssumeRoleWithWebIdentity",
+  "Condition": {
+    "StringEquals": {
+      "oidc.eks.<region>.amazonaws.com/id/<cluster-id>:sub": "system:serviceaccount:planton:planton-runner"
+    }
+  }
+}
+```
+
+Grant the role the permissions you want Planton to be able to deploy with — that scoping decision stays entirely in your IAM console.
+
+### Path 2: A credentials Secret (clusters without workload identity)
+
+On RKE2, K3s, on-prem, or any cluster where workload identity is not available, put your cloud credentials in a Secret **you own, in your cluster** and point the runner at it. Every key in the Secret becomes an environment variable in the runner pod:
+
+```bash
+kubectl -n planton create secret generic cloud-credentials \
+  --from-literal=AWS_ACCESS_KEY_ID=... \
+  --from-literal=AWS_SECRET_ACCESS_KEY=... \
+  --from-literal=AWS_DEFAULT_REGION=us-east-1
+```
+
+```yaml
+spec:
+  runner:
+    cloudCredentialsSecretName: cloud-credentials
+```
+
+The platform never copies or stores these credentials — rotating or revoking them is a Secret edit, invisible to Planton.
+
+Either way, the `runner` entry in `status.components` tells you where you stand: it detects your cluster's substrate and, if no cloud identity is configured yet, says exactly which of the two paths fits your cluster.
+
+### Deploy something
+
+Sign in, create a **provider connection** for your cloud (no secrets to paste — it uses the runner's ambient identity), then create a cloud resource from the catalog. The deployment pipeline runs inside your cluster: the runner pulls the resource's IaC module, plans and applies it with OpenTofu, and streams the logs live to the console.
+
+### What to know about IaC state
+
+By default, each resource's OpenTofu state file lives on the runner's persistent volume (`spec.runner.storageSize`, default 2Gi). Honest limits: state durability equals that volume's durability — back it up like you would any state file. When you want bucket-grade durability, create an S3/GCS/Azure state backend through the console; the default gets your first deploys working without asking you for a bucket first. Locking is built into the platform's deployment pipeline itself (one pipeline per resource at a time), so no lock table or extra locking infrastructure is needed.
+
+The IaC engine seeded as the org default is OpenTofu (`spec.bootstrap.iacProvisioner`, values `tofu` or `terraform` — both execute with the bundled OpenTofu binary against the Terraform-compatible module catalog). This is seeded create-once: changing the default later in the console is never overwritten by a restart.
+
+To opt out of the built-in runner entirely (for example, an install that only uses externally registered runners), set `spec.runner.enabled: false`.
 
 ## If Something Is Stuck
 
