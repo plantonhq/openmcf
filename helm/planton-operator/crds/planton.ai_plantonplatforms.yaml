@@ -62,13 +62,12 @@ spec:
             properties:
               bootstrap:
                 description: |-
-                  bootstrap seeds the first-boot workspace when sign-in is enabled: a
-                  default organization with a starter environment, and the admins who own
-                  it. The first declared admin to sign in lands inside a ready workspace
-                  as its owner and the install's platform operator -- no create-org
-                  ceremony. Every field is optional; defaults produce an organization and
-                  environment both named "default", with spec.identity.adminEmail as the
-                  sole admin.
+                  bootstrap seeds the first-boot workspace: a default organization with a
+                  starter environment, and the admins who own it. The first declared admin
+                  to sign in lands inside a ready workspace as its owner and the install's
+                  platform operator -- no create-org ceremony. Every field is optional;
+                  defaults produce an organization and environment both named "default",
+                  with spec.identity.adminEmail as the sole admin.
                 properties:
                   admins:
                     description: |-
@@ -94,6 +93,21 @@ spec:
                           within the organization.
                         type: string
                     type: object
+                  iacProvisioner:
+                    default: tofu
+                    description: |-
+                      iacProvisioner is the IaC engine seeded as the organization's deploy
+                      default. "tofu" (OpenTofu, the default) and "terraform" both execute
+                      with the bundled OpenTofu binary against the Terraform-compatible
+                      module catalog. Seeded create-once: a different choice made later in
+                      the console is never overwritten by a restart. Pulumi is deliberately
+                      not accepted here -- it has no zero-config state backend (its file
+                      backend requires a state-encryption passphrase), so seeding it as the
+                      default would produce an install where every deploy fails.
+                    enum:
+                    - tofu
+                    - terraform
+                    type: string
                   organization:
                     description: organization is the default organization every declared
                       admin owns.
@@ -377,14 +391,48 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                 type: object
+              gateway:
+                description: |-
+                  gateway tunes the built-in front door that serves the platform when
+                  ingress is disabled: one in-cluster proxy Service presenting the console,
+                  the API, and sign-in on a single origin, reached with one kubectl
+                  port-forward command (printed in the gateway component's status). Every
+                  field is optional; the gateway deploys automatically whenever ingress is
+                  off and retires when ingress takes over as the front door.
+                properties:
+                  image:
+                    description: image overrides the default nginx container image
+                      the gateway runs.
+                    properties:
+                      repository:
+                        description: |-
+                          repository is the full container image repository
+                          (e.g., "ghcr.io/plantonhq/planton/control-plane").
+                        type: string
+                      tag:
+                        description: tag overrides the image tag. Defaults to spec.version
+                          when empty.
+                        type: string
+                    type: object
+                  localPort:
+                    default: 8080
+                    description: |-
+                      localPort is the localhost port the port-forward is expected to serve
+                      the platform at. Change it only when the default clashes with something
+                      already listening on your workstation.
+                    format: int32
+                    maximum: 65535
+                    minimum: 1
+                    type: integer
+                type: object
               identity:
                 description: |-
                   identity tunes the bundled identity server (Keycloak) that provides
-                  browser sign-in. Identity is not a toggle: it deploys whenever ingress is
-                  enabled (a published platform is always authenticated) and is absent
-                  without ingress (kubectl-gated port-forward access). Every field is
-                  optional -- a plain `ingress.enabled: true` install gets working
-                  multi-user sign-in with zero identity configuration.
+                  browser sign-in. Identity is not a toggle: every install deploys it, so
+                  "deploy Planton" always yields working multi-user sign-in -- through the
+                  port-forward front door without ingress, or at the public hostname with
+                  it. Every field is optional; a zero-config install gets a fully
+                  provisioned identity server (set adminEmail to seed the first user).
                 properties:
                   adminEmail:
                     description: |-
@@ -418,7 +466,8 @@ spec:
               ingress:
                 description: |-
                   ingress configures external access to the Planton web console and API.
-                  When disabled, use kubectl port-forward for access.
+                  When disabled, the platform is served by the built-in front-door gateway
+                  over kubectl port-forward (see spec.gateway) -- sign-in included.
                 properties:
                   annotations:
                     additionalProperties:
@@ -523,6 +572,67 @@ spec:
                     - skip
                     type: string
                 type: object
+              runner:
+                description: |-
+                  runner configures the in-cluster worker that executes IaC deployments.
+                  Deployed by default so a fresh install can deploy real infrastructure
+                  out of the box; every field is optional.
+                properties:
+                  cloudCredentialsSecretName:
+                    description: |-
+                      cloudCredentialsSecretName references a Secret in the same namespace
+                      whose keys are injected into the runner pod as environment variables
+                      (e.g. AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY). The path for clusters
+                      without workload identity: the Secret stays yours, in your cluster --
+                      the platform never stores cloud credentials. Prefer
+                      serviceAccountAnnotations where the cluster supports it.
+                    type: string
+                  enabled:
+                    default: true
+                    description: |-
+                      enabled controls whether the in-cluster runner is deployed. Default
+                      true: a Planton that cannot deploy infrastructure is a browsing UI, so
+                      opting OUT is the deliberate act (e.g. an install that only uses
+                      externally registered runners).
+                    type: boolean
+                  image:
+                    description: image overrides the default runner container image.
+                    properties:
+                      repository:
+                        description: |-
+                          repository is the full container image repository
+                          (e.g., "ghcr.io/plantonhq/planton/control-plane").
+                        type: string
+                      tag:
+                        description: tag overrides the image tag. Defaults to spec.version
+                          when empty.
+                        type: string
+                    type: object
+                  serviceAccountAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      serviceAccountAnnotations are applied to the runner pod's dedicated
+                      Kubernetes ServiceAccount. This is the workload-identity seam: annotate
+                      with your cloud's binding (EKS "eks.amazonaws.com/role-arn", GKE
+                      "iam.gke.io/gcp-service-account", AKS "azure.workload.identity/client-id")
+                      and the runner's deploys use that ambient identity -- no cloud keys
+                      stored anywhere, in the platform or the cluster.
+                    type: object
+                  storageSize:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    default: 2Gi
+                    description: |-
+                      storageSize is the persistent volume holding IaC state: the default
+                      state backend keeps each resource's OpenTofu state file here. Honest
+                      limits: state durability equals this volume's durability -- back it up
+                      like you would any state file, or graduate to an S3/GCS/Azure
+                      StateBackend through the console for bucket-grade durability.
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                type: object
               version:
                 description: |-
                   version is the Planton platform version to deploy (e.g., "v1.0.0", "latest").
@@ -559,6 +669,25 @@ spec:
                     - phase
                     type: object
                   controlPlane:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  gateway:
                     description: ComponentStatus describes the observed state of an
                       individual component.
                     properties:
@@ -711,6 +840,25 @@ spec:
                     - phase
                     type: object
                   redis:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
+                  runner:
                     description: ComponentStatus describes the observed state of an
                       individual component.
                     properties:

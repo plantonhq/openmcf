@@ -32,6 +32,10 @@ rules:
   - apiGroups:
       - ""
     resources:
+      # nodes: read-only substrate detection (EKS vs plain AWS vs GKE/AKS) so
+      # the runner component's status can suggest the right cloud-identity
+      # setup for the cluster it is actually on.
+      - nodes
       - pods
     verbs:
       - get
