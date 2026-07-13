@@ -142,6 +142,8 @@ spec:
     #   issuer:
     #     name: letsencrypt-prod
     #     kind: ClusterIssuer
+  identity:
+    adminEmail: you@example.com        # YOUR login -- the first admin is a real person
 ```
 
 One hostname serves both the console pages and the API calls the browser makes — there is no second endpoint to configure. The platform tells you its URL:
@@ -161,7 +163,7 @@ Enabling ingress also deploys the bundled identity server on the same hostname u
 
 ## Sign In
 
-Once ingress is enabled and the platform is `Ready`, open `<your URL>/login`. The first admin user's credentials are generated and stored in a Kubernetes Secret:
+Once ingress is enabled and the platform is `Ready`, open `<your URL>/login`. There is no generic built-in admin account — the `adminEmail` you declared in the manifest is the first user, and their generated one-time password is stored in a Kubernetes Secret:
 
 ```bash
 kubectl -n planton get secret planton-identity-admin-user \
@@ -170,9 +172,21 @@ kubectl -n planton get secret planton-identity-admin-user \
   -o jsonpath='{.data.password}' | base64 -d; echo
 ```
 
-Keycloak forces a password change at first sign-in. After you sign in, the console provisions your Planton account automatically.
+First sign-in asks you to set your own password and your name on one screen. Then pick a username — and you land inside your organization, ready to work.
 
-To add more users, use the identity server's admin console at `<your URL>/idp/admin`. Bootstrap admin credentials are in the Secret `planton-identity-bootstrap-admin` (username `admin`).
+**Your first sign-in lands in your organization.** The platform seeds a default organization with a starter environment at boot, and the declared admin becomes its owner and the install's platform operator — there is no create-an-organization ceremony. The workspace is configurable through an optional `bootstrap` block:
+
+```yaml
+spec:
+  bootstrap:
+    organization: {slug: acme, name: Acme Corp}   # default: "default"
+    environment: {slug: prod}                      # default: "default"
+    admins: [you@example.com, teammate@example.com]  # default: [adminEmail]
+```
+
+Everyone in `admins` is granted organization ownership and the platform-operator role — at boot if their account already exists, or the moment they first sign in. The list is declarative: edit it and the platform reconciles on the next restart.
+
+To add teammates, use the identity server's admin console at `<your URL>/idp/admin` (bootstrap admin credentials are in the Secret `planton-identity-bootstrap-admin`, username `admin`). Teammates sign in and land in the same organization: a self-hosted install trusts every signed-in user with the shared workspace, while admin declarations stay explicit.
 
 **Cluster prerequisite:** pods must be able to reach the platform's own public URL from inside the cluster (the API validates sign-in tokens against that address). Most clusters satisfy this; if yours does not, the `identity` entry in `status.components` explains the failure.
 
