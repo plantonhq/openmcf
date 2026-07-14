@@ -1,0 +1,135 @@
+---
+description: Action rule for authoring InfraCharts - the design philosophy, the chart anatomy and documentation standard, the values/template conventions, and the offline validation gate every chart must pass. Use when creating a new chart or reworking an existing one.
+globs: []
+alwaysApply: false
+---
+
+# Rule: Author InfraCharts (action)
+
+Purpose: When invoked, design and author an InfraChart to the catalog standard.
+This rule is the authoring contract; `@build-and-fix-planton-infra-charts` is
+the companion repair playbook for charts that drift from the proto contracts.
+
+Usage: Invoke explicitly as `@author-planton-infra-charts` when forging or
+reworking a chart.
+
+## Design philosophy (non-negotiable)
+
+1. **Charts stand on their own merit.** Design each chart from the cloud
+   provider's own architectural grain — the architectures that cloud's
+   services are actually shaped for. Never model a chart on how another
+   provider's chart (or any pre-existing chart) happened to compose something
+   similar. The component `spec.proto`s and the provider's real architecture
+   patterns are the design sources.
+2. **Every chart must be wanted.** Admission test: a platform team seeing the
+   catalog entry should feel "I want this running in my subscription." No
+   filler charts, no demo charts, no single-kind wrappers. A chart is a
+   complete, production-shaped environment that would take a skilled engineer
+   days to compose by hand.
+3. **One chart, one architecture.** Each chart answers one real scenario for
+   one identifiable user. Variants are parameters, not sibling charts — until
+   the parameter surface stops being honest, and then you split.
+4. **Composition is the product.** Wire resources by `valueFrom` reference to
+   other resources' `status.outputs.*`; the deployed graph should read as a
+   reference architecture diagram. Never hardcode a value another in-chart
+   resource outputs. Charts are self-contained: every `valueFrom` target is
+   defined by the same chart.
+5. **Secure-by-default.** Where the composed components offer a hardened path
+   (private networking, keyless/identity-based auth, RBAC-only data planes,
+   customer-managed keys, TLS floors), the chart defaults to it and makes
+   relaxation the explicit parameter — never the reverse.
+6. **Documentation is part of the artifact.** Templates, values, and READMEs
+   render publicly. They are held to the same bar as `spec.proto` field
+   comments.
+
+## Anatomy
+
+```
+charts/<provider>/<chart-slug>/
+├── Chart.yaml      # identity + catalog metadata
+├── values.yaml     # parameters and their defaults
+├── templates/      # Jinja templates rendering Cloud Resource manifests
+└── README.md       # teaches the architecture, then the knobs
+```
+
+- The chart slug is kebab-case and names the architecture, not a product SKU
+  (`hub-spoke-network-foundation`, not `firewall-chart`).
+- `Chart.yaml` carries `apiVersion: infra-hub.planton.ai/v1`,
+  `kind: InfraChart`, a short `metadata.name` (details belong in
+  `spec.description`), `spec.selector.kind: platform`, `spec.description`,
+  `spec.iconUrl` (the flagship kind's catalog logo under
+  `https://assets.planton.ai/apis/infrahub/cloudresource/provider/...`),
+  `spec.isReady`, and `spec.webLinks` (chartWebUrl + readmeRawUrl).
+
+## values.yaml conventions
+
+- **Param names are snake_case**, matching proto field naming. One convention,
+  no exceptions — agents learn from consistent shape.
+- Every param has a `description`. Booleans carry `type: bool`; integers
+  `type: int`; everything else is a string.
+- **Defaults must deploy.** `make validate-offline` renders with defaults, so
+  the default value set must produce a valid environment (globally-unique
+  names may need a documented "change me" note in the description, but the
+  rendered manifest must still validate).
+- A parameter earns its place: expose what a real deployment varies
+  (region, CIDRs, SKUs/tiers, counts, feature toggles); fix what has one
+  good answer, with the reasoning as an inline template comment. A one-value
+  knob is a constant, not a parameter.
+- Feature toggles (`*_enabled` booleans) gate whole optional resources with
+  `{% if ... | bool %}` blocks.
+
+## Template conventions
+
+- Templates render standard Cloud Resource manifests
+  (`apiVersion: <provider>.planton.dev/v1`). The proto `spec.proto` is the
+  single source of truth for every field — read it before writing the
+  template, never guess.
+- **The render context injects `values.env`** (the deployment environment
+  name) even though no `values.yaml` declares it. Prefix every
+  `metadata.name` with it (`"{{ values.env }}-vnet"`) so one chart deploys
+  into many environments without collisions.
+- Keep to the documented dialect — variable substitution, `{% if %}` /
+  `{% for %}`, the `bool` filter, and string methods `.split()` / `.strip()`.
+  The production renderer is Jinjava (JVM); the offline validator renders
+  with Jinja2 plus the shared filters. A construct outside the shared dialect
+  risks passing one renderer and failing the other.
+- **Inline comments to the spec.proto bar.** YAML `#` comments explain why a
+  value is fixed, what a toggle trades off, and any ordering/pairing
+  contracts between resources — intent and trade-offs, never narration of
+  what the YAML already says. These comments are the chart's inline
+  education; they render on the public repo.
+- **No provisioner label.** Chart resources must not carry
+  `planton.dev/provisioner`; the deploying organization's mapping decides.
+- Reference sibling resources with
+  `valueFrom: {kind, name, fieldPath: status.outputs.<field>}` — the field
+  must exist in the referenced kind's `stack_outputs.proto` (the offline
+  validator enforces this).
+
+## README standard
+
+Structure, in order:
+
+1. **What this deploys and for whom** — the scenario and persona, two or
+   three sentences.
+2. **The architecture** — how the resources compose and why (the traffic /
+   trust / data flow). A reader should understand the environment without
+   opening a template.
+3. **What is on by default** — the security and reliability posture the chart
+   takes, and which parameters relax it.
+4. **Parameters worth understanding** — not a restating of `values.yaml`, but
+   the handful of decisions the deployer actually has to make.
+5. **After deployment** — what exists, what to verify, natural next steps.
+
+## Validation gate (per chart, before any commit)
+
+1. `hack/guards/ensure_chart_structure.sh` — structure guard (also runs in CI
+   on any `charts/**` change).
+2. `cd charts && make validate-offline chart=<provider>/<chart>` — renders
+   with default values and proves, per rendered document: YAML validity,
+   protovalidate against this checkout's protos (build the CLI from this
+   tree first so the schemas match), `valueFrom` resolution within the
+   chart, and `fieldPath` existence in the target kind's
+   `stack_outputs.proto`.
+3. `planton chart build <provider>/<chart>` (Platform CLI) remains the
+   authoritative proof — run it when a control plane on matching schemas is
+   available; the offline gate exists precisely for when it is not.
