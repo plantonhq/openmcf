@@ -1,0 +1,34 @@
+apiVersion: v2
+name: planton
+description: Batteries-included Planton install - the operator plus a PlantonPlatform resource in one helm install
+type: application
+version: 0.1.0
+# appVersion is the Planton platform version the bundled PlantonPlatform
+# resource deploys (spec.version defaults to it). Keep it aligned with the
+# planton-operator dependency's appVersion so one install is one coherent
+# version line.
+appVersion: "v0.0.36-selfhosted-preview"
+home: https://github.com/plantonhq/planton
+sources:
+  - https://github.com/plantonhq/planton
+maintainers:
+  - name: Planton
+    url: https://planton.ai
+keywords:
+  - planton
+  - operator
+  - kubernetes
+  - self-hosted
+  - infrastructure
+kubeVersion: ">=1.24.0-0"
+dependencies:
+  # The umbrella COMPOSES the operator chart -- it never duplicates its
+  # templates. The file:// reference vendors the sibling chart at package
+  # time, so both charts always ship from the same commit in lockstep.
+  # Disable with --set planton-operator.enabled=false to install only the
+  # PlantonPlatform resource beside an operator you already run (one operator
+  # per cluster -- the operator itself enforces this at startup).
+  - name: planton-operator
+    version: 0.5.0
+    repository: "file://../planton-operator"
+    condition: planton-operator.enabled

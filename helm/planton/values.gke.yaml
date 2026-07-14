@@ -1,0 +1,36 @@
+# Planton on Google GKE.
+#
+#   helm install planton oci://ghcr.io/plantonhq/charts/planton \
+#     --namespace planton --create-namespace \
+#     --values https://raw.githubusercontent.com/plantonhq/planton/main/helm/planton/values.gke.yaml
+#
+# GKE bundles its own ingress controller (class "gce", backed by a Google
+# HTTP(S) load balancer), so ingress can be enabled out of the box -- with no
+# hostname, Planton derives a working URL from the load balancer's address
+# and serves plain HTTP. Everything specific to YOUR project is a commented
+# recipe. Note the GCE load balancer can take several minutes to publish its
+# address on first provisioning; the platform status says so while waiting.
+
+platform:
+  spec:
+    ingress:
+      enabled: true
+      # GKE's built-in controller; stated explicitly so this file works on
+      # clusters where another controller was made the default.
+      ingressClassName: gce
+
+      # Serve at your own domain (point its DNS at the load balancer IP):
+      # hostname: planton.example.com
+
+      # HTTPS -- exactly one of the two, and hostname is required:
+      # tls:
+      #   secretName: planton-tls                        # a cert you bring
+      #   issuer: {name: letsencrypt, kind: ClusterIssuer}  # or cert-manager
+
+    # -- Give the in-cluster runner a cloud identity with Workload Identity
+    # Federation -- no keys stored anywhere. Bind a Google service account to
+    # the "runner-default" Kubernetes ServiceAccount in the install
+    # namespace, then:
+    # runner:
+    #   serviceAccountAnnotations:
+    #     iam.gke.io/gcp-service-account: planton-runner@my-project.iam.gserviceaccount.com

@@ -1,0 +1,25 @@
+{{- /*
+The umbrella chart's single own template: the PlantonPlatform resource.
+
+The spec is a verbatim pass-through of .Values.platform.spec -- the chart
+deliberately curates NO fields, so every current and future CRD capability is
+reachable without a chart release, and the chart's values can never drift
+from the CRD schema. The only templating is the version default: an install
+with zero values deploys the platform version this chart was released for.
+*/ -}}
+{{- $spec := .Values.platform.spec | default dict }}
+{{- if not (hasKey $spec "version") }}
+{{- $spec = merge (dict "version" .Chart.AppVersion) $spec }}
+{{- end }}
+apiVersion: planton.ai/v1
+kind: PlantonPlatform
+metadata:
+  name: {{ .Values.platform.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  {{- toYaml $spec | nindent 2 }}

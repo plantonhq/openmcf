@@ -1,0 +1,37 @@
+{{- $spec := .Values.platform.spec | default dict }}
+{{- $ingress := $spec.ingress | default dict }}
+{{- $gateway := $spec.gateway | default dict }}
+{{- $localPort := $gateway.localPort | default 8080 }}
+Planton is deploying. Watch it come up:
+
+  kubectl get plantonplatform {{ .Values.platform.name }} -n {{ .Release.Namespace }} -w
+
+The first boot takes a few minutes (the platform provisions its own
+databases). When PHASE shows Ready:
+{{- if $ingress.enabled }}
+
+  Your platform URL is in the URL column above (and in status.consoleUrl).
+  The ingress component's status explains any exposure problem in plain
+  language:
+
+  kubectl get plantonplatform {{ .Values.platform.name }} -n {{ .Release.Namespace }} -o jsonpath='{.status.components.ingress.message}'
+{{- else }}
+
+  1. Open the front door (the local port is baked into sign-in URLs, so
+     keep the port mapping exactly as printed):
+
+     kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Values.platform.name }}-gateway {{ $localPort }}:80
+
+  2. Open http://localhost:{{ $localPort }} in your browser. The first
+     visitor is greeted by the setup page and becomes the administrator --
+     it asks for an email plus a one-line setup code command it prints for
+     you.
+
+  To publish at your own URL later, enable ingress on the platform spec --
+  see the per-cloud values files (values.eks.yaml, values.gke.yaml, ...) in
+  https://github.com/plantonhq/planton/tree/main/helm/planton
+{{- end }}
+
+If a component has trouble, its status names the problem and the fix:
+
+  kubectl get plantonplatform {{ .Values.platform.name }} -n {{ .Release.Namespace }} -o jsonpath='{.status.components}' | jq

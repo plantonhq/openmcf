@@ -1,8 +1,8 @@
 # =============================================================================
 # Publish Helm Charts (OCI)
 # =============================================================================
-# Publishes the Helm charts under helm/ (planton-operator, planton-runner) to
-# GitHub Container Registry as OCI artifacts:
+# Publishes the Helm charts under helm/ (planton, planton-operator,
+# planton-runner) to GitHub Container Registry as OCI artifacts:
 #
 #   oci://ghcr.io/plantonhq/charts/<chart>
 #
@@ -23,8 +23,11 @@
 #   - Push to main touching helm/**   -> lint + package + push new versions.
 #   - Manual dispatch                 -> same as push.
 #
-# The newly created GHCR chart packages are private by default; make them public
-# (org package settings) for anonymous `helm install`.
+# Newly created GHCR chart packages are born private; the ensure-public step
+# below flips them so anonymous `helm install` works from the first publish.
+# The visibility API needs package-admin rights -- if GITHUB_TOKEN lacks them
+# the step warns instead of failing, and the flip is a one-time manual action
+# in the org package settings.
 # =============================================================================
 
 name: release.helm
@@ -84,8 +87,13 @@ jobs:
             echo "Chart: ${name}  version: ${version}  push: ${PUSH}"
             echo "===================================================="
 
+            # Vendor declared dependencies (the planton umbrella depends on
+            # the sibling planton-operator chart via file://). A no-op for
+            # dependency-free charts.
+            helm dependency build "${chart}"
+
             # credentials.existingSecret placeholder satisfies the runner chart's
-            # required-credentials guard during lint; the operator chart ignores it.
+            # required-credentials guard during lint; the other charts ignore it.
             helm lint "${chart}" --set credentials.existingSecret=lint-placeholder
             helm package "${chart}" --destination /tmp/helm-pkg
 
@@ -97,5 +105,20 @@ jobs:
                 helm push "/tmp/helm-pkg/${name}-${version}.tgz" "oci://${OCI_REPO}"
                 echo "Pushed oci://${OCI_REPO}/${name}:${version}"
               fi
+
+              # Ensure the package is publicly pullable (new packages are born
+              # private). Best-effort: visibility changes need package-admin
+              # rights, which GITHUB_TOKEN may lack -- then this warns and the
+              # flip is a one-time manual action in org package settings.
+              encoded="charts%2F${name}"
+              visibility="$(gh api "orgs/${{ github.repository_owner }}/packages/container/${encoded}" --jq '.visibility' 2>/dev/null || echo "unknown")"
+              if [ "${visibility}" != "public" ]; then
+                gh api --method PATCH "orgs/${{ github.repository_owner }}/packages/container/${encoded}" \
+                  -f visibility=public >/dev/null 2>&1 \
+                  && echo "Package charts/${name} is now public" \
+                  || echo "::warning::Could not set charts/${name} visibility to public; flip it manually in org package settings"
+              fi
             fi
           done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

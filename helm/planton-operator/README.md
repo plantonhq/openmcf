@@ -7,6 +7,11 @@ Planton platform stack: PostgreSQL, Redis, NATS, OpenFGA, Temporal, the control 
 monolith, and the web console. A single YAML file is all it takes to go from an empty cluster
 to a running Planton instance.
 
+Want the operator AND the platform in one command? Use the
+[`planton` umbrella chart](../planton) instead -- it composes this chart and adds the
+`PlantonPlatform` resource with proven defaults. Run exactly one Planton operator per
+cluster: a second installation refuses to start and its log explains why.
+
 ## Prerequisites
 
 - Kubernetes 1.24+

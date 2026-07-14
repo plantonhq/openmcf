@@ -122,6 +122,56 @@ spec:
                           (also its id).
                         type: string
                     type: object
+                  secretBackend:
+                    description: |-
+                      secretBackend declares the organization's default secret backend,
+                      seeded create-once at boot (a choice made later in the console is never
+                      overwritten). Both supported kinds are credential-free by construction:
+                      "platform" stores secrets in the bundled vault
+                      (spec.components.vault must be enabled) and is seeded automatically
+                      when the vault component is on and nothing is declared here;
+                      "awsSecretsManager" stores secrets in AWS Secrets Manager, reached with
+                      the control plane pod's own cloud identity (workload identity via
+                      spec.controlPlane.serviceAccountAnnotations, instance profiles, or env
+                      credentials) -- no key is ever typed or stored. When neither applies,
+                      no default backend exists and the console guides secret-related
+                      features until one is created.
+                    properties:
+                      awsSecretsManager:
+                        description: awsSecretsManager configures the awsSecretsManager
+                          type.
+                        properties:
+                          kmsKeyArn:
+                            description: |-
+                              kmsKeyArn is the KMS key (ARN, key id or alias) used as the
+                              envelope-encryption key for secret data. The control plane's runtime
+                              identity needs kms:Encrypt/Decrypt/GenerateDataKey on it.
+                            type: string
+                          region:
+                            description: region is the AWS region secrets are stored
+                              in (e.g. "ap-south-1").
+                            type: string
+                        required:
+                        - kmsKeyArn
+                        - region
+                        type: object
+                      type:
+                        description: |-
+                          type selects the backend kind: "platform" (the bundled vault) or
+                          "awsSecretsManager" (ambient-authenticated AWS Secrets Manager).
+                        enum:
+                        - platform
+                        - awsSecretsManager
+                        type: string
+                    required:
+                    - type
+                    type: object
+                    x-kubernetes-validations:
+                    - message: awsSecretsManager.region and awsSecretsManager.kmsKeyArn
+                        are required when type is awsSecretsManager
+                      rule: self.type != 'awsSecretsManager' || (has(self.awsSecretsManager)
+                        && self.awsSecretsManager.region != '' && self.awsSecretsManager.kmsKeyArn
+                        != '')
                 type: object
               components:
                 description: |-
@@ -331,6 +381,20 @@ spec:
                     format: int32
                     minimum: 1
                     type: integer
+                  serviceAccountAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      serviceAccountAnnotations are applied to the control plane pod's
+                      dedicated Kubernetes ServiceAccount. This is the workload-identity seam
+                      for the control plane's OWN cloud calls -- ambient-authenticated secret
+                      backends and their KMS encryption keys (e.g.
+                      eks.amazonaws.com/role-arn: <role> on EKS, the GKE/AKS equivalents
+                      elsewhere). The ServiceAccount always exists, so adding annotations
+                      later is a pure spec edit -- no pod surgery. Distinct from
+                      spec.runner.serviceAccountAnnotations, which grants the DEPLOY worker
+                      its cloud identity; this grants the platform itself one.
+                    type: object
                 type: object
               database:
                 description: database configures storage sizing for the data layer.
@@ -431,17 +495,23 @@ spec:
                   browser sign-in. Identity is not a toggle: every install deploys it, so
                   "deploy Planton" always yields working multi-user sign-in -- through the
                   port-forward front door without ingress, or at the public hostname with
-                  it. Every field is optional; a zero-config install gets a fully
-                  provisioned identity server (set adminEmail to seed the first user).
+                  it. Every field is optional: a zero-config install gets a fully
+                  provisioned identity server, and the console's first-run setup page
+                  creates the first admin (adminEmail remains the GitOps override that
+                  seeds one instead).
                 properties:
                   adminEmail:
                     description: |-
-                      adminEmail is the real person's login email for the first admin user
-                      seeded into the realm. Their generated one-time password lands in the
-                      {crName}-identity-admin-user Secret; first sign-in forces a password
-                      change and asks for their name. When unset, NO sign-in user is seeded
-                      (there is deliberately no generic pre-baked admin identity) -- the
-                      component status says so plainly and names this field as the way in.
+                      adminEmail is the GitOps override for the first admin: when set, a user
+                      with this email is seeded into the realm, their generated one-time
+                      password lands in the {crName}-identity-admin-user Secret, and first
+                      sign-in forces a password change and asks for their name. When unset
+                      (the default), NO user is seeded (there is deliberately no generic
+                      pre-baked admin identity): the first person to open the console is
+                      asked for THEIR email plus a setup code from the
+                      {crName}-identity-setup-code Secret -- proof of cluster access -- and
+                      the admin account is created from that, with admin privileges pinned to
+                      the created account rather than to an email string.
                     type: string
                   image:
                     description: image overrides the default Keycloak container image.
@@ -642,6 +712,12 @@ spec:
             required:
             - version
             type: object
+            x-kubernetes-validations:
+            - message: bootstrap.secretBackend type 'platform' stores secrets in the
+                bundled vault; enable spec.components.vault (or use type awsSecretsManager)
+              rule: '!has(self.bootstrap) || !has(self.bootstrap.secretBackend) ||
+                self.bootstrap.secretBackend.type != ''platform'' || (has(self.components)
+                && has(self.components.vault) && self.components.vault.enabled)'
           status:
             description: PlantonPlatformStatus defines the observed state of a PlantonPlatform
               deployment.
