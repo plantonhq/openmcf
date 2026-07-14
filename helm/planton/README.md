@@ -86,15 +86,19 @@ kubectl apply -f https://raw.githubusercontent.com/plantonhq/planton/main/helm/p
 
 ```bash
 helm uninstall planton -n planton
+kubectl delete namespace planton
 ```
 
-This deletes the `PlantonPlatform` resource and the operator; Kubernetes
-garbage-collects every component the operator created. Two things survive by
-Kubernetes design, so your data outlives an accidental uninstall:
-
-- **Volumes** (the databases' and runner's PersistentVolumeClaims) -- delete
-  the namespace (or the PVCs) to reclaim them.
-- **The CRD** -- remove it last, after every PlantonPlatform is gone:
+`helm uninstall` removes the `PlantonPlatform` resource, the operator, and
+the platform's own workloads (control plane, console, front door, identity,
+runner). The data services (PostgreSQL, Redis, NATS, Temporal) and their
+volumes deliberately do not vanish with it -- your data outlives an
+accidental uninstall -- so deleting the namespace is the step that reclaims
+them. To REINSTALL, always delete the namespace first: an uninstall removes
+the generated credential Secrets with the release, so a new install against
+the surviving volumes would mint new passwords that the old data refuses.
+The CRD is cluster-scoped; remove it last, after every PlantonPlatform in
+the cluster is gone:
 
 ```bash
 kubectl delete crd plantonplatforms.planton.ai
