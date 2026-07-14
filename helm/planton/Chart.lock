@@ -1,6 +1,6 @@
 dependencies:
 - name: planton-operator
   repository: file://../planton-operator
-  version: 0.5.0
-digest: sha256:6dec1fa4c260ed445494a0fcb7eb179d5b177f4583c3253afa24244dc31d228b
-generated: "2026-07-14T06:26:21.871281+05:30"
+  version: 0.5.1
+digest: sha256:203c89221595d4b599eccdd53d60d385b030cc781acb146328d711a3f7d3d6c0
+generated: "2026-07-14T08:51:42.274237+05:30"

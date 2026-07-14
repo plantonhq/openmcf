@@ -2,12 +2,12 @@ apiVersion: v2
 name: planton
 description: Batteries-included Planton install - the operator plus a PlantonPlatform resource in one helm install
 type: application
-version: 0.1.1
+version: 0.1.2
 # appVersion is the Planton platform version the bundled PlantonPlatform
 # resource deploys (spec.version defaults to it). Keep it aligned with the
 # planton-operator dependency's appVersion so one install is one coherent
 # version line.
-appVersion: "v0.0.36-selfhosted-preview"
+appVersion: "v0.0.37-selfhosted-preview"
 home: https://github.com/plantonhq/planton
 sources:
   - https://github.com/plantonhq/planton
@@ -29,6 +29,6 @@ dependencies:
   # PlantonPlatform resource beside an operator you already run (one operator
   # per cluster -- the operator itself enforces this at startup).
   - name: planton-operator
-    version: 0.5.0
+    version: 0.5.1
     repository: "file://../planton-operator"
     condition: planton-operator.enabled
