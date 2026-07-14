@@ -121,10 +121,17 @@ SENSITIVE FIELD OPTIONS (SEPARATE FROM VALIDATION)
 VERIFY SENSITIVE COVERAGE (RUN THE GATE)
 - After annotating, run the developer gate: `planton secret-coverage --check`. It fails on:
   - a NEW gap (a field that looks sensitive by name but is neither annotated nor exempted),
-  - a STALE baseline entry, or
-  - a self-contradictory annotation.
+  - a STALE baseline entry,
+  - a self-contradictory annotation, or
+  - a POINTLESS exemption (`sensitive_exempt_reason` on a field whose name does not trip
+    the heuristic at all -- e.g. an `*_id` suffix reads as an identifier even when the
+    name contains "secret", as in `key_vault_secret_id`).
   The error text states the exact fix ("annotate it `sensitive`, or exempt it with
   `sensitive_exempt_reason`").
+- Consequence of the pointless-exemption class: do NOT exempt speculatively while
+  authoring. Annotate the true secrets in the schema, then RUN the gate and exempt only
+  the exact fields it reports -- the gate's heuristic, not your reading of the field
+  name, decides what needs an exemption.
 - CI runs the same gate as `go test ./pkg/secretcoverage/...`
   (`.github/workflows/lint.secret-coverage.yaml`) -- it must be green.
 - A genuine, deliberate deferral (rare) is recorded as an accepted gap with

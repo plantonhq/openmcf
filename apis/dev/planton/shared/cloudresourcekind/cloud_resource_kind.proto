@@ -1530,6 +1530,44 @@ enum CloudResourceKind {
     prerequisites: [AzureContainerApp]
   }];
 
+  // --- Network security: the Azure Firewall family (530-539) ---
+
+  AzureFirewallPolicy = 530 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfwpol"
+    prerequisites: [AzureResourceGroup]
+  }];
+
+  // AzureFirewallPolicy is a prerequisite because a rule collection group
+  // is a child document of a referenced policy (the resource group chains
+  // transitively through the policy).
+  AzureFirewallPolicyRuleCollectionGroup = 531 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfwrcg"
+    prerequisites: [AzureFirewallPolicy]
+  }];
+
+  // AzureSubnet is a prerequisite because a VNet-deployed firewall's data
+  // path lives in a dedicated subnet that must be named exactly
+  // "AzureFirewallSubnet" (the virtual network and resource group chain
+  // transitively through the subnet). The E2E install profile publishes a
+  // fixture subnet with that exact name and a /26 prefix.
+  AzureFirewall = 532 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfw"
+    prerequisites: [AzureSubnet]
+  }];
+
+  AzureIpGroup = 533 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azipg"
+    prerequisites: [AzureResourceGroup]
+  }];
+
   // 600–799: GCP resources
   GcpArtifactRegistryRepo = 600 [(kind_meta) = {
     provider: gcp

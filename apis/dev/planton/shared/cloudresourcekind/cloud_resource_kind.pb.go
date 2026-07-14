@@ -588,6 +588,18 @@ const (
 	// in a referenced app's ingress configuration (the environment and
 	// resource group chain transitively through the app).
 	CloudResourceKind_AzureContainerAppCustomDomain CloudResourceKind = 525
+	CloudResourceKind_AzureFirewallPolicy           CloudResourceKind = 530
+	// AzureFirewallPolicy is a prerequisite because a rule collection group
+	// is a child document of a referenced policy (the resource group chains
+	// transitively through the policy).
+	CloudResourceKind_AzureFirewallPolicyRuleCollectionGroup CloudResourceKind = 531
+	// AzureSubnet is a prerequisite because a VNet-deployed firewall's data
+	// path lives in a dedicated subnet that must be named exactly
+	// "AzureFirewallSubnet" (the virtual network and resource group chain
+	// transitively through the subnet). The E2E install profile publishes a
+	// fixture subnet with that exact name and a /26 prefix.
+	CloudResourceKind_AzureFirewall CloudResourceKind = 532
+	CloudResourceKind_AzureIpGroup  CloudResourceKind = 533
 	// 600–799: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
 	CloudResourceKind_GcpCloudCdn                   CloudResourceKind = 601
@@ -1093,6 +1105,10 @@ var (
 		523:  "AzureEventHubNamespaceCustomerManagedKey",
 		524:  "AzureMssqlFailoverGroup",
 		525:  "AzureContainerAppCustomDomain",
+		530:  "AzureFirewallPolicy",
+		531:  "AzureFirewallPolicyRuleCollectionGroup",
+		532:  "AzureFirewall",
+		533:  "AzureIpGroup",
 		600:  "GcpArtifactRegistryRepo",
 		601:  "GcpCloudCdn",
 		602:  "GcpCloudFunction",
@@ -1582,6 +1598,10 @@ var (
 		"AzureEventHubNamespaceCustomerManagedKey":       523,
 		"AzureMssqlFailoverGroup":                        524,
 		"AzureContainerAppCustomDomain":                  525,
+		"AzureFirewallPolicy":                            530,
+		"AzureFirewallPolicyRuleCollectionGroup":         531,
+		"AzureFirewall":                                  532,
+		"AzureIpGroup":                                   533,
 		"GcpArtifactRegistryRepo":                        600,
 		"GcpCloudCdn":                                    601,
 		"GcpCloudFunction":                               602,
@@ -2134,7 +2154,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x88\xb3\x01\n" +
+	"\x02v1\x10\x01*ʹ\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2338,7 +2358,11 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x14AzureEventHubCluster\x10\x8a\x04\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazehclu:\x02\x90\x03\x12@\n" +
 	"(AzureEventHubNamespaceCustomerManagedKey\x10\x8b\x04\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazehcmk\x125\n" +
 	"\x17AzureMssqlFailoverGroup\x10\x8c\x04\x1a\x17\xa2\xf7\x04\x13\b\r\x10\x01\"\tazmsqlfog:\x02\xb1\x03\x129\n" +
-	"\x1dAzureContainerAppCustomDomain\x10\x8d\x04\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazcadom:\x02\xb9\x03\x12.\n" +
+	"\x1dAzureContainerAppCustomDomain\x10\x8d\x04\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazcadom:\x02\xb9\x03\x12/\n" +
+	"\x13AzureFirewallPolicy\x10\x92\x04\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazfwpol:\x02\x90\x03\x12B\n" +
+	"&AzureFirewallPolicyRuleCollectionGroup\x10\x93\x04\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazfwrcg:\x02\x92\x04\x12&\n" +
+	"\rAzureFirewall\x10\x94\x04\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azfw:\x02\x9b\x03\x12&\n" +
+	"\fAzureIpGroup\x10\x95\x04\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azipg:\x02\x90\x03\x12.\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x12\"\n" +
 	"\vGcpCloudCdn\x10\xd9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcdn\x12(\n" +
 	"\x10GcpCloudFunction\x10\xda\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\acldfunc\x12\"\n" +

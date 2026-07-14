@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureipgroup.v1;
+
+// **AzureIpGroupStackOutputs** captures the outputs of provisioning an
+// Azure IP Group.
+message AzureIpGroupStackOutputs {
+  // The Azure Resource Manager ID of the IP Group. This is the composition
+  // seam: firewall policy rules (source_ip_groups / destination_ip_groups)
+  // and intrusion-detection traffic bypasses reference this to target the
+  // group's address set in a rule.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/ipGroups/{name}
+  string ip_group_id = 1;
+
+  // The name of the IP Group resource.
+  string ip_group_name = 2;
+}

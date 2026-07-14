@@ -2598,6 +2598,68 @@ func TestStackOutputsConformance(t *testing.T) {
 				"customer_managed_key_id",
 			},
 		},
+		{
+			// AzureFirewallPolicy: the policy's ARM id is the composition
+			// seam (rule collection groups nest under it, firewalls attach
+			// it, child policies inherit from it) plus the system identity's
+			// principal for Key Vault grants.
+			name: "AzureFirewallPolicy",
+			kind: cloudresourcekind.CloudResourceKind_AzureFirewallPolicy,
+			rawOutputs: map[string]interface{}{
+				"firewall_policy_id":    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/firewallPolicies/egress-baseline",
+				"firewall_policy_name":  "egress-baseline",
+				"identity_principal_id": "11111111-2222-3333-4444-555555555555",
+			},
+			mustPopulate: []string{
+				"firewall_policy_id", "firewall_policy_name", "identity_principal_id",
+			},
+		},
+		{
+			// AzureFirewallPolicyRuleCollectionGroup: the group's ARM id
+			// (nested under its parent policy) and name.
+			name: "AzureFirewallPolicyRuleCollectionGroup",
+			kind: cloudresourcekind.CloudResourceKind_AzureFirewallPolicyRuleCollectionGroup,
+			rawOutputs: map[string]interface{}{
+				"rule_collection_group_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/firewallPolicies/egress-baseline/ruleCollectionGroups/platform-baseline",
+				"rule_collection_group_name": "platform-baseline",
+			},
+			mustPopulate: []string{
+				"rule_collection_group_id", "rule_collection_group_name",
+			},
+		},
+		{
+			// AzureFirewall: the firewall's ARM id plus its data-path
+			// private IP -- THE hub-spoke seam route tables send egress to
+			// via a VIRTUAL_APPLIANCE next hop. Hub-deployment outputs stay
+			// empty on a VNet firewall.
+			name: "AzureFirewall",
+			kind: cloudresourcekind.CloudResourceKind_AzureFirewall,
+			rawOutputs: map[string]interface{}{
+				"firewall_id":                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/azureFirewalls/hub-egress-fw",
+				"firewall_name":                   "hub-egress-fw",
+				"private_ip_address":              "10.0.255.4",
+				"management_private_ip_address":   "10.0.254.4",
+				"virtual_hub_public_ip_addresses": []interface{}{},
+				"virtual_hub_private_ip_address":  "",
+			},
+			mustPopulate: []string{
+				"firewall_id", "firewall_name", "private_ip_address",
+			},
+		},
+		{
+			// AzureIpGroup: the group's ARM id is the composition seam --
+			// firewall policy rules and IDPS bypasses reference it to
+			// target the address set.
+			name: "AzureIpGroup",
+			kind: cloudresourcekind.CloudResourceKind_AzureIpGroup,
+			rawOutputs: map[string]interface{}{
+				"ip_group_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/ipGroups/branch-offices",
+				"ip_group_name": "branch-offices",
+			},
+			mustPopulate: []string{
+				"ip_group_id", "ip_group_name",
+			},
+		},
 	}
 
 	for _, tc := range cases {

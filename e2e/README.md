@@ -447,6 +447,27 @@ catches this class -- the plan renders fine and only the live create
 collides -- so treat every "declare over a service-created default"
 design as suspect until a live run proves it.
 
+### Some ARM contracts exist ONLY server-side: budget one live probe for the flagship combination
+
+The azurerm provider is the completeness floor, but it is NOT a complete
+map of ARM's rejection surface: some cross-field contracts appear in no
+schema validator, no CustomizeDiff, and no create-path check -- they live
+only in ARM's regional service. Example (live-confirmed): a firewall
+attached to a firewall policy must not carry firewall-level DNS
+parameters -- ARM rejects the create with
+`AzureFirewallDNSConfigNotAllowedForVhubOrVnetWithPolicy` ("DNS
+configuration should be managed by policy"), yet the provider happily
+plans and sends the combination. The consequence for scenario design:
+make the FIRST live scenario for a kind exercise the flagship FIELD
+COMBINATION users will actually deploy (here: policy-attached firewall
+plus every side-channel knob the policy also owns), because a
+source-diff of the provider cannot prove combinations the provider never
+validates. When such a rejection surfaces, front-load it as a spec CEL
+(with the ARM error code in the message trail), fix the scenario, and
+record the contract in the component docs -- the next component in the
+same service family should check for sibling "managed by the parent"
+exclusions up front.
+
 ### "no stack named ..." for a fixture that just deployed: backend state loss, not a module defect
 
 When a scenario fails at DEPENDENCIES-UP with `failed to read outputs for

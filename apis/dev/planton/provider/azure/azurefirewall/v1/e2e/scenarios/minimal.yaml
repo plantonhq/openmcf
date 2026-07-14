@@ -1,0 +1,51 @@
+# Minimal AzureFirewall scenario: a policy-attached, VNet-deployed
+# Standard firewall -- the production hub-spoke shape.
+#
+# The subnet reference addresses the firewall-shaped instance of the
+# shared subnet profile BY NAME (ARM name exactly "AzureFirewallSubnet",
+# /26 -- the generic fixture subnet cannot serve a firewall). The public
+# IP and firewall policy are extra fixtures: the PIP by manifest path (a
+# no-zone Standard static address; the shared PIP fixture is zone-pinned
+# for the NAT gateway), the policy by kind name (resolving its install
+# profile). DNS deliberately stays UNSET: a policy-attached firewall
+# takes DNS from the policy -- ARM rejects firewall-level DNS parameters
+# (AzureFirewallDNSConfigNotAllowedForVhubOrVnetWithPolicy), a contract
+# the spec front-loads. The private_ip_address output -- the hub-spoke
+# seam route tables consume -- must populate on both engines.
+apiVersion: azure.planton.dev/v1
+kind: AzureFirewall
+metadata:
+  name: planton-oss-e2e-azurefirewall-smoke
+  id: planton-oss-e2e-azurefirewall-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefirewall
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azurefirewall/v1/e2e/fixture-firewall-pip.yaml,azurefirewallpolicy"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-fw-smoke
+  skuName: AZFW_VNET
+  skuTier: STANDARD
+  ipConfigurations:
+    - name: primary
+      subnetId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-firewall-subnet
+      publicIpAddressId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-fw-pip
+  firewallPolicyId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-fwpolicy
+  tags:
+    e2e-suite: azure
+    purpose: smoke

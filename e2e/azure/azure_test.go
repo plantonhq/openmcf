@@ -1026,6 +1026,36 @@ func TestAzureContainerAppCustomDomain_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurecontainerappcustomdomain", "terraform")
 }
 
+// --- Azure Firewall family (IP Group anchor; policy container; rule collection group composed on the policy; the firewall itself on a dedicated AzureFirewallSubnet -- the SLOW lane, ~10-20 min each way) ---
+
+func TestAzureIpGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureipgroup", "pulumi")
+}
+func TestAzureIpGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureipgroup", "terraform")
+}
+
+func TestAzureFirewallPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefirewallpolicy", "pulumi")
+}
+func TestAzureFirewallPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefirewallpolicy", "terraform")
+}
+
+func TestAzureFirewallPolicyRuleCollectionGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefirewallpolicyrulecollectiongroup", "pulumi")
+}
+func TestAzureFirewallPolicyRuleCollectionGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefirewallpolicyrulecollectiongroup", "terraform")
+}
+
+func TestAzureFirewall_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefirewall", "pulumi")
+}
+func TestAzureFirewall_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefirewall", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFirewallPolicy
+metadata:
+  name: egress-baseline
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: <resource-group-name>
+  name: egress-baseline
+  sku: STANDARD
+  threatIntelligenceMode: DENY
+  dns:
+    proxyEnabled: true
+  tags:
+    cost-center: <cost-center>
