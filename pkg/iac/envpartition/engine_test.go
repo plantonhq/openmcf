@@ -58,6 +58,28 @@ func TestDefaultRuleCompiles(t *testing.T) {
 	}
 }
 
+// DefaultRuleDocument is the transport/display form of the same embedded
+// document DefaultRule compiles; the two must never diverge.
+func TestDefaultRuleDocumentMatchesDefaultRule(t *testing.T) {
+	doc := DefaultRuleDocument()
+	if doc.GetKind() != "EnvironmentPartitionRule" {
+		t.Fatalf("document kind = %q, want EnvironmentPartitionRule", doc.GetKind())
+	}
+	recompiled, err := CompileRule(doc)
+	if err != nil {
+		t.Fatalf("compiling DefaultRuleDocument: %v", err)
+	}
+	if !reflect.DeepEqual(recompiled, DefaultRule()) {
+		t.Fatal("DefaultRuleDocument compiles to a different rule than DefaultRule")
+	}
+	// A fresh copy every call: mutating one caller's document must not
+	// poison the next caller's.
+	doc.Spec.AuthoritativeTagKeys = nil
+	if len(DefaultRuleDocument().GetSpec().GetAuthoritativeTagKeys()) == 0 {
+		t.Fatal("DefaultRuleDocument must return a fresh copy per call")
+	}
+}
+
 // The ladder itself: each tier outranks everything below it.
 func TestPrecedenceLadder(t *testing.T) {
 	rule := testRule(t, func(spec *rulev1.EnvironmentPartitionRuleSpec) {

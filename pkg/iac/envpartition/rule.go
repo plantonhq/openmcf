@@ -53,6 +53,21 @@ func DefaultRule() *Rule {
 	return rule
 }
 
+// DefaultRuleDocument returns a fresh copy of the embedded untaught rule
+// DOCUMENT (the same one DefaultRule compiles). Callers that must display or
+// transport the untaught vocabulary -- e.g. a service echoing back which rule
+// a partition actually applied, or a review surface seeding its teaching UI
+// -- read it from here, so the untaught default has exactly one definition
+// and can never fork into drifting copies. Same panic contract as
+// DefaultRule: the embedded document is part of the build.
+func DefaultRuleDocument() *rulev1.EnvironmentPartitionRule {
+	doc := &rulev1.EnvironmentPartitionRule{}
+	if err := protobufyaml.LoadYamlBytes(defaultRuleYAML, doc); err != nil {
+		panic("envpartition: embedded default rule is invalid: " + err.Error())
+	}
+	return doc
+}
+
 // ParseRuleYAML parses and compiles an EnvironmentPartitionRule document.
 func ParseRuleYAML(yamlBytes []byte) (*Rule, error) {
 	doc := &rulev1.EnvironmentPartitionRule{}
