@@ -3,25 +3,11 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "pulumi_lib",
     srcs = ["main.go"],
-<<<<<<<< HEAD:apis/dev/planton/provider/azure/azurefrontdoororigin/v1/iac/pulumi/BUILD.bazel
-    importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoororigin/v1/iac/pulumi",
-|||||||| 7767821e5:apis/dev/planton/provider/aws/awsnetworkloadbalancer/v1/iac/pulumi/BUILD.bazel
-    importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsnetworkloadbalancer/v1/iac/pulumi",
-========
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssesconfigurationset/v1/iac/pulumi",
->>>>>>>> origin/main:apis/dev/planton/provider/aws/awssesconfigurationset/v1/iac/pulumi/BUILD.bazel
     visibility = ["//visibility:private"],
     deps = [
-<<<<<<<< HEAD:apis/dev/planton/provider/azure/azurefrontdoororigin/v1/iac/pulumi/BUILD.bazel
-        "//apis/dev/planton/provider/azure/azurefrontdoororigin/v1:azurefrontdoororigin",
-        "//apis/dev/planton/provider/azure/azurefrontdoororigin/v1/iac/pulumi/module",
-|||||||| 7767821e5:apis/dev/planton/provider/aws/awsnetworkloadbalancer/v1/iac/pulumi/BUILD.bazel
-        "//apis/dev/planton/provider/aws/awsnetworkloadbalancer/v1:awsnetworkloadbalancer",
-        "//apis/dev/planton/provider/aws/awsnetworkloadbalancer/v1/iac/pulumi/module",
-========
         "//apis/dev/planton/provider/aws/awssesconfigurationset/v1:awssesconfigurationset",
         "//apis/dev/planton/provider/aws/awssesconfigurationset/v1/iac/pulumi/module",
->>>>>>>> origin/main:apis/dev/planton/provider/aws/awssesconfigurationset/v1/iac/pulumi/BUILD.bazel
         "//pkg/iac/pulumi/pulumimodule/stackinput",
         "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",

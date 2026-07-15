@@ -3,47 +3,21 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "module",
     srcs = [
-        "group.go",
         "locals.go",
         "main.go",
         "outputs.go",
-<<<<<<<< HEAD:apis/dev/planton/provider/aws/awsautoscalinggroup/v1/iac/pulumi/module/BUILD.bazel
-        "scaling.go",
-|||||||| 7767821e5:apis/dev/planton/provider/aws/awssecretsmanager/v1/iac/pulumi/module/BUILD.bazel
-        "secret.go",
-========
         "vpc_link.go",
->>>>>>>> origin/main:apis/dev/planton/provider/aws/awshttpapivpclink/v1/iac/pulumi/module/BUILD.bazel
     ],
-<<<<<<<< HEAD:apis/dev/planton/provider/aws/awsautoscalinggroup/v1/iac/pulumi/module/BUILD.bazel
-    importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsautoscalinggroup/v1/iac/pulumi/module",
-|||||||| 7767821e5:apis/dev/planton/provider/aws/awssecretsmanager/v1/iac/pulumi/module/BUILD.bazel
-    importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssecretsmanager/v1/iac/pulumi/module",
-========
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapivpclink/v1/iac/pulumi/module",
->>>>>>>> origin/main:apis/dev/planton/provider/aws/awshttpapivpclink/v1/iac/pulumi/module/BUILD.bazel
     visibility = ["//visibility:public"],
     deps = [
-<<<<<<<< HEAD:apis/dev/planton/provider/aws/awsautoscalinggroup/v1/iac/pulumi/module/BUILD.bazel
-        "//apis/dev/planton/provider/aws/awsautoscalinggroup/v1:awsautoscalinggroup",
-|||||||| 7767821e5:apis/dev/planton/provider/aws/awssecretsmanager/v1/iac/pulumi/module/BUILD.bazel
-        "//apis/dev/planton/provider/aws/awssecretsmanager/v1:awssecretsmanager",
-========
         "//apis/dev/planton/provider/aws/awshttpapivpclink/v1:awshttpapivpclink",
->>>>>>>> origin/main:apis/dev/planton/provider/aws/awshttpapivpclink/v1/iac/pulumi/module/BUILD.bazel
         "//apis/dev/planton/shared/cloudresourcekind",
         "//pkg/iac/pulumi/pulumimodule/provider/aws/awstagkeys",
         "//pkg/iac/pulumi/pulumimodule/provider/aws/pulumiawsprovider",
         "@com_github_pkg_errors//:errors",
-<<<<<<<< HEAD:apis/dev/planton/provider/aws/awsautoscalinggroup/v1/iac/pulumi/module/BUILD.bazel
-        "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/autoscaling",
-|||||||| 7767821e5:apis/dev/planton/provider/aws/awssecretsmanager/v1/iac/pulumi/module/BUILD.bazel
-        "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws",
-        "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/secretsmanager",
-========
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws",
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/apigatewayv2",
->>>>>>>> origin/main:apis/dev/planton/provider/aws/awshttpapivpclink/v1/iac/pulumi/module/BUILD.bazel
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
     ],
 )
