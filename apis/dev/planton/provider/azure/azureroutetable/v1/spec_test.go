@@ -78,14 +78,28 @@ var _ = ginkgo.Describe("AzureRouteTableSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should accept a virtual appliance route with a next hop IP", func() {
+			ginkgo.It("should accept a virtual appliance route with a literal next hop IP", func() {
 				input := validResource()
 				input.Spec.Routes = []*AzureRouteTableRoute{
 					{
 						Name:               "default-via-firewall",
 						AddressPrefix:      "0.0.0.0/0",
 						NextHopType:        AzureRouteTableNextHopType_VIRTUAL_APPLIANCE,
-						NextHopInIpAddress: "10.0.1.4",
+						NextHopInIpAddress: literal("10.0.1.4"),
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a virtual appliance route referencing a firewall's private IP output", func() {
+				input := validResource()
+				input.Spec.Routes = []*AzureRouteTableRoute{
+					{
+						Name:               "default-via-firewall",
+						AddressPrefix:      "0.0.0.0/0",
+						NextHopType:        AzureRouteTableNextHopType_VIRTUAL_APPLIANCE,
+						NextHopInIpAddress: ref("hub-firewall"),
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -225,7 +239,7 @@ var _ = ginkgo.Describe("AzureRouteTableSpec Validation Tests", func() {
 						Name:               "invalid-hop-ip",
 						AddressPrefix:      "0.0.0.0/0",
 						NextHopType:        AzureRouteTableNextHopType_INTERNET,
-						NextHopInIpAddress: "10.0.1.4",
+						NextHopInIpAddress: literal("10.0.1.4"),
 					},
 				}
 				err := protovalidate.Validate(input)

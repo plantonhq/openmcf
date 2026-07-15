@@ -241,8 +241,13 @@ type AzureRouteTableRoute struct {
 	// The private IP address packets are forwarded to -- the network virtual
 	// appliance's (firewall's, router's) address. Required exactly when
 	// next_hop_type is VIRTUAL_APPLIANCE; meaningless (and rejected) for
-	// every other hop type.
-	NextHopInIpAddress string `protobuf:"bytes,4,opt,name=next_hop_in_ip_address,json=nextHopInIpAddress,proto3" json:"next_hop_in_ip_address,omitempty"`
+	// every other hop type. Can be a literal IP or a reference to the
+	// appliance's address output; defaults to an AzureFirewall's
+	// private_ip_address -- the hub-spoke seam where spoke tables send
+	// egress through the hub firewall without hand-copying its address.
+	// For a non-firewall appliance (an NVA VM's NIC), reference its address
+	// output explicitly or pass the literal IP.
+	NextHopInIpAddress *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=next_hop_in_ip_address,json=nextHopInIpAddress,proto3" json:"next_hop_in_ip_address,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -298,11 +303,11 @@ func (x *AzureRouteTableRoute) GetNextHopType() AzureRouteTableNextHopType {
 	return AzureRouteTableNextHopType_azure_route_table_next_hop_type_unspecified
 }
 
-func (x *AzureRouteTableRoute) GetNextHopInIpAddress() string {
+func (x *AzureRouteTableRoute) GetNextHopInIpAddress() *v1.StringValueOrRef {
 	if x != nil {
 		return x.NextHopInIpAddress
 	}
-	return ""
+	return nil
 }
 
 var File_dev_planton_provider_azure_azureroutetable_v1_spec_proto protoreflect.FileDescriptor
@@ -322,14 +327,14 @@ const file_dev_planton_provider_azure_azureroutetable_v1_spec_proto_rawDesc = ""
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B \n" +
-	"\x1e_bgp_route_propagation_enabled\"\xff\x03\n" +
+	"\x1e_bgp_route_propagation_enabled\"\xdd\x04\n" +
 	"\x14AzureRouteTableRoute\x12 \n" +
 	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x121\n" +
 	"\x0eaddress_prefix\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\raddressPrefix\x12z\n" +
-	"\rnext_hop_type\x18\x03 \x01(\x0e2I.dev.planton.provider.azure.azureroutetable.v1.AzureRouteTableNextHopTypeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\vnextHopType\x122\n" +
-	"\x16next_hop_in_ip_address\x18\x04 \x01(\tR\x12nextHopInIpAddress:\xe1\x01\xbaH\xdd\x01\x1a\xda\x01\n" +
-	"\x18next_hop_ip_matches_type\x12|next_hop_in_ip_address is required when next_hop_type is VIRTUAL_APPLIANCE and must be omitted for every other next hop type\x1a@(this.next_hop_type == 4) == (this.next_hop_in_ip_address != '')*\xa9\x01\n" +
+	"\rnext_hop_type\x18\x03 \x01(\x0e2I.dev.planton.provider.azure.azureroutetable.v1.AzureRouteTableNextHopTypeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\vnextHopType\x12\x92\x01\n" +
+	"\x16next_hop_in_ip_address\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x94\x04\x92\xd4a!status.outputs.private_ip_addressR\x12nextHopInIpAddress:\xde\x01\xbaH\xda\x01\x1a\xd7\x01\n" +
+	"\x18next_hop_ip_matches_type\x12|next_hop_in_ip_address is required when next_hop_type is VIRTUAL_APPLIANCE and must be omitted for every other next hop type\x1a=(this.next_hop_type == 4) == has(this.next_hop_in_ip_address)*\xa9\x01\n" +
 	"\x1aAzureRouteTableNextHopType\x12/\n" +
 	"+azure_route_table_next_hop_type_unspecified\x10\x00\x12\x1b\n" +
 	"\x17VIRTUAL_NETWORK_GATEWAY\x10\x01\x12\x0e\n" +
@@ -366,11 +371,12 @@ var file_dev_planton_provider_azure_azureroutetable_v1_spec_proto_depIdxs = []in
 	2, // 1: dev.planton.provider.azure.azureroutetable.v1.AzureRouteTableSpec.routes:type_name -> dev.planton.provider.azure.azureroutetable.v1.AzureRouteTableRoute
 	3, // 2: dev.planton.provider.azure.azureroutetable.v1.AzureRouteTableSpec.tags:type_name -> dev.planton.provider.azure.azureroutetable.v1.AzureRouteTableSpec.TagsEntry
 	0, // 3: dev.planton.provider.azure.azureroutetable.v1.AzureRouteTableRoute.next_hop_type:type_name -> dev.planton.provider.azure.azureroutetable.v1.AzureRouteTableNextHopType
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	4, // 4: dev.planton.provider.azure.azureroutetable.v1.AzureRouteTableRoute.next_hop_in_ip_address:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azureroutetable_v1_spec_proto_init() }

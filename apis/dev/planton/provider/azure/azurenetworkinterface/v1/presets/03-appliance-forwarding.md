@@ -10,7 +10,7 @@ This preset creates the inside interface of a network virtual appliance -- a fir
 
 ## Key Configuration Choices
 
-- **`privateIpAllocation: STATIC` + `privateIpAddress`** -- route tables reference the appliance by exact IP (`nextHopInIpAddress`); a dynamic address would break every route pointing at it if the NIC were ever recreated
+- **`privateIpAllocation: STATIC` + `privateIpAddress`** -- route tables forward to the appliance by exact IP (`nextHopInIpAddress`, referencing this NIC's `private_ip_address` output with an explicit kind, or carrying the static IP as a literal); a dynamic address would break every route pointing at it if the NIC were ever recreated
 - **`ipForwardingEnabled: true`** -- the load-bearing flag: an appliance NIC without forwarding blackholes every routed packet, and the failure is silent
 - **Accelerated networking** -- appliances are packets-per-second workloads; SR-IOV matters more here than anywhere
 - **Auxiliary NVA acceleration** (`auxiliaryMode`/`auxiliarySku`) -- a preview feature for connection-rate-bound appliances on enrolled subscriptions; leave unset otherwise

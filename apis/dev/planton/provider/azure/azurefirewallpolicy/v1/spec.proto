@@ -4,7 +4,6 @@ package dev.planton.provider.azure.azurefirewallpolicy.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
-import "dev/planton/shared/options/options.proto";
 
 // **AzureFirewallPolicySpec** defines an Azure Firewall Policy: the
 // reusable rule-and-inspection document that Azure Firewall instances

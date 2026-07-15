@@ -101,9 +101,23 @@ charts/<provider>/<chart-slug>/
 - **No provisioner label.** Chart resources must not carry
   `planton.dev/provisioner`; the deploying organization's mapping decides.
 - Reference sibling resources with
-  `valueFrom: {kind, name, fieldPath: status.outputs.<field>}` — the field
-  must exist in the referenced kind's `stack_outputs.proto` (the offline
-  validator enforces this).
+  `valueFrom: {kind, name, fieldPath: status.outputs.<field>}` — always the
+  full explicit triple, never the name-only shorthand that standalone
+  manifests may use (it relies on default-kind proto annotations the
+  offline validator does not compile, so it cannot be verified). The
+  offline validator enforces all of this: explicit form, intra-chart
+  resolution, and the field's existence in the referenced kind's
+  `stack_outputs.proto`. `fieldPath` field names are snake_case, exactly
+  as the proto spells them.
+- **A seam you cannot wire by reference is a component gap, not a chart
+  compromise.** If an in-chart resource's output belongs in another
+  resource's field but that field is a plain string in the spec (so
+  `valueFrom` cannot target it), do not hardcode a placeholder or bend the
+  design around it — retrofit the field to `StringValueOrRef` (with the
+  natural `default_kind`) through the component-update workflow, prove the
+  component's gates, then wire the chart by reference. Charts are the
+  composition proof of the component catalog; they are expected to surface
+  these gaps.
 
 ## README standard
 
@@ -127,9 +141,15 @@ Structure, in order:
 2. `cd charts && make validate-offline chart=<provider>/<chart>` — renders
    with default values and proves, per rendered document: YAML validity,
    protovalidate against this checkout's protos (build the CLI from this
-   tree first so the schemas match), `valueFrom` resolution within the
-   chart, and `fieldPath` existence in the target kind's
-   `stack_outputs.proto`.
-3. `planton chart build <provider>/<chart>` (Platform CLI) remains the
+   tree first so the schemas match), the explicit-triple `valueFrom` form,
+   reference resolution within the chart, and `fieldPath` existence in the
+   target kind's `stack_outputs.proto`.
+3. **Exercise the toggle paths by hand.** The offline gate renders only the
+   default values, so every feature toggle's non-default branch ships
+   unproven unless you render it: re-run the harness's render + reference +
+   schema checks with each toggle flipped (disabled optional resources,
+   alternate tiers, populated list params) and confirm no reference dangles
+   into a disabled block and every branch still validates.
+4. `planton chart build <provider>/<chart>` (Platform CLI) remains the
    authoritative proof — run it when a control plane on matching schemas is
    available; the offline gate exists precisely for when it is not.

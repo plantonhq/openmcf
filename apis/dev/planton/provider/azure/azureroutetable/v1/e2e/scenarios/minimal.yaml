@@ -1,16 +1,19 @@
-# Minimal AzureRouteTable scenario: a two-route table (black-hole + service
-# tag to internet) with BGP propagation disabled, in the fixture resource
-# group.
+# Minimal AzureRouteTable scenario: a three-route table (black-hole +
+# service tag to internet + appliance-forwarding default) with BGP
+# propagation disabled, in the fixture resource group.
 #
 # The resource-group reference resolves against the registry prerequisite's
 # captured outputs through the field's default kind (AzureResourceGroup ->
 # the fixture RG's name), keeping the scenario fully registry-driven. The
-# two routes exercise the repeated message on both engines with two
-# different next-hop shapes (NONE and INTERNET with a service-tag prefix);
-# a VirtualAppliance route is deliberately absent -- it would need a live
-# appliance IP inside an attached network, and the required-IP pairing is
-# already enforced by spec validation. bgp_route_propagation_enabled: false
-# exercises the non-default value of the optional bool.
+# three routes exercise the repeated message on both engines with three
+# different next-hop shapes: NONE, INTERNET with a service-tag prefix, and
+# VIRTUAL_APPLIANCE carrying the forwarding address through the
+# StringValueOrRef literal form (proving the reference-capable field's wire
+# path end to end -- ARM accepts any forwarding address without a live
+# appliance, so the route deploys standalone; the referenced-firewall form
+# resolves to exactly this literal before the modules run).
+# bgp_route_propagation_enabled: false exercises the non-default value of
+# the optional bool.
 apiVersion: azure.planton.dev/v1
 kind: AzureRouteTable
 metadata:
@@ -38,6 +41,11 @@ spec:
     - name: backup-direct
       addressPrefix: "AzureBackup"
       nextHopType: INTERNET
+    - name: default-via-appliance
+      addressPrefix: "0.0.0.0/0"
+      nextHopType: VIRTUAL_APPLIANCE
+      nextHopInIpAddress:
+        value: "10.240.250.4"
   bgpRoutePropagationEnabled: false
   tags:
     e2e-suite: azure

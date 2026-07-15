@@ -33,9 +33,11 @@ func Resources(ctx *pulumi.Context, stackInput *azureroutetablev1.AzureRouteTabl
 		}
 		// Only VirtualAppliance routes carry a forwarding IP (spec-level
 		// validation enforces the pairing); ARM rejects it on any other
-		// hop type.
-		if route.NextHopInIpAddress != "" {
-			routeArgs.NextHopInIpAddress = pulumi.String(route.NextHopInIpAddress)
+		// hop type. The address is a StringValueOrRef -- the platform
+		// resolves references (typically an AzureFirewall's
+		// private_ip_address) to a literal before the module runs.
+		if route.NextHopInIpAddress.GetValue() != "" {
+			routeArgs.NextHopInIpAddress = pulumi.String(route.NextHopInIpAddress.GetValue())
 		}
 		routes = append(routes, routeArgs)
 	}

@@ -24,7 +24,12 @@ Four checks per chart:
 3. REFERENCES - every `valueFrom` resolves: the referenced kind + name must
    be a document defined by the same chart. Charts must be self-contained;
    a reference to a resource the chart does not create would only fail at
-   deploy time, mid-environment.
+   deploy time, mid-environment. Charts must use the explicit
+   {kind, name, fieldPath} form (the authoring contract): a name-only
+   shorthand (legal in standalone manifests, where the field's default-kind
+   annotation fills the gap) is rejected here because it cannot be resolved
+   or output-checked without compiling the proto annotations -- it would
+   pass this gate unverified.
 4. OUTPUT FIELDS - every `valueFrom.fieldPath` of the `status.outputs.<field>`
    form names a field that actually exists in the referenced kind's
    stack_outputs.proto. This catches the silent-breakage class where a chart
@@ -153,10 +158,12 @@ def validate_schema(rel, doc):
 
 
 def iter_value_from(node, path="spec"):
-    """Yield every (path, valueFrom-dict) in a rendered document's spec."""
+    """Yield every (path, valueFrom-dict) in a rendered document's spec --
+    including incomplete ones, so the reference checks can reject the
+    name-only shorthand instead of silently skipping it."""
     if isinstance(node, dict):
         vf = node.get("valueFrom")
-        if isinstance(vf, dict) and "kind" in vf:
+        if isinstance(vf, dict):
             yield path, vf
         for k, v in node.items():
             if k != "valueFrom":
@@ -187,6 +194,16 @@ def validate_references(docs):
         for path, vf in iter_value_from(doc.get("spec") or {}):
             target_kind, target_name = vf.get("kind"), vf.get("name")
             field_path = vf.get("fieldPath", "")
+
+            # Charts must spell references out (the authoring contract): a
+            # name-only valueFrom relies on default-kind proto annotations
+            # this validator does not compile, so it would bypass both the
+            # resolution and the output-field checks below.
+            if not target_kind or not field_path:
+                problems.append((rel, f"{holder}: {path} uses a name-only valueFrom -- charts must "
+                                      "use the explicit form {kind, name, fieldPath} so references "
+                                      "are verifiable"))
+                continue
 
             if (target_kind, target_name) not in defined:
                 problems.append((rel, f"{holder}: {path} references {target_kind}/{target_name}, "

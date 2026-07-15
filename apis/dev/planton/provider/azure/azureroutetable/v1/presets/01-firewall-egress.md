@@ -19,8 +19,11 @@ loop its egress back to itself).
 
 ## Key Configuration Choices
 
-- **`VIRTUAL_APPLIANCE` + forwarding IP** -- the firewall's private IP;
-  update it in place if the appliance is redeployed
+- **`VIRTUAL_APPLIANCE` + forwarding address by reference** -- the route
+  references the AzureFirewall's `private_ip_address` output, so the
+  table always follows the firewall (redeploy the firewall and the route
+  updates with it). A literal IP (`value: "10.0.1.4"`) works too, for a
+  third-party appliance or an address managed outside Planton
 - **`bgpRoutePropagationEnabled: false`** -- the standard hardening;
   without it, an on-premises-advertised default route could bypass the
   firewall
@@ -32,5 +35,5 @@ loop its egress back to itself).
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the table in | The resource group's `status.outputs.resource_group_name` |
-| `<firewall-private-ip>` | The firewall's/appliance's private IP inside the network | The firewall resource's IP configuration |
+| `<firewall-resource-name>` | The AzureFirewall resource the route forwards to (its `private_ip_address` output is resolved automatically) | The firewall resource's name; for a non-firewall appliance, use a literal `value:` with its IP instead |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |

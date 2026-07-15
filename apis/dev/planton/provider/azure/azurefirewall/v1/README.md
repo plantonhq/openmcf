@@ -102,7 +102,9 @@ spec:
     - name: default-via-firewall
       addressPrefix: "0.0.0.0/0"
       nextHopType: VIRTUAL_APPLIANCE
-      nextHopInIpAddress: <firewall private_ip_address output>
+      nextHopInIpAddress:
+        valueFrom:
+          name: <the firewall resource's name>
 ```
 
 ## Lifecycle Notes

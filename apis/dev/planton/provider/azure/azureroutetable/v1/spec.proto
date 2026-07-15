@@ -112,13 +112,25 @@ message AzureRouteTableRoute {
   // The private IP address packets are forwarded to -- the network virtual
   // appliance's (firewall's, router's) address. Required exactly when
   // next_hop_type is VIRTUAL_APPLIANCE; meaningless (and rejected) for
-  // every other hop type.
-  string next_hop_in_ip_address = 4;
+  // every other hop type. Can be a literal IP or a reference to the
+  // appliance's address output; defaults to an AzureFirewall's
+  // private_ip_address -- the hub-spoke seam where spoke tables send
+  // egress through the hub firewall without hand-copying its address.
+  // For a non-firewall appliance (an NVA VM's NIC), reference its address
+  // output explicitly or pass the literal IP.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef next_hop_in_ip_address = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFirewall,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.private_ip_address"
+  ];
 
+  // The pairing is validated by presence (not by dereferencing the
+  // reference's sub-fields, which protovalidate-java cannot express):
+  // a VIRTUAL_APPLIANCE route must carry the forwarding address, every
+  // other hop type must omit it.
   option (buf.validate.message).cel = {
     id: "next_hop_ip_matches_type"
     message: "next_hop_in_ip_address is required when next_hop_type is VIRTUAL_APPLIANCE and must be omitted for every other next hop type"
-    expression: "(this.next_hop_type == 4) == (this.next_hop_in_ip_address != '')"
+    expression: "(this.next_hop_type == 4) == has(this.next_hop_in_ip_address)"
   };
 }
 

@@ -30,7 +30,10 @@ variable "spec" {
     # address_prefix (CIDR or Azure service tag) to its next hop.
     # next_hop_type carries the spec enum's name string; VIRTUAL_APPLIANCE
     # routes additionally carry the appliance IP in next_hop_in_ip_address
-    # (spec-level validation enforces the pairing).
+    # (spec-level validation enforces the pairing). The address is a
+    # reference-capable field in the spec (defaulting to an AzureFirewall's
+    # private_ip_address output); the platform resolves it to the literal
+    # IP seen here before the module runs.
     routes = optional(list(object({
       name                   = string
       address_prefix         = string

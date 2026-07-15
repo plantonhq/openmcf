@@ -44,7 +44,7 @@ of it -- a route has no life of its own.
 | `region` | string | Yes | Azure region (must match the networks whose subnets attach it) |
 | `resource_group` | StringValueOrRef | Yes | Resource group name (defaults to an AzureResourceGroup reference) |
 | `name` | string | Yes | Table name, unique within the resource group (1-80 chars) |
-| `routes` | list | No | User-defined routes (name, address_prefix, next_hop_type, next_hop_in_ip_address) |
+| `routes` | list | No | User-defined routes (name, address_prefix, next_hop_type, next_hop_in_ip_address -- a StringValueOrRef defaulting to an AzureFirewall's private_ip_address output) |
 | `bgp_route_propagation_enabled` | bool | No | Whether BGP-learned routes propagate into attached subnets (Azure default: true) |
 | `tags` | map | No | User tags, merged over Planton-derived tags (user wins) |
 
@@ -74,7 +74,9 @@ spec:
     - name: default-via-firewall
       addressPrefix: "0.0.0.0/0"
       nextHopType: VIRTUAL_APPLIANCE
-      nextHopInIpAddress: "10.0.1.4"
+      nextHopInIpAddress:
+        valueFrom:
+          name: hub-firewall
   bgpRoutePropagationEnabled: false
 ```
 

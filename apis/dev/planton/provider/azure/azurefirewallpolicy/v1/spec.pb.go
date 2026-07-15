@@ -9,7 +9,6 @@ package azurefirewallpolicyv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
-	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -1320,7 +1319,7 @@ var File_dev_planton_provider_azure_azurefirewallpolicy_v1_spec_proto protorefle
 
 const file_dev_planton_provider_azure_azurefirewallpolicy_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/azure/azurefirewallpolicy/v1/spec.proto\x121dev.planton.provider.azure.azurefirewallpolicy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd3\x13\n" +
+	"<dev/planton/provider/azure/azurefirewallpolicy/v1/spec.proto\x121dev.planton.provider.azure.azurefirewallpolicy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd3\x13\n" +
 	"\x17AzureFirewallPolicySpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +

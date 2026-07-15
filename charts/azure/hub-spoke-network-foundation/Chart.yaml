@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: Hub-Spoke Network Foundation
+spec:
+  selector:
+    kind: platform
+  description: The enterprise landing-zone network core -- a hub VNet with a zone-redundant Azure Firewall enforcing a deny-by-default egress policy, peered workload spokes whose route tables force every packet through the firewall, private DNS across the estate, and firewall analytics in Log Analytics.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/provider/azure/azurefirewall/v1/assets/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/azure/hub-spoke-network-foundation
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/azure/hub-spoke-network-foundation/README.md

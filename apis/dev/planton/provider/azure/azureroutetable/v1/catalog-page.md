@@ -39,7 +39,12 @@ spec:
     - name: default-via-firewall
       addressPrefix: "0.0.0.0/0"
       nextHopType: VIRTUAL_APPLIANCE
-      nextHopInIpAddress: "10.0.1.4"
+      # References the hub AzureFirewall's private_ip_address output; a
+      # literal IP (value: "10.0.1.4") works for appliances managed
+      # outside Planton.
+      nextHopInIpAddress:
+        valueFrom:
+          name: hub-firewall
   bgpRoutePropagationEnabled: false
 ```
 
@@ -49,7 +54,7 @@ Deploy:
 planton apply -f route-table.yaml
 ```
 
-Every subnet that attaches this table now sends its internet-bound traffic to the firewall at `10.0.1.4`.
+Every subnet that attaches this table now sends its internet-bound traffic to the hub firewall's private IP.
 
 ## Configuration Reference
 
@@ -65,7 +70,7 @@ Every subnet that attaches this table now sends its internet-bound traffic to th
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `routes` | `list(object)` | The user-defined routes. Each: `name`, `addressPrefix` (CIDR or Azure service tag), `nextHopType` (`VIRTUAL_NETWORK_GATEWAY` / `VNET_LOCAL` / `INTERNET` / `VIRTUAL_APPLIANCE` / `NONE`), and `nextHopInIpAddress` (required exactly when the hop is `VIRTUAL_APPLIANCE`). Empty is valid -- attach first, add routes later. |
+| `routes` | `list(object)` | The user-defined routes. Each: `name`, `addressPrefix` (CIDR or Azure service tag), `nextHopType` (`VIRTUAL_NETWORK_GATEWAY` / `VNET_LOCAL` / `INTERNET` / `VIRTUAL_APPLIANCE` / `NONE`), and `nextHopInIpAddress` (required exactly when the hop is `VIRTUAL_APPLIANCE`; a literal IP or a reference defaulting to an AzureFirewall's `private_ip_address` output). Empty is valid -- attach first, add routes later. |
 | `bgpRoutePropagationEnabled` | `bool` | Whether routes learned from on-premises via BGP propagate into attached subnets. Azure defaults to `true`; disable for forced-tunneling designs. |
 | `tags` | `map(string)` | User tags, merged over Planton-derived tags (user wins on collision). |
 
@@ -146,7 +151,9 @@ spec:
     - name: default-via-firewall
       addressPrefix: "0.0.0.0/0"
       nextHopType: VIRTUAL_APPLIANCE
-      nextHopInIpAddress: "10.0.1.4"
+      nextHopInIpAddress:
+        valueFrom:
+          name: hub-firewall
     - name: backup-direct
       addressPrefix: "AzureBackup"
       nextHopType: INTERNET

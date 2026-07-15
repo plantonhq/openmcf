@@ -107,7 +107,9 @@ with the policy (cross-resource, ARM-enforced).
   `AzurePublicIp.public_ip_id` (Standard/static).
 - `firewall_policy_id` → `AzureFirewallPolicy.firewall_policy_id`.
 - **`private_ip_address` output** → `AzureRouteTable` routes'
-  `next_hop_in_ip_address` (VIRTUAL_APPLIANCE) -- the hub-spoke seam.
+  `next_hop_in_ip_address` (VIRTUAL_APPLIANCE) -- the hub-spoke seam,
+  realized as that field's default reference kind (route tables resolve
+  a firewall by name, no hand-copied address).
 - DNAT rules' `destination_address` composes from the referenced
   `AzurePublicIp.ip_address` output.
 

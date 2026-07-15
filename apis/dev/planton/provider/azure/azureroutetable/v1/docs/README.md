@@ -17,7 +17,7 @@ against pulumi-azure v6 (`network.RouteTable`).
 | `resource_group_name` | `resource_group` | FK → AzureResourceGroup |
 | `route` (set) | `routes` (repeated message) | Inline-managed; see folding decision below |
 | `route.*.next_hop_type` | `next_hop_type` enum | VirtualNetworkGateway / VnetLocal / Internet / VirtualAppliance / None |
-| `route.*.next_hop_in_ip_address` | `next_hop_in_ip_address` | Message-level CEL: required iff VIRTUAL_APPLIANCE |
+| `route.*.next_hop_in_ip_address` | `next_hop_in_ip_address` | StringValueOrRef (FK → AzureFirewall `private_ip_address`); message-level CEL: required iff VIRTUAL_APPLIANCE |
 | `bgp_route_propagation_enabled` | `bgp_route_propagation_enabled` | azurerm default true → `optional bool` with default "true" |
 | `subnets` (computed) | -- | Not modeled; membership is subnet-side (see below) |
 | `tags` | `tags` | User tags merged over Planton-derived tags |
@@ -48,7 +48,14 @@ against pulumi-azure v6 (`network.RouteTable`).
 - **The appliance-IP pairing enforced in the spec** (message-level CEL):
   ARM rejects `next_hop_in_ip_address` on any hop type except
   VirtualAppliance and requires it there; catching it at validation time
-  beats a mid-apply ARM error.
+  beats a mid-apply ARM error. The pairing is a presence check (`has()`),
+  since message-level CEL cannot dereference a reference's sub-fields.
+- **The forwarding address is a reference seam**: `next_hop_in_ip_address`
+  is a `StringValueOrRef` defaulting to an AzureFirewall's
+  `private_ip_address` output -- the hub-spoke composition wires spoke
+  route tables to the hub firewall without hand-copying its address. A
+  literal IP serves third-party NVAs and addresses managed outside
+  Planton.
 - **`address_prefix` is a free string**, because ARM accepts both CIDR
   blocks and Azure service tags ("AzureBackup") -- a CIDR-only validation
   would reject valid, useful configurations.

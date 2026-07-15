@@ -13,7 +13,8 @@ spec:
     - name: default-via-firewall
       addressPrefix: "0.0.0.0/0"
       nextHopType: VIRTUAL_APPLIANCE
-      nextHopInIpAddress: "10.0.1.4"
+      nextHopInIpAddress:
+        value: "10.0.1.4"
     - name: blackhole-rfc1918
       addressPrefix: "192.168.0.0/16"
       nextHopType: NONE
