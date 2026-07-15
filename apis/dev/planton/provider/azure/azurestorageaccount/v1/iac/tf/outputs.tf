@@ -136,3 +136,28 @@ output "identity_principal_id" {
   description = "The principal ID of the account's system-assigned identity"
   value       = try(azurerm_storage_account.main.identity[0].principal_id, "")
 }
+
+# The per-service diagnostic-settings scopes, constructed from the
+# account ID (identically on both engines). Data-access telemetry
+# (StorageRead/StorageWrite/StorageDelete logs) lives on these implicit
+# service sub-resources, not the account itself -- ARM materializes
+# them with the account, so there is nothing to read back.
+output "blob_service_id" {
+  description = "The ARM ID of the account's blob service (the blob data-access diagnostics scope)"
+  value       = "${azurerm_storage_account.main.id}/blobServices/default"
+}
+
+output "file_service_id" {
+  description = "The ARM ID of the account's file service (the Azure Files data-access diagnostics scope)"
+  value       = "${azurerm_storage_account.main.id}/fileServices/default"
+}
+
+output "queue_service_id" {
+  description = "The ARM ID of the account's queue service (the queue data-access diagnostics scope)"
+  value       = "${azurerm_storage_account.main.id}/queueServices/default"
+}
+
+output "table_service_id" {
+  description = "The ARM ID of the account's table service (the table data-access diagnostics scope)"
+  value       = "${azurerm_storage_account.main.id}/tableServices/default"
+}

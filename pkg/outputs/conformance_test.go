@@ -3092,6 +3092,10 @@ func TestStackOutputsConformance(t *testing.T) {
 				"primary_blob_connection_string":   "DefaultEndpointsProtocol=https;BlobEndpoint=https://plantonappstorage.blob.core.windows.net/;AccountName=plantonappstorage;AccountKey=base64keymaterial==",
 				"secondary_blob_connection_string": "DefaultEndpointsProtocol=https;BlobEndpoint=https://plantonappstorage-secondary.blob.core.windows.net/;AccountName=plantonappstorage;AccountKey=base64keymaterial2==",
 				"identity_principal_id":            "44444444-4444-4444-4444-444444444444",
+				"blob_service_id":                  "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Storage/storageAccounts/plantonappstorage/blobServices/default",
+				"file_service_id":                  "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Storage/storageAccounts/plantonappstorage/fileServices/default",
+				"queue_service_id":                 "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Storage/storageAccounts/plantonappstorage/queueServices/default",
+				"table_service_id":                 "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Storage/storageAccounts/plantonappstorage/tableServices/default",
 			},
 			mustPopulate: []string{
 				"storage_account_id", "storage_account_name", "resource_group_name",
@@ -3101,6 +3105,8 @@ func TestStackOutputsConformance(t *testing.T) {
 				"primary_access_key", "secondary_access_key", "primary_connection_string",
 				"secondary_connection_string", "primary_blob_connection_string",
 				"secondary_blob_connection_string", "identity_principal_id",
+				"blob_service_id", "file_service_id", "queue_service_id",
+				"table_service_id",
 			},
 		},
 		{

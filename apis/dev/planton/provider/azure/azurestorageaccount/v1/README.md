@@ -70,7 +70,11 @@ storageAccountId:
 
 Key outputs: `storage_account_id` (containers, role-assignment scopes),
 `storage_account_name` + `primary_access_key` (app-service bindings),
-per-service endpoints and hosts (applications, CDN origins).
+per-service endpoints and hosts (applications, CDN origins), and the
+per-service ARM IDs (`blob_service_id` / `file_service_id` /
+`queue_service_id` / `table_service_id`) that diagnostic settings
+target for data-access logs -- the account-level ID exposes only
+account metrics.
 
 ## Documentation
 

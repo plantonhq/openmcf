@@ -597,5 +597,16 @@ func Resources(ctx *pulumi.Context, stackInput *azurestorageaccountv1.AzureStora
 		return *identity.PrincipalId
 	}).(pulumi.StringOutput))
 
+	// The per-service diagnostic-settings scopes, constructed from the
+	// account ID (identically on both engines). Data-access telemetry
+	// (StorageRead/StorageWrite/StorageDelete logs) lives on these
+	// implicit service sub-resources, not the account itself -- ARM
+	// materializes them with the account, so there is nothing to read
+	// back.
+	ctx.Export(OpBlobServiceId, pulumi.Sprintf("%s/blobServices/default", createdAccount.ID()))
+	ctx.Export(OpFileServiceId, pulumi.Sprintf("%s/fileServices/default", createdAccount.ID()))
+	ctx.Export(OpQueueServiceId, pulumi.Sprintf("%s/queueServices/default", createdAccount.ID()))
+	ctx.Export(OpTableServiceId, pulumi.Sprintf("%s/tableServices/default", createdAccount.ID()))
+
 	return nil
 }

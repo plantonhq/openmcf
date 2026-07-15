@@ -25,4 +25,8 @@ const (
 	OpPrimaryBlobConnectionString   = "primary_blob_connection_string"
 	OpSecondaryBlobConnectionString = "secondary_blob_connection_string"
 	OpIdentityPrincipalId           = "identity_principal_id"
+	OpBlobServiceId                 = "blob_service_id"
+	OpFileServiceId                 = "file_service_id"
+	OpQueueServiceId                = "queue_service_id"
+	OpTableServiceId                = "table_service_id"
 )

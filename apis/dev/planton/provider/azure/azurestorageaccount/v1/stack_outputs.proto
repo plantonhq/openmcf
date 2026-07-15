@@ -111,4 +111,30 @@ message AzureStorageAccountStackOutputs {
   // SYSTEM_ASSIGNED. Grant this principal roles to let the account act
   // on other resources (e.g. reading a Key Vault key).
   string identity_principal_id = 24;
+
+  // The ARM ID of the account's BLOB service
+  // ({storage_account_id}/blobServices/default) -- the diagnostic-
+  // settings scope for blob DATA-ACCESS telemetry (StorageRead /
+  // StorageWrite / StorageDelete logs). The account-level ID only
+  // exposes account metrics; per-operation audit logs live on the
+  // service sub-resources, so an AzureMonitorDiagnosticSetting's
+  // target_resource_id references this output. Constructed identically
+  // on both engines (ARM materializes the service implicitly -- there
+  // is nothing to read back).
+  string blob_service_id = 25;
+
+  // The ARM ID of the account's FILE service
+  // ({storage_account_id}/fileServices/default) -- the diagnostic-
+  // settings scope for Azure Files data-access telemetry.
+  string file_service_id = 26;
+
+  // The ARM ID of the account's QUEUE service
+  // ({storage_account_id}/queueServices/default) -- the diagnostic-
+  // settings scope for queue data-access telemetry.
+  string queue_service_id = 27;
+
+  // The ARM ID of the account's TABLE service
+  // ({storage_account_id}/tableServices/default) -- the diagnostic-
+  // settings scope for table data-access telemetry.
+  string table_service_id = 28;
 }

@@ -108,8 +108,30 @@ type AzureStorageAccountStackOutputs struct {
 	// SYSTEM_ASSIGNED. Grant this principal roles to let the account act
 	// on other resources (e.g. reading a Key Vault key).
 	IdentityPrincipalId string `protobuf:"bytes,24,opt,name=identity_principal_id,json=identityPrincipalId,proto3" json:"identity_principal_id,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// The ARM ID of the account's BLOB service
+	// ({storage_account_id}/blobServices/default) -- the diagnostic-
+	// settings scope for blob DATA-ACCESS telemetry (StorageRead /
+	// StorageWrite / StorageDelete logs). The account-level ID only
+	// exposes account metrics; per-operation audit logs live on the
+	// service sub-resources, so an AzureMonitorDiagnosticSetting's
+	// target_resource_id references this output. Constructed identically
+	// on both engines (ARM materializes the service implicitly -- there
+	// is nothing to read back).
+	BlobServiceId string `protobuf:"bytes,25,opt,name=blob_service_id,json=blobServiceId,proto3" json:"blob_service_id,omitempty"`
+	// The ARM ID of the account's FILE service
+	// ({storage_account_id}/fileServices/default) -- the diagnostic-
+	// settings scope for Azure Files data-access telemetry.
+	FileServiceId string `protobuf:"bytes,26,opt,name=file_service_id,json=fileServiceId,proto3" json:"file_service_id,omitempty"`
+	// The ARM ID of the account's QUEUE service
+	// ({storage_account_id}/queueServices/default) -- the diagnostic-
+	// settings scope for queue data-access telemetry.
+	QueueServiceId string `protobuf:"bytes,27,opt,name=queue_service_id,json=queueServiceId,proto3" json:"queue_service_id,omitempty"`
+	// The ARM ID of the account's TABLE service
+	// ({storage_account_id}/tableServices/default) -- the diagnostic-
+	// settings scope for table data-access telemetry.
+	TableServiceId string `protobuf:"bytes,28,opt,name=table_service_id,json=tableServiceId,proto3" json:"table_service_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AzureStorageAccountStackOutputs) Reset() {
@@ -310,12 +332,39 @@ func (x *AzureStorageAccountStackOutputs) GetIdentityPrincipalId() string {
 	return ""
 }
 
+func (x *AzureStorageAccountStackOutputs) GetBlobServiceId() string {
+	if x != nil {
+		return x.BlobServiceId
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountStackOutputs) GetFileServiceId() string {
+	if x != nil {
+		return x.FileServiceId
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountStackOutputs) GetQueueServiceId() string {
+	if x != nil {
+		return x.QueueServiceId
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountStackOutputs) GetTableServiceId() string {
+	if x != nil {
+		return x.TableServiceId
+	}
+	return ""
+}
+
 var File_dev_planton_provider_azure_azurestorageaccount_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurestorageaccount_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/azure/azurestorageaccount/v1/stack_outputs.proto\x121dev.planton.provider.azure.azurestorageaccount.v1\"\xad\n" +
-	"\n" +
+	"Edev/planton/provider/azure/azurestorageaccount/v1/stack_outputs.proto\x121dev.planton.provider.azure.azurestorageaccount.v1\"\xd1\v\n" +
 	"\x1fAzureStorageAccountStackOutputs\x12,\n" +
 	"\x12storage_account_id\x18\x01 \x01(\tR\x10storageAccountId\x120\n" +
 	"\x14storage_account_name\x18\x02 \x01(\tR\x12storageAccountName\x12.\n" +
@@ -341,7 +390,11 @@ const file_dev_planton_provider_azure_azurestorageaccount_v1_stack_outputs_proto
 	"\x1bsecondary_connection_string\x18\x15 \x01(\tR\x19secondaryConnectionString\x12C\n" +
 	"\x1eprimary_blob_connection_string\x18\x16 \x01(\tR\x1bprimaryBlobConnectionString\x12G\n" +
 	" secondary_blob_connection_string\x18\x17 \x01(\tR\x1dsecondaryBlobConnectionString\x122\n" +
-	"\x15identity_principal_id\x18\x18 \x01(\tR\x13identityPrincipalIdB\xa0\x03\n" +
+	"\x15identity_principal_id\x18\x18 \x01(\tR\x13identityPrincipalId\x12&\n" +
+	"\x0fblob_service_id\x18\x19 \x01(\tR\rblobServiceId\x12&\n" +
+	"\x0ffile_service_id\x18\x1a \x01(\tR\rfileServiceId\x12(\n" +
+	"\x10queue_service_id\x18\x1b \x01(\tR\x0equeueServiceId\x12(\n" +
+	"\x10table_service_id\x18\x1c \x01(\tR\x0etableServiceIdB\xa0\x03\n" +
 	"5com.dev.planton.provider.azure.azurestorageaccount.v1B\x11StackOutputsProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestorageaccount/v1;azurestorageaccountv1\xa2\x02\x05DPPAA\xaa\x021Dev.Planton.Provider.Azure.Azurestorageaccount.V1\xca\x021Dev\\Planton\\Provider\\Azure\\Azurestorageaccount\\V1\xe2\x02=Dev\\Planton\\Provider\\Azure\\Azurestorageaccount\\V1\\GPBMetadata\xea\x026Dev::Planton::Provider::Azure::Azurestorageaccount::V1b\x06proto3"
 
 var (
