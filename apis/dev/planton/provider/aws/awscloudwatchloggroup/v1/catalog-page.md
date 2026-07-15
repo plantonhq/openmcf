@@ -22,7 +22,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchLogGroup
 metadata:
   name: app-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -76,7 +76,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchLogGroup
 metadata:
   name: app-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform
@@ -95,7 +95,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchLogGroup
 metadata:
   name: prod-app-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform
@@ -119,7 +119,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchLogGroup
 metadata:
   name: app-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform
@@ -146,7 +146,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchLogGroup
 metadata:
   name: vpc-flow-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: networking

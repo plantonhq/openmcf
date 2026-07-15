@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package dev.planton.iac.providerimportcatalog.v1;
+
+// ProviderImportCatalogSpec maps a cloud provider's IaC resource types to the
+// identifier format their state import requires. This is provider-level
+// knowledge (stable across components): what value string `tofu import` /
+// `pulumi import` expects for each resource type. Which concrete value fills
+// each placeholder is component-level knowledge and lives in that component's
+// ComponentImportMap.
+message ProviderImportCatalogSpec {
+  repeated ResourceTypeImportId resource_types = 1;
+}
+
+// ResourceTypeImportId declares the import identifier for one provider
+// resource type, addressed by both engines' type names.
+message ResourceTypeImportId {
+  // Terraform/OpenTofu resource type (e.g. "aws_s3_bucket").
+  string terraform_type = 1;
+  // Pulumi type token for the same provider resource
+  // (e.g. "aws:s3/bucketV2:BucketV2"). Empty when the component's Pulumi
+  // module does not declare this resource.
+  string pulumi_type = 2;
+  // Import-ID template. Placeholders in {braces} name the values a
+  // component's import map supplies (e.g. "{bucket}",
+  // "{vpc_id}_{association_id}"). A trailing "?" inside the braces marks a
+  // segment the provider documents as legitimately empty in some variants
+  // (e.g. DynamoDB contributor insights on the table itself:
+  // "name:{table_name}/index:{index_name?}/{account_id}"); required
+  // placeholders that fail to resolve abort the import instead of
+  // rendering empty. A template with no placeholders is a literal ID.
+  string id_format = 3;
+  // Provider-documentation notes about the format -- optional variants
+  // (e.g. a trailing ",{expected_bucket_owner}"), gotchas, or where the
+  // provider documents the ID shape.
+  string notes = 4;
+  // Attributes that exist ONLY in IaC configuration, never on the cloud
+  // resource (e.g. aws_s3_bucket.force_destroy). Import cannot read them
+  // from the provider, so a plan after ANY import legitimately shows them
+  // as in-place updates when the config sets a non-default value. The
+  // round-trip conformance proof tolerates in-place updates touching only
+  // these attributes; everything else fails it.
+  repeated string config_only_attributes = 5;
+  // Attributes the cloud provider NORMALIZES on write, so the stored form
+  // read back by an import differs textually from the configured form while
+  // being semantically identical -- policy documents are the canonical case
+  // (the provider's own acceptance tests ignore them on import verification,
+  // e.g. aws_dynamodb_resource_policy's importIgnore="policy"). A plan after
+  // a faithful import shows them as in-place updates that would rewrite the
+  // same semantic content (often bumping a computed revision attribute,
+  // which belongs in this list too). The round-trip proof tolerates in-place
+  // updates on these exactly like config_only_attributes; they are declared
+  // separately because the classes genuinely differ -- config-only values
+  // never exist cloud-side at all, normalized values do -- and future drift
+  // surfaces will want to explain them differently.
+  repeated string write_normalized_attributes = 6;
+  // CloudFormation type name for the same provider resource
+  // (e.g. "AWS::S3::Bucket") -- the declared correspondence between what a
+  // read-only account scan reports (the Cloud Control API lists resources
+  // by these names) and what IaC state holds (terraform_type/pulumi_type).
+  // Only set for types VERIFIED listable via Cloud Control's ListResources
+  // without extra list parameters; types that are unlistable, that require
+  // additional scoping input, or that exist only as properties of a parent
+  // type's model (e.g. the S3 bucket satellites) carry no name here and are
+  // therefore structurally invisible to scans -- consumers must treat their
+  // absence as "not discoverable", never as an error.
+  string cloud_control_type_name = 7;
+}

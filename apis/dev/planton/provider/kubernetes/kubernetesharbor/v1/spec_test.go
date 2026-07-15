@@ -7,7 +7,6 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -21,10 +20,6 @@ var _ = ginkgo.Describe("KubernetesHarborSpec validations", func() {
 
 	ginkgo.BeforeEach(func() {
 		spec = &KubernetesHarborSpec{
-			TargetCluster: &kubernetes.KubernetesClusterSelector{
-				ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-				ClusterName: "test-cluster",
-			},
 			Namespace: &foreignkeyv1.StringValueOrRef{
 				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 					Value: "test-namespace",

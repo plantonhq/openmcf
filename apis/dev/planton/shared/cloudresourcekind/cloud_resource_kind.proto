@@ -997,7 +997,17 @@ enum CloudResourceKind {
     id_prefix: "awssnssub"
     prerequisites: [AwsSnsTopic]
   }];
-  AwsRoute53HealthCheck = 354 [(kind_meta) = {
+  // AwsSubnet is a prerequisite because the runner appliance places its
+  // network interfaces into referenced subnets -- the placement reference
+  // must resolve before the appliance can deploy.
+  AwsPlantonRunner = 354 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsrun"
+    prerequisites: [AwsSubnet]
+  }];
+
+  AwsRoute53HealthCheck = 376 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "r53hc"

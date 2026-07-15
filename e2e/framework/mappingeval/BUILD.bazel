@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "mappingeval",
+    srcs = [
+        "deployer.go",
+        "module_types.go",
+    ],
+    importpath = "github.com/plantonhq/planton/e2e/framework/mappingeval",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//e2e/framework/runner",
+        "//pkg/iac/importmap",
+        "//pkg/iac/mappingeval",
+        "@com_github_gruntwork_io_terratest//modules/terraform",
+        "@com_github_pkg_errors//:errors",
+    ],
+)

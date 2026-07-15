@@ -3,6 +3,8 @@
 generated/
 # Rendered InfraChart output from `planton chart build` (chart-root artifact)
 charts/*/*/template.yaml
+# Helm dependency archives vendored by `helm dependency build` (Chart.lock IS committed)
+helm/*/charts/
 build/
 bin/
 site/node_modules/

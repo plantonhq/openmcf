@@ -5,7 +5,6 @@ package dev.planton.provider.kubernetes.kubernetesopenfga.v1;
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
 import "dev/planton/provider/kubernetes/kubernetes_secret.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "google/protobuf/descriptor.proto";
 
@@ -20,9 +19,6 @@ extend google.protobuf.FieldOptions {
  * external access, and backend storage options.
  */
 message KubernetesOpenFgaSpec {
-  // Target Kubernetes Cluster
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

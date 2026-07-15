@@ -32,17 +32,13 @@ const (
 // 100% fidelity with the upstream Gateway API v1.5.1 GRPCRouteSpec
 // (kubernetes-sigs/gateway-api apis/v1/grpcroute_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
-// (target_cluster, namespace). Experimental fields are intentionally excluded
+// (namespace). Experimental fields are intentionally excluded
 // because they are absent from the standard-channel CRD and the typed Pulumi
 // resource Planton provisions with, so they would have no deployable target:
 //   - CommonRouteSpec.useDefaultGateways
 //   - GRPCRouteRule.sessionPersistence
 type KubernetesGrpcRouteSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where this GRPCRoute is created. The Gateway API
-	// CRDs (KubernetesGatewayApiCrds) and a Gateway the route attaches to must
-	// already be present on the cluster.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace in which the GRPCRoute is created. Backends in other namespaces,
 	// and Gateways in other namespaces, are subject to the usual same-namespace /
 	// ReferenceGrant rules.
@@ -121,13 +117,6 @@ func (x *KubernetesGrpcRouteSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesGrpcRouteSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesGrpcRouteSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesGrpcRouteSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesGrpcRouteSpec) GetNamespace() *v1.StringValueOrRef {
@@ -881,9 +870,8 @@ var File_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto proto
 
 const file_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/kubernetes/kubernetesgrpcroute/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetesgrpcroute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc7\x04\n" +
-	"\x17KubernetesGrpcRouteSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Adev/planton/provider/kubernetes/kubernetesgrpcroute/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetesgrpcroute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe4\x03\n" +
+	"\x17KubernetesGrpcRouteSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
 	"\vparent_refs\x18\x03 \x03(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiParentReferenceB\b\xbaH\x05\x92\x01\x02\x10 R\n" +
 	"parentRefs\x12y\n" +
@@ -992,37 +980,35 @@ var file_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto_goTyp
 	(*KubernetesGrpcRouteHeader)(nil),                             // 7: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeader
 	(*KubernetesGrpcRouteRequestMirrorFilter)(nil),                // 8: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRequestMirrorFilter
 	(*KubernetesGrpcRouteBackendRef)(nil),                         // 9: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteBackendRef
-	(*kubernetes.KubernetesClusterSelector)(nil),                  // 10: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                                   // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesGatewayApiParentReference)(nil),        // 12: dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
-	(*kubernetes.KubernetesGatewayApiLocalObjectReference)(nil),   // 13: dev.planton.provider.kubernetes.KubernetesGatewayApiLocalObjectReference
-	(*kubernetes.KubernetesGatewayApiBackendObjectReference)(nil), // 14: dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference
-	(*kubernetes.KubernetesGatewayApiFraction)(nil),               // 15: dev.planton.provider.kubernetes.KubernetesGatewayApiFraction
+	(*v1.StringValueOrRef)(nil),                                   // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesGatewayApiParentReference)(nil),        // 11: dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
+	(*kubernetes.KubernetesGatewayApiLocalObjectReference)(nil),   // 12: dev.planton.provider.kubernetes.KubernetesGatewayApiLocalObjectReference
+	(*kubernetes.KubernetesGatewayApiBackendObjectReference)(nil), // 13: dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference
+	(*kubernetes.KubernetesGatewayApiFraction)(nil),               // 14: dev.planton.provider.kubernetes.KubernetesGatewayApiFraction
 }
 var file_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto_depIdxs = []int32{
-	10, // 0: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	11, // 1: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 2: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteSpec.parent_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
-	1,  // 3: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteSpec.rules:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRule
-	2,  // 4: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRule.matches:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteMatch
-	5,  // 5: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRule.filters:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter
-	9,  // 6: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRule.backend_refs:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteBackendRef
-	3,  // 7: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteMatch.method:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteMethodMatch
-	4,  // 8: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteMatch.headers:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeaderMatch
-	6,  // 9: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter.request_header_modifier:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeaderFilter
-	6,  // 10: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter.response_header_modifier:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeaderFilter
-	8,  // 11: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter.request_mirror:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRequestMirrorFilter
-	13, // 12: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter.extension_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiLocalObjectReference
-	7,  // 13: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeaderFilter.set:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeader
-	7,  // 14: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeaderFilter.add:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeader
-	14, // 15: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRequestMirrorFilter.backend_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference
-	15, // 16: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRequestMirrorFilter.fraction:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiFraction
-	5,  // 17: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteBackendRef.filters:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	10, // 0: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 1: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteSpec.parent_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
+	1,  // 2: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteSpec.rules:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRule
+	2,  // 3: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRule.matches:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteMatch
+	5,  // 4: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRule.filters:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter
+	9,  // 5: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRule.backend_refs:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteBackendRef
+	3,  // 6: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteMatch.method:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteMethodMatch
+	4,  // 7: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteMatch.headers:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeaderMatch
+	6,  // 8: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter.request_header_modifier:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeaderFilter
+	6,  // 9: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter.response_header_modifier:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeaderFilter
+	8,  // 10: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter.request_mirror:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRequestMirrorFilter
+	12, // 11: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter.extension_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiLocalObjectReference
+	7,  // 12: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeaderFilter.set:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeader
+	7,  // 13: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeaderFilter.add:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeader
+	13, // 14: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRequestMirrorFilter.backend_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference
+	14, // 15: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRequestMirrorFilter.fraction:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiFraction
+	5,  // 16: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteBackendRef.filters:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto_init() }

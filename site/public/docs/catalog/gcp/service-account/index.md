@@ -35,7 +35,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpServiceAccount
 metadata:
   name: my-app-sa
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -82,7 +82,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpServiceAccount
 metadata:
   name: backend-worker
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -104,7 +104,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpServiceAccount
 metadata:
   name: ci-deployer
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -128,7 +128,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpServiceAccount
 metadata:
   name: org-auditor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -153,7 +153,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpServiceAccount
 metadata:
   name: app-runtime
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

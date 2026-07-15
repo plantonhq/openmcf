@@ -33,7 +33,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciFunctionsApplication
 metadata:
   name: my-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -105,7 +105,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciFunctionsApplication
 metadata:
   name: my-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -126,7 +126,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciFunctionsApplication
 metadata:
   name: arm-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -162,7 +162,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciFunctionsApplication
 metadata:
   name: secure-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -191,7 +191,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciFunctionsApplication
 metadata:
   name: traced-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -32,7 +32,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureServicePlan
 metadata:
   name: my-plan
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -94,7 +94,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureServicePlan
 metadata:
   name: dev-functions
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -115,7 +115,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureServicePlan
 metadata:
   name: prod-web
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -138,7 +138,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureServicePlan
 metadata:
   name: events-plan
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -160,7 +160,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureServicePlan
 metadata:
   name: ref-plan
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

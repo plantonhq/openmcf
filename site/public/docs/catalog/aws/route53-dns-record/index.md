@@ -38,7 +38,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53DnsRecord
 metadata:
   name: www-example
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -114,7 +114,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53DnsRecord
 metadata:
   name: api-example
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -139,7 +139,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53DnsRecord
 metadata:
   name: apex-example
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -166,7 +166,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53DnsRecord
 metadata:
   name: app-alias
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -198,7 +198,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53DnsRecord
 metadata:
   name: api-stable
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -224,7 +224,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53DnsRecord
 metadata:
   name: api-canary
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -255,7 +255,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53DnsRecord
 metadata:
   name: app-primary
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -287,7 +287,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53DnsRecord
 metadata:
   name: app-secondary
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

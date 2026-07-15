@@ -25,7 +25,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKinesisStreamConsumer
 metadata:
   name: my-consumer
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -72,7 +72,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKinesisStreamConsumer
 metadata:
   name: dashboard-consumer
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKinesisStreamConsumer
 metadata:
   name: analytics-consumer
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

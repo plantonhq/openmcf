@@ -36,7 +36,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsStepFunction
 metadata:
   name: my-step-function
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -95,7 +95,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsStepFunction
 metadata:
   name: order-processor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -132,7 +132,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsStepFunction
 metadata:
   name: event-ingest
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -175,7 +175,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsStepFunction
 metadata:
   name: payment-workflow
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -217,7 +217,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsStepFunction
 metadata:
   name: ref-step-function
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

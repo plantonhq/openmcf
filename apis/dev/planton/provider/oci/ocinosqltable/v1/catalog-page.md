@@ -24,7 +24,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNosqlTable
 metadata:
   name: my-nosql-table
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -108,7 +108,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNosqlTable
 metadata:
   name: dev-kv
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -138,7 +138,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNosqlTable
 metadata:
   name: events-table
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -176,7 +176,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNosqlTable
 metadata:
   name: orders-table
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -221,7 +221,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNosqlTable
 metadata:
   name: ref-nosql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

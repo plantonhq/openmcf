@@ -40,7 +40,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTektonOperator
 metadata:
   name: my-tekton-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -79,8 +79,6 @@ This installs the Tekton Operator (default version v0.78.0), which in turn deplo
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `operatorVersion` | `string` | `v0.78.0` | Version of the Tekton Operator to deploy. Maps to releases at https://github.com/tektoncd/operator/releases. |
 | `components.pipelines` | `bool` | `false` | Enable Tekton Pipelines for running CI/CD pipelines. |
 | `components.triggers` | `bool` | `false` | Enable Tekton Triggers for event-driven pipeline execution via webhooks. |
@@ -100,7 +98,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTektonOperator
 metadata:
   name: ci-tekton-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -130,7 +128,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTektonOperator
 metadata:
   name: team-tekton-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -166,7 +164,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTektonOperator
 metadata:
   name: prod-tekton-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

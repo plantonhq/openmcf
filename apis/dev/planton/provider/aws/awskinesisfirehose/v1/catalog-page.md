@@ -38,7 +38,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKinesisFirehose
 metadata:
   name: my-firehose
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -263,7 +263,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKinesisFirehose
 metadata:
   name: data-lake-firehose
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -290,7 +290,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKinesisFirehose
 metadata:
   name: log-analytics-firehose
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -326,7 +326,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKinesisFirehose
 metadata:
   name: analytics-parquet-firehose
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -382,7 +382,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKinesisFirehose
 metadata:
   name: snowflake-streaming-firehose
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

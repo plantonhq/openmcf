@@ -34,7 +34,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbCluster
 metadata:
   name: my-memorydb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -114,7 +114,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbCluster
 metadata:
   name: dev-memorydb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -139,7 +139,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbCluster
 metadata:
   name: session-store
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -180,7 +180,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbCluster
 metadata:
   name: analytics-store
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

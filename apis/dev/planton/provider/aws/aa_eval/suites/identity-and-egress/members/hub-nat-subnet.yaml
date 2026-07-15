@@ -1,0 +1,26 @@
+# The subnet that hosts the NAT gateway: a bare one-resource instance (no
+# inline routes, so the module creates no route table). Its job in the
+# exam is to be the target of the NAT gateway's subnet_id edge.
+apiVersion: aws.planton.dev/v1
+kind: AwsSubnet
+metadata:
+  name: hub-nat-subnet
+  id: hub-nat-subnet
+  org: planton-oss
+  env: ops
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssubnet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: hub-vpc
+      fieldPath: status.outputs.vpc_id
+  availabilityZone: us-west-2a
+  cidrBlock: 10.30.0.0/24

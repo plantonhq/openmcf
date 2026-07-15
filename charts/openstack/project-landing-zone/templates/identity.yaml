@@ -3,7 +3,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackProject
 metadata:
   name: "{{ values.env }}-project"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   description: "{{ values.project_description }}"
@@ -12,7 +12,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRoleAssignment
 metadata:
   name: "{{ values.env }}-admin-role"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   roleId: "{{ values.admin_role_id }}"

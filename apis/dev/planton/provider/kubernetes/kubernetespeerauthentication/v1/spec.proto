@@ -4,7 +4,6 @@ package dev.planton.provider.kubernetes.kubernetespeerauthentication.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/istio_api.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // KubernetesPeerAuthenticationSpec defines an Istio PeerAuthentication: a
@@ -14,7 +13,7 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // 100% fidelity with the upstream istio.io/api PeerAuthentication
 // (security/v1beta1/peer_authentication.proto, served as security.istio.io/v1),
 // pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened
-// directly after the Planton namespaced envelope (target_cluster, namespace);
+// directly after the Planton namespaced envelope (namespace);
 // there is no nested `peer_authentication` sub-message.
 //
 // Scope semantics (upstream): if `selector` is omitted the policy applies to all
@@ -22,11 +21,6 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // it a mesh-wide default. `port_level_mtls` only takes effect when a selector is
 // present (enforced below).
 message KubernetesPeerAuthenticationSpec {
-  // Target Kubernetes cluster where this PeerAuthentication is created. The Istio
-  // CRDs (KubernetesIstioBaseCrds) must already be present on the cluster; the
-  // policy is only enforced where istiod (the Istio control plane) is running.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // Namespace in which the PeerAuthentication is created. The policy's scope is
   // this namespace (or mesh-wide if this is the Istio root namespace and no
   // selector is set).

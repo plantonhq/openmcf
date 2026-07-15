@@ -27,7 +27,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNetworkLoadBalancer
 metadata:
   name: my-nlb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -167,7 +167,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNetworkLoadBalancer
 metadata:
   name: web-nlb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -206,7 +206,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNetworkLoadBalancer
 metadata:
   name: internal-nlb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform
@@ -272,7 +272,7 @@ metadata:
   name: fw-nlb
   org: acme
   env: prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: security
@@ -317,7 +317,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNetworkLoadBalancer
 metadata:
   name: dns-nlb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform

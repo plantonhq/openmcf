@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package dev.planton.iac.componentimportmap.v1;
+
+// ComponentImportMapSpec declares where the values in a component's import
+// IDs come from. The provider-tier ProviderImportCatalog owns the ID FORMAT
+// per resource type ("{bucket}", "{vpc_id}_{association_id}"); this map owns
+// the VALUE SOURCE per placeholder for one component -- which spec field,
+// ARN part, or discovered attribute supplies it, or what to ask the user
+// when nothing can derive it.
+//
+// Addresses are never authored here: the engine enumerates real addresses
+// per spec at import time (a read-only preview lists them), so constructed
+// names, repeated resources, and conditional resources are handled by
+// construction.
+message ComponentImportMapSpec {
+  repeated ImportValue values = 1;
+}
+
+// ImportValue defines one named placeholder the provider-tier ID formats
+// reference, with its ordered derivations.
+message ImportValue {
+  // The placeholder name as it appears in id_format templates (without
+  // braces), e.g. "bucket", "vpc_id".
+  string name = 1;
+  // Ordered derivations; the first one that resolves wins. When none
+  // resolves (or the list is empty) the user is asked, guided by
+  // where_to_find.
+  repeated ImportValueDerivation derivations = 2;
+  // Exactly where a user finds this value in the provider's console/CLI --
+  // shown whenever the platform must ask instead of derive.
+  string where_to_find = 3;
+}
+
+// ImportValueDerivation is a single way to derive a placeholder value
+// without asking the user.
+message ImportValueDerivation {
+  oneof source {
+    // The value is the resource's metadata.name (modules that name their
+    // cloud resource after the Planton resource).
+    bool from_metadata_name = 1;
+    // Dot path to a spec field (proto field names), e.g. "repository_name".
+    string from_spec_field = 2;
+    // A stack output key (e.g. "vpc_id") -- resolvable when the resource
+    // was previously deployed or refreshed by this platform.
+    string from_stack_output = 3;
+    // A part of a pasted AWS ARN: "resource_id" | "resource_name" |
+    // "account_id" | "region" | "arn" (the full ARN as pasted, for
+    // resource types whose import ID IS the ARN). One pasted ARN can feed
+    // several values.
+    string from_arn_part = 4;
+    // The enumerated address's own instance key (the ["..."] suffix on a
+    // for_each resource). For repeated resources the module keys instances
+    // by exactly the discriminator the import ID needs (e.g. an S3
+    // intelligent-tiering configuration's name), so the address carries it.
+    bool from_address_key = 5;
+  }
+}

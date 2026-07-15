@@ -35,7 +35,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayServerlessContainer
 metadata:
   name: my-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayServerlessContainer
 metadata:
   name: order-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -149,7 +149,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayServerlessContainer
 metadata:
   name: inference-grpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -197,7 +197,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayServerlessContainer
 metadata:
   name: data-pipeline
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

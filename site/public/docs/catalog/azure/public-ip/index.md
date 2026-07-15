@@ -33,7 +33,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePublicIp
 metadata:
   name: my-pip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -81,7 +81,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePublicIp
 metadata:
   name: dev-pip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -101,7 +101,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePublicIp
 metadata:
   name: api-pip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -124,7 +124,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePublicIp
 metadata:
   name: prod-lb-pip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -150,7 +150,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePublicIp
 metadata:
   name: ref-pip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -45,7 +45,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKafka
 metadata:
   name: my-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -75,8 +75,6 @@ This creates a single-broker Kafka cluster with a single Zookeeper node, 1Gi per
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `kafkaTopics` | `list` | `[]` | List of Kafka topics to create. Each entry accepts `name`, `partitions`, `replicas`, and `config`. |
 | `kafkaTopics[].name` | `string` | — | Topic name. Must be 1-249 characters, start and end with an alphanumeric character, and contain only alphanumerics, `.`, `_`, or `-`. |
@@ -116,7 +114,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKafka
 metadata:
   name: dev-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -158,7 +156,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKafka
 metadata:
   name: prod-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -225,7 +223,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKafka
 metadata:
   name: shared-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

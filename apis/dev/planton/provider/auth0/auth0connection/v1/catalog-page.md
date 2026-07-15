@@ -26,7 +26,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Connection
 metadata:
   name: user-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -161,7 +161,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Connection
 metadata:
   name: app-users
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -192,7 +192,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Connection
 metadata:
   name: google-social
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -222,7 +222,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Connection
 metadata:
   name: corporate-sso
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -261,7 +261,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Connection
 metadata:
   name: azure-ad-sso
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

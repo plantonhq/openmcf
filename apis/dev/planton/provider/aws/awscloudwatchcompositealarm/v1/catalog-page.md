@@ -22,7 +22,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchCompositeAlarm
 metadata:
   name: shared-cause
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -71,7 +71,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchCompositeAlarm
 metadata:
   name: prod-api-paging
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform

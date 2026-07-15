@@ -29,7 +29,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
   name: my-mongodb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -59,8 +59,6 @@ This creates a single-replica MongoDB instance with persistence enabled, a 1Gi P
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `container.replicas` | `int32` | `1` | Number of MongoDB replica set members. |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for each MongoDB pod. |
@@ -84,7 +82,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
   name: dev-mongodb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +110,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
   name: prod-mongodb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -141,7 +139,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
   name: shared-mongodb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -173,7 +171,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
   name: app-mongodb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -36,7 +36,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsWafWebAcl
 metadata:
   name: my-web-acl
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -118,7 +118,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsWafWebAcl
 metadata:
   name: api-protection
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -155,7 +155,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsWafWebAcl
 metadata:
   name: geo-restricted
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -187,7 +187,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsWafWebAcl
 metadata:
   name: prod-waf
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

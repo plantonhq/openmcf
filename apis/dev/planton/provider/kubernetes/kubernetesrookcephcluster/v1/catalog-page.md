@@ -33,7 +33,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRookCephCluster
 metadata:
   name: my-ceph
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -139,7 +139,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRookCephCluster
 metadata:
   name: block-ceph
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -170,7 +170,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRookCephCluster
 metadata:
   name: prod-ceph
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -272,7 +272,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRookCephCluster
 metadata:
   name: targeted-ceph
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

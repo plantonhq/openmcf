@@ -15,15 +15,13 @@ import (
 
 // newPeerAuthManifest builds a KubernetesPeerAuthentication (a manifest-projection
 // kind) exercising: a flattened namespace foreign key, a multi-word nested key
-// (selector.match_labels -> selector.matchLabels), an enum-like string, and a
-// skipped orchestrator field (target_cluster).
+// (selector.match_labels -> selector.matchLabels), and an enum-like string.
 func newPeerAuthManifest() *peerauthv1.KubernetesPeerAuthentication {
 	return &peerauthv1.KubernetesPeerAuthentication{
 		ApiVersion: "kubernetes.planton.dev/v1",
 		Kind:       "KubernetesPeerAuthentication",
 		Metadata:   &shared.CloudResourceMetadata{Name: "pa-one"},
 		Spec: &peerauthv1.KubernetesPeerAuthenticationSpec{
-			TargetCluster: &kubernetes.KubernetesClusterSelector{ClusterName: "c1"},
 			Namespace: &foreignkeyv1.StringValueOrRef{
 				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "mesh-ns"},
 			},
@@ -55,11 +53,6 @@ func TestProtoToManifestTFVars_CamelCasePrunedAndFlattened(t *testing.T) {
 	}
 	if strings.Contains(got, `"value" = "mesh-ns"`) {
 		t.Errorf("namespace should not appear as a nested {value} object, got:\n%s", got)
-	}
-
-	// Orchestrator-only field is skipped.
-	if strings.Contains(got, "target_cluster") || strings.Contains(got, "targetCluster") {
-		t.Errorf("target_cluster must be skipped, got:\n%s", got)
 	}
 
 	// protojson omits unset fields, so the manifest carries no nulls -- this is

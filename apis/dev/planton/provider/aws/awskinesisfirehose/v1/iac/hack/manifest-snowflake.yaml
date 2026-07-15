@@ -5,7 +5,7 @@ metadata:
   org: test-org
   env: dev
   id: test-firehose-snowflake-dev
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: test-org
     pulumi.planton.dev/project: test-project

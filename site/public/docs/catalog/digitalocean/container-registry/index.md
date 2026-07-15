@@ -33,7 +33,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: my-registry
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -79,7 +79,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: dev-registry
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -99,7 +99,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: team-registry
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -119,7 +119,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: prod-registry
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -1,0 +1,24 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awskmskey
+spec:
+  # A KMS key's identity is the AWS-assigned key id (UUID) -- discoverable
+  # from a prior deploy's outputs or one pasted key ARN. Aliases import by
+  # their full "alias/..." name; the module keys each alias's for_each
+  # instance by exactly that name, so the enumerated address carries it.
+  values:
+    - name: kms_key_id
+      derivations:
+        - from_stack_output: key_id
+        - from_arn_part: resource_id
+      where_to_find: >-
+        KMS console -> Customer managed keys (the Key ID column), or
+        `aws kms list-keys` (KeyId).
+    - name: kms_alias_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        KMS console -> Customer managed keys -> <key> -> Aliases (each
+        alias, including the "alias/" prefix), or
+        `aws kms list-aliases --key-id <key-id>` (AliasName).

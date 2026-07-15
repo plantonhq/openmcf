@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "envpartition",
+    srcs = [
+        "doc.go",
+        "engine.go",
+        "rule.go",
+    ],
+    embedsrcs = ["default-rule.yaml"],
+    importpath = "github.com/plantonhq/planton/pkg/iac/envpartition",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//apis/dev/planton/iac/environmentpartitionrule/v1:environmentpartitionrule",
+        "//pkg/protobufyaml",
+        "@com_github_pkg_errors//:errors",
+    ],
+)
+
+go_test(
+    name = "envpartition_test",
+    srcs = ["engine_test.go"],
+    embed = [":envpartition"],
+    deps = ["//apis/dev/planton/iac/environmentpartitionrule/v1:environmentpartitionrule"],
+)

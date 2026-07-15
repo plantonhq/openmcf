@@ -38,7 +38,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
   name: my-app-pipeline
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -237,7 +237,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
   name: my-app-ci
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -299,7 +299,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
   name: my-service-deploy
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -363,7 +363,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
   name: my-lambda-deploy
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -414,7 +414,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
   name: prod-release-pipeline
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -520,7 +520,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
   name: ref-pipeline
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

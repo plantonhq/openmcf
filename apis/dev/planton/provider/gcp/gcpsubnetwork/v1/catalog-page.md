@@ -25,7 +25,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSubnetwork
 metadata:
   name: my-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -78,7 +78,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSubnetwork
 metadata:
   name: private-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -101,7 +101,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSubnetwork
 metadata:
   name: gke-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -129,7 +129,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSubnetwork
 metadata:
   name: ref-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

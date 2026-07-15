@@ -35,7 +35,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenBao
 metadata:
   name: my-openbao
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -101,7 +101,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenBao
 metadata:
   name: dev-openbao
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenBao
 metadata:
   name: prod-openbao
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -167,7 +167,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenBao
 metadata:
   name: full-openbao
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -211,7 +211,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenBao
 metadata:
   name: prod-openbao
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

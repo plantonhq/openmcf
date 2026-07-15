@@ -5,9 +5,9 @@ metadata:
   org: ${org}
   env: ${env}
   id: ${id}
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack: ${env}.AwsCognitoResourceServer.${name}
+    pulumi.planton.dev/stack.name: ${env}.AwsCognitoResourceServer.${name}
 spec:
   region: <aws-region>
   userPoolId:

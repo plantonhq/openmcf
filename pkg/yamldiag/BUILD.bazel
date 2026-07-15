@@ -1,0 +1,29 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "yamldiag",
+    srcs = [
+        "suggest.go",
+        "yamldiag.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/yamldiag",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//apis/dev/planton/shared/cloudresourcekind",
+        "//apis/dev/planton/shared/foreignkey/v1:foreignkey",
+        "//pkg/explain",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)
+
+go_test(
+    name = "yamldiag_test",
+    srcs = ["yamldiag_test.go"],
+    embed = [":yamldiag"],
+    deps = [
+        "//pkg/explain",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)

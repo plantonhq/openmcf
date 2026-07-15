@@ -27,7 +27,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSecurityGroup
 metadata:
   name: my-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSecurityGroup
 metadata:
   name: web-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -132,7 +132,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSecurityGroup
 metadata:
   name: bastion-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -166,7 +166,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSecurityGroup
 metadata:
   name: internal-svc-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -204,7 +204,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSecurityGroup
 metadata:
   name: db-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -238,7 +238,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSecurityGroup
 metadata:
   name: ref-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -3,7 +3,6 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetessecret.v1;
 
 import "buf/validate/validate.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/options/options.proto";
 
 /**
@@ -15,9 +14,6 @@ import "dev/planton/shared/options/options.proto";
  * with type-specific fields and validations for each variant.
  */
 message KubernetesSecretSpec {
-  // The Kubernetes cluster in which the secret should be created.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   /**
    * The name of the Kubernetes Secret.
    * Must be a valid DNS subdomain name (lowercase alphanumeric, hyphens, and dots).

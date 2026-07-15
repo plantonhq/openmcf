@@ -23,7 +23,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoUserPoolClient
 metadata:
   name: web-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoUserPoolClient
 metadata:
   name: web-spa
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform
@@ -131,7 +131,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoUserPoolClient
 metadata:
   name: billing-service
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform

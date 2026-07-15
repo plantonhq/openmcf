@@ -30,7 +30,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEfsAccessPoint
 metadata:
   name: app-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,7 +90,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEfsAccessPoint
 metadata:
   name: lambda-models
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

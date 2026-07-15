@@ -26,7 +26,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudVpc
 metadata:
   name: my-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -75,7 +75,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudVpc
 metadata:
   name: dev-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -97,7 +97,7 @@ metadata:
   name: prod-vpc
   org: my-org
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -123,7 +123,7 @@ kind: AliCloudVpc
 metadata:
   name: ipv6-vpc
   env: staging
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -3,7 +3,6 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetesissuer.v1;
 
 import "buf/validate/validate.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // KubernetesIssuerSpec defines configuration for a namespace-scoped cert-manager
@@ -23,9 +22,6 @@ message KubernetesIssuerSpec {
     message: "An issuer type must be selected -- choose 'ca' to sign certificates using a CA keypair from a Kubernetes Secret, or 'self_signed' for self-signed certificates used to bootstrap CA chains or for development"
     expression: "has(this.ca) || has(this.self_signed)"
   };
-
-  // Target Kubernetes cluster where cert-manager is installed.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
 
   // Namespace where the Issuer will be created.
   // The Issuer is namespace-scoped, so all Certificate resources that reference

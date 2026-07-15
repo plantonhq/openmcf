@@ -27,7 +27,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudRun
 metadata:
   name: my-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -103,7 +103,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudRun
 metadata:
   name: order-svc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -134,7 +134,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudRun
 metadata:
   name: web-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -171,7 +171,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudRun
 metadata:
   name: prod-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -220,7 +220,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudRun
 metadata:
   name: ref-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

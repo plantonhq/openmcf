@@ -9,7 +9,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	"google.golang.org/protobuf/proto"
 )
@@ -30,10 +29,6 @@ var _ = ginkgo.Describe("KubernetesNats Custom Validation Tests", func() {
 				Name: "nats-demo",
 			},
 			Spec: &KubernetesNatsSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: &foreignkeyv1.StringValueOrRef{
 					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 						Value: "nats-demo",
@@ -267,10 +262,6 @@ var _ = ginkgo.Describe("KubernetesNats Stream Configuration Tests", func() {
 				Name: "nats-streams-test",
 			},
 			Spec: &KubernetesNatsSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: &foreignkeyv1.StringValueOrRef{
 					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 						Value: "nats-streams",
@@ -469,10 +460,6 @@ var _ = ginkgo.Describe("KubernetesNats Real-World Configuration Tests", func() 
 					Env:  "gcp-dev",
 				},
 				Spec: &KubernetesNatsSpec{
-					TargetCluster: &kubernetes.KubernetesClusterSelector{
-						ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-						ClusterName: "gcp-dev-cluster",
-					},
 					Namespace: &foreignkeyv1.StringValueOrRef{
 						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 							Value: "planton-gcp-dev",

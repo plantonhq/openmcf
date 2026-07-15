@@ -47,7 +47,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHarbor
 metadata:
   name: my-harbor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -174,7 +174,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHarbor
 metadata:
   name: dev-harbor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -237,7 +237,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHarbor
 metadata:
   name: prod-harbor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -328,7 +328,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHarbor
 metadata:
   name: main-harbor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

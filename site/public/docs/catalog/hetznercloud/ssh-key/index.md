@@ -30,7 +30,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudSshKey
 metadata:
   name: deploy-key
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -70,7 +70,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudSshKey
 metadata:
   name: my-key
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -91,11 +91,12 @@ metadata:
   org: acme-corp
   env: production
   labels:
+    team: platform
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
     pulumi.planton.dev/stack.name: production.HetznerCloudSshKey.prod-deploy-key
-    team: platform
 spec:
   publicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIProdDeployKeyData deploy@acme-ci"
 ```
@@ -111,7 +112,7 @@ metadata:
   name: web-key
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
@@ -129,7 +130,7 @@ metadata:
   name: web-01
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure

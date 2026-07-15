@@ -58,10 +58,6 @@ var _ = ginkgo.Describe("KubernetesTelemetry Validation Tests", func() {
 				Name: "test-telemetry",
 			},
 			Spec: &KubernetesTelemetrySpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: literal("istio-system"),
 			},
 		}

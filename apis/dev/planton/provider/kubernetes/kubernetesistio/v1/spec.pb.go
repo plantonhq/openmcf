@@ -30,8 +30,6 @@ const (
 // It includes container specifications for resource allocation to the Istio control plane (istiod).
 type KubernetesIstioSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -83,13 +81,6 @@ func (x *KubernetesIstioSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesIstioSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesIstioSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesistio_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesIstioSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesIstioSpec) GetNamespace() *v1.StringValueOrRef {
@@ -171,9 +162,8 @@ var File_dev_planton_provider_kubernetes_kubernetesistio_v1_spec_proto protorefl
 
 const file_dev_planton_provider_kubernetes_kubernetesistio_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/kubernetes/kubernetesistio/v1/spec.proto\x122dev.planton.provider.kubernetes.kubernetesistio.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xdd\x03\n" +
-	"\x13KubernetesIstioSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"=dev/planton/provider/kubernetes/kubernetesistio/v1/spec.proto\x122dev.planton.provider.kubernetes.kubernetesistio.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfa\x02\n" +
+	"\x13KubernetesIstioSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12v\n" +
 	"\tcontainer\x18\x04 \x01(\v2P.dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12H\n" +
@@ -201,22 +191,20 @@ func file_dev_planton_provider_kubernetes_kubernetesistio_v1_spec_proto_rawDescG
 
 var file_dev_planton_provider_kubernetes_kubernetesistio_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_dev_planton_provider_kubernetes_kubernetesistio_v1_spec_proto_goTypes = []any{
-	(*KubernetesIstioSpec)(nil),                  // 0: dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpec
-	(*KubernetesIstioSpecContainer)(nil),         // 1: dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpecContainer
-	(*kubernetes.KubernetesClusterSelector)(nil), // 2: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),        // 4: dev.planton.provider.kubernetes.ContainerResources
+	(*KubernetesIstioSpec)(nil),           // 0: dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpec
+	(*KubernetesIstioSpecContainer)(nil),  // 1: dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpecContainer
+	(*v1.StringValueOrRef)(nil),           // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil), // 3: dev.planton.provider.kubernetes.ContainerResources
 }
 var file_dev_planton_provider_kubernetes_kubernetesistio_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	3, // 1: dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpecContainer
-	4, // 3: dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	2, // 0: dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpecContainer
+	3, // 2: dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesistio_v1_spec_proto_init() }

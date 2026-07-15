@@ -234,10 +234,41 @@ func (x *KubernetesProviderConfigGcpGke) GetServiceAccountKey() string {
 	return ""
 }
 
-// KubernetesProviderConfigAwsEks message represents the specification required to connect to a Elastic Kubernetes Service (EKS) cluster.
-// This message consolidates the necessary input parameters for establishing a secure connection with a EKS cluster.
+// KubernetesProviderConfigAwsEks contains the connection parameters for an Amazon Elastic
+// Kubernetes Service (EKS) cluster.
+//
+// EKS has no long-lived bearer credential: API-server tokens are presigned STS
+// GetCallerIdentity URLs that expire within ~15 minutes and are validated per request.
+// This config therefore carries the cluster identity as plain values plus the AWS
+// credentials used to mint those tokens on demand. The caller (a deploy engine or an
+// in-process Kubernetes client) exchanges the AWS credentials for a fresh EKS token
+// whenever one is needed; the token itself is never stored here.
 type KubernetesProviderConfigAwsEks struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The EKS cluster name. Bound into every minted token via the x-k8s-aws-id signed
+	// header, which is how the cluster's API server ties the token to itself.
+	ClusterName string `protobuf:"bytes,1,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
+	// The cluster API server endpoint URL.
+	ClusterEndpoint string `protobuf:"bytes,2,opt,name=cluster_endpoint,json=clusterEndpoint,proto3" json:"cluster_endpoint,omitempty"`
+	// Base64-encoded cluster Certificate Authority (CA) certificate.
+	// This is the standard kubeconfig CA data format.
+	ClusterCaData string `protobuf:"bytes,3,opt,name=cluster_ca_data,json=clusterCaData,proto3" json:"cluster_ca_data,omitempty"`
+	// The AWS region hosting the cluster. Token minting signs against this region's
+	// STS endpoint, so it is required even though the endpoint URL implies it.
+	Region string `protobuf:"bytes,4,opt,name=region,proto3" json:"region,omitempty"`
+	// The AWS Access Key ID used to mint EKS tokens. Optional: when the static key
+	// fields are empty, tokens are minted from the ambient AWS credential chain of the
+	// process (shared config profile, environment, or instance role). When present, it
+	// must start with 'AKIA' (long-term) or 'ASIA' (temporary) followed by 16
+	// alphanumeric characters; the format rules are skipped when the field is empty.
+	AccessKeyId string `protobuf:"bytes,5,opt,name=access_key_id,json=accessKeyId,proto3" json:"access_key_id,omitempty"`
+	// The AWS Secret Access Key paired with access_key_id. Optional (see access_key_id);
+	// when present it must be exactly 40 characters of numbers, letters, slashes (/),
+	// and plus signs (+). The format rule is skipped when the field is empty.
+	SecretAccessKey string `protobuf:"bytes,6,opt,name=secret_access_key,json=secretAccessKey,proto3" json:"secret_access_key,omitempty"`
+	// The AWS Session Token, required when access_key_id carries temporary security
+	// credentials (an 'ASIA' key from an STS exchange). Empty for long-term keys.
+	SessionToken  string `protobuf:"bytes,7,opt,name=session_token,json=sessionToken,proto3" json:"session_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -270,6 +301,55 @@ func (x *KubernetesProviderConfigAwsEks) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesProviderConfigAwsEks.ProtoReflect.Descriptor instead.
 func (*KubernetesProviderConfigAwsEks) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_provider_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *KubernetesProviderConfigAwsEks) GetClusterName() string {
+	if x != nil {
+		return x.ClusterName
+	}
+	return ""
+}
+
+func (x *KubernetesProviderConfigAwsEks) GetClusterEndpoint() string {
+	if x != nil {
+		return x.ClusterEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesProviderConfigAwsEks) GetClusterCaData() string {
+	if x != nil {
+		return x.ClusterCaData
+	}
+	return ""
+}
+
+func (x *KubernetesProviderConfigAwsEks) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+func (x *KubernetesProviderConfigAwsEks) GetAccessKeyId() string {
+	if x != nil {
+		return x.AccessKeyId
+	}
+	return ""
+}
+
+func (x *KubernetesProviderConfigAwsEks) GetSecretAccessKey() string {
+	if x != nil {
+		return x.SecretAccessKey
+	}
+	return ""
+}
+
+func (x *KubernetesProviderConfigAwsEks) GetSessionToken() string {
+	if x != nil {
+		return x.SessionToken
+	}
+	return ""
 }
 
 // KubernetesProviderConfigAzureEks message represents the specification required to connect to a Azure Kubernetes Service (AKS) cluster.
@@ -369,8 +449,18 @@ const file_dev_planton_provider_kubernetes_provider_proto_rawDesc = "" +
 	"\x1eKubernetesProviderConfigGcpGke\x121\n" +
 	"\x10cluster_endpoint\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fclusterEndpoint\x12.\n" +
 	"\x0fcluster_ca_data\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rclusterCaData\x126\n" +
-	"\x13service_account_key\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11serviceAccountKey\" \n" +
-	"\x1eKubernetesProviderConfigAwsEks\"\"\n" +
+	"\x13service_account_key\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11serviceAccountKey\"\xb7\x06\n" +
+	"\x1eKubernetesProviderConfigAwsEks\x12)\n" +
+	"\fcluster_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vclusterName\x121\n" +
+	"\x10cluster_endpoint\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fclusterEndpoint\x12.\n" +
+	"\x0fcluster_ca_data\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rclusterCaData\x12\x1e\n" +
+	"\x06region\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12\xd2\x02\n" +
+	"\raccess_key_id\x18\x05 \x01(\tB\xad\x02\xbaH\xa9\x02\xba\x01\x80\x01\n" +
+	"'kubernetes.aws_eks.access_key_id.prefix\x128Must start with 'AKIA' (long-term) or 'ASIA' (temporary)\x1a\x1bthis.matches('^A(K|S)IA.*')\xba\x01\x99\x01\n" +
+	"'kubernetes.aws_eks.access_key_id.format\x12GMust start with 'AKIA' or 'ASIA' followed by 16 alphanumeric characters\x1a%this.matches('^.{4}[a-zA-Z0-9]{16}$')\xd8\x01\x01r\x03\x98\x01\x14R\vaccessKeyId\x12\xec\x01\n" +
+	"\x11secret_access_key\x18\x06 \x01(\tB\xbf\x01\xbaH\xbb\x01\xba\x01\xaf\x01\n" +
+	"$kubernetes.aws_eks.secret_access_key\x12bMust contain exactly 40 characters consisting of numbers, letters, slashes (/), and plus signs (+)\x1a#this.matches('^[0-9a-zA-Z/+]{40}$')\xd8\x01\x01r\x03\x98\x01(R\x0fsecretAccessKey\x12#\n" +
+	"\rsession_token\x18\a \x01(\tR\fsessionToken\"\"\n" +
 	" KubernetesProviderConfigAzureAks\"S\n" +
 	"(KubernetesProviderConfigDigitalOceanDoks\x12'\n" +
 	"\vkube_config\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +

@@ -46,8 +46,6 @@ The following key inputs are supported by the module from the `KeycloakKubernete
 
 ```yaml
 spec:
-  target_cluster:
-    cluster_name: "prod-gke"
   namespace:
     value: "auth-keycloak"
   create_namespace: true
@@ -65,8 +63,6 @@ spec:
 
 ```yaml
 spec:
-  target_cluster:
-    cluster_name: "prod-gke"
   namespace:
     value: "shared-auth"
   create_namespace: false  # Assumes 'shared-auth' namespace already exists

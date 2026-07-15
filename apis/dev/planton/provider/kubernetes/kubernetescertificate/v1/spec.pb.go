@@ -8,7 +8,6 @@ package kubernetescertificatev1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -187,8 +186,6 @@ func (CertificatePrivateKey_PrivateKeyRotationPolicy) EnumDescriptor() ([]byte, 
 // Secret directly.
 type KubernetesCertificateSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster where cert-manager is installed.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace where the Certificate resource will be created.
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// DNS Subject Alternative Names. At least one required.
@@ -237,13 +234,6 @@ func (x *KubernetesCertificateSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesCertificateSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesCertificateSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesCertificateSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesCertificateSpec) GetNamespace() *v1.StringValueOrRef {
@@ -602,9 +592,8 @@ var File_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto pro
 
 const file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kubernetescertificate/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertificate.v1\x1a\x1bbuf/validate/validate.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xde\x05\n" +
-	"\x19KubernetesCertificateSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Cdev/planton/provider/kubernetes/kubernetescertificate/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertificate.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfb\x04\n" +
+	"\x19KubernetesCertificateSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12%\n" +
 	"\tdns_names\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\bdnsNames\x12'\n" +
 	"\vsecret_name\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
@@ -682,27 +671,25 @@ var file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_goT
 	(*NamespacedIssuerRef)(nil),                         // 6: dev.planton.provider.kubernetes.kubernetescertificate.v1.NamespacedIssuerRef
 	(*CertificateDuration)(nil),                         // 7: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateDuration
 	(*CertificatePrivateKey)(nil),                       // 8: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey
-	(*kubernetes.KubernetesClusterSelector)(nil),        // 9: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                         // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*v1.StringValueOrRef)(nil),                         // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_depIdxs = []int32{
-	9,  // 0: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	10, // 1: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 2: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.issuer_ref:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateIssuerRef
-	7,  // 3: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.duration_config:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateDuration
-	8,  // 4: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.private_key:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey
-	5,  // 5: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateIssuerRef.cluster_issuer:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.ClusterIssuerRef
-	6,  // 6: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateIssuerRef.issuer:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.NamespacedIssuerRef
-	10, // 7: dev.planton.provider.kubernetes.kubernetescertificate.v1.ClusterIssuerRef.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 8: dev.planton.provider.kubernetes.kubernetescertificate.v1.NamespacedIssuerRef.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0,  // 9: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.algorithm:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyAlgorithm
-	1,  // 10: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.encoding:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyEncoding
-	2,  // 11: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.rotation_policy:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyRotationPolicy
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	9,  // 0: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 1: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.issuer_ref:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateIssuerRef
+	7,  // 2: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.duration_config:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateDuration
+	8,  // 3: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.private_key:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey
+	5,  // 4: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateIssuerRef.cluster_issuer:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.ClusterIssuerRef
+	6,  // 5: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateIssuerRef.issuer:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.NamespacedIssuerRef
+	9,  // 6: dev.planton.provider.kubernetes.kubernetescertificate.v1.ClusterIssuerRef.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 7: dev.planton.provider.kubernetes.kubernetescertificate.v1.NamespacedIssuerRef.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 8: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.algorithm:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyAlgorithm
+	1,  // 9: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.encoding:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyEncoding
+	2,  // 10: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.rotation_policy:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyRotationPolicy
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_init() }

@@ -130,6 +130,7 @@ import (
 	awsneptuneclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsneptunecluster/v1"
 	awsnlbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsnlb/v1"
 	awsopensearchdomainv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsopensearchdomain/v1"
+	awsplantonrunnerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsplantonrunner/v1"
 	awsrdsclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrdscluster/v1"
 	awsrdsinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrdsinstance/v1"
 	awsrediselasticachev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrediselasticache/v1"
@@ -606,6 +607,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsNeptuneCluster:                      &awsneptuneclusterv1.AwsNeptuneCluster{},
 	cloudresourcekind.CloudResourceKind_AwsNlb:                                 &awsnlbv1.AwsNlb{},
 	cloudresourcekind.CloudResourceKind_AwsOpenSearchDomain:                    &awsopensearchdomainv1.AwsOpenSearchDomain{},
+	cloudresourcekind.CloudResourceKind_AwsPlantonRunner:                       &awsplantonrunnerv1.AwsPlantonRunner{},
 	cloudresourcekind.CloudResourceKind_AwsRdsCluster:                          &awsrdsclusterv1.AwsRdsCluster{},
 	cloudresourcekind.CloudResourceKind_AwsRdsInstance:                         &awsrdsinstancev1.AwsRdsInstance{},
 	cloudresourcekind.CloudResourceKind_AwsRedisElasticache:                    &awsrediselasticachev1.AwsRedisElasticache{},

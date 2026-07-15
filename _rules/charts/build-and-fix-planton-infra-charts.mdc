@@ -40,7 +40,6 @@ These paths are always available on this machine:
 | InfraCharts | `~/scm/github.com/plantonhq/planton/charts` |
 | Provider proto specs | `~/scm/github.com/plantonhq/planton/apis/dev/planton/provider/<provider>/<kind>/v1/spec.proto` |
 | Shared relationship proto | `~/scm/github.com/plantonhq/planton/apis/dev/planton/shared/relationship/v1/relationship.proto` |
-| K8s cluster selector proto | `~/scm/github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/target_cluster.proto` |
 | CloudResourceKind enum | `~/scm/github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto` |
 
 **Proto path convention**: For a resource kind like `AwsS3Bucket`, the spec lives at:
@@ -196,18 +195,16 @@ container:
 **Extra message wrapper that doesn't exist in the proto:**
 The template nests fields inside a wrapper message that the proto doesn't define. Flatten the children up one level.
 ```yaml
-# Wrong — targetCluster IS a KubernetesClusterSelector directly
+# Wrong — namespace IS a StringValueOrRef directly
 spec:
-  targetCluster:
-    kubernetesClusterSelector:
-      clusterKind: AwsEksCluster
-      clusterName: my-cluster
+  namespace:
+    stringValueOrRef:
+      value: cert-manager
 
 # Right
 spec:
-  targetCluster:
-    clusterKind: AwsEksCluster
-    clusterName: my-cluster
+  namespace:
+    value: cert-manager
 ```
 
 **Flat fields where template uses a nested block:**
@@ -246,15 +243,34 @@ spec:
 
 ### Shared Proto Structures
 
-Two proto definitions are used across every Kubernetes environment chart. Know them well:
+One proto definition is used across every Kubernetes environment chart. Know it well:
 
 **CloudResourceRelationship** (`relationship.proto`):
 Fields: `kind` (CloudResourceKind enum), `env` (string), `name` (string, required), `type` (RelationshipType: `depends_on`, `runs_on`, `managed_by`, `uses`).
-There is **no `group` field**.
+There is **no `group` field**. Kubernetes addon templates declare their cluster
+ordering with a `runs_on` relationship on the node-group (or cluster) resource;
+the Kubernetes provider connection carries the cluster identity, so specs have
+no cluster field.
 
-**KubernetesClusterSelector** (`target_cluster.proto`):
-Fields: `cluster_kind` (CloudResourceKind enum), `cluster_name` (string).
-This is the type of `targetCluster` on Kubernetes addon specs — there is no nested `kubernetesClusterSelector` wrapper inside it.
+### Platform-Behavior Annotations
+
+`metadata.annotations` is the home for platform-behavior signals on chart
+manifests (`metadata.labels` is strictly user metadata that becomes cloud
+tags). Two conventions matter for cluster-composing charts:
+
+- **`planton.dev/connection` on Kubernetes-provider addons.** The value is
+  the org-scoped Kubernetes connection slug. When the chart also deploys the
+  cluster, the platform publishes that cluster's connection at the
+  env-qualified slug `<env>-<cluster resource name>` — so addons template
+  `planton.dev/connection: "{{ values.env }}-{{ values.cluster_name }}"`
+  and the chart names the cluster resource WITHOUT an env prefix (the
+  qualification lives on the connection, not the resource).
+- **`planton.dev/runner` on cluster resources.** The value names the
+  sibling in-VPC runner RESOURCE (its `metadata.name`, same environment) —
+  never a registration slug. Charts with a private-endpoint variant include
+  the runner appliance node plus a security group admitting it (443) at the
+  cluster's API endpoint, referenced from the cluster's additional
+  security-group ids so ordering and teardown are structural.
 
 ## Phase 4: Decision Framework
 

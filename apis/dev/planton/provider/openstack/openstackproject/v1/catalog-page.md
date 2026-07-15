@@ -22,10 +22,16 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackProject
 metadata:
   name: my-project
-  labels:
-    planton.dev/provisioner: pulumi
+  annotations:
+    planton.dev/stack.jobId: prod.OpenstackProject.backend-team
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1/iac/pulumi/module
+    planton.dev/stack.jobId: staging.OpenstackProject.engineering
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1/iac/pulumi/module
+    planton.dev/stack.jobId: dev.OpenstackProject.dev-team
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackProject.my-project
     planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1/iac/pulumi/module
+    planton.dev/provisioner: pulumi
 spec: {}
 ```
 
@@ -65,10 +71,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackProject
 metadata:
   name: dev-team
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: dev.OpenstackProject.dev-team
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1/iac/pulumi/module
 spec:
   description: Development team project
 ```
@@ -82,10 +86,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackProject
 metadata:
   name: engineering
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: staging.OpenstackProject.engineering
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1/iac/pulumi/module
 spec:
   description: Engineering department project
   domainId: abcdef12-3456-7890-abcd-ef1234567890
@@ -103,10 +105,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackProject
 metadata:
   name: backend-team
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackProject.backend-team
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1/iac/pulumi/module
 spec:
   description: Backend team project under engineering
   parentId: 12345678-abcd-ef01-2345-678901abcdef

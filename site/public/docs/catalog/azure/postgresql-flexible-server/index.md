@@ -37,7 +37,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePostgresqlFlexibleServer
 metadata:
   name: my-pg-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePostgresqlFlexibleServer
 metadata:
   name: dev-pg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +143,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePostgresqlFlexibleServer
 metadata:
   name: prod-pg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -188,7 +188,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePostgresqlFlexibleServer
 metadata:
   name: private-pg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -219,7 +219,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePostgresqlFlexibleServer
 metadata:
   name: ref-pg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -259,7 +259,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePostgresqlFlexibleServer
 metadata:
   name: analytics-pg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

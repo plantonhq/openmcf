@@ -24,7 +24,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciKmsVault
 metadata:
   name: my-vault
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -86,7 +86,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciKmsVault
 metadata:
   name: shared-vault
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -106,7 +106,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciKmsVault
 metadata:
   name: dedicated-vault
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -130,7 +130,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciKmsVault
 metadata:
   name: external-vault
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

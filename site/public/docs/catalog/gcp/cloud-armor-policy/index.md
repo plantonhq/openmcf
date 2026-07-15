@@ -36,7 +36,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudArmorPolicy
 metadata:
   name: my-waf-policy
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudArmorPolicy
 metadata:
   name: geo-blocking
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -169,7 +169,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudArmorPolicy
 metadata:
   name: api-rate-limit
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -209,7 +209,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudArmorPolicy
 metadata:
   name: prod-waf
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

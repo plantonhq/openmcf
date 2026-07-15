@@ -1,0 +1,50 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsdynamodb
+spec:
+  # The module names the table after the Planton resource (locals.tf:
+  # table_name = var.metadata.name), so the table imports with zero user
+  # input. The satellites ride the table's identity: the resource policy
+  # by the table ARN, contributor insights by table name + (for GSI
+  # insights) the index name the module keys its for_each by, plus the
+  # account id -- an account-level fact one pasted ARN also carries.
+  values:
+    - name: table_name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: table_name
+      where_to_find: >-
+        DynamoDB console -> Tables (the table name), or
+        `aws dynamodb list-tables` (TableNames).
+    - name: table_arn
+      derivations:
+        - from_stack_output: table_arn
+        - from_arn_part: arn
+      where_to_find: >-
+        DynamoDB console -> Tables -> <table> -> Additional info (the ARN),
+        or `aws dynamodb describe-table --table-name <table>`
+        (Table.TableArn). Paste the full ARN.
+    - name: index_name
+      derivations:
+        # GSI-level contributor insights are keyed by the index name the
+        # module's for_each uses; table-level insights carry no index (the
+        # id_format marks the segment optional).
+        - from_address_key: true
+      where_to_find: >-
+        DynamoDB console -> Tables -> <table> -> Indexes (each global
+        secondary index's name).
+    - name: account_id
+      derivations:
+        - from_arn_part: account_id
+      where_to_find: >-
+        The 12-digit AWS account id that owns the table (top-right account
+        menu in the console, or `aws sts get-caller-identity`). Pasting the
+        table ARN also supplies it.
+    - name: kinesis_stream_arn
+      derivations:
+        - from_spec_field: kinesis_streaming_destination.stream_arn.value
+      where_to_find: >-
+        Kinesis console -> Data streams -> <stream> (the ARN), or
+        `aws kinesis describe-stream-summary --stream-name <stream>`
+        (StreamARN).

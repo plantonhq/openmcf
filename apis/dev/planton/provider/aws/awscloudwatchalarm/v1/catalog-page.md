@@ -26,7 +26,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchAlarm
 metadata:
   name: cpu-high
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -135,7 +135,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchAlarm
 metadata:
   name: ec2-cpu-alarm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -167,7 +167,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchAlarm
 metadata:
   name: error-rate-alarm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -214,7 +214,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchAlarm
 metadata:
   name: sqs-depth-alarm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -266,7 +266,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchAlarm
 metadata:
   name: promql-cpu-saturation
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform

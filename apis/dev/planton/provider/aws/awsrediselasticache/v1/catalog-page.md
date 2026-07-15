@@ -27,7 +27,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRedisElasticache
 metadata:
   name: my-redis
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -127,7 +127,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRedisElasticache
 metadata:
   name: session-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -164,7 +164,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRedisElasticache
 metadata:
   name: analytics-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -210,7 +210,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRedisElasticache
 metadata:
   name: tiered-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

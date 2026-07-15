@@ -34,7 +34,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: my-fsx-lustre
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: batch-fsx
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -134,7 +134,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: ml-training-fsx
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -167,7 +167,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: datalake-fsx
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -199,7 +199,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: prod-fsx
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -239,7 +239,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: ref-fsx
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

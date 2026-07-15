@@ -37,7 +37,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpPubSubTopic
 metadata:
   name: my-topic
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -93,7 +93,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpPubSubTopic
 metadata:
   name: orders-topic
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -118,7 +118,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpPubSubTopic
 metadata:
   name: events-topic
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +143,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpPubSubTopic
 metadata:
   name: logs-ingest-topic
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -172,7 +172,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpPubSubTopic
 metadata:
   name: ref-topic
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

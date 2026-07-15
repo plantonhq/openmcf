@@ -49,10 +49,6 @@ var _ = ginkgo.Describe("KubernetesDestinationRule Validation Tests", func() {
 				Name: "test-destination-rule",
 			},
 			Spec: &KubernetesDestinationRuleSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: literal("default"),
 				Host:      "reviews.prod.svc.cluster.local",
 			},

@@ -15,7 +15,6 @@ func TestDefaultRules_ContainsExpectedEntries(t *testing.T) {
 	}{
 		{"dev.planton.shared.foreignkey.v1.StringValueOrRef", false, "string"},
 		{"dev.planton.shared.foreignkey.v1.ValueFromRef", true, ""},
-		{"dev.planton.provider.kubernetes.KubernetesClusterSelector", true, ""},
 		{"google.protobuf.Struct", false, "any"},
 		{"google.protobuf.Value", false, "any"},
 		{"google.protobuf.ListValue", false, "any"},

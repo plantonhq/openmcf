@@ -9,7 +9,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/pkg/iac/provisioner",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/iac/provisionerlabels",
+        "//pkg/iac/provisionerannotationkeys",
         "//pkg/reflection/metadatareflect",
         "@org_golang_google_protobuf//proto",
     ],

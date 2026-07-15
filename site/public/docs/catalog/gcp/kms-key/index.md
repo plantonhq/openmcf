@@ -32,7 +32,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKey
 metadata:
   name: my-cmek-key
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -83,7 +83,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKey
 metadata:
   name: compliance-cmek
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -108,7 +108,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKey
 metadata:
   name: artifact-signer
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKey
 metadata:
   name: composed-cmek
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

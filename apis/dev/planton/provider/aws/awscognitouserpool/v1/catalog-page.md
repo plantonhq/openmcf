@@ -29,7 +29,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoUserPool
 metadata:
   name: my-auth
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -186,7 +186,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoUserPool
 metadata:
   name: passwordless-auth
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform
@@ -221,7 +221,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoUserPool
 metadata:
   name: prod-auth
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform
@@ -269,7 +269,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsHttpApiGateway
 metadata:
   name: my-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform

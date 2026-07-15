@@ -32,7 +32,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalSecrets
 metadata:
   name: eso
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -107,7 +107,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalSecrets
 metadata:
   name: eso-gke
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -140,7 +140,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalSecrets
 metadata:
   name: eso-eks
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -172,7 +172,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalSecrets
 metadata:
   name: eso-aks
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -204,7 +204,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalSecrets
 metadata:
   name: eso-ref
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

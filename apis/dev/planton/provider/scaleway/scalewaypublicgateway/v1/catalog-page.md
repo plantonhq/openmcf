@@ -26,7 +26,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayPublicGateway
 metadata:
   name: my-gateway
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -84,7 +84,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayPublicGateway
 metadata:
   name: nat-gateway
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayPublicGateway
 metadata:
   name: bastion-gateway
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -136,7 +136,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayPublicGateway
 metadata:
   name: prod-gateway
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

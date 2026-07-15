@@ -963,7 +963,7 @@ const file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDesc = 
 	"\x06values\x18\x06 \x03(\tR\x06values\x12i\n" +
 	"\falias_target\x18\a \x01(\v2F.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTargetR\valiasTarget\x12o\n" +
 	"\x0erouting_policy\x18\b \x01(\v2H.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicyR\rroutingPolicy\x12\x83\x01\n" +
-	"\x0fhealth_check_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xe2\x02\x92\xd4a\x1estatus.outputs.health_check_idR\rhealthCheckId\x12/\n" +
+	"\x0fhealth_check_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xf8\x02\x92\xd4a\x1estatus.outputs.health_check_idR\rhealthCheckId\x12/\n" +
 	"\x0eset_identifier\x18\n" +
 	" \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\rsetIdentifier\x12'\n" +
 	"\x0fallow_overwrite\x18\v \x01(\bR\x0eallowOverwrite:\x87\b\xbaH\x83\b\x1a\xbc\x01\n" +

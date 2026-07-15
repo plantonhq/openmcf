@@ -9,8 +9,8 @@ metadata:
       name: "{{ values.node_pool_name }}"
       type: runs_on
 spec:
-  targetCluster:
-    clusterKind: AzureAksCluster
-    clusterName: "{{ values.env }}-{{ values.cluster_name }}"
+  namespace:
+    value: cert-manager
+  createNamespace: true
 {% endif %}
 

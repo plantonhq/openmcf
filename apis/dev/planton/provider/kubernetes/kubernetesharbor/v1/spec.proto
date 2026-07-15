@@ -4,7 +4,6 @@ package dev.planton.provider.kubernetes.kubernetesharbor.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 import "google/protobuf/descriptor.proto";
@@ -26,9 +25,6 @@ extend google.protobuf.FieldOptions {
  * deployment patterns from simple single-node installations to production-grade high-availability clusters.
  */
 message KubernetesHarborSpec {
-  // Target Kubernetes Cluster
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

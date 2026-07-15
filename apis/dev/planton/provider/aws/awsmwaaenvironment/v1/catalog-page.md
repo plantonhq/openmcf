@@ -26,7 +26,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMwaaEnvironment
 metadata:
   name: my-airflow
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -120,7 +120,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMwaaEnvironment
 metadata:
   name: dev-airflow
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -148,7 +148,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMwaaEnvironment
 metadata:
   name: prod-airflow
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -210,7 +210,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMwaaEnvironment
 metadata:
   name: team-airflow
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

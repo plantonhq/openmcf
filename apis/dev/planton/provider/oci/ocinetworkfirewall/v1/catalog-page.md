@@ -30,7 +30,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNetworkFirewall
 metadata:
   name: my-firewall
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -182,7 +182,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNetworkFirewall
 metadata:
   name: basic-fw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -220,7 +220,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNetworkFirewall
 metadata:
   name: web-fw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -295,7 +295,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciNetworkFirewall
 metadata:
   name: ids-fw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

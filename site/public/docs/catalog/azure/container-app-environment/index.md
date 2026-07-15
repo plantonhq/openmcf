@@ -36,7 +36,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerAppEnvironment
 metadata:
   name: my-env
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -86,7 +86,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerAppEnvironment
 metadata:
   name: dev-env
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -107,7 +107,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerAppEnvironment
 metadata:
   name: prod-env
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -130,7 +130,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerAppEnvironment
 metadata:
   name: internal-env
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -163,7 +163,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerAppEnvironment
 metadata:
   name: ref-env
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -1,0 +1,25 @@
+# The production network's internet gateway. Its VPC reference is a
+# value_from edge the scan can reconstruct only through the gateway's
+# attachment -- the same enrichment-driven inference the staples suite
+# proves, here amid two look-alike VPCs.
+apiVersion: aws.planton.dev/v1
+kind: AwsInternetGateway
+metadata:
+  name: orders-prod-igw
+  id: orders-prod-igw
+  org: planton-oss
+  env: prod
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsinternetgateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: orders-prod-vpc
+      fieldPath: status.outputs.vpc_id

@@ -34,7 +34,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudFunction
 metadata:
   name: hello-world
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -102,7 +102,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudFunction
 metadata:
   name: hello-world
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -124,7 +124,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudFunction
 metadata:
   name: api-handler
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -175,7 +175,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudFunction
 metadata:
   name: ml-inference
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -33,7 +33,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMskServerlessCluster
 metadata:
   name: my-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -81,7 +81,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMskServerlessCluster
 metadata:
   name: events-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

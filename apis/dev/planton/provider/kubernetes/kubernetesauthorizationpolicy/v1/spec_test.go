@@ -68,10 +68,6 @@ var _ = ginkgo.Describe("KubernetesAuthorizationPolicy Validation Tests", func()
 				Name: "test-authorization-policy",
 			},
 			Spec: &KubernetesAuthorizationPolicySpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: literal("default"),
 				Rules:     []*KubernetesAuthorizationPolicyRule{rule()},
 			},

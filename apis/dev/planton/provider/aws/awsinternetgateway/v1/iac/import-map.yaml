@@ -1,0 +1,16 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsinternetgateway
+spec:
+  # An internet gateway's identity is the AWS-assigned "igw-..." id --
+  # discoverable from a prior deploy's outputs or one pasted ARN, never
+  # derivable from the spec.
+  values:
+    - name: internet_gateway_id
+      derivations:
+        - from_stack_output: internet_gateway_id
+        - from_arn_part: resource_id
+      where_to_find: >-
+        VPC console -> Internet gateways (the Internet gateway ID column),
+        or `aws ec2 describe-internet-gateways` (InternetGatewayId).

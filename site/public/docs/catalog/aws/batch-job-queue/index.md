@@ -31,7 +31,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsBatchJobQueue
 metadata:
   name: etl-queue
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

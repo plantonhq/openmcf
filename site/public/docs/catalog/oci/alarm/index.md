@@ -32,7 +32,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciAlarm
 metadata:
   name: high-cpu
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -111,7 +111,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciAlarm
 metadata:
   name: high-cpu
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -140,7 +140,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciAlarm
 metadata:
   name: tiered-cpu
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -181,7 +181,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciAlarm
 metadata:
   name: adb-storage
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -211,7 +211,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciAlarm
 metadata:
   name: vcn-traffic-spike
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

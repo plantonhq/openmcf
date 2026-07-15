@@ -14,7 +14,7 @@ import (
 // manifest-projection tfvars, whose `spec` subtree is fed verbatim to a
 // kubernetes_manifest resource (whose JSON keys are the CRD's camelCase keys).
 // Either way, type rules act on message *type*, not key case, so flattening
-// (StringValueOrRef -> string) and skipping (KubernetesClusterSelector) behave
+// (StringValueOrRef -> string) and skipping (ValueFromRef) behave
 // identically under both.
 type flattenOpts struct {
 	preserveJSONNames bool

@@ -1,0 +1,28 @@
+# The production events queue: a kind the baseline DOES map -- but its
+# encryption key is a value_from edge into the customer-managed KMS key,
+# an inference no deterministic mapper attempts. This member proves the
+# refs axis discriminates even inside the baseline's covered territory:
+# the queue itself scores, the missing key edge does not.
+apiVersion: aws.planton.dev/v1
+kind: AwsSqsQueue
+metadata:
+  name: orders-prod-events
+  id: orders-prod-events
+  org: planton-oss
+  env: prod
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssqsqueue
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  visibilityTimeoutSeconds: 120
+  messageRetentionSeconds: 1209600
+  kmsKeyId:
+    valueFrom:
+      kind: AwsKmsKey
+      name: orders-prod-data-key
+      fieldPath: status.outputs.key_arn

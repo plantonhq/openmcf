@@ -1,0 +1,182 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsplantonrunner.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// AwsPlantonRunnerSpec defines a standing Planton runner appliance inside
+// your AWS network: an always-on worker that receives deploy operations
+// from the Planton control plane and executes them from WITHIN the VPC.
+//
+// Why it exists: some targets are reachable only from inside the network --
+// the canonical case is a Kubernetes cluster with a private API endpoint,
+// which no hosted runner fleet can reach. Placing a runner in the VPC makes
+// that cluster deployable and operable (day-2 updates, destroys, CloudOps)
+// with zero inbound exposure: the runner only ever dials OUT to the control
+// plane, so no ports open toward the internet.
+//
+// The appliance is standing infrastructure, not a bootstrap step. It
+// survives rebuilds of the clusters it deploys to, which is exactly what
+// makes teardown orderly: in-cluster workloads are destroyed through the
+// runner, the cluster is destroyed by the AWS path, and the runner itself
+// is destroyed last.
+//
+// The spec models intent -- where the runner lives (subnets), how big it is
+// (cpu/memory), which build it runs (runner_version), how it executes work
+// (execution_mode), and who it is (credentials). The compute substrate is
+// an implementation detail of the IaC modules (see the component README);
+// it deliberately has no representation here.
+message AwsPlantonRunnerSpec {
+  // The AWS region the runner is deployed in. Deploy the runner in the
+  // same region as the private endpoints it needs to reach.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The subnets the runner's network interfaces are placed in -- this is
+  // what puts the runner inside the network whose private endpoints it
+  // must reach. Prefer private subnets with a NAT route (the runner needs
+  // outbound internet to pull its image and dial the control plane); at
+  // least two subnets in different availability zones lets the runner
+  // reschedule across an AZ event. Public subnets work too when paired
+  // with assign_public_ip. Reference AwsSubnet subnet_id outputs or pass
+  // literal subnet IDs. All subnets must belong to the same VPC.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Additional security groups attached to the runner's network
+  // interfaces, BESIDE the outbound-only group the deployment creates for
+  // itself. The runner accepts no inbound traffic, so extra groups are
+  // only needed when a private target (a cluster API endpoint, a
+  // database) admits traffic by source security group -- attach the group
+  // that target trusts. Reference AwsSecurityGroup security_group_id
+  // outputs or pass literal group IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_groups = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // Assign a public IPv4 address to the runner's network interfaces.
+  // Required when the subnets are PUBLIC (routed to an internet gateway)
+  // and the VPC has no NAT gateway -- without it the runner cannot pull
+  // its image or reach the control plane and never starts. Keep false for
+  // private subnets with a NAT route (the recommended posture).
+  bool assign_public_ip = 4;
+
+  // CPU allocated to the runner, in AWS CPU units (1024 = 1 vCPU). The
+  // default 512 (0.5 vCPU) comfortably runs the runner's control loops
+  // plus typical IaC operations; size up for large stacks or high
+  // operation concurrency. Serverless compute admits only these values:
+  // 256, 512, 1024, 2048, 4096, 8192, 16384 -- and each pairs with a
+  // bounded memory range (see memory).
+  optional int32 cpu = 5 [(dev.planton.shared.options.default) = "512"];
+
+  // Memory allocated to the runner, in MiB. The default 1024 pairs with
+  // the default cpu of 512. Valid values depend on cpu -- for example cpu
+  // 512 admits 1024-4096 MiB in 1024 steps, cpu 1024 admits 2048-8192 --
+  // and an invalid pairing is rejected by AWS only at deploy time, so the
+  // spec validates the combination up front. Memory pressure shows up as
+  // failed IaC operations mid-apply; when in doubt, size memory up before
+  // cpu.
+  optional int32 memory = 6 [(dev.planton.shared.options.default) = "1024"];
+
+  // The runner build to deploy: an image tag of the official runner
+  // container image. "latest" tracks the newest release; pin a specific
+  // version tag for change control. New tasks pull the tag on every
+  // (re)start.
+  optional string runner_version = 7 [(dev.planton.shared.options.default) = "latest"];
+
+  // The container image repository the runner is pulled from. Override
+  // only for air-gapped or mirrored registries hosting a copy of the
+  // official image; the digest-identical mirror is your responsibility.
+  optional string image_repository = 8 [(dev.planton.shared.options.default) = "ghcr.io/plantonhq/planton/runner"];
+
+  // How the runner executes work:
+  //
+  //   - "temporal" (the default): a pull-based worker -- the runner polls
+  //     its queue for deploy operations and needs NO inbound path at all.
+  //     The right mode for private-endpoint deployments.
+  //   - "dual": temporal PLUS the real-time CloudOps channel (live
+  //     resource browsing through the runner). The CloudOps channel
+  //     reaches the runner through an outbound-initiated tunnel, so the
+  //     network posture stays outbound-only; the runner's credentials
+  //     must carry tunnel material (they do when the registration was
+  //     created for a tunneled runner).
+  //   - "grpc": CloudOps only, no deploy operations. Rarely what you want
+  //     for a standing appliance; prefer dual.
+  optional string execution_mode = 9 [(dev.planton.shared.options.default) = "temporal"];
+
+  // The runner's credentials document: the JSON issued when the runner
+  // registration is created (planton runner generate-credentials). It
+  // carries the runner's identity, its API key, and the connectivity
+  // endpoints -- everything the runner needs to introduce itself to the
+  // control plane. This is a secret: supply it as a managed-secret
+  // reference, never inline plaintext; it reaches the runner through the
+  // platform's secret store, not through any launch configuration.
+  string credentials = 10 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The IAM role the runner itself holds at runtime -- its AWS identity
+  // when cloud operations or IaC runs use role-based (keyless) access
+  // instead of injected keys. Compose an AwsIamRole with a trust policy
+  // for "ecs-tasks.amazonaws.com" and exactly the permissions the
+  // runner's workloads need, then reference its role_arn output. When
+  // unset, the deployment creates a permissionless role so the identity
+  // seam always exists and permissions can be granted later without
+  // replacing the runner.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef task_role = 11 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Days the runner's logs are retained. The runner logs every operation
+  // it executes -- these logs are the audit trail for what changed your
+  // infrastructure, so retain them meaningfully. Must be one of the
+  // retention periods CloudWatch supports (1, 3, 5, 7, 14, 30, 60, 90,
+  // 120, 150, 180, 365, ...).
+  optional int32 log_retention_days = 12 [(dev.planton.shared.options.default) = "30"];
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "cpu_valid"
+    message: "cpu must be one of the serverless compute sizes: 256, 512, 1024, 2048, 4096, 8192, or 16384 CPU units (1024 = 1 vCPU)"
+    expression: "!has(this.cpu) || this.cpu in [256, 512, 1024, 2048, 4096, 8192, 16384]"
+  };
+
+  // AWS validates the cpu/memory pairing only at deploy time; enforcing it
+  // here turns a mid-deploy failure into an instant, explainable one.
+  option (buf.validate.message).cel = {
+    id: "cpu_memory_combination"
+    message: "cpu and memory must form a valid serverless compute pairing -- cpu 256 pairs with memory 512, 1024, or 2048; cpu 512 with 1024-4096 in steps of 1024; cpu 1024 with 2048-8192 in steps of 1024; cpu 2048 with 4096-16384 in steps of 1024; cpu 4096 with 8192-30720 in steps of 1024; cpu 8192 with 16384-61440 in steps of 4096; cpu 16384 with 32768-122880 in steps of 8192"
+    expression:
+      "!has(this.cpu) || !has(this.memory)"
+      " || (this.cpu == 256 && this.memory in [512, 1024, 2048])"
+      " || (this.cpu == 512 && this.memory >= 1024 && this.memory <= 4096 && this.memory % 1024 == 0)"
+      " || (this.cpu == 1024 && this.memory >= 2048 && this.memory <= 8192 && this.memory % 1024 == 0)"
+      " || (this.cpu == 2048 && this.memory >= 4096 && this.memory <= 16384 && this.memory % 1024 == 0)"
+      " || (this.cpu == 4096 && this.memory >= 8192 && this.memory <= 30720 && this.memory % 1024 == 0)"
+      " || (this.cpu == 8192 && this.memory >= 16384 && this.memory <= 61440 && this.memory % 4096 == 0)"
+      " || (this.cpu == 16384 && this.memory >= 32768 && this.memory <= 122880 && this.memory % 8192 == 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "execution_mode_valid"
+    message: "execution_mode must be 'temporal' (pull-based deploy worker, the default), 'dual' (deploy worker plus the real-time CloudOps channel), or 'grpc' (CloudOps only)"
+    expression: "!has(this.execution_mode) || this.execution_mode in ['temporal', 'dual', 'grpc']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "log_retention_valid"
+    message: "log_retention_days must be one of the retention periods CloudWatch supports: 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, or 3653 days"
+    expression: "!has(this.log_retention_days) || this.log_retention_days in [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653]"
+  };
+}

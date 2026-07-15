@@ -1,0 +1,314 @@
+//go:build !codegen
+// +build !codegen
+
+package importmap
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"strings"
+	"testing"
+
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
+
+	componentv1 "github.com/plantonhq/planton/apis/dev/planton/iac/componentimportmap/v1"
+	"github.com/plantonhq/planton/pkg/crkreflect"
+)
+
+var tfResourcePattern = regexp.MustCompile(`(?m)^resource\s+"([a-z0-9_]+)"\s+"`)
+
+// cloudControlTypeNamePattern is the CloudFormation type-name shape
+// (e.g. "AWS::S3::Bucket") that Cloud Control keys its list/get calls on.
+var cloudControlTypeNamePattern = regexp.MustCompile(`^[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}$`)
+
+// TestImportMapConformance validates every authored import recipe against the
+// module sources it maps, offline:
+//
+//  1. The provider catalog and each component map parse against their proto
+//     schemas.
+//  2. Every resource type the component's OpenTofu module declares has an
+//     id_format in the provider catalog -- an unmapped type would surface as
+//     an unimportable enumerated address.
+//  3. Every {placeholder} those formats reference is declared by the
+//     component map, and every declared value either derives from somewhere
+//     or tells the user where to find it.
+//  4. from_spec_field paths resolve to scalar leaves on the kind's spec
+//     proto; from_stack_output keys are real fields on the kind's
+//     StackOutputs proto. A typo'd path would silently downgrade a zero-input
+//     import to a manual one.
+//
+// Enrollment is the import-map file itself: every discovered
+// `v1/iac/import-map.yaml` is checked, with no allowlist to keep in sync.
+// The platform's catalog bundler and the E2E round-trip gate key off the
+// same file presence, so an authored map can never ship to the import
+// wizard while dodging this guard. (Whether a map is LIVE-proven is a
+// separate, human-readable ledger in this package's README; the round-trip
+// lane is its only honest enforcement.)
+func TestImportMapConformance(t *testing.T) {
+	root := repoRoot(t)
+
+	mappedKinds, err := DiscoverComponentImportMaps(root)
+	if err != nil {
+		t.Fatalf("discovering component import maps: %v", err)
+	}
+	if len(mappedKinds) == 0 {
+		t.Fatal("no component import maps discovered -- wrong repo root?")
+	}
+
+	for provider, components := range mappedKinds {
+		catalog, err := LoadProviderCatalog(root, provider)
+		if err != nil {
+			t.Fatalf("provider catalog for %s: %v", provider, err)
+		}
+		if catalog.GetKind() != "ProviderImportCatalog" {
+			t.Fatalf("provider catalog for %s: kind is %q, want ProviderImportCatalog", provider, catalog.GetKind())
+		}
+
+		formatsByTerraformType := map[string]string{}
+		for _, rt := range catalog.GetSpec().GetResourceTypes() {
+			if rt.GetTerraformType() == "" {
+				t.Errorf("%s catalog: entry with empty terraform_type", provider)
+				continue
+			}
+			if _, dup := formatsByTerraformType[rt.GetTerraformType()]; dup {
+				t.Errorf("%s catalog: duplicate entry for %s", provider, rt.GetTerraformType())
+			}
+			formatsByTerraformType[rt.GetTerraformType()] = rt.GetIdFormat()
+			if rt.GetIdFormat() == "" {
+				t.Errorf("%s catalog: %s has an empty id_format", provider, rt.GetTerraformType())
+			}
+			// The tolerance lists feed the round-trip proof's plan oracle; an
+			// empty entry would tolerate nothing meaningful and signals a
+			// YAML authoring slip.
+			for _, attr := range rt.GetConfigOnlyAttributes() {
+				if strings.TrimSpace(attr) == "" {
+					t.Errorf("%s catalog: %s declares an empty config_only_attributes entry", provider, rt.GetTerraformType())
+				}
+			}
+			for _, attr := range rt.GetWriteNormalizedAttributes() {
+				if strings.TrimSpace(attr) == "" {
+					t.Errorf("%s catalog: %s declares an empty write_normalized_attributes entry", provider, rt.GetTerraformType())
+				}
+			}
+		}
+
+		// The scan-side correspondence must be well-formed and unambiguous:
+		// ground-truth building and mapping proposals translate between what
+		// a scan reports (Cloud Control type names) and what IaC state holds
+		// (terraform types), so two terraform types claiming the same Cloud
+		// Control type would make that translation a guess.
+		cloudControlClaims := map[string]string{}
+		for _, rt := range catalog.GetSpec().GetResourceTypes() {
+			ccType := rt.GetCloudControlTypeName()
+			if ccType == "" {
+				continue
+			}
+			if !cloudControlTypeNamePattern.MatchString(ccType) {
+				t.Errorf("%s catalog: %s declares malformed cloud_control_type_name %q (want e.g. AWS::S3::Bucket)",
+					provider, rt.GetTerraformType(), ccType)
+			}
+			if prior, dup := cloudControlClaims[ccType]; dup {
+				t.Errorf("%s catalog: cloud_control_type_name %q claimed by both %s and %s -- the scan-to-state translation must be unambiguous",
+					provider, ccType, prior, rt.GetTerraformType())
+			}
+			cloudControlClaims[ccType] = rt.GetTerraformType()
+		}
+
+		for _, component := range components {
+			component := component
+			t.Run(provider+"/"+component, func(t *testing.T) {
+				m, err := LoadComponentImportMap(root, provider, component)
+				if err != nil {
+					t.Fatalf("component import map: %v", err)
+				}
+				if m.GetMetadata().GetName() != component {
+					t.Errorf("metadata.name is %q, want %q", m.GetMetadata().GetName(), component)
+				}
+
+				declaredValues := map[string]*componentv1.ImportValue{}
+				for _, v := range m.GetSpec().GetValues() {
+					if v.GetName() == "" {
+						t.Error("import value with empty name")
+						continue
+					}
+					declaredValues[v.GetName()] = v
+					// A value that cannot derive from anywhere MUST carry guidance --
+					// the empathy contract: when we must ask, show where to find it.
+					if len(v.GetDerivations()) == 0 && v.GetWhereToFind() == "" {
+						t.Errorf("value %q has no derivations and no where_to_find", v.GetName())
+					}
+				}
+
+				// Every module-declared resource type must be importable.
+				moduleTypes := terraformResourceTypes(t, filepath.Join(root, "apis/dev/planton/provider", provider, component, "v1/iac/tf"))
+				if len(moduleTypes) == 0 {
+					t.Fatal("module declares no resources -- wrong path?")
+				}
+				for _, resourceType := range moduleTypes {
+					idFormat, mapped := formatsByTerraformType[resourceType]
+					if !mapped {
+						t.Errorf("module resource %s has no id_format in the %s catalog -- "+
+							"the module gained a resource type its import recipes don't cover; add a %s entry "+
+							"(with its provider import-ID format) to %s, then re-run the live round-trip lane for %s",
+							resourceType, provider, resourceType,
+							ProviderCatalogPath("", provider), component)
+						continue
+					}
+					for _, placeholder := range Placeholders(idFormat) {
+						if _, declared := declaredValues[placeholder]; !declared {
+							t.Errorf("placeholder {%s} (id_format of %s) not declared in the component map -- "+
+								"add a value entry for it to %s (prefer a derivable source; where_to_find is mandatory when nothing derives)",
+								placeholder, resourceType,
+								ComponentImportMapPath("", provider, component))
+						}
+					}
+				}
+
+				// Derivation paths must resolve against the kind's protos.
+				kind := crkreflect.KindFromString(component)
+				apiMessage, err := crkreflect.NewInstance(kind)
+				if err != nil {
+					t.Fatalf("NewInstance(%s): %v", component, err)
+				}
+				specDescriptor := specMessageDescriptor(t, apiMessage)
+				outputsDescriptor := stackOutputsDescriptor(t, apiMessage)
+				for _, v := range m.GetSpec().GetValues() {
+					for _, d := range v.GetDerivations() {
+						switch source := d.GetSource().(type) {
+						case *componentv1.ImportValueDerivation_FromSpecField:
+							if err := validateScalarPath(specDescriptor, source.FromSpecField); err != nil {
+								t.Errorf("value %q from_spec_field %q: %v", v.GetName(), source.FromSpecField, err)
+							}
+						case *componentv1.ImportValueDerivation_FromStackOutput:
+							if outputsDescriptor.Fields().ByName(protoreflect.Name(source.FromStackOutput)) == nil {
+								t.Errorf("value %q from_stack_output %q: no such field on %s",
+									v.GetName(), source.FromStackOutput, outputsDescriptor.FullName())
+							}
+						case *componentv1.ImportValueDerivation_FromArnPart:
+							switch source.FromArnPart {
+							case "resource_id", "resource_name", "account_id", "region", "arn":
+							default:
+								t.Errorf("value %q from_arn_part %q: not a recognized ARN part", v.GetName(), source.FromArnPart)
+							}
+						}
+					}
+				}
+			})
+		}
+	}
+}
+
+// terraformResourceTypes scans a module directory's .tf files for top-level
+// resource declarations and returns the distinct resource types.
+func terraformResourceTypes(t *testing.T, moduleDir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(moduleDir)
+	if err != nil {
+		t.Fatalf("reading module dir %s: %v", moduleDir, err)
+	}
+	seen := map[string]bool{}
+	var types []string
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".tf") {
+			continue
+		}
+		content, err := os.ReadFile(filepath.Join(moduleDir, entry.Name()))
+		if err != nil {
+			t.Fatalf("reading %s: %v", entry.Name(), err)
+		}
+		for _, match := range tfResourcePattern.FindAllStringSubmatch(string(content), -1) {
+			if !seen[match[1]] {
+				seen[match[1]] = true
+				types = append(types, match[1])
+			}
+		}
+	}
+	return types
+}
+
+// specMessageDescriptor returns the descriptor of the kind's spec message
+// (the api envelope's `spec` field).
+func specMessageDescriptor(t *testing.T, apiMessage proto.Message) protoreflect.MessageDescriptor {
+	t.Helper()
+	specField := apiMessage.ProtoReflect().Descriptor().Fields().ByName("spec")
+	if specField == nil || specField.Kind() != protoreflect.MessageKind {
+		t.Fatalf("%s has no spec message field", apiMessage.ProtoReflect().Descriptor().FullName())
+	}
+	return specField.Message()
+}
+
+// stackOutputsDescriptor locates the kind's StackOutputs message from the
+// sibling stack_outputs.proto of the kind's api.proto.
+func stackOutputsDescriptor(t *testing.T, apiMessage proto.Message) protoreflect.MessageDescriptor {
+	t.Helper()
+	apiPath := apiMessage.ProtoReflect().Descriptor().ParentFile().Path()
+	outputsPath := filepath.Join(filepath.Dir(apiPath), "stack_outputs.proto")
+	file, err := protoregistry.GlobalFiles.FindFileByPath(outputsPath)
+	if err != nil {
+		t.Fatalf("finding %s: %v", outputsPath, err)
+	}
+	for i := 0; i < file.Messages().Len(); i++ {
+		msg := file.Messages().Get(i)
+		if strings.HasSuffix(string(msg.Name()), "StackOutputs") {
+			return msg
+		}
+	}
+	t.Fatalf("%s declares no *StackOutputs message", outputsPath)
+	return nil
+}
+
+// validateScalarPath walks a dot path of field names and requires a scalar
+// leaf with no repeated/map segments (a repeated segment would make the
+// derivation ambiguous -- which instance?).
+func validateScalarPath(desc protoreflect.MessageDescriptor, dotPath string) error {
+	if dotPath == "" {
+		return fmt.Errorf("empty path")
+	}
+	current := desc
+	segments := strings.Split(dotPath, ".")
+	for i, segment := range segments {
+		field := current.Fields().ByName(protoreflect.Name(segment))
+		if field == nil {
+			return fmt.Errorf("no field %q on %s", segment, current.FullName())
+		}
+		if field.IsList() || field.IsMap() {
+			return fmt.Errorf("segment %q is repeated/map -- ambiguous for derivation", segment)
+		}
+		if i == len(segments)-1 {
+			if field.Kind() == protoreflect.MessageKind || field.Kind() == protoreflect.GroupKind {
+				return fmt.Errorf("leaf %q is a message, not a scalar", segment)
+			}
+			return nil
+		}
+		if field.Kind() != protoreflect.MessageKind {
+			return fmt.Errorf("segment %q is a scalar but the path continues", segment)
+		}
+		current = field.Message()
+	}
+	return nil
+}
+
+// repoRoot walks up from this test file to the directory containing go.mod.
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	dir := filepath.Dir(thisFile)
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatal("go.mod not found walking up from test file")
+		}
+		dir = parent
+	}
+}

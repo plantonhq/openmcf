@@ -39,7 +39,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3Bucket
 metadata:
   name: my-bucket
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -150,7 +150,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3Bucket
 metadata:
   name: app-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -180,7 +180,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3Bucket
 metadata:
   name: app-logs
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
     terraform.planton.dev/stack.name: prod.AwsS3Bucket.app-logs
 spec:

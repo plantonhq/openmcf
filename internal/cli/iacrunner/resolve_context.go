@@ -124,7 +124,7 @@ func ResolveContext(cmd *cobra.Command) (*Context, error) {
 
 	cliprint.PrintSuccess(fmt.Sprintf("Using provisioner: %s", provType.String()))
 
-	// Resolve kube context: flag takes priority over manifest label
+	// Resolve kube context: flag takes priority over manifest annotation
 	kubeCtx, _ := cmd.Flags().GetString(string(flag.KubeContext))
 	if kubeCtx == "" {
 		kubeCtx = kubecontext.ExtractFromManifest(manifestObject)

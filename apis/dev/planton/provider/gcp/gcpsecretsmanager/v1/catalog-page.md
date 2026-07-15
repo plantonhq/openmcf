@@ -26,7 +26,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSecretsManager
 metadata:
   name: my-app-secrets
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -70,7 +70,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSecretsManager
 metadata:
   name: db-credentials
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,7 +90,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSecretsManager
 metadata:
   name: payment-service-secrets
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -116,7 +116,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSecretsManager
 metadata:
   name: platform-secrets
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

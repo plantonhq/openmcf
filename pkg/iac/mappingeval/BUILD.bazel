@@ -1,0 +1,52 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "mappingeval",
+    srcs = [
+        "doc.go",
+        "knowledge.go",
+        "match.go",
+        "proposal.go",
+        "redact.go",
+        "refedges.go",
+        "report.go",
+        "score.go",
+        "suite.go",
+        "types.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/iac/mappingeval",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//apis/dev/planton/iac/componentimportmap/v1:componentimportmap",
+        "//apis/dev/planton/iac/importmappingproposal/v1:importmappingproposal",
+        "//apis/dev/planton/iac/providerimportcatalog/v1:providerimportcatalog",
+        "//apis/dev/planton/qa/mappingevalsuite/v1:mappingevalsuite",
+        "//apis/dev/planton/shared/cloudresourcekind",
+        "//apis/dev/planton/shared/foreignkey/v1:foreignkey",
+        "//internal/manifest",
+        "//pkg/crkreflect",
+        "//pkg/iac/importmap",
+        "//pkg/protobufyaml",
+        "@com_github_pkg_errors//:errors",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)
+
+go_test(
+    name = "mappingeval_test",
+    srcs = [
+        "harness_test.go",
+        "identity_egress_floor_test.go",
+        "messy_floor_test.go",
+        "redact_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    deps = [
+        ":mappingeval",
+        "//apis/dev/planton/iac/importmappingproposal/v1:importmappingproposal",
+        "//pkg/iac/mappingeval/baseline",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/known/structpb",
+    ],
+)

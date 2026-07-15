@@ -35,7 +35,7 @@ var topLevelSkipFieldNames = map[string]bool{
 
 // ProtoToVariablesTF generates Terraform variable definitions from a proto
 // message using proto reflection. It consults the shared TypeRule registry to:
-//   - Skip orchestrator-only fields (KubernetesClusterSelector, ValueFromRef)
+//   - Skip orchestrator-only fields (ValueFromRef)
 //   - Flatten wrapper types to primitives (StringValueOrRef -> string)
 //   - Handle proto maps as map(valueType) instead of misrepresenting them as objects
 //   - Mark every non-required attribute optional() with its proto zero default

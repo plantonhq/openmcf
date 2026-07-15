@@ -23,10 +23,18 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerListener
 metadata:
   name: http-listener
-  labels:
-    planton.dev/provisioner: pulumi
+  annotations:
+    planton.dev/stack.jobId: prod.OpenstackLoadBalancerListener.app-listener
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackLoadBalancerListener.admin-api-listener
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackLoadBalancerListener.https-listener
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackLoadBalancerListener.http-listener
     planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
+    planton.dev/stack.jobId: dev.OpenstackLoadBalancerListener.http-listener
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
+    planton.dev/provisioner: pulumi
 spec:
   loadbalancerId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
   protocol: HTTP
@@ -75,10 +83,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerListener
 metadata:
   name: http-listener
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: dev.OpenstackLoadBalancerListener.http-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
 spec:
   loadbalancerId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
   protocol: HTTP
@@ -100,10 +106,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerListener
 metadata:
   name: https-listener
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackLoadBalancerListener.https-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
 spec:
   loadbalancerId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
   protocol: TERMINATED_HTTPS
@@ -128,10 +132,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerListener
 metadata:
   name: admin-api-listener
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackLoadBalancerListener.admin-api-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
 spec:
   loadbalancerId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
   protocol: HTTP
@@ -155,10 +157,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerListener
 metadata:
   name: app-listener
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackLoadBalancerListener.app-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
 spec:
   loadbalancerId:
     valueFrom:

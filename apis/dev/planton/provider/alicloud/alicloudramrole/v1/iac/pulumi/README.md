@@ -24,7 +24,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRamRole
 metadata:
   name: my-ecs-role
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -84,7 +84,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRamRole
 metadata:
   name: ecs-worker-role
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRamRole
 metadata:
   name: cross-account-audit
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -159,7 +159,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRamRole
 metadata:
   name: fc-execution-role
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

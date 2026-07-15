@@ -23,7 +23,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsWafIpSet
 metadata:
   name: office-allowlist
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

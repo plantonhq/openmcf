@@ -3,8 +3,6 @@ kind: KubernetesIngressNginx
 metadata:
   name: test-ingress-nginx
 spec:
-  target_cluster:
-    kubernetes_credential_id: test-cluster-credential
   chart_version: "4.11.1"
   internal: false
 

@@ -27,7 +27,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVirtualMachine
 metadata:
   name: my-vm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVirtualMachine
 metadata:
   name: dev-linux
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -140,7 +140,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVirtualMachine
 metadata:
   name: win-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -178,7 +178,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVirtualMachine
 metadata:
   name: prod-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -222,7 +222,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVirtualMachine
 metadata:
   name: batch-worker
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -255,7 +255,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVirtualMachine
 metadata:
   name: ref-vm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

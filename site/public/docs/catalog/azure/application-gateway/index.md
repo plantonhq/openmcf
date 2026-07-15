@@ -45,7 +45,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationGateway
 metadata:
   name: my-appgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -133,7 +133,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationGateway
 metadata:
   name: basic-appgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -176,7 +176,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationGateway
 metadata:
   name: https-appgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -227,7 +227,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationGateway
 metadata:
   name: waf-appgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -285,7 +285,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationGateway
 metadata:
   name: multi-host-appgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -345,7 +345,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationGateway
 metadata:
   name: ref-appgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

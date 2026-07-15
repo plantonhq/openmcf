@@ -29,7 +29,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayLoadBalancer
 metadata:
   name: my-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -117,7 +117,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayLoadBalancer
 metadata:
   name: dev-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -150,7 +150,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayLoadBalancer
 metadata:
   name: prod-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -213,7 +213,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayLoadBalancer
 metadata:
   name: gateway-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

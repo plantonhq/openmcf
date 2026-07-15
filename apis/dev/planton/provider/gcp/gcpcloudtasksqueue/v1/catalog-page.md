@@ -28,7 +28,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudTasksQueue
 metadata:
   name: my-queue
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -95,7 +95,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudTasksQueue
 metadata:
   name: background-processor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -126,7 +126,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudTasksQueue
 metadata:
   name: cloud-run-dispatcher
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -171,7 +171,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudTasksQueue
 metadata:
   name: composed-queue
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

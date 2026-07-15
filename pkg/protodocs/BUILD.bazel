@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "protodocs",
+    srcs = ["docs.go"],
+    embedsrcs = ["index.json.gz"],
+    importpath = "github.com/plantonhq/planton/pkg/protodocs",
+    visibility = ["//visibility:public"],
+    deps = ["@org_golang_google_protobuf//reflect/protoreflect"],
+)
+
+go_test(
+    name = "protodocs_test",
+    srcs = ["docs_test.go"],
+    embed = [":protodocs"],
+    deps = [
+        "//pkg/crkreflect",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//reflect/protoregistry",
+    ],
+)

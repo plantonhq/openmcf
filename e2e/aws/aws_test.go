@@ -484,6 +484,14 @@ func TestAwsEcsService_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsecsservice", "terraform")
 }
 
+func TestAwsPlantonRunner_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsplantonrunner", "pulumi")
+}
+
+func TestAwsPlantonRunner_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsplantonrunner", "terraform")
+}
+
 // --- AWS ECS Cluster (Fargate leaf + the EC2-capacity chain via the scenario's e2e-prerequisites annotation) ---
 
 func TestAwsEcsCluster_Pulumi(t *testing.T) {

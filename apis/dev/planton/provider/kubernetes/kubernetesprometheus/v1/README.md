@@ -36,8 +36,6 @@ The `create_namespace` field controls whether the module creates the Kubernetes 
 **Example with namespace creation:**
 ```yaml
 spec:
-  target_cluster:
-    cluster_name: "my-cluster"
   namespace:
     value: "prometheus"
   create_namespace: true  # Module creates the namespace
@@ -48,8 +46,6 @@ spec:
 **Example with existing namespace:**
 ```yaml
 spec:
-  target_cluster:
-    cluster_name: "my-cluster"
   namespace:
     value: "monitoring"  # Must already exist
   create_namespace: false  # Module uses existing namespace

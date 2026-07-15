@@ -29,7 +29,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDataprocCluster
 metadata:
   name: my-spark-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -120,7 +120,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDataprocCluster
 metadata:
   name: dev-jupyter
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -153,7 +153,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDataprocCluster
 metadata:
   name: prod-spark
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -199,7 +199,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDataprocCluster
 metadata:
   name: batch-spark
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -231,7 +231,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDataprocCluster
 metadata:
   name: composed-spark
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

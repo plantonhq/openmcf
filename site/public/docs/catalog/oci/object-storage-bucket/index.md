@@ -34,7 +34,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciObjectStorageBucket
 metadata:
   name: my-bucket
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -133,7 +133,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciObjectStorageBucket
 metadata:
   name: dev-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -154,7 +154,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciObjectStorageBucket
 metadata:
   name: compliance-store
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -182,7 +182,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciObjectStorageBucket
 metadata:
   name: data-lake
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -223,7 +223,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciObjectStorageBucket
 metadata:
   name: prod-artifacts
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

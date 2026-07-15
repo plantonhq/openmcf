@@ -36,7 +36,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOpenzfsFileSystem
 metadata:
   name: my-openzfs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -110,7 +110,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOpenzfsFileSystem
 metadata:
   name: app-storage
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -148,7 +148,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOpenzfsFileSystem
 metadata:
   name: ha-nfs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -202,7 +202,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOpenzfsFileSystem
 metadata:
   name: ref-nfs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

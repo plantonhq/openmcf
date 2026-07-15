@@ -37,8 +37,6 @@ const (
 // See: https://tekton.dev/docs/operator/tektonconfig/
 type KubernetesTektonOperatorSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster where the Tekton Operator will be deployed.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// The container specifications for the Tekton Operator deployment.
 	Container *KubernetesTektonOperatorSpecContainer `protobuf:"bytes,2,opt,name=container,proto3" json:"container,omitempty"`
 	// Configuration for which Tekton components to install.
@@ -86,13 +84,6 @@ func (x *KubernetesTektonOperatorSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesTektonOperatorSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesTektonOperatorSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesTektonOperatorSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesTektonOperatorSpec) GetContainer() *KubernetesTektonOperatorSpecContainer {
@@ -307,9 +298,8 @@ var File_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto 
 
 const file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/kubernetes/kubernetestektonoperator/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetestektonoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a(dev/planton/shared/options/options.proto\"\x96\x05\n" +
-	"\x1cKubernetesTektonOperatorSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12\x88\x01\n" +
+	"Fdev/planton/provider/kubernetes/kubernetestektonoperator/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetestektonoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a(dev/planton/shared/options/options.proto\"\xb3\x04\n" +
+	"\x1cKubernetesTektonOperatorSpec\x12\x88\x01\n" +
 	"\tcontainer\x18\x02 \x01(\v2b.dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12\x87\x01\n" +
 	"\n" +
 	"components\x18\x03 \x01(\v2_.dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorComponentsB\x06\xbaH\x03\xc8\x01\x01R\n" +
@@ -350,20 +340,18 @@ var file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_
 	(*KubernetesTektonOperatorSpecContainer)(nil),    // 1: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpecContainer
 	(*KubernetesTektonOperatorComponents)(nil),       // 2: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorComponents
 	(*KubernetesTektonOperatorDashboardIngress)(nil), // 3: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorDashboardIngress
-	(*kubernetes.KubernetesClusterSelector)(nil),     // 4: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*kubernetes.ContainerResources)(nil),            // 5: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.ContainerResources)(nil),            // 4: dev.planton.provider.kubernetes.ContainerResources
 }
 var file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	1, // 1: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpecContainer
-	2, // 2: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.components:type_name -> dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorComponents
-	3, // 3: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.dashboard_ingress:type_name -> dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorDashboardIngress
-	5, // 4: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	1, // 0: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpecContainer
+	2, // 1: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.components:type_name -> dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorComponents
+	3, // 2: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.dashboard_ingress:type_name -> dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorDashboardIngress
+	4, // 3: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_init() }

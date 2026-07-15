@@ -33,7 +33,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsZone
 metadata:
   name: my-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -81,7 +81,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsZone
 metadata:
   name: empty-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -100,7 +100,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsZone
 metadata:
   name: web-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsZone
 metadata:
   name: mail-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -162,7 +162,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsZone
 metadata:
   name: full-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -208,7 +208,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsZone
 metadata:
   name: ref-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -32,15 +32,11 @@ const (
 // 100% fidelity with the upstream Gateway API v1.5.1 GatewaySpec
 // (kubernetes-sigs/gateway-api apis/v1/gateway_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
-// (target_cluster, namespace). The experimental `defaultScope` field is
+// (namespace). The experimental `defaultScope` field is
 // intentionally excluded: it is absent from the standard-channel CRD and from
 // the typed Pulumi resource Planton provisions with.
 type KubernetesGatewaySpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where this Gateway is created. The Gateway API
-	// CRDs (KubernetesGatewayApiCrds) and a controller-backed GatewayClass must
-	// already be present on the cluster.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace in which the Gateway is created. Routes that attach to this
 	// Gateway, and the TLS Secrets its listeners reference, are subject to the
 	// usual same-namespace / ReferenceGrant rules.
@@ -103,13 +99,6 @@ func (x *KubernetesGatewaySpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesGatewaySpec.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewaySpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesGatewaySpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesGatewaySpec) GetNamespace() *v1.StringValueOrRef {
@@ -1334,9 +1323,8 @@ var File_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto protore
 
 const file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetesgateway/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesgateway.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x86\x10\n" +
-	"\x15KubernetesGatewaySpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"?dev/planton/provider/kubernetes/kubernetesgateway/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesgateway.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa3\x0f\n" +
+	"\x15KubernetesGatewaySpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x92\x01\n" +
 	"\x12gateway_class_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x06\x92\xd4a!status.outputs.gateway_class_nameR\x10gatewayClassName\x12y\n" +
 	"\tlisteners\x18\x04 \x03(\v2O.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerB\n" +
@@ -1482,51 +1470,49 @@ var file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_goTypes
 	(*KubernetesGatewayTlsPortConfig)(nil),               // 16: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsPortConfig
 	(*KubernetesGatewayFrontendTlsValidationConfig)(nil), // 17: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig
 	(*KubernetesGatewayFrontendTlsValidation)(nil),       // 18: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidation
-	nil, // 19: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.OptionsEntry
-	nil, // 20: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.MatchLabelsEntry
-	nil, // 21: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.LabelsEntry
-	nil, // 22: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.AnnotationsEntry
-	(*kubernetes.KubernetesClusterSelector)(nil),                 // 23: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                                  // 24: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesGatewayApiSecretObjectReference)(nil), // 25: dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
-	(*kubernetes.KubernetesGatewayApiObjectReference)(nil),       // 26: dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReference
+	nil,                         // 19: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.OptionsEntry
+	nil,                         // 20: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.MatchLabelsEntry
+	nil,                         // 21: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.LabelsEntry
+	nil,                         // 22: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.AnnotationsEntry
+	(*v1.StringValueOrRef)(nil), // 23: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesGatewayApiSecretObjectReference)(nil), // 24: dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
+	(*kubernetes.KubernetesGatewayApiObjectReference)(nil),       // 25: dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReference
 }
 var file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_depIdxs = []int32{
-	23, // 0: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	24, // 1: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // 2: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.gateway_class_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 3: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.listeners:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListener
-	8,  // 4: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.addresses:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAddress
-	9,  // 5: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.infrastructure:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure
-	11, // 6: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.allowed_listeners:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedListeners
-	13, // 7: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.tls:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig
-	2,  // 8: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListener.tls:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig
-	3,  // 9: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListener.allowed_routes:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedRoutes
-	25, // 10: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.certificate_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
-	19, // 11: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.options:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.OptionsEntry
-	4,  // 12: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedRoutes.namespaces:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteNamespaces
-	5,  // 13: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedRoutes.kinds:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteGroupKind
-	6,  // 14: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteNamespaces.selector:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector
-	20, // 15: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.match_labels:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.MatchLabelsEntry
-	7,  // 16: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.match_expressions:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelectorRequirement
-	21, // 17: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.labels:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.LabelsEntry
-	22, // 18: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.annotations:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.AnnotationsEntry
-	10, // 19: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.parameters_ref:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLocalParametersReference
-	12, // 20: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedListeners.namespaces:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerNamespaces
-	6,  // 21: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerNamespaces.selector:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector
-	14, // 22: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig.backend:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayBackendTls
-	15, // 23: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig.frontend:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig
-	25, // 24: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayBackendTls.client_certificate_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
-	17, // 25: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig.default:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig
-	16, // 26: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig.per_port:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsPortConfig
-	17, // 27: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsPortConfig.tls:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig
-	18, // 28: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig.validation:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidation
-	26, // 29: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidation.ca_certificate_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReference
-	30, // [30:30] is the sub-list for method output_type
-	30, // [30:30] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	23, // 0: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	23, // 1: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.gateway_class_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 2: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.listeners:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListener
+	8,  // 3: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.addresses:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAddress
+	9,  // 4: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.infrastructure:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure
+	11, // 5: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.allowed_listeners:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedListeners
+	13, // 6: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.tls:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig
+	2,  // 7: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListener.tls:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig
+	3,  // 8: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListener.allowed_routes:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedRoutes
+	24, // 9: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.certificate_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
+	19, // 10: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.options:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.OptionsEntry
+	4,  // 11: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedRoutes.namespaces:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteNamespaces
+	5,  // 12: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedRoutes.kinds:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteGroupKind
+	6,  // 13: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteNamespaces.selector:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector
+	20, // 14: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.match_labels:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.MatchLabelsEntry
+	7,  // 15: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.match_expressions:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelectorRequirement
+	21, // 16: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.labels:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.LabelsEntry
+	22, // 17: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.annotations:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.AnnotationsEntry
+	10, // 18: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.parameters_ref:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLocalParametersReference
+	12, // 19: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedListeners.namespaces:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerNamespaces
+	6,  // 20: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerNamespaces.selector:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector
+	14, // 21: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig.backend:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayBackendTls
+	15, // 22: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig.frontend:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig
+	24, // 23: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayBackendTls.client_certificate_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
+	17, // 24: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig.default:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig
+	16, // 25: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig.per_port:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsPortConfig
+	17, // 26: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsPortConfig.tls:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig
+	18, // 27: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig.validation:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidation
+	25, // 28: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidation.ca_certificate_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReference
+	29, // [29:29] is the sub-list for method output_type
+	29, // [29:29] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_init() }

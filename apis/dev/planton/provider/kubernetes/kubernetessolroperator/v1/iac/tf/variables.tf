@@ -15,8 +15,6 @@ variable "metadata" {
 variable "spec" {
   description = "Specification for Kubernetes Solr Operator deployment"
   type = object({
-    # Target Kubernetes cluster (orchestrator-only, not included in generated tfvars)
-    target_cluster_name = optional(string)
 
     # Kubernetes namespace where operator will be deployed
     namespace = optional(string, "solr-operator-system")

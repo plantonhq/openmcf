@@ -54,10 +54,6 @@ var _ = ginkgo.Describe("KubernetesServiceEntry Validation Tests", func() {
 				Name: "test-service-entry",
 			},
 			Spec: &KubernetesServiceEntrySpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace:  literal("default"),
 				Hosts:      []string{"api.external-example.com"},
 				Location:   ptr("MESH_EXTERNAL"),

@@ -352,8 +352,12 @@ const (
 	// Lambda functions, Firehose streams) are optional composition -- scenarios
 	// declare them via the e2e-prerequisites annotation rather than taxing
 	// every consumer's chain.
-	CloudResourceKind_AwsSnsSubscription    CloudResourceKind = 353
-	CloudResourceKind_AwsRoute53HealthCheck CloudResourceKind = 354
+	CloudResourceKind_AwsSnsSubscription CloudResourceKind = 353
+	// AwsSubnet is a prerequisite because the runner appliance places its
+	// network interfaces into referenced subnets -- the placement reference
+	// must resolve before the appliance can deploy.
+	CloudResourceKind_AwsPlantonRunner      CloudResourceKind = 354
+	CloudResourceKind_AwsRoute53HealthCheck CloudResourceKind = 376
 	// Both SES kinds are dependency-free leaves: an identity's configuration
 	// set is optional composition (scenarios declare it via the
 	// e2e-prerequisites annotation), and a configuration set's event
@@ -826,7 +830,8 @@ var (
 		351:  "AwsMskServerlessCluster",
 		352:  "AwsLambdaEventSourceMapping",
 		353:  "AwsSnsSubscription",
-		354:  "AwsRoute53HealthCheck",
+		354:  "AwsPlantonRunner",
+		376:  "AwsRoute53HealthCheck",
 		366:  "AwsSesConfigurationSet",
 		367:  "AwsSesEmailIdentity",
 		400:  "AzureResourceGroup",
@@ -1278,7 +1283,8 @@ var (
 		"AwsMskServerlessCluster":                 351,
 		"AwsLambdaEventSourceMapping":             352,
 		"AwsSnsSubscription":                      353,
-		"AwsRoute53HealthCheck":                   354,
+		"AwsPlantonRunner":                        354,
+		"AwsRoute53HealthCheck":                   376,
 		"AwsSesConfigurationSet":                  366,
 		"AwsSesEmailIdentity":                     367,
 		"AzureResourceGroup":                      400,
@@ -1867,7 +1873,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xaf\xa2\x01\n" +
+	"\x02v1\x10\x01*ܢ\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1992,7 +1998,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x17AwsMskServerlessCluster\x10\xdf\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsmsksl:\x02\x9c\x02\x129\n" +
 	"\x1bAwsLambdaEventSourceMapping\x10\xe0\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tlambdaesm:\x02\xd1\x01\x120\n" +
 	"\x12AwsSnsSubscription\x10\xe1\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawssnssub:\x02\xe2\x01\x12+\n" +
-	"\x15AwsRoute53HealthCheck\x10\xe2\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05r53hc\x12/\n" +
+	"\x10AwsPlantonRunner\x10\xe2\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsrun:\x02\x9c\x02\x12+\n" +
+	"\x15AwsRoute53HealthCheck\x10\xf8\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05r53hc\x12/\n" +
 	"\x16AwsSesConfigurationSet\x10\xee\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawssescs\x12,\n" +
 	"\x13AwsSesEmailIdentity\x10\xef\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawssesid\x12)\n" +
 	"\x12AzureResourceGroup\x10\x90\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x04azrg0\x01\x12%\n" +

@@ -30,7 +30,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciCompartment
 metadata:
   name: my-compartment
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -76,7 +76,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciCompartment
 metadata:
   name: platform-compartment
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -96,7 +96,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciCompartment
 metadata:
   name: ci-sandbox
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -117,7 +117,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciCompartment
 metadata:
   name: networking
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

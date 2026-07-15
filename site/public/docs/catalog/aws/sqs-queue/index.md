@@ -33,7 +33,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSqsQueue
 metadata:
   name: my-queue
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -94,7 +94,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSqsQueue
 metadata:
   name: payment-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -123,7 +123,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSqsQueue
 metadata:
   name: task-queue
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -145,7 +145,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSqsQueue
 metadata:
   name: notifications-queue
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

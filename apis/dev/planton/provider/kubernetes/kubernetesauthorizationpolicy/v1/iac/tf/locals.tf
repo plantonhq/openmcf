@@ -7,8 +7,7 @@ locals {
   }
 
   # The CR spec is var.spec minus the Planton "namespace" foreign key, which maps to
-  # metadata.namespace rather than into the CR spec. target_cluster is already
-  # dropped by the converter, which also emits camelCase, null-pruned keys, so no
-  # other transformation is needed.
+  # metadata.namespace rather than into the CR spec. The converter already emits
+  # camelCase, null-pruned keys, so no other transformation is needed.
   manifest_spec = { for k, v in var.spec : k => v if k != "namespace" }
 }

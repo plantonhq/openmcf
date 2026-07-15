@@ -30,7 +30,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsServerlessElasticache
 metadata:
   name: my-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsServerlessElasticache
 metadata:
   name: session-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -122,7 +122,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsServerlessElasticache
 metadata:
   name: prod-kv-store
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -161,7 +161,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsServerlessElasticache
 metadata:
   name: html-fragment-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -189,7 +189,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsServerlessElasticache
 metadata:
   name: ref-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

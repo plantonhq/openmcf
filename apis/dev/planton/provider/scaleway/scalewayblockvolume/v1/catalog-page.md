@@ -24,7 +24,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayBlockVolume
 metadata:
   name: my-volume
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -70,7 +70,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayBlockVolume
 metadata:
   name: dev-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,7 +90,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayBlockVolume
 metadata:
   name: prod-db-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -110,7 +110,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayBlockVolume
 metadata:
   name: restored-volume
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

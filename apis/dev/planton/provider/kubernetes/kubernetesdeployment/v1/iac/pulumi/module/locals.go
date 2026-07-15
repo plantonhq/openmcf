@@ -12,7 +12,7 @@ import (
 	kubernetesdeploymentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesdeployment/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/kuberneteslabelkeys"
-	"github.com/plantonhq/planton/pkg/kubernetes/kuberneteslabels"
+	"github.com/plantonhq/planton/pkg/kubernetes/kubernetesannotationkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -101,12 +101,12 @@ func initializeLocals(ctx *pulumi.Context, stackInput *kubernetesdeploymentv1.Ku
 	if stackInput.DockerConfigJson != "" {
 		locals.ImagePullSecretData = map[string]string{".dockerconfigjson": stackInput.DockerConfigJson}
 	} else {
-		// Priority 2: Label with file path (for open-source users)
+		// Priority 2: Annotation with file path (for open-source users)
 		// Only checked if stackInput.DockerConfigJson is empty
-		if dockerConfigFilePath := target.Metadata.Labels[kuberneteslabels.DockerConfigJsonFileLabelKey]; dockerConfigFilePath != "" {
+		if dockerConfigFilePath := target.Metadata.Annotations[kubernetesannotationkeys.DockerConfigJsonFileAnnotationKey]; dockerConfigFilePath != "" {
 			dockerConfigJson, err := loadDockerConfigFromFile(dockerConfigFilePath)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to load docker config from file specified in label: %s", dockerConfigFilePath)
+				return nil, errors.Wrapf(err, "failed to load docker config from file specified in annotation: %s", dockerConfigFilePath)
 			}
 			locals.ImagePullSecretData = map[string]string{".dockerconfigjson": dockerConfigJson}
 		}

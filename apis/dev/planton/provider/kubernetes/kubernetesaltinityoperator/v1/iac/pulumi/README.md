@@ -64,7 +64,6 @@ Refer to the examples section for detailed usage instructions.
 ### KubernetesAltinityOperatorSpec
 Defines the desired state of the operator deployment.
 
-- **target_cluster**: Target Kubernetes cluster configuration with credential reference
 - **container**: Container resource specifications for the operator pod
 
 ### KubernetesAltinityOperatorSpecContainer

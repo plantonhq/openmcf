@@ -5,6 +5,12 @@
 > load balancer, certificates, registry — into a single, parameterized blueprint
 > you deploy with your own values.
 
+> Not to be confused with the repository's [`helm/`](../helm) directory — those
+> are **Helm charts** that deploy Planton itself onto your Kubernetes cluster.
+> The charts here are Planton's own blueprint format for deploying
+> infrastructure *through* Planton. Looking to self-host Planton? Start at
+> [`helm/`](../helm).
+
 ## What you get
 
 A curated catalog of production-ready infrastructure blueprints across AWS, GCP,

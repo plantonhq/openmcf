@@ -35,7 +35,7 @@ identical for every Planton kind. The **Istio CRD** is served at `networking.ist
 ## 3. Planton spec shape (fidelity decisions)
 
 The Planton spec flattens the upstream `EnvoyFilter` fields directly after the namespaced
-envelope (`target_cluster`, `namespace`) -- no nested `envoy_filter` sub-message.
+envelope (`namespace`) -- no nested `envoy_filter` sub-message.
 Fields are numbered sequentially from 1 (the Planton proto is its own wire contract; it does not
 preserve upstream field-number gaps such as the upstream `targetRefs = 6` / `config_patches = 4`
 ordering).

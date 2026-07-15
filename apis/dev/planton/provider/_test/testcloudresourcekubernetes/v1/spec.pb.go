@@ -27,13 +27,11 @@ const (
 
 // TestCloudResourceKubernetesSpec is permanent test infrastructure for
 // Kubernetes-specific proto processing tests: ContainerResources defaults,
-// KubernetesClusterSelector skip rules, ContainerEnv handling, and
-// Flatten/HCL generation for Terraform modules.
+// ContainerEnv handling, and Flatten/HCL generation for Terraform modules.
 //
 // For generic (non-Kubernetes) test fields, use TestCloudResourceGeneric instead.
 //
 // Field coverage:
-//   - KubernetesClusterSelector (Flatten skip-rule testing)
 //   - StringValueOrRef namespace (singular flatten testing)
 //   - ContainerResources with default_container_resources (default strategy testing)
 //   - ContainerEnv with list-based variables/secrets
@@ -41,15 +39,14 @@ const (
 //   - repeated string command (plain repeated field)
 //   - Scalar with default (schedule-like field for mixed testing)
 type TestCloudResourceKubernetesSpec struct {
-	state           protoimpl.MessageState                `protogen:"open.v1"`
-	TargetCluster   *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
-	Namespace       *v1.StringValueOrRef                  `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	CreateNamespace bool                                  `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	Resources       *kubernetes.ContainerResources        `protobuf:"bytes,4,opt,name=resources,proto3" json:"resources,omitempty"`
-	Env             *kubernetes.ContainerEnv              `protobuf:"bytes,5,opt,name=env,proto3" json:"env,omitempty"`
-	RefMap          map[string]*v1.StringValueOrRef       `protobuf:"bytes,6,rep,name=ref_map,json=refMap,proto3" json:"ref_map,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Command         []string                              `protobuf:"bytes,7,rep,name=command,proto3" json:"command,omitempty"`
-	Schedule        *string                               `protobuf:"bytes,8,opt,name=schedule,proto3,oneof" json:"schedule,omitempty"`
+	state           protoimpl.MessageState          `protogen:"open.v1"`
+	Namespace       *v1.StringValueOrRef            `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	CreateNamespace bool                            `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	Resources       *kubernetes.ContainerResources  `protobuf:"bytes,4,opt,name=resources,proto3" json:"resources,omitempty"`
+	Env             *kubernetes.ContainerEnv        `protobuf:"bytes,5,opt,name=env,proto3" json:"env,omitempty"`
+	RefMap          map[string]*v1.StringValueOrRef `protobuf:"bytes,6,rep,name=ref_map,json=refMap,proto3" json:"ref_map,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Command         []string                        `protobuf:"bytes,7,rep,name=command,proto3" json:"command,omitempty"`
+	Schedule        *string                         `protobuf:"bytes,8,opt,name=schedule,proto3,oneof" json:"schedule,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -82,13 +79,6 @@ func (x *TestCloudResourceKubernetesSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use TestCloudResourceKubernetesSpec.ProtoReflect.Descriptor instead.
 func (*TestCloudResourceKubernetesSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider__test_testcloudresourcekubernetes_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *TestCloudResourceKubernetesSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *TestCloudResourceKubernetesSpec) GetNamespace() *v1.StringValueOrRef {
@@ -144,9 +134,8 @@ var File_dev_planton_provider__test_testcloudresourcekubernetes_v1_spec_proto pr
 
 const file_dev_planton_provider__test_testcloudresourcekubernetes_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/_test/testcloudresourcekubernetes/v1/spec.proto\x129dev.planton.provider._test.testcloudresourcekubernetes.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x99\x06\n" +
-	"\x1fTestCloudResourceKubernetesSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Ddev/planton/provider/_test/testcloudresourcekubernetes/v1/spec.proto\x129dev.planton.provider._test.testcloudresourcekubernetes.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb6\x05\n" +
+	"\x1fTestCloudResourceKubernetesSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12t\n" +
 	"\tresources\x18\x04 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB!\xba\xfb\xa4\x02\x1c\n" +
@@ -179,23 +168,21 @@ var file_dev_planton_provider__test_testcloudresourcekubernetes_v1_spec_proto_ms
 var file_dev_planton_provider__test_testcloudresourcekubernetes_v1_spec_proto_goTypes = []any{
 	(*TestCloudResourceKubernetesSpec)(nil), // 0: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec
 	nil,                                     // 1: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.RefMapEntry
-	(*kubernetes.KubernetesClusterSelector)(nil), // 2: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),        // 4: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.ContainerEnv)(nil),              // 5: dev.planton.provider.kubernetes.ContainerEnv
+	(*v1.StringValueOrRef)(nil),             // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),   // 3: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.ContainerEnv)(nil),         // 4: dev.planton.provider.kubernetes.ContainerEnv
 }
 var file_dev_planton_provider__test_testcloudresourcekubernetes_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	3, // 1: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 2: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	5, // 3: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
-	1, // 4: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.ref_map:type_name -> dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.RefMapEntry
-	3, // 5: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.RefMapEntry.value:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	2, // 0: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 1: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	4, // 2: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
+	1, // 3: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.ref_map:type_name -> dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.RefMapEntry
+	2, // 4: dev.planton.provider._test.testcloudresourcekubernetes.v1.TestCloudResourceKubernetesSpec.RefMapEntry.value:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider__test_testcloudresourcekubernetes_v1_spec_proto_init() }

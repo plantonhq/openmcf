@@ -23,7 +23,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaStore
 metadata:
   name: my-store
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   name: my-authorization-store
@@ -60,7 +60,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaStore
 metadata:
   name: dev-authz
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   name: dev-authorization-store
@@ -75,7 +75,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaStore
 metadata:
   name: billing-authz
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   name: billing-service-authz
@@ -90,7 +90,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaStore
 metadata:
   name: prod-authz
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   name: production-authorization-store

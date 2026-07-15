@@ -32,7 +32,7 @@ apiVersion: snowflake.planton.dev/v1
 kind: SnowflakeDatabase
 metadata:
   name: my-database
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: snowflake.planton.dev/v1
 kind: SnowflakeDatabase
 metadata:
   name: staging-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: snowflake.planton.dev/v1
 kind: SnowflakeDatabase
 metadata:
   name: prod-analytics
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: snowflake.planton.dev/v1
 kind: SnowflakeDatabase
 metadata:
   name: data-lake-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

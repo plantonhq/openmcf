@@ -25,7 +25,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemcachedElasticache
 metadata:
   name: my-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -94,7 +94,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemcachedElasticache
 metadata:
   name: prod-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -129,7 +129,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemcachedElasticache
 metadata:
   name: tuned-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -166,7 +166,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemcachedElasticache
 metadata:
   name: ref-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

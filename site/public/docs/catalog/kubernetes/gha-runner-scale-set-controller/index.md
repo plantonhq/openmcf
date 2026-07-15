@@ -37,7 +37,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGhaRunnerScaleSetController
 metadata:
   name: arc-controller
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +112,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGhaRunnerScaleSetController
 metadata:
   name: arc-controller
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -140,7 +140,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGhaRunnerScaleSetController
 metadata:
   name: arc-controller-ha
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -176,7 +176,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGhaRunnerScaleSetController
 metadata:
   name: arc-controller-prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

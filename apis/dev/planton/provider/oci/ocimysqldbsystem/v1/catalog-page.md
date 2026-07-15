@@ -30,7 +30,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciMysqlDbSystem
 metadata:
   name: my-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -189,7 +189,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciMysqlDbSystem
 metadata:
   name: dev-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -214,7 +214,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciMysqlDbSystem
 metadata:
   name: ha-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -256,7 +256,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciMysqlDbSystem
 metadata:
   name: prod-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -329,7 +329,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciMysqlDbSystem
 metadata:
   name: ref-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

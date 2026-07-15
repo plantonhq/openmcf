@@ -22,7 +22,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSubnet
 metadata:
   name: my-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -82,7 +82,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSubnet
 metadata:
   name: dev-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -103,7 +103,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSubnet
 metadata:
   name: app-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSubnet
 metadata:
   name: prod-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -27,7 +27,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureServiceBusNamespace
 metadata:
   name: my-sb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureServiceBusNamespace
 metadata:
   name: app-messaging
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -140,7 +140,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureServiceBusNamespace
 metadata:
   name: enterprise-sb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -174,7 +174,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureServiceBusNamespace
 metadata:
   name: routing-sb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -202,7 +202,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureServiceBusNamespace
 metadata:
   name: ref-sb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

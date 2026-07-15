@@ -48,32 +48,6 @@ func TestProtoToTFVars_NamespaceFlattened(t *testing.T) {
 	}
 }
 
-func TestProtoToTFVars_TargetClusterSkipped(t *testing.T) {
-	msg := &testkubernetesv1.TestCloudResourceKubernetes{
-		ApiVersion: "_test.planton.dev/v1",
-		Kind:       "TestCloudResourceKubernetes",
-		Spec: &testkubernetesv1.TestCloudResourceKubernetesSpec{
-			TargetCluster: &kubernetes.KubernetesClusterSelector{
-				ClusterName: "test-cluster",
-			},
-			Namespace: &foreignkeyv1.StringValueOrRef{
-				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-					Value: "test-ns",
-				},
-			},
-		},
-	}
-
-	got, err := ProtoToTFVars(msg)
-	if err != nil {
-		t.Fatalf("ProtoToTFVars: %v", err)
-	}
-
-	if strings.Contains(got, "target_cluster") || strings.Contains(got, "targetCluster") {
-		t.Errorf("target_cluster should be skipped, got:\n%s", got)
-	}
-}
-
 func TestProtoToTFVars_MapRefValuesFlattened(t *testing.T) {
 	msg := &testkubernetesv1.TestCloudResourceKubernetes{
 		ApiVersion: "_test.planton.dev/v1",

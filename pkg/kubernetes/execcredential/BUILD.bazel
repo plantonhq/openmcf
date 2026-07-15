@@ -1,0 +1,30 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "execcredential",
+    srcs = [
+        "command.go",
+        "execcredential.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/kubernetes/execcredential",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/kubernetes/kubetoken",
+        "@com_github_pkg_errors//:errors",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)
+
+go_test(
+    name = "execcredential_test",
+    srcs = [
+        "command_test.go",
+        "execcredential_test.go",
+    ],
+    embed = [":execcredential"],
+    deps = [
+        "//pkg/kubernetes/kubetoken",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

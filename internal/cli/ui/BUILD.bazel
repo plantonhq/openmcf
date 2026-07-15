@@ -6,6 +6,7 @@ go_library(
         "backend.go",
         "clipboard.go",
         "manifest.go",
+        "manifest_diagnosis.go",
         "messages.go",
         "styles.go",
     ],
@@ -13,6 +14,7 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//pkg/iac/tofu/backendconfig",
+        "//pkg/yamldiag",
         "@com_github_charmbracelet_lipgloss//:lipgloss",
     ],
 )

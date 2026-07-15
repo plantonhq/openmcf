@@ -27,7 +27,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudPlacementGroup
 metadata:
   name: ha-group
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -66,7 +66,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudPlacementGroup
 metadata:
   name: ha-group
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -86,11 +86,12 @@ metadata:
   org: acme-corp
   env: production
   labels:
+    role: database
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
     pulumi.planton.dev/stack.name: production.HetznerCloudPlacementGroup.ha-db-group
-    role: database
 spec:
   type: spread
 ```
@@ -106,7 +107,7 @@ metadata:
   name: ha-db-group
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
@@ -124,7 +125,7 @@ metadata:
   name: db-01
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure

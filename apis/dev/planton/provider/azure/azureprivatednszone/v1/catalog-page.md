@@ -26,7 +26,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZone
 metadata:
   name: my-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -72,7 +72,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZone
 metadata:
   name: postgres-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZone
 metadata:
   name: keyvault-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +112,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZone
 metadata:
   name: internal-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -133,7 +133,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZone
 metadata:
   name: blob-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -153,7 +153,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZone
 metadata:
   name: ref-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

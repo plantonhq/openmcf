@@ -31,10 +31,16 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackApplicationCredential
 metadata:
   name: my-app-cred
-  labels:
-    planton.dev/provisioner: pulumi
+  annotations:
+    planton.dev/stack.jobId: prod.OpenstackApplicationCredential.monitoring-agent
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1/iac/pulumi/module
+    planton.dev/stack.jobId: staging.OpenstackApplicationCredential.temp-reader
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1/iac/pulumi/module
+    planton.dev/stack.jobId: dev.OpenstackApplicationCredential.dev-automation
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackApplicationCredential.my-app-cred
     planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1/iac/pulumi/module
+    planton.dev/provisioner: pulumi
 spec: {}
 ```
 
@@ -83,10 +89,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackApplicationCredential
 metadata:
   name: dev-automation
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: dev.OpenstackApplicationCredential.dev-automation
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1/iac/pulumi/module
 spec:
   description: CI/CD automation credential for development
 ```
@@ -100,10 +104,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackApplicationCredential
 metadata:
   name: temp-reader
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: staging.OpenstackApplicationCredential.temp-reader
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1/iac/pulumi/module
 spec:
   description: Temporary read-only credential for audit tooling
   roles:
@@ -121,10 +123,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackApplicationCredential
 metadata:
   name: monitoring-agent
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackApplicationCredential.monitoring-agent
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1/iac/pulumi/module
 spec:
   description: Monitoring agent with read-only access to compute and identity APIs
   roles:

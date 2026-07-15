@@ -35,7 +35,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudCdnDomain
 metadata:
   name: my-cdn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: cdn-project
@@ -99,7 +99,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudCdnDomain
 metadata:
   name: my-cdn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: cdn-project
@@ -122,7 +122,7 @@ metadata:
   name: assets-cdn
   org: platform-team
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: platform-team
     pulumi.planton.dev/project: cdn-project
@@ -156,7 +156,7 @@ metadata:
   name: secure-cdn
   org: my-org
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: cdn-project

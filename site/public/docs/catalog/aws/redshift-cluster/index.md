@@ -37,7 +37,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRedshiftCluster
 metadata:
   name: my-warehouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -132,7 +132,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRedshiftCluster
 metadata:
   name: dev-warehouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -159,7 +159,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRedshiftCluster
 metadata:
   name: prod-warehouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -209,7 +209,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRedshiftCluster
 metadata:
   name: analytics-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

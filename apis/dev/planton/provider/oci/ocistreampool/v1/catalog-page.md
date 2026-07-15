@@ -25,7 +25,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciStreamPool
 metadata:
   name: my-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -98,7 +98,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciStreamPool
 metadata:
   name: dev-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -120,7 +120,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciStreamPool
 metadata:
   name: event-hub
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -155,7 +155,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciStreamPool
 metadata:
   name: secure-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

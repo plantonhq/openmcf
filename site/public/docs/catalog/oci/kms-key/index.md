@@ -32,7 +32,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciKmsKey
 metadata:
   name: my-key
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -102,7 +102,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciKmsKey
 metadata:
   name: aes-key
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -126,7 +126,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciKmsKey
 metadata:
   name: rsa-signing-key
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -159,7 +159,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciKmsKey
 metadata:
   name: ecdsa-key
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -185,7 +185,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciKmsKey
 metadata:
   name: byok-key
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

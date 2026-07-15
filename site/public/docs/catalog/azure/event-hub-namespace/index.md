@@ -35,7 +35,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureEventHubNamespace
 metadata:
   name: my-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -100,7 +100,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureEventHubNamespace
 metadata:
   name: data-pipeline
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureEventHubNamespace
 metadata:
   name: enterprise-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -169,7 +169,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureEventHubNamespace
 metadata:
   name: iot-ingestion
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -204,7 +204,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureEventHubNamespace
 metadata:
   name: ref-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -17,6 +17,7 @@ import (
 	pulumimodulestackinput "github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/stackinput"
 	"github.com/plantonhq/planton/pkg/iac/stackinput"
 	"github.com/plantonhq/planton/pkg/iac/stackinput/stackinputproviderconfig"
+	"github.com/plantonhq/planton/pkg/kubernetes/execcredential"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -28,20 +29,20 @@ func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi
 		return errors.Wrapf(err, "failed to override values in target manifest file")
 	}
 
-	// Try to extract backend configuration from manifest labels
+	// Try to extract backend configuration from manifest annotations
 	// If found, use it instead of the provided stackFqdn
 	finalStackFqdn := stackFqdn
 	if manifestBackendConfig, err := backendconfig.ExtractFromManifest(manifestObject); err == nil && manifestBackendConfig != nil {
 		if manifestBackendConfig.StackFqdn != "" {
 			cyan := color.New(color.FgCyan).SprintFunc()
-			fmt.Printf("\nDetected Stack from Labels: %s\n\n", cyan(manifestBackendConfig.StackFqdn))
+			fmt.Printf("\nDetected Stack from Annotations: %s\n\n", cyan(manifestBackendConfig.StackFqdn))
 			finalStackFqdn = manifestBackendConfig.StackFqdn
 		}
 	}
 
 	// Validate that we have a stack FQDN
 	if finalStackFqdn == "" {
-		return errors.New("Pulumi stack FQDN is required. Provide it via --stack flag or set pulumi.planton.dev/stack.fqdn label in manifest")
+		return errors.New("Pulumi stack FQDN is required. Provide it via --stack flag or set pulumi.planton.dev/stack.fqdn annotation in manifest")
 	}
 
 	kindName, err := crkreflect.ExtractKindFromProto(manifestObject)
@@ -130,6 +131,17 @@ func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi
 	pulumiCmd.Env = append(os.Environ(), pulumimodulestackinput.FilePathEnvVar+"="+finalStackInputFilePath)
 	if kubeContext != "" {
 		pulumiCmd.Env = append(pulumiCmd.Env, "KUBE_CTX="+kubeContext)
+	}
+
+	// Advertise this binary as the kubeconfig exec-credential command: the module
+	// process renders kubeconfigs for managed clusters (EKS/GKE) but cannot know the
+	// engine-spawning binary's path on its own. Failure to resolve our own path is
+	// only fatal for those providers, so it degrades to a warning here and surfaces
+	// as a clear builder error if a kubernetes module actually needs the contract.
+	if executable, err := os.Executable(); err == nil {
+		pulumiCmd.Env = append(pulumiCmd.Env, execcredential.CommandPathEnvVar+"="+executable)
+	} else {
+		log.Warnf("could not resolve own executable path for %s: %v", execcredential.CommandPathEnvVar, err)
 	}
 
 	// Set the working directory to the repository path

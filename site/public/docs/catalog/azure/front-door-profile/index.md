@@ -37,7 +37,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorProfile
 metadata:
   name: my-cdn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -146,7 +146,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorProfile
 metadata:
   name: web-cdn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -196,7 +196,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorProfile
 metadata:
   name: api-gateway
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -256,7 +256,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorProfile
 metadata:
   name: enterprise-cdn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -302,7 +302,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorProfile
 metadata:
   name: ref-cdn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

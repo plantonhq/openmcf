@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "planton-runner.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "planton-runner.labels" . | nindent 4 }}
+spec:
+  # The runner maintains a stateful tunnel connection -- always exactly 1 replica.
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "planton-runner.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- if not .Values.credentials.existingSecret }}
+        checksum/credentials: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "planton-runner.labels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "planton-runner.serviceAccountName" . }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: runner
+          image: {{ include "planton-runner.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "start"
+          env:
+            - name: PLANTON_RUNNER_CREDENTIALS_FILE
+              value: "/etc/planton/credentials/credentials.json"
+            - name: PORT
+              value: {{ .Values.runner.port | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.runner.logLevel | quote }}
+            - name: EXECUTION_MODE
+              value: {{ .Values.runner.executionMode | quote }}
+            {{- if .Values.temporal.address }}
+            - name: TEMPORAL_SERVICE_ADDRESS
+              value: {{ .Values.temporal.address | quote }}
+            - name: TEMPORAL_NAMESPACE
+              value: {{ .Values.temporal.namespace | quote }}
+            - name: TEMPORAL_MAX_CONCURRENCY
+              value: {{ .Values.temporal.maxConcurrency | quote }}
+            {{- end }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.runner.port }}
+              protocol: TCP
+            - name: health
+              containerPort: 8093
+              protocol: TCP
+            - name: admin
+              containerPort: 8094
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: credentials
+              mountPath: /etc/planton/credentials
+              readOnly: true
+      volumes:
+        - name: credentials
+          secret:
+            secretName: {{ include "planton-runner.credentialsSecretName" . }}
+            defaultMode: 0400
+            items:
+              - key: {{ include "planton-runner.credentialsSecretKey" . }}
+                path: credentials.json
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

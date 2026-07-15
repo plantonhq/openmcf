@@ -32,7 +32,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKinesisStream
 metadata:
   name: my-stream
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -83,7 +83,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKinesisStream
 metadata:
   name: order-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -106,7 +106,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKinesisStream
 metadata:
   name: analytics-pipeline
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKinesisStream
 metadata:
   name: audit-stream
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

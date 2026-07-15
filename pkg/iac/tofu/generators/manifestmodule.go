@@ -108,7 +108,22 @@ func namespaceForeignKeyJSONName(specMsg protoreflect.MessageDescriptor) (string
 }
 
 func manifestProviderTF() string {
-	return "provider \"kubernetes\" {\n}\n"
+	// Pin the provider source and version range so a generated module is
+	// self-contained: without required_providers, Terraform silently falls
+	// back to an unconstrained hashicorp/kubernetes, and provider upgrades
+	// would ripple through every module unpinned.
+	return `terraform {
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.35"
+    }
+  }
+}
+
+provider "kubernetes" {
+}
+`
 }
 
 func manifestModuleHeader(apiVersion, crdKind string) string {
@@ -156,13 +171,12 @@ func manifestLocalsTF(label, nsJSONName string, namespaced bool) string {
 	b.WriteString("  }\n\n")
 	if namespaced {
 		fmt.Fprintf(&b, "  # The CR spec is var.spec minus the Planton %q foreign key, which maps to\n", nsJSONName)
-		b.WriteString("  # metadata.namespace rather than into the CR spec. target_cluster is already\n")
-		b.WriteString("  # dropped by the converter, which also emits camelCase, null-pruned keys, so no\n")
-		b.WriteString("  # other transformation is needed.\n")
+		b.WriteString("  # metadata.namespace rather than into the CR spec. The converter already emits\n")
+		b.WriteString("  # camelCase, null-pruned keys, so no other transformation is needed.\n")
 		fmt.Fprintf(&b, "  manifest_spec = { for k, v in var.spec : k => v if k != %q }\n", nsJSONName)
 	} else {
-		b.WriteString("  # Cluster-scoped CR: the converter already emits camelCase, null-pruned keys\n")
-		b.WriteString("  # (target_cluster dropped), so the spec is passed through unchanged.\n")
+		b.WriteString("  # Cluster-scoped CR: the converter already emits camelCase, null-pruned keys,\n")
+		b.WriteString("  # so the spec is passed through unchanged.\n")
 		b.WriteString("  manifest_spec = var.spec\n")
 	}
 	b.WriteString("}\n")

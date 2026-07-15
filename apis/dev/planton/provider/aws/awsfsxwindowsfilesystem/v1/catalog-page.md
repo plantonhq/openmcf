@@ -30,7 +30,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxWindowsFileSystem
 metadata:
   name: my-windows-fs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxWindowsFileSystem
 metadata:
   name: dev-windows-fs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -140,7 +140,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxWindowsFileSystem
 metadata:
   name: prod-windows-fs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -181,7 +181,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxWindowsFileSystem
 metadata:
   name: ha-windows-fs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -226,7 +226,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxWindowsFileSystem
 metadata:
   name: wired-windows-fs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

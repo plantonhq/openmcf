@@ -32,7 +32,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackNetworkPort
 metadata:
   name: my-port
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,7 +90,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackNetworkPort
 metadata:
   name: web-port
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -110,7 +110,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackNetworkPort
 metadata:
   name: app-port
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -152,7 +152,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackNetworkPort
 metadata:
   name: appliance-port
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

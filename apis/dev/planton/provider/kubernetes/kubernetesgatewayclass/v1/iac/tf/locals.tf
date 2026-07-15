@@ -6,7 +6,7 @@ locals {
     "app.kubernetes.io/component"  = "gateway-class"
   }
 
-  # Cluster-scoped CR: the converter already emits camelCase, null-pruned keys
-  # (target_cluster dropped), so the spec is passed through unchanged.
+  # Cluster-scoped CR: the converter already emits camelCase, null-pruned keys,
+  # so the spec is passed through unchanged.
   manifest_spec = var.spec
 }

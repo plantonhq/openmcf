@@ -31,7 +31,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: google-idp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -105,7 +105,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: google-idp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: auth
@@ -137,7 +137,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: corp-oidc-idp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: auth
@@ -170,7 +170,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: corp-saml-idp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: auth

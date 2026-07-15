@@ -38,7 +38,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesZalandoPostgresOperator
 metadata:
   name: my-pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -69,8 +69,6 @@ This installs the Zalando Postgres Operator into the `postgres-operator` namespa
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying the operator. |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for the operator pod. |
 | `container.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for the operator pod. |
@@ -100,7 +98,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesZalandoPostgresOperator
 metadata:
   name: pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -127,7 +125,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesZalandoPostgresOperator
 metadata:
   name: prod-pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -165,7 +163,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesZalandoPostgresOperator
 metadata:
   name: shared-pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -195,7 +193,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesZalandoPostgresOperator
 metadata:
   name: team-pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -13,8 +13,6 @@ metadata:
     app: tekton
     environment: development
 spec:
-  target_cluster:
-    cluster_name: "test-k8s-cluster"
   container:
     resources:
       requests:

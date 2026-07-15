@@ -32,7 +32,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureResourceGroup
 metadata:
   name: my-rg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -74,7 +74,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureResourceGroup
 metadata:
   name: dev-rg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -95,7 +95,7 @@ metadata:
   name: prod-eu-rg
   env: prod
   org: acme-corp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: acme-infra
@@ -118,7 +118,7 @@ metadata:
   name: app-primary-rg
   env: prod
   org: acme-corp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: acme-infra
@@ -137,7 +137,7 @@ metadata:
   name: app-secondary-rg
   env: prod
   org: acme-corp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: acme-infra

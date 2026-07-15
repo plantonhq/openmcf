@@ -1,0 +1,41 @@
+# Routed AwsSubnet scenario: the subnet owns a dedicated route table with a
+# default route to the internet gateway fixture, so all three module
+# resources (subnet + route table + association) are proven live in one
+# lane -- including the association's composite import id. The
+# planton.dev/e2e-prerequisites annotation composes the AwsInternetGateway
+# fixture (which itself rides the AwsVpc registry prerequisite). The CIDR
+# (10.0.101.0/24) avoids the prerequisite VPC's own subnets (10.0.0.0/24,
+# 10.0.1.0/24) and the minimal scenario's 10.0.100.0/24. Full metadata is
+# supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsSubnet
+metadata:
+  name: planton-oss-e2e-awssubnet-routed
+  id: planton-oss-e2e-awssubnet-routed
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssubnet
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsInternetGateway"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  availabilityZone: us-west-2a
+  cidrBlock: 10.0.101.0/24
+  routes:
+    - destinationCidrBlock: 0.0.0.0/0
+      targetType: internet_gateway
+      targetId:
+        valueFrom:
+          kind: AwsInternetGateway
+          name: planton-oss-e2e-awsinternetgateway-prereq
+          fieldPath: status.outputs.internet_gateway_id

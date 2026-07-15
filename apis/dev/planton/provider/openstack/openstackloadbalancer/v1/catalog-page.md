@@ -24,7 +24,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancer
 metadata:
   name: my-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -71,7 +71,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancer
 metadata:
   name: web-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,7 +90,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancer
 metadata:
   name: api-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancer
 metadata:
   name: premium-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -139,7 +139,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancer
 metadata:
   name: ref-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

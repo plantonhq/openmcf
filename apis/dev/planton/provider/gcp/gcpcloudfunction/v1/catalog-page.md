@@ -29,7 +29,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudFunction
 metadata:
   name: my-http-handler
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudFunction
 metadata:
   name: image-resizer
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -149,7 +149,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudFunction
 metadata:
   name: order-processor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -191,7 +191,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudFunction
 metadata:
   name: file-indexer
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -247,7 +247,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudFunction
 metadata:
   name: webhook-receiver
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

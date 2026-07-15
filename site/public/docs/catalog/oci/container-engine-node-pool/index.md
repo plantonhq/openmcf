@@ -35,7 +35,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciContainerEngineNodePool
 metadata:
   name: general-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -174,7 +174,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciContainerEngineNodePool
 metadata:
   name: dev-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -207,7 +207,7 @@ metadata:
   name: prod-pool
   org: acme
   env: prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: oke-platform
@@ -299,7 +299,7 @@ metadata:
   name: gpu-pool
   org: acme
   env: prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: oke-platform
@@ -346,7 +346,7 @@ metadata:
   name: arm-pool
   org: acme
   env: prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: oke-platform

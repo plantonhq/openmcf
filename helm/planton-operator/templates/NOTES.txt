@@ -1,0 +1,19 @@
+The Planton operator is installed. It deploys nothing until you apply a
+PlantonPlatform resource -- the minimal one is three lines:
+
+  kubectl apply -f - <<EOF
+  apiVersion: planton.ai/v1
+  kind: PlantonPlatform
+  metadata:
+    name: planton
+    namespace: {{ .Release.Namespace }}
+  spec:
+    version: {{ .Chart.AppVersion }}
+  EOF
+
+  kubectl get plantonplatform planton -n {{ .Release.Namespace }} -w
+
+Prefer one command that does both? The `planton` umbrella chart installs the
+operator AND the platform together:
+
+  helm install planton oci://ghcr.io/plantonhq/charts/planton -n planton --create-namespace

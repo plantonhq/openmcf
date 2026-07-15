@@ -1,0 +1,24 @@
+# The staging network: a deliberate look-alike of orders-prod-vpc --
+# identical CIDR (AWS permits duplicate VPC CIDRs in one account) and
+# identical DNS settings. Only the Name tag and the resources INSIDE each
+# network tell them apart, which is exactly how real console-managed
+# accounts mirror production into staging.
+apiVersion: aws.planton.dev/v1
+kind: AwsVpc
+metadata:
+  name: orders-stg-vpc
+  id: orders-stg-vpc
+  org: planton-oss
+  env: staging
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsvpc
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  cidrBlock: 10.20.0.0/16
+  enableDnsHostnames: true
+  enableDnsSupport: true

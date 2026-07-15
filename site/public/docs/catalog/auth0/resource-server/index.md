@@ -32,7 +32,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0ResourceServer
 metadata:
   name: my-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -84,7 +84,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0ResourceServer
 metadata:
   name: orders-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0ResourceServer
 metadata:
   name: admin-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -149,7 +149,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0ResourceServer
 metadata:
   name: payments-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

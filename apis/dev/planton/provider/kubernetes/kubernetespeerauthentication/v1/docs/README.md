@@ -54,7 +54,7 @@ discriminator machinery.
 ## 3. Planton spec shape (fidelity decisions)
 
 The Planton spec flattens the upstream `PeerAuthentication` fields directly after
-the namespaced envelope (`target_cluster`, `namespace`). There is no nested
+the namespaced envelope (`namespace`). There is no nested
 `peer_authentication` sub-message.
 
 | Upstream | Planton | Notes |

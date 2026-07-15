@@ -36,7 +36,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFunctionApp
 metadata:
   name: my-func
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -108,7 +108,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFunctionApp
 metadata:
   name: python-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -140,7 +140,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFunctionApp
 metadata:
   name: docker-func
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -176,7 +176,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFunctionApp
 metadata:
   name: ref-func
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

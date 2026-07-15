@@ -26,7 +26,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -52,8 +52,6 @@ This component has no strictly required spec fields. An empty `spec: {}` install
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `version` | `string` | `v1.2.1` | Gateway API release version to install. Must match the pattern `v<major>.<minor>.<patch>` with an optional pre-release suffix (e.g., `v1.3.0`, `v1.2.1-rc1`). |
 | `installChannel.channel` | `enum` | `standard` | CRD installation channel. `standard` installs Gateway, GatewayClass, HTTPRoute, and ReferenceGrant. `experimental` adds TCPRoute, UDPRoute, TLSRoute, and GRPCRoute. |
 
@@ -68,7 +66,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -85,7 +83,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api-experimental
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -105,15 +103,12 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api-prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.KubernetesGatewayApiCrds.gateway-api-prod
 spec:
-  targetCluster:
-    clusterKind: GcpGkeCluster
-    clusterName: prod-cluster
   version: "v1.2.1"
   installChannel:
     channel: standard

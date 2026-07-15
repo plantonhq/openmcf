@@ -37,7 +37,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudStorageBucket
 metadata:
   name: my-bucket
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -8,7 +8,6 @@ package kubernetesexternaldnsv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -28,8 +27,6 @@ const (
 // KubernetesExternalDnsSpec defines configuration for ExternalDNS on any cluster.
 type KubernetesExternalDnsSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -79,13 +76,6 @@ func (x *KubernetesExternalDnsSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesExternalDnsSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesExternalDnsSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesExternalDnsSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesExternalDnsSpec) GetNamespace() *v1.StringValueOrRef {
@@ -421,9 +411,8 @@ var File_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto pro
 
 const file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kubernetesexternaldns/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesexternaldns.v1\x1a\x1bbuf/validate/validate.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xad\a\n" +
-	"\x19KubernetesExternalDnsSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Cdev/planton/provider/kubernetes/kubernetesexternaldns/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesexternaldns.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xca\x06\n" +
+	"\x19KubernetesExternalDnsSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12B\n" +
 	"\x14external_dns_version\x18\x04 \x01(\tB\v\x8a\xa6\x1d\av0.19.0H\x01R\x12externalDnsVersion\x88\x01\x01\x12=\n" +
@@ -475,26 +464,24 @@ var file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_goT
 	(*KubernetesExternalDnsEksConfig)(nil),        // 2: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsEksConfig
 	(*KubernetesExternalDnsAksConfig)(nil),        // 3: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAksConfig
 	(*KubernetesExternalDnsCloudflareConfig)(nil), // 4: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflareConfig
-	(*kubernetes.KubernetesClusterSelector)(nil),  // 5: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                   // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*v1.StringValueOrRef)(nil),                   // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_depIdxs = []int32{
-	5,  // 0: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	6,  // 1: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 2: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.gke:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGkeConfig
-	2,  // 3: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.eks:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsEksConfig
-	3,  // 4: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.aks:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAksConfig
-	4,  // 5: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.cloudflare:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflareConfig
-	6,  // 6: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGkeConfig.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 7: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGkeConfig.dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 8: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsEksConfig.route53_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 9: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAksConfig.dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 10: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflareConfig.dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	5,  // 0: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.gke:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGkeConfig
+	2,  // 2: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.eks:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsEksConfig
+	3,  // 3: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.aks:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAksConfig
+	4,  // 4: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.cloudflare:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflareConfig
+	5,  // 5: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGkeConfig.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 6: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGkeConfig.dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 7: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsEksConfig.route53_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 8: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAksConfig.dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 9: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflareConfig.dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_init() }

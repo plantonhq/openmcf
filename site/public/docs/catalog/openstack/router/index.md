@@ -31,7 +31,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRouter
 metadata:
   name: my-router
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -84,7 +84,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRouter
 metadata:
   name: internal-router
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -105,7 +105,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRouter
 metadata:
   name: gateway-router
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -129,7 +129,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRouter
 metadata:
   name: prod-router
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

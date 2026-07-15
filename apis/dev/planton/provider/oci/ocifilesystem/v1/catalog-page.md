@@ -28,7 +28,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciFileSystem
 metadata:
   name: my-fs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -118,7 +118,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciFileSystem
 metadata:
   name: dev-fs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +143,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciFileSystem
 metadata:
   name: app-shared
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -173,7 +173,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciFileSystem
 metadata:
   name: prod-shared
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -223,7 +223,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciFileSystem
 metadata:
   name: ref-fs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -27,7 +27,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVpc
 metadata:
   name: my-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -77,7 +77,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVpc
 metadata:
   name: dev-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -98,7 +98,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVpc
 metadata:
   name: staging-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -123,7 +123,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVpc
 metadata:
   name: prod-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

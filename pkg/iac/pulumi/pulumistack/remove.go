@@ -25,7 +25,7 @@ func Remove(moduleDir, stackFqdn, targetManifestPath string, valueOverrides map[
 		return errors.Wrapf(err, "failed to override values in target manifest file")
 	}
 
-	// Try to extract backend configuration from manifest labels
+	// Try to extract backend configuration from manifest annotations
 	// If found, use it instead of the provided stackFqdn
 	finalStackFqdn := stackFqdn
 	if manifestBackendConfig, err := backendconfig.ExtractFromManifest(manifestObject); err == nil && manifestBackendConfig != nil {

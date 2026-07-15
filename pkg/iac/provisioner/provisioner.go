@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/plantonhq/planton/pkg/iac/provisionerlabels"
+	"github.com/plantonhq/planton/pkg/iac/provisionerannotationkeys"
 	"github.com/plantonhq/planton/pkg/reflection/metadatareflect"
 	"google.golang.org/protobuf/proto"
 )
@@ -33,20 +33,20 @@ func (p ProvisionerType) String() string {
 	}
 }
 
-// ExtractFromManifest extracts the provisioner type from manifest labels
+// ExtractFromManifest extracts the provisioner type from manifest annotations
 // Returns:
-//   - ProvisionerType and nil error if label exists and is valid
-//   - ProvisionerTypeUnspecified and nil error if label is missing (needs user prompt)
-//   - ProvisionerTypeUnspecified and error if label value is invalid
+//   - ProvisionerType and nil error if the annotation exists and is valid
+//   - ProvisionerTypeUnspecified and nil error if the annotation is missing (needs user prompt)
+//   - ProvisionerTypeUnspecified and error if the annotation value is invalid
 func ExtractFromManifest(manifest proto.Message) (ProvisionerType, error) {
-	labels := metadatareflect.ExtractLabels(manifest)
-	if labels == nil {
+	annotations := metadatareflect.ExtractAnnotations(manifest)
+	if annotations == nil {
 		return ProvisionerTypeUnspecified, nil
 	}
 
-	provisioner, ok := labels[provisionerlabels.ProvisionerLabelKey]
+	provisioner, ok := annotations[provisionerannotationkeys.ProvisionerAnnotationKey]
 	if !ok || provisioner == "" {
-		// Label not present - return unspecified (caller should prompt user)
+		// Annotation not present - return unspecified (caller should prompt user)
 		return ProvisionerTypeUnspecified, nil
 	}
 

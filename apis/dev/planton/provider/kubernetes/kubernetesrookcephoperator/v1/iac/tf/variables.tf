@@ -14,8 +14,6 @@ variable "metadata" {
 variable "spec" {
   description = "Specification for Kubernetes Rook Ceph Operator deployment"
   type = object({
-    # Target Kubernetes cluster name
-    target_cluster_name = optional(string)
 
     # Kubernetes namespace where operator will be deployed
     namespace = optional(string, "rook-ceph")

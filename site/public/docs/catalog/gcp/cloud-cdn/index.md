@@ -48,7 +48,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudCdn
 metadata:
   name: my-cdn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -135,7 +135,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudCdn
 metadata:
   name: static-site-cdn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -161,7 +161,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudCdn
 metadata:
   name: api-cdn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -195,7 +195,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudCdn
 metadata:
   name: media-cdn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -261,7 +261,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudCdn
 metadata:
   name: hybrid-cdn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
