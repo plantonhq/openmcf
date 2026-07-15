@@ -6,7 +6,7 @@ spec:
   selector:
     kind: platform
   description: The day-2 monitoring pack for an Azure subscription -- a Log Analytics workspace and Application Insights as the telemetry destination, on-call and critical action groups, service-health and failed-admin-operation alerts on the subscription's activity log, log-query alerts on application errors, and an optional outside-in availability test with its paging alert.
-  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/provider/azure/azureloganalyticsworkspace/v1/assets/logo.svg
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/azure/azureloganalyticsworkspace/v1/logo.svg
   isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/azure/observability-foundation

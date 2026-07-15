@@ -31,19 +31,31 @@ rebuilding a chart under `charts/<provider>/<chart-name>/`.
    target — every provider's catalog is designed on its own legs. (Structural
    anatomy — the four files, the params vocabulary, the validation gate — is the
    only cross-provider constant.)
-3. **Compose first-class nodes by reference.** Charts wire independently ownable
+3. **One chart, one architecture.** Each chart answers one real scenario for
+   one identifiable user. Variants are parameters, not sibling charts — until
+   the parameter surface stops being honest, and then you split.
+4. **Compose first-class nodes by reference.** Charts wire independently ownable
    Cloud Resources together with `valueFrom` references — a chart is a starting
    point users extend and recombine, not a black box. Prefer referencing a
-   first-class kind over inlining a lookalike configuration block.
-4. **Real defaults, honest toggles.** Defaults must be deployable and
-   production-sane (cost-conscious where a knob is expensive; secure by default
-   everywhere). Bool params are feature toggles: each toggle must render a valid
-   chart in BOTH branches independently — validation flips every bool once, so a
-   toggle that only works in combination with another is a design defect.
-5. **No hardcoded provisioner.** Chart resources must not carry the
-   `planton.dev/provisioner` label. The IaC engine (OpenTofu vs Pulumi) is a
+   first-class kind over inlining a lookalike configuration block. Charts are
+   self-contained: every `valueFrom` target is defined by the same chart (the
+   validator enforces this per render variant).
+5. **Real defaults, honest toggles, secure by default.** Defaults must be
+   deployable and production-sane (cost-conscious where a knob is expensive).
+   Where the composed components offer a hardened path (private networking,
+   keyless/identity-based auth, RBAC-only data planes, customer-managed keys,
+   TLS floors), the chart defaults to it and makes relaxation the explicit
+   parameter — never the reverse. Bool params are feature toggles: each toggle
+   must render a valid chart in BOTH branches independently — validation flips
+   every bool once, so a toggle that only works in combination with another is
+   a design defect.
+6. **No hardcoded provisioner.** Chart resources must not carry the
+   `planton.dev/provisioner` key. The IaC engine (OpenTofu vs Pulumi) is a
    property of the deploying organization, resolved from its mapping — never of
    the chart.
+7. **Documentation is part of the artifact.** Templates, values descriptions,
+   and READMEs render publicly and are held to the same bar as `spec.proto`
+   field comments — they are the chart's education, not an afterthought.
 
 ## Anatomy (all four files, every chart)
 
@@ -54,6 +66,10 @@ charts/<provider>/<chart-name>/
 ├── templates/      # richly-commented manifests rendering the Cloud Resources
 └── README.md       # component-docs-grade documentation
 ```
+
+The chart directory name is kebab-case and names the ARCHITECTURE, not a
+product SKU (`hub-spoke-network-foundation`, not `firewall-chart`) — the name
+is the first word of the desirability pitch.
 
 ### Chart.yaml
 
@@ -118,6 +134,10 @@ the README. Conventions:
   then feature toggles.
 - Param names are `snake_case`; bool toggles read as predicates (e.g.
   `lock_table_enabled`).
+- **A parameter earns its place.** Expose what a real deployment varies —
+  region, CIDRs, SKUs/tiers, counts, feature toggles; fix what has one good
+  answer, with the reasoning as an inline template comment. A one-value knob
+  is a constant, not a parameter.
 
 ### templates/
 
@@ -128,11 +148,42 @@ the README. Conventions:
   choice: why a default is what it is, what a hardcoded value protects, why one
   resource references another, what AWS/GCP/Azure behavior a block works around.
   A reader must come away understanding the architecture, not just the fields.
-- Cross-resource wiring uses `valueFrom` (kind + name + `fieldPath` into
-  `status.outputs.*`); conditional blocks use `{% if values.<toggle> | bool %}`.
+- Cross-resource wiring uses `valueFrom` — always the full explicit triple
+  (kind + name + `fieldPath` into `status.outputs.*`), never the name-only
+  shorthand standalone manifests may use: the validator rejects kind-less
+  references and resolves every target against the chart's own rendered
+  documents. `fieldPath` field names are snake_case, exactly as the target
+  kind's `stack_outputs.proto` spells them. Conditional blocks use
+  `{% if values.<toggle> | bool %}`.
+- **The render context injects `values.env` and `values.org`** (the deployment
+  environment and organization) even though no `values.yaml` declares them.
+  Prefix every `metadata.name` with the environment
+  (`"{{ values.env }}-vnet"`) so one chart deploys into many environments
+  without collisions.
+- The production renderer is Jinjava (JVM); the offline validator renders the
+  same documented dialect (variable substitution, `{% if %}` / `{% for %}`,
+  the `bool` filter, string methods). A construct outside the documented
+  dialect risks passing one renderer and failing the other — the validator
+  explicitly disables the known-divergent tags/filters, and staying inside
+  the documented set is the contract.
 - Field names in manifests are the protojson camelCase of the kind's spec. The
   spec.proto is the single source of truth — read it before writing the template,
   never infer fields from another chart or an older manifest.
+- **A seam you cannot wire by reference is a component gap, not a chart
+  compromise.** If an in-chart resource's output belongs in another resource's
+  field but that field is a plain string in the spec (so `valueFrom` cannot
+  target it), do not hardcode a placeholder or bend the design around it —
+  retrofit the field to `StringValueOrRef` (with the natural `default_kind`)
+  through the component-update workflow, prove the component's gates, then
+  wire the chart by reference. Charts are the composition proof of the
+  component catalog; they are expected to surface these gaps.
+- **The seam-gap principle has a boundary: a value no resource outputs is an
+  honest literal parameter, not a component gap.** A subscription or account
+  id, a tenant id, an external email address or webhook URL: nothing in the
+  deployed graph produces these, so a described, must-change parameter is the
+  correct shape — do not invent a kind or contort the design to avoid the
+  literal. The parameter's description says plainly that it must be changed
+  and why.
 
 Renderer mechanics that charts rely on (all verified against the offline
 validator, which is strict-or-stricter than the control plane's engine):

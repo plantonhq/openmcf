@@ -7,7 +7,11 @@ import (
 
 	"buf.build/go/protovalidate"
 	"github.com/pkg/errors"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/internal/manifest"
+	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/pkg/reflection/metadatareflect"
+	"google.golang.org/protobuf/proto"
 )
 
 // Validation renders with fixed org/env slugs, mirroring the control plane's behavior of
@@ -91,25 +95,38 @@ func ValidateChart(dir string) (*Report, error) {
 	for _, variant := range variants {
 		values := ParamValues(chart.Params, variant.overrides)
 		result := VariantResult{Name: variant.name}
+		var docs []renderedDoc
 		for _, templateName := range chart.Templates() {
-			validateTemplate(chart, templateName, values, &result)
+			docs = append(docs, validateTemplate(chart, templateName, values, &result)...)
 		}
+		checkIntraChartTargets(docs, &result)
 		report.Variants = append(report.Variants, result)
 	}
 	return report, nil
 }
 
-// validateTemplate renders one template file and validates every document it produces.
-func validateTemplate(chart *Chart, templateName string, values map[string]any, result *VariantResult) {
+// renderedDoc is one successfully loaded manifest document of a render variant,
+// kept for the variant-wide checks that need to see all documents together.
+type renderedDoc struct {
+	Template string
+	DocIndex int
+	Loaded   proto.Message
+}
+
+// validateTemplate renders one template file, validates every document it produces, and
+// returns the successfully loaded documents for the variant-wide checks.
+func validateTemplate(chart *Chart, templateName string, values map[string]any, result *VariantResult) []renderedDoc {
 	rendered, err := RenderTemplate(templateName, chart.Template(templateName), values, validationOrg, validationEnv)
 	if err != nil {
 		result.Errors = append(result.Errors, DocError{Template: templateName, Err: err})
-		return
+		return nil
 	}
 
+	var docs []renderedDoc
 	for i, doc := range splitDocs(rendered) {
 		result.Docs++
-		if docErr := validateDoc(doc); docErr != nil {
+		loaded, docErr := validateDoc(doc)
+		if docErr != nil {
 			result.Errors = append(result.Errors, DocError{
 				Template: templateName,
 				DocIndex: i,
@@ -117,27 +134,78 @@ func validateTemplate(chart *Chart, templateName string, values map[string]any, 
 				Name:     scrapeScalar(doc, "name"),
 				Err:      docErr,
 			})
+			continue
+		}
+		docs = append(docs, renderedDoc{Template: templateName, DocIndex: i, Loaded: loaded})
+	}
+	return docs
+}
+
+// checkIntraChartTargets verifies that every valueFrom reference in a variant's
+// rendered documents targets a resource the SAME variant defines: charts are
+// self-contained compositions, so a reference to a kind/name no document declares
+// would only fail at deploy time, inside a user's project. The check runs on the
+// rendered docs (names carry the org/env interpolations), and toggle variants are
+// each checked against their own document set -- a toggle that removes a resource
+// but leaves references to it standing fails that variant.
+func checkIntraChartTargets(docs []renderedDoc, result *VariantResult) {
+	type target struct {
+		kind cloudresourcekind.CloudResourceKind
+		name string
+	}
+	defined := make(map[target]bool, len(docs))
+	for _, d := range docs {
+		kind := crkreflect.KindFromString(string(d.Loaded.ProtoReflect().Descriptor().Name()))
+		name := metadatareflect.ExtractMetadata(d.Loaded).GetName()
+		defined[target{kind: kind, name: name}] = true
+	}
+
+	for _, d := range docs {
+		kind := scrapeKindName(d.Loaded)
+		name := metadatareflect.ExtractMetadata(d.Loaded).GetName()
+		for _, site := range collectValueFromRefs(d.Loaded) {
+			// Kind-less references are already rejected per document by
+			// CheckValueFromRefs; only resolvable targets are checked here.
+			if site.Ref.GetKind() == cloudresourcekind.CloudResourceKind_unspecified {
+				continue
+			}
+			if !defined[target{kind: site.Ref.GetKind(), name: site.Ref.GetName()}] {
+				result.Errors = append(result.Errors, DocError{
+					Template: d.Template,
+					DocIndex: d.DocIndex,
+					Kind:     kind,
+					Name:     name,
+					Err: errors.Errorf("%s references %s %q, which this chart does not define in this variant",
+						site.FieldPath, site.Ref.GetKind().String(), site.Ref.GetName()),
+				})
+			}
 		}
 	}
+}
+
+// scrapeKindName returns the manifest's kind name for error labeling.
+func scrapeKindName(loaded proto.Message) string {
+	return string(loaded.ProtoReflect().Descriptor().Name())
 }
 
 // validateDoc runs the full offline gate on one rendered manifest document: typed load
 // (catches unknown kinds and unknown/renamed fields), protovalidate on the spec, and
 // valueFrom reference resolution. Violations are reported compactly (one line each) --
 // this is a batch gate over many documents, not the interactive single-manifest flow.
-func validateDoc(doc string) error {
+// The loaded manifest is returned for the variant-wide checks.
+func validateDoc(doc string) (proto.Message, error) {
 	loaded, err := manifest.LoadManifestBytes([]byte(doc), "rendered manifest")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	spec, err := manifest.ExtractSpec(loaded)
 	if err != nil {
-		return errors.Wrap(err, "extracting spec")
+		return nil, errors.Wrap(err, "extracting spec")
 	}
 	validator, err := protovalidate.New(protovalidate.WithDisableLazy(), protovalidate.WithMessages(spec))
 	if err != nil {
-		return errors.Wrap(err, "initializing validator")
+		return nil, errors.Wrap(err, "initializing validator")
 	}
 	if err := validator.Validate(spec); err != nil {
 		var ve *protovalidate.ValidationError
@@ -148,9 +216,9 @@ func validateDoc(doc string) error {
 					protovalidate.FieldPathString(violation.Proto.GetField()),
 					violation.Proto.GetMessage())
 			}
-			return errors.New(strings.Join(msgs, "\n"))
+			return nil, errors.New(strings.Join(msgs, "\n"))
 		}
-		return err
+		return nil, err
 	}
 
 	if refErrs := CheckValueFromRefs(loaded); len(refErrs) > 0 {
@@ -158,9 +226,9 @@ func validateDoc(doc string) error {
 		for i, re := range refErrs {
 			msgs[i] = re.Error()
 		}
-		return errors.Errorf("unresolvable valueFrom reference(s):\n  %s", strings.Join(msgs, "\n  "))
+		return nil, errors.Errorf("unresolvable valueFrom reference(s):\n  %s", strings.Join(msgs, "\n  "))
 	}
-	return nil
+	return loaded, nil
 }
 
 // docSeparator matches a YAML document separator line, the convention chart templates and

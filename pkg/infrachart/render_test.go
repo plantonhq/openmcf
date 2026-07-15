@@ -49,6 +49,14 @@ func TestRenderTemplateConformance(t *testing.T) {
 		{"truncate", `{{ values.long | truncate(15, true, '') }}`, `abcdefghijklmno`},
 		{"truncate within leeway", `{{ "abcdefghij" | truncate(8, true, '') }}`, `abcdefghij`},
 		{"length", `{{ values.csv.split(',') | length }}`, `3`},
+		// strip/lstrip/rstrip are patched over gonja's broken builtins, which
+		// stripped any input without trailing cut characters to "".
+		{"strip no whitespace", `[{{ "a.com".strip() }}]`, `[a.com]`},
+		{"strip whitespace", `[{{ "  a.com ".strip() }}]`, `[a.com]`},
+		{"strip cutset", `[{{ "xxa.comxx".strip('x') }}]`, `[a.com]`},
+		{"lstrip", `[{{ "  a.com ".lstrip() }}]`, `[a.com ]`},
+		{"rstrip", `[{{ "  a.com ".rstrip() }}]`, `[  a.com]`},
+		{"split strip loop", `{% for s in "*.ubuntu.com, *.debian.org".split(',') %}[{{ s.strip() }}]{% endfor %}`, `[*.ubuntu.com][*.debian.org]`},
 	}
 
 	for _, tc := range cases {

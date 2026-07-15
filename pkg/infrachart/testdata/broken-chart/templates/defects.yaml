@@ -31,3 +31,20 @@ spec:
       fieldPath: status.outputs.does_not_exist
   availabilityZone: "{{ values.aws_region }}a"
   cidrBlock: 10.0.1.0/24
+---
+# Undefined target: the reference is well-formed (known kind, resolvable
+# fieldPath) but no document in this chart defines an AwsVpc named
+# "phantom-vpc" -- the intra-chart target-resolution check must reject it.
+apiVersion: aws.planton.dev/v1
+kind: AwsSubnet
+metadata:
+  name: undefined-target
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: phantom-vpc
+      fieldPath: status.outputs.vpc_id
+  availabilityZone: "{{ values.aws_region }}a"
+  cidrBlock: 10.0.2.0/24

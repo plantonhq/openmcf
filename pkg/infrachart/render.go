@@ -37,7 +37,64 @@ func newRenderEnvironment() *exec.Environment {
 		Filters:           filters,
 		Tests:             builtins.Tests,
 		ControlStructures: builtins.ControlStructures,
-		Methods:           builtins.Methods,
+		Methods: exec.Methods{
+			Bool:  builtins.Methods.Bool,
+			Int:   builtins.Methods.Int,
+			Float: builtins.Methods.Float,
+			Str:   patchedStrMethods(),
+			Dict:  builtins.Methods.Dict,
+			List:  builtins.Methods.List,
+		},
+	}
+}
+
+// gonjaStrMethodNames is gonja v2.8.0's full builtin string-method surface. The
+// patched method set below copies each of these from the builtins so overriding
+// the broken ones does not silently drop the rest (the builtin map itself is
+// unexported and cannot be merged into).
+var gonjaStrMethodNames = []string{
+	"capitalize", "capwords", "casefold", "center", "count", "encode",
+	"endswith", "errors", "expandtabs", "find", "format", "format_map",
+	"isalnum", "isalpha", "isascii", "isdecimal", "isdigit", "islower",
+	"isnumeric", "isprintable", "isspace", "istitle", "isupper", "join",
+	"ljust", "lower", "lstrip", "partition", "removeprefix", "removesuffix",
+	"replace", "rfind", "rjust", "rpartition", "rsplit", "rstrip", "split",
+	"splitlines", "startswith", "strip", "swapcase", "title", "upper", "zfill",
+}
+
+// patchedStrMethods returns the builtin string methods with strip/lstrip/rstrip
+// replaced: gonja v2.8.0's implementations initialize the right-side cut index
+// to 0 instead of the string length, so any input WITHOUT trailing cut
+// characters strips to the empty string ("a.com".strip() == "") -- silently
+// corrupting every chart that trims a split CSV param.
+func patchedStrMethods() *exec.MethodSet[string] {
+	patched := make(map[string]exec.Method[string], len(gonjaStrMethodNames))
+	for _, name := range gonjaStrMethodNames {
+		if m, ok := builtins.Methods.Str.Get(name); ok {
+			patched[name] = m
+		}
+	}
+	patched["strip"] = stripMethod(strings.Trim)
+	patched["lstrip"] = stripMethod(strings.TrimLeft)
+	patched["rstrip"] = stripMethod(strings.TrimRight)
+	return exec.NewMethodSet(patched)
+}
+
+// stripMethod adapts a strings.Trim* function to Python's str.strip contract:
+// no argument (or an empty one) trims whitespace, otherwise the argument is the
+// set of characters to remove.
+func stripMethod(trim func(s, cutset string) string) exec.Method[string] {
+	return func(self string, _ *exec.Value, arguments *exec.VarArgs) (any, error) {
+		var cutset string
+		if err := arguments.Take(
+			exec.PositionalArgument("cutset", exec.AsValue(""), exec.StringArgument(&cutset)),
+		); err != nil {
+			return nil, exec.ErrInvalidCall(err)
+		}
+		if cutset == "" {
+			cutset = " \t\n\r\v\f"
+		}
+		return trim(self, cutset), nil
 	}
 }
 

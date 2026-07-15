@@ -6,7 +6,7 @@ spec:
   selector:
     kind: platform
   description: Production Kubernetes, private and keyless -- an AKS cluster with a private API server, workload identity federation wired end to end (pods reach Key Vault with no secret anywhere), keyless image pulls from a private container registry, deterministic NAT egress, and control-plane logs flowing into Log Analytics.
-  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/provider/azure/azureakscluster/v1/assets/logo.svg
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/azure/azureakscluster/v1/logo.svg
   isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/azure/private-aks-platform

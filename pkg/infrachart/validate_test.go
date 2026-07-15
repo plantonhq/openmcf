@@ -47,17 +47,20 @@ func TestValidateChartBrokenFixture(t *testing.T) {
 	}
 
 	errs := report.Variants[0].Errors
-	if len(errs) != 3 {
+	if len(errs) != 4 {
 		for _, e := range errs {
 			t.Logf("error: %s doc %d: %v", e.Template, e.DocIndex, e.Err)
 		}
-		t.Fatalf("expected 3 errors (one per defect class), got %d", len(errs))
+		t.Fatalf("expected 4 errors (one per defect class), got %d", len(errs))
 	}
 
-	// One error per defect class, in document order.
+	// One error per defect class: per-document errors in document order, then
+	// the variant-wide intra-chart target check.
 	assertErrContains(t, errs[0].Err.Error(), "cidrBlok")
 	assertErrContains(t, errs[1].Err.Error(), "region")
 	assertErrContains(t, errs[2].Err.Error(), "does_not_exist")
+	assertErrContains(t, errs[3].Err.Error(), "phantom-vpc")
+	assertErrContains(t, errs[3].Err.Error(), "does not define")
 }
 
 func assertErrContains(t *testing.T, got, want string) {
