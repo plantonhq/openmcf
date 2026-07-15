@@ -51,13 +51,39 @@ components in this repo.
 
 ## Design principles
 
+- **Every chart earns its place.** A chart is a complete, production-shaped
+  environment for one real scenario — something that would take a skilled
+  engineer days to compose by hand. No filler charts, no demo charts, no
+  single-resource wrappers.
+- **Each provider's charts stand on their own merit.** A chart is designed
+  from its cloud's own architectural grain — the architectures that cloud's
+  services are actually shaped for — never by mirroring how another provider's
+  chart composed something similar.
 - **Composability first.** Charts compose first-class, independently ownable
   resources by reference (`valueFrom`), so a chart is a starting point you can
   extend and recombine — not a monolith.
+- **Secure by default.** Where the composed components offer a hardened path
+  (private networking, identity-based auth, RBAC-only data planes,
+  customer-managed keys), the chart defaults to it and makes relaxation the
+  explicit parameter — never the reverse.
+- **Documentation is part of the artifact.** Template comments, parameter
+  descriptions, and READMEs render publicly and are held to the same bar as
+  the component schemas' field comments.
 - **No hardcoded provisioner.** Chart resources must not carry a
   `planton.dev/provisioner` label. The IaC provisioner (OpenTofu vs Pulumi) is a
   property of the deployment target, resolved from the organization's mapping,
   not baked into the chart. Omit the label and let each resource inherit the
   deploying organization's choice.
 
-Authoring guidance for these charts lives in [`_rules/charts/`](../_rules/charts).
+## Validating charts
+
+- `make validate-offline` (from `charts/`) renders every chart with its
+  default values and validates each rendered manifest against this repo's
+  proto contracts — plus every `valueFrom` reference and output field — with
+  no backend required. Scope to one chart with
+  `make validate-offline chart=<provider>/<chart>`.
+- `planton chart build` (Platform CLI) is the authoritative proof against a
+  running control plane.
+
+Authoring guidance for these charts lives in [`_rules/charts/`](../_rules/charts) —
+start with `author-planton-infra-charts.mdc`.

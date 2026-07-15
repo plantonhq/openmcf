@@ -8,7 +8,9 @@ alwaysApply: false
 
 Purpose: When invoked, build every InfraChart in this repository, identify validation failures, diagnose them against the authoritative protobuf specs in the planton repo, and fix the templates so all charts pass. This is precision work on a production platform — every fix must be traceable to the proto source of truth.
 
-Usage: Invoke explicitly as `@build-and-fix-planton-infra-charts` when charts need to be validated and repaired.
+Usage: Invoke explicitly as `@build-and-fix-planton-infra-charts` when charts need to be validated and repaired. For authoring a NEW chart (or reworking one), the contract is `@author-planton-infra-charts` — this rule is the repair playbook.
+
+**Offline alternative:** when no control plane on matching schemas is available (`planton chart build` validates against a RUNNING backend's schemas, which lag this repo between releases), use `cd charts && make validate-offline` — it renders every chart with default values and validates the rendered manifests against THIS checkout's protos, plus `valueFrom` resolution and output-field existence. The same diagnose/fix methodology below applies to its failures.
 
 ## Platform Context
 
