@@ -1,0 +1,71 @@
+# Service health: Azure telling you Azure is broken. Incidents and
+# security advisories affecting this subscription page the critical
+# group -- these are the events no metric ever shows, and the alert most
+# teams postpone until the first regional outage catches them blind.
+# Service-health events exist only at subscription scope, which is why
+# the scope is the subscription itself (an honest literal -- no resource
+# outputs a subscription ARM id).
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorActivityLogAlert
+metadata:
+  name: "{{ values.env }}-service-health"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-observability"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-service-health"
+  scopes:
+    - value: "/subscriptions/{{ values.subscription_id }}"
+  criteria:
+    category: SERVICE_HEALTH
+    serviceHealth:
+      # Incidents (something is down) and security advisories page;
+      # planned maintenance and informational events are visible in the
+      # portal without waking anyone.
+      events:
+        - INCIDENT
+        - EVENT_SECURITY
+  actions:
+    - actionGroupId:
+        valueFrom:
+          kind: AzureMonitorActionGroup
+          name: "{{ values.env }}-critical-alerts"
+          fieldPath: status.outputs.action_group_id
+  description: Azure service-health incidents and security advisories affecting this subscription -- the platform's own outage signal
+---
+# The admin-operation audit: failed control-plane writes anywhere in the
+# subscription. A burst of Failed administrative operations is the
+# early signature of expired credentials, missing permissions after a
+# role change, or an automation gone wrong -- caught here before the
+# deploy pipeline pages someone at 2am. Succeeded operations are
+# deliberately not alerted: change history belongs in the activity log
+# and the workspace, not in an inbox.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorActivityLogAlert
+metadata:
+  name: "{{ values.env }}-failed-admin-operations"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-observability"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-failed-admin-operations"
+  scopes:
+    - value: "/subscriptions/{{ values.subscription_id }}"
+  criteria:
+    category: ADMINISTRATIVE
+    levels:
+      - ERROR
+      - CRITICAL
+    statuses:
+      - Failed
+  actions:
+    - actionGroupId:
+        valueFrom:
+          kind: AzureMonitorActionGroup
+          name: "{{ values.env }}-ops-alerts"
+          fieldPath: status.outputs.action_group_id
+  description: Failed administrative (control-plane) operations in the subscription -- the early signature of expired credentials, permission drift, or broken automation

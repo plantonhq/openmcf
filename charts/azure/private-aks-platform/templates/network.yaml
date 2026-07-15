@@ -1,0 +1,91 @@
+# The platform's own network. Bringing the network (instead of letting
+# AKS create a managed one) is what makes the private posture possible:
+# the node subnet is addressable for peering, egress is owned by an
+# explicit NAT gateway, and future private endpoints (registry, vault)
+# have a network to land in.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: "{{ values.env }}-aks-vnet"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-aks-platform"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-aks-vnet"
+  addressSpaces:
+    - "{{ values.vnet_cidr }}"
+---
+# The egress address: one static Standard public IP every outbound
+# connection leaves through. Downstream systems (partner allowlists,
+# SaaS IP filters) can pin this single address instead of chasing
+# ephemeral load-balancer SNAT IPs.
+apiVersion: azure.planton.dev/v1
+kind: AzurePublicIp
+metadata:
+  name: "{{ values.env }}-aks-egress-ip"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-aks-platform"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-aks-egress-ip"
+  sku: STANDARD
+  {% if values.zones_enabled | bool %}
+  # A zone-redundant egress address survives a zone outage; the no-zone
+  # NAT gateway below accepts zone-redundant addresses.
+  zones: ["1", "2", "3"]
+  {% endif %}
+---
+# The NAT gateway that owns node egress. Explicit NAT is the production
+# answer to Azure retiring implicit outbound access: 64,512 SNAT ports
+# per address (vs the load balancer's shared allocation) and one stable
+# source IP. Deployed without a zone pin -- zonal-isolated egress means
+# one gateway and subnet per zone, a topology to grow into deliberately,
+# not a default.
+apiVersion: azure.planton.dev/v1
+kind: AzureNatGateway
+metadata:
+  name: "{{ values.env }}-aks-egress-nat"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-aks-platform"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-aks-egress-nat"
+  publicIpIds:
+    - valueFrom:
+        kind: AzurePublicIp
+        name: "{{ values.env }}-aks-egress-ip"
+        fieldPath: status.outputs.public_ip_id
+---
+# The node subnet. With Azure CNI overlay only nodes draw addresses from
+# it (pods live in the cluster's private overlay range), so /22 carries
+# ~1000 nodes. Implicit outbound is off -- every connection leaves
+# through the NAT gateway attached here, never through Azure's
+# soon-retired default path.
+apiVersion: azure.planton.dev/v1
+kind: AzureSubnet
+metadata:
+  name: "{{ values.env }}-aks-nodes"
+spec:
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-aks-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  name: "{{ values.env }}-aks-nodes"
+  addressPrefixes:
+    - "{{ values.nodes_subnet_cidr }}"
+  defaultOutboundAccessEnabled: false
+  natGatewayId:
+    valueFrom:
+      kind: AzureNatGateway
+      name: "{{ values.env }}-aks-egress-nat"
+      fieldPath: status.outputs.nat_gateway_id

@@ -44,7 +44,7 @@ func validResource() *AzureFederatedIdentityCredential {
 		Spec: &AzureFederatedIdentityCredentialSpec{
 			Name:                 "github-main-branch",
 			UserAssignedIdentity: literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-identity"),
-			Issuer:               "https://token.actions.githubusercontent.com",
+			Issuer:               literal("https://token.actions.githubusercontent.com"),
 			Subject:              "repo:acme/platform:ref:refs/heads/main",
 		},
 	}
@@ -74,9 +74,17 @@ var _ = ginkgo.Describe("AzureFederatedIdentityCredentialSpec Validation Tests",
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should accept an AKS workload-identity trust", func() {
+			ginkgo.It("should accept an AKS workload-identity trust with a literal issuer URL", func() {
 				input := validResource()
-				input.Spec.Issuer = "https://eastus.oic.prod-aks.azure.com/00000000-0000-0000-0000-000000000000/11111111-1111-1111-1111-111111111111/"
+				input.Spec.Issuer = literal("https://eastus.oic.prod-aks.azure.com/00000000-0000-0000-0000-000000000000/11111111-1111-1111-1111-111111111111/")
+				input.Spec.Subject = "system:serviceaccount:payments:payments-api"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept the issuer as a reference to a cluster's OIDC issuer output", func() {
+				input := validResource()
+				input.Spec.Issuer = ref("platform-aks-cluster")
 				input.Spec.Subject = "system:serviceaccount:payments:payments-api"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
@@ -135,14 +143,7 @@ var _ = ginkgo.Describe("AzureFederatedIdentityCredentialSpec Validation Tests",
 
 			ginkgo.It("should return a validation error when issuer is missing", func() {
 				input := validResource()
-				input.Spec.Issuer = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when issuer is not a URI", func() {
-				input := validResource()
-				input.Spec.Issuer = "not a url"
+				input.Spec.Issuer = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

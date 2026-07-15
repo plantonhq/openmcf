@@ -90,7 +90,7 @@ this kind is the AKS-workload-identity unlock.
 | `name` (required, ForceNew) | `name` | ARM name under the parent identity; 3-120 chars |
 | `user_assigned_identity_id` (required, ForceNew) | `user_assigned_identity` | The v4-canonical argument; `parent_id` is a deprecated alias removed in v5 |
 | `resource_group_name` (deprecated, computed) | — (derived) | v4 derives it from the parent ID; v5 removes it. The spec deliberately has no resource-group field — it would restate derivable state that could then contradict the parent |
-| `issuer` (required) | `issuer` | In-place update |
+| `issuer` (required) | `issuer` | In-place update. Modeled literal-or-reference: a literal URL for external providers, or a reference defaulting to an `AzureAksCluster`'s `oidc_issuer_url` output for the workload-identity composition |
 | `subject` (required) | `subject` | In-place update |
 | `audience` (required, list, MaxItems 1) | `audience` (single string, defaulted) | ARM's wire shape is a single-element list; the spec models the one value directly and defaults it to `api://AzureADTokenExchange` |
 

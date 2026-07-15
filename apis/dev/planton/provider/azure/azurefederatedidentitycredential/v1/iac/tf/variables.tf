@@ -23,7 +23,10 @@ variable "spec" {
     # before the module runs.
     user_assigned_identity = string
 
-    # The OIDC issuer URL the incoming token's `iss` claim must equal.
+    # The OIDC issuer URL the incoming token's `iss` claim must equal. The
+    # spec models this as a literal-or-reference (an AKS cluster's OIDC
+    # issuer output is the common reference); references are resolved to a
+    # literal URL by the platform before the module runs.
     issuer = string
 
     # The workload identifier the incoming token's `sub` claim must equal.

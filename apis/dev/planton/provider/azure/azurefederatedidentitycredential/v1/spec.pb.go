@@ -67,16 +67,18 @@ type AzureFederatedIdentityCredentialSpec struct {
 	// the identity, and the resource group is derived from this ID).
 	UserAssignedIdentity *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=user_assigned_identity,json=userAssignedIdentity,proto3" json:"user_assigned_identity,omitempty"`
 	// The OIDC issuer URL of the external identity provider -- the value the
-	// incoming token's `iss` claim must equal, exactly (scheme, host, and any
-	// path; no trailing-slash forgiveness). Well-known issuers:
-	//   - GitHub Actions: "https://token.actions.githubusercontent.com"
-	//   - AKS workload identity: the cluster's OIDC issuer URL, e.g.
-	//     "https://{region}.oic.prod-aks.azure.com/{tenant}/{uuid}/" (exported by
-	//     the cluster once its OIDC issuer is enabled)
-	//   - GitLab: "https://gitlab.com"
-	//
+	// incoming token's `iss` claim must equal, exactly. Must be a full URL
+	// (scheme, host, and any path; no trailing-slash forgiveness -- Azure
+	// matches the string byte for byte). Takes a literal URL for external
+	// issuers, or a reference for issuers that are themselves resources in the
+	// environment; defaults to referencing an AzureAksCluster's
+	// oidc_issuer_url output -- the workload-identity composition where the
+	// trusted issuer only exists once the cluster is deployed. Well-known
+	// literal issuers:
+	// - GitHub Actions: "https://token.actions.githubusercontent.com"
+	// - GitLab: "https://gitlab.com"
 	// Updatable in place.
-	Issuer string `protobuf:"bytes,3,opt,name=issuer,proto3" json:"issuer,omitempty"`
+	Issuer *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=issuer,proto3" json:"issuer,omitempty"`
 	// The identifier of the external workload -- the value the incoming
 	// token's `sub` claim must equal, exactly. Each issuer has its own subject
 	// format; the trust is only as narrow as this string, so prefer the most
@@ -144,11 +146,11 @@ func (x *AzureFederatedIdentityCredentialSpec) GetUserAssignedIdentity() *v1.Str
 	return nil
 }
 
-func (x *AzureFederatedIdentityCredentialSpec) GetIssuer() string {
+func (x *AzureFederatedIdentityCredentialSpec) GetIssuer() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Issuer
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureFederatedIdentityCredentialSpec) GetSubject() string {
@@ -169,11 +171,11 @@ var File_dev_planton_provider_azure_azurefederatedidentitycredential_v1_spec_pro
 
 const file_dev_planton_provider_azure_azurefederatedidentitycredential_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Idev/planton/provider/azure/azurefederatedidentitycredential/v1/spec.proto\x12>dev.planton.provider.azure.azurefederatedidentitycredential.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfe\x02\n" +
+	"Idev/planton/provider/azure/azurefederatedidentitycredential/v1/spec.proto\x12>dev.planton.provider.azure.azurefederatedidentitycredential.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd4\x03\n" +
 	"$AzureFederatedIdentityCredentialSpec\x12 \n" +
 	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x03\x18xR\x04name\x12\x93\x01\n" +
-	"\x16user_assigned_identity\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x14userAssignedIdentity\x12#\n" +
-	"\x06issuer\x18\x03 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x88\x01\x01R\x06issuer\x12$\n" +
+	"\x16user_assigned_identity\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x14userAssignedIdentity\x12y\n" +
+	"\x06issuer\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x91\x03\x92\xd4a\x1estatus.outputs.oidc_issuer_urlR\x06issuer\x12$\n" +
 	"\asubject\x18\x04 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\asubject\x12F\n" +
 	"\baudience\x18\x05 \x01(\tB%\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\x1aapi://AzureADTokenExchangeH\x00R\baudience\x88\x01\x01B\v\n" +
@@ -199,11 +201,12 @@ var file_dev_planton_provider_azure_azurefederatedidentitycredential_v1_spec_pro
 }
 var file_dev_planton_provider_azure_azurefederatedidentitycredential_v1_spec_proto_depIdxs = []int32{
 	1, // 0: dev.planton.provider.azure.azurefederatedidentitycredential.v1.AzureFederatedIdentityCredentialSpec.user_assigned_identity:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1, // 1: dev.planton.provider.azure.azurefederatedidentitycredential.v1.AzureFederatedIdentityCredentialSpec.issuer:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurefederatedidentitycredential_v1_spec_proto_init() }

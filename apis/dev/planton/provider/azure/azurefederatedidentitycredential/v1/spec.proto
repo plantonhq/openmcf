@@ -58,17 +58,21 @@ message AzureFederatedIdentityCredentialSpec {
   ];
 
   // The OIDC issuer URL of the external identity provider -- the value the
-  // incoming token's `iss` claim must equal, exactly (scheme, host, and any
-  // path; no trailing-slash forgiveness). Well-known issuers:
+  // incoming token's `iss` claim must equal, exactly. Must be a full URL
+  // (scheme, host, and any path; no trailing-slash forgiveness -- Azure
+  // matches the string byte for byte). Takes a literal URL for external
+  // issuers, or a reference for issuers that are themselves resources in the
+  // environment; defaults to referencing an AzureAksCluster's
+  // oidc_issuer_url output -- the workload-identity composition where the
+  // trusted issuer only exists once the cluster is deployed. Well-known
+  // literal issuers:
   // - GitHub Actions: "https://token.actions.githubusercontent.com"
-  // - AKS workload identity: the cluster's OIDC issuer URL, e.g.
-  //   "https://{region}.oic.prod-aks.azure.com/{tenant}/{uuid}/" (exported by
-  //   the cluster once its OIDC issuer is enabled)
   // - GitLab: "https://gitlab.com"
   // Updatable in place.
-  string issuer = 3 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef issuer = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.uri = true
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureAksCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.oidc_issuer_url"
   ];
 
   // The identifier of the external workload -- the value the incoming

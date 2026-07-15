@@ -6,5 +6,9 @@ spec:
   name: aks-<namespace>-<serviceaccount>
   userAssignedIdentity:
     value: <user-assigned-identity-arm-id>
-  issuer: <aks-oidc-issuer-url>
+  issuer:
+    valueFrom:
+      kind: AzureAksCluster
+      name: <aks-cluster-name>
+      fieldPath: status.outputs.oidc_issuer_url
   subject: system:serviceaccount:<namespace>:<serviceaccount>

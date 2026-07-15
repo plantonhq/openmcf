@@ -34,7 +34,8 @@ spec:
   name: github-main-branch
   userAssignedIdentity:
     value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ci-deployer
-  issuer: https://token.actions.githubusercontent.com
+  issuer:
+    value: https://token.actions.githubusercontent.com
   subject: repo:my-org/platform:ref:refs/heads/main
 ```
 
@@ -54,7 +55,7 @@ This lets the `main`-branch workflows of `my-org/platform` authenticate to Azure
 |-------|------|-------------|------------|
 | `name` | `string` | The credential's name under the parent identity; name it after the workload it trusts. | Required, 3-120 characters |
 | `userAssignedIdentity` | `StringValueOrRef` | ARM ID of the parent identity. Defaults to referencing an `AzureUserAssignedIdentity`'s `identity_id` output. | Required |
-| `issuer` | `string` | OIDC issuer URL the incoming token's `iss` claim must equal exactly. | Required, valid URI |
+| `issuer` | `StringValueOrRef` | OIDC issuer URL the incoming token's `iss` claim must equal exactly. A literal URL for external providers, or a reference defaulting to an `AzureAksCluster`'s `oidc_issuer_url` output. | Required, full URL |
 | `subject` | `string` | Workload identifier the token's `sub` claim must equal exactly (no wildcards). | Required, non-empty |
 
 ### Optional Fields
@@ -84,13 +85,14 @@ spec:
   userAssignedIdentity:
     valueFrom:
       name: prod-deployer-identity
-  issuer: https://token.actions.githubusercontent.com
+  issuer:
+    value: https://token.actions.githubusercontent.com
   subject: repo:my-org/platform:environment:production
 ```
 
 ### AKS Workload Identity for a Service Account
 
-Let pods running as the `payments-api` service account authenticate as a managed identity. The issuer is the cluster's OIDC issuer URL:
+Let pods running as the `payments-api` service account authenticate as a managed identity. The issuer references the cluster's OIDC issuer URL directly, so the trust always matches the cluster it is deployed beside -- no hand-copied URL:
 
 ```yaml
 apiVersion: azure.planton.dev/v1
@@ -107,9 +109,15 @@ spec:
   userAssignedIdentity:
     valueFrom:
       name: payments-identity
-  issuer: https://eastus.oic.prod-aks.azure.com/00000000-0000-0000-0000-000000000000/11111111-1111-1111-1111-111111111111/
+  issuer:
+    valueFrom:
+      kind: AzureAksCluster
+      name: platform-cluster
+      fieldPath: status.outputs.oidc_issuer_url
   subject: system:serviceaccount:payments:payments-api
 ```
+
+For a cluster managed outside the environment, pass the literal URL instead (`issuer: { value: <url> }`; find it with `az aks show --query oidcIssuerProfile.issuerUrl`).
 
 ### One Identity, Several Trusted Workloads
 

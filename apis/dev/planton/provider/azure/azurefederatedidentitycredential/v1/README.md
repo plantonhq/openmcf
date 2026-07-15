@@ -30,7 +30,9 @@ Federated credentials are real infrastructure with their own lifecycle:
 - **GitHub Actions ready** -- trust a repo's branch, environment, or tag with
   the documented subject formats
 - **AKS workload identity ready** -- trust a cluster service account against
-  the cluster's OIDC issuer URL
+  the cluster's OIDC issuer URL, referenced directly from an
+  `AzureAksCluster`'s `oidc_issuer_url` output so the trust always matches
+  the cluster it is deployed beside
 - **Sensible audience default** -- `api://AzureADTokenExchange` (what every
   standard client requests) unless explicitly overridden
 - **Composable** -- the parent identity is referenced by ARM ID, defaulting
@@ -51,7 +53,7 @@ Federated credentials are real infrastructure with their own lifecycle:
 |-------|------|----------|-------------|
 | `name` | string | Yes | The credential's name under the parent identity (3-120 chars, unique per identity) |
 | `user_assigned_identity` | StringValueOrRef | Yes | ARM ID of the parent identity (defaults to an AzureUserAssignedIdentity reference) |
-| `issuer` | string | Yes | OIDC issuer URL the token's `iss` claim must equal |
+| `issuer` | StringValueOrRef | Yes | OIDC issuer URL the token's `iss` claim must equal -- a literal URL, or a reference defaulting to an AzureAksCluster's `oidc_issuer_url` output |
 | `subject` | string | Yes | Workload identifier the token's `sub` claim must equal |
 | `audience` | string | No | The token's required `aud` claim; defaults to `api://AzureADTokenExchange` |
 
@@ -83,7 +85,8 @@ spec:
   userAssignedIdentity:
     valueFrom:
       name: ci-deployer-identity
-  issuer: https://token.actions.githubusercontent.com
+  issuer:
+    value: https://token.actions.githubusercontent.com
   subject: repo:mycompany/platform:ref:refs/heads/main
 ```
 

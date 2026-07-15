@@ -45,9 +45,13 @@ func Resources(ctx *pulumi.Context, stackInput *azurefederatedidentitycredential
 			Name:              pulumi.String(spec.Name),
 			ParentId:          pulumi.String(locals.UserAssignedIdentityId),
 			ResourceGroupName: pulumi.String(resourceGroupName),
-			Issuer:            pulumi.String(spec.Issuer),
-			Subject:           pulumi.String(spec.Subject),
-			Audience:          pulumi.String(locals.Audience),
+			// The issuer is a StringValueOrRef (a literal URL for external
+			// providers, or a reference to an AKS cluster's OIDC issuer
+			// output); references are resolved before the module runs, so
+			// GetValue() always yields the literal URL.
+			Issuer:   pulumi.String(spec.Issuer.GetValue()),
+			Subject:  pulumi.String(spec.Subject),
+			Audience: pulumi.String(locals.Audience),
 		},
 		pulumi.Provider(azureProvider))
 	if err != nil {

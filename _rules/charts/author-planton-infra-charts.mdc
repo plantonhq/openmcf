@@ -118,6 +118,14 @@ charts/<provider>/<chart-slug>/
   component's gates, then wire the chart by reference. Charts are the
   composition proof of the component catalog; they are expected to surface
   these gaps.
+- **The seam-gap principle has a boundary: a value that no resource
+  outputs is an honest literal parameter, not a component gap.** A
+  subscription ARM id (`/subscriptions/{id}` — required for
+  subscription-scoped alerts), a tenant id, an external email address or
+  webhook URL: nothing in the deployed graph produces these, so a
+  described, must-change parameter is the correct shape — do not invent a
+  kind or contort the design to avoid the literal. The parameter's
+  description says plainly that it must be changed and why.
 
 ## README standard
 
@@ -149,7 +157,13 @@ Structure, in order:
    unproven unless you render it: re-run the harness's render + reference +
    schema checks with each toggle flipped (disabled optional resources,
    alternate tiers, populated list params) and confirm no reference dangles
-   into a disabled block and every branch still validates.
+   into a disabled block and every branch still validates. The mechanical
+   path: copy the chart to a scratch directory, flip the values in the
+   copy's `values.yaml`, and run the validator against that path directly
+   (`PLANTON_BIN=<checkout-cli> hack/validate_charts_offline.py <dir>` —
+   it accepts explicit chart directories, using the venv under
+   `build/chart-validator-venv`). A template wholly wrapped in a toggle
+   legitimately renders to zero documents when off.
 4. `planton chart build <provider>/<chart>` (Platform CLI) remains the
    authoritative proof — run it when a control plane on matching schemas is
    available; the offline gate exists precisely for when it is not.
