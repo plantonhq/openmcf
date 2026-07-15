@@ -19,7 +19,7 @@ metadata:
     e2e-component: azurerediscacheaccesspolicyassignment
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "AzureUserAssignedIdentity, apis/dev/planton/provider/azure/azurerediscacheaccesspolicyassignment/v1/e2e/entra-cache.yaml, apis/dev/planton/provider/azure/azurerediscacheaccesspolicyassignment/v1/e2e/prefix-policy.yaml"
+    planton.dev/e2e-prerequisites: "AzureUserAssignedIdentity, apis/dev/planton/provider/azure/azurerediscacheaccesspolicyassignment/v1/e2e/entra-cache.yaml, apis/dev/planton/provider/azure/azurerediscacheaccesspolicyassignment/v1/e2e/prefix-policy.yaml"
   tags:
     - planton-e2e
 spec:

@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awseventbridgerule
+spec:
+  # An EventBridge rule under E2E: the scenario composes the custom bus and
+  # SQS queue fixtures via the e2e-prerequisites annotation, then runs
+  # deploy -> DescribeRule verify -> destroy -> verify-destroyed on both
+  # provisioners. The scenario is an event-pattern rule on a custom bus with
+  # one SQS target carrying sqs_target and input_transformer blocks -- the
+  # smallest honest custom-bus routing surface. Deliberately not in the live
+  # scenario: schedule rules, multi-target fan-out, ECS/Batch typed targets,
+  # and per-target dead-letter queues -- all proven by CEL spec tests and
+  # the offline gate.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15

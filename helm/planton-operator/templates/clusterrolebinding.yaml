@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "planton-operator.fullname" . }}-manager
+  labels:
+    {{- include "planton-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "planton-operator.fullname" . }}-manager
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "planton-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}

@@ -1,0 +1,94 @@
+# =============================================================================
+# Build CI Toolchain Image
+# =============================================================================
+# Builds the common CI toolchain image (tools/ci/docker/Dockerfile) that the CI
+# toolchain jobs (e2e-*, tf-lint) run inside, so they don't reinstall tools at
+# runtime.
+#
+# Image: ghcr.io/plantonhq/planton/ci-toolchain
+#
+# Behavior:
+#   - Pull request -> BUILD ONLY (no push). Verifies the Dockerfile still builds.
+#   - Push to main -> BUILD + PUSH, tagged:
+#       * <UTC timestamp>  (e.g. 2026-07-03-14-30-05) - immutable audit tag
+#       * latest           - the tag all dependent workflows pull
+#
+# Trigger: only when files under tools/ci/docker/** change.
+# =============================================================================
+
+name: build.ci-image
+
+on:
+  pull_request:
+    paths:
+      - 'tools/ci/docker/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'tools/ci/docker/**'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: build-ci-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}/ci-toolchain
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Log in only when we intend to push (main / manual dispatch). PRs from
+      # forks can't access packages: write anyway, so PR runs stay build-only.
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute tags and push flag
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "tags<<EOF"
+              echo "${IMAGE}:pr-${{ github.event.pull_request.number }}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            TS="$(date -u +'%Y-%m-%d-%H-%M-%S')"
+            echo "push=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "tags<<EOF"
+              echo "${IMAGE}:${TS}"
+              echo "${IMAGE}:latest"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build (and push on main)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: tools/ci/docker/Dockerfile
+          platforms: linux/amd64
+          push: ${{ steps.meta.outputs.push }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

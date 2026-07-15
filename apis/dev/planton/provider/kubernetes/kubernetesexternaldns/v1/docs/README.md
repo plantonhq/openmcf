@@ -211,7 +211,6 @@ Planton's `KubernetesExternalDns` module encapsulates the production patterns de
 **GKE with Workload Identity:**
 ```yaml
 spec:
-  target_cluster: <cluster-reference>
   namespace: kubernetes-external-dns
   kubernetes_external_dns_version: v0.19.0
   gke:
@@ -228,7 +227,6 @@ Planton will:
 **EKS with IRSA:**
 ```yaml
 spec:
-  target_cluster: <cluster-reference>
   eks:
     route53_zone_id: Z1234567890ABC
     # irsa_role_arn_override: <optional-custom-role>
@@ -239,7 +237,6 @@ If `irsa_role_arn_override` is omitted, Planton creates an IAM role with a polic
 **Cloudflare:**
 ```yaml
 spec:
-  target_cluster: <cluster-reference>
   cloudflare:
     api_token: <scoped-token>
     dns_zone_id: <zone-id>

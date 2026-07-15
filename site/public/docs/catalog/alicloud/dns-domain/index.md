@@ -33,7 +33,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudDnsZone
 metadata:
   name: my-domain
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -80,7 +80,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudDnsZone
 metadata:
   name: dev-domain
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -101,7 +101,7 @@ metadata:
   name: prod-domain
   org: my-org
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

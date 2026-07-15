@@ -1,0 +1,26 @@
+# Minimal standalone AwsElasticacheUser scenario: the locked-down mandatory
+# "default" user every user group must contain. No passwords in CI; AWS
+# creates the user in seconds. AwsElasticacheUser has no prerequisites, so
+# the harness applies this directly. Full metadata is supplied for
+# tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsElasticacheUser
+metadata:
+  name: planton-oss-e2e-ecuser-smoke
+  id: planton-oss-e2e-ecuser-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awselasticacheuser
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  engine: redis
+  userName: default
+  accessString: "off ~* +@all"
+  authenticationMode:
+    type: no-password-required

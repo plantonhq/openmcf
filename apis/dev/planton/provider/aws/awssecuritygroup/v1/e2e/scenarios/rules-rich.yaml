@@ -1,0 +1,67 @@
+# Rules-rich AwsSecurityGroup scenario: one group in the VPC prerequisite
+# exercising the full rule vocabulary in a single fast lane -- a
+# self-referencing service port (the same UserIdGroupPairs surface that
+# cross-group references use), an ICMP echo rule proving the type/code
+# port overloading with the -1 all-codes sentinel, dual-stack CIDR
+# sources, an egress rule targeting the region-stable S3 gateway managed
+# prefix list (pl-68a54001 in us-west-2 -- identical for every account in
+# the region), and an explicit all-traffic egress (inline rules revoke
+# AWS's default allow-all, so outbound must be declared).
+# revoke_rules_on_delete proves the teardown path for groups that other
+# groups reference. Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsSecurityGroup
+metadata:
+  name: planton-oss-e2e-sg-rules
+  id: planton-oss-e2e-sg-rules
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssecuritygroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  description: Planton E2E rules-rich group; every rule source type in one lane
+  revokeRulesOnDelete: true
+  ingress:
+    - protocol: tcp
+      fromPort: 8080
+      toPort: 8080
+      selfReference: true
+      description: Service-to-service within the group (UserIdGroupPairs surface)
+    - protocol: tcp
+      fromPort: 443
+      toPort: 443
+      ipv4Cidrs:
+        - 10.0.0.0/16
+      ipv6Cidrs:
+        - "::/0"
+      description: HTTPS from the E2E VPC (IPv4) and anywhere (IPv6)
+    - protocol: icmp
+      fromPort: 8
+      toPort: -1
+      ipv4Cidrs:
+        - 10.0.0.0/16
+      description: ICMP echo request, all codes (type/code overloading + -1 sentinel)
+  egress:
+    - protocol: tcp
+      fromPort: 443
+      toPort: 443
+      prefixListIds:
+        - pl-68a54001
+      description: HTTPS to S3 via the us-west-2 gateway-endpoint prefix list
+    - protocol: "-1"
+      fromPort: 0
+      toPort: 0
+      ipv4Cidrs:
+        - 0.0.0.0/0
+      description: All outbound (inline egress revokes the AWS default)

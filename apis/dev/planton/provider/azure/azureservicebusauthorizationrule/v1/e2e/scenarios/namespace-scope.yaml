@@ -13,7 +13,7 @@ metadata:
     e2e-component: azureservicebusauthorizationrule
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azureservicebusauthorizationrule/v1/e2e/fixture-namespace-nsscope.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azureservicebusauthorizationrule/v1/e2e/fixture-namespace-nsscope.yaml"
   tags:
     - planton-e2e
 spec:

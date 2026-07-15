@@ -3,7 +3,7 @@ package backendconfig
 import "os"
 
 // Environment variable names for backend configuration.
-// These provide an alternative to CLI flags and manifest labels,
+// These provide an alternative to CLI flags and manifest annotations,
 // useful for CI/CD pipelines and 12-factor app patterns.
 const (
 	// EnvBackendType specifies the backend type (s3, gcs, azurerm, local)
@@ -20,7 +20,7 @@ const (
 )
 
 // Note: Backend key is intentionally NOT configurable via environment variable.
-// State paths should be explicit and traceable via manifest labels or CLI flags.
+// State paths should be explicit and traceable via manifest annotations or CLI flags.
 
 // EnvBackendConfig holds backend configuration read from environment variables.
 type EnvBackendConfig struct {

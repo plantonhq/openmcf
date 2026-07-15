@@ -95,3 +95,367 @@ spec:
         Principal:
           Service: ec2.amazonaws.com
         Action: sts:AssumeRole
+---
+# ECS task-execution role: trusts ecs-tasks.amazonaws.com and carries
+# AmazonECSTaskExecutionRolePolicy itself -- Fargate task definitions
+# using the awslogs logging default require it at registration time, and
+# the task-definition module never modifies the role it references.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-ecs-execution-role
+  id: planton-oss-e2e-ecs-execution-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for ECS task execution
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: ecs-tasks.amazonaws.com
+        Action: sts:AssumeRole
+---
+# Fargate pod-execution role: trusts eks-fargate-pods.amazonaws.com and
+# carries AmazonEKSFargatePodExecutionRolePolicy itself -- the Fargate
+# profile module never modifies the role it references.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-eks-fargate-pod-role
+  id: planton-oss-e2e-eks-fargate-pod-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for EKS Fargate pod execution
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: eks-fargate-pods.amazonaws.com
+        Action: sts:AssumeRole
+---
+# MWAA execution role: trusts airflow.amazonaws.com AND
+# airflow-env.amazonaws.com (MWAA assumes it through both service
+# principals). AWS publishes no managed policy for MWAA execution roles,
+# so the fixture carries broad read/write managed policies over the
+# services MWAA touches (S3 DAG source, CloudWatch Logs, SQS Celery
+# backend) -- acceptable breadth for an ephemeral test account, and the
+# environment module never modifies the role it references.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-mwaa-execution-role
+  id: planton-oss-e2e-mwaa-execution-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for MWAA environment execution
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+    - value: arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+    - value: arn:aws:iam::aws:policy/AmazonSQSFullAccess
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service:
+            - airflow.amazonaws.com
+            - airflow-env.amazonaws.com
+        Action: sts:AssumeRole
+---
+# Lambda execution role: trusts lambda.amazonaws.com and carries
+# AWSLambdaBasicExecutionRole itself -- zip and container functions
+# require CloudWatch Logs write access at creation time, and the
+# Lambda module never modifies the role it references.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-lambda-execution-role
+  id: planton-oss-e2e-lambda-execution-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for Lambda function execution
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  inlinePolicies:
+    sqsWorkerE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: lambda.amazonaws.com
+        Action: sts:AssumeRole
+---
+# Firehose delivery role: trusts firehose.amazonaws.com and carries the S3
+# write permissions every Firehose destination needs (extended_s3 targets
+# and the failed/all-document backup for the other destinations). Scoped to
+# the shared bucket fixture, which firehose scenarios compose as their
+# destination.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-firehose-delivery-role
+  id: planton-oss-e2e-firehose-delivery-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for Firehose S3 delivery
+  inlinePolicies:
+    firehoseS3DeliveryE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - s3:AbortMultipartUpload
+            - s3:GetBucketLocation
+            - s3:GetObject
+            - s3:ListBucket
+            - s3:ListBucketMultipartUploads
+            - s3:PutObject
+          Resource:
+            - arn:aws:s3:::planton-oss-e2e-awss3bucket-prereq
+            - arn:aws:s3:::planton-oss-e2e-awss3bucket-prereq/*
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: firehose.amazonaws.com
+        Action: sts:AssumeRole
+---
+# CloudWatch Logs delivery role: trusts logs.amazonaws.com and carries the
+# Kinesis put permissions a log group's subscription filter needs to stream
+# matching events into the shared Kinesis stream fixture.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-cwl-delivery-role
+  id: planton-oss-e2e-cwl-delivery-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for CloudWatch Logs subscription delivery
+  inlinePolicies:
+    cwlKinesisDeliveryE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - kinesis:PutRecord
+            - kinesis:PutRecords
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: logs.amazonaws.com
+        Action: sts:AssumeRole
+---
+# Step Functions execution role: trusts states.amazonaws.com. Carries no
+# permission policies -- the E2E state machine is a Pass-state workflow that
+# invokes no services, so an empty-permission role is the honest minimal
+# fixture.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-sfn-execution-role
+  id: planton-oss-e2e-sfn-execution-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for Step Functions execution
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: states.amazonaws.com
+        Action: sts:AssumeRole
+---
+# CodeBuild service role: trusts codebuild.amazonaws.com and carries the
+# CloudWatch Logs permissions builds need to stream output. The E2E project
+# never starts a build, but AWS validates the role's assumability at
+# CreateProject, so the trust policy is the load-bearing part.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-codebuild-service-role
+  id: planton-oss-e2e-codebuild-service-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for the CodeBuild service
+  inlinePolicies:
+    codebuildLogsE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: codebuild.amazonaws.com
+        Action: sts:AssumeRole
+---
+# CodePipeline role: trusts codepipeline.amazonaws.com. Carries the S3
+# artifact-store access and CodeBuild start/poll permissions the E2E
+# pipeline's two stages declare -- CreatePipeline validates the role can be
+# assumed, and the first (automatic) execution exercises these permissions.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-codepipeline-role
+  id: planton-oss-e2e-codepipeline-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for CodePipeline orchestration
+  inlinePolicies:
+    codepipelineE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:GetObjectVersion
+            - s3:GetBucketVersioning
+            - s3:PutObject
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - codebuild:BatchGetBuilds
+            - codebuild:StartBuild
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: codepipeline.amazonaws.com
+        Action: sts:AssumeRole
+---
+# SageMaker execution role: trusts sagemaker.amazonaws.com. The domain's
+# default_user_settings.execution_role_arn is validated for assumability at
+# CreateDomain; the E2E lane never launches an app, so the trust policy is
+# the load-bearing part and no data-plane permissions are attached.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-sagemaker-execution-role
+  id: planton-oss-e2e-sagemaker-execution-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for SageMaker Studio execution
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: sagemaker.amazonaws.com
+        Action: sts:AssumeRole

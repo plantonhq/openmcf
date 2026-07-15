@@ -1,0 +1,92 @@
+# The fan-out plane (rendered only when sns_fanout_enabled): SNS gives
+# every subscribed queue its OWN copy of each event — the answer when a
+# second team wants the same events without competing with the first
+# consumer for messages. This file ships the topic plus one subscriber
+# queue wired end to end; adding a consumer team is copying the
+# queue + subscription pair under a new name.
+{% if values.sns_fanout_enabled | bool %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSnsTopic
+metadata:
+  name: "{{ values.backbone_name }}-fanout"
+spec:
+  region: "{{ values.aws_region }}"
+  displayName: "{{ values.backbone_name }} event fan-out"
+  # EventBridge publishes through the topic's resource policy (no IAM
+  # role on the rule target). A topic policy is plain JSON — the rule
+  # ARN is composed at render time from this chart's own names, and the
+  # aws:SourceArn condition keeps any other rule (or account) from
+  # publishing into the fan-out.
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowRulePublish
+        Effect: Allow
+        Principal:
+          Service: events.amazonaws.com
+        Action: sns:Publish
+        Resource: arn:aws:sns:{{ values.aws_region }}:{{ values.aws_account_id }}:{{ values.backbone_name }}-fanout
+        Condition:
+          ArnEquals:
+            aws:SourceArn: arn:aws:events:{{ values.aws_region }}:{{ values.aws_account_id }}:rule/{{ values.backbone_name }}-bus/{{ values.backbone_name }}-route
+---
+# One subscriber's queue. Each consumer team gets its own queue so slow
+# consumers never delay fast ones, and each queue redrives to the shared
+# DLQ where the depth alarm watches everything.
+apiVersion: aws.planton.dev/v1
+kind: AwsSqsQueue
+metadata:
+  name: "{{ values.backbone_name }}-fanout-queue"
+spec:
+  region: "{{ values.aws_region }}"
+  visibilityTimeoutSeconds: 300
+  messageRetentionSeconds: 604800
+  deadLetterConfig:
+    targetArn:
+      valueFrom:
+        kind: AwsSqsQueue
+        name: "{{ values.backbone_name }}-dlq"
+        fieldPath: status.outputs.queue_arn
+    maxReceiveCount: 5
+  # SNS-to-SQS delivery uses the queue's resource policy; without this
+  # grant the subscription is created successfully and every delivery
+  # is silently dropped. The topic ARN is render-composed (same
+  # reasoning as the rule ARN above) and scopes the grant to exactly
+  # this chart's topic.
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowTopicDelivery
+        Effect: Allow
+        Principal:
+          Service: sns.amazonaws.com
+        Action: sqs:SendMessage
+        Resource: arn:aws:sqs:{{ values.aws_region }}:{{ values.aws_account_id }}:{{ values.backbone_name }}-fanout-queue
+        Condition:
+          ArnEquals:
+            aws:SourceArn: arn:aws:sns:{{ values.aws_region }}:{{ values.aws_account_id }}:{{ values.backbone_name }}-fanout
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSnsSubscription
+metadata:
+  name: "{{ values.backbone_name }}-fanout-sub"
+spec:
+  region: "{{ values.aws_region }}"
+  topicArn:
+    valueFrom:
+      kind: AwsSnsTopic
+      name: "{{ values.backbone_name }}-fanout"
+      fieldPath: status.outputs.topic_arn
+  protocol: sqs
+  endpoint:
+    valueFrom:
+      kind: AwsSqsQueue
+      name: "{{ values.backbone_name }}-fanout-queue"
+      fieldPath: status.outputs.queue_arn
+  # Deliver the event exactly as EventBridge published it, without the
+  # SNS JSON envelope — consumers on this queue and on the work queue
+  # then parse the SAME event shape, so moving a consumer between
+  # planes needs no code change.
+  rawMessageDelivery: true
+{% endif %}

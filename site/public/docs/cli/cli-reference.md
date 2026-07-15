@@ -62,6 +62,13 @@ planton
 |   |-- validate-manifest     Validate manifest against schema (alias: validate)
 |   \-- load-manifest         Load and display manifest with defaults (alias: load)
 |
+|-- Schema Reference
+|   \-- explain               Explain any kind's schema, offline (like kubectl explain)
+|
+|-- Infra Charts
+|   \-- chart
+|       \-- validate          Render and validate charts against the compiled-in kinds
+|
 |-- Configuration
 |   \-- config
 |       |-- set               Set a configuration value
@@ -193,6 +200,29 @@ When using `planton tofu` or `planton terraform` directly (not unified commands)
 These are registered on the `tofu` and `terraform` parent commands and inherited by all their subcommands.
 
 **Note**: Direct engine commands do not support `--clipboard` or `--stack-input` manifest sources. Use the unified commands for those input methods.
+
+### Explain Flags
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--list` | | `false` | List every cloud resource kind this binary knows |
+| `--output` | `-o` | | `json` emits the machine-readable schema report |
+
+**Used by**: `explain`.
+
+```bash
+# The full schema reference of a kind: every field with its documentation,
+# validation rules, defaults, and the outputs other resources can reference
+planton explain aws-vpc
+
+# One field, with each allowed value documented
+planton explain aws-vpc.spec.instanceTenancy
+
+# Machine-readable, for agents and tooling
+planton explain aws-vpc -o json
+```
+
+Kind names are format-forgiving (`AwsVpc`, `aws-vpc`, `aws_vpc`); field paths use the exact keys written in YAML manifests. Fully offline — schemas and their documentation are compiled into the binary.
 
 ## Exit Codes
 

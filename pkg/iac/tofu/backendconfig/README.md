@@ -1,21 +1,34 @@
 # Tofu Backend Config Package
 
-This package provides functionality to extract Terraform/OpenTofu backend configuration from Planton resource manifests using standardized labels.
+This package extracts Terraform/OpenTofu backend configuration from Planton
+resource manifests using standardized `metadata.annotations`.
 
 ## Overview
 
-The `backendconfig` package implements the logic to read, parse, and validate Terraform/OpenTofu backend configuration from manifest labels. It ensures backend configurations are complete and valid before they're used to initialize Terraform state management.
+The `backendconfig` package reads, parses, and validates Terraform/OpenTofu
+backend configuration from manifest annotations. It ensures backend
+configurations are complete and valid before they are used to initialize
+Terraform state management.
 
-## Provisioner-Aware Labels
+Backend configuration lives in annotations — never labels — because
+`metadata.labels` are derived into cloud-provider tags by planton IaC modules;
+a platform key there would leak internal configuration onto the user's real
+cloud resources.
 
-The package supports provisioner-specific labels:
+## Provisioner-Aware Annotation Keys
 
-| Provisioner | Backend Type Label | Backend Object Label |
-|-------------|-------------------|---------------------|
-| Terraform | `terraform.planton.dev/backend.type` | `terraform.planton.dev/backend.object` |
-| OpenTofu | `tofu.planton.dev/backend.type` | `tofu.planton.dev/backend.object` |
+The annotation key prefix must match the provisioner in use; there is no
+cross-prefix fallback.
 
-For backward compatibility, OpenTofu also accepts the legacy `terraform.*` labels if `tofu.*` labels are not present.
+| Annotation (prefix `terraform.` or `tofu.`) | Required | Purpose |
+|---------------------------------------------|----------|---------|
+| `<prefix>planton.dev/backend.type` | Yes | Backend type: `s3`, `gcs`, `azurerm`, `local` |
+| `<prefix>planton.dev/backend.bucket` | For remote backends | Bucket / container name |
+| `<prefix>planton.dev/backend.key` | For remote backends | State file path within the bucket |
+| `<prefix>planton.dev/backend.region` | S3 only (or `auto`) | AWS region, or `auto` for S3-compatible stores |
+| `<prefix>planton.dev/backend.endpoint` | Only when `region: auto` | Custom S3-compatible endpoint (R2, MinIO) |
+
+Key constants are built by `pkg/iac/tofu/tofuannotationkeys`.
 
 ## Core Types
 
@@ -23,8 +36,12 @@ For backward compatibility, OpenTofu also accepts the legacy `terraform.*` label
 
 ```go
 type TofuBackendConfig struct {
-    BackendType   string  // Backend type: "s3", "gcs", "azurerm", "local"
-    BackendObject string  // Backend-specific object path
+    BackendType     string // "s3", "gcs", "azurerm", "local"
+    BackendBucket   string // bucket or container name for remote backends
+    BackendKey      string // state file path within the bucket
+    BackendRegion   string // region for S3 backends ("auto" for S3-compatible)
+    BackendEndpoint string // custom S3-compatible endpoint (R2, MinIO, etc.)
+    S3Compatible    bool   // true when endpoint set or region == "auto"
 }
 ```
 
@@ -36,19 +53,20 @@ type TofuBackendConfig struct {
 func ExtractFromManifest(manifest proto.Message, provisionerType string) (*TofuBackendConfig, error)
 ```
 
-Extracts Terraform/OpenTofu backend configuration from a manifest's metadata labels.
+Extracts backend configuration from a manifest's `metadata.annotations`.
 
 **Parameters:**
 - `manifest` - The proto message containing the manifest
-- `provisionerType` - The provisioner type ("terraform" or "tofu")
+- `provisionerType` - The provisioner type (`"terraform"` or `"tofu"`), which
+  selects the annotation prefix
 
 **Behavior:**
-1. Checks for provisioner-specific labels first (e.g., `tofu.planton.dev/*`)
-2. Falls back to legacy `terraform.*` labels if provisioner-specific labels are not found
-3. Returns `nil, nil` if no backend labels are present (allows fallback to CLI/defaults)
-4. Returns an error if labels are partially specified
-5. Validates backend type against supported backends
-6. Ensures non-empty values for both labels
+1. Reads annotations only (labels are never consulted)
+2. Returns `nil, nil` when none of the backend annotations are present
+   (allows fallback to CLI flags or defaults)
+3. Extracts whatever annotations exist; completeness is checked separately by
+   `Validate()` (see `validate.go`), which reports every missing field with its
+   exact annotation name
 
 **Example Usage:**
 
@@ -60,7 +78,6 @@ import (
 // Extract backend config for OpenTofu
 config, err := backendconfig.ExtractFromManifest(manifest, "tofu")
 if err != nil {
-    // Handle error - invalid backend configuration
     return err
 }
 
@@ -68,214 +85,92 @@ if config == nil {
     // No backend config in manifest - use CLI flags or defaults
     config = getDefaultBackendConfig()
 }
-
-// Use the extracted configuration
-fmt.Printf("Backend: %s://%s\n", config.BackendType, config.BackendObject)
 ```
 
-## Validation Rules
+## Validation
 
-### Supported Backend Types
+`Validate()` enforces per-backend completeness:
 
-The package validates that the backend type is one of:
-- `s3` - Amazon S3
-- `gcs` - Google Cloud Storage
-- `azurerm` - Azure Storage
-- `local` - Local filesystem
+- `s3` requires `bucket`, `key`, and `region`; when `region` is `auto`, an
+  `endpoint` is also required
+- `gcs` and `azurerm` require `bucket` and `key`
+- `local` requires no further fields
 
-### Label Consistency
-
-1. **All or Nothing**: Both labels must be specified together or neither
-2. **Non-Empty**: Both label values must be non-empty strings
-3. **Valid Type**: Backend type must be from the supported list
-
-### Error Messages
-
-```go
-// No labels in manifest
-"no labels found in manifest"
-
-// Partial configuration
-"both terraform.planton.dev/backend.type and terraform.planton.dev/backend.object must be specified together"
-
-// Empty values
-"Terraform backend labels cannot be empty"
-
-// Invalid backend type
-"unsupported backend type: <type>"
-```
+Validation errors carry the exact annotation name for each missing field, so
+the user can fix the manifest without consulting docs.
 
 ## Backend-Specific Formats
 
 ### S3 Backend
 ```yaml
-backend.type: "s3"
-backend.object: "my-terraform-bucket/vpc/production/main"
+metadata:
+  annotations:
+    tofu.planton.dev/backend.type: s3
+    tofu.planton.dev/backend.bucket: my-terraform-bucket
+    tofu.planton.dev/backend.key: vpc/production/terraform.tfstate
+    tofu.planton.dev/backend.region: us-west-2
 ```
 
-Translates to Terraform configuration:
-```hcl
-backend "s3" {
-  bucket = "my-terraform-bucket"
-  key    = "vpc/production/main"
-  # region, dynamodb_table, etc. from environment
-}
+### S3-Compatible Backend (Cloudflare R2, MinIO)
+```yaml
+metadata:
+  annotations:
+    tofu.planton.dev/backend.type: s3
+    tofu.planton.dev/backend.bucket: my-r2-state
+    tofu.planton.dev/backend.key: prod/terraform.tfstate
+    tofu.planton.dev/backend.region: auto
+    tofu.planton.dev/backend.endpoint: https://account-id.r2.cloudflarestorage.com
 ```
+
+When `region: auto` is detected, the generated backend block includes the
+compatibility skip flags that S3-compatible stores require.
 
 ### GCS Backend
 ```yaml
-backend.type: "gcs"
-backend.object: "my-terraform-bucket/kubernetes/staging/cluster"
-```
-
-Translates to:
-```hcl
-backend "gcs" {
-  bucket = "my-terraform-bucket"
-  prefix = "kubernetes/staging/cluster"
-  # credentials from environment
-}
+metadata:
+  annotations:
+    tofu.planton.dev/backend.type: gcs
+    tofu.planton.dev/backend.bucket: my-terraform-bucket
+    tofu.planton.dev/backend.key: kubernetes/staging/cluster
 ```
 
 ### Azure Storage Backend
 ```yaml
-backend.type: "azurerm"
-backend.object: "tfstate/rds/production"
+metadata:
+  annotations:
+    tofu.planton.dev/backend.type: azurerm
+    tofu.planton.dev/backend.bucket: tfstate
+    tofu.planton.dev/backend.key: rds/production
 ```
 
-Translates to:
-```hcl
-backend "azurerm" {
-  container_name = "tfstate"
-  key           = "rds/production"
-  # storage_account_name, etc. from environment
-}
+### Local Backend
+```yaml
+metadata:
+  annotations:
+    tofu.planton.dev/backend.type: local
 ```
 
 ## Testing
-
-The package includes comprehensive test coverage:
-
-```go
-// Valid backends
-- S3, GCS, Azure, Local configurations
-- Nil return when no backend labels present
-
-// Error cases
-- Missing one of the two required labels
-- Empty label values
-- Unsupported backend types
-- No labels in manifest
-```
 
 Run tests:
 ```bash
 go test ./pkg/iac/tofu/backendconfig -v
 ```
 
-## Integration Pattern
-
-Here's how the CLI might integrate this package:
-
-```go
-func initializeTerraformBackend(manifest proto.Message, cliBackendOverride string) error {
-    // Try to extract from manifest
-    manifestConfig, err := backendconfig.ExtractFromManifest(manifest)
-    if err != nil {
-        return fmt.Errorf("invalid backend config in manifest: %w", err)
-    }
-    
-    // Determine final backend configuration
-    var backendType, backendObject string
-    
-    if cliBackendOverride != "" {
-        // CLI override takes precedence
-        backendType, backendObject = parseCliBackend(cliBackendOverride)
-    } else if manifestConfig != nil {
-        // Use manifest configuration
-        backendType = manifestConfig.BackendType
-        backendObject = manifestConfig.BackendObject
-    } else {
-        // Use defaults
-        backendType = "local"
-        backendObject = ".terraform/terraform.tfstate"
-    }
-    
-    // Initialize Terraform with backend
-    return initTerraform(backendType, backendObject)
-}
-```
+Coverage includes: valid configurations for every backend type, nil return when
+no backend annotations are present, platform keys under `labels` being ignored,
+partial configurations reported field-by-field, and S3-compatible detection.
 
 ## Design Principles
 
-1. **Fail-Safe**: Returns nil instead of error when labels are absent
-2. **Strict Validation**: Prevents partial or invalid configurations
+1. **Fail-Safe**: Returns nil instead of error when annotations are absent
+2. **Strict Validation**: Prevents partial or invalid configurations, with
+   per-field actionable errors
 3. **Backend Agnostic**: Doesn't handle backend-specific authentication
-4. **Clear Errors**: Provides actionable error messages
-
-## Advanced Usage
-
-### Dynamic Backend Selection
-
-```go
-// Select backend based on environment
-func selectBackend(manifest proto.Message, env string) (*TofuBackendConfig, error) {
-    config, err := backendconfig.ExtractFromManifest(manifest)
-    if err != nil {
-        return nil, err
-    }
-    
-    if config == nil {
-        // Generate default based on environment
-        switch env {
-        case "production":
-            return &TofuBackendConfig{
-                BackendType:   "s3",
-                BackendObject: "prod-tfstate/default",
-            }, nil
-        default:
-            return &TofuBackendConfig{
-                BackendType:   "local",
-                BackendObject: fmt.Sprintf(".terraform/%s.tfstate", env),
-            }, nil
-        }
-    }
-    
-    return config, nil
-}
-```
-
-### Backend Migration Helper
-
-```go
-// Check if backend configuration has changed
-func hasBackendChanged(oldManifest, newManifest proto.Message) (bool, error) {
-    oldConfig, err := backendconfig.ExtractFromManifest(oldManifest)
-    if err != nil {
-        return false, err
-    }
-    
-    newConfig, err := backendconfig.ExtractFromManifest(newManifest)
-    if err != nil {
-        return false, err
-    }
-    
-    // Handle nil cases
-    if oldConfig == nil && newConfig == nil {
-        return false, nil
-    }
-    if oldConfig == nil || newConfig == nil {
-        return true, nil
-    }
-    
-    // Compare configurations
-    return oldConfig.BackendType != newConfig.BackendType ||
-           oldConfig.BackendObject != newConfig.BackendObject, nil
-}
-```
+4. **Annotations Only**: Labels are user cloud-tag territory and are never read
 
 ## Related Packages
 
-- `pkg/iac/tofu/tofulabels`: Defines the label constants
-- `pkg/reflection/metadatareflect`: Provides label extraction functionality
-- `pkg/iac/tofu/runner`: Consumes backend configuration for Terraform execution
+- `pkg/iac/tofu/tofuannotationkeys`: Defines the annotation key constants
+- `pkg/reflection/metadatareflect`: Provides annotation extraction functionality
+- `pkg/iac/tofu/generators`: Consumes backend configuration to generate `backend.tf`

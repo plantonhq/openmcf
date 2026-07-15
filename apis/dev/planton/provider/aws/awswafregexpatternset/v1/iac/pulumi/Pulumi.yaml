@@ -1,0 +1,3 @@
+name: aws-waf-regex-pattern-set
+runtime: go
+description: Deploy an AWS WAFv2 regex pattern set using Planton

@@ -3,7 +3,6 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetesreferencegrant.v1;
 
 import "buf/validate/validate.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // KubernetesReferenceGrantSpec defines a Kubernetes Gateway API ReferenceGrant:
@@ -16,7 +15,7 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // 100% fidelity with the upstream Gateway API v1.5.1 ReferenceGrantSpec
 // (kubernetes-sigs/gateway-api apis/v1/referencegrant_types.go), standard channel,
 // served as gateway.networking.k8s.io/v1. Upstream spec fields are flattened after
-// the Planton namespaced envelope (target_cluster, namespace).
+// the Planton namespaced envelope (namespace).
 //
 // Unlike the route kinds, ReferenceGrant has NO parent_refs/backend_refs and does
 // not reuse the shared gateway_api.proto reference types: its from/to entries are
@@ -24,10 +23,6 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // Upstream deliberately omits a status subresource on ReferenceGrant, so there is
 // no controller-managed status to surface.
 message KubernetesReferenceGrantSpec {
-  // Target Kubernetes cluster where this ReferenceGrant is created. The Gateway
-  // API CRDs (KubernetesGatewayApiCrds) must already be present on the cluster.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // Namespace the ReferenceGrant is created in. This is the namespace being
   // referenced INTO (the "to" side): the grant lives alongside the resources it
   // authorizes inbound references to, and revoking the grant revokes that access.

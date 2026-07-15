@@ -1,121 +1,110 @@
-# AwsSecurityGroup API
+# AwsSecurityGroup
 
-The **AwsSecurityGroup** API resource provides a standardized and user-friendly way to create and manage AWS EC2
-Security Groups. By focusing on essential configurations such as inbound and outbound rules, VPC attachment, and
-descriptions, it aims to streamline the process of securing cloud resources under the Planton multi-cloud
-deployment framework.
+AWS EC2 Security Group resource for Planton. Provisions a stateful virtual firewall in a VPC with inline ingress and egress rules supporting IPv4/IPv6 CIDRs, managed prefix lists, references to other security groups, and self-referencing rules. Other resources compose onto the group by referencing its exported `security_group_id`.
 
-## Purpose
+## When to use
 
-Deploying AWS Security Groups can sometimes be cumbersome—defining numerous rules, ensuring consistency across
-environments, and enforcing naming and usage policies. The **AwsSecurityGroup** resource addresses these challenges by:
+- Any workload that places network interfaces in a VPC needs at least one security group: EC2 instances, load balancers, EKS/ECS workloads, RDS/ElastiCache/MSK/OpenSearch data stores, MWAA environments, VPC endpoints.
+- You want tiered network security (web tier / app tier / data tier) expressed as composable nodes, where the data tier's ingress references the app tier's group instead of hardcoding CIDRs.
+- You want egress governance: with inline rules, an empty egress list denies all outbound traffic, so the manifest is the complete, auditable statement of what a group permits.
 
-- **Centralizing Security Configurations**: Offers a concise and consistent way to manage inbound and outbound traffic
-  rules.
-- **Encouraging Best Practices**: Provides recommended patterns for restricting or allowing traffic, ensuring you follow
-  AWS guidelines.
-- **Simplifying Multi-Cloud Workflows**: Leverages Planton’s uniform resource model, letting you declare AWS
-  Security Groups alongside other provider resources in the same manifest.
+## Prerequisites
 
-## Key Features
+| Prerequisite | Why | Planton Resource |
+|---|---|---|
+| VPC | Every security group belongs to exactly one VPC | `AwsVpc` |
+| Other security groups (optional) | Rules can reference sibling groups as traffic sources/destinations | `AwsSecurityGroup` |
+| Managed prefix lists (optional) | Rules can target named CIDR sets (AWS services, office ranges) by stable ID | (external) |
 
-### Inbound (Ingress) & Outbound (Egress) Rules
-
-- **Granular Rule Definitions**: Easily specify protocol, port ranges, CIDR blocks, and other Security Groups for
-  inbound and outbound traffic.
-- **Flexible Protocol Handling**: Support for TCP, UDP, ICMP, or `-1` for “all protocols,” enabling quick setup of
-  typical or specialized rules.
-
-### Self-Reference
-
-- **Allow Internal Communication**: Optionally allow traffic to and from the same Security Group, commonly used for
-  internal load balancers or cluster communication.
-
-### VPC Integration
-
-- **Mandatory VPC Attachment**: The resource requires you to specify a VPC, ensuring your Security Group is always
-  well-scoped within an AWS network boundary.
-- **Seamless AWS Networking**: Ties in with subnets, NAT gateways, and internet gateways, consistent with
-  Planton’s approach to multi-service deployments.
-
-### Minimal, Opinionated Spec
-
-- **Concise Configuration**: Define only the essential fields—Amazon Resource Names (ARNs) or IDs for references, rule
-  sets, and a description.
-- **Validations & Conventions**: Planton ensures naming, rule definitions, and descriptions meet AWS constraints
-  before attempting deployment.
-
-## Benefits
-
-- **Reduced Setup Complexity**: A single spec handles both inbound and outbound rules without juggling multiple
-  AWS-specific templates or parameters.
-- **Improved Security Posture**: Encourages the principle of least privilege by providing a clear, easily-auditable
-  structure for traffic rules.
-- **Multi-Cloud & Multi-Account**: Use the same workflow in Planton to manage Security Groups across various AWS
-  accounts, or combine with other cloud resources in a single manifest.
-
-## Example Usage
-
-Below is a minimal YAML snippet demonstrating how to configure and deploy an AWS Security Group using Planton.
-All keys are in camel-case to maintain consistency.
+## API envelope
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsSecurityGroup
 metadata:
-  name: my-security-group
-  version:
-    message: "Initial AWS Security Group deployment"
-spec:
-  vpcId: "vpc-12345abcde"
-  description: "Allows inbound HTTP and SSH for web tier"
-  ingress:
-    - protocol: "tcp"
-      fromPort: 22
-      toPort: 22
-      ipv4Cidrs:
-        - "0.0.0.0/0"
-      description: "Allow inbound SSH from anywhere"
-    - protocol: "tcp"
-      fromPort: 80
-      toPort: 80
-      ipv4Cidrs:
-        - "0.0.0.0/0"
-      description: "Allow inbound HTTP from anywhere"
-  egress:
-    - protocol: "-1"
-      fromPort: 0
-      toPort: 0
-      ipv4Cidrs:
-        - "0.0.0.0/0"
-      description: "Allow all outbound traffic"
+  name: <resource-id>
+spec: { ... }
 ```
 
-### Deploying with Planton
+## Spec fields reference
 
-1. **Validate the Manifest (Optional)**
+### Group
 
-   ```bash
-   planton validate --manifest aws-sg.yaml
-   ```
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `region` | string | **yes** | — | AWS region for the group. |
+| `vpcId` | StringValueOrRef | **yes** | — | VPC the group belongs to. Supports `value` or `valueFrom` (AwsVpc). **ForceNew**. |
+| `description` | string | **yes** | — | Purpose of the group (max 255 chars). **ForceNew** — AWS cannot edit a group description in place. |
+| `revokeRulesOnDelete` | bool | no | false | Forcibly revoke this group's rules — and rules in other groups referencing it — before delete, so cross-referenced groups tear down without a `DependencyViolation`. |
 
-2. **Pulumi Deployment**
+### Rules (`ingress[]` / `egress[]`)
 
-   ```bash
-   planton pulumi up --manifest aws-sg.yaml --stack org/project/my-stack
-   ```
+Rules are managed INLINE on the group: the manifest owns the complete rule set, and rules added outside of it are removed on the next apply. An empty `ingress` denies all inbound; an empty `egress` denies all outbound (the allow-all rule AWS adds to new groups is revoked).
 
-3. **Terraform Deployment**
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `protocol` | string | **yes** | — | `tcp`, `udp`, `icmp`, `icmpv6`, an IANA protocol number, or `-1` (all protocols). |
+| `fromPort` | int32 | no | 0 | Range start (−1–65535). For ICMP: the ICMP *type* (−1 = all types). Must be 0 with protocol `-1` (CEL-enforced). |
+| `toPort` | int32 | no | 0 | Range end (−1–65535). For ICMP: the ICMP *code* (−1 = all codes). Must be 0 with protocol `-1` (CEL-enforced). |
+| `ipv4Cidrs` | list(string) | no | [] | IPv4 CIDR sources (ingress) / destinations (egress). |
+| `ipv6Cidrs` | list(string) | no | [] | IPv6 CIDR sources / destinations. |
+| `prefixListIds` | list(string) | no | [] | Managed prefix list IDs (`pl-...`). Target a named CIDR set — an AWS service like S3/DynamoDB gateway endpoints, or a customer-maintained office/partner range — by stable ID instead of hardcoding addresses. |
+| `sourceSecurityGroupIds` | list(StringValueOrRef) | no | [] | Ingress: groups whose members may send traffic. Supports `valueFrom` (AwsSecurityGroup). |
+| `destinationSecurityGroupIds` | list(StringValueOrRef) | no | [] | Egress: groups whose members may receive traffic. Supports `valueFrom` (AwsSecurityGroup). |
+| `selfReference` | bool | no | false | Allow traffic from/to this group itself — the standard intra-cluster pattern. |
+| `description` | string | no | "" | Per-rule description (max 255 chars). |
 
-   ```bash
-   planton terraform apply --manifest aws-sg.yaml --stack org/project/my-stack
-   ```
+A single rule may carry several sources at once (CIDRs + prefix lists + groups + self); AWS expands them into individual permissions server-side.
 
-Planton will validate your manifest against the Protobuf schema and then provision your Security Group using
-either Pulumi or Terraform. You can easily integrate this step into CI/CD pipelines, combine it with other AWS resources
-in the same YAML, and maintain consistent security rules across multiple environments.
+## Stack outputs
 
----
+| Output | Description |
+|---|---|
+| `security_group_id` | Group ID (`sg-...`) — the join key other resources reference to attach the group. |
+| `security_group_arn` | Group ARN — the form IAM policy conditions and resource-level permissions expect. |
+| `owner_id` | Owning AWS account ID — needed for cross-account rule references (`<owner_id>/<group_id>`). |
 
-Happy securing! If you have questions or encounter issues, please open an issue on our GitHub repository or connect with
-our community for assistance.
+## Deliberately omitted (with reasons)
+
+| Provider surface | Why omitted |
+|---|---|
+| Standalone rule resources (`aws_vpc_security_group_ingress_rule` / `_egress_rule`) | Rules have no independent lifecycle here and are never referenced individually — they are folded into the group. AWS forbids mixing inline and standalone rules on one group, so the module never emits standalone rule resources. |
+| `name` / `name_prefix` overrides | The group name is `metadata.name` on both engines — one identity basis for the whole catalog. |
+| Cross-account `<owner_id>/<group_id>` source modeling | A literal string in `sourceSecurityGroupIds.value` already carries the form; a structured field is not warranted until a real cross-account chart composes it. |
+
+## Presets
+
+- **web-tier** — HTTP/HTTPS from the internet, all outbound.
+- **database-tier** — PostgreSQL from an app-tier group only.
+- **bastion** — SSH from a corporate CIDR.
+
+## Example
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsSecurityGroup
+metadata:
+  name: app-tier
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: platform-vpc
+      fieldPath: status.outputs.vpc_id
+  description: App tier - service mesh + S3 egress via gateway endpoint
+  revokeRulesOnDelete: true
+  ingress:
+    - protocol: tcp
+      fromPort: 8080
+      toPort: 8080
+      selfReference: true
+      description: Service-to-service traffic within the tier
+  egress:
+    - protocol: tcp
+      fromPort: 443
+      toPort: 443
+      prefixListIds:
+        - pl-63a5400a
+      description: HTTPS to S3 via the gateway endpoint prefix list
+```

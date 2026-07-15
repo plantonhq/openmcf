@@ -47,6 +47,11 @@ SEQUENTIAL STEPS
       - `apiVersion` and `kind` match `api.proto` constants exactly
       - `metadata.name` prefixed with `my-`
       - All `StringValueOrRef` fields use `value:` wrapper with angle-bracket placeholders
+      - **Format-validated fields get a concrete example, never an angle-bracket
+        placeholder**: a field whose spec carries a CEL/pattern rule (a version
+        string, a CIDR, an ARN shape) fails `planton validate-manifest` with
+        `<placeholder>` text — use a realistic replace-me value and note it in
+        the companion MD's Placeholders table instead
       - Fields with `recommended_default` or `default` annotations use the annotated value with a comment
       - Boolean flags set explicitly based on the use case
       - No unnecessary quotes

@@ -59,7 +59,6 @@ kubernetes-gha-runner-scale-set-controller
 ├── kind: "KubernetesGhaRunnerScaleSetController"
 ├── metadata: CloudResourceMetadata
 └── spec: KubernetesGhaRunnerScaleSetControllerSpec
-    ├── target_cluster: KubernetesClusterSelector
     ├── namespace: StringValueOrRef (required)
     ├── create_namespace: bool
     ├── helm_chart_version: string (default: "0.13.1")

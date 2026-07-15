@@ -1,0 +1,245 @@
+---
+description: Authoring rule for creating a new InfraChart (or rebuilding an existing one) to the catalog quality bar — desirability-driven design, richly-commented templates, typed values, a component-docs-grade README, a verified icon, and the offline validation gate. Invoke as @forge-planton-infra-chart.
+globs: []
+alwaysApply: false
+---
+
+# Rule: Forge a Planton InfraChart (authoring)
+
+Purpose: Author one InfraChart end to end — from the desirability test through the
+offline validation gate. An InfraChart is a public catalog artifact: teams across
+the globe judge the platform by what they see in this catalog, and every chart
+they deploy composes real cloud infrastructure in their own accounts. Forge each
+chart as if the entire platform existed solely to give the best possible
+environment-provisioning experience for that one chart.
+
+Usage: Invoke explicitly as `@forge-planton-infra-chart` when creating or
+rebuilding a chart under `charts/<provider>/<chart-name>/`.
+
+## The design bar
+
+1. **Desirability is the entry test.** A chart earns its catalog slot by invoking
+   "I want this" in a practitioner the moment they read its name and description.
+   It must map to a real-world architecture teams actually run — never a demo, a
+   filler, or a thin wrapper that a single Cloud Resource already covers. If you
+   cannot articulate the team that deploys this chart and the day it saves them,
+   do not build it.
+2. **Each chart stands on its provider's own merit.** Design the chart's
+   composition, parameters, defaults, and documentation from the provider's own
+   component surface and that cloud's real architectures. NEVER use another
+   provider's chart as a design reference, a naming reference, or an alignment
+   target — every provider's catalog is designed on its own legs. (Structural
+   anatomy — the four files, the params vocabulary, the validation gate — is the
+   only cross-provider constant.)
+3. **Compose first-class nodes by reference.** Charts wire independently ownable
+   Cloud Resources together with `valueFrom` references — a chart is a starting
+   point users extend and recombine, not a black box. Prefer referencing a
+   first-class kind over inlining a lookalike configuration block.
+4. **Real defaults, honest toggles.** Defaults must be deployable and
+   production-sane (cost-conscious where a knob is expensive; secure by default
+   everywhere). Bool params are feature toggles: each toggle must render a valid
+   chart in BOTH branches independently — validation flips every bool once, so a
+   toggle that only works in combination with another is a design defect.
+5. **No hardcoded provisioner.** Chart resources must not carry the
+   `planton.dev/provisioner` label. The IaC engine (OpenTofu vs Pulumi) is a
+   property of the deploying organization, resolved from its mapping — never of
+   the chart.
+
+## Anatomy (all four files, every chart)
+
+```
+charts/<provider>/<chart-name>/
+├── Chart.yaml      # catalog identity: name, description, VERIFIED iconUrl, web links
+├── values.yaml     # the public input surface: typed params with dense descriptions
+├── templates/      # richly-commented manifests rendering the Cloud Resources
+└── README.md       # component-docs-grade documentation
+```
+
+### Chart.yaml
+
+```yaml
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: <Provider> <Human Name>          # e.g. "AWS Terraform State Backend"
+spec:
+  selector:
+    kind: platform
+  description: <one sentence that sells the chart honestly>
+  iconUrl: <VERIFIED live URL — see icon rules below>
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/<provider>/<chart-name>
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/<provider>/<chart-name>/README.md
+```
+
+**Icon rules (mandatory).** Every chart carries the most appropriate icon for
+what it provisions, and the URL must be LIVE — the offline validator does not
+parse `Chart.yaml`, so a broken icon ships silently and the catalog renders a
+placeholder. Therefore:
+
+- Pick the icon that best represents the chart's identity: usually the logo of
+  the chart's centerpiece kind, or of the tool the chart serves (e.g. the
+  Terraform logo for a Terraform state backend).
+- Cloud Resource kind logos live at
+  `https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/<provider>/<kind-dir>/v1/logo.svg`
+  (the `<kind-dir>` is the kind lowercased with no separators, matching its
+  directory under `apis/dev/planton/provider/`).
+- **Verify before committing**: `curl -s -o /dev/null -w "%{http_code}" <iconUrl>`
+  must print `200`. Never copy an iconUrl from another chart without verifying it
+  — stale asset conventions 404.
+- **When the right kind's logo 404s, publish it — never settle for a
+  wrong-identity icon.** The asset source of truth is the platform repo
+  (`product/apis/ai/planton/infrahub/cloudresource/v1/assets/provider/<provider>/<kind-dir>/v1/logo.svg`),
+  served from the `planton-assets` Cloudflare R2 bucket under the `apis/` prefix
+  (`make -C product/apis upload-api-resource-icons` syncs the whole tree; a
+  single object can also be PUT via the Cloudflare R2 API with a
+  `CLOUDFLARE_API_TOKEN`). Source the official provider architecture icon,
+  stage it in the platform repo AND publish it, then verify. Two traps: a kind
+  directory existing in the platform tree does not mean its logo is live (the
+  sync runs manually — sweep with curl, not by listing the tree), and the CDN
+  negative-caches 404s — after uploading, purge the zone cache for the asset
+  prefix (the purge target/API in `product/apis/Makefile`) before re-verifying.
+
+### values.yaml
+
+The chart's entire public input surface, and the first file a user reads after
+the README. Conventions:
+
+- Every param declares `name`, `description`, and a real default `value`;
+  non-string params also declare `type` (`number`, `bool`, or `list` — `string`
+  is the default).
+- Descriptions carry the same density as spec.proto field comments: what the
+  param controls, what changing it costs or unlocks, and any constraint the user
+  must respect. A user (or an LLM) must be able to fill in values correctly from
+  the descriptions alone.
+- Group params with section-header comments when the chart has more than a
+  handful, ordered by how a user thinks: identity first, then sizing/cost knobs,
+  then feature toggles.
+- Param names are `snake_case`; bool toggles read as predicates (e.g.
+  `lock_table_enabled`).
+
+### templates/
+
+- One file per architectural concern (e.g. `network.yaml`, `database.yaml`), not
+  one file per resource; multiple documents separated by `---`.
+- **Inline comments are part of the deliverable** — the same bar as IaC module
+  comments. YAML `#` comments are render-safe. Teach the WHY at every non-obvious
+  choice: why a default is what it is, what a hardcoded value protects, why one
+  resource references another, what AWS/GCP/Azure behavior a block works around.
+  A reader must come away understanding the architecture, not just the fields.
+- Cross-resource wiring uses `valueFrom` (kind + name + `fieldPath` into
+  `status.outputs.*`); conditional blocks use `{% if values.<toggle> | bool %}`.
+- Field names in manifests are the protojson camelCase of the kind's spec. The
+  spec.proto is the single source of truth — read it before writing the template,
+  never infer fields from another chart or an older manifest.
+
+Renderer mechanics that charts rely on (all verified against the offline
+validator, which is strict-or-stricter than the control plane's engine):
+
+- **Per-AZ / per-item striping**: loop over a `list` param and index its
+  companion lists by position — `{% for az in values.availability_zones %}` with
+  `{{ values.public_subnet_cidrs[loop.index0] }}`. Index-matched lists MUST say
+  so in each param's description ("entry N serves AZ N"), because nothing else
+  enforces the pairing. Literal indexing (`values.availability_zones[0]`) also
+  works for "the first one" placements.
+- **Arithmetic and template-literal lists render fine** (verified through the
+  validator): a `number` param can feed a differently-scaled field via inline
+  arithmetic (`{{ values.scan_limit_gib * 1073741824 }}` — let users think in
+  the unit humans use and convert to the unit the API takes), and a family of
+  near-identical resources can loop over an inline literal list with filters
+  (`{% for service in ["sts", "ecr.api"] %}` +
+  `{{ service | replace('.', '-') }}` for name-safe identifiers) when the set
+  is the CHART's design decision, not user input — parameterize only what a
+  user should change.
+- **Bool params interpolate directly into bool manifest fields**
+  (`deletionProtection: {{ values.my_toggle }}`): engines differ on rendered
+  casing (`True` vs `true`) but both parse as YAML booleans — do not build
+  string ternaries around it.
+- **FK fields without a `default_kind` need the full `valueFrom`** (kind + name
+  + fieldPath). Deliberately polymorphic references (e.g. a route target whose
+  kind is selected by a sibling enum) resolve nothing by default — writing the
+  explicit ref is the designed usage, not a workaround.
+- **Struct-typed spec fields (inline policy documents) cannot carry
+  `valueFrom`** — a Struct holds plain JSON, not references, and outputs of
+  not-yet-created resources cannot appear in it anyway. Feed cross-resource
+  values inside Structs from render-time params instead (e.g. an account id
+  scoping a service-principal condition), and teach the post-deploy tightening
+  in the README when an exact-ARN form exists.
+- **Outputs only feed `StringValueOrRef` fields — every other field type takes
+  render-time literals.** A plain `string`, `repeated string` (a DNS record's
+  `values`), or `map<string,string>` (an alarm's `dimensions`, a pipeline
+  action's `configuration`) cannot carry a `valueFrom`; the typed loader
+  rejects the object where it expects a scalar. When a composition genuinely
+  needs a deploy-time output inside such a field, do not fake it: either close
+  the loop with render-time naming the chart controls on both sides (a
+  pipeline action naming the chart's own build project), design around
+  render-stable values (alarm dimensions from the chart's own resource names,
+  never from `arn_suffix`-class outputs), or make it an explicit day-2 recipe
+  in the README with the exact outputs to read — a template that renders a
+  placeholder where a real value belongs is a silent-failure ship.
+- **Toggles whose combination an API rule constrains are guarded together in
+  the template.** When flag A is only legal alongside flag B (auto-deployments
+  only with a watchable private registry, for example), render A's field
+  inside `{% if values.b | bool and values.a | bool %}` so the API's own rule
+  is mirrored at render time and every independent single flip stays valid —
+  the validator flips one bool at a time against defaults, so a pair that is
+  only valid together is a design defect. Negated arms use
+  `{% if not (values.x | bool) %}`, which is also how a chart owns an
+  either/or shape the protos deliberately leave un-CEL'd (one compute arm OR
+  the other, plus the neighbors that must not render beside the active arm).
+- **A flipped toggle can change how OTHER resources compose** — design the
+  else-branch of every dependent, not just the toggled resource itself (e.g.
+  subnets that stop owning route tables when NAT is off make a gateway endpoint
+  attach to the VPC main route table instead). The validator flips each bool
+  once precisely to force both compositions to render.
+
+### README.md
+
+To the same bar as a component's docs: what the chart provisions and for whom
+(the desirability pitch, honestly stated), an architecture overview (a diagram
+or DAG of the resources and their references), a resource table (kind + purpose),
+a parameter table (name, description, default, required), post-deploy wiring
+(exactly what the user does next with what the chart created), and day-2
+guidance (how to extend, what to manage directly afterwards). No history
+narration — the README reads as if the current design always existed.
+
+## The offline validation gate (before any commit)
+
+```bash
+# 1. Structure guard (the same check CI runs)
+bash hack/guards/ensure_chart_structure.sh
+
+# 2. Offline render + validate with the CLI built from THIS working tree
+#    (an installed binary validates against stale compiled-in protos)
+go build -o /tmp/planton . && /tmp/planton chart validate charts/<provider>/<chart-name>
+
+# 3. The provider-wide sweep CI runs
+/tmp/planton chart validate --all charts/<provider>
+```
+
+`chart validate` renders the defaults variant plus one variant per bool param
+(flipped), then typed-loads every rendered manifest against the kind registry,
+runs protovalidate (constraints + CEL), and resolves every `valueFrom`
+reference. All variants must pass. Icon URLs are verified separately with the
+curl check above (they are outside the validator's scope).
+
+**A validation failure can be the COMPONENT's defect — fix it at the root,
+never bend the chart around it.** Charts exercise compositions the component's
+own tests may never have tried; when a rendered manifest that faithfully
+follows a spec's documented composition is rejected (e.g. a validation pattern
+that forbids names the spec's own field comments promise to support), the spec
+is wrong. Fix the component — spec rule + regression test case + regenerated
+stubs, in its own commit — rebuild the working-tree CLI, and re-validate.
+Working around a component defect inside a chart (a renamed record, a dropped
+resource, a placeholder) ships the defect to every other consumer and hides it
+from the component's owner.
+
+The server-side `planton chart build` / `chart publish` (Platform CLI) remains
+the engine-of-record gate for publishing — see `@publish-planton-infra-charts`.
+
+## Related rules
+
+- `@build-and-fix-planton-infra-charts` — diagnosing validation failures against the protos.
+- `@publish-planton-infra-charts` — publishing to the platform catalog.
+- `@create-infra-charts-changelog` — documenting completed chart work.

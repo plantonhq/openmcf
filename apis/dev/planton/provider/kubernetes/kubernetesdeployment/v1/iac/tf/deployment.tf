@@ -1,7 +1,10 @@
 # 1) Create a ServiceAccount
 resource "kubernetes_service_account" "this" {
   metadata {
-    name      = local.resource_id
+    # metadata.name, never local.resource_id: platform deploys set metadata.id
+    # (e.g. "cr_k8sdep_..."), whose underscores are invalid in RFC 1123
+    # Kubernetes object names. resource_id stays in labels, where ids are legal.
+    name      = var.metadata.name
     namespace = local.namespace
   }
 }

@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awskinesisstreamconsumer
+spec:
+  # An enhanced fan-out consumer under live E2E: the harness installs the
+  # AwsKinesisStream registry prerequisite (the shared ON_DEMAND stream
+  # fixture), then runs deploy -> DescribeStreamConsumer verify -> destroy
+  # -> verify-destroyed on both provisioners. The scenario registers one
+  # consumer against the fixture stream; it registers in seconds and holds
+  # no data, so the lane cost is the stream fixture alone. Deliberately
+  # not in the live scenario: the folded resource_policy -- Kinesis
+  # requires the policy's Resource to equal the consumer ARN exactly, and
+  # that ARN embeds the registration timestamp, so it cannot be written
+  # statically; the fold is proven by CEL spec tests, the offline gate,
+  # and the stream lane's identical resource-policy satellite.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15

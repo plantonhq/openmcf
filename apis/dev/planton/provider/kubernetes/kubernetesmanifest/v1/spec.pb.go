@@ -8,7 +8,6 @@ package kubernetesmanifestv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -30,8 +29,6 @@ const (
 // including multi-document manifests containing multiple resources.
 type KubernetesManifestSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	// The namespace where the manifest resources will be deployed.
 	// Note: Resources in the manifest that specify their own namespace will use their specified namespace.
@@ -119,13 +116,6 @@ func (*KubernetesManifestSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesmanifest_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *KubernetesManifestSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
-}
-
 func (x *KubernetesManifestSpec) GetNamespace() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Namespace
@@ -151,9 +141,8 @@ var File_dev_planton_provider_kubernetes_kubernetesmanifest_v1_spec_proto protor
 
 const file_dev_planton_provider_kubernetes_kubernetesmanifest_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/kubernetes/kubernetesmanifest/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetesmanifest.v1\x1a\x1bbuf/validate/validate.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xbf\x02\n" +
-	"\x16KubernetesManifestSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"@dev/planton/provider/kubernetes/kubernetesmanifest/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetesmanifest.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdc\x01\n" +
+	"\x16KubernetesManifestSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12+\n" +
 	"\rmanifest_yaml\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fmanifestYamlB\xaf\x03\n" +
@@ -173,18 +162,16 @@ func file_dev_planton_provider_kubernetes_kubernetesmanifest_v1_spec_proto_rawDe
 
 var file_dev_planton_provider_kubernetes_kubernetesmanifest_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_kubernetes_kubernetesmanifest_v1_spec_proto_goTypes = []any{
-	(*KubernetesManifestSpec)(nil),               // 0: dev.planton.provider.kubernetes.kubernetesmanifest.v1.KubernetesManifestSpec
-	(*kubernetes.KubernetesClusterSelector)(nil), // 1: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*KubernetesManifestSpec)(nil), // 0: dev.planton.provider.kubernetes.kubernetesmanifest.v1.KubernetesManifestSpec
+	(*v1.StringValueOrRef)(nil),    // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_kubernetesmanifest_v1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.kubernetes.kubernetesmanifest.v1.KubernetesManifestSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	2, // 1: dev.planton.provider.kubernetes.kubernetesmanifest.v1.KubernetesManifestSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1, // 0: dev.planton.provider.kubernetes.kubernetesmanifest.v1.KubernetesManifestSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesmanifest_v1_spec_proto_init() }

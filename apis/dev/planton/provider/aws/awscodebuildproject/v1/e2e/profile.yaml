@@ -1,0 +1,48 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscodebuildproject
+spec:
+  # A CodeBuild project under live E2E: one lane, because the project is a
+  # metadata-only control-plane resource -- creating it provisions nothing
+  # until a build starts, and the lane never starts a build.
+  #
+  # - full-surface: NO_SOURCE + inline buildspec (standalone -- no
+  #   repository, connection, or bucket), environment variables incl. an SSM
+  #   Parameter Store reference, governance dials (timeouts, concurrency
+  #   cap, automatic retry), and CloudWatch logging via the managed default
+  #   log group. The service role resolves from the shared IAM role fixture
+  #   (registry prerequisite).
+  #
+  # Excluded from the live lane with reasons (proven by spec tests + the
+  # offline plan gate against iac/hack/manifest.yaml, which exercises every
+  # one of these arms):
+  # - webhook (all shapes incl. scope_configuration and
+  #   pull_request_build_policy): registering a webhook requires a real
+  #   source-provider connection/credential on the account (the ACM
+  #   requested-cert class).
+  # - source auth / CodeConnections: the connection object needs a manual
+  #   console OAuth handshake to become usable.
+  # - badge_enabled + project_visibility PUBLIC_READ: repository-source and
+  #   public-exposure surfaces; the badge needs a webhook-capable source.
+  # - vpc_config / file_system_locations / docker_server: would add
+  #   VPC+EFS fixtures to prove pass-through wiring the plan gate covers.
+  # - build_batch_config: batch is only observable by starting builds.
+  # - resource_policy: AWS validates policy principals at PutResourcePolicy,
+  #   and the e2e account has no second account to grant (the SES
+  #   identity-policy class).
+  #
+  # Verification is BatchGetProjects keyed on project_name (a deleted
+  # project simply disappears from the response; deletion is synchronous).
+  #
+  # Observed live timings (2026-07-09): Pulumi 15m59s total (first lane of
+  # the run -- 14m12s was IAM-fixture warm-up incl. fresh plugin download;
+  # the project deploy itself took 14s) / Terraform 5m20s total (deploy
+  # 10s). The project resource is near-instant either way; the fixture
+  # chain dominates.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

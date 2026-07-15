@@ -21,17 +21,26 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsEcsClusterStackOutputs describes values returned by Pulumi/Terraform for an ECS cluster.
+// AwsEcsClusterStackOutputs captures the observable outputs of a
+// provisioned ECS cluster -- the identifiers services and operators
+// reference.
 type AwsEcsClusterStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// cluster_name is the final name of the ECS cluster.
+	// The cluster name (mirrors metadata.name). What the AWS CLI and the
+	// ECS agent's ECS_CLUSTER setting address.
 	ClusterName string `protobuf:"bytes,1,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
-	// cluster_arn is the ARN of the ECS cluster.
+	// The ARN of the cluster. The join key: an AwsEcsService's cluster_arn
+	// references this output.
 	ClusterArn string `protobuf:"bytes,2,opt,name=cluster_arn,json=clusterArn,proto3" json:"cluster_arn,omitempty"`
-	// cluster_capacity_providers lists capacity providers associated with the cluster.
-	ClusterCapacityProviders []string `protobuf:"bytes,3,rep,name=cluster_capacity_providers,json=clusterCapacityProviders,proto3" json:"cluster_capacity_providers,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// Every capacity provider associated with the cluster -- the Fargate
+	// built-ins plus the names of the folded EC2 capacity providers. The
+	// vocabulary services can use in a capacity_provider_strategy.
+	CapacityProviderNames []string `protobuf:"bytes,3,rep,name=capacity_provider_names,json=capacityProviderNames,proto3" json:"capacity_provider_names,omitempty"`
+	// The ARNs of the EC2 capacity providers this cluster defines (empty
+	// for Fargate-only clusters), in the order declared in the spec.
+	CapacityProviderArns []string `protobuf:"bytes,4,rep,name=capacity_provider_arns,json=capacityProviderArns,proto3" json:"capacity_provider_arns,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *AwsEcsClusterStackOutputs) Reset() {
@@ -78,9 +87,16 @@ func (x *AwsEcsClusterStackOutputs) GetClusterArn() string {
 	return ""
 }
 
-func (x *AwsEcsClusterStackOutputs) GetClusterCapacityProviders() []string {
+func (x *AwsEcsClusterStackOutputs) GetCapacityProviderNames() []string {
 	if x != nil {
-		return x.ClusterCapacityProviders
+		return x.CapacityProviderNames
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterStackOutputs) GetCapacityProviderArns() []string {
+	if x != nil {
+		return x.CapacityProviderArns
 	}
 	return nil
 }
@@ -89,12 +105,13 @@ var File_dev_planton_provider_aws_awsecscluster_v1_stack_outputs_proto protorefl
 
 const file_dev_planton_provider_aws_awsecscluster_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/aws/awsecscluster/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awsecscluster.v1\"\x9d\x01\n" +
+	"=dev/planton/provider/aws/awsecscluster/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awsecscluster.v1\"\xcd\x01\n" +
 	"\x19AwsEcsClusterStackOutputs\x12!\n" +
 	"\fcluster_name\x18\x01 \x01(\tR\vclusterName\x12\x1f\n" +
 	"\vcluster_arn\x18\x02 \x01(\tR\n" +
-	"clusterArn\x12<\n" +
-	"\x1acluster_capacity_providers\x18\x03 \x03(\tR\x18clusterCapacityProvidersB\xea\x02\n" +
+	"clusterArn\x126\n" +
+	"\x17capacity_provider_names\x18\x03 \x03(\tR\x15capacityProviderNames\x124\n" +
+	"\x16capacity_provider_arns\x18\x04 \x03(\tR\x14capacityProviderArnsB\xea\x02\n" +
 	"-com.dev.planton.provider.aws.awsecscluster.v1B\x11StackOutputsProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecscluster/v1;awsecsclusterv1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Aws.Awsecscluster.V1\xca\x02)Dev\\Planton\\Provider\\Aws\\Awsecscluster\\V1\xe2\x025Dev\\Planton\\Provider\\Aws\\Awsecscluster\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Aws::Awsecscluster::V1b\x06proto3"
 
 var (

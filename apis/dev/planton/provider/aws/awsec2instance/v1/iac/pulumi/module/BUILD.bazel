@@ -3,7 +3,7 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "module",
     srcs = [
-        "ec2_instance.go",
+        "instance.go",
         "locals.go",
         "main.go",
         "outputs.go",
@@ -20,6 +20,5 @@ go_library(
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws",
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/ec2",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
-        "@com_github_pulumi_pulumi_tls_sdk_v5//go/tls",
     ],
 )

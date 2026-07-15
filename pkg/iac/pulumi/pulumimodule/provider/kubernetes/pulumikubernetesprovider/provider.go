@@ -1,35 +1,33 @@
+// Pulumi kubernetes provider construction from a Planton Kubernetes connection.
+// Runs INSIDE the pulumi module process; the kubeconfig itself comes from the shared
+// builder (pkg/kubernetes/kubeconfig) so this path and the tofu env-var path cannot
+// drift on how a provider's credentials are wired.
 package pulumikubernetesprovider
 
 import (
-	"encoding/base64"
-	"fmt"
 	"os"
 
 	"github.com/pkg/errors"
 	kubernetesprovider "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
-	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/gcp/pulumigkekubernetesprovider"
+	"github.com/plantonhq/planton/pkg/kubernetes/execcredential"
+	"github.com/plantonhq/planton/pkg/kubernetes/kubeconfig"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-const emptyKubeConfigString = ""
-
-var UnsupportedKubernetesProviderErr = errors.New("kubernetes provider is not supported")
-
-// GetWithKubernetesProviderConfig returns kubernetes provider for the kubernetes cluster credential
+// GetWithKubernetesProviderConfig returns the kubernetes provider for the connection
+// carried in the stack input. A nil config falls back to the host kubeconfig (with
+// optional KUBE_CTX context selection) -- the local-workflow path.
 func GetWithKubernetesProviderConfig(ctx *pulumi.Context,
 	kubernetesProviderConfig *kubernetesprovider.KubernetesProviderConfig,
 	providerName string) (*kubernetes.Provider, error) {
 
 	if kubernetesProviderConfig == nil {
-		// Check for KUBE_CTX environment variable to configure context
 		kubeContext := os.Getenv("KUBE_CTX")
 
 		providerArgs := &kubernetes.ProviderArgs{
 			EnableServerSideApply: pulumi.Bool(true),
 		}
-
-		// If kube context is specified, configure the provider to use it
 		if kubeContext != "" {
 			providerArgs.Context = pulumi.String(kubeContext)
 		}
@@ -41,19 +39,14 @@ func GetWithKubernetesProviderConfig(ctx *pulumi.Context,
 		return provider, nil
 	}
 
-	kubeConfigString := ""
-
-	switch kubernetesProviderConfig.Provider {
-	case kubernetesprovider.KubernetesProvider_aws_eks:
-		kubeConfigString = awsEks(kubernetesProviderConfig)
-	case kubernetesprovider.KubernetesProvider_azure_aks:
-		kubeConfigString = azureAks(kubernetesProviderConfig)
-	case kubernetesprovider.KubernetesProvider_digital_ocean_doks:
-		kubeConfigString = digitalOceanDoks(kubernetesProviderConfig)
-	case kubernetesprovider.KubernetesProvider_gcp_gke:
-		kubeConfigString = gcpGke(kubernetesProviderConfig)
-	default:
-		return nil, UnsupportedKubernetesProviderErr
+	// The module process cannot know the engine-spawning binary's path on its own;
+	// the host advertises it through the env contract so the kubeconfig's exec
+	// credential points at a binary that actually exists. The builder rejects an
+	// empty path for exec-credential providers with an error naming the variable.
+	kubeConfigString, err := kubeconfig.Build(kubernetesProviderConfig,
+		os.Getenv(execcredential.CommandPathEnvVar))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build kubeconfig from provider config")
 	}
 
 	provider, err := kubernetes.NewProvider(ctx,
@@ -66,48 +59,4 @@ func GetWithKubernetesProviderConfig(ctx *pulumi.Context,
 		return nil, errors.Wrap(err, "failed to get new provider")
 	}
 	return provider, nil
-}
-
-func awsEks(spec *kubernetesprovider.KubernetesProviderConfig) (kubeConfigString string) {
-	if spec.AwsEks == nil {
-		return emptyKubeConfigString
-	}
-
-	kubeConfigString = "coming-soon"
-
-	return kubeConfigString
-}
-
-func azureAks(spec *kubernetesprovider.KubernetesProviderConfig) (kubeConfigString string) {
-	if spec.AzureAks == nil {
-		return emptyKubeConfigString
-	}
-
-	kubeConfigString = "coming-soon"
-
-	return kubeConfigString
-}
-
-func digitalOceanDoks(spec *kubernetesprovider.KubernetesProviderConfig) (kubeConfigString string) {
-	if spec.DigitalOceanDoks == nil {
-		return emptyKubeConfigString
-	}
-
-	return spec.DigitalOceanDoks.KubeConfig
-}
-
-func gcpGke(spec *kubernetesprovider.KubernetesProviderConfig) (kubeConfigString string) {
-	if spec.GcpGke == nil {
-		return emptyKubeConfigString
-	}
-
-	c := spec.GcpGke
-
-	kubeConfigString = fmt.Sprintf(pulumigkekubernetesprovider.GcpExecPluginKubeConfigTemplate,
-		c.ClusterEndpoint,
-		c.ClusterCaData,
-		pulumigkekubernetesprovider.GcpExecPluginPath,
-		base64.StdEncoding.EncodeToString([]byte(c.ServiceAccountKey)))
-
-	return kubeConfigString
 }

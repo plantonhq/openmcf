@@ -1,0 +1,15 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsecrrepo
+spec:
+  # ECR resources import by the repository name, which this component carries
+  # as an explicit spec field (spec.repository_name) -- zero user input.
+  values:
+    - name: repository_name
+      derivations:
+        - from_spec_field: repository_name
+        - from_arn_part: resource_id
+      where_to_find: >-
+        ECR console -> Repositories (the repository name), or
+        `aws ecr describe-repositories` (repositoryName).

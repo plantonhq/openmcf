@@ -12,5 +12,12 @@ spec:
   name: asuid.app
   # Short TTL so the validating service sees the record fast.
   ttlSeconds: 60
+  # Each TXT value is a literal or a reference. When the token is minted
+  # at deploy time, reference the issuing resource's output directly --
+  # e.g. an AzureFrontDoorCustomDomain's validation_token -- and the
+  # record self-completes the domain validation.
   txt:
-    - <verification-token-from-app-output>
+    - valueFrom:
+        kind: AzureFrontDoorCustomDomain
+        name: <your-custom-domain-resource-name>
+        fieldPath: status.outputs.validation_token

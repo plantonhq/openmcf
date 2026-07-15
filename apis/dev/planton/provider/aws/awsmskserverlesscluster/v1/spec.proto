@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsmskserverlesscluster.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// AwsMskServerlessClusterSpec defines the desired state of an Amazon MSK
+// Serverless cluster. Unlike a provisioned MSK cluster, capacity is fully
+// managed by AWS: there are no brokers, instance types, storage volumes, or
+// Kafka version to declare -- AWS scales compute and storage automatically and
+// bills per throughput and storage consumed. The whole declaration is WHERE
+// the cluster lives (subnets + security groups) and the rest is AWS's.
+//
+// Two properties shape this spec:
+//
+//   1. The resource is effectively IMMUTABLE. Every field below is create-time
+//      (ForceNew) in the AWS provider -- only tags can change in place.
+//      Changing anything else replaces the cluster.
+//   2. SASL/IAM is the ONLY client authentication scheme serverless MSK
+//      supports, and it is mandatory. Clients authenticate with AWS IAM
+//      credentials on port 9098; there is no SCRAM, mTLS, or unauthenticated
+//      access. Both IaC modules enable it unconditionally, so it is not a
+//      field here -- there is nothing to choose.
+//
+// Network ingress is composed, never embedded: the cluster attaches the
+// referenced security_group_ids directly, and the ingress rule that opens the
+// SASL/IAM port (9098) lives on those first-class AwsSecurityGroup nodes.
+message AwsMskServerlessClusterSpec {
+  // The AWS region where the resource will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // subnet_ids are the VPC subnets where the cluster places its network
+  // interfaces. Provide subnets in at least two Availability Zones for
+  // production use; clients connect through these ENIs.
+  // ForceNew: changing subnets forces cluster replacement.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // security_group_ids are the security groups ATTACHED to the cluster
+  // network interfaces -- they define what can reach the brokers. The ingress
+  // rule for the SASL/IAM listener port (9098) belongs on these referenced
+  // AwsSecurityGroup nodes. Maximum 5. If omitted, AWS attaches the VPC's
+  // default security group.
+  // ForceNew: adding or removing entries after creation forces replacement.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 3 [
+    (buf.validate.field).repeated.max_items = 5,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}

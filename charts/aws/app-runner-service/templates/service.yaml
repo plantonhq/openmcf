@@ -1,0 +1,78 @@
+# The App Runner service itself — the one resource users interact with.
+# Everything else in this chart is a companion it references: the scaling
+# configuration (always), the roles, the connector and tracing config
+# (toggled). References carry revisions, so tuning a companion rolls the
+# service deliberately through the graph.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsAppRunnerService
+metadata:
+  name: "{{ values.service_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+  imageSource:
+    imageIdentifier: "{{ values.image_identifier }}"
+{% if values.private_ecr_enabled | bool %}
+    imageRepositoryType: ECR
+    # Deploy-time pull credentials — see iam.yaml for the role split.
+    accessRoleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: "{{ values.service_name }}-ecr-access-role"
+        fieldPath: status.outputs.role_arn
+{% else %}
+    # Public images need no pull credentials; AWS also cannot watch them
+    # for changes, which is why auto-deployments only exists on the
+    # private-ECR arm below.
+    imageRepositoryType: ECR_PUBLIC
+{% endif %}
+  port: "{{ values.container_port }}"
+  cpu: "{{ values.cpu }}"
+  memory: "{{ values.memory }}"
+  # The app's runtime identity — grant its AWS permissions on this role
+  # (iam.yaml), never on the access role.
+  instanceRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: "{{ values.service_name }}-instance-role"
+      fieldPath: status.outputs.role_arn
+  healthCheck:
+    # HTTP (not the TCP default) so health means "the app answers
+    # requests", not merely "the port is open" — a hung app holds a TCP
+    # port just fine.
+    protocol: HTTP
+    path: "{{ values.health_check_path }}"
+  autoScalingConfigurationArn:
+    valueFrom:
+      kind: AwsAppRunnerAutoScalingConfiguration
+      name: "{{ values.service_name }}-scaling"
+      fieldPath: status.outputs.configuration_arn
+{% if values.vpc_connector_enabled | bool %}
+  vpcConnectorArn:
+    valueFrom:
+      kind: AwsAppRunnerVpcConnector
+      name: "{{ values.service_name }}-connector"
+      fieldPath: status.outputs.vpc_connector_arn
+{% endif %}
+{% if values.observability_enabled | bool %}
+  # Referencing the config IS the tracing enable switch.
+  observabilityConfigurationArn:
+    valueFrom:
+      kind: AwsAppRunnerObservabilityConfiguration
+      name: "{{ values.service_name }}-tracing"
+      fieldPath: status.outputs.configuration_arn
+{% endif %}
+{% if values.private_ecr_enabled | bool and values.auto_deployments_enabled | bool %}
+  # Push-to-deploy: AWS watches the private repository and rolls the
+  # service when the referenced tag updates. Guarded to the private-ECR arm
+  # because AWS cannot watch public images — this guard mirrors the API's
+  # own rule rather than letting a public-image deploy fail at apply time.
+  autoDeploymentsEnabled: true
+{% endif %}
+{% if values.custom_domain_enabled | bool %}
+  customDomains:
+    - domainName: "{{ values.domain_name }}"
+      # One domain, exactly as asked: the www twin is a separate deliberate
+      # choice, not a default side effect.
+      enableWwwSubdomain: false
+{% endif %}

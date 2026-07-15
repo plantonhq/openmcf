@@ -20,7 +20,7 @@ metadata:
     e2e-component: azuremssqldatabase
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "AzureMssqlElasticPool"
+    planton.dev/e2e-prerequisites: "AzureMssqlElasticPool"
   tags:
     - planton-e2e
 spec:

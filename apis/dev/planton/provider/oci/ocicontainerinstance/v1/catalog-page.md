@@ -25,7 +25,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciContainerInstance
 metadata:
   name: web-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -208,7 +208,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciContainerInstance
 metadata:
   name: web-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -238,7 +238,7 @@ metadata:
   name: web-with-logging
   org: acme
   env: prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform
@@ -312,7 +312,7 @@ metadata:
   name: secure-api
   org: acme
   env: prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform

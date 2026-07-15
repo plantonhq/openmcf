@@ -23,7 +23,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: google-idp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -63,7 +63,7 @@ Then add `Google` to the User Pool Client's `supportedIdentityProviders` list.
 | `region` | `string` | AWS region where the resource will be created (e.g., `us-west-2`). | Required |
 | `userPoolId` | `StringValueOrRef` | User Pool ID (e.g., `us-east-1_Ab1Cd2EfG`). Can reference AwsCognitoUserPool via `valueFrom`. | Required. ForceNew. |
 | `providerName` | `string` | Display name for this IdP. Referenced in User Pool Client `supportedIdentityProviders`. | 1-32 UTF-8 chars. ForceNew. |
-| `providerType` | `AwsCognitoIdentityProviderType` | Provider type: `Google`, `Facebook`, `LoginWithAmazon`, `SignInWithApple`, `OIDC`, `SAML`. | Required. ForceNew. |
+| `providerType` | `string` | Provider type, exactly as the AWS API spells it: `Google`, `Facebook`, `LoginWithAmazon`, `SignInWithApple`, `OIDC`, `SAML`. | Required. ForceNew. |
 | `google` / `facebook` / `loginWithAmazon` / `signInWithApple` / `oidc` / `saml` | oneof | Provider-specific config. Must match `providerType`. | Exactly one required. |
 
 ### Optional Fields
@@ -80,6 +80,7 @@ Then add `Google` to the User Pool Client's `supportedIdentityProviders` list.
 | `oidc.tokenUrl` | `string` | — | Override auto-discovered token endpoint. |
 | `oidc.attributesUrl` | `string` | — | Override auto-discovered userinfo endpoint. |
 | `oidc.jwksUri` | `string` | — | Override auto-discovered JWKS endpoint. |
+| `oidc.attributesUrlAddAttributes` | `bool` | `false` | Append requested attributes as query parameters to the userinfo request (only some providers need this). |
 | `saml.metadataFile` | `string` | — | Inline SAML metadata XML. For SAML, set one of `metadataFile` or `metadataUrl`. |
 | `saml.metadataUrl` | `string` | — | URL to IdP SAML metadata. For SAML, set one of `metadataFile` or `metadataUrl`. |
 | `saml.idpSignOut` | `bool` | `false` | Enable single logout (SLO). |
@@ -96,7 +97,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: google-idp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: auth
@@ -128,7 +129,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: corp-oidc-idp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: auth
@@ -161,7 +162,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: corp-saml-idp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: auth
@@ -191,7 +192,9 @@ spec:
 |--------|------|-------------|
 | `provider_name` | `string` | Name of the identity provider. Add this value to the User Pool Client's `supportedIdentityProviders` to enable federated sign-in. |
 | `provider_type` | `string` | Provider type (e.g., `Google`, `OIDC`, `SAML`). Informational. |
+| `user_pool_id` | `string` | The pool this provider is attached to, resolved from the spec reference. |
 
 ## Related Components
 
-- [AWS Cognito User Pool](/docs/catalog/aws/cognito-user-pool) — parent resource; provides `user_pool_id` and defines app clients that reference this IdP via `supportedIdentityProviders`
+- [AWS Cognito User Pool](/docs/catalog/aws/cognito-user-pool) — parent resource; provides the `user_pool_id` this IdP attaches to
+- [AWS Cognito User Pool Client](/docs/catalog/aws/cognito-user-pool-client) — lists this IdP (by reference to its `provider_name` output) in `supportedIdentityProviders` to enable federated sign-in

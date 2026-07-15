@@ -1,50 +1,21 @@
 locals {
-  ###########################################################################
-  # Common resource metadata logic (consistent with other modules)
-  ###########################################################################
-
-  # Derive a stable resource ID
-  resource_id = (
-    var.metadata.id != null && var.metadata.id != ""
-    ? var.metadata.id
-    : var.metadata.name
-  )
-
-  # Base labels
-  base_labels = {
-    "resource"      = "true"
-    "resource_id"   = local.resource_id
-    "resource_kind" = "aws_security_group"
-  }
-
-  # Organization label only if var.metadata.org is non-empty
-  org_label = (
-    var.metadata.org != null && var.metadata.org != ""
-  ) ? {
-    "organization" = var.metadata.org
-  } : {}
-
-  # Environment label only if var.metadata.env is non-empty
-  env_label = (
-    var.metadata.env != null && var.metadata.env != ""
-  ) ? {
-    "environment" = var.metadata.env
-  } : {}
-
-  # Merge base, org, and environment labels into final_labels
-  final_labels = merge(local.base_labels, local.org_label, local.env_label)
-
-  ###########################################################################
-  # Security Group specific logic
-  ###########################################################################
-
-  # Security Group name
+  # The group name is metadata.name -- create-only in AWS (ForceNew), and the
+  # basis both engines share so a manifest deploys identically on either.
   security_group_name = var.metadata.name
 
-  # Description with explicit value
+  # Description is required by AWS and immutable after creation.
   description = var.spec.description
 
-  # VPC ID
+  # VPC ID (already resolved from the reference before the module runs).
   vpc_id = var.spec.vpc_id
-}
 
+  # Resource-identity tags match the Pulumi module key-for-key.
+  aws_tags = {
+    "Name"                     = var.metadata.name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsSecurityGroup"
+    "planton.ai/resource-id"   = var.metadata.id
+  }
+}

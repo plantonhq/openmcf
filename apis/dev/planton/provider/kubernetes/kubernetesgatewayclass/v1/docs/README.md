@@ -100,8 +100,8 @@ present with upstream semantics and validation.
 ### Cluster-scoped: no namespace
 
 GatewayClass is `+kubebuilder:resource:scope=Cluster` upstream. The Planton spec
-therefore carries `target_cluster` but deliberately has **no** `namespace` field.
-The Pulumi and Terraform modules never set or create a namespace.
+therefore deliberately has **no** `namespace` field. The Pulumi and Terraform
+modules never set or create a namespace.
 
 ### controllerName immutability is documented, not enforced at the proto layer
 

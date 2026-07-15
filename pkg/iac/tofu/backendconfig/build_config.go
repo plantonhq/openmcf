@@ -15,11 +15,11 @@ type CLIBackendFlags struct {
 }
 
 // BuildBackendConfig merges configuration from multiple sources.
-// Priority order: CLI flags > Manifest labels > Environment variables
+// Priority order: CLI flags > Manifest annotations > Environment variables
 //
 // This allows users to:
 // - Set defaults via environment variables (PLANTON_BACKEND_*)
-// - Override with manifest labels for resource-specific settings
+// - Override with manifest annotations for resource-specific settings
 // - Override with CLI flags for CI/CD or local testing
 func BuildBackendConfig(
 	manifest proto.Message,
@@ -33,7 +33,7 @@ func BuildBackendConfig(
 	envConfig := ReadFromEnv()
 	applyEnvOverrides(config, envConfig)
 
-	// 3. Apply manifest labels (middle layer - overrides env vars)
+	// 3. Apply manifest annotations (middle layer - overrides env vars)
 	manifestConfig, _ := ExtractFromManifest(manifest, provisionerType)
 	if manifestConfig != nil {
 		applyManifestOverrides(config, manifestConfig)
@@ -66,7 +66,7 @@ func applyEnvOverrides(config *TofuBackendConfig, env EnvBackendConfig) {
 	// Note: BackendKey is intentionally NOT read from environment variables
 }
 
-// applyManifestOverrides applies manifest label values to the config.
+// applyManifestOverrides applies manifest annotation values to the config.
 // Only non-empty values are applied.
 func applyManifestOverrides(config *TofuBackendConfig, manifest *TofuBackendConfig) {
 	if manifest.BackendType != "" {

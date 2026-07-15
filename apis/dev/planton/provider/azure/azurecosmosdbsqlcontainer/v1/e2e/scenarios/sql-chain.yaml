@@ -13,7 +13,7 @@ metadata:
     e2e-component: azurecosmosdbsqlcontainer
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azurecosmosdbsqlcontainer/v1/e2e/sql-chain-account.yaml, apis/dev/planton/provider/azure/azurecosmosdbsqlcontainer/v1/e2e/sql-chain-database.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azurecosmosdbsqlcontainer/v1/e2e/sql-chain-account.yaml, apis/dev/planton/provider/azure/azurecosmosdbsqlcontainer/v1/e2e/sql-chain-database.yaml"
   tags:
     - planton-e2e
 spec:

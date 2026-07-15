@@ -10,12 +10,12 @@ order: 200
 presets:
   - slug: "01-s3-static-website"
     rank: "01"
-    title: "S3 Static Website"
-    excerpt: "This preset creates a CloudFront distribution fronting an S3 bucket for static website hosting. It uses the most cost-effective price class (US, Canada, and Europe edge locations) and sets..."
+    title: "S3 Static Website with Origin Access Control"
+    excerpt: "This preset serves a private S3 bucket through CloudFront using an Origin Access Control (OAC) -- the modern way to front S3. The bucket never becomes public: CloudFront signs its origin requests..."
   - slug: "02-custom-domain-cdn"
     rank: "02"
-    title: "Custom Domain CDN"
-    excerpt: "This preset creates a CloudFront distribution with a custom domain name and HTTPS via an ACM certificate. It uses Price Class 200 for broader geographic coverage (US, Canada, Europe, Asia, Middle..."
+    title: "Custom Domain CDN with ACM Certificate"
+    excerpt: "This preset serves a private S3 bucket through CloudFront on your own domain: an alias (CNAME) backed by an ACM certificate, with an Origin Access Control keeping the bucket private."
 ---
 
 # CloudFront Presets

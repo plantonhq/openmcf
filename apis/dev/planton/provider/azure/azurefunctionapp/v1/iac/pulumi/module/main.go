@@ -3,6 +3,7 @@ package module
 import (
 	"github.com/pkg/errors"
 	azurefunctionappv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefunctionapp/v1"
+	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider"
 	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/appservice"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -637,6 +638,17 @@ func buildScmIpRestrictions(specs []*azurefunctionappv1.AzureFunctionAppIpRestri
 	return restrictions
 }
 
+// refValues unwraps a repeated StringValueOrRef into the resolved literal
+// strings (the platform resolves valueFrom references before the module
+// runs, so GetValue() always returns the resolved literal).
+func refValues(refs []*foreignkeyv1.StringValueOrRef) []string {
+	values := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		values = append(values, ref.GetValue())
+	}
+	return values
+}
+
 func buildIpRestrictionHeaders(h *azurefunctionappv1.AzureFunctionAppIpRestrictionHeaders) *appservice.LinuxFunctionAppSiteConfigIpRestrictionHeadersArgs {
 	headers := &appservice.LinuxFunctionAppSiteConfigIpRestrictionHeadersArgs{}
 
@@ -646,8 +658,11 @@ func buildIpRestrictionHeaders(h *azurefunctionappv1.AzureFunctionAppIpRestricti
 	if len(h.XForwardedHost) > 0 {
 		headers.XForwardedHosts = pulumi.ToStringArray(h.XForwardedHost)
 	}
+	// FDID values reference AzureFrontDoorProfile.resource_guid by
+	// default -- the origin-lockdown seam pinning the app to specific
+	// Front Door instances.
 	if len(h.XAzureFdid) > 0 {
-		headers.XAzureFdids = pulumi.ToStringArray(h.XAzureFdid)
+		headers.XAzureFdids = pulumi.ToStringArray(refValues(h.XAzureFdid))
 	}
 	if len(h.XFdHealthProbe) > 0 {
 		headers.XFdHealthProbe = pulumi.StringPtr(h.XFdHealthProbe[0])
@@ -666,7 +681,7 @@ func buildScmIpRestrictionHeaders(h *azurefunctionappv1.AzureFunctionAppIpRestri
 		headers.XForwardedHosts = pulumi.ToStringArray(h.XForwardedHost)
 	}
 	if len(h.XAzureFdid) > 0 {
-		headers.XAzureFdids = pulumi.ToStringArray(h.XAzureFdid)
+		headers.XAzureFdids = pulumi.ToStringArray(refValues(h.XAzureFdid))
 	}
 	if len(h.XFdHealthProbe) > 0 {
 		headers.XFdHealthProbe = pulumi.StringPtr(h.XFdHealthProbe[0])

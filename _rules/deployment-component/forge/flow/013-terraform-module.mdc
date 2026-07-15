@@ -164,6 +164,51 @@ NOTES
   `StringValueOrRef` spec field arrives pre-resolved as `string` (repeated ones
   as `list(string)`). When updating an older module, conform its `variables.tf`
   to this shape before anything else -- the E2E Terraform run is the proof.
+- **Locals evaluate eagerly -- bound every derivation that can see an empty
+  optional.** Terraform computes ALL locals on every plan, even ones consumed
+  only inside a `count = 0` resource. A family derivation like
+  `slice(split(".", var.spec.engine_version), 0, 2)` hard-fails the whole plan
+  when `engine_version` is unpinned (split of "" yields one element; the slice
+  end exceeds the list). Bound it: `slice(parts, 0, min(2, length(parts)))`.
+  `tofu validate` cannot catch this (it never evaluates against real inputs) --
+  it surfaced only in a live E2E deploy. The Pulumi modules are immune because
+  Go helpers are called conditionally.
+- **`google.protobuf.Struct` spec fields arrive in tfvars as NESTED OBJECTS,
+  never JSON strings.** The generated contract types them `optional(any)` and
+  the proto->tfvars converter passes the protojson value through verbatim (a
+  real nested object/array/scalar). A module that treats such a field as a
+  string -- `var.spec.policy != "" ? var.spec.policy : null` -- passes
+  `tofu validate` (the variable is `any`) and fails only at live apply with
+  "Inappropriate value for attribute: string required". The correct idiom for
+  every Struct field whose provider argument wants a JSON document:
+  `var.spec.policy != null ? jsonencode(var.spec.policy) : null`. Fields the
+  spec models as raw JSON *strings* (e.g. an SNS `delivery_policy`) keep the
+  string comparison -- check the proto type, not the field name.
+- **User string content passes through the tfvars writer with HCL template
+  introducers escaped.** The proto->tfvars converter emits `$${` / `%%{` for
+  literal `${` / `%{` inside string values, so fields carrying IAM policy JSON
+  (`${aws:PrincipalAccount}` condition variables), shell user-data, and similar
+  template-looking content arrive in Terraform as literal characters. Modules
+  therefore consume such fields directly -- never add escaping in HCL, and never
+  avoid modeling a policy/user-data string field out of interpolation concerns.
+  (Exercise one template-introducer-bearing value in the kind's E2E scenario:
+  `tofu validate` never sees real tfvars, so only a rendered run proves it.)
+- **The offline `tofu plan` proof: render tfvars with
+  `planton tofu load-tfvars <path-to-hack-manifest>` (positional arg; prints
+  HCL tfvars to stdout), save to a file, then in `iac/tf/` run
+  `tofu init -backend=false` + `tofu plan -input=false -refresh=false
+  -var-file=<file>`.** Two credential realities: the AWS provider validates
+  credentials via an STS `GetCallerIdentity` call at PLAN time, so dummy static
+  keys fail the "offline" proof — a real credential chain is required even
+  though `-refresh=false` with no state reads or mutates nothing. And the
+  provider's AWS SDK can fail to refresh a cached SSO token that the AWS CLI
+  itself accepts — when an `AWS_PROFILE` SSO profile errors with "refresh
+  cached SSO token failed", export short-lived static credentials instead:
+  `eval $(aws configure export-credentials --profile <profile> --format env)`.
+  The proof passes when the plan renders every expected resource
+  (`Plan: N to add`) with zero errors. Remove the `.terraform/`,
+  `.terraform.lock.hcl`, and any plan-file artifacts afterwards (gitignored,
+  but they bloat the working tree).
 
 HANDLING OPTIONAL FIELDS WITH DEFAULTS
 - Fields with `(dev.planton.shared.options.default)` are `optional` in the proto schema
@@ -193,7 +238,34 @@ HANDLING PROTO-OPTIONAL TRI-STATES (presence WITHOUT a platform default)
   whenever the object is null -- and `terraform validate` cannot catch it
   (only a run with the attribute pruned does). Null-guard nested-object
   access with a ternary instead: `obj != null ? obj.attr : false`, or the
-  `for_each = obj != null ? [obj] : []` dynamic-block idiom.
+  `for_each = obj != null ? [obj] : []` dynamic-block idiom. This applies in
+  EVERY expression context, not just dynamic blocks -- a `count` guard like
+  `count = enabled && var.spec.block.sub != null ? 1 : 0` errors identically
+  when `block` is null; nest ternaries there too:
+  `count = enabled ? (var.spec.block.sub != null ? 1 : 0) : 0`. Before
+  finishing, sweep the module for `&&`/`||` whose operands dereference a
+  possibly-null object. When MANY flat provider attributes read off one
+  nullable block (per-protocol triads, feature sub-objects), normalize the
+  block to a zero-value object once in `locals.tf` --
+  `try(coalesce(var.spec.block.sub), local.zero)` -- so every attribute
+  expression reads it unconditionally instead of repeating null guards.
+- **`can()` does NOT null-guard either.** `can(o.s3_origin) && o.s3_origin.attr`
+  still errors when `s3_origin` is null: `can(o.s3_origin)` returns true (the
+  expression evaluates fine, to null), and then the second operand dereferences
+  null. The robust idiom for nested access behind a possibly-null parent is
+  `try(obj.attr, default)` -- `try(o.s3_origin.create_oac, false)` is both the
+  null guard and the default in one expression, and works in `for` filters,
+  `for_each`, and resource arguments alike.
+- **`coalesce(x, "")` ERRORS when every argument is empty.** HCL's `coalesce`
+  requires at least one non-null, NON-EMPTY-STRING argument, so
+  `coalesce(field, "") != ""` fails at plan time exactly when the field is
+  absent -- the case it was meant to guard. Generator-flattened
+  `StringValueOrRef` fields (and every `optional(string, "")` contract
+  attribute) are never null -- they carry the contract default `""` -- so
+  test them with a plain `field != ""`. Reserve `coalesce` for genuinely
+  nullable attributes with a non-empty fallback (e.g.
+  `coalesce(nullable_enum, "OPTIONAL")`), and only `tofu plan` with real
+  tfvars proves the difference (`tofu validate` cannot).
 - Example:
   ```hcl
   # CORRECT: Planton guarantees content_type is populated (default: application/octet-stream)
@@ -203,3 +275,27 @@ HANDLING PROTO-OPTIONAL TRI-STATES (presence WITHOUT a platform default)
   content_type = coalesce(each.value.content_type, "application/octet-stream")
   ```
 - See the reference component `iac/tf/` directories named in TOOLS for worked examples
+
+HANDLING RECURSIVE PROTO MESSAGES (self-referential statement trees)
+- When a spec message references itself (e.g. WAFv2 AND/OR/NOT statements, or any
+  nested tree whose descriptor cycle would hang the variables generator), the
+  generator detects the cycle on the current walk path and collapses that subtree
+  to bare `any` in `variables.tf`.
+- Terraform cannot express `list(any)` or `map(any)` when element types differ
+  across entries (heterogeneous object shapes under one repeated field). When a
+  list or map's element type contains free-form `any`, the generator emits the
+  **entire attribute** as bare `any` (`TFFreeFormList` / `TFFreeFormMap`), not
+  `list(object({...}))` with an `any` leaf -- otherwise `tofu plan` fails with
+  "element types must all match for conversion to list".
+- The module must serialize such trees itself (typically `rule_json` / `jsonencode`
+  in HCL, or a Go builder in Pulumi) rather than expecting typed nested Terraform
+  resources for every statement variant. Add a unit test on the serializer and a
+  regression test in `variablestf_test.go` when introducing a new recursive spec.
+- **NO 64-bit integers inside an `any`-typed subtree that feeds a JSON provider
+  argument.** protojson stringifies int64/uint64 ("16384", not 16384) — the
+  typed-contract path never notices, but a provider that unmarshals the
+  serialized JSON into typed Go structs rejects it at APPLY time ("cannot
+  unmarshal string into ... of type int64"), and Pulumi's Go builder (which
+  marshals real ints) silently diverges. Type such fields int32/uint32 when the
+  domain fits (it almost always does — sizes cap at int32 max, ASNs are uint32);
+  only a live Terraform run catches the mismatch, never `tofu validate`.

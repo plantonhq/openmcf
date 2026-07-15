@@ -1,37 +1,35 @@
 # AWS Batch Compute Environment
 
-Deploys a MANAGED AWS Batch compute environment with bundled job queues and an optional fair-share scheduling policy. Supports EC2, SPOT, FARGATE, and FARGATE_SPOT resource types with automatic vCPU scaling, VPC networking, and multi-queue priority routing. The component provisions the compute infrastructure, one or more job queues, and an optional scheduling policy in a single resource definition.
+Deploys a MANAGED AWS Batch compute environment — the elastic pool of EC2 On-Demand, EC2 Spot, Fargate, or Fargate Spot compute that AWS Batch scales up and down to run submitted jobs. Job queues (`AwsBatchJobQueue`) map onto the environment in preference order, and job definitions (`AwsBatchJobDefinition`) describe what runs on it.
 
 ## What Gets Created
 
 When you deploy an AwsBatchComputeEnvironment resource, Planton provisions:
 
-- **Compute Environment** — a `batch.ComputeEnvironment` of type `MANAGED` with the specified resource type (EC2/SPOT/FARGATE/FARGATE_SPOT), vCPU limits, VPC subnets, security groups, and optional update policy
-- **Job Queues** — one `batch.JobQueue` per entry in `jobQueues`, each referencing the compute environment with configurable priority, state, and optional job-state time-limit actions for automatic cancellation of stuck jobs
-- **Scheduling Policy** (optional) — a `batch.SchedulingPolicy` with fair-share configuration when `schedulingPolicy` is provided, attached to all bundled job queues for capacity distribution across share identifiers
+- **Compute Environment** — an `aws_batch_compute_environment` of type `MANAGED` with the specified resource type (EC2/SPOT/FARGATE/FARGATE_SPOT), vCPU bounds, VPC placement, instance selection, optional launch template and AMI configuration, optional EKS attachment, and optional update policy
 
 ## Prerequisites
 
 - **AWS credentials** configured via environment variables or Planton provider config
-- **At least one VPC subnet** (private subnets recommended) — use `AwsVpc` to provision
-- **A security group** allowing outbound access for containers — use `AwsSecurityGroup` to provision
-- **For EC2/SPOT types**: an ECS instance profile IAM role with `AmazonEC2ContainerServiceforEC2Role` policy
-- **For SPOT type**: a Spot Fleet IAM role with `AmazonEC2SpotFleetTaggingRole` policy
+- **At least one VPC subnet** (private subnets recommended) — use `AwsSubnet` to provision
+- **A security group** — **required for FARGATE/FARGATE_SPOT**; use `AwsSecurityGroup` to provision
+- **For EC2/SPOT types**: an ECS instance profile — use `AwsIamInstanceProfile` wrapping a role with `AmazonEC2ContainerServiceforEC2Role`
+- **For SPOT + BEST_FIT strategy only**: a Spot Fleet IAM role with `AmazonEC2SpotFleetTaggingRole` (the capacity-optimized strategies need no role)
 
 ## Quick Start
 
-Create a file `batch.yaml`:
+Create a file `batch-ce.yaml`:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsBatchComputeEnvironment
 metadata:
-  name: my-batch
-  labels:
+  name: etl-fargate
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsBatchComputeEnvironment.my-batch
+    pulumi.planton.dev/stack.name: dev.AwsBatchComputeEnvironment.etl-fargate
 spec:
   region: us-west-2
   computeResources:
@@ -42,18 +40,15 @@ spec:
       - value: subnet-0a1b2c3d4e5f00002
     securityGroupIds:
       - value: sg-0a1b2c3d4e5f00001
-  jobQueues:
-    - name: default
-      priority: 1
 ```
 
 Deploy:
 
 ```shell
-planton apply -f batch.yaml
+planton apply -f batch-ce.yaml
 ```
 
-This creates a serverless Fargate compute environment with up to 256 vCPUs of capacity and a single `default` job queue. AWS manages all compute infrastructure — no EC2 instances, patching, or AMI management required.
+This creates a serverless Fargate environment with up to 256 vCPUs of capacity. Add an `AwsBatchJobQueue` mapped onto it to start submitting jobs.
 
 ## Configuration Reference
 
@@ -61,88 +56,64 @@ This creates a serverless Fargate compute environment with up to 256 vCPUs of ca
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `region` | `string` | AWS region where the compute environment will be created (e.g., `us-west-2`, `eu-west-1`). | Required; non-empty |
-| `computeResources` | object | Infrastructure configuration for the compute environment | Required |
-| `computeResources.type` | string | Compute resource type | Must be `EC2`, `SPOT`, `FARGATE`, or `FARGATE_SPOT` |
-| `computeResources.maxVcpus` | int32 | Maximum vCPU capacity | >= 1 |
-| `computeResources.subnetIds` | list(StringValueOrRef) | VPC subnets for compute resources | At least 1 required |
-| `jobQueues` | list(object) | Job queues routing to this compute environment | At least 1 required |
-| `jobQueues[].name` | string | Queue name | 1-128 chars, alphanumeric/hyphen/underscore, starts with alphanumeric |
-| `jobQueues[].priority` | int32 | Dispatch priority (higher = higher priority) | Required |
+| `region` | `string` | AWS region (e.g., `us-west-2`). | Required; non-empty |
+| `computeResources.type` | string | `EC2`, `SPOT`, `FARGATE`, or `FARGATE_SPOT` | Required |
+| `computeResources.maxVcpus` | int32 | Scale-out ceiling — the one knob updatable on every environment | >= 1 |
+| `computeResources.subnetIds` | list(StringValueOrRef → AwsSubnet) | VPC placement; spread across AZs | At least 1 |
+| `computeResources.securityGroupIds` | list(StringValueOrRef → AwsSecurityGroup) | Attached to instances / Fargate task ENIs | **Required for Fargate types** |
+| `computeResources.instanceRole` | StringValueOrRef → AwsIamInstanceProfile | ECS instance profile | **Required for EC2/SPOT** |
 
 ### Optional Fields — Top Level
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `state` | string | `ENABLED` | Compute environment state: `ENABLED` or `DISABLED` |
-| `serviceRole` | StringValueOrRef | Service-linked role | IAM role for AWS Batch to make API calls |
-| `updatePolicy.terminateJobsOnUpdate` | bool | false | Whether to terminate running jobs during infrastructure updates |
-| `updatePolicy.jobExecutionTimeoutMinutes` | int32 | — | Max wait time for jobs during updates (1-360 minutes) |
-| `schedulingPolicy` | object | — | Fair-share scheduling policy (see below) |
+| `state` | string | `ENABLED` | `ENABLED` / `DISABLED` — the drain switch for maintenance or replacement. |
+| `serviceRole` | StringValueOrRef → AwsIamRole | Service-linked role | Leave unset (recommended): the service-linked role is also a precondition for in-place infrastructure updates. |
+| `eksConfiguration.eksClusterArn` | StringValueOrRef → AwsEksCluster | — | Attach the environment to an EKS cluster (Batch-on-EKS). Create-time only. |
+| `eksConfiguration.kubernetesNamespace` | string | — | Namespace Batch launches job pods into. Create-time only. |
+| `updatePolicy.terminateJobsOnUpdate` | bool | false | Terminate running jobs when instances are replaced during in-place updates. |
+| `updatePolicy.jobExecutionTimeoutMinutes` | int32 | 30 (AWS) | How long to wait for running jobs before replacing instances anyway (1-360). |
 
-### Optional Fields — Compute Resources
-
-| Field | Type | Applies To | Description |
-|-------|------|------------|-------------|
-| `computeResources.minVcpus` | int32 | EC2/SPOT | Minimum vCPUs to maintain (default: 0) |
-| `computeResources.desiredVcpus` | int32 | EC2/SPOT | Initial desired vCPUs |
-| `computeResources.securityGroupIds` | list(StringValueOrRef) | All | VPC security groups |
-| `computeResources.instanceTypes` | list(string) | EC2/SPOT | Instance types (e.g., `["optimal"]`, `["m5.xlarge", "c5.xlarge"]`) |
-| `computeResources.allocationStrategy` | string | EC2/SPOT | `BEST_FIT_PROGRESSIVE`, `SPOT_CAPACITY_OPTIMIZED`, or `SPOT_PRICE_CAPACITY_OPTIMIZED` |
-| `computeResources.instanceRole` | StringValueOrRef | EC2/SPOT | ECS instance profile ARN (**required** for EC2/SPOT) |
-| `computeResources.ec2KeyPair` | string | EC2/SPOT | SSH key pair name |
-| `computeResources.bidPercentage` | int32 | SPOT | Max % of On-Demand price (0-100) |
-| `computeResources.spotIamFleetRole` | StringValueOrRef | SPOT | Spot Fleet IAM role (**required** for SPOT) |
-| `computeResources.launchTemplate` | object | EC2/SPOT | Custom launch template: `launchTemplateId` (value or `valueFrom` an `AwsLaunchTemplate`'s `launch_template_id` output) + optional `version` |
-| `computeResources.ec2Configurations` | list(object) | EC2/SPOT | AMI customization (max 2 entries) |
-| `computeResources.resourceTags` | map(string) | EC2/SPOT | Tags for launched compute resources |
-
-### Optional Fields — Job Queue
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `jobQueues[].state` | string | `ENABLED` | Queue state: `ENABLED` or `DISABLED` |
-| `jobQueues[].jobStateTimeLimitActions` | list(object) | — | Auto-cancel jobs stuck in a state |
-| `jobQueues[].jobStateTimeLimitActions[].action` | string | — | Action to take: `CANCEL` |
-| `jobQueues[].jobStateTimeLimitActions[].maxTimeSeconds` | int32 | — | Time threshold (600-86400 seconds) |
-| `jobQueues[].jobStateTimeLimitActions[].reason` | string | — | Human-readable reason |
-| `jobQueues[].jobStateTimeLimitActions[].state` | string | — | Job state to monitor (e.g., `RUNNABLE`) |
-
-### Optional Fields — Scheduling Policy
+### Optional Fields — Compute Resources (EC2/SPOT only)
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schedulingPolicy.computeReservation` | int32 | % of vCPUs reserved for new share identifiers (0-99) |
-| `schedulingPolicy.shareDecaySeconds` | int32 | Usage history decay period (0-604800 seconds) |
-| `schedulingPolicy.shareDistributions` | list(object) | Weight per share identifier |
-| `schedulingPolicy.shareDistributions[].shareIdentifier` | string | Unique share identifier (supports `*` wildcard suffix) |
-| `schedulingPolicy.shareDistributions[].weightFactor` | double | Relative share weight (0.0001-999.9999) |
+| `minVcpus` | int32 | vCPU floor (default 0 — scale to zero when idle). |
+| `desiredVcpus` | int32 | Initial vCPU target; Batch adjusts it continuously. |
+| `instanceTypes` | list(string) | `["optimal"]` or explicit families/sizes. |
+| `allocationStrategy` | string | `BEST_FIT`, `BEST_FIT_PROGRESSIVE`, `BEST_FIT_PROGRESSIVE_ORDERED`, `SPOT_CAPACITY_OPTIMIZED`, `SPOT_PRICE_CAPACITY_OPTIMIZED`, `SPOT_CAPACITY_OPTIMIZED_PRIORITIZED`. Only the middle three support in-place infrastructure updates. |
+| `ec2KeyPair` | string | SSH key pair name (prefer SSM Session Manager). |
+| `bidPercentage` | int32 | SPOT only: max % of On-Demand price (0-100; omit for 100). |
+| `spotIamFleetRole` | StringValueOrRef → AwsIamRole | SPOT + BEST_FIT only: the Spot Fleet role. |
+| `launchTemplate.launchTemplateId` | StringValueOrRef → AwsLaunchTemplate | Custom AMI / user data / IMDSv2 posture. |
+| `launchTemplate.version` | string | Version number, `$Latest`, or `$Default`. |
+| `ec2Configurations` | list(object), max 2 | Image family (`ECS_AL2023`, `ECS_AL2_NVIDIA`, `EKS_AL2023`, …), AMI override, EKS AMI Kubernetes version. |
+| `placementGroup` | string | EC2 placement group for tightly-coupled multi-node jobs. Create-time only. |
+| `resourceTags` | map(string) | Tags applied to launched EC2 instances / Spot requests. |
+
+The spec rejects EC2-only fields on Fargate environments at validation time (AWS would reject them at deploy time).
 
 ## Outputs
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `compute_environment_arn` | string | ARN of the compute environment |
-| `compute_environment_name` | string | Name of the compute environment |
-| `ecs_cluster_arn` | string | ARN of the underlying ECS cluster |
-| `status` | string | Compute environment status |
-| `job_queue_arns.<name>` | string | Per-queue ARN (one entry per queue name) |
-| `scheduling_policy_arn` | string | Scheduling policy ARN (if created) |
+| `compute_environment_arn` | string | What job queues reference in `computeEnvironmentOrder`. |
+| `compute_environment_name` | string | The environment's name (from `metadata.name`). |
+| `ecs_cluster_arn` | string | The ECS cluster Batch provisions behind the environment. |
+| `status` | string | `VALID` / `INVALID` — queues can only associate VALID environments. |
 
 ## Presets
 
 | Name | Description |
 |------|-------------|
-| [01-fargate-batch](presets/01-fargate-batch.yaml) | Serverless Fargate, single queue, zero-management |
-| [02-ec2-managed-batch](presets/02-ec2-managed-batch.yaml) | EC2 with optimal instances, two priority queues, update policy |
-| [03-spot-cost-optimized-batch](presets/03-spot-cost-optimized-batch.yaml) | Spot instances, fair-share scheduling, multi-team capacity |
+| [01-fargate-batch](presets/01-fargate-batch.yaml) | Serverless Fargate — zero instance management |
+| [02-ec2-managed-batch](presets/02-ec2-managed-batch.yaml) | EC2 with optimal instances and an update policy |
+| [03-spot-cost-optimized-batch](presets/03-spot-cost-optimized-batch.yaml) | Spot with the price-capacity-optimized strategy |
 
-## Design Decisions
+## Related Components
 
-**Bundling scope.** The compute environment and job queues are bundled because a compute environment without a queue is incomplete infrastructure — you cannot submit jobs without a queue. Job definitions are excluded because they represent application-level workloads with independent lifecycles (versioned, frequently updated, reusable across queues).
-
-**MANAGED only.** UNMANAGED compute environments (where the user manages compute) and EKS-based compute environments are deferred to v2 as they are niche use cases that add significant complexity.
-
-**Scheduling policy as top-level.** The scheduling policy is defined at the spec level and attached to all bundled queues. Per-queue scheduling policies with external references are deferred to v2.
-
-**State defaults.** Both compute environment and job queue states default to `ENABLED` via the Planton middleware default mechanism. State validation is delegated to the AWS API to keep the proto schema simple and forward-compatible.
+- [AwsBatchJobQueue](/docs/catalog/aws/batch-job-queue) — maps onto this environment in preference order
+- [AwsBatchJobDefinition](/docs/catalog/aws/batch-job-definition) — the container blueprint jobs run from
+- [AwsBatchSchedulingPolicy](/docs/catalog/aws/batch-scheduling-policy) — fair-share capacity division for queues
+- [AwsLaunchTemplate](/docs/catalog/aws/launch-template) — custom AMI / user data for EC2 environments
+- [AwsIamInstanceProfile](/docs/catalog/aws/iam-instance-profile) — the ECS instance profile EC2/SPOT environments require

@@ -25,7 +25,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerDatabase
 metadata:
   name: my-database
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -78,7 +78,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerDatabase
 metadata:
   name: pg-analytics
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -102,7 +102,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerDatabase
 metadata:
   name: users-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -134,7 +134,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerDatabase
 metadata:
   name: secure-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -161,7 +161,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerDatabase
 metadata:
   name: composed-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

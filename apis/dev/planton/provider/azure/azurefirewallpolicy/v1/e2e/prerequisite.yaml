@@ -1,7 +1,7 @@
 # AzureFirewallPolicy install profile used as a prerequisite by composed
 # components (declared via prerequisites: [AzureFirewallPolicy] in the kind
 # registry -- the rule collection group -- and via the
-# planton.dev/e2e-extra-prerequisites annotation by the firewall's
+# planton.dev/e2e-prerequisites annotation by the firewall's
 # policy-attach scenario). The harness deploys this document (via the
 # policy's Pulumi module) after the fixture resource group and captures its
 # outputs -- firewall_policy_id in particular -- for dependents' references

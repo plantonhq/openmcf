@@ -1,6 +1,6 @@
 # AzureManagedDisk install profile used as a fixture by scenarios that
 # prove the VM-side attach seam (declared via the
-# planton.dev/e2e-extra-prerequisites annotation -- attaching a data disk
+# planton.dev/e2e-prerequisites annotation -- attaching a data disk
 # is OPTIONAL for a virtual machine, so the disk kind is never a registry
 # prerequisite). The harness deploys this document (via the disk's Pulumi
 # module) after the fixture resource group and captures its outputs --

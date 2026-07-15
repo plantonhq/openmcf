@@ -24,10 +24,18 @@ const (
 // aws-security-group stack outputs
 type AwsSecurityGroupStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// the unique ID of the security group
+	// the unique ID of the security group (sg-...). The join key other
+	// resources reference to attach this group.
 	SecurityGroupId string `protobuf:"bytes,1,opt,name=security_group_id,json=securityGroupId,proto3" json:"security_group_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// the ARN of the security group -- the form IAM policy conditions and
+	// resource-level permissions expect.
+	SecurityGroupArn string `protobuf:"bytes,2,opt,name=security_group_arn,json=securityGroupArn,proto3" json:"security_group_arn,omitempty"`
+	// the AWS account ID that owns the security group. Needed when another
+	// account references this group in a cross-account rule
+	// ("<owner_id>/<group_id>").
+	OwnerId       string `protobuf:"bytes,3,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsSecurityGroupStackOutputs) Reset() {
@@ -67,13 +75,29 @@ func (x *AwsSecurityGroupStackOutputs) GetSecurityGroupId() string {
 	return ""
 }
 
+func (x *AwsSecurityGroupStackOutputs) GetSecurityGroupArn() string {
+	if x != nil {
+		return x.SecurityGroupArn
+	}
+	return ""
+}
+
+func (x *AwsSecurityGroupStackOutputs) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awssecuritygroup_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awssecuritygroup_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/aws/awssecuritygroup/v1/stack_outputs.proto\x12,dev.planton.provider.aws.awssecuritygroup.v1\"J\n" +
+	"@dev/planton/provider/aws/awssecuritygroup/v1/stack_outputs.proto\x12,dev.planton.provider.aws.awssecuritygroup.v1\"\x93\x01\n" +
 	"\x1cAwsSecurityGroupStackOutputs\x12*\n" +
-	"\x11security_group_id\x18\x01 \x01(\tR\x0fsecurityGroupIdB\xff\x02\n" +
+	"\x11security_group_id\x18\x01 \x01(\tR\x0fsecurityGroupId\x12,\n" +
+	"\x12security_group_arn\x18\x02 \x01(\tR\x10securityGroupArn\x12\x19\n" +
+	"\bowner_id\x18\x03 \x01(\tR\aownerIdB\xff\x02\n" +
 	"0com.dev.planton.provider.aws.awssecuritygroup.v1B\x11StackOutputsProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awssecuritygroup/v1;awssecuritygroupv1\xa2\x02\x05DPPAA\xaa\x02,Dev.Planton.Provider.Aws.Awssecuritygroup.V1\xca\x02,Dev\\Planton\\Provider\\Aws\\Awssecuritygroup\\V1\xe2\x028Dev\\Planton\\Provider\\Aws\\Awssecuritygroup\\V1\\GPBMetadata\xea\x021Dev::Planton::Provider::Aws::Awssecuritygroup::V1b\x06proto3"
 
 var (

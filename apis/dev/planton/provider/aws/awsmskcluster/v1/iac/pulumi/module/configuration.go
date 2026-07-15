@@ -11,8 +11,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// configuration creates an inline MSK Configuration when server_properties are provided.
-// The configuration holds Kafka server.properties overrides that are applied to the cluster.
+// configuration creates the module-managed MSK Configuration when
+// server_properties are provided (the folded shape; bring an existing one via
+// configuration_arn). The configuration is pure glue -- a named
+// server.properties document consumed by exactly one cluster -- which is why
+// it stays inside this module instead of being its own node.
 func configuration(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*msk.Configuration, error) {
 	spec := locals.AwsMskCluster.Spec
 	if spec == nil || len(spec.ServerProperties) == 0 {
@@ -22,7 +25,7 @@ func configuration(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) 
 	serverProps := serializeProperties(spec.ServerProperties)
 
 	config, err := msk.NewConfiguration(ctx, "kafka-config", &msk.ConfigurationArgs{
-		Name:             pulumi.String(fmt.Sprintf("%s-config", locals.AwsMskCluster.Metadata.Id)),
+		Name:             pulumi.String(locals.ClusterName),
 		KafkaVersions:    pulumi.StringArray{pulumi.String(spec.KafkaVersion)},
 		ServerProperties: pulumi.String(serverProps),
 	}, pulumi.Provider(provider))

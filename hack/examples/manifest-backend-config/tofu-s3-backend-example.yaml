@@ -1,14 +1,16 @@
-# Example manifest with Terraform/Tofu S3 backend configuration in labels
+# Example manifest with Terraform/Tofu S3 backend configuration in annotations
 # This manifest configures remote state storage in AWS S3
-apiVersion: aws.planton.ai/v1
+apiVersion: aws.planton.dev/v1
 kind: EksCluster
 metadata:
   id: main-cluster
   name: Main EKS Cluster
-  labels:
+  annotations:
     # Terraform/Tofu backend configuration for S3
     terraform.planton.dev/backend.type: "s3"
-    terraform.planton.dev/backend.object: "my-terraform-state-bucket/eks/main-cluster/terraform.tfstate"
+    terraform.planton.dev/backend.bucket: "my-terraform-state-bucket"
+    terraform.planton.dev/backend.key: "eks/main-cluster/terraform.tfstate"
+    terraform.planton.dev/backend.region: "us-west-2"
 spec:
   awsProviderConfigId: aws-prod-creds
   region: us-west-2

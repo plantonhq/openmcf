@@ -2397,10 +2397,15 @@ type AzureLinuxWebAppIpRestrictionHeaders struct {
 	// X-Forwarded-Host header values to match.
 	// Up to 8 entries.
 	XForwardedHost []string `protobuf:"bytes,2,rep,name=x_forwarded_host,json=xForwardedHost,proto3" json:"x_forwarded_host,omitempty"`
-	// X-Azure-FDID (Front Door ID) header values to match.
-	// Up to 8 entries. Used to ensure traffic comes from your specific
-	// Front Door instance.
-	XAzureFdid []string `protobuf:"bytes,3,rep,name=x_azure_fdid,json=xAzureFdid,proto3" json:"x_azure_fdid,omitempty"`
+	// X-Azure-FDID (Front Door ID) header values to match, up to 8
+	// entries. Locks the app to specific Front Door instances: pair an
+	// ALLOW rule on the AzureFrontDoor.Backend service tag with this
+	// filter so only YOUR profile's traffic reaches the origin -- without
+	// it, anyone who discovers the app's default hostname bypasses the
+	// edge (and its WAF) entirely. Each entry references an
+	// AzureFrontDoorProfile's resource_guid output or carries the GUID as
+	// a literal.
+	XAzureFdid []*v1.StringValueOrRef `protobuf:"bytes,3,rep,name=x_azure_fdid,json=xAzureFdid,proto3" json:"x_azure_fdid,omitempty"`
 	// X-FD-HealthProbe header values to match.
 	// The only supported value is "1" (allow Front Door health probes).
 	XFdHealthProbe []string `protobuf:"bytes,4,rep,name=x_fd_health_probe,json=xFdHealthProbe,proto3" json:"x_fd_health_probe,omitempty"`
@@ -2452,7 +2457,7 @@ func (x *AzureLinuxWebAppIpRestrictionHeaders) GetXForwardedHost() []string {
 	return nil
 }
 
-func (x *AzureLinuxWebAppIpRestrictionHeaders) GetXAzureFdid() []string {
+func (x *AzureLinuxWebAppIpRestrictionHeaders) GetXAzureFdid() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.XAzureFdid
 	}
@@ -4881,11 +4886,11 @@ const file_dev_planton_provider_azure_azurelinuxwebapp_v1_spec_proto_rawDesc = "
 	"\x19virtual_network_subnet_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x16virtualNetworkSubnetId\x12 \n" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12n\n" +
 	"\aheaders\x18\b \x01(\v2T.dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppIpRestrictionHeadersR\aheadersB\v\n" +
-	"\t_priority\"\xed\x01\n" +
+	"\t_priority\"\xc7\x02\n" +
 	"$AzureLinuxWebAppIpRestrictionHeaders\x120\n" +
 	"\x0fx_forwarded_for\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\rxForwardedFor\x122\n" +
-	"\x10x_forwarded_host\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\x0exForwardedHost\x12*\n" +
-	"\fx_azure_fdid\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\n" +
+	"\x10x_forwarded_host\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\x0exForwardedHost\x12\x83\x01\n" +
+	"\fx_azure_fdid\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x05\x92\x01\x02\x10\b\x88\xd4a\xe0\x03\x92\xd4a\x1cstatus.outputs.resource_guidR\n" +
 	"xAzureFdid\x123\n" +
 	"\x11x_fd_health_probe\x18\x04 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x01R\x0exFdHealthProbe\"\xf6\x02\n" +
 	"\x1cAzureLinuxWebAppCorsSettings\x121\n" +
@@ -5334,44 +5339,45 @@ var file_dev_planton_provider_azure_azurelinuxwebapp_v1_spec_proto_depIdxs = []i
 	3,  // 35: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppIpRestriction.action:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppIpRestrictionAction
 	54, // 36: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppIpRestriction.virtual_network_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	23, // 37: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppIpRestriction.headers:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppIpRestrictionHeaders
-	4,  // 38: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppStorageMount.type:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppStorageMountType
-	54, // 39: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppStorageMount.access_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	27, // 40: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppLogs.application_logs:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppApplicationLogs
-	29, // 41: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppLogs.http_logs:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppHttpLogs
-	5,  // 42: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppApplicationLogs.file_system_level:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppLogLevel
-	28, // 43: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppApplicationLogs.azure_blob_storage:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBlobStorageLogs
-	5,  // 44: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBlobStorageLogs.level:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppLogLevel
-	54, // 45: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBlobStorageLogs.sas_url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 46: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppHttpLogs.file_system:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppHttpLogsFileSystem
-	31, // 47: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppHttpLogs.azure_blob_storage:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppHttpLogsBlobStorage
-	54, // 48: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppHttpLogsBlobStorage.sas_url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	54, // 49: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBackup.storage_account_url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	33, // 50: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBackup.schedule:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBackupSchedule
-	6,  // 51: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBackupSchedule.frequency_unit:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBackupFrequencyUnit
-	35, // 52: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealSetting.trigger:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealTrigger
-	36, // 53: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealTrigger.requests:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealRequestsTrigger
-	37, // 54: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealTrigger.status_codes:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealStatusCodeTrigger
-	38, // 55: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealTrigger.slow_request:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealSlowRequestTrigger
-	39, // 56: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealTrigger.slow_request_with_path:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealSlowRequestWithPathTrigger
-	12, // 57: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.unauthenticated_action:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppUnauthenticatedAction
-	13, // 58: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.forward_proxy_convention:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppForwardProxyConvention
-	41, // 59: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.login:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Login
-	42, // 60: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.apple_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Apple
-	43, // 61: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.active_directory_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2ActiveDirectory
-	44, // 62: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.azure_static_web_app_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2StaticWebApp
-	45, // 63: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.custom_oidc_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2CustomOidc
-	46, // 64: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.facebook_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Facebook
-	47, // 65: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.github_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Github
-	48, // 66: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.google_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Google
-	49, // 67: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.microsoft_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Microsoft
-	50, // 68: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.twitter_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Twitter
-	14, // 69: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Login.cookie_expiration_convention:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppCookieExpirationConvention
-	53, // 70: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2ActiveDirectory.login_parameters:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2ActiveDirectory.LoginParametersEntry
-	71, // [71:71] is the sub-list for method output_type
-	71, // [71:71] is the sub-list for method input_type
-	71, // [71:71] is the sub-list for extension type_name
-	71, // [71:71] is the sub-list for extension extendee
-	0,  // [0:71] is the sub-list for field type_name
+	54, // 38: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppIpRestrictionHeaders.x_azure_fdid:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 39: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppStorageMount.type:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppStorageMountType
+	54, // 40: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppStorageMount.access_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	27, // 41: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppLogs.application_logs:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppApplicationLogs
+	29, // 42: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppLogs.http_logs:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppHttpLogs
+	5,  // 43: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppApplicationLogs.file_system_level:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppLogLevel
+	28, // 44: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppApplicationLogs.azure_blob_storage:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBlobStorageLogs
+	5,  // 45: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBlobStorageLogs.level:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppLogLevel
+	54, // 46: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBlobStorageLogs.sas_url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	30, // 47: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppHttpLogs.file_system:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppHttpLogsFileSystem
+	31, // 48: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppHttpLogs.azure_blob_storage:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppHttpLogsBlobStorage
+	54, // 49: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppHttpLogsBlobStorage.sas_url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	54, // 50: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBackup.storage_account_url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	33, // 51: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBackup.schedule:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBackupSchedule
+	6,  // 52: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBackupSchedule.frequency_unit:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppBackupFrequencyUnit
+	35, // 53: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealSetting.trigger:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealTrigger
+	36, // 54: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealTrigger.requests:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealRequestsTrigger
+	37, // 55: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealTrigger.status_codes:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealStatusCodeTrigger
+	38, // 56: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealTrigger.slow_request:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealSlowRequestTrigger
+	39, // 57: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealTrigger.slow_request_with_path:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAutoHealSlowRequestWithPathTrigger
+	12, // 58: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.unauthenticated_action:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppUnauthenticatedAction
+	13, // 59: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.forward_proxy_convention:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppForwardProxyConvention
+	41, // 60: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.login:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Login
+	42, // 61: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.apple_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Apple
+	43, // 62: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.active_directory_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2ActiveDirectory
+	44, // 63: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.azure_static_web_app_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2StaticWebApp
+	45, // 64: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.custom_oidc_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2CustomOidc
+	46, // 65: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.facebook_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Facebook
+	47, // 66: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.github_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Github
+	48, // 67: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.google_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Google
+	49, // 68: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.microsoft_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Microsoft
+	50, // 69: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthSettingsV2.twitter_v2:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Twitter
+	14, // 70: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2Login.cookie_expiration_convention:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppCookieExpirationConvention
+	53, // 71: dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2ActiveDirectory.login_parameters:type_name -> dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppAuthV2ActiveDirectory.LoginParametersEntry
+	72, // [72:72] is the sub-list for method output_type
+	72, // [72:72] is the sub-list for method input_type
+	72, // [72:72] is the sub-list for extension type_name
+	72, // [72:72] is the sub-list for extension extendee
+	0,  // [0:72] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurelinuxwebapp_v1_spec_proto_init() }

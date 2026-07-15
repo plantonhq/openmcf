@@ -1,8 +1,10 @@
 terraform {
   required_providers {
     aws = {
+      # Floor 6.48.0: warm_throughput_mib_ps landed there (max_record_size_in_kib
+      # in 6.20.0, aws_kinesis_resource_policy well before the v6 line).
       source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      version = ">= 6.48.0"
     }
   }
 }

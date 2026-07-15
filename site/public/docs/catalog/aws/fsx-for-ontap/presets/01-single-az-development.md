@@ -1,6 +1,6 @@
 ---
 title: "Single-AZ Development FSx ONTAP"
-description: "SINGLE_AZ_2 SSD file system with 1 TiB (1024 GiB) and 128 MB/s throughput. One HA pair. No automatic backups. The smallest and cheapest ONTAP configuration for development and testing."
+description: "SINGLE_AZ_2 SSD file system with 1 TiB (1024 GiB) and 384 MB/s throughput. One HA pair. No automatic backups. The smallest and cheapest ONTAP configuration for development and testing."
 type: "preset"
 rank: "01"
 presetSlug: "01-single-az-development"
@@ -13,7 +13,7 @@ order: 1
 
 # Single-AZ Development FSx ONTAP
 
-SINGLE_AZ_2 SSD file system with 1 TiB (1024 GiB) and 128 MB/s throughput. One HA pair. No automatic backups. The smallest and cheapest ONTAP configuration for development and testing.
+SINGLE_AZ_2 SSD file system with 1 TiB (1024 GiB) and 384 MB/s throughput. One HA pair. No automatic backups. The smallest and cheapest ONTAP configuration for development and testing.
 
 ## When to Use
 
@@ -24,18 +24,18 @@ SINGLE_AZ_2 SSD file system with 1 TiB (1024 GiB) and 128 MB/s throughput. One H
 
 ## What It Configures
 
-- **SINGLE_AZ_2** — Latest generation single-AZ deployment with in-place HA scale-out support
+- **SINGLE_AZ_2** — Current-generation single-AZ deployment with in-place HA scale-out support
 - **1024 GiB SSD** — Minimum storage capacity. Sub-millisecond latency
-- **128 MB/s throughput** — Minimum throughput tier per HA pair
+- **384 MB/s throughput** — The smallest second-generation throughput tier per HA pair
 - **1 HA pair** — Single pair for cost efficiency
 - **No backups** — `automatic_backup_retention_days: 0` disables daily FSx backups
 
 ## What to Customize
 
-- Replace placeholders: `name`, `id`, `org`, `env`, and `subnet-0123456789abcdef0`
-- Increase `storage_capacity_gib` (1024–1048576 GiB) for more space
-- Increase `throughput_capacity_per_ha_pair` (next tiers: 256, 384, 512) for faster I/O
+- Replace placeholders: `name`, `id`, `org`, `env`, `<aws-region>`, and `<subnet-id>`
+- Increase `storage_capacity_gib` (1024 GiB per HA pair up to 512 TiB per pair) for more space
+- Increase `throughput_capacity_per_ha_pair` (next tiers: 768, 1536, 3072, 6144) for faster I/O
 - Set `automatic_backup_retention_days: 7` if you need backup protection
 - Add `security_group_ids` for network access control
-- Add `ha_pairs: 2` or more for scale-out throughput (single-AZ only)
+- Add `ha_pairs: 2` or more for scale-out throughput (per-pair tiers become 1536/3072/6144)
 - Switch to `MULTI_AZ_2` when you need high availability

@@ -8,18 +8,18 @@ provider: "aws"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-multi-vpc-hub"
+  - slug: "01-full-mesh-hub"
     rank: "01"
-    title: "Multi-VPC Hub"
-    excerpt: "Production Transit Gateway connecting application and shared-services VPCs with full-mesh routing. This is the most common Transit Gateway pattern, replacing complex VPC peering meshes with a..."
-  - slug: "02-single-vpc-development"
+    title: "Full-Mesh Hub"
+    excerpt: "The zero-routing-configuration starting point: default association and propagation stay enabled, so every VPC attached to this gateway can reach every other one out of the box."
+  - slug: "02-segmented-hub"
     rank: "02"
-    title: "Single VPC Development"
-    excerpt: "Minimal Transit Gateway with a single VPC attachment for development or testing. This is the simplest possible TGW setup, useful for validating connectivity patterns before scaling to production."
-  - slug: "03-hub-and-spoke-firewall"
+    title: "Segmented Hub"
+    excerpt: "The isolation-first posture: both default-table dials off, so nothing routes until an `AwsTransitGatewayRouteTable` explicitly associates and propagates attachments. Production cannot see..."
+  - slug: "03-hybrid-connectivity-hub"
     rank: "03"
-    title: "Hub-and-Spoke Firewall"
-    excerpt: "Transit Gateway with a centralized inspection VPC running a virtual firewall appliance (e.g., Palo Alto, Fortinet, AWS Network Firewall). The inspection VPC uses appliance mode to ensure symmetric..."
+    title: "Hybrid Connectivity Hub"
+    excerpt: "A hub prepared for on-premises connectivity: a deliberately chosen Amazon-side ASN that will not collide with your data center's BGP, ECMP enabled so parallel VPN tunnels aggregate bandwidth, and..."
 ---
 
 # Transit Gateway Presets

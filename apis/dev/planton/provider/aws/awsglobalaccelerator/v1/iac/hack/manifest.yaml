@@ -2,7 +2,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: test-ga
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: test-org
     pulumi.planton.dev/project: test-project
@@ -26,5 +26,6 @@ spec:
           thresholdCount: 3
           trafficDialPercentage: 100.0
           endpoints:
-            - endpointId: arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-alb/1234567890abcdef
+            - endpointId:
+                value: arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-alb/1234567890abcdef
               weight: 128

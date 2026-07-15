@@ -11,6 +11,7 @@ import (
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -66,9 +67,18 @@ type AwsKinesisStreamConsumerSpec struct {
 	//
 	// Accepts a direct ARN string or a reference to an AwsKinesisStream resource
 	// via valueFrom.
-	StreamArn     *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=stream_arn,json=streamArn,proto3" json:"stream_arn,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	StreamArn *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=stream_arn,json=streamArn,proto3" json:"stream_arn,omitempty"`
+	// Resource-based access policy for the consumer, as a standard IAM policy
+	// document. The primary use is cross-account enhanced fan-out: granting
+	// another account's principals SubscribeToShard/DescribeStreamConsumer on
+	// this consumer without role assumption. AWS models this as a separate
+	// resource-policy API keyed by the consumer ARN; it is folded here because
+	// the policy has no identity of its own and follows the consumer's
+	// lifecycle. (The stream itself carries its own resource_policy for
+	// stream-level grants.)
+	ResourcePolicy *structpb.Struct `protobuf:"bytes,3,opt,name=resource_policy,json=resourcePolicy,proto3" json:"resource_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AwsKinesisStreamConsumerSpec) Reset() {
@@ -115,15 +125,23 @@ func (x *AwsKinesisStreamConsumerSpec) GetStreamArn() *v1.StringValueOrRef {
 	return nil
 }
 
+func (x *AwsKinesisStreamConsumerSpec) GetResourcePolicy() *structpb.Struct {
+	if x != nil {
+		return x.ResourcePolicy
+	}
+	return nil
+}
+
 var File_dev_planton_provider_aws_awskinesisstreamconsumer_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awskinesisstreamconsumer_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/aws/awskinesisstreamconsumer/v1/spec.proto\x124dev.planton.provider.aws.awskinesisstreamconsumer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xbc\x01\n" +
+	"?dev/planton/provider/aws/awskinesisstreamconsumer/v1/spec.proto\x124dev.planton.provider.aws.awskinesisstreamconsumer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xfe\x01\n" +
 	"\x1cAwsKinesisStreamConsumerSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12{\n" +
 	"\n" +
-	"stream_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x84\x02\x92\xd4a\x19status.outputs.stream_arnR\tstreamArnB\xaf\x03\n" +
+	"stream_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x84\x02\x92\xd4a\x19status.outputs.stream_arnR\tstreamArn\x12@\n" +
+	"\x0fresource_policy\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x0eresourcePolicyB\xaf\x03\n" +
 	"8com.dev.planton.provider.aws.awskinesisstreamconsumer.v1B\tSpecProtoP\x01Zqgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awskinesisstreamconsumer/v1;awskinesisstreamconsumerv1\xa2\x02\x05DPPAA\xaa\x024Dev.Planton.Provider.Aws.Awskinesisstreamconsumer.V1\xca\x024Dev\\Planton\\Provider\\Aws\\Awskinesisstreamconsumer\\V1\xe2\x02@Dev\\Planton\\Provider\\Aws\\Awskinesisstreamconsumer\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Aws::Awskinesisstreamconsumer::V1b\x06proto3"
 
 var (
@@ -142,14 +160,16 @@ var file_dev_planton_provider_aws_awskinesisstreamconsumer_v1_spec_proto_msgType
 var file_dev_planton_provider_aws_awskinesisstreamconsumer_v1_spec_proto_goTypes = []any{
 	(*AwsKinesisStreamConsumerSpec)(nil), // 0: dev.planton.provider.aws.awskinesisstreamconsumer.v1.AwsKinesisStreamConsumerSpec
 	(*v1.StringValueOrRef)(nil),          // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*structpb.Struct)(nil),              // 2: google.protobuf.Struct
 }
 var file_dev_planton_provider_aws_awskinesisstreamconsumer_v1_spec_proto_depIdxs = []int32{
 	1, // 0: dev.planton.provider.aws.awskinesisstreamconsumer.v1.AwsKinesisStreamConsumerSpec.stream_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 1: dev.planton.provider.aws.awskinesisstreamconsumer.v1.AwsKinesisStreamConsumerSpec.resource_policy:type_name -> google.protobuf.Struct
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awskinesisstreamconsumer_v1_spec_proto_init() }

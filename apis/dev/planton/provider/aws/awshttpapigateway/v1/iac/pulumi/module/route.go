@@ -11,27 +11,26 @@ import (
 )
 
 // routes creates API Gateway routes, wiring each route to its deduplicated
-// integration and optional authorizer.
+// integration and optional authorizer. Returns the created routes so the
+// stage (whose per-route settings reference route keys) can depend on them.
 func routes(
 	ctx *pulumi.Context,
 	locals *Locals,
 	createdApi *apigatewayv2.Api,
-	integrationMap map[string]*apigatewayv2.Integration,
+	createdIntegrations []*apigatewayv2.Integration,
 	authorizerMap map[string]*apigatewayv2.Authorizer,
 	provider *aws.Provider,
-) error {
+) ([]pulumi.Resource, error) {
+	_, routeToIndex := dedupIntegrations(locals.Spec.Routes)
+	created := make([]pulumi.Resource, 0, len(locals.Spec.Routes))
+
 	for i, route := range locals.Spec.Routes {
 		// Build a safe resource name from the route key.
 		// "GET /users" -> "get-users", "$default" -> "default"
 		safeName := sanitizeRouteKey(route.RouteKey)
 		resourceName := fmt.Sprintf("%s-route-%s", locals.ApiName, safeName)
 
-		// Look up the deduplicated integration for this route.
-		key := integrationKey(route.Integration)
-		integration, ok := integrationMap[key]
-		if !ok {
-			return fmt.Errorf("integration not found for route %q (index %d)", route.RouteKey, i)
-		}
+		integration := createdIntegrations[routeToIndex[i]]
 
 		args := &apigatewayv2.RouteArgs{
 			ApiId:    createdApi.ID(),
@@ -42,32 +41,38 @@ func routes(
 			}).(pulumi.StringOutput),
 		}
 
-		// Authorization
+		// NONE is the AWS default; only real authorization modes are sent.
 		if route.AuthorizationType != "" && route.AuthorizationType != "NONE" {
 			args.AuthorizationType = pulumi.StringPtr(route.AuthorizationType)
 
-			// Wire authorizer reference
+			// JWT routes bind JWT authorizers; CUSTOM routes bind REQUEST
+			// (Lambda) authorizers -- the spec CEL guarantees the referenced
+			// authorizer's type matches.
 			if route.AuthorizerName != "" {
-				authorizer, authOk := authorizerMap[route.AuthorizerName]
-				if authOk {
-					args.AuthorizerId = authorizer.ID().ApplyT(func(id string) string {
-						return id
-					}).(pulumi.StringOutput)
+				if authorizer, ok := authorizerMap[route.AuthorizerName]; ok {
+					args.AuthorizerId = authorizer.ID().ToStringOutput()
 				}
 			}
 
-			// Authorization scopes (JWT)
-			if len(route.AuthorizationScopes) > 0 {
+			// Scopes only apply to JWT authorization.
+			if route.AuthorizationType == "JWT" && len(route.AuthorizationScopes) > 0 {
 				args.AuthorizationScopes = pulumi.ToStringArray(route.AuthorizationScopes)
 			}
 		}
 
-		if _, err := apigatewayv2.NewRoute(ctx, resourceName, args, pulumi.Provider(provider)); err != nil {
-			return errors.Wrapf(err, "failed to create route %q (index %d)", route.RouteKey, i)
+		// Stable operationId for OpenAPI exports and generated clients.
+		if route.OperationName != "" {
+			args.OperationName = pulumi.StringPtr(route.OperationName)
 		}
+
+		createdRoute, err := apigatewayv2.NewRoute(ctx, resourceName, args, pulumi.Provider(provider))
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to create route %q (index %d)", route.RouteKey, i)
+		}
+		created = append(created, createdRoute)
 	}
 
-	return nil
+	return created, nil
 }
 
 // sanitizeRouteKey converts a route key into a safe resource name component.

@@ -22,7 +22,7 @@ metadata:
     e2e-component: azurefirewallpolicyrulecollectiongroup
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "azureipgroup"
+    planton.dev/e2e-prerequisites: "azureipgroup"
   tags:
     - planton-e2e
 spec:

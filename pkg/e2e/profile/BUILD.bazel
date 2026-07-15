@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "profile",
@@ -14,9 +14,17 @@ go_library(
         "//apis/dev/planton/qa/componente2eprofile/v1:componente2eprofile",
         "//apis/dev/planton/qa/providere2eprofile/v1:providere2eprofile",
         "//apis/dev/planton/shared",
+        "//apis/dev/planton/shared/cloudresourcekind",
+        "//pkg/crkreflect",
         "@com_github_pkg_errors//:errors",
         "@io_k8s_sigs_yaml//:yaml",
         "@org_golang_google_protobuf//encoding/protojson",
         "@org_golang_google_protobuf//proto",
     ],
+)
+
+go_test(
+    name = "profile_test",
+    srcs = ["discover_test.go"],
+    embed = [":profile"],
 )

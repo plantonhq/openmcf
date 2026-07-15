@@ -11,7 +11,7 @@ presets:
   - slug: "01-production-immutable"
     rank: "01"
     title: "Production Immutable ECR Repository"
-    excerpt: "This preset creates an ECR repository with immutable image tags, automatic vulnerability scanning, and a lifecycle policy that balances cost control with rollback capability. Immutable tags ensure..."
+    excerpt: "This preset creates an ECR repository where release tags are frozen forever while the floating `latest` tag stays movable, with automatic vulnerability scanning and lifecycle rules that balance cost..."
   - slug: "02-development"
     rank: "02"
     title: "Development ECR Repository"

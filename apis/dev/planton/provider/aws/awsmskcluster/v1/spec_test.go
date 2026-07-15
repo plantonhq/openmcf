@@ -34,6 +34,9 @@ func validMinimalSpec() *AwsMskCluster {
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-bbb"}},
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-ccc"}},
 			},
+			SecurityGroupIds: []*foreignkeyv1.StringValueOrRef{
+				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-broker-123"}},
+			},
 		},
 	}
 }
@@ -151,7 +154,7 @@ var _ = ginkgo.Describe("AwsMskClusterSpec Validation Tests", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept a cluster with public access enabled", func() {
+		ginkgo.It("should accept a cluster with public access enabled and IAM auth over TLS", func() {
 			input := validMinimalSpec()
 			input.Spec.PublicAccessType = "SERVICE_PROVIDED_EIPS"
 			input.Spec.Authentication = &AwsMskClusterAuthentication{
@@ -161,18 +164,48 @@ var _ = ginkgo.Describe("AwsMskClusterSpec Validation Tests", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept a cluster with networking and managed security group", func() {
+		ginkgo.It("should accept SCRAM secret associations when SCRAM auth is enabled", func() {
 			input := validMinimalSpec()
-			input.Spec.VpcId = &foreignkeyv1.StringValueOrRef{
-				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "vpc-abc123"},
+			input.Spec.Authentication = &AwsMskClusterAuthentication{
+				SaslScramEnabled: true,
 			}
-			input.Spec.SecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
-				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-source-123"}},
+			input.Spec.ScramSecretArns = []string{
+				"arn:aws:secretsmanager:us-west-2:111122223333:secret:AmazonMSK_analytics-users-AbCdEf",
 			}
-			input.Spec.AllowedCidrBlocks = []string{"10.0.0.0/16"}
-			input.Spec.AssociateSecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
-				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-extra-456"}},
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept PrivateLink vpc_connectivity when the cluster offers matching auth", func() {
+			input := validMinimalSpec()
+			input.Spec.Authentication = &AwsMskClusterAuthentication{
+				SaslIamEnabled: true,
 			}
+			input.Spec.VpcConnectivity = &AwsMskClusterVpcConnectivity{
+				SaslIamEnabled: true,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a dual-stack cluster", func() {
+			input := validMinimalSpec()
+			input.Spec.NetworkType = "DUAL"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept an Express-broker cluster with rebalancing paused", func() {
+			input := validMinimalSpec()
+			input.Spec.InstanceType = "express.m7g.large"
+			input.Spec.RebalancingStatus = "PAUSED"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a cluster resource policy", func() {
+			input := validMinimalSpec()
+			input.Spec.ClusterPolicy = `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":"arn:aws:iam::444455556666:root"},"Action":["kafka:CreateVpcConnection"],"Resource":"*"}]}`
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
@@ -195,6 +228,9 @@ var _ = ginkgo.Describe("AwsMskClusterSpec Validation Tests", func() {
 			input.Spec.ClientBrokerEncryption = proto.String("TLS")
 			input.Spec.InClusterEncryption = proto.Bool(true)
 			input.Spec.Authentication = &AwsMskClusterAuthentication{
+				SaslIamEnabled: true,
+			}
+			input.Spec.VpcConnectivity = &AwsMskClusterVpcConnectivity{
 				SaslIamEnabled: true,
 			}
 			input.Spec.ServerProperties = map[string]string{
@@ -247,6 +283,13 @@ var _ = ginkgo.Describe("AwsMskClusterSpec Validation Tests", func() {
 			ginkgo.It("should fail when subnet_ids is empty", func() {
 				input := validMinimalSpec()
 				input.Spec.SubnetIds = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should fail when security_group_ids is empty", func() {
+				input := validMinimalSpec()
+				input.Spec.SecurityGroupIds = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
@@ -314,6 +357,20 @@ var _ = ginkgo.Describe("AwsMskClusterSpec Validation Tests", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
+
+			ginkgo.It("should fail for invalid network_type", func() {
+				input := validMinimalSpec()
+				input.Spec.NetworkType = "DUALSTACK"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should fail for invalid rebalancing_status", func() {
+				input := validMinimalSpec()
+				input.Spec.RebalancingStatus = "STOPPED"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
 		})
 
 		ginkgo.Context("configuration_mutual_exclusion", func() {
@@ -338,6 +395,114 @@ var _ = ginkgo.Describe("AwsMskClusterSpec Validation Tests", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 				gomega.Expect(err.Error()).To(gomega.ContainSubstring("configuration_revision is required"))
+			})
+		})
+
+		ginkgo.Context("scram_secrets_require_scram_auth", func() {
+			ginkgo.It("should fail when scram_secret_arns is set without SCRAM auth", func() {
+				input := validMinimalSpec()
+				input.Spec.ScramSecretArns = []string{
+					"arn:aws:secretsmanager:us-west-2:111122223333:secret:AmazonMSK_analytics-users-AbCdEf",
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("requires authentication.sasl_scram_enabled"))
+			})
+
+			ginkgo.It("should fail for a secret ARN without the AmazonMSK_ prefix", func() {
+				input := validMinimalSpec()
+				input.Spec.Authentication = &AwsMskClusterAuthentication{
+					SaslScramEnabled: true,
+				}
+				input.Spec.ScramSecretArns = []string{
+					"arn:aws:secretsmanager:us-west-2:111122223333:secret:my-users-AbCdEf",
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("vpc_connectivity scheme coupling", func() {
+			ginkgo.It("should fail when vpc_connectivity offers IAM without cluster IAM auth", func() {
+				input := validMinimalSpec()
+				input.Spec.VpcConnectivity = &AwsMskClusterVpcConnectivity{
+					SaslIamEnabled: true,
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("requires authentication.sasl_iam_enabled"))
+			})
+
+			ginkgo.It("should fail when vpc_connectivity offers SCRAM without cluster SCRAM auth", func() {
+				input := validMinimalSpec()
+				input.Spec.Authentication = &AwsMskClusterAuthentication{
+					SaslIamEnabled: true,
+				}
+				input.Spec.VpcConnectivity = &AwsMskClusterVpcConnectivity{
+					SaslScramEnabled: true,
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("requires authentication.sasl_scram_enabled"))
+			})
+
+			ginkgo.It("should fail when vpc_connectivity offers TLS without cluster TLS auth", func() {
+				input := validMinimalSpec()
+				input.Spec.Authentication = &AwsMskClusterAuthentication{
+					SaslIamEnabled: true,
+				}
+				input.Spec.VpcConnectivity = &AwsMskClusterVpcConnectivity{
+					TlsEnabled: true,
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("requires authentication.tls_enabled"))
+			})
+		})
+
+		ginkgo.Context("public_access_requires_authenticated_tls", func() {
+			ginkgo.It("should fail when public access is enabled without any authentication", func() {
+				input := validMinimalSpec()
+				input.Spec.PublicAccessType = "SERVICE_PROVIDED_EIPS"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("public access requires"))
+			})
+
+			ginkgo.It("should fail when public access is enabled with plaintext client encryption", func() {
+				input := validMinimalSpec()
+				input.Spec.PublicAccessType = "SERVICE_PROVIDED_EIPS"
+				input.Spec.Authentication = &AwsMskClusterAuthentication{
+					SaslIamEnabled: true,
+				}
+				input.Spec.ClientBrokerEncryption = proto.String("TLS_PLAINTEXT")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("public access requires"))
+			})
+
+			ginkgo.It("should fail when public access is enabled with unauthenticated allowed", func() {
+				input := validMinimalSpec()
+				input.Spec.PublicAccessType = "SERVICE_PROVIDED_EIPS"
+				input.Spec.Authentication = &AwsMskClusterAuthentication{
+					SaslIamEnabled:  true,
+					Unauthenticated: true,
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("public access requires"))
+			})
+		})
+
+		ginkgo.Context("tls_requires_certificate_authorities", func() {
+			ginkgo.It("should fail when TLS auth is enabled without certificate authorities", func() {
+				input := validMinimalSpec()
+				input.Spec.Authentication = &AwsMskClusterAuthentication{
+					TlsEnabled: true,
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("tls_certificate_authority_arns is required"))
 			})
 		})
 
@@ -376,15 +541,6 @@ var _ = ginkgo.Describe("AwsMskClusterSpec Validation Tests", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 				gomega.Expect(err.Error()).To(gomega.ContainSubstring("bucket is required"))
-			})
-		})
-
-		ginkgo.Context("CIDR validation", func() {
-			ginkgo.It("should fail for invalid CIDR in allowed_cidr_blocks", func() {
-				input := validMinimalSpec()
-				input.Spec.AllowedCidrBlocks = []string{"not-a-cidr"}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 		})
 

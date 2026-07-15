@@ -40,7 +40,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeNodePool
 metadata:
   name: my-node-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -106,7 +106,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeNodePool
 metadata:
   name: dev-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeNodePool
 metadata:
   name: spot-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -166,7 +166,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeNodePool
 metadata:
   name: prod-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

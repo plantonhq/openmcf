@@ -3,6 +3,7 @@ kind: AwsCodeBuildProject
 metadata:
   name: my-docker-build
 spec:
+  region: us-east-1
   source:
     type: GITHUB
     location: "<github-repo-https-url>"

@@ -34,8 +34,22 @@ type AwsStepFunctionStackOutputs struct {
 	// The name of the state machine. Useful for dashboards, monitoring, and
 	// human-readable references in logs and alerts.
 	StateMachineName string `protobuf:"bytes,2,opt,name=state_machine_name,json=stateMachineName,proto3" json:"state_machine_name,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The ARN of the most recently published version of the state machine
+	// (e.g. "...:stateMachine:orders:3"). Populated only when spec.publish is
+	// true. Point consumers (EventBridge targets, aliases) at this ARN to pin
+	// them to an immutable snapshot instead of the mutable state machine.
+	StateMachineVersionArn string `protobuf:"bytes,3,opt,name=state_machine_version_arn,json=stateMachineVersionArn,proto3" json:"state_machine_version_arn,omitempty"`
+	// The revision identifier of the current state machine definition. AWS
+	// assigns a new revision id on every definition or configuration change,
+	// whether or not a version is published. Useful for change auditing.
+	RevisionId string `protobuf:"bytes,4,opt,name=revision_id,json=revisionId,proto3" json:"revision_id,omitempty"`
+	// Lifecycle status of the state machine as reported by AWS
+	// (e.g. "ACTIVE", "DELETING").
+	Status string `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	// RFC3339 timestamp of when the state machine was created.
+	CreationDate  string `protobuf:"bytes,6,opt,name=creation_date,json=creationDate,proto3" json:"creation_date,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsStepFunctionStackOutputs) Reset() {
@@ -82,14 +96,47 @@ func (x *AwsStepFunctionStackOutputs) GetStateMachineName() string {
 	return ""
 }
 
+func (x *AwsStepFunctionStackOutputs) GetStateMachineVersionArn() string {
+	if x != nil {
+		return x.StateMachineVersionArn
+	}
+	return ""
+}
+
+func (x *AwsStepFunctionStackOutputs) GetRevisionId() string {
+	if x != nil {
+		return x.RevisionId
+	}
+	return ""
+}
+
+func (x *AwsStepFunctionStackOutputs) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *AwsStepFunctionStackOutputs) GetCreationDate() string {
+	if x != nil {
+		return x.CreationDate
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awsstepfunction_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsstepfunction_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/aws/awsstepfunction/v1/stack_outputs.proto\x12+dev.planton.provider.aws.awsstepfunction.v1\"w\n" +
+	"?dev/planton/provider/aws/awsstepfunction/v1/stack_outputs.proto\x12+dev.planton.provider.aws.awsstepfunction.v1\"\x90\x02\n" +
 	"\x1bAwsStepFunctionStackOutputs\x12*\n" +
 	"\x11state_machine_arn\x18\x01 \x01(\tR\x0fstateMachineArn\x12,\n" +
-	"\x12state_machine_name\x18\x02 \x01(\tR\x10stateMachineNameB\xf8\x02\n" +
+	"\x12state_machine_name\x18\x02 \x01(\tR\x10stateMachineName\x129\n" +
+	"\x19state_machine_version_arn\x18\x03 \x01(\tR\x16stateMachineVersionArn\x12\x1f\n" +
+	"\vrevision_id\x18\x04 \x01(\tR\n" +
+	"revisionId\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\x12#\n" +
+	"\rcreation_date\x18\x06 \x01(\tR\fcreationDateB\xf8\x02\n" +
 	"/com.dev.planton.provider.aws.awsstepfunction.v1B\x11StackOutputsProtoP\x01Z_github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsstepfunction/v1;awsstepfunctionv1\xa2\x02\x05DPPAA\xaa\x02+Dev.Planton.Provider.Aws.Awsstepfunction.V1\xca\x02+Dev\\Planton\\Provider\\Aws\\Awsstepfunction\\V1\xe2\x027Dev\\Planton\\Provider\\Aws\\Awsstepfunction\\V1\\GPBMetadata\xea\x020Dev::Planton::Provider::Aws::Awsstepfunction::V1b\x06proto3"
 
 var (

@@ -25,15 +25,10 @@ spec:
         kind: AwsSubnet
         name: production-private-subnet-b
         fieldPath: status.outputs.subnet_id
-  vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: production-vpc
-      fieldPath: status.outputs.vpc_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
-        name: mwaa-clients-sg
+        name: mwaa-environment-sg
         fieldPath: status.outputs.security_group_id
   kmsKeyArn:
     valueFrom:

@@ -7,7 +7,8 @@ metadata:
   id: awscogidp-test-google-idp
 spec:
   region: us-west-2
-  userPoolId: "us-east-1_TestPool123"
+  userPoolId:
+    value: us-west-2_TestPool123
   providerName: Google
   providerType: Google
   google:

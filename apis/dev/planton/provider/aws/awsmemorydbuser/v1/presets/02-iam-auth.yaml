@@ -1,0 +1,12 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsMemorydbUser
+metadata:
+  # metadata.name IS the AWS user name -- the AUTH identity ACLs reference.
+  name: <user-name>
+spec:
+  region: <aws-region>
+  accessString: "on ~<key-prefix>:* +@read +@write"
+  authenticationMode:
+    # IAM-signed short-lived tokens: no long-lived secret anywhere. Requires
+    # TLS on the cluster, and memorydb:Connect on the user AND cluster ARNs.
+    type: iam

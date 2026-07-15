@@ -25,7 +25,7 @@ Think of Pulumi as your infrastructure's version control system. Just as Git let
 
 **Manifest**: A YAML file describing your infrastructure resource (e.g., `r2-bucket.yaml`, `eks-cluster.yaml`). Think of it as a blueprint.
 
-**Stack**: A deployment instance with its own state. The stack name follows the format `<org>/<project>/<stack>` (e.g., `planton/planton/prod.CloudflareR2Bucket.my-bucket`). Your manifest contains this in its labels.
+**Stack**: A deployment instance with its own state. The stack name follows the format `<org>/<project>/<stack>` (e.g., `planton/planton/prod.CloudflareR2Bucket.my-bucket`). Your manifest contains this in its annotations.
 
 **Module Directory**: Where the Pulumi IaC code lives. Usually auto-detected from your manifest's resource kind, but can be overridden with `--module-dir`.
 
@@ -86,7 +86,7 @@ planton pulumi init \
 🤝 Handing off to Pulumi...
    Output below is from Pulumi
 
-Using Pulumi stack from manifest labels: planton/planton/prod.CloudflareR2Bucket.pipeline-logs
+Using Pulumi stack from manifest annotations: planton/planton/prod.CloudflareR2Bucket.pipeline-logs
 
 pulumi module directory: /path/to/module
 Initializing stack: planton/planton/prod.CloudflareR2Bucket.pipeline-logs
@@ -228,7 +228,7 @@ planton pulumi up \
 🤝 Handing off to Pulumi...
    Output below is from Pulumi
 
-Using Pulumi stack from manifest labels: planton/planton/prod.GcpCloudSql.main-db
+Using Pulumi stack from manifest annotations: planton/planton/prod.GcpCloudSql.main-db
 
 Previewing update (planton/planton/prod.GcpCloudSql.main-db):
 
@@ -545,7 +545,7 @@ planton pulumi delete \
 🤝 Handing off to Pulumi...
    Output below is from Pulumi
 
-Using Pulumi stack from manifest labels: planton/planton/dev.TestResource.temp
+Using Pulumi stack from manifest annotations: planton/planton/dev.TestResource.temp
 
 pulumi module directory: /path/to/module
 Removing stack: planton/planton/dev.TestResource.temp
@@ -1140,13 +1140,13 @@ planton pulumi up --manifest resource.yaml
 ```yaml
 # ✅ Good: Clear, hierarchical naming
 metadata:
-  labels:
+  annotations:
     pulumi.planton.dev/stack.name: "planton/planton/prod.CloudflareR2Bucket.pipeline-logs"
     #                                       └─────org────┘ └─project──┘ └─────environment.ResourceType.resource-name───┘
 
 # ❌ Bad: Generic, unclear names
 metadata:
-  labels:
+  annotations:
     pulumi.planton.dev/stack.name: "org1/proj1/stack1"
 ```
 

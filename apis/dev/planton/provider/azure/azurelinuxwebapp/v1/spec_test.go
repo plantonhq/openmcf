@@ -37,6 +37,15 @@ func literalRef(val string) *foreignkeyv1.StringValueOrRef {
 	}
 }
 
+// helper to create a StringValueOrRef carrying a value_from reference
+func valueFromRef(name string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{Name: name},
+		},
+	}
+}
+
 // helper to create a minimal valid spec
 func minimalSpec() *AzureLinuxWebApp {
 	return &AzureLinuxWebApp{
@@ -224,7 +233,13 @@ var _ = ginkgo.Describe("AzureLinuxWebAppSpec Validation Tests", func() {
 						Action:     AzureLinuxWebAppIpRestrictionAction_ALLOW,
 						ServiceTag: "AzureFrontDoor.Backend",
 						Headers: &AzureLinuxWebAppIpRestrictionHeaders{
-							XAzureFdid: []string{"11111111-2222-3333-4444-555555555555"},
+							// One literal GUID and one reference (the
+							// origin-lockdown seam resolving an
+							// AzureFrontDoorProfile's resource_guid).
+							XAzureFdid: []*foreignkeyv1.StringValueOrRef{
+								literalRef("11111111-2222-3333-4444-555555555555"),
+								valueFromRef("my-front-door-profile"),
+							},
 						},
 					},
 					{

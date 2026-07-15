@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscognitouserpool
+spec:
+  # A user pool under live E2E: dependency-free by design (COGNITO_DEFAULT
+  # email, no SMS role, ESSENTIALS tier), so the lane proves create (the pool
+  # itself is seconds; the prefix domain resolves in about a minute), verify
+  # (DescribeUserPool), destroy (the module removes the domain before the
+  # pool; Cognito deletes are synchronous), and verify-destroyed on both
+  # provisioners. SES-dependent arms (DEVELOPER email, email MFA), SMS arms
+  # (SNS caller role), PLUS-tier threat protection, log delivery, and the
+  # custom-domain arm (needs owned DNS + a us-east-1 ACM certificate) are
+  # excluded from the live lane; their wiring is proven by the offline gate.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

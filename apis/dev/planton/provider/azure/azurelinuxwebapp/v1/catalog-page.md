@@ -27,7 +27,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLinuxWebApp
 metadata:
   name: my-web
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -119,7 +119,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLinuxWebApp
 metadata:
   name: node-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -160,7 +160,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLinuxWebApp
 metadata:
   name: docker-web
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -239,7 +239,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLinuxWebApp
 metadata:
   name: private-web
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -290,7 +290,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLinuxWebApp
 metadata:
   name: ref-web
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

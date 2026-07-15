@@ -9,8 +9,8 @@ metadata:
       name: "{{ values.node_pool_name }}"
       type: runs_on
 spec:
-  targetCluster:
-    clusterKind: GcpGkeCluster
-    clusterName: "{{ values.env }}-{{ values.cluster_name }}"
+  namespace:
+    value: external-dns
+  createNamespace: true
 {% endif %}
 

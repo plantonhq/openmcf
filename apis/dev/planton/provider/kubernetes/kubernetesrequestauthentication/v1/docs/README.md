@@ -33,7 +33,7 @@ This component uses a repeated `jwt_rules` list with nested repeated `from_heade
 ## 3. Planton spec shape (fidelity decisions)
 
 The Planton spec flattens the upstream `RequestAuthentication` fields directly after
-the namespaced envelope (`target_cluster`, `namespace`). There is no nested
+the namespaced envelope (`namespace`). There is no nested
 `request_authentication` sub-message. Fields are renumbered sequentially from
 1 -- the Planton proto is its own wire contract and does not preserve upstream's
 field-number gaps (e.g. upstream `jwks` is field 10, `timeout` 13).

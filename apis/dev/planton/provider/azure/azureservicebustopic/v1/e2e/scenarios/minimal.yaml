@@ -16,7 +16,7 @@ metadata:
     planton.dev/e2e: "true"
     # Scenario-local namespace: globally-unique names must never be
     # destroyed and recreated across sequential subtests.
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azureservicebustopic/v1/e2e/fixture-namespace.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azureservicebustopic/v1/e2e/fixture-namespace.yaml"
   tags:
     - planton-e2e
 spec:

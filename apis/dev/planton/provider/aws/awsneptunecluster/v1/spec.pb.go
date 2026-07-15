@@ -24,99 +24,167 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsNeptuneClusterSpec defines the specification for deploying an Amazon Neptune
-// graph database cluster. Neptune is a fully managed graph database service that
-// supports property-graph (Apache TinkerPop Gremlin) and RDF (SPARQL) query languages.
+// AwsNeptuneClusterSpec defines an Amazon Neptune graph database cluster
+// -- a managed graph database supporting property graphs (Apache
+// TinkerPop Gremlin, openCypher) and RDF (SPARQL) over shared cluster
+// storage.
 //
-// Unlike relational databases, Neptune does not use master username/password for
-// authentication. Access is controlled via IAM database authentication and/or
-// network-level security (VPC, security groups).
+// The cluster is the shared-storage brain -- endpoints, backups,
+// encryption, and engine lifecycle live here. The compute that serves
+// queries is the `instances` list: each entry materializes as its own DB
+// instance inside the cluster (a writer plus any readers). Cluster
+// instances are sub-resources of exactly one cluster and are referenced
+// by nothing else, so they are folded into this spec rather than modeled
+// as a standalone kind; both IaC modules manage each entry as its own
+// provider resource keyed by name, so adding or removing a reader is an
+// in-place update, never a cluster replacement.
+//
+// Neptune has no master username or password -- that is AWS's design, not
+// an omission: access is controlled by network reachability (security
+// groups) and, with iam_database_authentication_enabled, SigV4-signed
+// requests from IAM identities.
+//
+// The cluster identifier comes from metadata.name. Security groups,
+// subnets, KMS keys, and IAM roles compose by reference -- this cluster
+// never creates or mutates resources that deserve to be their own nodes.
 type AwsNeptuneClusterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The AWS region where the resource will be created.
-	// Example: "us-west-2", "eu-west-1"
+	// The AWS region the cluster is created in. Must match the region of
+	// the subnets, security groups, and KMS keys it references.
+	// Example: "us-west-2", "eu-west-1".
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// subnet_ids is the list of subnet IDs for the Neptune subnet group.
-	// Provide at least two subnets in distinct Availability Zones for high availability.
+	// Subnets for the cluster's Neptune subnet group. Provide at least
+	// two subnets in DISTINCT availability zones -- AWS rejects a subnet
+	// group that covers fewer than two AZs. Reference AwsSubnet subnet_id
+	// outputs or pass literal subnet IDs. The module manages the subnet
+	// group itself (pure glue: a named list of subnets); alternatively
+	// point neptune_subnet_group_name at an existing group.
 	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
-	// neptune_subnet_group_name is an optional name of an existing Neptune subnet group
-	// to use instead of creating one from subnet_ids.
+	// Name of an existing Neptune subnet group to place the cluster in,
+	// instead of providing subnet_ids. Changing the subnet group replaces
+	// the cluster.
 	NeptuneSubnetGroupName *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=neptune_subnet_group_name,json=neptuneSubnetGroupName,proto3" json:"neptune_subnet_group_name,omitempty"`
-	// security_group_ids are the VPC security groups to associate with the cluster.
-	// Ingress rules are created on a managed security group for these source SGs.
+	// Security groups attached to the cluster. Empty uses the VPC's
+	// default security group (the AWS default). Reference AwsSecurityGroup
+	// security_group_id outputs or pass literal SG IDs -- database ingress
+	// rules belong on the referenced AwsSecurityGroup node, never inside
+	// this cluster.
 	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,4,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
-	// allowed_cidr_blocks are IPv4 CIDRs to allow ingress to the cluster security group
-	// on the Neptune port.
-	AllowedCidrBlocks []string `protobuf:"bytes,5,rep,name=allowed_cidr_blocks,json=allowedCidrBlocks,proto3" json:"allowed_cidr_blocks,omitempty"`
-	// vpc_id is the VPC where the cluster will be deployed. Required when creating
-	// a managed security group via security_group_ids or allowed_cidr_blocks.
-	VpcId *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
-	// engine_version is the Neptune engine version to deploy.
-	// Examples: "1.2.1.0", "1.3.0.0", "1.3.1.0"
-	EngineVersion *string `protobuf:"bytes,7,opt,name=engine_version,json=engineVersion,proto3,oneof" json:"engine_version,omitempty"`
-	// port is the TCP port on which the cluster accepts connections.
-	Port *int32 `protobuf:"varint,8,opt,name=port,proto3,oneof" json:"port,omitempty"`
-	// storage_type controls the storage I/O model for the cluster.
-	// "standard" is the default; "iopt1" enables I/O-Optimized storage for
-	// read-heavy workloads with higher throughput and predictable pricing.
-	StorageType string `protobuf:"bytes,9,opt,name=storage_type,json=storageType,proto3" json:"storage_type,omitempty"`
-	// instance_count is the number of instances to create in the cluster.
-	// The first instance is the primary writer; additional instances are read replicas.
-	InstanceCount *int32 `protobuf:"varint,10,opt,name=instance_count,json=instanceCount,proto3,oneof" json:"instance_count,omitempty"`
-	// instance_class is the compute and memory capacity of the DB instances.
-	// Examples: "db.r6g.large", "db.r6g.xlarge", "db.r5.large"
-	// Use "db.serverless" for Neptune Serverless (requires serverless_v2_scaling).
-	InstanceClass *string `protobuf:"bytes,11,opt,name=instance_class,json=instanceClass,proto3,oneof" json:"instance_class,omitempty"`
-	// serverless_v2_scaling configures Neptune Serverless capacity scaling.
-	// When set, instance_class should be "db.serverless".
-	// Neptune Capacity Units (NCUs): min 1.0, max 128.0.
-	ServerlessV2Scaling *AwsNeptuneClusterServerlessV2ScalingConfiguration `protobuf:"bytes,12,opt,name=serverless_v2_scaling,json=serverlessV2Scaling,proto3" json:"serverless_v2_scaling,omitempty"`
-	// storage_encrypted indicates whether to encrypt the cluster storage at rest.
-	StorageEncrypted *bool `protobuf:"varint,13,opt,name=storage_encrypted,json=storageEncrypted,proto3,oneof" json:"storage_encrypted,omitempty"`
-	// kms_key_id is the ARN of the KMS key for storage encryption.
-	// When storage_encrypted is true and this is not set, the AWS-managed key is used.
-	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,14,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
-	// iam_database_authentication_enabled enables IAM database authentication,
-	// allowing IAM users and roles to authenticate to Neptune using temporary credentials.
-	IamDatabaseAuthenticationEnabled bool `protobuf:"varint,15,opt,name=iam_database_authentication_enabled,json=iamDatabaseAuthenticationEnabled,proto3" json:"iam_database_authentication_enabled,omitempty"`
-	// iam_roles is a list of IAM role ARNs to associate with the Neptune cluster.
-	// These roles allow Neptune to access other AWS services (e.g., S3 for bulk data loading).
-	IamRoles []*v1.StringValueOrRef `protobuf:"bytes,16,rep,name=iam_roles,json=iamRoles,proto3" json:"iam_roles,omitempty"`
-	// backup_retention_period is the number of days to retain automated backups (1-35).
-	BackupRetentionPeriod *int32 `protobuf:"varint,17,opt,name=backup_retention_period,json=backupRetentionPeriod,proto3,oneof" json:"backup_retention_period,omitempty"`
-	// preferred_backup_window is the daily time range for automated backups in UTC.
-	// Format: "hh24:mi-hh24:mi" (e.g., "03:00-04:00").
-	PreferredBackupWindow string `protobuf:"bytes,18,opt,name=preferred_backup_window,json=preferredBackupWindow,proto3" json:"preferred_backup_window,omitempty"`
-	// preferred_maintenance_window is the weekly time range for maintenance in UTC.
-	// Format: "ddd:hh24:mi-ddd:hh24:mi" (e.g., "sun:05:00-sun:06:00").
-	PreferredMaintenanceWindow string `protobuf:"bytes,19,opt,name=preferred_maintenance_window,json=preferredMaintenanceWindow,proto3" json:"preferred_maintenance_window,omitempty"`
-	// deletion_protection prevents accidental cluster deletion when enabled.
-	DeletionProtection bool `protobuf:"varint,20,opt,name=deletion_protection,json=deletionProtection,proto3" json:"deletion_protection,omitempty"`
-	// skip_final_snapshot controls whether a final snapshot is created on deletion.
-	SkipFinalSnapshot *bool `protobuf:"varint,21,opt,name=skip_final_snapshot,json=skipFinalSnapshot,proto3,oneof" json:"skip_final_snapshot,omitempty"`
-	// final_snapshot_identifier is the identifier for the final snapshot when
+	// Availability zones the cluster's storage is replicated across (at
+	// most three). Leave empty and AWS picks the zones automatically --
+	// the right call almost always, because this list is create-time-only
+	// and a later change replaces the cluster.
+	AvailabilityZones []string `protobuf:"bytes,5,rep,name=availability_zones,json=availabilityZones,proto3" json:"availability_zones,omitempty"`
+	// The port the cluster accepts connections on. 0 keeps the AWS
+	// default (8182 -- the Neptune convention). Create-time only --
+	// changing the port replaces the cluster.
+	Port int32 `protobuf:"varint,6,opt,name=port,proto3" json:"port,omitempty"`
+	// The Neptune engine version, e.g. "1.4.5.1". Leave empty to let AWS
+	// pick the current default version -- an empty pin never goes stale.
+	// Minor upgrades apply in place; major upgrades additionally need
+	// allow_major_version_upgrade and neptune_instance_parameter_group_name.
+	EngineVersion string `protobuf:"bytes,7,opt,name=engine_version,json=engineVersion,proto3" json:"engine_version,omitempty"`
+	// The storage I/O model: "" or "standard" (billed per I/O, the AWS
+	// default) or "iopt1" (I/O-Optimized -- predictable pricing that pays
+	// off for I/O-heavy workloads; requires engine version 1.3+ and is
+	// switchable once per 30 days).
+	StorageType string `protobuf:"bytes,8,opt,name=storage_type,json=storageType,proto3" json:"storage_type,omitempty"`
+	// The DB instances that serve this cluster's queries -- one writer
+	// (lowest promotion tier) plus any number of readers. Each entry is
+	// managed as its own provider resource keyed by `name`, so scaling
+	// readers in and out never touches the cluster. Empty is only valid
+	// for headless shapes that attach compute later: a snapshot restore,
+	// a cross-region replica, or a cluster joined to a global cluster --
+	// a regular cluster with no instances stores data but cannot serve a
+	// single query.
+	Instances []*AwsNeptuneClusterInstance `protobuf:"bytes,9,rep,name=instances,proto3" json:"instances,omitempty"`
+	// Neptune Serverless capacity bounds. When set, every instance in
+	// `instances` must use class "db.serverless" -- each such instance
+	// scales independently within these bounds.
+	ServerlessV2Scaling *AwsNeptuneClusterServerlessV2Scaling `protobuf:"bytes,10,opt,name=serverless_v2_scaling,json=serverlessV2Scaling,proto3" json:"serverless_v2_scaling,omitempty"`
+	// Encrypt cluster storage at rest. Strongly recommended -- and
+	// create-time only: an unencrypted cluster cannot be encrypted later
+	// (requires a snapshot-restore migration).
+	StorageEncrypted bool `protobuf:"varint,11,opt,name=storage_encrypted,json=storageEncrypted,proto3" json:"storage_encrypted,omitempty"`
+	// The KMS key for storage encryption when storage_encrypted is true.
+	// Empty uses the AWS-managed aws/rds key. Reference an AwsKmsKey
+	// key_arn output or pass a literal key ARN. Create-time only.
+	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,12,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
+	// Require SigV4-signed requests from IAM identities to query the
+	// database -- Neptune's only credential mechanism (there is no master
+	// username/password). Off relies purely on network reachability.
+	IamDatabaseAuthenticationEnabled bool `protobuf:"varint,13,opt,name=iam_database_authentication_enabled,json=iamDatabaseAuthenticationEnabled,proto3" json:"iam_database_authentication_enabled,omitempty"`
+	// IAM roles the cluster assumes for engine features that reach into
+	// other AWS services (the Neptune bulk loader reading from S3,
+	// Neptune ML with SageMaker). Reference AwsIamRole role_arn outputs
+	// or pass literal ARNs -- the roles own their policies; this cluster
+	// only associates them.
+	IamRoles []*v1.StringValueOrRef `protobuf:"bytes,14,rep,name=iam_roles,json=iamRoles,proto3" json:"iam_roles,omitempty"`
+	// Days automated backups are retained, 1-35. 0 keeps the AWS default
+	// (1 day). Backups are continuous -- this window bounds point-in-time
+	// recovery, so production clusters typically want 7+.
+	BackupRetentionPeriod int32 `protobuf:"varint,15,opt,name=backup_retention_period,json=backupRetentionPeriod,proto3" json:"backup_retention_period,omitempty"`
+	// The daily backup window in UTC, format "hh24:mi-hh24:mi" (e.g.
+	// "04:00-05:00"). Empty lets AWS assign one. Must not overlap the
+	// maintenance window.
+	PreferredBackupWindow string `protobuf:"bytes,16,opt,name=preferred_backup_window,json=preferredBackupWindow,proto3" json:"preferred_backup_window,omitempty"`
+	// The weekly maintenance window in UTC, format
+	// "ddd:hh24:mi-ddd:hh24:mi" (e.g. "sun:05:00-sun:06:00"). Empty lets
+	// AWS assign one.
+	PreferredMaintenanceWindow string `protobuf:"bytes,17,opt,name=preferred_maintenance_window,json=preferredMaintenanceWindow,proto3" json:"preferred_maintenance_window,omitempty"`
+	// Copy the cluster's tags onto automated and manual snapshots.
+	CopyTagsToSnapshot bool `protobuf:"varint,18,opt,name=copy_tags_to_snapshot,json=copyTagsToSnapshot,proto3" json:"copy_tags_to_snapshot,omitempty"`
+	// Skip the final snapshot when the cluster is deleted. When false
+	// (the safe default), final_snapshot_identifier must be set -- AWS
+	// refuses to delete without knowing the snapshot name.
+	SkipFinalSnapshot bool `protobuf:"varint,19,opt,name=skip_final_snapshot,json=skipFinalSnapshot,proto3" json:"skip_final_snapshot,omitempty"`
+	// The name for the final snapshot taken on deletion. Required when
 	// skip_final_snapshot is false.
-	FinalSnapshotIdentifier string `protobuf:"bytes,22,opt,name=final_snapshot_identifier,json=finalSnapshotIdentifier,proto3" json:"final_snapshot_identifier,omitempty"`
-	// enabled_cloudwatch_logs_exports lists log types to export to CloudWatch Logs.
-	// Valid values for Neptune: "audit", "slowquery"
-	EnabledCloudwatchLogsExports []string `protobuf:"bytes,23,rep,name=enabled_cloudwatch_logs_exports,json=enabledCloudwatchLogsExports,proto3" json:"enabled_cloudwatch_logs_exports,omitempty"`
-	// apply_immediately specifies whether modifications are applied immediately
-	// or during the next maintenance window.
-	ApplyImmediately bool `protobuf:"varint,24,opt,name=apply_immediately,json=applyImmediately,proto3" json:"apply_immediately,omitempty"`
-	// copy_tags_to_snapshot copies cluster tags to snapshots when enabled.
-	CopyTagsToSnapshot bool `protobuf:"varint,25,opt,name=copy_tags_to_snapshot,json=copyTagsToSnapshot,proto3" json:"copy_tags_to_snapshot,omitempty"`
-	// allow_major_version_upgrade allows major engine version upgrades when applying
-	// changes. Required when updating engine_version to a new major version.
-	AllowMajorVersionUpgrade bool `protobuf:"varint,26,opt,name=allow_major_version_upgrade,json=allowMajorVersionUpgrade,proto3" json:"allow_major_version_upgrade,omitempty"`
-	// cluster_parameter_group_name is the name of an existing Neptune cluster
-	// parameter group to use.
-	ClusterParameterGroupName string `protobuf:"bytes,27,opt,name=cluster_parameter_group_name,json=clusterParameterGroupName,proto3" json:"cluster_parameter_group_name,omitempty"`
-	// cluster_parameters are custom parameters for the cluster parameter group.
-	// When provided (and cluster_parameter_group_name is not set), a new parameter
-	// group is created with these parameters.
-	ClusterParameters []*AwsNeptuneClusterParameter `protobuf:"bytes,28,rep,name=cluster_parameters,json=clusterParameters,proto3" json:"cluster_parameters,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	FinalSnapshotIdentifier string `protobuf:"bytes,20,opt,name=final_snapshot_identifier,json=finalSnapshotIdentifier,proto3" json:"final_snapshot_identifier,omitempty"`
+	// Refuse deletion of the cluster while enabled. Turn this on for
+	// anything holding data you cannot recreate -- deletion then requires
+	// an explicit two-step (disable, delete).
+	DeletionProtection bool `protobuf:"varint,21,opt,name=deletion_protection,json=deletionProtection,proto3" json:"deletion_protection,omitempty"`
+	// Database log types to export to CloudWatch Logs: "audit"
+	// (connection and query audit trail; requires the
+	// neptune_enable_audit_log cluster parameter) and "slowquery"
+	// (queries exceeding the slow-query threshold parameters).
+	EnabledCloudwatchLogsExports []string `protobuf:"bytes,22,rep,name=enabled_cloudwatch_logs_exports,json=enabledCloudwatchLogsExports,proto3" json:"enabled_cloudwatch_logs_exports,omitempty"`
+	// Restore the cluster from an existing cluster snapshot (name or ARN)
+	// at create time. Create-time only.
+	SnapshotIdentifier string `protobuf:"bytes,23,opt,name=snapshot_identifier,json=snapshotIdentifier,proto3" json:"snapshot_identifier,omitempty"`
+	// Make this cluster a read replica of the given source cluster ARN.
+	// Promote by clearing the field.
+	ReplicationSourceIdentifier string `protobuf:"bytes,24,opt,name=replication_source_identifier,json=replicationSourceIdentifier,proto3" json:"replication_source_identifier,omitempty"`
+	// Join a Neptune global database: the identifier of the
+	// aws_neptune_global_cluster this cluster participates in. The first
+	// cluster joined becomes the global writer; clusters added afterwards
+	// become read-only secondaries.
+	GlobalClusterIdentifier string `protobuf:"bytes,25,opt,name=global_cluster_identifier,json=globalClusterIdentifier,proto3" json:"global_cluster_identifier,omitempty"`
+	// The name of an existing cluster parameter group to use. Mutually
+	// exclusive with `parameters` -- either bring your own group or let
+	// the module manage one from inline parameters.
+	NeptuneClusterParameterGroupName string `protobuf:"bytes,26,opt,name=neptune_cluster_parameter_group_name,json=neptuneClusterParameterGroupName,proto3" json:"neptune_cluster_parameter_group_name,omitempty"`
+	// Cluster-level engine parameters (e.g. "neptune_enable_audit_log",
+	// "neptune_query_timeout"), managed as a dedicated parameter group
+	// owned by this cluster (the group is glue -- a named parameter list
+	// -- so it stays folded). Mutually exclusive with
+	// neptune_cluster_parameter_group_name.
+	Parameters []*AwsNeptuneClusterParameter `protobuf:"bytes,27,rep,name=parameters,proto3" json:"parameters,omitempty"`
+	// The name of the DB (instance-level) parameter group applied to
+	// cluster instances DURING a major engine version upgrade. AWS
+	// requires it when engine_version changes across a major version.
+	NeptuneInstanceParameterGroupName string `protobuf:"bytes,28,opt,name=neptune_instance_parameter_group_name,json=neptuneInstanceParameterGroupName,proto3" json:"neptune_instance_parameter_group_name,omitempty"`
+	// Apply modifications immediately instead of waiting for the next
+	// maintenance window. Immediate changes can interrupt connections;
+	// deferred changes wait quietly. AWS defaults to deferred.
+	ApplyImmediately bool `protobuf:"varint,29,opt,name=apply_immediately,json=applyImmediately,proto3" json:"apply_immediately,omitempty"`
+	// Permit engine_version changes that cross a major version. Off (the
+	// default) guards against an accidental major upgrade hidden in a
+	// version bump.
+	AllowMajorVersionUpgrade bool `protobuf:"varint,30,opt,name=allow_major_version_upgrade,json=allowMajorVersionUpgrade,proto3" json:"allow_major_version_upgrade,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *AwsNeptuneClusterSpec) Reset() {
@@ -177,32 +245,25 @@ func (x *AwsNeptuneClusterSpec) GetSecurityGroupIds() []*v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AwsNeptuneClusterSpec) GetAllowedCidrBlocks() []string {
+func (x *AwsNeptuneClusterSpec) GetAvailabilityZones() []string {
 	if x != nil {
-		return x.AllowedCidrBlocks
+		return x.AvailabilityZones
 	}
 	return nil
-}
-
-func (x *AwsNeptuneClusterSpec) GetVpcId() *v1.StringValueOrRef {
-	if x != nil {
-		return x.VpcId
-	}
-	return nil
-}
-
-func (x *AwsNeptuneClusterSpec) GetEngineVersion() string {
-	if x != nil && x.EngineVersion != nil {
-		return *x.EngineVersion
-	}
-	return ""
 }
 
 func (x *AwsNeptuneClusterSpec) GetPort() int32 {
-	if x != nil && x.Port != nil {
-		return *x.Port
+	if x != nil {
+		return x.Port
 	}
 	return 0
+}
+
+func (x *AwsNeptuneClusterSpec) GetEngineVersion() string {
+	if x != nil {
+		return x.EngineVersion
+	}
+	return ""
 }
 
 func (x *AwsNeptuneClusterSpec) GetStorageType() string {
@@ -212,21 +273,14 @@ func (x *AwsNeptuneClusterSpec) GetStorageType() string {
 	return ""
 }
 
-func (x *AwsNeptuneClusterSpec) GetInstanceCount() int32 {
-	if x != nil && x.InstanceCount != nil {
-		return *x.InstanceCount
+func (x *AwsNeptuneClusterSpec) GetInstances() []*AwsNeptuneClusterInstance {
+	if x != nil {
+		return x.Instances
 	}
-	return 0
+	return nil
 }
 
-func (x *AwsNeptuneClusterSpec) GetInstanceClass() string {
-	if x != nil && x.InstanceClass != nil {
-		return *x.InstanceClass
-	}
-	return ""
-}
-
-func (x *AwsNeptuneClusterSpec) GetServerlessV2Scaling() *AwsNeptuneClusterServerlessV2ScalingConfiguration {
+func (x *AwsNeptuneClusterSpec) GetServerlessV2Scaling() *AwsNeptuneClusterServerlessV2Scaling {
 	if x != nil {
 		return x.ServerlessV2Scaling
 	}
@@ -234,8 +288,8 @@ func (x *AwsNeptuneClusterSpec) GetServerlessV2Scaling() *AwsNeptuneClusterServe
 }
 
 func (x *AwsNeptuneClusterSpec) GetStorageEncrypted() bool {
-	if x != nil && x.StorageEncrypted != nil {
-		return *x.StorageEncrypted
+	if x != nil {
+		return x.StorageEncrypted
 	}
 	return false
 }
@@ -262,8 +316,8 @@ func (x *AwsNeptuneClusterSpec) GetIamRoles() []*v1.StringValueOrRef {
 }
 
 func (x *AwsNeptuneClusterSpec) GetBackupRetentionPeriod() int32 {
-	if x != nil && x.BackupRetentionPeriod != nil {
-		return *x.BackupRetentionPeriod
+	if x != nil {
+		return x.BackupRetentionPeriod
 	}
 	return 0
 }
@@ -282,16 +336,16 @@ func (x *AwsNeptuneClusterSpec) GetPreferredMaintenanceWindow() string {
 	return ""
 }
 
-func (x *AwsNeptuneClusterSpec) GetDeletionProtection() bool {
+func (x *AwsNeptuneClusterSpec) GetCopyTagsToSnapshot() bool {
 	if x != nil {
-		return x.DeletionProtection
+		return x.CopyTagsToSnapshot
 	}
 	return false
 }
 
 func (x *AwsNeptuneClusterSpec) GetSkipFinalSnapshot() bool {
-	if x != nil && x.SkipFinalSnapshot != nil {
-		return *x.SkipFinalSnapshot
+	if x != nil {
+		return x.SkipFinalSnapshot
 	}
 	return false
 }
@@ -303,6 +357,13 @@ func (x *AwsNeptuneClusterSpec) GetFinalSnapshotIdentifier() string {
 	return ""
 }
 
+func (x *AwsNeptuneClusterSpec) GetDeletionProtection() bool {
+	if x != nil {
+		return x.DeletionProtection
+	}
+	return false
+}
+
 func (x *AwsNeptuneClusterSpec) GetEnabledCloudwatchLogsExports() []string {
 	if x != nil {
 		return x.EnabledCloudwatchLogsExports
@@ -310,16 +371,51 @@ func (x *AwsNeptuneClusterSpec) GetEnabledCloudwatchLogsExports() []string {
 	return nil
 }
 
+func (x *AwsNeptuneClusterSpec) GetSnapshotIdentifier() string {
+	if x != nil {
+		return x.SnapshotIdentifier
+	}
+	return ""
+}
+
+func (x *AwsNeptuneClusterSpec) GetReplicationSourceIdentifier() string {
+	if x != nil {
+		return x.ReplicationSourceIdentifier
+	}
+	return ""
+}
+
+func (x *AwsNeptuneClusterSpec) GetGlobalClusterIdentifier() string {
+	if x != nil {
+		return x.GlobalClusterIdentifier
+	}
+	return ""
+}
+
+func (x *AwsNeptuneClusterSpec) GetNeptuneClusterParameterGroupName() string {
+	if x != nil {
+		return x.NeptuneClusterParameterGroupName
+	}
+	return ""
+}
+
+func (x *AwsNeptuneClusterSpec) GetParameters() []*AwsNeptuneClusterParameter {
+	if x != nil {
+		return x.Parameters
+	}
+	return nil
+}
+
+func (x *AwsNeptuneClusterSpec) GetNeptuneInstanceParameterGroupName() string {
+	if x != nil {
+		return x.NeptuneInstanceParameterGroupName
+	}
+	return ""
+}
+
 func (x *AwsNeptuneClusterSpec) GetApplyImmediately() bool {
 	if x != nil {
 		return x.ApplyImmediately
-	}
-	return false
-}
-
-func (x *AwsNeptuneClusterSpec) GetCopyTagsToSnapshot() bool {
-	if x != nil {
-		return x.CopyTagsToSnapshot
 	}
 	return false
 }
@@ -331,28 +427,206 @@ func (x *AwsNeptuneClusterSpec) GetAllowMajorVersionUpgrade() bool {
 	return false
 }
 
-func (x *AwsNeptuneClusterSpec) GetClusterParameterGroupName() string {
+// AwsNeptuneClusterInstance is one DB instance inside the cluster -- the
+// unit of compute. The instance with the lowest promotion tier that is
+// available becomes the writer; all others serve reads from the shared
+// cluster storage. The engine version is inherited from the cluster.
+type AwsNeptuneClusterInstance struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Instance name, unique within the cluster. Becomes part of the AWS
+	// instance identifier and the key both IaC engines manage the
+	// provider resource by -- renaming an entry replaces that instance
+	// (the others are untouched). Required.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The instance class: a provisioned class like "db.r6g.large", or
+	// "db.serverless" for a Neptune Serverless instance that scales
+	// within the cluster's serverless_v2_scaling bounds. Required.
+	InstanceClass string `protobuf:"bytes,2,opt,name=instance_class,json=instanceClass,proto3" json:"instance_class,omitempty"`
+	// Failover priority, 0-15 (lower is promoted first). Give the
+	// largest readers tier 0/1 so a failover lands on capacity that can
+	// absorb the write load. 0 is the AWS default.
+	PromotionTier int32 `protobuf:"varint,3,opt,name=promotion_tier,json=promotionTier,proto3" json:"promotion_tier,omitempty"`
+	// Pin the instance to one availability zone. Empty lets AWS place it
+	// -- preferred, since AWS spreads instances across the cluster's
+	// zones automatically. Create-time only.
+	AvailabilityZone string `protobuf:"bytes,4,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
+	// Give the instance a public IP. Requires public subnets; keep false
+	// for anything production-shaped. Create-time only.
+	PubliclyAccessible bool `protobuf:"varint,5,opt,name=publicly_accessible,json=publiclyAccessible,proto3" json:"publicly_accessible,omitempty"`
+	// The DB (instance-level) parameter group for this instance. Empty
+	// keeps the engine default group.
+	NeptuneParameterGroupName string `protobuf:"bytes,6,opt,name=neptune_parameter_group_name,json=neptuneParameterGroupName,proto3" json:"neptune_parameter_group_name,omitempty"`
+	// Apply minor engine version patches automatically during the
+	// maintenance window. AWS defaults this to true; disable only when
+	// patch timing must be controlled manually.
+	AutoMinorVersionUpgrade *bool `protobuf:"varint,7,opt,name=auto_minor_version_upgrade,json=autoMinorVersionUpgrade,proto3,oneof" json:"auto_minor_version_upgrade,omitempty"`
+	// The weekly maintenance window for THIS instance in UTC, format
+	// "ddd:hh24:mi-ddd:hh24:mi". Empty inherits scheduling from AWS --
+	// stagger per-instance windows so readers never patch simultaneously.
+	PreferredMaintenanceWindow string `protobuf:"bytes,8,opt,name=preferred_maintenance_window,json=preferredMaintenanceWindow,proto3" json:"preferred_maintenance_window,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
+}
+
+func (x *AwsNeptuneClusterInstance) Reset() {
+	*x = AwsNeptuneClusterInstance{}
+	mi := &file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsNeptuneClusterInstance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsNeptuneClusterInstance) ProtoMessage() {}
+
+func (x *AwsNeptuneClusterInstance) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes[1]
 	if x != nil {
-		return x.ClusterParameterGroupName
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsNeptuneClusterInstance.ProtoReflect.Descriptor instead.
+func (*AwsNeptuneClusterInstance) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsNeptuneClusterInstance) GetName() string {
+	if x != nil {
+		return x.Name
 	}
 	return ""
 }
 
-func (x *AwsNeptuneClusterSpec) GetClusterParameters() []*AwsNeptuneClusterParameter {
+func (x *AwsNeptuneClusterInstance) GetInstanceClass() string {
 	if x != nil {
-		return x.ClusterParameters
+		return x.InstanceClass
 	}
-	return nil
+	return ""
 }
 
-// AwsNeptuneClusterParameter represents a parameter for the Neptune cluster parameter group.
+func (x *AwsNeptuneClusterInstance) GetPromotionTier() int32 {
+	if x != nil {
+		return x.PromotionTier
+	}
+	return 0
+}
+
+func (x *AwsNeptuneClusterInstance) GetAvailabilityZone() string {
+	if x != nil {
+		return x.AvailabilityZone
+	}
+	return ""
+}
+
+func (x *AwsNeptuneClusterInstance) GetPubliclyAccessible() bool {
+	if x != nil {
+		return x.PubliclyAccessible
+	}
+	return false
+}
+
+func (x *AwsNeptuneClusterInstance) GetNeptuneParameterGroupName() string {
+	if x != nil {
+		return x.NeptuneParameterGroupName
+	}
+	return ""
+}
+
+func (x *AwsNeptuneClusterInstance) GetAutoMinorVersionUpgrade() bool {
+	if x != nil && x.AutoMinorVersionUpgrade != nil {
+		return *x.AutoMinorVersionUpgrade
+	}
+	return false
+}
+
+func (x *AwsNeptuneClusterInstance) GetPreferredMaintenanceWindow() string {
+	if x != nil {
+		return x.PreferredMaintenanceWindow
+	}
+	return ""
+}
+
+// AwsNeptuneClusterServerlessV2Scaling bounds Neptune Serverless capacity
+// in NCUs (Neptune Capacity Units -- each NCU is ~2 GiB of memory with
+// matching CPU). Applies to every "db.serverless" instance in the
+// cluster.
+type AwsNeptuneClusterServerlessV2Scaling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Minimum NCUs, 1-128. The floor each serverless instance never
+	// scales below -- also the idle cost floor (Neptune Serverless does
+	// not pause to zero). Required.
+	MinCapacity float64 `protobuf:"fixed64,1,opt,name=min_capacity,json=minCapacity,proto3" json:"min_capacity,omitempty"`
+	// Maximum NCUs, 1-128. The hard spend/performance ceiling per
+	// instance. Required.
+	MaxCapacity   float64 `protobuf:"fixed64,2,opt,name=max_capacity,json=maxCapacity,proto3" json:"max_capacity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsNeptuneClusterServerlessV2Scaling) Reset() {
+	*x = AwsNeptuneClusterServerlessV2Scaling{}
+	mi := &file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsNeptuneClusterServerlessV2Scaling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsNeptuneClusterServerlessV2Scaling) ProtoMessage() {}
+
+func (x *AwsNeptuneClusterServerlessV2Scaling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsNeptuneClusterServerlessV2Scaling.ProtoReflect.Descriptor instead.
+func (*AwsNeptuneClusterServerlessV2Scaling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsNeptuneClusterServerlessV2Scaling) GetMinCapacity() float64 {
+	if x != nil {
+		return x.MinCapacity
+	}
+	return 0
+}
+
+func (x *AwsNeptuneClusterServerlessV2Scaling) GetMaxCapacity() float64 {
+	if x != nil {
+		return x.MaxCapacity
+	}
+	return 0
+}
+
+// AwsNeptuneClusterParameter is one cluster-level engine parameter,
+// applied through the module-managed cluster parameter group.
 type AwsNeptuneClusterParameter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// name is the parameter name (e.g., "neptune_enable_audit_log").
+	// The parameter name (e.g. "neptune_enable_audit_log",
+	// "neptune_query_timeout"). Required.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// value is the parameter value.
+	// The parameter value. Required.
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	// apply_method specifies when the parameter is applied: "immediate" or "pending-reboot".
+	// When the change lands: "immediate" (AWS default -- dynamic
+	// parameters apply now) or "pending-reboot" (static parameters wait
+	// for the next instance reboot).
 	ApplyMethod   string `protobuf:"bytes,3,opt,name=apply_method,json=applyMethod,proto3" json:"apply_method,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -360,7 +634,7 @@ type AwsNeptuneClusterParameter struct {
 
 func (x *AwsNeptuneClusterParameter) Reset() {
 	*x = AwsNeptuneClusterParameter{}
-	mi := &file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -372,7 +646,7 @@ func (x *AwsNeptuneClusterParameter) String() string {
 func (*AwsNeptuneClusterParameter) ProtoMessage() {}
 
 func (x *AwsNeptuneClusterParameter) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -385,7 +659,7 @@ func (x *AwsNeptuneClusterParameter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsNeptuneClusterParameter.ProtoReflect.Descriptor instead.
 func (*AwsNeptuneClusterParameter) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AwsNeptuneClusterParameter) GetName() string {
@@ -409,122 +683,75 @@ func (x *AwsNeptuneClusterParameter) GetApplyMethod() string {
 	return ""
 }
 
-// AwsNeptuneClusterServerlessV2ScalingConfiguration configures Neptune Serverless
-// capacity scaling. Neptune Capacity Units (NCUs) determine the compute and memory
-// resources available.
-type AwsNeptuneClusterServerlessV2ScalingConfiguration struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// min_capacity is the minimum Neptune Capacity Units (NCUs).
-	// Valid range: 1.0 to 128.0.
-	MinCapacity float64 `protobuf:"fixed64,1,opt,name=min_capacity,json=minCapacity,proto3" json:"min_capacity,omitempty"`
-	// max_capacity is the maximum Neptune Capacity Units (NCUs).
-	// Valid range: 1.0 to 128.0. Must be >= min_capacity.
-	MaxCapacity   float64 `protobuf:"fixed64,2,opt,name=max_capacity,json=maxCapacity,proto3" json:"max_capacity,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AwsNeptuneClusterServerlessV2ScalingConfiguration) Reset() {
-	*x = AwsNeptuneClusterServerlessV2ScalingConfiguration{}
-	mi := &file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AwsNeptuneClusterServerlessV2ScalingConfiguration) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AwsNeptuneClusterServerlessV2ScalingConfiguration) ProtoMessage() {}
-
-func (x *AwsNeptuneClusterServerlessV2ScalingConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AwsNeptuneClusterServerlessV2ScalingConfiguration.ProtoReflect.Descriptor instead.
-func (*AwsNeptuneClusterServerlessV2ScalingConfiguration) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *AwsNeptuneClusterServerlessV2ScalingConfiguration) GetMinCapacity() float64 {
-	if x != nil {
-		return x.MinCapacity
-	}
-	return 0
-}
-
-func (x *AwsNeptuneClusterServerlessV2ScalingConfiguration) GetMaxCapacity() float64 {
-	if x != nil {
-		return x.MaxCapacity
-	}
-	return 0
-}
-
 var File_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8dev/planton/provider/aws/awsneptunecluster/v1/spec.proto\x12-dev.planton.provider.aws.awsneptunecluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xdf\x1a\n" +
+	"8dev/planton/provider/aws/awsneptunecluster/v1/spec.proto\x12-dev.planton.provider.aws.awsneptunecluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe7%\n" +
 	"\x15AwsNeptuneClusterSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
 	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12m\n" +
 	"\x19neptune_subnet_group_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x16neptuneSubnetGroupName\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\xa1\x01\n" +
-	"\x13allowed_cidr_blocks\x18\x05 \x03(\tBq\xbaHn\x92\x01k\x18\x01\"gre2c^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$R\x11allowedCidrBlocks\x12i\n" +
-	"\x06vpc_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12>\n" +
-	"\x0eengine_version\x18\a \x01(\tB\x12\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\a1.3.0.0H\x00R\rengineVersion\x88\x01\x01\x12,\n" +
-	"\x04port\x18\b \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x048182H\x01R\x04port\x88\x01\x01\x12<\n" +
-	"\fstorage_type\x18\t \x01(\tB\x19\xbaH\x16\xd8\x01\x01r\x11R\bstandardR\x05iopt1R\vstorageType\x128\n" +
-	"\x0einstance_count\x18\n" +
-	" \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x02R\rinstanceCount\x88\x01\x01\x12C\n" +
-	"\x0einstance_class\x18\v \x01(\tB\x17\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\fdb.r6g.largeH\x03R\rinstanceClass\x88\x01\x01\x12\x94\x01\n" +
-	"\x15serverless_v2_scaling\x18\f \x01(\v2`.dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterServerlessV2ScalingConfigurationR\x13serverlessV2Scaling\x12:\n" +
-	"\x11storage_encrypted\x18\r \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\x10storageEncrypted\x88\x01\x01\x12q\n" +
+	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x127\n" +
+	"\x12availability_zones\x18\x05 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x03R\x11availabilityZones\x12\x1f\n" +
+	"\x04port\x18\x06 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x04port\x12%\n" +
+	"\x0eengine_version\x18\a \x01(\tR\rengineVersion\x12<\n" +
+	"\fstorage_type\x18\b \x01(\tB\x19\xbaH\x16\xd8\x01\x01r\x11R\bstandardR\x05iopt1R\vstorageType\x12f\n" +
+	"\tinstances\x18\t \x03(\v2H.dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterInstanceR\tinstances\x12\x87\x01\n" +
+	"\x15serverless_v2_scaling\x18\n" +
+	" \x01(\v2S.dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterServerlessV2ScalingR\x13serverlessV2Scaling\x125\n" +
+	"\x11storage_encrypted\x18\v \x01(\bB\b\x92\xa6\x1d\x04trueR\x10storageEncrypted\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12M\n" +
-	"#iam_database_authentication_enabled\x18\x0f \x01(\bR iamDatabaseAuthenticationEnabled\x12q\n" +
-	"\tiam_roles\x18\x10 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x12K\n" +
-	"\x17backup_retention_period\x18\x11 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18#(\x01\x8a\xa6\x1d\x017H\x05R\x15backupRetentionPeriod\x88\x01\x01\x12\x7f\n" +
-	"\x17preferred_backup_window\x18\x12 \x01(\tBG\xbaHD\xd8\x01\x01r?2=^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$R\x15preferredBackupWindow\x12\xc7\x01\n" +
-	"\x1cpreferred_maintenance_window\x18\x13 \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x12/\n" +
-	"\x13deletion_protection\x18\x14 \x01(\bR\x12deletionProtection\x12>\n" +
-	"\x13skip_final_snapshot\x18\x15 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x06R\x11skipFinalSnapshot\x88\x01\x01\x12F\n" +
-	"\x19final_snapshot_identifier\x18\x16 \x01(\tB\n" +
-	"\xbaH\a\xd8\x01\x01r\x02\x10\x01R\x17finalSnapshotIdentifier\x12O\n" +
-	"\x1fenabled_cloudwatch_logs_exports\x18\x17 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x1cenabledCloudwatchLogsExports\x12+\n" +
-	"\x11apply_immediately\x18\x18 \x01(\bR\x10applyImmediately\x121\n" +
-	"\x15copy_tags_to_snapshot\x18\x19 \x01(\bR\x12copyTagsToSnapshot\x12=\n" +
-	"\x1ballow_major_version_upgrade\x18\x1a \x01(\bR\x18allowMajorVersionUpgrade\x12?\n" +
-	"\x1ccluster_parameter_group_name\x18\x1b \x01(\tR\x19clusterParameterGroupName\x12x\n" +
-	"\x12cluster_parameters\x18\x1c \x03(\v2I.dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterParameterR\x11clusterParameters:\xe7\x05\xbaH\xe3\x05\x1a\x96\x01\n" +
-	"\x10subnets_or_group\x12<Provide either subnet_ids (>=2) or neptune_subnet_group_name\x1aD(this.subnet_ids.size() >= 2) || has(this.neptune_subnet_group_name)\x1a\xbf\x01\n" +
-	",final_snapshot_id_required_when_not_skipping\x12Gfinal_snapshot_identifier must be set when skip_final_snapshot is false\x1aFthis.skip_final_snapshot ? true : this.final_snapshot_identifier != \"\"\x1a\xbc\x01\n" +
-	"\x19logs_exports_valid_values\x12Penabled_cloudwatch_logs_exports must contain only valid values: audit, slowquery\x1aMthis.enabled_cloudwatch_logs_exports.all(x, x == \"audit\" || x == \"slowquery\")\x1a\xc6\x01\n" +
-	"'serverless_requires_db_serverless_class\x12Oinstance_class must be 'db.serverless' when serverless_v2_scaling is configured\x1aJ!has(this.serverless_v2_scaling) || this.instance_class == \"db.serverless\"B\x11\n" +
-	"\x0f_engine_versionB\a\n" +
-	"\x05_portB\x11\n" +
-	"\x0f_instance_countB\x11\n" +
-	"\x0f_instance_classB\x14\n" +
-	"\x12_storage_encryptedB\x1a\n" +
-	"\x18_backup_retention_periodB\x16\n" +
-	"\x14_skip_final_snapshot\"\xa0\x01\n" +
-	"\x1aAwsNeptuneClusterParameter\x12\x1b\n" +
-	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12\x1d\n" +
-	"\x05value\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05value\x12F\n" +
-	"\fapply_method\x18\x03 \x01(\tB#\xbaH \xd8\x01\x01r\x1bR\timmediateR\x0epending-rebootR\vapplyMethod\"\x8c\x02\n" +
-	"1AwsNeptuneClusterServerlessV2ScalingConfiguration\x121\n" +
-	"\fmin_capacity\x18\x01 \x01(\x01B\x0e\xbaH\v\x12\t)\x00\x00\x00\x00\x00\x00\xf0?R\vminCapacity\x121\n" +
-	"\fmax_capacity\x18\x02 \x01(\x01B\x0e\xbaH\v\x12\t\x19\x00\x00\x00\x00\x00\x00`@R\vmaxCapacity:q\xbaHn\x1al\n" +
-	"\x1cserverless_v2_scaling_bounds\x12$max_capacity must be >= min_capacity\x1a&this.max_capacity >= this.min_capacityB\xfe\x02\n" +
+	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12M\n" +
+	"#iam_database_authentication_enabled\x18\r \x01(\bR iamDatabaseAuthenticationEnabled\x12q\n" +
+	"\tiam_roles\x18\x0e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x12A\n" +
+	"\x17backup_retention_period\x18\x0f \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x15backupRetentionPeriod\x12\x7f\n" +
+	"\x17preferred_backup_window\x18\x10 \x01(\tBG\xbaHD\xd8\x01\x01r?2=^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$R\x15preferredBackupWindow\x12\xc7\x01\n" +
+	"\x1cpreferred_maintenance_window\x18\x11 \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x121\n" +
+	"\x15copy_tags_to_snapshot\x18\x12 \x01(\bR\x12copyTagsToSnapshot\x12.\n" +
+	"\x13skip_final_snapshot\x18\x13 \x01(\bR\x11skipFinalSnapshot\x12:\n" +
+	"\x19final_snapshot_identifier\x18\x14 \x01(\tR\x17finalSnapshotIdentifier\x12/\n" +
+	"\x13deletion_protection\x18\x15 \x01(\bR\x12deletionProtection\x12O\n" +
+	"\x1fenabled_cloudwatch_logs_exports\x18\x16 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x1cenabledCloudwatchLogsExports\x12/\n" +
+	"\x13snapshot_identifier\x18\x17 \x01(\tR\x12snapshotIdentifier\x12B\n" +
+	"\x1dreplication_source_identifier\x18\x18 \x01(\tR\x1breplicationSourceIdentifier\x12:\n" +
+	"\x19global_cluster_identifier\x18\x19 \x01(\tR\x17globalClusterIdentifier\x12N\n" +
+	"$neptune_cluster_parameter_group_name\x18\x1a \x01(\tR neptuneClusterParameterGroupName\x12i\n" +
+	"\n" +
+	"parameters\x18\x1b \x03(\v2I.dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterParameterR\n" +
+	"parameters\x12P\n" +
+	"%neptune_instance_parameter_group_name\x18\x1c \x01(\tR!neptuneInstanceParameterGroupName\x12+\n" +
+	"\x11apply_immediately\x18\x1d \x01(\bR\x10applyImmediately\x12=\n" +
+	"\x1ballow_major_version_upgrade\x18\x1e \x01(\bR\x18allowMajorVersionUpgrade:\xc3\x12\xbaH\xbf\x12\x1a\xb1\x01\n" +
+	"\x10subnets_or_group\x12Wprovide at least two subnet_ids (distinct AZs) or an existing neptune_subnet_group_name\x1aD(this.subnet_ids.size() >= 2) || has(this.neptune_subnet_group_name)\x1a\xec\x02\n" +
+	"\"instances_required_unless_headless\x12\xb3\x01instances is required -- a cluster with no instances cannot serve queries; only snapshot restores, replicas, and global-cluster members may start headless and attach compute later\x1a\x8f\x01this.instances.size() > 0 || this.snapshot_identifier != '' || this.replication_source_identifier != '' || this.global_cluster_identifier != ''\x1a\x83\x02\n" +
+	",final_snapshot_id_required_when_not_skipping\x12\x8a\x01final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the cluster without a final snapshot name\x1aFthis.skip_final_snapshot ? true : this.final_snapshot_identifier != ''\x1a\xcc\x01\n" +
+	"\x11log_exports_valid\x12menabled_cloudwatch_logs_exports must contain only 'audit' or 'slowquery' -- the two log types Neptune exports\x1aHthis.enabled_cloudwatch_logs_exports.all(x, x in ['audit', 'slowquery'])\x1a\x96\x02\n" +
+	"&serverless_instances_are_db_serverless\x12\x8b\x01every instance must use instance_class 'db.serverless' when serverless_v2_scaling is set -- provisioned and serverless instances cannot mix\x1a^!has(this.serverless_v2_scaling) || this.instances.all(i, i.instance_class == 'db.serverless')\x1a\xa0\x02\n" +
+	"\x1edb_serverless_requires_scaling\x12\x9a\x01serverless_v2_scaling is required when any instance uses class 'db.serverless' -- AWS rejects a serverless instance without capacity bounds on the cluster\x1aa!this.instances.exists(i, i.instance_class == 'db.serverless') || has(this.serverless_v2_scaling)\x1a\xf4\x01\n" +
+	"!own_parameters_xor_existing_group\x12\x7fparameters and neptune_cluster_parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group\x1aNthis.neptune_cluster_parameter_group_name == '' || this.parameters.size() == 0\x1a\xee\x01\n" +
+	"!parameters_require_engine_version\x12\x8e\x01inline parameters require a pinned engine_version -- the managed parameter group's family is derived from it and must match the running engine\x1a8this.parameters.size() == 0 || this.engine_version != ''\x1a\xa0\x02\n" +
+	",major_upgrade_needs_instance_parameter_group\x12\x98\x01allow_major_version_upgrade requires neptune_instance_parameter_group_name -- AWS applies it to the cluster's instances during the major version upgrade\x1aU!this.allow_major_version_upgrade || this.neptune_instance_parameter_group_name != ''\"\x8a\x05\n" +
+	"\x19AwsNeptuneClusterInstance\x12/\n" +
+	"\x04name\x18\x01 \x01(\tB\x1b\xbaH\x18\xc8\x01\x01r\x132\x11^[a-z][a-z0-9-]*$R\x04name\x126\n" +
+	"\x0einstance_class\x18\x02 \x01(\tB\x0f\xbaH\f\xc8\x01\x01r\a2\x05^db\\.R\rinstanceClass\x120\n" +
+	"\x0epromotion_tier\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x0f(\x00R\rpromotionTier\x12+\n" +
+	"\x11availability_zone\x18\x04 \x01(\tR\x10availabilityZone\x12/\n" +
+	"\x13publicly_accessible\x18\x05 \x01(\bR\x12publiclyAccessible\x12?\n" +
+	"\x1cneptune_parameter_group_name\x18\x06 \x01(\tR\x19neptuneParameterGroupName\x12J\n" +
+	"\x1aauto_minor_version_upgrade\x18\a \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x17autoMinorVersionUpgrade\x88\x01\x01\x12\xc7\x01\n" +
+	"\x1cpreferred_maintenance_window\x18\b \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindowB\x1d\n" +
+	"\x1b_auto_minor_version_upgrade\"\xa2\x02\n" +
+	"$AwsNeptuneClusterServerlessV2Scaling\x12=\n" +
+	"\fmin_capacity\x18\x01 \x01(\x01B\x1a\xbaH\x17\xc8\x01\x01\x12\x12\x19\x00\x00\x00\x00\x00\x00`@)\x00\x00\x00\x00\x00\x00\xf0?R\vminCapacity\x12=\n" +
+	"\fmax_capacity\x18\x02 \x01(\x01B\x1a\xbaH\x17\xc8\x01\x01\x12\x12\x19\x00\x00\x00\x00\x00\x00`@)\x00\x00\x00\x00\x00\x00\xf0?R\vmaxCapacity:|\xbaHy\x1aw\n" +
+	"\x11v2_bounds_ordered\x12:max_capacity must be greater than or equal to min_capacity\x1a&this.max_capacity >= this.min_capacity\"\xa7\x02\n" +
+	"\x1aAwsNeptuneClusterParameter\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +
+	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\x12!\n" +
+	"\fapply_method\x18\x03 \x01(\tR\vapplyMethod:\xab\x01\xbaH\xa7\x01\x1a\xa4\x01\n" +
+	"\x12apply_method_valid\x12=apply_method must be 'immediate' or 'pending-reboot' when set\x1aOthis.apply_method == '' || this.apply_method in ['immediate', 'pending-reboot']B\xfe\x02\n" +
 	"1com.dev.planton.provider.aws.awsneptunecluster.v1B\tSpecProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsneptunecluster/v1;awsneptuneclusterv1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Aws.Awsneptunecluster.V1\xca\x02-Dev\\Planton\\Provider\\Aws\\Awsneptunecluster\\V1\xe2\x029Dev\\Planton\\Provider\\Aws\\Awsneptunecluster\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Aws::Awsneptunecluster::V1b\x06proto3"
 
 var (
@@ -539,22 +766,23 @@ func file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_rawDescGZIP()
 	return file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_goTypes = []any{
-	(*AwsNeptuneClusterSpec)(nil),                             // 0: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec
-	(*AwsNeptuneClusterParameter)(nil),                        // 1: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterParameter
-	(*AwsNeptuneClusterServerlessV2ScalingConfiguration)(nil), // 2: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterServerlessV2ScalingConfiguration
-	(*v1.StringValueOrRef)(nil),                               // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsNeptuneClusterSpec)(nil),                // 0: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec
+	(*AwsNeptuneClusterInstance)(nil),            // 1: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterInstance
+	(*AwsNeptuneClusterServerlessV2Scaling)(nil), // 2: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterServerlessV2Scaling
+	(*AwsNeptuneClusterParameter)(nil),           // 3: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterParameter
+	(*v1.StringValueOrRef)(nil),                  // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.neptune_subnet_group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 3: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 4: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.serverless_v2_scaling:type_name -> dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterServerlessV2ScalingConfiguration
-	3, // 5: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 6: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.iam_roles:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 7: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.cluster_parameters:type_name -> dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterParameter
+	4, // 0: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 1: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.neptune_subnet_group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 2: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 3: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.instances:type_name -> dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterInstance
+	2, // 4: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.serverless_v2_scaling:type_name -> dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterServerlessV2Scaling
+	4, // 5: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 6: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.iam_roles:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 7: dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterSpec.parameters:type_name -> dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterParameter
 	8, // [8:8] is the sub-list for method output_type
 	8, // [8:8] is the sub-list for method input_type
 	8, // [8:8] is the sub-list for extension type_name
@@ -567,14 +795,14 @@ func file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_init() {
 	if File_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto != nil {
 		return
 	}
-	file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -12,7 +12,7 @@ metadata:
     e2e-component: azurecosmosdbmongodatabase
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azurecosmosdbmongodatabase/v1/e2e/mongo-account.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azurecosmosdbmongodatabase/v1/e2e/mongo-account.yaml"
   tags:
     - planton-e2e
 spec:

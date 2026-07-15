@@ -3,13 +3,13 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "module",
     srcs = [
-        "access_point.go",
         "file_system.go",
         "locals.go",
         "main.go",
         "mount_target.go",
         "outputs.go",
         "policy.go",
+        "replication.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticfilesystem/v1/iac/pulumi/module",
     visibility = ["//visibility:public"],

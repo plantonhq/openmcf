@@ -1,0 +1,50 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsAthenaWorkgroup
+metadata:
+  name: test-athena-wg
+  org: test-org
+  env: dev
+  id: test-athena-wg-dev
+spec:
+  region: us-west-2
+  description: Test Athena workgroup exercising the full configuration surface
+  state: ENABLED
+  resultConfiguration:
+    outputLocation: s3://test-athena-results/queries/
+    encryptionOption: SSE_KMS
+    kmsKeyArn:
+      value: arn:aws:kms:us-west-2:123456789012:key/00000000-0000-0000-0000-000000000000
+    expectedBucketOwner: "123456789012"
+    s3AclOption: BUCKET_OWNER_FULL_CONTROL
+  bytesScannedCutoffPerQuery: 10737418240
+  enforceWorkgroupConfiguration: true
+  publishCloudwatchMetricsEnabled: true
+  requesterPaysEnabled: false
+  enableMinimumEncryptionConfiguration: true
+  selectedEngineVersion: AUTO
+  executionRole:
+    value: arn:aws:iam::123456789012:role/athena-spark-execution
+  customerContentEncryptionKmsKey:
+    value: arn:aws:kms:us-west-2:123456789012:key/00000000-0000-0000-0000-000000000000
+  identityCenter:
+    enableIdentityCenter: true
+    identityCenterInstanceArn: arn:aws:sso:::instance/ssoins-0000000000000000
+  s3AccessGrants:
+    enableS3AccessGrants: true
+    authenticationType: DIRECTORY_IDENTITY
+    createUserLevelPrefix: true
+  monitoring:
+    cloudWatchLogging:
+      logGroup: /athena/test-workgroup
+      logStreamNamePrefix: test
+      logTypes:
+        - key: SPARK_DRIVER
+          values:
+            - STDOUT
+            - STDERR
+    managedLogging:
+      kmsKey:
+        value: arn:aws:kms:us-west-2:123456789012:key/00000000-0000-0000-0000-000000000000
+    s3Logging:
+      logLocation: s3://test-athena-logs/archive/
+  forceDestroy: true

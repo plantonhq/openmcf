@@ -29,7 +29,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNeo4j
 metadata:
   name: my-graph-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -59,8 +59,6 @@ This creates a single-node Neo4j instance with default resource limits (1000m CP
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for the Neo4j pod. |
 | `container.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for the Neo4j pod. |
@@ -84,7 +82,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNeo4j
 metadata:
   name: dev-graph
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +110,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNeo4j
 metadata:
   name: prod-graph
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +141,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNeo4j
 metadata:
   name: shared-graph
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -177,7 +175,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNeo4j
 metadata:
   name: graph-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

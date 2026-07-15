@@ -1,0 +1,18 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsLambdaEventSourceMapping
+metadata:
+  name: order-worker
+spec:
+  region: us-west-2
+  functionArn:
+    valueFrom:
+      kind: AwsLambda
+      name: order-processor
+      fieldPath: status.outputs.function_arn
+  eventSourceArn:
+    valueFrom:
+      kind: AwsSqsQueue
+      name: order-events
+      fieldPath: status.outputs.queue_arn
+  functionResponseTypes:
+    - ReportBatchItemFailures

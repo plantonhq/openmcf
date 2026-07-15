@@ -2,7 +2,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: game-server-ga
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
 spec:
   region: <aws-region>
@@ -21,7 +21,9 @@ spec:
           healthCheckIntervalSeconds: 10
           thresholdCount: 2
           endpoints:
-            - endpointId: "<eip-allocation-id-1>"
+            - endpointId:
+                value: "<eip-allocation-id-1>"
               weight: 128
-            - endpointId: "<eip-allocation-id-2>"
+            - endpointId:
+                value: "<eip-allocation-id-2>"
               weight: 128

@@ -1,0 +1,34 @@
+# Install fixture consumed by kinds that declare AwsElasticFileSystem as a
+# prerequisite (access points). Deliberately minimal: one mount target on the
+# shared subnet fixture with the shared security-group fixture attached, no
+# lifecycle/backup/policy surface, so consumers pay the minimum fixture cost
+# (file systems create in ~seconds; the mount target adds ~a minute). The
+# component's own richer lane lives in scenarios/full-surface.yaml.
+apiVersion: aws.planton.dev/v1
+kind: AwsElasticFileSystem
+metadata:
+  name: planton-oss-e2e-awsefs-prereq
+  id: planton-oss-e2e-awsefs-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awselasticfilesystem
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  encrypted: true
+  mountTargets:
+    - subnetId:
+        valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-a
+          fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: planton-oss-e2e-awssg-prereq
+        fieldPath: status.outputs.security_group_id

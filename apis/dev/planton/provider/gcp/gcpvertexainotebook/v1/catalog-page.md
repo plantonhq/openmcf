@@ -31,7 +31,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiNotebook
 metadata:
   name: my-notebook
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -105,7 +105,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiNotebook
 metadata:
   name: data-explorer
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -129,7 +129,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiNotebook
 metadata:
   name: ml-training
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -162,7 +162,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiNotebook
 metadata:
   name: secure-notebook
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

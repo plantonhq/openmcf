@@ -141,8 +141,12 @@ resource "azurerm_linux_function_app" "main" {
         dynamic "headers" {
           for_each = ip_restriction.value.headers != null ? [ip_restriction.value.headers] : []
           content {
-            x_forwarded_for   = headers.value.x_forwarded_for
-            x_forwarded_host  = headers.value.x_forwarded_host
+            x_forwarded_for  = headers.value.x_forwarded_for
+            x_forwarded_host = headers.value.x_forwarded_host
+            # Each x_azure_fdid entry is a StringValueOrRef in the spec
+            # (referencing AzureFrontDoorProfile.resource_guid by
+            # default); the tfvars converter flattens the list to the
+            # resolved GUID literals.
             x_azure_fdid      = headers.value.x_azure_fdid
             x_fd_health_probe = headers.value.x_fd_health_probe
           }

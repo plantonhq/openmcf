@@ -75,7 +75,6 @@ For `KubernetesPostgres`, the spec includes:
 
 ```protobuf
 message KubernetesPostgresSpec {
-  KubernetesClusterSelector target_cluster = 1;
   StringValueOrRef namespace = 2 [(buf.validate.field).required = true];
   bool create_namespace = 3;
   KubernetesPostgresContainer container = 4;
@@ -246,7 +245,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPostgres
 metadata:
   name: session-store
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

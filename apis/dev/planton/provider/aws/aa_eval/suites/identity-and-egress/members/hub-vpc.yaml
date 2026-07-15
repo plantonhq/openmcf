@@ -1,0 +1,25 @@
+# The hub network everything in this suite hangs off. Deliberately
+# well-signaled (a Name tag, an unambiguous CIDR): this suite examines
+# coverage of the NAT/IAM tier, not network disambiguation -- the
+# look-alike game lives in the messy-account suite. The managed-by label
+# marks the fixture for orphan sweeps; the eval pipeline redacts it (and
+# every planton.ai/* identity tag) from the proposer's view.
+apiVersion: aws.planton.dev/v1
+kind: AwsVpc
+metadata:
+  name: hub-vpc
+  id: hub-vpc
+  org: planton-oss
+  env: ops
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsvpc
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  cidrBlock: 10.30.0.0/16
+  enableDnsHostnames: true
+  enableDnsSupport: true

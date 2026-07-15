@@ -26,7 +26,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMysqlOperator
 metadata:
   name: my-pxc-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -57,8 +57,6 @@ This installs the Percona MySQL Operator into the `percona-system` namespace wit
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying the operator. |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for the operator pod. |
 | `container.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for the operator pod. |
@@ -78,7 +76,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMysqlOperator
 metadata:
   name: pxc-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -105,7 +103,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMysqlOperator
 metadata:
   name: prod-pxc-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +129,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMysqlOperator
 metadata:
   name: shared-pxc-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

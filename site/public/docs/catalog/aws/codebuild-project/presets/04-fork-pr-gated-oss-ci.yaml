@@ -1,0 +1,34 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsCodeBuildProject
+metadata:
+  name: my-oss-ci
+spec:
+  region: us-east-1
+  source:
+    type: GITHUB
+    location: "<github-repo-https-url>"
+    reportBuildStatus: true
+    auth:
+      type: CODECONNECTIONS
+      resource: "<codeconnections-connection-arn>"
+  environment:
+    type: ARM_CONTAINER
+    computeType: BUILD_GENERAL1_MEDIUM
+    image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
+  artifacts:
+    type: NO_ARTIFACTS
+  serviceRole:
+    value: "<codebuild-service-role-arn>"
+  badgeEnabled: true
+  autoRetryLimit: 1
+  webhook:
+    filterGroups:
+      - filters:
+          - type: EVENT
+            pattern: PUSH, PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED
+    pullRequestBuildPolicy:
+      requiresCommentApproval: FORK_PULL_REQUESTS
+      approverRoles:
+        - GITHUB_WRITE
+        - GITHUB_MAINTAIN
+        - GITHUB_ADMIN

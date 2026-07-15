@@ -1,0 +1,58 @@
+# The optional DNS plane: alias records pointing the service's domain at
+# the load balancer in an existing Route 53 zone. Aliases, not CNAMEs —
+# they work on zone apexes, resolve for free, and track the ALB's own
+# address set as it changes.
+{% if values.dns_enabled | bool %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsRoute53DnsRecord
+metadata:
+  name: "{{ values.service_name }}-alias-a"
+spec:
+  region: "{{ values.aws_region }}"
+  zoneId:
+    value: "{{ values.zone_id }}"
+  name: "{{ values.domain_name }}"
+  type: A
+  aliasTarget:
+    dnsName:
+      valueFrom:
+        kind: AwsAlb
+        name: "{{ values.service_name }}-alb"
+        fieldPath: status.outputs.load_balancer_dns_name
+    zoneId:
+      valueFrom:
+        kind: AwsAlb
+        name: "{{ values.service_name }}-alb"
+        fieldPath: status.outputs.load_balancer_hosted_zone_id
+    # Unlike a CDN target, an ALB alias benefits from health evaluation:
+    # Route 53 stops answering with this target if the ALB itself reports
+    # unhealthy, which matters once you add failover or multi-region
+    # records later.
+    evaluateTargetHealth: true
+---
+# The IPv6 twin — ALBs are dual-stack capable and IPv6-only clients need
+# the AAAA alias to reach the service at all.
+apiVersion: aws.planton.dev/v1
+kind: AwsRoute53DnsRecord
+metadata:
+  name: "{{ values.service_name }}-alias-aaaa"
+spec:
+  region: "{{ values.aws_region }}"
+  zoneId:
+    value: "{{ values.zone_id }}"
+  name: "{{ values.domain_name }}"
+  type: AAAA
+  aliasTarget:
+    dnsName:
+      valueFrom:
+        kind: AwsAlb
+        name: "{{ values.service_name }}-alb"
+        fieldPath: status.outputs.load_balancer_dns_name
+    zoneId:
+      valueFrom:
+        kind: AwsAlb
+        name: "{{ values.service_name }}-alb"
+        fieldPath: status.outputs.load_balancer_hosted_zone_id
+    evaluateTargetHealth: true
+{% endif %}

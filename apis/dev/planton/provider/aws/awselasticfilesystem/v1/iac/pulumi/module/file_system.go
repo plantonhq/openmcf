@@ -13,33 +13,42 @@ type FileSystemResult struct {
 
 func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*FileSystemResult, error) {
 	spec := locals.AwsElasticFileSystem.Spec
-	name := locals.AwsElasticFileSystem.Metadata.Name
 
 	args := &efs.FileSystemArgs{
-		Tags: pulumi.ToStringMap(locals.AwsTags),
+		// The creation token is the file system's idempotency key AND its only
+		// human-controlled physical identity (EFS has no "name" argument — the
+		// console name is the Name tag). Pinning it to metadata.name keeps the
+		// physical identity identical to the Terraform module's; left unset,
+		// Pulumi would auto-name with a random suffix and the two engines
+		// would silently diverge.
+		CreationToken: pulumi.String(locals.AwsElasticFileSystem.Metadata.Name),
+		Tags:          pulumi.ToStringMap(locals.AwsTags),
 	}
 
-	// Encryption at rest.
+	// Encryption at rest. ForceNew — it cannot be enabled after creation.
 	if spec.Encrypted {
 		args.Encrypted = pulumi.Bool(true)
 	}
 
-	// Customer-managed KMS key.
-	if spec.KmsKeyId != nil && spec.KmsKeyId.GetValue() != "" {
+	// Customer-managed KMS key (requires encrypted; CEL-enforced). ForceNew.
+	if spec.KmsKeyId.GetValue() != "" {
 		args.KmsKeyId = pulumi.StringPtr(spec.KmsKeyId.GetValue())
 	}
 
-	// Performance mode (generalPurpose or maxIO). Default: generalPurpose.
+	// Performance mode (generalPurpose or maxIO). ForceNew. Empty keeps the
+	// AWS default (generalPurpose).
 	if spec.PerformanceMode != "" {
 		args.PerformanceMode = pulumi.StringPtr(spec.PerformanceMode)
 	}
 
-	// Throughput mode (bursting, provisioned, or elastic). Default: bursting.
+	// Throughput mode (bursting, provisioned, or elastic). Mutable, but AWS
+	// enforces a 24-hour cooldown between throughput-mode changes.
 	if spec.ThroughputMode != "" {
 		args.ThroughputMode = pulumi.StringPtr(spec.ThroughputMode)
 	}
 
-	// Provisioned throughput (only valid with throughput_mode = "provisioned").
+	// Provisioned throughput (only valid with throughput_mode = "provisioned";
+	// the coupling is CEL-enforced at validation time).
 	if spec.ProvisionedThroughputInMibps > 0 {
 		args.ProvisionedThroughputInMibps = pulumi.Float64Ptr(spec.ProvisionedThroughputInMibps)
 	}
@@ -49,7 +58,18 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*F
 		args.AvailabilityZoneName = pulumi.StringPtr(spec.AvailabilityZoneName)
 	}
 
-	// Lifecycle policies — up to 3 policies (IA, archive, primary storage class).
+	// Replication-overwrite protection. AWS defaults to ENABLED; only send an
+	// explicit value so unset stays indistinguishable from the AWS default.
+	// DISABLED is required before this file system can be targeted as a
+	// replication destination (or modified/deleted after having been one).
+	if spec.ReplicationOverwriteProtection != "" {
+		args.Protection = &efs.FileSystemProtectionArgs{
+			ReplicationOverwrite: pulumi.StringPtr(spec.ReplicationOverwriteProtection),
+		}
+	}
+
+	// Lifecycle policies — the provider models each transition rule as its own
+	// lifecycle_policy element (up to 3: IA, Archive, back-to-primary).
 	var lifecyclePolicies efs.FileSystemLifecyclePolicyArray
 	if spec.TransitionToIa != "" {
 		lifecyclePolicies = append(lifecyclePolicies, &efs.FileSystemLifecyclePolicyArgs{
@@ -70,7 +90,9 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*F
 		args.LifecyclePolicies = lifecyclePolicies
 	}
 
-	createdFs, err := efs.NewFileSystem(ctx, name, args, pulumi.Provider(provider))
+	// Stable logical name; the cloud identity travels through CreationToken
+	// and the Name tag, never through the Pulumi resource name.
+	createdFs, err := efs.NewFileSystem(ctx, "file-system", args, pulumi.Provider(provider))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create efs file system")
 	}

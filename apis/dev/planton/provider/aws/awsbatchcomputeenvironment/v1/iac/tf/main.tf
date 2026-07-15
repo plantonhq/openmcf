@@ -1,51 +1,54 @@
-# --- Scheduling Policy (optional) ---
-
-resource "aws_batch_scheduling_policy" "this" {
-  count = var.spec.scheduling_policy != null ? 1 : 0
-  name  = "${var.metadata.id}-scheduling-policy"
-  tags  = local.tags
-
-  fair_share_policy {
-    compute_reservation = try(var.spec.scheduling_policy.compute_reservation, null)
-    share_decay_seconds = try(var.spec.scheduling_policy.share_decay_seconds, null)
-
-    dynamic "share_distribution" {
-      for_each = try(var.spec.scheduling_policy.share_distributions, [])
-      content {
-        share_identifier = share_distribution.value.share_identifier
-        weight_factor    = share_distribution.value.weight_factor
-      }
-    }
-  }
-}
-
-# --- Compute Environment ---
-
+# AWS Batch MANAGED compute environment.
+#
+# Only MANAGED environments are modeled: Batch owns the instance lifecycle.
+# (UNMANAGED means bring-your-own ECS container instances -- a different
+# operating model.) Job queues and scheduling policies are separate
+# resources (AwsBatchJobQueue / AwsBatchSchedulingPolicy) that compose onto
+# this environment through its exported ARN.
 resource "aws_batch_compute_environment" "this" {
-  compute_environment_name = var.metadata.id
-  type                     = "MANAGED"
-  state                    = var.spec.state
-  service_role             = try(var.spec.service_role.value, null)
-  tags                     = local.tags
+  # The cloud name comes from metadata.name (the catalog naming basis) --
+  # set explicitly so both engines create the same environment name.
+  name  = var.metadata.name
+  type  = "MANAGED"
+  state = var.spec.state
+
+  # Leaving service_role unset lets AWS use (and auto-create) the Batch
+  # service-linked role -- which is also what keeps the environment eligible
+  # for in-place infrastructure updates.
+  service_role = var.spec.service_role != "" ? var.spec.service_role : null
 
   compute_resources {
-    type      = var.spec.compute_resources.type
-    max_vcpus = var.spec.compute_resources.max_vcpus
-    min_vcpus = local.is_ec2 ? var.spec.compute_resources.min_vcpus : null
-    subnets   = [for s in var.spec.compute_resources.subnet_ids : s.value]
+    type      = local.cr.type
+    max_vcpus = local.cr.max_vcpus
 
-    security_group_ids  = [for sg in var.spec.compute_resources.security_group_ids : sg.value]
-    instance_type       = local.is_ec2 ? var.spec.compute_resources.instance_types : null
-    allocation_strategy = local.is_ec2 && var.spec.compute_resources.allocation_strategy != "" ? var.spec.compute_resources.allocation_strategy : null
-    instance_role       = local.is_ec2 ? try(var.spec.compute_resources.instance_role.value, null) : null
-    ec2_key_pair        = local.is_ec2 && var.spec.compute_resources.ec2_key_pair != "" ? var.spec.compute_resources.ec2_key_pair : null
-    bid_percentage      = local.is_spot ? var.spec.compute_resources.bid_percentage : null
-    spot_iam_fleet_role = local.is_spot ? try(var.spec.compute_resources.spot_iam_fleet_role.value, null) : null
+    # Subnets are required for every type: even "serverless" Fargate tasks
+    # get ENIs placed into these subnets.
+    subnets            = local.cr.subnet_ids
+    security_group_ids = length(local.cr.security_group_ids) > 0 ? local.cr.security_group_ids : null
 
-    desired_vcpus = local.is_ec2 && var.spec.compute_resources.desired_vcpus > 0 ? var.spec.compute_resources.desired_vcpus : null
+    # EC2/SPOT-only knobs. Fargate environments must not send them at all
+    # (AWS rejects the request), hence the null gating rather than defaults.
+    # min_vcpus is platform-defaulted to 0 so coalesce never fires in
+    # practice; it exists for direct tfvars runs outside the platform.
+    min_vcpus           = local.is_ec2_family ? coalesce(local.cr.min_vcpus, 0) : null
+    desired_vcpus       = local.is_ec2_family && local.cr.desired_vcpus > 0 ? local.cr.desired_vcpus : null
+    instance_type       = local.is_ec2_family && length(local.cr.instance_types) > 0 ? local.cr.instance_types : null
+    allocation_strategy = local.is_ec2_family && local.cr.allocation_strategy != "" ? local.cr.allocation_strategy : null
+    instance_role       = local.is_ec2_family && local.cr.instance_role != "" ? local.cr.instance_role : null
+    ec2_key_pair        = local.is_ec2_family && local.cr.ec2_key_pair != "" ? local.cr.ec2_key_pair : null
+    placement_group     = local.is_ec2_family && local.cr.placement_group != "" ? local.cr.placement_group : null
+
+    # These tags land on the EC2 instances / Spot requests Batch launches --
+    # deliberately NOT merged with the environment's own identity tags
+    # (local.aws_tags), which tag the CE resource itself.
+    tags = local.is_ec2_family && length(local.cr.resource_tags) > 0 ? local.cr.resource_tags : null
+
+    # SPOT-only knobs.
+    bid_percentage      = local.is_spot ? local.cr.bid_percentage : null
+    spot_iam_fleet_role = local.is_spot && local.cr.spot_iam_fleet_role != "" ? local.cr.spot_iam_fleet_role : null
 
     dynamic "launch_template" {
-      for_each = var.spec.compute_resources.launch_template != null ? [var.spec.compute_resources.launch_template] : []
+      for_each = local.cr.launch_template != null ? [local.cr.launch_template] : []
       content {
         launch_template_id = launch_template.value.launch_template_id
         version            = launch_template.value.version != "" ? launch_template.value.version : null
@@ -53,80 +56,34 @@ resource "aws_batch_compute_environment" "this" {
     }
 
     dynamic "ec2_configuration" {
-      for_each = var.spec.compute_resources.ec2_configurations
+      for_each = local.cr.ec2_configurations
       content {
-        image_type        = ec2_configuration.value.image_type != "" ? ec2_configuration.value.image_type : null
-        image_id_override = ec2_configuration.value.image_id_override != "" ? ec2_configuration.value.image_id_override : null
+        image_type               = ec2_configuration.value.image_type != "" ? ec2_configuration.value.image_type : null
+        image_id_override        = ec2_configuration.value.image_id_override != "" ? ec2_configuration.value.image_id_override : null
+        image_kubernetes_version = ec2_configuration.value.image_kubernetes_version != "" ? ec2_configuration.value.image_kubernetes_version : null
       }
     }
+  }
 
-    tags = try(var.spec.compute_resources.resource_tags, {})
+  # Batch-on-EKS attachment: create-time only (the provider replaces the
+  # environment on any change here).
+  dynamic "eks_configuration" {
+    for_each = var.spec.eks_configuration != null ? [var.spec.eks_configuration] : []
+    content {
+      eks_cluster_arn      = eks_configuration.value.eks_cluster_arn
+      kubernetes_namespace = eks_configuration.value.kubernetes_namespace
+    }
   }
 
   dynamic "update_policy" {
     for_each = var.spec.update_policy != null ? [var.spec.update_policy] : []
     content {
-      terminate_jobs_on_update      = update_policy.value.terminate_jobs_on_update
+      terminate_jobs_on_update = update_policy.value.terminate_jobs_on_update
+      # Tri-state: unset lets AWS apply its own 30-minute default (matching
+      # the Pulumi module, which also omits it when unset).
       job_execution_timeout_minutes = update_policy.value.job_execution_timeout_minutes
     }
   }
-}
 
-# --- Job Queues ---
-
-resource "aws_batch_job_queue" "this" {
-  for_each = { for idx, jq in var.spec.job_queues : jq.name => jq }
-
-  name                 = each.value.name
-  state                = each.value.state
-  priority             = each.value.priority
-  scheduling_policy_arn = var.spec.scheduling_policy != null ? aws_batch_scheduling_policy.this[0].arn : null
-  tags                 = local.tags
-
-  compute_environment_order {
-    compute_environment = aws_batch_compute_environment.this.arn
-    order               = 1
-  }
-
-  dynamic "job_state_time_limit_action" {
-    for_each = each.value.job_state_time_limit_actions
-    content {
-      action           = job_state_time_limit_action.value.action
-      max_time_seconds = job_state_time_limit_action.value.max_time_seconds
-      reason           = job_state_time_limit_action.value.reason
-      state            = job_state_time_limit_action.value.state
-    }
-  }
-}
-
-# --- Outputs ---
-
-output "compute_environment_arn" {
-  description = "ARN of the compute environment"
-  value       = aws_batch_compute_environment.this.arn
-}
-
-output "compute_environment_name" {
-  description = "Name of the compute environment"
-  value       = aws_batch_compute_environment.this.compute_environment_name
-}
-
-output "ecs_cluster_arn" {
-  description = "ARN of the underlying ECS cluster"
-  value       = aws_batch_compute_environment.this.ecs_cluster_arn
-}
-
-output "status" {
-  description = "Status of the compute environment"
-  value       = aws_batch_compute_environment.this.status
-}
-
-output "job_queue_arns" {
-  description = "Map of queue name to ARN"
-  value       = { for name, jq in aws_batch_job_queue.this : name => jq.arn }
-}
-
-output "scheduling_policy_arn" {
-  description = "ARN of the scheduling policy (if created)"
-  value       = var.spec.scheduling_policy != null ? aws_batch_scheduling_policy.this[0].arn : ""
+  tags = local.aws_tags
 }

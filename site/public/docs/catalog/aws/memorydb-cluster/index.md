@@ -34,7 +34,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbCluster
 metadata:
   name: my-memorydb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -46,8 +46,12 @@ spec:
   nodeType: db.t4g.small
   numShards: 1
   numReplicasPerShard: 0
-  aclName: open-access
+  aclName:
+    value: open-access
   tlsEnabled: true
+  subnetIds:
+    - value: subnet-aaa111
+    - value: subnet-bbb222
 ```
 
 Deploy:
@@ -67,6 +71,7 @@ This creates a single-shard, single-node MemoryDB cluster with Redis 7.1, TLS en
 | `region` | `string` | AWS region where the MemoryDB cluster will be created (e.g., `us-west-2`, `eu-west-1`). | Required; non-empty |
 | `engine` | `string` | Cache engine: `"redis"` or `"valkey"` | Must be `redis` or `valkey` |
 | `nodeType` | `string` | Instance type determining CPU, memory, and network capacity (e.g., `"db.t4g.small"`, `"db.r7g.large"`, `"db.r6gd.xlarge"` for data tiering) | Required, non-empty |
+| `aclName` | `StringValueOrRef` | The ACL the cluster authenticates against — reference an AwsMemorydbAcl or set the literal `"open-access"` (development only). AWS couples `tlsEnabled: false` to `"open-access"`. | Required |
 
 ### Optional Fields
 
@@ -77,19 +82,23 @@ This creates a single-shard, single-node MemoryDB cluster with Redis 7.1, TLS en
 | `port` | `int32` | `6379` | Connection port. ForceNew. Range: 1–65535. |
 | `numShards` | `int32` | `1` | Number of shards (data partitions). Min: 1. |
 | `numReplicasPerShard` | `int32` | `1` | Replicas per shard. Range: 0–5. |
-| `aclName` | `string` | `"open-access"` | MemoryDB ACL name. Must be `"open-access"` when `tlsEnabled` is `false`. |
-| `subnetIds` | `StringValueOrRef[]` | `[]` | VPC subnet IDs for subnet group creation. Can reference AwsVpc via `valueFrom`. |
-| `securityGroupIds` | `StringValueOrRef[]` | `[]` | Security groups to attach. Can reference AwsSecurityGroup via `valueFrom`. |
+| `subnetIds` | `StringValueOrRef[]` | `[]` | Subnets for a module-managed subnet group. Mutually exclusive with `subnetGroupName`. Can reference AwsSubnet via `valueFrom`. |
+| `subnetGroupName` | `string` | — | Bring-your-own existing subnet group. ForceNew. Mutually exclusive with `subnetIds`. |
+| `securityGroupIds` | `StringValueOrRef[]` | `[]` | Security groups to attach. Once one is set, the set can only be swapped, never emptied. |
+| `networkType` | `string` | `ipv4` | `ipv4`, `ipv6`, or `dual_stack`. ForceNew. |
+| `ipDiscovery` | `string` | `ipv4` | Which stack discovery commands report: `ipv4` or `ipv6` (needs an IPv6-capable `networkType`). |
 | `tlsEnabled` | `bool` | `true` | Enable TLS for in-transit encryption. ForceNew. |
-| `kmsKeyId` | `StringValueOrRef` | — | Customer-managed KMS key ARN for at-rest encryption. ForceNew. Can reference AwsKmsKey. |
+| `kmsKeyArn` | `StringValueOrRef` | — | Customer-managed KMS key ARN for at-rest encryption. ForceNew. Can reference AwsKmsKey. |
 | `maintenanceWindow` | `string` | AWS-assigned | Weekly window in UTC: `"ddd:hh24:mi-ddd:hh24:mi"`. |
 | `snapshotRetentionLimit` | `int32` | `0` | Days to retain automatic snapshots (0–35). 0 disables. |
 | `snapshotWindow` | `string` | AWS-assigned | Daily snapshot window in UTC: `"hh24:mi-hh24:mi"`. |
 | `finalSnapshotName` | `string` | — | Final snapshot name on cluster deletion. |
 | `snapshotArns` | `string[]` | `[]` | S3 ARNs of RDB files to restore from. ForceNew. Mutually exclusive with `snapshotName`. |
 | `snapshotName` | `string` | — | Named snapshot to restore from. ForceNew. Mutually exclusive with `snapshotArns`. |
-| `parameterGroupFamily` | `string` | — | Required when `parameters` are provided (e.g., `"memorydb_redis7"`). |
-| `parameters` | `AwsMemorydbClusterParameter[]` | `[]` | Name/value pairs for engine parameter tuning. |
+| `parameterGroupFamily` | `string` | — | Required when `parameters` are provided (e.g., `"memorydb_valkey7"`). |
+| `parameters` | `AwsMemorydbClusterParameter[]` | `[]` | Name/value pairs applied via a module-managed group. Mutually exclusive with `parameterGroupName`. |
+| `parameterGroupName` | `string` | — | Bring-your-own existing parameter group. Mutually exclusive with `parameters`. |
+| `multiRegionClusterName` | `string` | — | Existing multi-region cluster to join (active-active). ForceNew. |
 | `snsTopicArn` | `StringValueOrRef` | — | SNS topic for cluster event notifications. Can reference AwsSnsTopic. |
 | `autoMinorVersionUpgrade` | `bool` | `true` | Automatically apply minor engine version upgrades. |
 | `dataTiering` | `bool` | `false` | Move cold data to SSD. Only available on `db.r6gd.*` node types. ForceNew. |
@@ -105,7 +114,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbCluster
 metadata:
   name: dev-memorydb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -117,7 +126,8 @@ spec:
   nodeType: db.t4g.small
   numShards: 1
   numReplicasPerShard: 0
-  aclName: open-access
+  aclName:
+    value: open-access
 ```
 
 ### Production HA with VPC and Snapshots
@@ -129,7 +139,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbCluster
 metadata:
   name: session-store
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -142,7 +152,11 @@ spec:
   nodeType: db.r7g.large
   numShards: 2
   numReplicasPerShard: 2
-  aclName: prod-acl
+  aclName:
+    valueFrom:
+      kind: AwsMemorydbAcl
+      name: prod-acl
+      fieldPath: status.outputs.acl_name
   subnetIds:
     - subnet-0a1b2c3d4e5f00001
     - subnet-0a1b2c3d4e5f00002
@@ -166,7 +180,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbCluster
 metadata:
   name: analytics-store
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -179,7 +193,11 @@ spec:
   nodeType: db.r6gd.xlarge
   numShards: 4
   numReplicasPerShard: 2
-  aclName: analytics-acl
+  aclName:
+    valueFrom:
+      kind: AwsMemorydbAcl
+      name: analytics-acl
+      fieldPath: status.outputs.acl_name
   dataTiering: true
   subnetIds:
     - valueFrom:
@@ -195,7 +213,7 @@ spec:
         kind: AwsSecurityGroup
         name: memorydb-sg
         fieldPath: status.outputs.security_group_id
-  kmsKeyId:
+  kmsKeyArn:
     valueFrom:
       kind: AwsKmsKey
       name: memorydb-key

@@ -1,0 +1,4 @@
+name: aws-lambda-event-source-mapping
+runtime:
+  name: go
+description: AWS Lambda Event Source Mapping deployment component

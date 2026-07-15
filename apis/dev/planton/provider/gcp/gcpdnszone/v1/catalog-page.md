@@ -26,7 +26,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDnsZone
 metadata:
   name: example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -73,7 +73,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDnsZone
 metadata:
   name: example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -97,7 +97,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDnsZone
 metadata:
   name: example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -117,7 +117,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDnsZone
 metadata:
   name: example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -161,7 +161,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDnsZone
 metadata:
   name: example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

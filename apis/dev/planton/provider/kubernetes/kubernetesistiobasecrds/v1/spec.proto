@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesistiobasecrds.v1;
 
-import "dev/planton/provider/kubernetes/target_cluster.proto";
-
 // KubernetesIstioBaseCrdsSpec defines configuration for installing the Istio CRDs
 // (the `istio/base` Custom Resource Definitions) on a target Kubernetes cluster,
 // WITHOUT installing istiod or any controller.
@@ -22,7 +20,4 @@ import "dev/planton/provider/kubernetes/target_cluster.proto";
 // custom resources are frozen to the SDK version, so a mismatched CRD set would silently
 // prune or reject fields. (This intentionally avoids the gateway family's footgun, where
 // KubernetesGatewayApiCrds.version defaults below its typed SDK version.)
-message KubernetesIstioBaseCrdsSpec {
-  // Target Kubernetes Cluster where the Istio CRDs will be installed.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-}
+message KubernetesIstioBaseCrdsSpec {}

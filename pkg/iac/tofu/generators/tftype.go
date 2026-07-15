@@ -54,6 +54,20 @@ func (TFFreeFormMap) Format(_ int) string {
 	return "any"
 }
 
+// TFFreeFormList represents a repeated proto field whose element type is
+// free-form (a JSON well-known type, or a recursive message collapsed to
+// `any`). It renders as the bare `any` keyword rather than `list(any)` for the
+// same reason TFFreeFormMap exists: Terraform's `list(any)` requires every
+// element to converge to a single common type ("all list elements must have
+// the same type"), which arbitrary or recursive elements cannot guarantee.
+// Its zero default is an empty list ([]) so a pruned field reconstructs to
+// something a `for` expression can iterate.
+type TFFreeFormList struct{}
+
+func (TFFreeFormList) Format(_ int) string {
+	return "any"
+}
+
 // TFObject represents a Terraform object type with named fields.
 type TFObject struct {
 	Fields []TFField
@@ -147,6 +161,10 @@ func zeroDefaultLiteral(t TFType) (string, bool) {
 	case TFFreeFormMap:
 		// Still a map semantically (just untyped values): default to an empty map.
 		return "{}", true
+	case TFFreeFormList:
+		// Still a list semantically (just untyped elements): default to an
+		// empty list.
+		return "[]", true
 	default: // TFObject and anything else: default to null
 		return "", false
 	}

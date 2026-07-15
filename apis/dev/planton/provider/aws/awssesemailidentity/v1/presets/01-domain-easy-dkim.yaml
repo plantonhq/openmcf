@@ -1,0 +1,9 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsSesEmailIdentity
+metadata:
+  name: example-domain
+spec:
+  region: <aws-region>
+  emailIdentity: example.com
+  dkimSigning:
+    nextSigningKeyLength: RSA_2048_BIT

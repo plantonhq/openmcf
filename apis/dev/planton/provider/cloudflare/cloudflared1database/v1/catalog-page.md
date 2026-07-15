@@ -24,7 +24,7 @@ apiVersion: cloudflare.planton.dev/v1
 kind: CloudflareD1Database
 metadata:
   name: my-d1-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -69,7 +69,7 @@ apiVersion: cloudflare.planton.dev/v1
 kind: CloudflareD1Database
 metadata:
   name: analytics-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -88,7 +88,7 @@ apiVersion: cloudflare.planton.dev/v1
 kind: CloudflareD1Database
 metadata:
   name: eu-users-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -108,7 +108,7 @@ apiVersion: cloudflare.planton.dev/v1
 kind: CloudflareD1Database
 metadata:
   name: global-app-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -15,10 +15,23 @@ variable "spec" {
   description = "AwsEcsCluster specification"
   type = object({
     region = string
-    enable_container_insights = optional(bool, false)
+    container_insights = optional(string, "")
     capacity_providers = optional(list(string), [])
+    ec2_capacity_providers = optional(list(object({
+      name = string
+      auto_scaling_group_arn = string
+      managed_scaling = optional(object({
+        status = optional(string, "")
+        target_capacity = optional(number, 0)
+        minimum_scaling_step_size = optional(number, 0)
+        maximum_scaling_step_size = optional(number, 0)
+        instance_warmup_period_seconds = optional(number, 0)
+      }))
+      managed_termination_protection = optional(string, "")
+      managed_draining = optional(string, "")
+    })), [])
     default_capacity_provider_strategy = optional(list(object({
-      capacity_provider = optional(string, "")
+      capacity_provider = string
       base = optional(number, 0)
       weight = optional(number, 0)
     })), [])
@@ -29,9 +42,14 @@ variable "spec" {
         cloud_watch_encryption_enabled = optional(bool, false)
         s3_bucket_name = optional(string, "")
         s3_key_prefix = optional(string, "")
-        s3_encryption_enabled = optional(bool, false)
+        s3_bucket_encryption_enabled = optional(bool, false)
       }))
       kms_key_id = optional(string, "")
     }))
+    managed_storage_configuration = optional(object({
+      fargate_ephemeral_storage_kms_key_id = optional(string, "")
+      kms_key_id = optional(string, "")
+    }))
+    service_connect_namespace_arn = optional(string, "")
   })
 }

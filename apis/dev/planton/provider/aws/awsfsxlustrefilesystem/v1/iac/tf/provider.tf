@@ -1,8 +1,13 @@
 terraform {
   required_providers {
     aws = {
+      # Family floor: >= 6.8.0 carries the full Lustre surface used by this
+      # module — INTELLIGENT_TIERING with throughput_capacity and
+      # data_read_cache_configuration (including the read-cache size
+      # validation fixed in 6.8.0), efa_enabled, root_squash_configuration,
+      # final_backup_tags, and the legacy S3 link arm.
       source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      version = ">= 6.8.0"
     }
   }
 }

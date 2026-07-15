@@ -41,7 +41,7 @@ the proto, the typed Pulumi resource, and the cluster CRD all agree on the schem
 ## 3. Planton spec shape (fidelity decisions)
 
 The Planton spec flattens the upstream `AuthorizationPolicy` fields directly after the
-namespaced envelope (`target_cluster`, `namespace`). There is no nested
+namespaced envelope (`namespace`). There is no nested
 `authorization_policy` sub-message. Fields are renumbered sequentially from 1 -- the
 Planton proto is its own wire contract and does not preserve upstream's field-number
 gaps (e.g. upstream `Source.service_accounts` is field 11).

@@ -28,6 +28,7 @@ PERSISTENT_1 HDD file system with 6000 GiB and 12 MB/s/TiB throughput. Optimized
 - **PERSISTENT_1** — Persistent storage with data replication within the AZ. Only deployment type supporting HDD
 - **6000 GiB HDD** — Minimum capacity for HDD storage. Significantly cheaper per GiB than SSD
 - **12 MB/s/TiB throughput** — Lower tier. Aggregate: ~70 MB/s for 6000 GiB. Use 40 MB/s/TiB if more throughput is needed
+- **READ drive cache** — Provisions an SSD read cache (20% of storage capacity) so frequently read data gets SSD-like latency on HDD economics; set `drive_cache_type: NONE` to opt out (HDD file systems must state the decision)
 - **LZ4 compression** — Reduces effective storage usage; especially beneficial for text-heavy data (logs, CSVs, JSON)
 - **Automatic backups** — 14-day retention, daily at 02:00 UTC
 - **Tags copied to backups** — Consistent tagging for cost allocation

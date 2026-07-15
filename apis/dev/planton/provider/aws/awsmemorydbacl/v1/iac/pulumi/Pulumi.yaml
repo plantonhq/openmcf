@@ -1,0 +1,3 @@
+name: awsmemorydbacl-pulumi-project
+runtime:
+  name: go

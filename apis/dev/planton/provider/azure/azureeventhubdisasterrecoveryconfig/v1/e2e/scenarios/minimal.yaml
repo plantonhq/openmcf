@@ -18,7 +18,7 @@ metadata:
     # Deploy order: primary, then partner (both scenario-local -- the
     # globally-unique-name discipline; the alias name shares that
     # uniqueness scope too).
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azureeventhubdisasterrecoveryconfig/v1/e2e/fixture-namespace-primary.yaml,apis/dev/planton/provider/azure/azureeventhubdisasterrecoveryconfig/v1/e2e/fixture-namespace-partner.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azureeventhubdisasterrecoveryconfig/v1/e2e/fixture-namespace-primary.yaml,apis/dev/planton/provider/azure/azureeventhubdisasterrecoveryconfig/v1/e2e/fixture-namespace-partner.yaml"
   tags:
     - planton-e2e
 spec:

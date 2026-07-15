@@ -125,8 +125,13 @@ For fine-grained access control beyond IAM, AWS Lake Formation provides:
 - Tag-based access control
 - Cross-account data sharing
 
-Lake Formation governance is deliberately deferred from v1 of this component
-(see `create_table_default_permission` in the v2 roadmap).
+The database's `create_table_default_permissions` field controls what new
+tables grant by default. AWS's out-of-the-box behavior grants ALL to the
+virtual group `IAM_ALLOWED_PRINCIPALS` (plain IAM policies keep working —
+the compatibility mode most accounts run in). A Lake Formation-governed lake
+typically overrides this: grant a scoped default to specific principals, or
+supply an entry with an empty permission list to stop granting
+`IAM_ALLOWED_PRINCIPALS` on new tables entirely.
 
 ## Service Limits
 
@@ -175,14 +180,17 @@ Account
 Environment-specific database names isolate table metadata. Crawlers and ETL jobs
 target the correct database based on the deployment environment.
 
-## v2 Roadmap
+### Pattern 4: Multi-Account Data Mesh
 
-Features deliberately omitted from v1 that may be added based on demand:
+```
+Producer account: sales_curated (database, shared via AWS RAM)
+                        ↓
+Consumer account: shared_sales_link (targetDatabase resource link)
+                        ↓
+            Athena / Redshift Spectrum queries
+```
 
-- **Lake Formation governance** (`create_table_default_permission`) — Fine-grained
-  permissions for new tables. Adds governance but increases spec complexity.
-- **Federated databases** (`federated_database`) — Cross-service federation for
-  Redshift Data Shares. Enables querying Redshift data through the catalog.
-- **Cross-account references** (`target_database`) — Link to databases in other
-  AWS accounts or regions via Resource Access Manager.
-- **Parameters** — Generic key-value metadata for advanced Glue service integration.
+Producers own and share curated databases; consumers create resource links
+(`target_database`) so the shared tables appear in their local catalog under
+a local name. Redshift datashares project into the catalog the same way
+through `federated_database`.

@@ -27,7 +27,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayRedisCluster
 metadata:
   name: my-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -83,7 +83,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayRedisCluster
 metadata:
   name: dev-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -108,7 +108,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayRedisCluster
 metadata:
   name: prod-sessions
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -142,7 +142,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayRedisCluster
 metadata:
   name: analytics-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

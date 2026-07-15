@@ -6,9 +6,7 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -28,10 +26,6 @@ var _ = ginkgo.Describe("KubernetesIssuer Validation Tests", func() {
 				Name: "test-issuer",
 			},
 			Spec: &KubernetesIssuerSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: &foreignkeyv1.StringValueOrRef{
 					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 						Value: "cert-manager",

@@ -1,0 +1,14 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsAppRunnerVpcConnector
+metadata:
+  name: test-vpc-connector
+  org: test-org
+  env: dev
+  id: test-vpc-connector-dev
+spec:
+  region: us-west-2
+  subnetIds:
+    - value: subnet-0abc123def456
+    - value: subnet-0def456abc789
+  securityGroupIds:
+    - value: sg-0abc123def456

@@ -9,7 +9,6 @@ package awsecsclusterv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
-	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,91 +23,72 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Logging defines the logging behavior for Exec sessions.
-type ExecConfiguration_Logging int32
-
-const (
-	// UNSPECIFIED means exec is disabled for this cluster.
-	ExecConfiguration_LOGGING_UNSPECIFIED ExecConfiguration_Logging = 0
-	// DEFAULT uses AWS-managed defaults (CloudWatch or S3 if enabled on account).
-	ExecConfiguration_DEFAULT ExecConfiguration_Logging = 1
-	// NONE explicitly disables exec auditing (exec still works, but no logs).
-	ExecConfiguration_NONE ExecConfiguration_Logging = 2
-	// OVERRIDE uses custom log_configuration specified below.
-	ExecConfiguration_OVERRIDE ExecConfiguration_Logging = 3
-)
-
-// Enum value maps for ExecConfiguration_Logging.
-var (
-	ExecConfiguration_Logging_name = map[int32]string{
-		0: "LOGGING_UNSPECIFIED",
-		1: "DEFAULT",
-		2: "NONE",
-		3: "OVERRIDE",
-	}
-	ExecConfiguration_Logging_value = map[string]int32{
-		"LOGGING_UNSPECIFIED": 0,
-		"DEFAULT":             1,
-		"NONE":                2,
-		"OVERRIDE":            3,
-	}
-)
-
-func (x ExecConfiguration_Logging) Enum() *ExecConfiguration_Logging {
-	p := new(ExecConfiguration_Logging)
-	*p = x
-	return p
-}
-
-func (x ExecConfiguration_Logging) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ExecConfiguration_Logging) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (ExecConfiguration_Logging) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_enumTypes[0]
-}
-
-func (x ExecConfiguration_Logging) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ExecConfiguration_Logging.Descriptor instead.
-func (ExecConfiguration_Logging) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDescGZIP(), []int{2, 0}
-}
-
-// AwsAwsEcsClusterSpec defines the production-ready configuration for creating
-// an AWS ECS cluster that supports Fargate workloads with cost optimization.
+// AwsEcsClusterSpec defines an ECS cluster: the logical boundary that
+// groups services and tasks, decides where their containers run (Fargate,
+// EC2 capacity providers, or a blend), and carries cluster-wide posture --
+// Container Insights observability, ECS Exec auditing, Fargate storage
+// encryption, and the Service Connect default namespace.
+//
+// Capacity is a spectrum. A serverless cluster associates the AWS-managed
+// FARGATE / FARGATE_SPOT providers and never thinks about instances. An
+// EC2-backed cluster defines ec2_capacity_providers -- each wrapping a
+// referenced AwsAutoScalingGroup whose fleet ECS scales up and down through
+// managed scaling -- and services blend across all of it by provider name
+// in their capacity_provider_strategy. The cluster itself is free; only
+// the tasks and instances it schedules cost money.
 type AwsEcsClusterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the resource will be created.
 	// Example: "us-west-2", "eu-west-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// enable_container_insights determines whether to enable CloudWatch
-	// Container Insights for this cluster. This is highly recommended
-	// for production monitoring, though it incurs CloudWatch costs.
-	// If omitted, it is recommended to be "true".
-	EnableContainerInsights bool `protobuf:"varint,2,opt,name=enable_container_insights,json=enableContainerInsights,proto3" json:"enable_container_insights,omitempty"`
-	// capacity_providers is a list of capacity providers attached
-	// to this cluster. For a Fargate-only cluster, typically ["FARGATE"]
-	// or ["FARGATE", "FARGATE_SPOT"] for cost-optimized Spot usage.
+	// CloudWatch Container Insights for the cluster:
+	// "enabled" -- metrics and logs at the cluster/service/task level.
+	// "enhanced" -- adds container-level observability with automatic
+	//
+	//	dashboards (recommended for production; higher CloudWatch cost).
+	//
+	// "disabled" -- no Insights telemetry.
+	// Unset keeps the account's default setting. Updatable in place.
+	ContainerInsights string `protobuf:"bytes,2,opt,name=container_insights,json=containerInsights,proto3" json:"container_insights,omitempty"`
+	// The AWS-managed serverless capacity providers to associate:
+	// "FARGATE" and/or "FARGATE_SPOT". These are built into every account
+	// -- associating them here is what lets services in this cluster name
+	// them in a capacity_provider_strategy. EC2 capacity is defined
+	// separately in ec2_capacity_providers; both sets associate onto the
+	// cluster together.
 	CapacityProviders []string `protobuf:"bytes,3,rep,name=capacity_providers,json=capacityProviders,proto3" json:"capacity_providers,omitempty"`
-	// default_capacity_provider_strategy defines the base/weight
-	// distribution for tasks across capacity providers. This is the
-	// primary cost-optimization lever for Fargate workloads.
-	// Example: FARGATE (base: 1, weight: 1) + FARGATE_SPOT (weight: 4)
-	// results in 20% on-demand, 80% Spot for scaled tasks.
-	DefaultCapacityProviderStrategy []*CapacityProviderStrategy `protobuf:"bytes,4,rep,name=default_capacity_provider_strategy,json=defaultCapacityProviderStrategy,proto3" json:"default_capacity_provider_strategy,omitempty"`
-	// execute_command_configuration defines cluster-level auditing
-	// settings for ECS Exec. This controls logging and encryption
-	// for exec sessions. If not specified, exec is disabled.
-	ExecuteCommandConfiguration *ExecConfiguration `protobuf:"bytes,5,opt,name=execute_command_configuration,json=executeCommandConfiguration,proto3" json:"execute_command_configuration,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// EC2 capacity providers, each wrapping a referenced auto-scaling
+	// group. ECS's managed scaling drives the group's desired count from
+	// task demand -- you size the ASG's bounds, ECS turns instances on and
+	// off. Each entry materializes as its own capacity provider resource
+	// (keyed by name, so adding or removing one never disturbs the others)
+	// and is automatically associated with the cluster alongside the
+	// Fargate built-ins. Services reference entries by name in their
+	// capacity_provider_strategy.
+	Ec2CapacityProviders []*AwsEcsClusterEc2CapacityProvider `protobuf:"bytes,4,rep,name=ec2_capacity_providers,json=ec2CapacityProviders,proto3" json:"ec2_capacity_providers,omitempty"`
+	// The cluster's default capacity provider strategy -- what ECS uses
+	// when a service or run-task does not declare its own strategy. Name
+	// any associated provider: the Fargate built-ins or an
+	// ec2_capacity_providers entry. Example: FARGATE base 1 / weight 1 +
+	// FARGATE_SPOT weight 4 keeps one guaranteed On-Demand task and runs
+	// ~80% of scaled capacity on Spot.
+	DefaultCapacityProviderStrategy []*AwsEcsClusterCapacityProviderStrategy `protobuf:"bytes,5,rep,name=default_capacity_provider_strategy,json=defaultCapacityProviderStrategy,proto3" json:"default_capacity_provider_strategy,omitempty"`
+	// ECS Exec auditing for the cluster: where interactive exec sessions
+	// (`aws ecs execute-command`) are logged and how session traffic is
+	// encrypted. Without this block, exec sessions still work when a
+	// service enables them -- they are simply not centrally audited.
+	ExecuteCommandConfiguration *AwsEcsClusterExecuteCommandConfiguration `protobuf:"bytes,6,opt,name=execute_command_configuration,json=executeCommandConfiguration,proto3" json:"execute_command_configuration,omitempty"`
+	// Customer-managed KMS encryption for Fargate ephemeral task storage
+	// and managed storage -- the compliance posture for regulated
+	// workloads. Unset uses AWS-owned keys (data is still encrypted).
+	ManagedStorageConfiguration *AwsEcsClusterManagedStorageConfiguration `protobuf:"bytes,7,opt,name=managed_storage_configuration,json=managedStorageConfiguration,proto3" json:"managed_storage_configuration,omitempty"`
+	// The AWS Cloud Map namespace (by ARN) that Service Connect uses by
+	// default for services in this cluster. Services can override it;
+	// setting it here is what lets a whole environment share one service
+	// mesh namespace without per-service wiring.
+	ServiceConnectNamespaceArn string `protobuf:"bytes,8,opt,name=service_connect_namespace_arn,json=serviceConnectNamespaceArn,proto3" json:"service_connect_namespace_arn,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *AwsEcsClusterSpec) Reset() {
@@ -148,11 +128,11 @@ func (x *AwsEcsClusterSpec) GetRegion() string {
 	return ""
 }
 
-func (x *AwsEcsClusterSpec) GetEnableContainerInsights() bool {
+func (x *AwsEcsClusterSpec) GetContainerInsights() string {
 	if x != nil {
-		return x.EnableContainerInsights
+		return x.ContainerInsights
 	}
-	return false
+	return ""
 }
 
 func (x *AwsEcsClusterSpec) GetCapacityProviders() []string {
@@ -162,55 +142,92 @@ func (x *AwsEcsClusterSpec) GetCapacityProviders() []string {
 	return nil
 }
 
-func (x *AwsEcsClusterSpec) GetDefaultCapacityProviderStrategy() []*CapacityProviderStrategy {
+func (x *AwsEcsClusterSpec) GetEc2CapacityProviders() []*AwsEcsClusterEc2CapacityProvider {
+	if x != nil {
+		return x.Ec2CapacityProviders
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterSpec) GetDefaultCapacityProviderStrategy() []*AwsEcsClusterCapacityProviderStrategy {
 	if x != nil {
 		return x.DefaultCapacityProviderStrategy
 	}
 	return nil
 }
 
-func (x *AwsEcsClusterSpec) GetExecuteCommandConfiguration() *ExecConfiguration {
+func (x *AwsEcsClusterSpec) GetExecuteCommandConfiguration() *AwsEcsClusterExecuteCommandConfiguration {
 	if x != nil {
 		return x.ExecuteCommandConfiguration
 	}
 	return nil
 }
 
-// CapacityProviderStrategy defines the base/weight model for
-// distributing tasks across capacity providers, enabling production
-// cost optimization patterns (e.g., guaranteed on-demand base + Spot scaling).
-type CapacityProviderStrategy struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// capacity_provider is the name of the capacity provider
-	// (e.g., "FARGATE" or "FARGATE_SPOT").
-	CapacityProvider string `protobuf:"bytes,1,opt,name=capacity_provider,json=capacityProvider,proto3" json:"capacity_provider,omitempty"`
-	// base is the minimum number of tasks to run on this provider.
-	// Typically used with FARGATE to guarantee stability.
-	// Must be 0 or greater.
-	Base int32 `protobuf:"varint,2,opt,name=base,proto3" json:"base,omitempty"`
-	// weight is the relative weight for scaling tasks beyond the base.
-	// Example: FARGATE (weight: 1) + FARGATE_SPOT (weight: 4)
-	// results in 20% on-demand, 80% Spot for scaled tasks.
-	// Must be greater than 0 if this strategy is used.
-	Weight        int32 `protobuf:"varint,3,opt,name=weight,proto3" json:"weight,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+func (x *AwsEcsClusterSpec) GetManagedStorageConfiguration() *AwsEcsClusterManagedStorageConfiguration {
+	if x != nil {
+		return x.ManagedStorageConfiguration
+	}
+	return nil
 }
 
-func (x *CapacityProviderStrategy) Reset() {
-	*x = CapacityProviderStrategy{}
+func (x *AwsEcsClusterSpec) GetServiceConnectNamespaceArn() string {
+	if x != nil {
+		return x.ServiceConnectNamespaceArn
+	}
+	return ""
+}
+
+// AwsEcsClusterEc2CapacityProvider wraps one auto-scaling group as ECS
+// capacity. The provider itself is create-time bound to its group
+// (changing auto_scaling_group_arn or name replaces the provider); the
+// managed scaling and draining knobs update in place.
+type AwsEcsClusterEc2CapacityProvider struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The capacity provider name -- what services put in their
+	// capacity_provider_strategy. 1-255 characters: letters, digits,
+	// hyphens, underscores; must not start with "aws", "ecs", or "fargate"
+	// (AWS reserves those prefixes).
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The auto-scaling group that provides the instances. Reference an
+	// AwsAutoScalingGroup's autoscaling_group_arn output or pass a literal
+	// ARN. The group's launch template decides the instance shape (use an
+	// ECS-optimized AMI whose agent joins this cluster via user data);
+	// ECS's managed scaling then drives the group's desired capacity
+	// between the group's own min/max bounds. ForceNew: changing the group
+	// replaces the provider.
+	AutoScalingGroupArn *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=auto_scaling_group_arn,json=autoScalingGroupArn,proto3" json:"auto_scaling_group_arn,omitempty"`
+	// ECS-managed scaling of the auto-scaling group. Leave unset to keep
+	// AWS's defaults (managed scaling enabled, target capacity 100); set
+	// it to tune headroom and scaling step bounds.
+	ManagedScaling *AwsEcsClusterManagedScaling `protobuf:"bytes,3,opt,name=managed_scaling,json=managedScaling,proto3" json:"managed_scaling,omitempty"`
+	// Protect instances running non-daemon tasks from scale-in
+	// termination: "ENABLED" or "DISABLED". Enabling it requires the
+	// auto-scaling group itself to enable new-instance scale-in protection
+	// (protect_from_scale_in on the group) -- AWS rejects the provider
+	// otherwise. The safe default for task-dense clusters.
+	ManagedTerminationProtection string `protobuf:"bytes,4,opt,name=managed_termination_protection,json=managedTerminationProtection,proto3" json:"managed_termination_protection,omitempty"`
+	// Gracefully drain tasks off instances the group is terminating:
+	// "ENABLED" (AWS default) or "DISABLED". Draining is what makes
+	// scale-in and instance refresh invisible to services.
+	ManagedDraining string `protobuf:"bytes,5,opt,name=managed_draining,json=managedDraining,proto3" json:"managed_draining,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AwsEcsClusterEc2CapacityProvider) Reset() {
+	*x = AwsEcsClusterEc2CapacityProvider{}
 	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CapacityProviderStrategy) String() string {
+func (x *AwsEcsClusterEc2CapacityProvider) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CapacityProviderStrategy) ProtoMessage() {}
+func (*AwsEcsClusterEc2CapacityProvider) ProtoMessage() {}
 
-func (x *CapacityProviderStrategy) ProtoReflect() protoreflect.Message {
+func (x *AwsEcsClusterEc2CapacityProvider) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -222,68 +239,245 @@ func (x *CapacityProviderStrategy) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CapacityProviderStrategy.ProtoReflect.Descriptor instead.
-func (*CapacityProviderStrategy) Descriptor() ([]byte, []int) {
+// Deprecated: Use AwsEcsClusterEc2CapacityProvider.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterEc2CapacityProvider) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *CapacityProviderStrategy) GetCapacityProvider() string {
+func (x *AwsEcsClusterEc2CapacityProvider) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsEcsClusterEc2CapacityProvider) GetAutoScalingGroupArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.AutoScalingGroupArn
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterEc2CapacityProvider) GetManagedScaling() *AwsEcsClusterManagedScaling {
+	if x != nil {
+		return x.ManagedScaling
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterEc2CapacityProvider) GetManagedTerminationProtection() string {
+	if x != nil {
+		return x.ManagedTerminationProtection
+	}
+	return ""
+}
+
+func (x *AwsEcsClusterEc2CapacityProvider) GetManagedDraining() string {
+	if x != nil {
+		return x.ManagedDraining
+	}
+	return ""
+}
+
+// AwsEcsClusterManagedScaling tunes how ECS drives the auto-scaling
+// group's desired capacity from task demand. Unset fields keep AWS's
+// computed defaults.
+type AwsEcsClusterManagedScaling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Managed scaling on or off: "ENABLED" (AWS default -- ECS sizes the
+	// group) or "DISABLED" (you size the group yourself; ECS only places
+	// tasks on what exists).
+	Status string `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	// Utilization target for the group, 1-100 percent. 100 (AWS default)
+	// runs instances fully packed; a lower value (e.g. 80) keeps headroom
+	// so new tasks place without waiting for an instance launch.
+	TargetCapacity int32 `protobuf:"varint,2,opt,name=target_capacity,json=targetCapacity,proto3" json:"target_capacity,omitempty"`
+	// Smallest scale-out step, 1-10000 instances. AWS default: 1.
+	MinimumScalingStepSize int32 `protobuf:"varint,3,opt,name=minimum_scaling_step_size,json=minimumScalingStepSize,proto3" json:"minimum_scaling_step_size,omitempty"`
+	// Largest scale-out step, 1-10000 instances. AWS default: 10000.
+	MaximumScalingStepSize int32 `protobuf:"varint,4,opt,name=maximum_scaling_step_size,json=maximumScalingStepSize,proto3" json:"maximum_scaling_step_size,omitempty"`
+	// Seconds a newly launched instance warms up before counting toward
+	// capacity metrics, 0-10000. AWS default: 300.
+	InstanceWarmupPeriodSeconds int32 `protobuf:"varint,5,opt,name=instance_warmup_period_seconds,json=instanceWarmupPeriodSeconds,proto3" json:"instance_warmup_period_seconds,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
+}
+
+func (x *AwsEcsClusterManagedScaling) Reset() {
+	*x = AwsEcsClusterManagedScaling{}
+	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsClusterManagedScaling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsClusterManagedScaling) ProtoMessage() {}
+
+func (x *AwsEcsClusterManagedScaling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsClusterManagedScaling.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterManagedScaling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsEcsClusterManagedScaling) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *AwsEcsClusterManagedScaling) GetTargetCapacity() int32 {
+	if x != nil {
+		return x.TargetCapacity
+	}
+	return 0
+}
+
+func (x *AwsEcsClusterManagedScaling) GetMinimumScalingStepSize() int32 {
+	if x != nil {
+		return x.MinimumScalingStepSize
+	}
+	return 0
+}
+
+func (x *AwsEcsClusterManagedScaling) GetMaximumScalingStepSize() int32 {
+	if x != nil {
+		return x.MaximumScalingStepSize
+	}
+	return 0
+}
+
+func (x *AwsEcsClusterManagedScaling) GetInstanceWarmupPeriodSeconds() int32 {
+	if x != nil {
+		return x.InstanceWarmupPeriodSeconds
+	}
+	return 0
+}
+
+// AwsEcsClusterCapacityProviderStrategy is one entry of the cluster's
+// default strategy: a provider name with the base/weight distribution ECS
+// applies to tasks that do not choose their own strategy.
+type AwsEcsClusterCapacityProviderStrategy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The capacity provider: "FARGATE", "FARGATE_SPOT", or the name of an
+	// ec2_capacity_providers entry.
+	CapacityProvider string `protobuf:"bytes,1,opt,name=capacity_provider,json=capacityProvider,proto3" json:"capacity_provider,omitempty"`
+	// Minimum number of tasks guaranteed on this provider before weights
+	// apply. Only one entry of the strategy may set a non-zero base.
+	Base int32 `protobuf:"varint,2,opt,name=base,proto3" json:"base,omitempty"`
+	// Relative share of tasks beyond the bases. Example: FARGATE weight 1 +
+	// FARGATE_SPOT weight 4 runs ~80% of scaled tasks on Spot.
+	Weight        int32 `protobuf:"varint,3,opt,name=weight,proto3" json:"weight,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEcsClusterCapacityProviderStrategy) Reset() {
+	*x = AwsEcsClusterCapacityProviderStrategy{}
+	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsClusterCapacityProviderStrategy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsClusterCapacityProviderStrategy) ProtoMessage() {}
+
+func (x *AwsEcsClusterCapacityProviderStrategy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsClusterCapacityProviderStrategy.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterCapacityProviderStrategy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsEcsClusterCapacityProviderStrategy) GetCapacityProvider() string {
 	if x != nil {
 		return x.CapacityProvider
 	}
 	return ""
 }
 
-func (x *CapacityProviderStrategy) GetBase() int32 {
+func (x *AwsEcsClusterCapacityProviderStrategy) GetBase() int32 {
 	if x != nil {
 		return x.Base
 	}
 	return 0
 }
 
-func (x *CapacityProviderStrategy) GetWeight() int32 {
+func (x *AwsEcsClusterCapacityProviderStrategy) GetWeight() int32 {
 	if x != nil {
 		return x.Weight
 	}
 	return 0
 }
 
-// ExecConfiguration defines cluster-level auditing for ECS Exec,
-// controlling how exec session commands and output are logged.
-type ExecConfiguration struct {
+// AwsEcsClusterExecuteCommandConfiguration audits ECS Exec sessions
+// cluster-wide: where session logs go and how session traffic is
+// encrypted.
+type AwsEcsClusterExecuteCommandConfiguration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// logging controls the logging behavior for Exec sessions.
-	// UNSPECIFIED (default) means exec is disabled.
-	// DEFAULT enables exec with AWS-managed logging.
-	// NONE enables exec but disables audit logging.
-	// OVERRIDE uses custom log_configuration.
-	Logging ExecConfiguration_Logging `protobuf:"varint,1,opt,name=logging,proto3,enum=dev.planton.provider.aws.awsecscluster.v1.ExecConfiguration_Logging" json:"logging,omitempty"`
-	// log_configuration specifies custom destinations for Exec audit logs.
-	// Only used if logging is OVERRIDE.
-	LogConfiguration *ExecLogConfiguration `protobuf:"bytes,2,opt,name=log_configuration,json=logConfiguration,proto3" json:"log_configuration,omitempty"`
-	// kms_key_id is an optional KMS key ID for encrypting exec session data.
-	// Applies to both CloudWatch Logs and S3 if specified.
-	// Can reference an AwsKmsKey resource.
+	// Log destination behavior for exec sessions:
+	// "DEFAULT" (AWS default) -- sessions log to the task's own awslogs
+	//
+	//	configuration.
+	//
+	// "OVERRIDE" -- sessions log to the destinations in log_configuration.
+	// "NONE" -- exec works but sessions are not logged (avoid outside
+	//
+	//	sandboxes; unaudited interactive access defeats compliance).
+	Logging string `protobuf:"bytes,1,opt,name=logging,proto3" json:"logging,omitempty"`
+	// Custom destinations for exec session logs. Only used (and required)
+	// when logging is "OVERRIDE".
+	LogConfiguration *AwsEcsClusterExecuteCommandLogConfiguration `protobuf:"bytes,2,opt,name=log_configuration,json=logConfiguration,proto3" json:"log_configuration,omitempty"`
+	// A KMS key to encrypt the exec session traffic between client and
+	// container. Reference an AwsKmsKey's key_arn output or pass a literal
+	// key ARN/ID. Unset uses TLS without customer-managed encryption.
 	KmsKeyId      *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ExecConfiguration) Reset() {
-	*x = ExecConfiguration{}
-	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[2]
+func (x *AwsEcsClusterExecuteCommandConfiguration) Reset() {
+	*x = AwsEcsClusterExecuteCommandConfiguration{}
+	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ExecConfiguration) String() string {
+func (x *AwsEcsClusterExecuteCommandConfiguration) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ExecConfiguration) ProtoMessage() {}
+func (*AwsEcsClusterExecuteCommandConfiguration) ProtoMessage() {}
 
-func (x *ExecConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[2]
+func (x *AwsEcsClusterExecuteCommandConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -294,70 +488,69 @@ func (x *ExecConfiguration) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ExecConfiguration.ProtoReflect.Descriptor instead.
-func (*ExecConfiguration) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDescGZIP(), []int{2}
+// Deprecated: Use AwsEcsClusterExecuteCommandConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterExecuteCommandConfiguration) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *ExecConfiguration) GetLogging() ExecConfiguration_Logging {
+func (x *AwsEcsClusterExecuteCommandConfiguration) GetLogging() string {
 	if x != nil {
 		return x.Logging
 	}
-	return ExecConfiguration_LOGGING_UNSPECIFIED
+	return ""
 }
 
-func (x *ExecConfiguration) GetLogConfiguration() *ExecLogConfiguration {
+func (x *AwsEcsClusterExecuteCommandConfiguration) GetLogConfiguration() *AwsEcsClusterExecuteCommandLogConfiguration {
 	if x != nil {
 		return x.LogConfiguration
 	}
 	return nil
 }
 
-func (x *ExecConfiguration) GetKmsKeyId() *v1.StringValueOrRef {
+func (x *AwsEcsClusterExecuteCommandConfiguration) GetKmsKeyId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.KmsKeyId
 	}
 	return nil
 }
 
-// ExecLogConfiguration specifies custom destinations for Exec audit logs,
-// enabling compliance and security monitoring of container exec sessions.
-type ExecLogConfiguration struct {
+// AwsEcsClusterExecuteCommandLogConfiguration names the destinations for
+// exec session audit logs -- a CloudWatch log group, an S3 bucket, or
+// both.
+type AwsEcsClusterExecuteCommandLogConfiguration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// cloud_watch_log_group_name is the CloudWatch log group to send logs to.
-	// If specified, exec session logs will be sent to this log group.
+	// The CloudWatch log group session logs are sent to. The group must
+	// already exist -- ECS does not create it.
 	CloudWatchLogGroupName string `protobuf:"bytes,1,opt,name=cloud_watch_log_group_name,json=cloudWatchLogGroupName,proto3" json:"cloud_watch_log_group_name,omitempty"`
-	// cloud_watch_encryption_enabled controls whether CloudWatch logs are encrypted.
-	// If true, uses the kms_key_id from ExecConfiguration.
+	// Require the CloudWatch log group to be KMS-encrypted; the send fails
+	// if it is not. Pair with an encrypted log group for compliance
+	// postures.
 	CloudWatchEncryptionEnabled bool `protobuf:"varint,2,opt,name=cloud_watch_encryption_enabled,json=cloudWatchEncryptionEnabled,proto3" json:"cloud_watch_encryption_enabled,omitempty"`
-	// s3_bucket_name is the S3 bucket to send logs to.
-	// If specified, exec session logs will be stored in this bucket.
+	// The S3 bucket session logs are written to.
 	S3BucketName string `protobuf:"bytes,3,opt,name=s3_bucket_name,json=s3BucketName,proto3" json:"s3_bucket_name,omitempty"`
-	// s3_key_prefix is the S3 key prefix for log files.
-	// Used to organize logs within the S3 bucket.
+	// Key prefix for session log objects within the bucket.
 	S3KeyPrefix string `protobuf:"bytes,4,opt,name=s3_key_prefix,json=s3KeyPrefix,proto3" json:"s3_key_prefix,omitempty"`
-	// s3_encryption_enabled controls whether S3 logs are encrypted.
-	// If true, uses the kms_key_id from ExecConfiguration.
-	S3EncryptionEnabled bool `protobuf:"varint,5,opt,name=s3_encryption_enabled,json=s3EncryptionEnabled,proto3" json:"s3_encryption_enabled,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Require the S3 bucket to be encrypted; the write fails if it is not.
+	S3BucketEncryptionEnabled bool `protobuf:"varint,5,opt,name=s3_bucket_encryption_enabled,json=s3BucketEncryptionEnabled,proto3" json:"s3_bucket_encryption_enabled,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
-func (x *ExecLogConfiguration) Reset() {
-	*x = ExecLogConfiguration{}
-	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[3]
+func (x *AwsEcsClusterExecuteCommandLogConfiguration) Reset() {
+	*x = AwsEcsClusterExecuteCommandLogConfiguration{}
+	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ExecLogConfiguration) String() string {
+func (x *AwsEcsClusterExecuteCommandLogConfiguration) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ExecLogConfiguration) ProtoMessage() {}
+func (*AwsEcsClusterExecuteCommandLogConfiguration) ProtoMessage() {}
 
-func (x *ExecLogConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[3]
+func (x *AwsEcsClusterExecuteCommandLogConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -368,77 +561,168 @@ func (x *ExecLogConfiguration) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ExecLogConfiguration.ProtoReflect.Descriptor instead.
-func (*ExecLogConfiguration) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDescGZIP(), []int{3}
+// Deprecated: Use AwsEcsClusterExecuteCommandLogConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterExecuteCommandLogConfiguration) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *ExecLogConfiguration) GetCloudWatchLogGroupName() string {
+func (x *AwsEcsClusterExecuteCommandLogConfiguration) GetCloudWatchLogGroupName() string {
 	if x != nil {
 		return x.CloudWatchLogGroupName
 	}
 	return ""
 }
 
-func (x *ExecLogConfiguration) GetCloudWatchEncryptionEnabled() bool {
+func (x *AwsEcsClusterExecuteCommandLogConfiguration) GetCloudWatchEncryptionEnabled() bool {
 	if x != nil {
 		return x.CloudWatchEncryptionEnabled
 	}
 	return false
 }
 
-func (x *ExecLogConfiguration) GetS3BucketName() string {
+func (x *AwsEcsClusterExecuteCommandLogConfiguration) GetS3BucketName() string {
 	if x != nil {
 		return x.S3BucketName
 	}
 	return ""
 }
 
-func (x *ExecLogConfiguration) GetS3KeyPrefix() string {
+func (x *AwsEcsClusterExecuteCommandLogConfiguration) GetS3KeyPrefix() string {
 	if x != nil {
 		return x.S3KeyPrefix
 	}
 	return ""
 }
 
-func (x *ExecLogConfiguration) GetS3EncryptionEnabled() bool {
+func (x *AwsEcsClusterExecuteCommandLogConfiguration) GetS3BucketEncryptionEnabled() bool {
 	if x != nil {
-		return x.S3EncryptionEnabled
+		return x.S3BucketEncryptionEnabled
 	}
 	return false
+}
+
+// AwsEcsClusterManagedStorageConfiguration applies customer-managed KMS
+// keys to the storage ECS manages for tasks in this cluster.
+type AwsEcsClusterManagedStorageConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The KMS key encrypting Fargate ephemeral task storage. Reference an
+	// AwsKmsKey's key_arn output or pass a literal key ARN. The key policy
+	// must grant the Fargate service principal decrypt/generate rights --
+	// AWS rejects the cluster configuration otherwise.
+	FargateEphemeralStorageKmsKeyId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=fargate_ephemeral_storage_kms_key_id,json=fargateEphemeralStorageKmsKeyId,proto3" json:"fargate_ephemeral_storage_kms_key_id,omitempty"`
+	// The KMS key for other ECS-managed storage. Reference an AwsKmsKey's
+	// key_arn output or pass a literal key ARN.
+	KmsKeyId      *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEcsClusterManagedStorageConfiguration) Reset() {
+	*x = AwsEcsClusterManagedStorageConfiguration{}
+	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsClusterManagedStorageConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsClusterManagedStorageConfiguration) ProtoMessage() {}
+
+func (x *AwsEcsClusterManagedStorageConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsClusterManagedStorageConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterManagedStorageConfiguration) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AwsEcsClusterManagedStorageConfiguration) GetFargateEphemeralStorageKmsKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.FargateEphemeralStorageKmsKeyId
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedStorageConfiguration) GetKmsKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KmsKeyId
+	}
+	return nil
 }
 
 var File_dev_planton_provider_aws_awsecscluster_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4dev/planton/provider/aws/awsecscluster/v1/spec.proto\x12)dev.planton.provider.aws.awsecscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe4\x03\n" +
+	"4dev/planton/provider/aws/awsecscluster/v1/spec.proto\x12)dev.planton.provider.aws.awsecscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x84\r\n" +
 	"\x11AwsEcsClusterSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12D\n" +
-	"\x19enable_container_insights\x18\x02 \x01(\bB\b\x92\xa6\x1d\x04trueR\x17enableContainerInsights\x12R\n" +
-	"\x12capacity_providers\x18\x03 \x03(\tB#\xbaH \x92\x01\x1d\x18\x01\"\x19r\x17R\aFARGATER\fFARGATE_SPOTR\x11capacityProviders\x12\x90\x01\n" +
-	"\"default_capacity_provider_strategy\x18\x04 \x03(\v2C.dev.planton.provider.aws.awsecscluster.v1.CapacityProviderStrategyR\x1fdefaultCapacityProviderStrategy\x12\x80\x01\n" +
-	"\x1dexecute_command_configuration\x18\x05 \x01(\v2<.dev.planton.provider.aws.awsecscluster.v1.ExecConfigurationR\x1bexecuteCommandConfiguration\"\xa3\x01\n" +
-	"\x18CapacityProviderStrategy\x12I\n" +
-	"\x11capacity_provider\x18\x01 \x01(\tB\x1c\xbaH\x19r\x17R\aFARGATER\fFARGATE_SPOTR\x10capacityProvider\x12\x1b\n" +
-	"\x04base\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x04base\x12\x1f\n" +
-	"\x06weight\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02 \x00R\x06weight\"\x9d\x03\n" +
-	"\x11ExecConfiguration\x12^\n" +
-	"\alogging\x18\x01 \x01(\x0e2D.dev.planton.provider.aws.awsecscluster.v1.ExecConfiguration.LoggingR\alogging\x12l\n" +
-	"\x11log_configuration\x18\x02 \x01(\v2?.dev.planton.provider.aws.awsecscluster.v1.ExecLogConfigurationR\x10logConfiguration\x12q\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12T\n" +
+	"\x12container_insights\x18\x02 \x01(\tB%\xbaH\"\xd8\x01\x01r\x1dR\aenabledR\benhancedR\bdisabledR\x11containerInsights\x12R\n" +
+	"\x12capacity_providers\x18\x03 \x03(\tB#\xbaH \x92\x01\x1d\x18\x01\"\x19r\x17R\aFARGATER\fFARGATE_SPOTR\x11capacityProviders\x12\x81\x01\n" +
+	"\x16ec2_capacity_providers\x18\x04 \x03(\v2K.dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterEc2CapacityProviderR\x14ec2CapacityProviders\x12\x9d\x01\n" +
+	"\"default_capacity_provider_strategy\x18\x05 \x03(\v2P.dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterCapacityProviderStrategyR\x1fdefaultCapacityProviderStrategy\x12\x97\x01\n" +
+	"\x1dexecute_command_configuration\x18\x06 \x01(\v2S.dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterExecuteCommandConfigurationR\x1bexecuteCommandConfiguration\x12\x97\x01\n" +
+	"\x1dmanaged_storage_configuration\x18\a \x01(\v2S.dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterManagedStorageConfigurationR\x1bmanagedStorageConfiguration\x12A\n" +
+	"\x1dservice_connect_namespace_arn\x18\b \x01(\tR\x1aserviceConnectNamespaceArn:\x88\x06\xbaH\x84\x06\x1a\x83\x03\n" +
+	"+default_strategy_names_associated_providers\x12\xaa\x01every default_capacity_provider_strategy entry must name an associated provider -- a capacity_providers built-in (FARGATE/FARGATE_SPOT) or an ec2_capacity_providers entry\x1a\xa6\x01this.default_capacity_provider_strategy.all(s, s.capacity_provider in this.capacity_providers || this.ec2_capacity_providers.exists(p, p.name == s.capacity_provider))\x1a\xb4\x01\n" +
+	"\x1cdefault_strategy_single_base\x12Ionly one default_capacity_provider_strategy entry may set a non-zero base\x1aIthis.default_capacity_provider_strategy.filter(s, s.base > 0).size() <= 1\x1a\xc4\x01\n" +
+	"\"ec2_capacity_provider_names_unique\x125ec2_capacity_providers entries must have unique names\x1agthis.ec2_capacity_providers.all(p, this.ec2_capacity_providers.filter(q, q.name == p.name).size() == 1)\"\xdf\b\n" +
+	" AwsEcsClusterEc2CapacityProvider\x124\n" +
+	"\x04name\x18\x01 \x01(\tB \xbaH\x1d\xc8\x01\x01r\x182\x16^[a-zA-Z0-9_-]{1,255}$R\x04name\x12\x9c\x01\n" +
+	"\x16auto_scaling_group_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xeb\x01\x92\xd4a$status.outputs.autoscaling_group_arnR\x13autoScalingGroupArn\x12o\n" +
+	"\x0fmanaged_scaling\x18\x03 \x01(\v2F.dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterManagedScalingR\x0emanagedScaling\x12D\n" +
+	"\x1emanaged_termination_protection\x18\x04 \x01(\tR\x1cmanagedTerminationProtection\x12)\n" +
+	"\x10managed_draining\x18\x05 \x01(\tR\x0fmanagedDraining:\x83\x05\xbaH\xff\x04\x1a\xf6\x01\n" +
+	"\x11name_not_reserved\x12Wcapacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)\x1a\x87\x01!(this.name.lowerAscii().startsWith('aws') || this.name.lowerAscii().startsWith('ecs') || this.name.lowerAscii().startsWith('fargate'))\x1a\xdc\x01\n" +
+	"$managed_termination_protection_valid\x12Gmanaged_termination_protection must be 'ENABLED' or 'DISABLED' when set\x1akthis.managed_termination_protection == '' || this.managed_termination_protection in ['ENABLED', 'DISABLED']\x1a\xa4\x01\n" +
+	"\x16managed_draining_valid\x129managed_draining must be 'ENABLED' or 'DISABLED' when set\x1aOthis.managed_draining == '' || this.managed_draining in ['ENABLED', 'DISABLED']\"\x94\v\n" +
+	"\x1bAwsEcsClusterManagedScaling\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12'\n" +
+	"\x0ftarget_capacity\x18\x02 \x01(\x05R\x0etargetCapacity\x129\n" +
+	"\x19minimum_scaling_step_size\x18\x03 \x01(\x05R\x16minimumScalingStepSize\x129\n" +
+	"\x19maximum_scaling_step_size\x18\x04 \x01(\x05R\x16maximumScalingStepSize\x12C\n" +
+	"\x1einstance_warmup_period_seconds\x18\x05 \x01(\x05R\x1binstanceWarmupPeriodSeconds:\xf8\b\xbaH\xf4\b\x1a|\n" +
+	"\fstatus_valid\x12/status must be 'ENABLED' or 'DISABLED' when set\x1a;this.status == '' || this.status in ['ENABLED', 'DISABLED']\x1a\xa4\x01\n" +
+	"\x15target_capacity_range\x122target_capacity must be between 1 and 100 when set\x1aWthis.target_capacity == 0 || (this.target_capacity >= 1 && this.target_capacity <= 100)\x1a\xc9\x01\n" +
+	"\x0emin_step_range\x12>minimum_scaling_step_size must be between 1 and 10000 when set\x1awthis.minimum_scaling_step_size == 0 || (this.minimum_scaling_step_size >= 1 && this.minimum_scaling_step_size <= 10000)\x1a\xc9\x01\n" +
+	"\x0emax_step_range\x12>maximum_scaling_step_size must be between 1 and 10000 when set\x1awthis.maximum_scaling_step_size == 0 || (this.maximum_scaling_step_size >= 1 && this.maximum_scaling_step_size <= 10000)\x1a\xa4\x01\n" +
+	"\fwarmup_range\x12:instance_warmup_period_seconds must be between 0 and 10000\x1aXthis.instance_warmup_period_seconds >= 0 && this.instance_warmup_period_seconds <= 10000\x1a\x8d\x02\n" +
+	"\x12step_sizes_ordered\x12fmaximum_scaling_step_size must be greater than or equal to minimum_scaling_step_size when both are set\x1a\x8e\x01this.minimum_scaling_step_size == 0 || this.maximum_scaling_step_size == 0 || this.maximum_scaling_step_size >= this.minimum_scaling_step_size\"\xa1\x01\n" +
+	"%AwsEcsClusterCapacityProviderStrategy\x123\n" +
+	"\x11capacity_provider\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x10capacityProvider\x12\x1f\n" +
+	"\x04base\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xa0\x8d\x06(\x00R\x04base\x12\"\n" +
+	"\x06weight\x18\x03 \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xe8\a(\x00R\x06weight\"\xa7\x06\n" +
+	"(AwsEcsClusterExecuteCommandConfiguration\x12\x18\n" +
+	"\alogging\x18\x01 \x01(\tR\alogging\x12\x83\x01\n" +
+	"\x11log_configuration\x18\x02 \x01(\v2V.dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterExecuteCommandLogConfigurationR\x10logConfiguration\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\"G\n" +
-	"\aLogging\x12\x17\n" +
-	"\x13LOGGING_UNSPECIFIED\x10\x00\x12\v\n" +
-	"\aDEFAULT\x10\x01\x12\b\n" +
-	"\x04NONE\x10\x02\x12\f\n" +
-	"\bOVERRIDE\x10\x03\"\x95\x02\n" +
-	"\x14ExecLogConfiguration\x12:\n" +
+	"kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId:\xe7\x03\xbaH\xe3\x03\x1a\x91\x01\n" +
+	"\rlogging_valid\x129logging must be 'DEFAULT', 'OVERRIDE', or 'NONE' when set\x1aEthis.logging == '' || this.logging in ['DEFAULT', 'OVERRIDE', 'NONE']\x1a\xad\x01\n" +
+	"#override_requires_log_configuration\x12Klogging 'OVERRIDE' requires log_configuration with at least one destination\x1a9this.logging != 'OVERRIDE' || has(this.log_configuration)\x1a\x9c\x01\n" +
+	"#log_configuration_requires_override\x129log_configuration only applies when logging is 'OVERRIDE'\x1a:!has(this.log_configuration) || this.logging == 'OVERRIDE'\"\xdb\x03\n" +
+	"+AwsEcsClusterExecuteCommandLogConfiguration\x12:\n" +
 	"\x1acloud_watch_log_group_name\x18\x01 \x01(\tR\x16cloudWatchLogGroupName\x12C\n" +
 	"\x1ecloud_watch_encryption_enabled\x18\x02 \x01(\bR\x1bcloudWatchEncryptionEnabled\x12$\n" +
 	"\x0es3_bucket_name\x18\x03 \x01(\tR\fs3BucketName\x12\"\n" +
-	"\rs3_key_prefix\x18\x04 \x01(\tR\vs3KeyPrefix\x122\n" +
-	"\x15s3_encryption_enabled\x18\x05 \x01(\bR\x13s3EncryptionEnabledB\xe2\x02\n" +
+	"\rs3_key_prefix\x18\x04 \x01(\tR\vs3KeyPrefix\x12?\n" +
+	"\x1cs3_bucket_encryption_enabled\x18\x05 \x01(\bR\x19s3BucketEncryptionEnabled:\x9f\x01\xbaH\x9b\x01\x1a\x98\x01\n" +
+	"\x18at_least_one_destination\x128provide cloud_watch_log_group_name and/or s3_bucket_name\x1aBthis.cloud_watch_log_group_name != '' || this.s3_bucket_name != ''\"\xc2\x02\n" +
+	"(AwsEcsClusterManagedStorageConfiguration\x12\xa2\x01\n" +
+	"$fargate_ephemeral_storage_kms_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x1ffargateEphemeralStorageKmsKeyId\x12q\n" +
+	"\n" +
+	"kms_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyIdB\xe2\x02\n" +
 	"-com.dev.planton.provider.aws.awsecscluster.v1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecscluster/v1;awsecsclusterv1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Aws.Awsecscluster.V1\xca\x02)Dev\\Planton\\Provider\\Aws\\Awsecscluster\\V1\xe2\x025Dev\\Planton\\Provider\\Aws\\Awsecscluster\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Aws::Awsecscluster::V1b\x06proto3"
 
 var (
@@ -453,27 +737,33 @@ func file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDescGZIP() []b
 	return file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_goTypes = []any{
-	(ExecConfiguration_Logging)(0),   // 0: dev.planton.provider.aws.awsecscluster.v1.ExecConfiguration.Logging
-	(*AwsEcsClusterSpec)(nil),        // 1: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterSpec
-	(*CapacityProviderStrategy)(nil), // 2: dev.planton.provider.aws.awsecscluster.v1.CapacityProviderStrategy
-	(*ExecConfiguration)(nil),        // 3: dev.planton.provider.aws.awsecscluster.v1.ExecConfiguration
-	(*ExecLogConfiguration)(nil),     // 4: dev.planton.provider.aws.awsecscluster.v1.ExecLogConfiguration
-	(*v1.StringValueOrRef)(nil),      // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsEcsClusterSpec)(nil),                           // 0: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterSpec
+	(*AwsEcsClusterEc2CapacityProvider)(nil),            // 1: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterEc2CapacityProvider
+	(*AwsEcsClusterManagedScaling)(nil),                 // 2: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterManagedScaling
+	(*AwsEcsClusterCapacityProviderStrategy)(nil),       // 3: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterCapacityProviderStrategy
+	(*AwsEcsClusterExecuteCommandConfiguration)(nil),    // 4: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterExecuteCommandConfiguration
+	(*AwsEcsClusterExecuteCommandLogConfiguration)(nil), // 5: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterExecuteCommandLogConfiguration
+	(*AwsEcsClusterManagedStorageConfiguration)(nil),    // 6: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterManagedStorageConfiguration
+	(*v1.StringValueOrRef)(nil),                         // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterSpec.default_capacity_provider_strategy:type_name -> dev.planton.provider.aws.awsecscluster.v1.CapacityProviderStrategy
-	3, // 1: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterSpec.execute_command_configuration:type_name -> dev.planton.provider.aws.awsecscluster.v1.ExecConfiguration
-	0, // 2: dev.planton.provider.aws.awsecscluster.v1.ExecConfiguration.logging:type_name -> dev.planton.provider.aws.awsecscluster.v1.ExecConfiguration.Logging
-	4, // 3: dev.planton.provider.aws.awsecscluster.v1.ExecConfiguration.log_configuration:type_name -> dev.planton.provider.aws.awsecscluster.v1.ExecLogConfiguration
-	5, // 4: dev.planton.provider.aws.awsecscluster.v1.ExecConfiguration.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	1,  // 0: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterSpec.ec2_capacity_providers:type_name -> dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterEc2CapacityProvider
+	3,  // 1: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterSpec.default_capacity_provider_strategy:type_name -> dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterCapacityProviderStrategy
+	4,  // 2: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterSpec.execute_command_configuration:type_name -> dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterExecuteCommandConfiguration
+	6,  // 3: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterSpec.managed_storage_configuration:type_name -> dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterManagedStorageConfiguration
+	7,  // 4: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterEc2CapacityProvider.auto_scaling_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 5: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterEc2CapacityProvider.managed_scaling:type_name -> dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterManagedScaling
+	5,  // 6: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterExecuteCommandConfiguration.log_configuration:type_name -> dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterExecuteCommandLogConfiguration
+	7,  // 7: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterExecuteCommandConfiguration.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 8: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterManagedStorageConfiguration.fargate_ephemeral_storage_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 9: dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterManagedStorageConfiguration.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_init() }
@@ -486,14 +776,13 @@ func file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   4,
+			NumEnums:      0,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_aws_awsecscluster_v1_spec_proto = out.File

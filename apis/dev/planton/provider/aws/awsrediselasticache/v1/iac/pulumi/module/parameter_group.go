@@ -7,33 +7,35 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// parameterGroup creates a custom ElastiCache parameter group when inline
-// parameters are provided and a parameter_group_family is specified.
+// parameterGroup manages a custom ElastiCache parameter group only when
+// the spec carries inline parameters -- a named parameter list is
+// configuration owned by exactly this cluster, not a composable node.
+// Bringing an existing group name and inline parameters are mutually
+// exclusive (CEL-enforced).
 func parameterGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*elasticache.ParameterGroup, error) {
-	spec := locals.Spec
-	if spec == nil || len(spec.Parameters) == 0 || spec.ParameterGroupFamily == "" {
+	spec := locals.AwsRedisElasticache.Spec
+	if len(spec.Parameters) == 0 || spec.ParameterGroupName != "" {
 		return nil, nil
 	}
 
-	var params elasticache.ParameterGroupParameterArray
-	for _, p := range spec.Parameters {
-		params = append(params, &elasticache.ParameterGroupParameterArgs{
-			Name:  pulumi.String(p.Name),
-			Value: pulumi.String(p.Value),
+	parameters := elasticache.ParameterGroupParameterArray{}
+	for _, parameter := range spec.Parameters {
+		parameters = append(parameters, &elasticache.ParameterGroupParameterArgs{
+			Name:  pulumi.String(parameter.Name),
+			Value: pulumi.String(parameter.Value),
 		})
 	}
 
-	pg, err := elasticache.NewParameterGroup(ctx, "parameter-group", &elasticache.ParameterGroupArgs{
-		Name:        pulumi.Sprintf("%s-custom", locals.Target.Metadata.Id),
-		Family:      pulumi.String(spec.ParameterGroupFamily),
-		Description: pulumi.Sprintf("Custom parameter group for %s", locals.Target.Metadata.Id),
-		Parameters:  params,
-		Tags:        pulumi.ToStringMap(locals.AwsTags),
-	}, pulumi.Provider(provider))
+	createdParameterGroup, err := elasticache.NewParameterGroup(ctx, "parameter-group",
+		&elasticache.ParameterGroupArgs{
+			Name:        pulumi.String(locals.ReplicationGroupId),
+			Family:      pulumi.String(spec.ParameterGroupFamily),
+			Description: pulumi.Sprintf("Custom parameter group for %s", locals.ReplicationGroupId),
+			Parameters:  parameters,
+			Tags:        pulumi.ToStringMap(locals.AwsTags),
+		}, pulumi.Provider(provider))
 	if err != nil {
-		return nil, errors.Wrap(err, "create parameter group")
+		return nil, errors.Wrap(err, "failed to create ElastiCache parameter group")
 	}
-
-	ctx.Export(OpParameterGroupName, pg.Name)
-	return pg, nil
+	return createdParameterGroup, nil
 }

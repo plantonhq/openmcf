@@ -30,8 +30,8 @@ const (
 // reflection) without depending on volatile production cloud resource shapes or
 // Kubernetes-specific types.
 //
-// For Kubernetes-specific test fields (ContainerResources, KubernetesClusterSelector,
-// ContainerEnv, etc.), use TestCloudResourceKubernetes instead.
+// For Kubernetes-specific test fields (ContainerResources, ContainerEnv, etc.),
+// use TestCloudResourceKubernetes instead.
 //
 // Field coverage:
 //   - Scalar fields with (dev.planton.shared.options.default): string, int32, int64,

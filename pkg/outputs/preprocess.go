@@ -2,19 +2,20 @@ package outputs
 
 import "strings"
 
-// preprocessKeys normalizes IaC output map keys' PATH SYNTAX to match the
-// dot-path walker:
+// preprocessKeys normalizes IaC output map keys to match proto field paths.
+//
+// IaC engines (Terraform/Pulumi) may emit keys with conventions that differ
+// from protobuf field naming:
 //
 //   - ".\[" -> "[" : Remove the dot before square brackets. Terraform uses
 //     "subnets.[0].id" but the dot-path walker expects "subnets[0].id".
 //
-// Field-NAME normalization (hyphens to underscores, for IaC outputs whose
-// names use hyphenated conventions) deliberately does NOT happen here: a
-// dotted key may traverse a map field, and everything after the map field's
-// segment is a map KEY -- user data such as a backend pool's name -- that
-// must be preserved verbatim ("ssh-admin" must not become "ssh_admin").
-// populateMessage normalizes each segment at field-descriptor lookup time
-// instead, where it knows which segments are field names.
+// Hyphenated FIELD names ("load-balancer-arn") are deliberately NOT rewritten
+// here: a whole-key rewrite would also corrupt proto map KEYS, which are data
+// that legitimately contains hyphens (subnet IDs like "subnet-0abc" keying a
+// map<string,string> output). Field-name segments are instead normalized per
+// segment at lookup time in setFieldRecursively, which knows which segments
+// are field names and which are map keys.
 //
 // The original map is not modified; a new map is returned.
 func preprocessKeys(outputs map[string]string) map[string]string {

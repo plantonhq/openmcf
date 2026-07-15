@@ -112,8 +112,11 @@ func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordS
 			Ttl:               pulumi.Int(ttl),
 			Tags:              pulumi.ToStringMap(locals.AzureTags),
 		}
-		if spec.Cname.Value != "" {
-			args.Record = pulumi.String(spec.Cname.Value)
+		// value is a StringValueOrRef; the platform resolves valueFrom
+		// references before the module runs, so GetValue() is the
+		// resolved literal (e.g. a Front Door endpoint's host_name).
+		if spec.Cname.Value != nil && spec.Cname.Value.GetValue() != "" {
+			args.Record = pulumi.String(spec.Cname.Value.GetValue())
 		}
 		if spec.Cname.TargetResourceId != nil && spec.Cname.TargetResourceId.GetValue() != "" {
 			args.TargetResourceId = pulumi.String(spec.Cname.TargetResourceId.GetValue())
@@ -201,11 +204,14 @@ func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordS
 	case len(spec.Txt) > 0:
 		// Values up to 4096 characters are legal: the provider
 		// transparently splits each into the 254-character strings DNS
-		// requires and reassembles them on read.
+		// requires and reassembles them on read. Each value is a
+		// StringValueOrRef; the platform resolves valueFrom references
+		// before the module runs (e.g. a Front Door custom domain's
+		// validation_token), so GetValue() is the resolved literal.
 		txtRecords := make(dns.TxtRecordRecordArray, 0, len(spec.Txt))
 		for _, value := range spec.Txt {
 			txtRecords = append(txtRecords, &dns.TxtRecordRecordArgs{
-				Value: pulumi.String(value),
+				Value: pulumi.String(value.GetValue()),
 			})
 		}
 		created, err := dns.NewTxtRecord(ctx, "main", &dns.TxtRecordArgs{

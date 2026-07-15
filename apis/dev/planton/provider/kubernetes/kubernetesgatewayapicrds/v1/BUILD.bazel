@@ -25,8 +25,6 @@ go_test(
     srcs = ["spec_test.go"],
     embed = [":kubernetesgatewayapicrds"],
     deps = [
-        "//apis/dev/planton/provider/kubernetes",
-        "//apis/dev/planton/shared/cloudresourcekind",
         "@build_buf_go_protovalidate//:protovalidate",
         "@com_github_onsi_ginkgo_v2//:ginkgo",
         "@com_github_onsi_gomega//:gomega",

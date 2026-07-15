@@ -67,7 +67,6 @@ planton pulumi up --manifest gateway.yaml
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `target_cluster` | `KubernetesClusterSelector` | no | Target cluster selector. |
 | `namespace` | `StringValueOrRef` -> `KubernetesNamespace` | yes | Namespace to create the Gateway in. |
 | `gateway_class_name` | `StringValueOrRef` -> `KubernetesGatewayClass` | yes | GatewayClass that selects the controller. |
 | `listeners` | `[]KubernetesGatewayListener` | yes (1-64) | Logical endpoints (name, port, protocol, tls, allowed_routes). |

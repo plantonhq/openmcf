@@ -39,7 +39,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPostgres
 metadata:
   name: tutorial-postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
 spec:
   namespace:

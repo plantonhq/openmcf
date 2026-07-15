@@ -27,6 +27,10 @@ func int32Ptr(i int32) *int32 {
 	return &i
 }
 
+func float64Ptr(f float64) *float64 {
+	return &f
+}
+
 func svr(val string) *foreignkeyv1.StringValueOrRef {
 	return &foreignkeyv1.StringValueOrRef{
 		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: val},
@@ -91,12 +95,12 @@ var _ = ginkgo.Describe("AwsGlobalAcceleratorSpec validations", func() {
 									HealthCheckPath:            "/health",
 									HealthCheckIntervalSeconds: int32Ptr(10),
 									ThresholdCount:             int32Ptr(5),
-									TrafficDialPercentage:      70.0,
+									TrafficDialPercentage:      float64Ptr(70.0),
 									Endpoints: []*AwsGlobalAcceleratorEndpoint{
 										{
 											EndpointId:                  svr("arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-alb/1234567890"),
-											Weight:                      200,
-											ClientIpPreservationEnabled: true,
+											Weight:                      int32Ptr(200),
+											ClientIpPreservationEnabled: boolPtr(true),
 										},
 									},
 									PortOverrides: []*AwsGlobalAcceleratorPortOverride{
@@ -106,11 +110,11 @@ var _ = ginkgo.Describe("AwsGlobalAcceleratorSpec validations", func() {
 								{
 									Name:                  "eu-west-1",
 									EndpointGroupRegion:   "eu-west-1",
-									TrafficDialPercentage: 30.0,
+									TrafficDialPercentage: float64Ptr(30.0),
 									Endpoints: []*AwsGlobalAcceleratorEndpoint{
 										{
 											EndpointId: svr("arn:aws:elasticloadbalancing:eu-west-1:123456789012:loadbalancer/app/eu-alb/0987654321"),
-											Weight:     100,
+											Weight:     int32Ptr(100),
 										},
 									},
 								},
@@ -139,7 +143,7 @@ var _ = ginkgo.Describe("AwsGlobalAcceleratorSpec validations", func() {
 								{
 									Name: "us-west-2",
 									Endpoints: []*AwsGlobalAcceleratorEndpoint{
-										{EndpointId: svr("eipalloc-0123456789abcdef0"), Weight: 128},
+										{EndpointId: svr("eipalloc-0123456789abcdef0"), Weight: int32Ptr(128)},
 									},
 								},
 							},
@@ -179,7 +183,7 @@ var _ = ginkgo.Describe("AwsGlobalAcceleratorSpec validations", func() {
 									Name:                "primary",
 									HealthCheckProtocol: stringPtr("HTTPS"),
 									HealthCheckPath:     "/api/health",
-									HealthCheckPort:     8443,
+									HealthCheckPort:     int32Ptr(8443),
 								},
 							},
 						},
@@ -215,6 +219,63 @@ var _ = ginkgo.Describe("AwsGlobalAcceleratorSpec validations", func() {
 			})
 		})
 
+		ginkgo.Context("with endpoint weight zero (drain endpoint)", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := &AwsGlobalAcceleratorSpec{
+					Region: "us-west-2",
+					Listeners: []*AwsGlobalAcceleratorListener{
+						{
+							Name:     "web",
+							Protocol: "TCP",
+							PortRanges: []*AwsGlobalAcceleratorPortRange{
+								{FromPort: 80, ToPort: 80},
+							},
+							EndpointGroups: []*AwsGlobalAcceleratorEndpointGroup{
+								{
+									Name: "primary",
+									Endpoints: []*AwsGlobalAcceleratorEndpoint{
+										{EndpointId: svr("i-1234567890abcdef0"), Weight: int32Ptr(0)},
+									},
+								},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a cross-account endpoint carrying an attachment ARN", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := &AwsGlobalAcceleratorSpec{
+					Region: "us-west-2",
+					Listeners: []*AwsGlobalAcceleratorListener{
+						{
+							Name:     "web",
+							Protocol: "TCP",
+							PortRanges: []*AwsGlobalAcceleratorPortRange{
+								{FromPort: 443, ToPort: 443},
+							},
+							EndpointGroups: []*AwsGlobalAcceleratorEndpointGroup{
+								{
+									Name: "primary",
+									Endpoints: []*AwsGlobalAcceleratorEndpoint{
+										{
+											EndpointId:    svr("arn:aws:elasticloadbalancing:us-east-1:210987654321:loadbalancer/app/partner-alb/abc123"),
+											AttachmentArn: "arn:aws:globalaccelerator::210987654321:attachment/11111111-2222-3333-4444-555555555555",
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
 		ginkgo.Context("with traffic dial at zero (drain region)", func() {
 			ginkgo.It("should not return a validation error", func() {
 				spec := &AwsGlobalAcceleratorSpec{
@@ -229,7 +290,7 @@ var _ = ginkgo.Describe("AwsGlobalAcceleratorSpec validations", func() {
 							EndpointGroups: []*AwsGlobalAcceleratorEndpointGroup{
 								{
 									Name:                  "drained-region",
-									TrafficDialPercentage: 0.0,
+									TrafficDialPercentage: float64Ptr(0.0),
 								},
 							},
 						},
@@ -289,7 +350,7 @@ var _ = ginkgo.Describe("AwsGlobalAcceleratorSpec validations", func() {
 													},
 												},
 											},
-											Weight: 128,
+											Weight: int32Ptr(128),
 										},
 									},
 								},
@@ -438,7 +499,7 @@ var _ = ginkgo.Describe("AwsGlobalAcceleratorSpec validations", func() {
 			})
 		})
 
-		ginkgo.Context("with invalid health check interval (not 10 or 30)", func() {
+		ginkgo.Context("with health check interval 20 (not 10 or 30)", func() {
 			ginkgo.It("should return a validation error", func() {
 				spec := &AwsGlobalAcceleratorSpec{
 					Region: "us-west-2",
@@ -453,6 +514,231 @@ var _ = ginkgo.Describe("AwsGlobalAcceleratorSpec validations", func() {
 								{
 									Name:                       "primary",
 									HealthCheckIntervalSeconds: int32Ptr(20),
+								},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with health check interval above the set (45)", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := &AwsGlobalAcceleratorSpec{
+					Region: "us-west-2",
+					Listeners: []*AwsGlobalAcceleratorListener{
+						{
+							Name:     "web",
+							Protocol: "TCP",
+							PortRanges: []*AwsGlobalAcceleratorPortRange{
+								{FromPort: 80, ToPort: 80},
+							},
+							EndpointGroups: []*AwsGlobalAcceleratorEndpointGroup{
+								{
+									Name:                       "primary",
+									HealthCheckIntervalSeconds: int32Ptr(45),
+								},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with threshold count zero", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := &AwsGlobalAcceleratorSpec{
+					Region: "us-west-2",
+					Listeners: []*AwsGlobalAcceleratorListener{
+						{
+							Name:     "web",
+							Protocol: "TCP",
+							PortRanges: []*AwsGlobalAcceleratorPortRange{
+								{FromPort: 80, ToPort: 80},
+							},
+							EndpointGroups: []*AwsGlobalAcceleratorEndpointGroup{
+								{
+									Name:           "primary",
+									ThresholdCount: int32Ptr(0),
+								},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with health check port zero", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := &AwsGlobalAcceleratorSpec{
+					Region: "us-west-2",
+					Listeners: []*AwsGlobalAcceleratorListener{
+						{
+							Name:     "web",
+							Protocol: "TCP",
+							PortRanges: []*AwsGlobalAcceleratorPortRange{
+								{FromPort: 80, ToPort: 80},
+							},
+							EndpointGroups: []*AwsGlobalAcceleratorEndpointGroup{
+								{
+									Name:            "primary",
+									HealthCheckPort: int32Ptr(0),
+								},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a port range whose to_port is below from_port", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := &AwsGlobalAcceleratorSpec{
+					Region: "us-west-2",
+					Listeners: []*AwsGlobalAcceleratorListener{
+						{
+							Name:     "web",
+							Protocol: "TCP",
+							PortRanges: []*AwsGlobalAcceleratorPortRange{
+								{FromPort: 8080, ToPort: 80},
+							},
+							EndpointGroups: []*AwsGlobalAcceleratorEndpointGroup{
+								{Name: "primary"},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with more than 10 port ranges", func() {
+			ginkgo.It("should return a validation error", func() {
+				ranges := make([]*AwsGlobalAcceleratorPortRange, 11)
+				for i := range ranges {
+					ranges[i] = &AwsGlobalAcceleratorPortRange{
+						FromPort: int32(1000 + i),
+						ToPort:   int32(1000 + i),
+					}
+				}
+				spec := &AwsGlobalAcceleratorSpec{
+					Region: "us-west-2",
+					Listeners: []*AwsGlobalAcceleratorListener{
+						{
+							Name:       "too-many-ranges",
+							Protocol:   "TCP",
+							PortRanges: ranges,
+							EndpointGroups: []*AwsGlobalAcceleratorEndpointGroup{
+								{Name: "primary"},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with more than 10 port overrides", func() {
+			ginkgo.It("should return a validation error", func() {
+				overrides := make([]*AwsGlobalAcceleratorPortOverride, 11)
+				for i := range overrides {
+					overrides[i] = &AwsGlobalAcceleratorPortOverride{
+						ListenerPort: int32(1000 + i),
+						EndpointPort: int32(2000 + i),
+					}
+				}
+				spec := &AwsGlobalAcceleratorSpec{
+					Region: "us-west-2",
+					Listeners: []*AwsGlobalAcceleratorListener{
+						{
+							Name:     "web",
+							Protocol: "TCP",
+							PortRanges: []*AwsGlobalAcceleratorPortRange{
+								{FromPort: 80, ToPort: 80},
+							},
+							EndpointGroups: []*AwsGlobalAcceleratorEndpointGroup{
+								{
+									Name:          "primary",
+									PortOverrides: overrides,
+								},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with flow logs enabled but no s3_bucket", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := &AwsGlobalAcceleratorSpec{
+					Region: "us-west-2",
+					FlowLogs: &AwsGlobalAcceleratorFlowLogs{
+						Enabled: true,
+					},
+					Listeners: []*AwsGlobalAcceleratorListener{minimalListener()},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with traffic dial above 100", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := &AwsGlobalAcceleratorSpec{
+					Region: "us-west-2",
+					Listeners: []*AwsGlobalAcceleratorListener{
+						{
+							Name:     "web",
+							Protocol: "TCP",
+							PortRanges: []*AwsGlobalAcceleratorPortRange{
+								{FromPort: 80, ToPort: 80},
+							},
+							EndpointGroups: []*AwsGlobalAcceleratorEndpointGroup{
+								{
+									Name:                  "primary",
+									TrafficDialPercentage: float64Ptr(150.0),
+								},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a non-ARN attachment_arn", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := &AwsGlobalAcceleratorSpec{
+					Region: "us-west-2",
+					Listeners: []*AwsGlobalAcceleratorListener{
+						{
+							Name:     "web",
+							Protocol: "TCP",
+							PortRanges: []*AwsGlobalAcceleratorPortRange{
+								{FromPort: 80, ToPort: 80},
+							},
+							EndpointGroups: []*AwsGlobalAcceleratorEndpointGroup{
+								{
+									Name: "primary",
+									Endpoints: []*AwsGlobalAcceleratorEndpoint{
+										{
+											EndpointId:    svr("i-1234567890abcdef0"),
+											AttachmentArn: "not-an-arn",
+										},
+									},
 								},
 							},
 						},
@@ -503,7 +789,7 @@ var _ = ginkgo.Describe("AwsGlobalAcceleratorSpec validations", func() {
 								{
 									Name: "primary",
 									Endpoints: []*AwsGlobalAcceleratorEndpoint{
-										{EndpointId: svr("i-1234567890abcdef0"), Weight: 300},
+										{EndpointId: svr("i-1234567890abcdef0"), Weight: int32Ptr(300)},
 									},
 								},
 							},

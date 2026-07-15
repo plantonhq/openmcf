@@ -1,0 +1,48 @@
+# AwsAthenaWorkgroup customer-managed-results scenario: the common SQL
+# analytics shape. Query results land in the shared S3 bucket fixture
+# (declared via the e2e-prerequisites annotation -- the workgroup has no
+# registry prerequisites because a bare workgroup deploys standalone) with
+# SSE_S3 encryption and the minimum-encryption compliance guardrail; the
+# per-query scan cutoff, enforced workgroup configuration, CloudWatch
+# metrics, and an explicit engine pin exercise the governance surface; the
+# managed and S3 log-delivery arms prove the monitoring fold. output_location
+# is a plain URI string (not a reference), so it names the fixture bucket's
+# fixed name directly.
+#
+# Deliberately not exercised live: managed_query_results (mutually exclusive
+# with output_location by AWS's own rule -- it has its own lane),
+# identity_center / s3_access_grants (need an IAM Identity Center instance),
+# and the Spark-only surfaces (execution_role, content encryption,
+# CloudWatch Spark log types) -- see the profile.
+apiVersion: aws.planton.dev/v1
+kind: AwsAthenaWorkgroup
+metadata:
+  name: planton-oss-e2e-awsathwg-s3
+  id: planton-oss-e2e-awsathwg-s3
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsathenaworkgroup
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsS3Bucket"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E Athena workgroup with S3 results
+  state: ENABLED
+  resultConfiguration:
+    outputLocation: s3://planton-oss-e2e-awss3bucket-prereq/athena-results/
+    encryptionOption: SSE_S3
+  bytesScannedCutoffPerQuery: 10737418240
+  enforceWorkgroupConfiguration: true
+  publishCloudwatchMetricsEnabled: true
+  enableMinimumEncryptionConfiguration: true
+  selectedEngineVersion: AUTO
+  monitoring:
+    managedLogging: {}
+    s3Logging:
+      logLocation: s3://planton-oss-e2e-awss3bucket-prereq/athena-logs/
+  forceDestroy: true

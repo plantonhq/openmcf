@@ -1,0 +1,50 @@
+# The platform's IAM ground floor: the control-plane role and the node
+# role. Policies attach on the roles themselves — the cluster never
+# reaches into a role to grant anything, so "what can the control plane
+# do" is answered by reading exactly one resource.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: "{{ values.cluster_name }}-cluster-role"
+spec:
+  region: "{{ values.aws_region }}"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: eks.amazonaws.com
+        Action: sts:AssumeRole
+  managedPolicyArns:
+    # The control plane's own permissions: managing ENIs, describing
+    # subnets, publishing control-plane logs. AWS maintains the policy as
+    # EKS grows; pinning specific actions here would break on every
+    # platform release.
+    - value: arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+---
+# One node role serves both compute shapes: the managed node group's
+# instances, or Auto Mode's managed nodes — either way it is the identity
+# EC2 assumes to join and serve the cluster.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: "{{ values.cluster_name }}-node-role"
+spec:
+  region: "{{ values.aws_region }}"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: ec2.amazonaws.com
+        Action: sts:AssumeRole
+  managedPolicyArns:
+    # The standard worker trio: join/serve the cluster, run the VPC CNI
+    # (pod networking is real ENIs/IPs), and pull images from ECR.
+    # Workload permissions do NOT belong here — that is what IRSA is for
+    # (oidc.yaml): anything granted to this role is granted to every pod
+    # on every node.
+    - value: arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+    - value: arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+    - value: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly

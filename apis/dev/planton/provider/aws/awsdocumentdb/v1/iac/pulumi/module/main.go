@@ -1,104 +1,80 @@
 package module
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	awsdocumentdbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsdocumentdb/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/aws/pulumiawsprovider"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/docdb"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources orchestrates creation of AWS DocumentDB cluster related resources and exports outputs.
+// Resources provisions the DocumentDB cluster and its folded compute. The
+// cluster is the shared-storage brain (endpoints, credentials, backups,
+// encryption, engine lifecycle); the spec's instances list is the compute
+// that serves queries, each entry managed as its own provider resource
+// keyed by name. Subnets, security groups, and KMS keys compose by
+// reference -- this module never creates or mutates a resource that
+// deserves to be its own node.
 func Resources(ctx *pulumi.Context, stackInput *awsdocumentdbv1.AwsDocumentDbStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
-	// Build the AWS provider from the stack input via the shared builder, which resolves
-	// the right credential mechanism (static keys, keyless web identity, or ambient chain).
+	// Build the AWS provider from the stack input via the shared builder,
+	// which resolves the right credential mechanism (static keys, keyless
+	// web identity, or ambient chain).
 	provider, err := pulumiawsprovider.Get(ctx, stackInput.ProviderConfig, locals.AwsDocumentDb.Spec.Region)
 	if err != nil {
 		return errors.Wrap(err, "failed to create AWS provider")
 	}
 
-	// Security group (ingress from SGs and/or CIDRs)
-	createdSg, err := securityGroup(ctx, locals, provider)
-	if err != nil {
-		return errors.Wrap(err, "security group")
-	}
-
-	// Subnet group (only when subnetIds provided and no name supplied)
 	createdSubnetGroup, err := subnetGroup(ctx, locals, provider)
 	if err != nil {
-		return errors.Wrap(err, "subnet group")
+		return errors.Wrap(err, "failed to create subnet group")
 	}
 
-	// Cluster parameter group (when parameters provided)
-	createdParamGroup, err := clusterParameterGroup(ctx, locals, provider)
+	createdParameterGroup, err := clusterParameterGroup(ctx, locals, provider)
 	if err != nil {
-		return errors.Wrap(err, "cluster parameter group")
+		return errors.Wrap(err, "failed to create cluster parameter group")
 	}
 
-	// Create the DocumentDB Cluster
-	cluster, err := docdbCluster(ctx, locals, provider, createdSg, createdSubnetGroup, createdParamGroup)
+	createdCluster, err := docdbCluster(ctx, locals, provider, createdSubnetGroup, createdParameterGroup)
 	if err != nil {
-		return errors.Wrap(err, "documentdb cluster")
+		return errors.Wrap(err, "failed to create DocumentDB cluster")
 	}
 
-	// Create cluster instances
-	err = docdbClusterInstances(ctx, locals, provider, cluster)
+	createdInstances, err := clusterInstances(ctx, locals, provider, createdCluster)
 	if err != nil {
-		return errors.Wrap(err, "documentdb cluster instances")
+		return errors.Wrap(err, "failed to create cluster instances")
 	}
 
-	// Export outputs as defined in AwsDocumentDbStackOutputs
-	ctx.Export(OpClusterEndpoint, cluster.Endpoint)
-	ctx.Export(OpClusterReaderEndpoint, cluster.ReaderEndpoint)
-	ctx.Export(OpClusterId, cluster.ID())
-	ctx.Export(OpClusterArn, cluster.Arn)
-	ctx.Export(OpClusterPort, cluster.Port)
-	ctx.Export(OpClusterResourceId, cluster.ClusterResourceId)
+	ctx.Export(OpClusterIdentifier, createdCluster.ClusterIdentifier)
+	ctx.Export(OpArn, createdCluster.Arn)
+	ctx.Export(OpClusterResourceId, createdCluster.ClusterResourceId)
+	ctx.Export(OpEndpoint, createdCluster.Endpoint)
+	ctx.Export(OpReaderEndpoint, createdCluster.ReaderEndpoint)
+	ctx.Export(OpPort, createdCluster.Port)
+	ctx.Export(OpHostedZoneId, createdCluster.HostedZoneId)
+	ctx.Export(OpEngineVersionActual, createdCluster.EngineVersion)
 
-	// Build connection string
-	connectionString := pulumi.Sprintf("mongodb://%s:%s@%s:%d/?tls=true&replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false",
-		locals.AwsDocumentDb.Spec.GetMasterUsername(),
-		"<password>",
-		cluster.Endpoint,
-		locals.AwsDocumentDb.Spec.GetPort())
-	ctx.Export(OpConnectionString, connectionString)
+	// The AWS-managed master-user secret exists only when
+	// manage_master_user_password is on; export empty otherwise so the
+	// output shape is stable across both password strategies.
+	ctx.Export(OpMasterUserSecretArn, createdCluster.MasterUserSecrets.ApplyT(func(secrets []docdb.ClusterMasterUserSecret) string {
+		if len(secrets) == 0 || secrets[0].SecretArn == nil {
+			return ""
+		}
+		return *secrets[0].SecretArn
+	}).(pulumi.StringOutput))
 
-	if createdSubnetGroup != nil {
-		ctx.Export(OpDbSubnetGroupName, createdSubnetGroup.Name)
+	ctx.Export(OpDbSubnetGroupName, createdCluster.DbSubnetGroupName)
+	ctx.Export(OpDbClusterParameterGroupName, createdCluster.DbClusterParameterGroupName)
+
+	// Per-instance endpoints in spec order -- empty for headless shapes
+	// (restores and global-cluster members created without instances).
+	instanceEndpoints := make(pulumi.StringArray, 0, len(createdInstances))
+	for _, createdInstance := range createdInstances {
+		instanceEndpoints = append(instanceEndpoints, createdInstance.Endpoint)
 	}
-	if createdSg != nil {
-		ctx.Export(OpSecurityGroupId, createdSg.ID())
-	}
-	if createdParamGroup != nil {
-		ctx.Export(OpClusterParameterGroupName, createdParamGroup.Name)
-	}
+	ctx.Export(OpInstanceEndpoints, instanceEndpoints)
 
 	return nil
-}
-
-// getDefaultPort returns the default DocumentDB port
-func getDefaultPort() int32 {
-	return 27017
-}
-
-// getEffectivePort returns the port to use, either from spec or default
-func getEffectivePort(spec *awsdocumentdbv1.AwsDocumentDbSpec) int {
-	port := spec.GetPort()
-	if port == 0 {
-		return int(getDefaultPort())
-	}
-	return int(port)
-}
-
-// getEngineFamily returns the DocumentDB engine family for parameter groups
-func getEngineFamily(engineVersion string) string {
-	// DocumentDB parameter group family is based on engine version
-	// docdb5.0, docdb4.0, docdb3.6
-	if engineVersion == "" {
-		return "docdb5.0"
-	}
-	return fmt.Sprintf("docdb%s", engineVersion[:3])
 }

@@ -24,7 +24,7 @@ metadata:
     # prerequisite: storage-account names are globally unique and
     # sequential subtests that destroy and recreate the same name hang on
     # recreate.
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azurestorageencryptionscope/v1/e2e/minimal-account.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azurestorageencryptionscope/v1/e2e/minimal-account.yaml"
   tags:
     - planton-e2e
 spec:

@@ -30,7 +30,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayVpc
 metadata:
   name: my-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -73,7 +73,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayVpc
 metadata:
   name: isolated-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -91,7 +91,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayVpc
 metadata:
   name: app-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +112,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayVpc
 metadata:
   name: network-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

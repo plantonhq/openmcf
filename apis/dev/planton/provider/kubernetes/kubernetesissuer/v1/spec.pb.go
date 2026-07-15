@@ -8,7 +8,6 @@ package kubernetesissuerv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -37,8 +36,6 @@ const (
 // KubernetesClusterIssuer; Vault or other backends can be added later.
 type KubernetesIssuerSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where cert-manager is installed.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace where the Issuer will be created.
 	// The Issuer is namespace-scoped, so all Certificate resources that reference
 	// it must reside in this same namespace.
@@ -82,13 +79,6 @@ func (x *KubernetesIssuerSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesIssuerSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesIssuerSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesissuer_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesIssuerSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesIssuerSpec) GetNamespace() *v1.StringValueOrRef {
@@ -238,9 +228,8 @@ var File_dev_planton_provider_kubernetes_kubernetesissuer_v1_spec_proto protoref
 
 const file_dev_planton_provider_kubernetes_kubernetesissuer_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetesissuer/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesissuer.v1\x1a\x1bbuf/validate/validate.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd2\x05\n" +
-	"\x14KubernetesIssuerSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	">dev/planton/provider/kubernetes/kubernetesissuer/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesissuer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xef\x04\n" +
+	"\x14KubernetesIssuerSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12U\n" +
 	"\x02ca\x18d \x01(\v2C.dev.planton.provider.kubernetes.kubernetesissuer.v1.CaIssuerConfigH\x00R\x02ca\x12n\n" +
 	"\vself_signed\x18e \x01(\v2K.dev.planton.provider.kubernetes.kubernetesissuer.v1.SelfSignedIssuerConfigH\x00R\n" +
@@ -266,23 +255,21 @@ func file_dev_planton_provider_kubernetes_kubernetesissuer_v1_spec_proto_rawDesc
 
 var file_dev_planton_provider_kubernetes_kubernetesissuer_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_kubernetes_kubernetesissuer_v1_spec_proto_goTypes = []any{
-	(*KubernetesIssuerSpec)(nil),                 // 0: dev.planton.provider.kubernetes.kubernetesissuer.v1.KubernetesIssuerSpec
-	(*CaIssuerConfig)(nil),                       // 1: dev.planton.provider.kubernetes.kubernetesissuer.v1.CaIssuerConfig
-	(*SelfSignedIssuerConfig)(nil),               // 2: dev.planton.provider.kubernetes.kubernetesissuer.v1.SelfSignedIssuerConfig
-	(*kubernetes.KubernetesClusterSelector)(nil), // 3: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*KubernetesIssuerSpec)(nil),   // 0: dev.planton.provider.kubernetes.kubernetesissuer.v1.KubernetesIssuerSpec
+	(*CaIssuerConfig)(nil),         // 1: dev.planton.provider.kubernetes.kubernetesissuer.v1.CaIssuerConfig
+	(*SelfSignedIssuerConfig)(nil), // 2: dev.planton.provider.kubernetes.kubernetesissuer.v1.SelfSignedIssuerConfig
+	(*v1.StringValueOrRef)(nil),    // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_kubernetesissuer_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.kubernetes.kubernetesissuer.v1.KubernetesIssuerSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	4, // 1: dev.planton.provider.kubernetes.kubernetesissuer.v1.KubernetesIssuerSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.kubernetes.kubernetesissuer.v1.KubernetesIssuerSpec.ca:type_name -> dev.planton.provider.kubernetes.kubernetesissuer.v1.CaIssuerConfig
-	2, // 3: dev.planton.provider.kubernetes.kubernetesissuer.v1.KubernetesIssuerSpec.self_signed:type_name -> dev.planton.provider.kubernetes.kubernetesissuer.v1.SelfSignedIssuerConfig
-	4, // 4: dev.planton.provider.kubernetes.kubernetesissuer.v1.CaIssuerConfig.ca_secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	3, // 0: dev.planton.provider.kubernetes.kubernetesissuer.v1.KubernetesIssuerSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kubernetesissuer.v1.KubernetesIssuerSpec.ca:type_name -> dev.planton.provider.kubernetes.kubernetesissuer.v1.CaIssuerConfig
+	2, // 2: dev.planton.provider.kubernetes.kubernetesissuer.v1.KubernetesIssuerSpec.self_signed:type_name -> dev.planton.provider.kubernetes.kubernetesissuer.v1.SelfSignedIssuerConfig
+	3, // 3: dev.planton.provider.kubernetes.kubernetesissuer.v1.CaIssuerConfig.ca_secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesissuer_v1_spec_proto_init() }

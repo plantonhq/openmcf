@@ -1,0 +1,167 @@
+{
+  "region": "us-west-2",
+  "resources": [
+    {
+      "typeName": "AWS::EC2::VPC",
+      "identifier": "vpc-0aaa111fixture0001",
+      "properties": {
+        "VpcId": "vpc-0aaa111fixture0001",
+        "CidrBlock": "10.0.0.0/16",
+        "EnableDnsSupport": true,
+        "EnableDnsHostnames": true,
+        "InstanceTenancy": "default",
+        "Tags": [
+          { "Key": "Name", "Value": "seeded-network" },
+          { "Key": "managed-by", "Value": "planton-e2e" }
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::VPC",
+      "identifier": "vpc-0fff666default0001",
+      "properties": {
+        "VpcId": "vpc-0fff666default0001",
+        "CidrBlock": "172.31.0.0/16",
+        "EnableDnsSupport": true,
+        "EnableDnsHostnames": true,
+        "InstanceTenancy": "default",
+        "Tags": []
+      }
+    },
+    {
+      "typeName": "AWS::EC2::InternetGateway",
+      "identifier": "igw-0bbb222fixture0001",
+      "properties": {
+        "InternetGatewayId": "igw-0bbb222fixture0001",
+        "Tags": [{ "Key": "Name", "Value": "seeded-igw" }],
+        "Attachments": [{ "VpcId": "vpc-0aaa111fixture0001" }]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::Subnet",
+      "identifier": "subnet-0ccc333fixture01",
+      "properties": {
+        "SubnetId": "subnet-0ccc333fixture01",
+        "VpcId": "vpc-0aaa111fixture0001",
+        "AvailabilityZone": "us-west-2a",
+        "CidrBlock": "10.0.101.0/24",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [{ "Key": "Name", "Value": "seeded-subnet" }]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::RouteTable",
+      "identifier": "rtb-0ddd444fixture0001",
+      "properties": {
+        "RouteTableId": "rtb-0ddd444fixture0001",
+        "VpcId": "vpc-0aaa111fixture0001",
+        "Routes": [
+          { "DestinationCidrBlock": "10.0.0.0/16", "GatewayId": "local" },
+          { "DestinationCidrBlock": "0.0.0.0/0", "GatewayId": "igw-0bbb222fixture0001" }
+        ],
+        "Associations": [
+          {
+            "RouteTableAssociationId": "rtbassoc-0eee555fix01",
+            "SubnetId": "subnet-0ccc333fixture01"
+          }
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::RouteTable",
+      "identifier": "rtb-0main001fixture001",
+      "properties": {
+        "RouteTableId": "rtb-0main001fixture001",
+        "VpcId": "vpc-0aaa111fixture0001",
+        "Routes": [{ "DestinationCidrBlock": "10.0.0.0/16", "GatewayId": "local" }],
+        "Associations": [
+          { "RouteTableAssociationId": "rtbassoc-0main001fx01", "Main": true }
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::RouteTable",
+      "identifier": "rtb-0main002default01",
+      "properties": {
+        "RouteTableId": "rtb-0main002default01",
+        "VpcId": "vpc-0fff666default0001",
+        "Routes": [{ "DestinationCidrBlock": "172.31.0.0/16", "GatewayId": "local" }],
+        "Associations": [
+          { "RouteTableAssociationId": "rtbassoc-0main002df01", "Main": true }
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SubnetRouteTableAssociation",
+      "identifier": "rtbassoc-0eee555fix01",
+      "properties": {
+        "RouteTableId": "rtb-0ddd444fixture0001",
+        "SubnetId": "subnet-0ccc333fixture01"
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SubnetRouteTableAssociation",
+      "identifier": "rtbassoc-0main001fx01",
+      "properties": {
+        "RouteTableId": "rtb-0main001fixture001"
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SubnetRouteTableAssociation",
+      "identifier": "rtbassoc-0main002df01",
+      "properties": {
+        "RouteTableId": "rtb-0main002default01"
+      }
+    },
+    {
+      "typeName": "AWS::S3::Bucket",
+      "identifier": "planton-oss-e2e-awss3bucket-smoke",
+      "properties": {
+        "BucketName": "planton-oss-e2e-awss3bucket-smoke",
+        "Region": "us-west-2"
+      }
+    },
+    {
+      "typeName": "AWS::SQS::Queue",
+      "identifier": "https://sqs.us-west-2.amazonaws.com/123456789012/planton-oss-e2e-awssqsqueue-fifo-full-surface.fifo",
+      "properties": {
+        "QueueName": "planton-oss-e2e-awssqsqueue-fifo-full-surface.fifo",
+        "QueueUrl": "https://sqs.us-west-2.amazonaws.com/123456789012/planton-oss-e2e-awssqsqueue-fifo-full-surface.fifo",
+        "FifoQueue": true,
+        "ContentBasedDeduplication": true,
+        "DeduplicationScope": "messageGroup",
+        "FifoThroughputLimit": "perMessageGroupId",
+        "SqsManagedSseEnabled": true,
+        "VisibilityTimeout": 60,
+        "MessageRetentionPeriod": 345600,
+        "ReceiveMessageWaitTimeSeconds": 10,
+        "DelaySeconds": 0,
+        "MaximumMessageSize": 262144
+      }
+    },
+    {
+      "typeName": "AWS::SNS::Topic",
+      "identifier": "arn:aws:sns:us-west-2:123456789012:planton-oss-e2e-awssnstopic-standard-topic",
+      "properties": {
+        "TopicName": "planton-oss-e2e-awssnstopic-standard-topic",
+        "TopicArn": "arn:aws:sns:us-west-2:123456789012:planton-oss-e2e-awssnstopic-standard-topic",
+        "DisplayName": "Planton E2E standard SNS topic",
+        "SignatureVersion": "2",
+        "TracingConfig": "Active",
+        "FifoTopic": false,
+        "Policy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "AllowEventBridgePublish",
+              "Effect": "Allow",
+              "Principal": { "Service": "events.amazonaws.com" },
+              "Action": "sns:Publish",
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

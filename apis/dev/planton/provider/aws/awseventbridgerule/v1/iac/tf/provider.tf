@@ -2,7 +2,10 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      # v6 family floor: the rule + target surface this module renders
+      # predates 6.0, so the floor is the family baseline rather than a
+      # feature-driven minimum.
+      version = ">= 6.0.0"
     }
   }
 }

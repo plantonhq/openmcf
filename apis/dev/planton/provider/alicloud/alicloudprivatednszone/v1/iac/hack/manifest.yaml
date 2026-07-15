@@ -4,7 +4,7 @@ metadata:
   name: test-private-zone
   org: test-org
   env: development
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: test-org
     pulumi.planton.dev/project: test-project

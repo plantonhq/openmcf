@@ -1,0 +1,33 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awswafwebacl
+spec:
+  # A WAFv2 web ACL under live E2E: the harness deploys the fixture IP set
+  # and regex pattern set (declared by the scenario's e2e-prerequisites
+  # annotation), then runs deploy -> GetWebACL verify (id/name/scope parsed
+  # from the ARN output) -> destroy -> verify-destroyed on both
+  # provisioners. The full-surface scenario covers the managed rule group
+  # configs path, CUSTOM_KEYS rate aggregation, both set-reference kinds,
+  # three levels of AND/OR/NOT nesting, custom responses, data protection,
+  # association config, and a literal `${jndi:` search string proving the
+  # tfvars template-introducer escape live. Deliberately not in the live
+  # scenario:
+  #   - CLOUDFRONT scope: requires us-east-1 while the shared fixtures live
+  #     in us-west-2; the rule engine is identical across scopes.
+  #   - logging: the destination must be named aws-waf-logs-* and would
+  #     drag a CloudWatch log group fixture into every run; the block is a
+  #     single put-style satellite proven by the offline gate.
+  #   - intelligent-threat configs (ATP/ACFP/Bot Control/anti-DDoS): paid
+  #     add-on rule groups with per-request pricing; their JSON serialization
+  #     is locked by the module unit tests.
+  #   - CAPTCHA/challenge rule actions and token_domains: need a JS client
+  #     integration to observe; the immunity-time configs ARE deployed live.
+  # Live dual-engine run 2026-07-08 (with both set fixtures deployed by the
+  # prerequisite chain): Pulumi 1m09s / Terraform 1m27s.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15

@@ -72,7 +72,7 @@ backend gRPC Services
 ## Anatomy of GRPCRouteSpec
 
 The Planton spec flattens the upstream `GRPCRouteSpec` after the standard
-namespaced envelope (`target_cluster`, `namespace`):
+namespaced envelope (`namespace`):
 
 - `parent_refs` -- the Gateways this route attaches to (max 32).
 - `hostnames` -- authority values that select the route (max 16; wildcard prefix

@@ -33,7 +33,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHelmRelease
 metadata:
   name: my-nginx
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -70,8 +70,6 @@ This deploys the Bitnami nginx chart at version 18.1.11 into the `ingress` names
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying the Helm release. When `false`, the namespace must already exist. |
 | `values` | `map<string, string>` | — | Key-value pairs that override defaults in the chart's `values.yaml`. Each key uses Helm dot-notation flattened to a single string key. |
 
@@ -86,7 +84,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHelmRelease
 metadata:
   name: ingress-nginx
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +107,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHelmRelease
 metadata:
   name: prometheus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -140,15 +138,12 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHelmRelease
 metadata:
   name: cert-manager
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.KubernetesHelmRelease.cert-manager
 spec:
-  targetCluster:
-    clusterKind: GcpGkeCluster
-    clusterName: prod-cluster
   namespace:
     valueFrom:
       kind: KubernetesNamespace

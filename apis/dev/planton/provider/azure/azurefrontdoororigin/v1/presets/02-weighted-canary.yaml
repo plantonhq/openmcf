@@ -9,7 +9,10 @@ spec:
       name: <origin-group-resource-name>
       fieldPath: status.outputs.origin_group_id
   originName: canary-app
-  hostName: <canary-backend-hostname>
+  # A literal backend hostname; when the canary backend is deployed in
+  # the same graph, reference its hostname output instead (valueFrom).
+  hostName:
+    value: <canary-backend-hostname>
   # Same priority as the main origin (weights only compete WITHIN a
   # priority tier); weight 50 against the main origin's 950 sends ~5%
   # of traffic here. Dial the weights to move the split -- an in-place

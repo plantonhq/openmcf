@@ -14,8 +14,6 @@ variable "metadata" {
 variable "spec" {
   description = "Specification for Kubernetes Locust deployment"
   type = object({
-    # Target Kubernetes cluster (orchestrator-only, not included in generated tfvars)
-    target_cluster_name = optional(string)
 
     # Kubernetes namespace for Locust deployment
     namespace = string

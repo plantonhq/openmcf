@@ -139,7 +139,7 @@ func refreshHandler(cmd *cobra.Command, args []string) {
 		noCleanup,
 		kubeCtx,
 		providerConfig,
-		nil, // backendConfig - uses manifest labels for direct commands
+		nil, // backendConfig - uses manifest annotations for direct commands
 	)
 	if err != nil {
 		ui.ErrorWithoutExit("OpenTofu Execution Failed", err.Error(),

@@ -84,7 +84,7 @@ Each endpoint group represents a set of endpoints in a single AWS region.
 | `healthCheckPort` | `int32` | Listener port | Port for health checks. Use when the health check port differs from the traffic port. |
 | `healthCheckProtocol` | `string` | `"TCP"` | `"TCP"`, `"HTTP"`, or `"HTTPS"`. TCP checks port reachability only; HTTP/HTTPS send GET requests to `healthCheckPath`. |
 | `healthCheckPath` | `string` | — | Path for HTTP/HTTPS health checks (e.g., `"/health"`). Required when protocol is `HTTP` or `HTTPS`. Ignored for TCP. |
-| `healthCheckIntervalSeconds` | `int32` | `30` | Seconds between health checks. AWS only supports **10** or **30** — no other values are accepted. |
+| `healthCheckIntervalSeconds` | `int32` | `30` | Seconds between health checks. AWS accepts exactly **10** or **30** — no other values. |
 | `thresholdCount` | `int32` | `3` | Consecutive checks that must pass (or fail) to change endpoint health status. Range: 1–10. |
 | `trafficDialPercentage` | `double` | `100.0` | Percentage of traffic routed to this group (0.0–100.0). Use for regional traffic shifting. Set to `0` to drain a region. |
 | `endpoints` | `Endpoint[]` | `[]` | Endpoints in this group. Optional — you can create the group first and add endpoints later. |
@@ -95,8 +95,9 @@ Each endpoint group represents a set of endpoints in a single AWS region.
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `endpointId` | `string \| valueFrom` | — | **Required.** Resource identifier: ALB ARN, NLB ARN, EIP allocation ID (`eipalloc-...`), or EC2 instance ID (`i-...`). Supports `valueFrom` for cross-resource references. |
-| `weight` | `int32` | `128` | Relative traffic weight (0–255). Higher means more traffic. Set to `0` to stop routing without removing. |
-| `clientIpPreservationEnabled` | `bool` | `false` | Preserve original client IP. Supported for ALB and EC2 endpoints only. NLB and EIP always preserve client IP. |
+| `weight` | `int32` | `128` (when omitted) | Relative traffic weight (0–255). Higher means more traffic. An explicit `0` stops routing to the endpoint without removing it — distinct from omitting the field. |
+| `clientIpPreservationEnabled` | `bool` | AWS per-type default | Preserve the original client IP. Applies to ALB and EC2 instance endpoints; when omitted, AWS applies its per-endpoint-type default. Enabling it creates a `GlobalAccelerator` security group in the endpoint's VPC that must be deleted before that VPC can be destroyed. |
+| `attachmentArn` | `string` | `""` | ARN of a cross-account attachment authorizing an endpoint owned by another AWS account. Create the attachment in the endpoint-owning account with this accelerator's account as a principal. Leave empty for same-account endpoints. |
 
 ### Port Overrides (`listeners[].endpointGroups[].portOverrides`)
 
@@ -126,7 +127,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: my-accelerator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
 spec:
   listeners:

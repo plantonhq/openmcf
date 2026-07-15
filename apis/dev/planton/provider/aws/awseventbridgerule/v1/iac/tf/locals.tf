@@ -1,24 +1,34 @@
 locals {
-  resource_name = coalesce(try(var.metadata.name, null), "awseventbridgerule")
+  # metadata.name is the rule's cloud name (create-time immutable in AWS).
+  resource_name = var.metadata.name
 
-  tags = merge({
-    "Name" = local.resource_name
-  }, try(var.metadata.labels, {}))
+  # Resource-identity tags match the Pulumi module key-for-key.
+  aws_tags = {
+    "Name"                     = var.metadata.name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsEventBridgeRule"
+    "planton.ai/resource-id"   = var.metadata.id
+  }
 
-  # Event bus name — null for the default bus.
-  event_bus_name = try(var.spec.event_bus_name.value, null) != "" ? try(var.spec.event_bus_name.value, null) : null
+  # Event bus name — null targets the account's default bus. Note the AWS
+  # constraint documented on the spec: schedule rules only run on the
+  # default bus.
+  event_bus_name = var.spec.event_bus_name != "" ? var.spec.event_bus_name : null
 
-  # Event pattern — encode the struct to JSON if provided.
-  event_pattern = try(var.spec.event_pattern, null) != null ? jsonencode(var.spec.event_pattern) : null
+  # The event pattern arrives from the tfvars layer as a nested object (the
+  # spec models it as a Struct); the provider wants a JSON string.
+  event_pattern = var.spec.event_pattern != null ? jsonencode(var.spec.event_pattern) : null
 
-  # Schedule expression — null when not configured.
-  schedule_expression = try(var.spec.schedule_expression, null) != "" ? try(var.spec.schedule_expression, null) : null
+  schedule_expression = var.spec.schedule_expression != "" ? var.spec.schedule_expression : null
 
-  # State — null to use AWS default (ENABLED).
-  state = try(var.spec.state, null) != "" ? try(var.spec.state, null) : null
+  # State — null lets AWS default to ENABLED.
+  state = var.spec.state != "" ? var.spec.state : null
 
-  # Build a map of targets keyed by name for for_each iteration.
+  # Targets keyed by name: each materializes as its own provider resource,
+  # so list edits add/remove targets in place instead of churning neighbors.
   targets = {
-    for target in try(var.spec.targets, []) : target.name => target
+    for target in var.spec.targets : target.name => target
   }
 }

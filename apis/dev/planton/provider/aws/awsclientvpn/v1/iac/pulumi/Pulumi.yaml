@@ -1,5 +1,3 @@
 name: awsclientvpn-pulumi-project
 runtime:
   name: go
-# options:
-#   binary: ./debug.sh

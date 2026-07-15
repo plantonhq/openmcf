@@ -18,7 +18,7 @@ metadata:
     e2e-component: azurefunctionapp
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azurefunctionapp/v1/e2e/minimal-account.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azurefunctionapp/v1/e2e/minimal-account.yaml"
   tags:
     - planton-e2e
 spec:
@@ -46,5 +46,21 @@ spec:
     alwaysOn: true
     minimumTlsVersion: TLS_1_2
     ftpsState: DISABLED
+    # The Front Door origin-lockdown wire path (literal form; the
+    # reference-resolution path of this field class is live-proven by
+    # the DNS-record reference scenarios).
+    ipRestrictions:
+      - name: front-door-only
+        priority: 100
+        action: ALLOW
+        serviceTag: AzureFrontDoor.Backend
+        headers:
+          xAzureFdid:
+            - value: 11111111-2222-3333-4444-555555555555
+      - name: e2e-probe
+        priority: 200
+        action: ALLOW
+        ipAddress: 0.0.0.0/0
+    ipRestrictionDefaultAction: DENY
   tags:
     e2e-suite: azure

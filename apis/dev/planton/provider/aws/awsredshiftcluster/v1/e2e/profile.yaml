@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsredshiftcluster
+spec:
+  # A Redshift cluster under live E2E: the harness deploys the AwsVpc +
+  # two-AZ AwsSubnet prerequisites (the Redshift subnet group spans two
+  # AZs), runs deploy -> Redshift DescribeClusters verify -> destroy ->
+  # verify-destroyed on both provisioners. The scenario is a single
+  # ra3.large node (the smallest ORDERABLE class -- the legacy dc2 family
+  # is no longer creatable for new clusters) with the AWS-managed admin
+  # password: it proves the managed-credential path and the folded
+  # subnet-group materialization on the cheapest footprint. Cluster
+  # provisioning dominates the runtime at roughly five to ten minutes
+  # each way per engine.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 60

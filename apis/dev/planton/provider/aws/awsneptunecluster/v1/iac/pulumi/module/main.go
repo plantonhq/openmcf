@@ -1,89 +1,69 @@
 package module
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	awsneptuneclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsneptunecluster/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/aws/pulumiawsprovider"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources orchestrates creation of AWS Neptune cluster related resources and exports outputs.
+// Resources provisions the Neptune cluster and its folded compute. The
+// cluster is the shared-storage brain (endpoints, backups, encryption,
+// engine lifecycle); the spec's instances list is the compute that serves
+// queries, each entry managed as its own provider resource keyed by name.
+// Subnets, security groups, KMS keys, and IAM roles compose by reference
+// -- this module never creates or mutates a resource that deserves to be
+// its own node.
 func Resources(ctx *pulumi.Context, stackInput *awsneptuneclusterv1.AwsNeptuneClusterStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
-	// Build the AWS provider from the stack input via the shared builder, which resolves
-	// the right credential mechanism (static keys, keyless web identity, or ambient chain).
+	// Build the AWS provider from the stack input via the shared builder,
+	// which resolves the right credential mechanism (static keys, keyless
+	// web identity, or ambient chain).
 	provider, err := pulumiawsprovider.Get(ctx, stackInput.ProviderConfig, locals.AwsNeptuneCluster.Spec.Region)
 	if err != nil {
 		return errors.Wrap(err, "failed to create AWS provider")
 	}
 
-	createdSg, err := securityGroup(ctx, locals, provider)
-	if err != nil {
-		return errors.Wrap(err, "security group")
-	}
-
 	createdSubnetGroup, err := subnetGroup(ctx, locals, provider)
 	if err != nil {
-		return errors.Wrap(err, "subnet group")
+		return errors.Wrap(err, "failed to create subnet group")
 	}
 
-	createdParamGroup, err := clusterParameterGroup(ctx, locals, provider)
+	createdParameterGroup, err := clusterParameterGroup(ctx, locals, provider)
 	if err != nil {
-		return errors.Wrap(err, "cluster parameter group")
+		return errors.Wrap(err, "failed to create cluster parameter group")
 	}
 
-	cluster, err := neptuneCluster(ctx, locals, provider, createdSg, createdSubnetGroup, createdParamGroup)
+	createdCluster, err := neptuneCluster(ctx, locals, provider, createdSubnetGroup, createdParameterGroup)
 	if err != nil {
-		return errors.Wrap(err, "neptune cluster")
+		return errors.Wrap(err, "failed to create Neptune cluster")
 	}
 
-	err = neptuneClusterInstances(ctx, locals, provider, cluster)
+	createdInstances, err := clusterInstances(ctx, locals, provider, createdCluster)
 	if err != nil {
-		return errors.Wrap(err, "neptune cluster instances")
+		return errors.Wrap(err, "failed to create cluster instances")
 	}
 
-	ctx.Export(OpClusterEndpoint, cluster.Endpoint)
-	ctx.Export(OpClusterReaderEndpoint, cluster.ReaderEndpoint)
-	ctx.Export(OpClusterId, cluster.ID())
-	ctx.Export(OpClusterArn, cluster.Arn)
-	ctx.Export(OpClusterResourceId, cluster.ClusterResourceId)
-	ctx.Export(OpClusterPort, cluster.Port)
-	ctx.Export(OpHostedZoneId, cluster.HostedZoneId)
+	ctx.Export(OpClusterIdentifier, createdCluster.ClusterIdentifier)
+	ctx.Export(OpArn, createdCluster.Arn)
+	ctx.Export(OpClusterResourceId, createdCluster.ClusterResourceId)
+	ctx.Export(OpEndpoint, createdCluster.Endpoint)
+	ctx.Export(OpReaderEndpoint, createdCluster.ReaderEndpoint)
+	ctx.Export(OpPort, createdCluster.Port)
+	ctx.Export(OpHostedZoneId, createdCluster.HostedZoneId)
+	ctx.Export(OpEngineVersionActual, createdCluster.EngineVersion)
+	ctx.Export(OpNeptuneSubnetGroupName, createdCluster.NeptuneSubnetGroupName)
+	ctx.Export(OpNeptuneClusterParameterGroupName, createdCluster.NeptuneClusterParameterGroupName)
 
-	if createdSubnetGroup != nil {
-		ctx.Export(OpDbSubnetGroupName, createdSubnetGroup.Name)
+	// Per-instance endpoints in spec order -- empty for headless shapes
+	// (restores, replicas, and global-cluster members created without
+	// instances).
+	instanceEndpoints := make(pulumi.StringArray, 0, len(createdInstances))
+	for _, createdInstance := range createdInstances {
+		instanceEndpoints = append(instanceEndpoints, createdInstance.Endpoint)
 	}
-	if createdSg != nil {
-		ctx.Export(OpSecurityGroupId, createdSg.ID())
-	}
-	if createdParamGroup != nil {
-		ctx.Export(OpClusterParameterGroupName, createdParamGroup.Name)
-	}
+	ctx.Export(OpInstanceEndpoints, instanceEndpoints)
 
 	return nil
-}
-
-// getEffectivePort returns the port to use, either from spec or default (8182).
-func getEffectivePort(spec *awsneptuneclusterv1.AwsNeptuneClusterSpec) int {
-	port := spec.GetPort()
-	if port == 0 {
-		return 8182
-	}
-	return int(port)
-}
-
-// getParameterGroupFamily derives the Neptune parameter group family from the engine version.
-// Neptune families: "neptune1", "neptune1.2", "neptune1.3"
-func getParameterGroupFamily(engineVersion string) string {
-	if engineVersion == "" {
-		return "neptune1.3"
-	}
-	if len(engineVersion) >= 3 {
-		major := engineVersion[:3]
-		return fmt.Sprintf("neptune%s", major)
-	}
-	return fmt.Sprintf("neptune%s", engineVersion)
 }

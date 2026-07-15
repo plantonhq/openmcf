@@ -5,8 +5,8 @@ metadata:
 spec:
   selector:
     kind: platform
-  description: ML development environment with SageMaker Domain, S3 for model artifacts, optional ECR for custom images, and optional VPC isolation. A self-service data-science workbench on AWS.
-  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/provider/aws/awssagemakerdomain/v1/assets/logo.svg
+  description: SageMaker Studio ready for a team — a domain with idle auto-shutdown so forgotten notebooks stop billing, a least-privilege execution role, a versioned artifacts bucket, and a one-toggle VPC-only mode that ships every endpoint Studio actually needs to run without internet.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/aws/awssagemakerdomain/v1/logo.svg
   isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/aws/ml-workbench

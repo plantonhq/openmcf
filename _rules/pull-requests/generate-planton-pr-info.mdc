@@ -37,7 +37,7 @@ Usage: In Ask mode, invoke explicitly as `@pr-info`.
 
 ### Examples of valid scopes (Planton)
 - `apis/project/planton`
-- `charts/aws/eks-environment`
+- `charts/aws/eks-platform`
 - `charts/aws/terraform-backend`
 - `charts/gcp/gke-environment`
 - `charts/gcp/cloud-run`
@@ -77,7 +77,7 @@ Determine the `<scope-path>` from the changed files. Use the most impacted area 
 
 - Charts (multi-cloud Lego blocks)
   - `charts/<provider>/<chart>/**` → `charts/<provider>/<chart>`
-    - Examples: `charts/aws/eks-environment`, `charts/gcp/gke-environment`, `charts/azure/aks-environment`, `charts/digital-ocean/doks-environment`
+    - Examples: `charts/aws/eks-platform`, `charts/gcp/gke-environment`, `charts/azure/aks-environment`, `charts/digital-ocean/doks-environment`
   - Multiple charts under the same provider → `charts/<provider>`
   - Charts across multiple providers → `charts`
 

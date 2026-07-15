@@ -66,10 +66,6 @@ var _ = ginkgo.Describe("KubernetesRequestAuthentication Validation Tests", func
 				Name: "test-request-authentication",
 			},
 			Spec: &KubernetesRequestAuthenticationSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: literal("default"),
 				JwtRules: []*KubernetesRequestAuthenticationJwtRule{
 					jwtRule("https://accounts.example.com", "https://accounts.example.com/.well-known/jwks.json"),

@@ -3,6 +3,7 @@ kind: AwsCodeBuildProject
 metadata:
   name: my-pipeline-build
 spec:
+  region: us-east-1
   source:
     type: CODEPIPELINE
     buildspec: buildspec.yml

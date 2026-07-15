@@ -34,7 +34,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Connection
 metadata:
   name: user-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,10 +90,12 @@ Applicable when `strategy` is `auth0`.
 | `databaseOptions.requiresUsername` | `bool` | `false` | Requires a username in addition to email during signup. |
 | `databaseOptions.disableSignup` | `bool` | `false` | Prevents new user signups. Useful when onboarding is done programmatically. |
 | `databaseOptions.bruteForceProtection` | `bool` | `true` | Blocks login attempts after multiple failures. |
-| `databaseOptions.passwordHistorySize` | `int32` | `5` | Number of previous passwords to check against. Range: 0-24. Set to 0 to disable. |
-| `databaseOptions.passwordNoPersonalInfo` | `bool` | `true` | Prevents passwords containing the user's name, username, or email. |
-| `databaseOptions.passwordDictionary` | `bool` | `true` | Rejects common/weak passwords found in a dictionary. |
+| `databaseOptions.passwordHistorySize` | `int32` | `0` | Number of previous passwords to check against. Range: 0-24. `0` disables it. Requires a paid Auth0 `password-advanced-options` entitlement. |
+| `databaseOptions.passwordNoPersonalInfo` | `bool` | `false` | Prevents passwords containing the user's name, username, or email. Requires a paid Auth0 `password-advanced-options` entitlement. |
+| `databaseOptions.passwordDictionary` | `bool` | `false` | Rejects common/weak passwords found in a dictionary. Requires a paid Auth0 `password-advanced-options` entitlement. |
 | `databaseOptions.mfaEnabled` | `bool` | `false` | Prompts users for a second authentication factor during login. |
+
+> Note: `passwordHistorySize`, `passwordNoPersonalInfo`, and `passwordDictionary` are Auth0's "advanced password options" and require a paid `password-advanced-options` entitlement. They default to disabled so the component works on free/lower-tier tenants; enabling them on a tenant without the entitlement causes Auth0 to reject the deploy with a `403`.
 
 #### Social Options (`socialOptions`)
 
@@ -167,7 +169,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Connection
 metadata:
   name: app-users
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -180,6 +182,8 @@ spec:
   databaseOptions:
     passwordPolicy: excellent
     bruteForceProtection: true
+    # The three advanced password options below require a paid Auth0
+    # "password-advanced-options" entitlement; omit them on free/lower-tier tenants.
     passwordHistorySize: 10
     passwordNoPersonalInfo: true
     passwordDictionary: true
@@ -196,7 +200,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Connection
 metadata:
   name: google-social
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -226,7 +230,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Connection
 metadata:
   name: corporate-sso
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -265,7 +269,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Connection
 metadata:
   name: azure-ad-sso
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

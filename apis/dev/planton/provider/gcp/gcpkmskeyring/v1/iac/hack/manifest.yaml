@@ -2,7 +2,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKeyRing
 metadata:
   name: test-key-ring
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: test-org
     pulumi.planton.dev/project: test-project

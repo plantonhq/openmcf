@@ -1,88 +1,164 @@
 variable "metadata" {
-  description = "metadata"
+  description = "Cloud resource metadata"
   type = object({
-    # name of the resource
     name = string
-    # id of the resource
-    id = string
-    # id of the organization to which the api-resource belongs to
-    org = string
-    # environment to which the resource belongs to
-    env = string
-    # labels for the resource
-    labels = map(string)
-    # annotations for the resource
-    annotations = map(string)
-    # tags for the resource
-    tags = list(string)
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "spec"
+  description = "AwsS3Bucket specification"
   type = object({
-    # The AWS region where the S3 bucket will be created.
     region = string
-
-    # Flag to indicate if the S3 bucket should have external (public) access
-    is_public = optional(bool, false)
-
-    # Enable versioning to protect against accidental deletions and overwrites
-    versioning_enabled = optional(bool, false)
-
-    # Encryption type for objects in the bucket (SSE_S3 or SSE_KMS)
-    encryption_type = optional(string, "SSE_S3")
-
-    # KMS key ID or ARN for SSE-KMS encryption (required when encryption_type is SSE_KMS) (StringValueOrRef)
-    kms_key_id = optional(object({ value = string }), null)
-
-    # Tags for resource governance, cost allocation, and organization
-    tags = optional(map(string), {})
-
-    # Lifecycle rules for automatic storage transitions and expiration
+    force_destroy = optional(bool, false)
+    object_lock_enabled = optional(bool, false)
+    versioning_status = optional(string, "")
+    encryption = optional(object({
+      sse_algorithm = optional(string, "")
+      kms_key_id = optional(string, "")
+      bucket_key_enabled = optional(bool, false)
+    }))
+    public_access_block = optional(object({
+      block_public_acls = optional(bool, false)
+      block_public_policy = optional(bool, false)
+      ignore_public_acls = optional(bool, false)
+      restrict_public_buckets = optional(bool, false)
+    }))
+    object_ownership = optional(string, "")
+    acl = optional(string, "")
+    policy = optional(any)
+    transition_default_minimum_object_size = optional(string, "")
     lifecycle_rules = optional(list(object({
-      id                                    = string
-      enabled                               = optional(bool, false)
-      prefix                                = optional(string, "")
-      transition_days                       = optional(number, 0)
-      transition_storage_class              = optional(string, "")
-      expiration_days                       = optional(number, 0)
-      noncurrent_version_expiration_days    = optional(number, 0)
+      id = string
+      status = optional(string, "")
+      filter = optional(object({
+        prefix = optional(string, "")
+        tags = optional(map(string), {})
+        object_size_greater_than = optional(number, 0)
+        object_size_less_than = optional(number, 0)
+      }))
+      transitions = optional(list(object({
+        days = optional(number, 0)
+        date = optional(string, "")
+        storage_class = string
+      })), [])
+      expiration = optional(object({
+        days = optional(number, 0)
+        date = optional(string, "")
+        expired_object_delete_marker = optional(bool, false)
+      }))
+      noncurrent_version_transitions = optional(list(object({
+        noncurrent_days = optional(number, 0)
+        newer_noncurrent_versions = optional(number, 0)
+        storage_class = string
+      })), [])
+      noncurrent_version_expiration = optional(object({
+        noncurrent_days = optional(number, 0)
+        newer_noncurrent_versions = optional(number, 0)
+      }))
       abort_incomplete_multipart_upload_days = optional(number, 0)
     })), [])
-
-    # Replication configuration for disaster recovery or compliance
     replication = optional(object({
-      enabled = bool
-      role_arn = object({ value = string })
-      destination = object({
-        bucket_arn    = string
-        storage_class = optional(string, "")
-        account_id    = optional(string, "")
-      })
-      prefix   = optional(string, "")
-      priority = optional(number, 0)
-    }), null)
-
-    # Server access logging configuration
+      role_arn = string
+      rules = list(object({
+        id = string
+        priority = optional(number, 0)
+        status = optional(string, "")
+        filter = optional(object({
+          prefix = optional(string, "")
+          tags = optional(map(string), {})
+        }))
+        destination = object({
+          bucket_arn = string
+          account = optional(string, "")
+          storage_class = optional(string, "")
+          change_replica_ownership_to_destination = optional(bool, false)
+          replica_kms_key_id = optional(string, "")
+          metrics_enabled = optional(bool, false)
+          replication_time_control_enabled = optional(bool, false)
+        })
+        delete_marker_replication = optional(bool, false)
+        existing_object_replication = optional(bool, false)
+        replicate_replica_modifications = optional(bool, false)
+        replicate_sse_kms_encrypted_objects = optional(bool, false)
+      }))
+    }))
+    website = optional(object({
+      index_document_suffix = optional(string, "")
+      error_document_key = optional(string, "")
+      redirect_all_requests_to = optional(object({
+        host_name = string
+        protocol = optional(string, "")
+      }))
+      routing_rules = optional(list(object({
+        condition = optional(object({
+          http_error_code_returned_equals = optional(string, "")
+          key_prefix_equals = optional(string, "")
+        }))
+        redirect = object({
+          host_name = optional(string, "")
+          http_redirect_code = optional(string, "")
+          protocol = optional(string, "")
+          replace_key_prefix_with = optional(string, "")
+          replace_key_with = optional(string, "")
+        })
+      })), [])
+    }))
     logging = optional(object({
-      enabled       = bool
       target_bucket = string
       target_prefix = optional(string, "")
-    }), null)
-
-    # CORS configuration for web applications
-    cors = optional(object({
-      cors_rules = list(object({
-        allowed_methods = list(string)
-        allowed_origins = list(string)
-        allowed_headers = optional(list(string), [])
-        expose_headers  = optional(list(string), [])
-        max_age_seconds = optional(number, 0)
+      partitioned_prefix_date_source = optional(string, "")
+    }))
+    cors_rules = optional(list(object({
+      id = optional(string, "")
+      allowed_methods = list(string)
+      allowed_origins = list(string)
+      allowed_headers = optional(list(string), [])
+      expose_headers = optional(list(string), [])
+      max_age_seconds = optional(number, 0)
+    })), [])
+    notification = optional(object({
+      eventbridge = optional(bool, false)
+      lambda_functions = optional(list(object({
+        lambda_function_arn = string
+        events = list(string)
+        filter_prefix = optional(string, "")
+        filter_suffix = optional(string, "")
+      })), [])
+      queues = optional(list(object({
+        queue_arn = string
+        events = list(string)
+        filter_prefix = optional(string, "")
+        filter_suffix = optional(string, "")
+      })), [])
+      topics = optional(list(object({
+        topic_arn = string
+        events = list(string)
+        filter_prefix = optional(string, "")
+        filter_suffix = optional(string, "")
+      })), [])
+    }))
+    object_lock_default_retention = optional(object({
+      mode = string
+      days = optional(number, 0)
+      years = optional(number, 0)
+    }))
+    acceleration_status = optional(string, "")
+    request_payer = optional(string, "")
+    intelligent_tiering_configurations = optional(list(object({
+      name = string
+      status = optional(string, "")
+      filter_prefix = optional(string, "")
+      filter_tags = optional(map(string), {})
+      tiers = list(object({
+        access_tier = string
+        days = optional(number, 0)
       }))
-    }), null)
-
-    # Force destroy the bucket even if it contains objects
-    force_destroy = optional(bool, false)
+    })), [])
   })
 }

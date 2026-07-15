@@ -43,5 +43,25 @@ spec:
     minimumTlsVersion: TLS_1_2
     ftpsState: DISABLED
     http2Enabled: true
+    # The Front Door origin-lockdown wire path: an FDID-filtered ALLOW
+    # rule on the AzureFrontDoor.Backend service tag. The literal form
+    # proves both engines deliver the header GUIDs to ARM; the
+    # repeated-reference RESOLUTION path of the same field class is
+    # live-proven by the DNS-record reference scenarios (a Front Door
+    # profile fixture here would add its ~18-minute deletion tax to the
+    # lane for machinery already proven).
+    ipRestrictions:
+      - name: front-door-only
+        priority: 100
+        action: ALLOW
+        serviceTag: AzureFrontDoor.Backend
+        headers:
+          xAzureFdid:
+            - value: 11111111-2222-3333-4444-555555555555
+      - name: e2e-probe
+        priority: 200
+        action: ALLOW
+        ipAddress: 0.0.0.0/0
+    ipRestrictionDefaultAction: DENY
   tags:
     e2e-suite: azure

@@ -1,0 +1,24 @@
+apiVersion: v2
+name: planton-runner
+description: Deploy Planton Runner with a single RunnerCredentials JSON file for identity, connectivity, and authentication
+type: application
+version: 0.2.0
+# appVersion is the runner image tag this chart deploys. The runner image is built
+# in the platform repo and published to ghcr.io/plantonhq/planton/runner; keep this
+# pinned to a known-good published tag. NOTE: the runner deployment path is not yet
+# exercised end to end (it lands with the in-cluster runner work) -- validate before
+# relying on it.
+appVersion: "v0.0.32-selfhosted-preview"
+home: https://github.com/plantonhq/planton
+sources:
+  - https://github.com/plantonhq/planton
+maintainers:
+  - name: Planton
+    url: https://planton.ai
+keywords:
+  - planton
+  - runner
+  - cloud-operations
+  - mtls
+  - tunnel
+  - service-account

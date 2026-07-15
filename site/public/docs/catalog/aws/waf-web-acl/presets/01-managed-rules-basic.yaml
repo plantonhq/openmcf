@@ -11,12 +11,14 @@ spec:
     - name: aws-common-rules
       priority: 1
       overrideAction: none
-      managedRuleGroup:
-        name: AWSManagedRulesCommonRuleSet
-        vendorName: AWS
+      statement:
+        managedRuleGroup:
+          name: AWSManagedRulesCommonRuleSet
+          vendorName: AWS
     - name: aws-known-bad-inputs
       priority: 2
       overrideAction: none
-      managedRuleGroup:
-        name: AWSManagedRulesKnownBadInputsRuleSet
-        vendorName: AWS
+      statement:
+        managedRuleGroup:
+          name: AWSManagedRulesKnownBadInputsRuleSet
+          vendorName: AWS

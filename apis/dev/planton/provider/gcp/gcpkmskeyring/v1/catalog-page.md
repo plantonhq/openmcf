@@ -24,7 +24,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKeyRing
 metadata:
   name: prod-encryption
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -69,7 +69,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKeyRing
 metadata:
   name: prod-keys
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,7 +90,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKeyRing
 metadata:
   name: shared-keys
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -111,7 +111,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKeyRing
 metadata:
   name: eu-compliance-keys
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -132,7 +132,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKeyRing
 metadata:
   name: data-encryption
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

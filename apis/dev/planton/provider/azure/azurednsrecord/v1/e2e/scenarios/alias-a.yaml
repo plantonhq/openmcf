@@ -16,7 +16,7 @@ metadata:
     e2e-component: azurednsrecord
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "azurepublicip"
+    planton.dev/e2e-prerequisites: "azurepublicip"
   tags:
     - planton-e2e
 spec:

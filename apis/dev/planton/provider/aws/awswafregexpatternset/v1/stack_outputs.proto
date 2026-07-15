@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awswafregexpatternset.v1;
+
+// AwsWafRegexPatternSetStackOutputs captures observable identifiers from a
+// provisioned WAFv2 regex pattern set.
+//
+// The primary output is `regex_pattern_set_arn` — the value a web ACL's
+// regex_pattern_set_reference statement (AwsWafWebAcl) points at to match
+// request components against this set's expressions.
+message AwsWafRegexPatternSetStackOutputs {
+  // The Amazon Resource Name of the regex pattern set
+  // (arn:aws:wafv2:<region>:<account>:<scope>/regexpatternset/<name>/<id>).
+  // The identifier web ACL rules reference.
+  string regex_pattern_set_arn = 1;
+
+  // The AWS-assigned pattern set ID (a UUID). Used together with the name
+  // and scope when addressing the set through the WAFv2 API directly.
+  string regex_pattern_set_id = 2;
+
+  // The pattern set name as created in AWS (derived from metadata.name).
+  string regex_pattern_set_name = 3;
+}

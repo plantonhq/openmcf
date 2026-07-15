@@ -1,31 +1,22 @@
-# Fargate Batch (Serverless)
+# Fargate Batch
 
-This preset creates a serverless AWS Batch compute environment using Fargate. AWS manages all infrastructure — no EC2 instances to configure, patch, or scale. Ideal for teams that want to run batch jobs without managing compute infrastructure.
+A serverless Fargate compute environment — zero instances to manage, per-second billing, scale-to-zero when queues are empty. The right default for containerized batch jobs that fit Fargate's sizing (up to 16 vCPU / 120 GiB per job).
 
 ## When to Use
 
-- Batch jobs that run containers without needing GPU or custom AMIs
-- Teams that want zero infrastructure management overhead
-- Variable workloads where you pay only for the vCPU and memory used per job
-- Environments where patching and AMI management is undesirable
-- Quick prototyping of batch processing pipelines
+- Bursty or unpredictable batch workloads where idle instances would waste money
+- Teams that want no AMI, patching, or capacity management at all
+- Jobs that need no GPUs, no privileged mode, and no custom kernel settings
 
-## Key Configuration Choices
+## What It Configures
 
-- **FARGATE** (`type`) — Serverless containers; AWS provisions and manages compute resources
-- **256 max vCPUs** (`maxVcpus`) — Upper limit on concurrent Fargate vCPUs; adjust based on workload parallelism
-- **Single queue** (`jobQueues`) — One queue with priority 1; add more queues for workload isolation
-- **Multi-AZ subnets** — Two subnets for high availability across Availability Zones
+- **FARGATE type** — AWS manages all compute; only `maxVcpus`, subnets, and security groups apply
+- **256 vCPU ceiling** — total concurrent capacity across all running jobs
+- **Two private subnets** — task ENIs spread across Availability Zones
+- **Security group** — required for Fargate task ENIs
 
-## Placeholders to Replace
+## What to Customize
 
-| Placeholder | Description | Where to Find |
-| --- | --- | --- |
-| `<private-subnet-id-az1>` | Private subnet in the first Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<private-subnet-id-az2>` | Private subnet in the second Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<security-group-id>` | Security group allowing outbound access for containers | AWS EC2 console or `AwsSecurityGroup` status outputs |
-
-## Related Presets
-
-- **02-ec2-managed-batch** — Use instead when you need GPU instances, custom AMIs, or sustained compute capacity
-- **03-spot-cost-optimized-batch** — Use instead for cost-sensitive workloads tolerant of interruptions
+- Replace `<aws-region>` and the subnet/security-group placeholders (or use `valueFrom` references to `AwsSubnet` / `AwsSecurityGroup` resources)
+- Raise `maxVcpus` for higher concurrency; switch `type` to `FARGATE_SPOT` for interruptible jobs at Spot pricing
+- Add an `AwsBatchJobQueue` mapped onto this environment to start submitting jobs

@@ -1,0 +1,86 @@
+# The storage plane: the lake bucket every other resource orbits, and (unless
+# AWS-managed result storage is chosen) a separate bucket for Athena query
+# results. Results live OUTSIDE the lake deliberately — result objects are
+# query artifacts, not data, and keeping them out of the lake means crawlers,
+# lifecycle rules, and table locations never have to step around them.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsS3Bucket
+metadata:
+  # The bucket's name IS the resource name. S3 names are global across all
+  # AWS accounts, which is why the default value carries an org prefix.
+  name: "{{ values.lake_bucket_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+
+  # SSE-S3 (AES256) encrypts every object at rest with zero key management
+  # and zero cost. If compliance requires a customer-managed KMS key with its
+  # own rotation and audit trail, deploy an AwsKmsKey and switch sseAlgorithm
+  # to aws:kms with kmsKeyId referencing it — the spec models that arm
+  # directly.
+  encryption:
+    sseAlgorithm: AES256
+
+  # All four public-access guards on: a data lake is never publicly readable,
+  # and these account-independent guards make a future misconfigured bucket
+  # policy or ACL inert instead of an incident.
+  publicAccessBlock:
+    blockPublicAcls: true
+    blockPublicPolicy: true
+    ignorePublicAcls: true
+    restrictPublicBuckets: true
+
+  lifecycleRules:
+    # The cost curve of a lake: data is hot when it lands and cools with age,
+    # so storage class should follow. Both tiers on this path keep
+    # millisecond access — Athena queries tiered objects exactly like
+    # STANDARD ones, just with a small per-GB retrieval fee. Deep-freeze
+    # classes (GLACIER, DEEP_ARCHIVE) are deliberately absent: Athena cannot
+    # read them without a restore, and a lake that silently strands its own
+    # history from its own query engine is a trap, not a saving.
+    - id: tier-aging-data
+      status: Enabled
+      transitions:
+        - days: {{ values.infrequent_access_after_days }}
+          storageClass: STANDARD_IA
+        - days: {{ values.glacier_after_days }}
+          storageClass: GLACIER_IR
+    # Interrupted multipart uploads (a killed ingestion job mid-write) leave
+    # invisible billable parts behind; a week is long enough to resume any
+    # legitimate upload.
+    - id: abort-stale-multipart-uploads
+      status: Enabled
+      abortIncompleteMultipartUploadDays: 7
+
+  # Whether teardown may delete a non-empty bucket. The parameter
+  # description carries the warning; the default refuses.
+  forceDestroy: {{ values.force_destroy }}
+{% if not (values.managed_results_enabled | bool) %}
+---
+# Athena query results, in their own bucket with their own retention.
+# Results are re-derivable by re-running the query, so a 30-day expiry
+# bounds cost without losing anything a team cannot get back — unlike the
+# lake data itself, which this chart never expires.
+apiVersion: aws.planton.dev/v1
+kind: AwsS3Bucket
+metadata:
+  name: "{{ values.lake_bucket_name }}-query-results"
+spec:
+  region: "{{ values.aws_region }}"
+  encryption:
+    sseAlgorithm: AES256
+  publicAccessBlock:
+    blockPublicAcls: true
+    blockPublicPolicy: true
+    ignorePublicAcls: true
+    restrictPublicBuckets: true
+  lifecycleRules:
+    - id: expire-query-results
+      status: Enabled
+      expiration:
+        days: 30
+    - id: abort-stale-multipart-uploads
+      status: Enabled
+      abortIncompleteMultipartUploadDays: 7
+  forceDestroy: {{ values.force_destroy }}
+{% endif %}

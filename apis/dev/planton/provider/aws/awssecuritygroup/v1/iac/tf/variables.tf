@@ -25,6 +25,7 @@ variable "spec" {
       ipv6_cidrs = optional(list(string), [])
       source_security_group_ids = optional(list(string), [])
       destination_security_group_ids = optional(list(string), [])
+      prefix_list_ids = optional(list(string), [])
       self_reference = optional(bool, false)
       description = optional(string, "")
     })), [])
@@ -36,8 +37,10 @@ variable "spec" {
       ipv6_cidrs = optional(list(string), [])
       source_security_group_ids = optional(list(string), [])
       destination_security_group_ids = optional(list(string), [])
+      prefix_list_ids = optional(list(string), [])
       self_reference = optional(bool, false)
       description = optional(string, "")
     })), [])
+    revoke_rules_on_delete = optional(bool, false)
   })
 }

@@ -1,0 +1,16 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsnatgateway
+spec:
+  # A NAT gateway's identity is the AWS-assigned "nat-..." id --
+  # discoverable from a prior deploy's outputs or the console, never
+  # derivable from the spec. (NAT gateways have no ARN surface a user
+  # could paste.)
+  values:
+    - name: nat_gateway_id
+      derivations:
+        - from_stack_output: nat_gateway_id
+      where_to_find: >-
+        VPC console -> NAT gateways (the NAT gateway ID column), or
+        `aws ec2 describe-nat-gateways` (NatGatewayId).

@@ -38,7 +38,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpComputeInstance
 metadata:
   name: my-vm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -125,7 +125,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpComputeInstance
 metadata:
   name: web-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -156,7 +156,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpComputeInstance
 metadata:
   name: app-backend
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -195,7 +195,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpComputeInstance
 metadata:
   name: batch-worker
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

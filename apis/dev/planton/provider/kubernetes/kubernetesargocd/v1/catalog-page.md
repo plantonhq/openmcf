@@ -26,7 +26,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesArgocd
 metadata:
   name: my-argocd
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -58,8 +58,6 @@ This creates an Argo CD instance in the `argocd` namespace with default resource
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for the Argo CD server, controller, and repo-server pods. |
 | `container.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for the Argo CD server, controller, and repo-server pods. |
@@ -79,7 +77,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesArgocd
 metadata:
   name: dev-argocd
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -106,7 +104,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesArgocd
 metadata:
   name: prod-argocd
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -136,7 +134,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesArgocd
 metadata:
   name: platform-argocd
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

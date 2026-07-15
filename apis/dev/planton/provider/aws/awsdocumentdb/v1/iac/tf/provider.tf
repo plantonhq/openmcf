@@ -1,8 +1,12 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      source = "hashicorp/aws"
+      # Floor, not a cap: DocumentDB Serverless
+      # (serverless_v2_scaling_configuration, v6.10) and network_type
+      # (v6.23) are v6-line additions -- the v6.23 floor keeps the module
+      # on the modern major where the whole modeled surface is present.
+      version = ">= 6.23.0"
     }
   }
 }

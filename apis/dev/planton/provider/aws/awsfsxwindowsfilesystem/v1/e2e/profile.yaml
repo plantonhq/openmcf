@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsfsxwindowsfilesystem
+spec:
+  # An FSx for Windows File Server under live E2E: one SINGLE_AZ_2 lane at
+  # the 32 GiB / 32 MB/s floor with the self-managed AD Secrets Manager
+  # join arm, audit logging levels, and a DNS alias. NOTE the additional
+  # unblock beyond the cost deferral: every Windows file system MUST join a
+  # real Active Directory domain, and no directory fixture exists — running
+  # this lane live requires provisioning an AWS Managed Microsoft AD (or a
+  # reachable self-managed domain) and pointing the scenario at it first;
+  # the scenario's domain/DNS/secret values are structural placeholders
+  # that AWS would reject at domain-join time. Excluded arms recorded here:
+  # MULTI_AZ_1, HDD, backup_id restore. Verification is
+  # DescribeFileSystems keyed on file_system_id, lifecycle-state-aware
+  # (DELETING counts as absent). Expected timings from AWS's documented
+  # provisioning: 20-45 minutes per create.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision: FSx file systems are long-provisioning and
+    expensive, so the family stops at the offline gate (green tofu plan +
+    pulumi preview per engine). This lane additionally needs an Active
+    Directory fixture (AWS Managed Microsoft AD) before it can run live.
+  timeout_minutes: 90

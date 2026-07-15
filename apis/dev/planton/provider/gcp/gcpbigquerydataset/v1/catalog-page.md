@@ -26,7 +26,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpBigQueryDataset
 metadata:
   name: my-dataset
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpBigQueryDataset
 metadata:
   name: staging-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -118,7 +118,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpBigQueryDataset
 metadata:
   name: prod-analytics
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -144,7 +144,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpBigQueryDataset
 metadata:
   name: finance-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -182,7 +182,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpBigQueryDataset
 metadata:
   name: ref-dataset
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

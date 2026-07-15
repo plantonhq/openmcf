@@ -1,26 +1,21 @@
 # Preset: OAuth with Hosted UI
 
-**Rank**: 2 (common for web applications)
+**Rank**: 2
 
 ## When to Use
 
-- Web applications that need OAuth 2.0 / OIDC authentication
-- Applications using the Cognito-hosted sign-in/sign-up pages
-- Staging and production environments
+- Web applications using the Cognito-hosted sign-in page
+- OAuth 2.0 Authorization Code flow with hosted `/oauth2/*` endpoints
+- Teams that want login pages without building auth UI
 
 ## What It Provides
 
-- Email as the sign-in identifier with a reasonable password policy
-- OAuth Authorization Code flow with OIDC scopes
-- Cognito-hosted domain for the sign-in UI
-- Token validity configured (1h access/ID, 30d refresh)
-- Token revocation and user enumeration protection enabled
-- Email recovery
+- Email sign-in with a strengthened password policy
+- A Cognito-hosted prefix domain (`{name}-auth.auth.{region}.amazoncognito.com`) serving the hosted UI and OAuth2 endpoints
+- Password recovery via verified email
 
 ## What You Might Add
 
-- `mfaConfiguration: OPTIONAL` for production
-- `emailConfiguration` with DEVELOPER mode for SES
-- Additional callback/logout URLs for different environments
-- A second client for server-side APIs (`generateSecret: true`, `client_credentials` flow)
-- Custom domain with ACM certificate for branded login URLs
+- An `AwsCognitoUserPoolClient` with `allowedOauthFlows: [code]`, callback/logout URLs, and `allowedOauthScopes: [openid, email, profile]` -- the OAuth contract lives on the client resource
+- A custom domain: change `domain.domain` to your FQDN and set `domain.certificateArn` (ACM certificate in us-east-1)
+- `AwsCognitoIdentityProvider` resources for Google/OIDC/SAML federation on the hosted UI

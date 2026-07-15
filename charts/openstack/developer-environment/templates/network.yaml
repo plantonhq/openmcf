@@ -3,7 +3,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackNetwork
 metadata:
   name: "{{ values.env }}-network"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   description: "Private tenant network for {{ values.env }} developer environment"
@@ -12,7 +12,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSubnet
 metadata:
   name: "{{ values.env }}-subnet"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   networkId:
@@ -30,7 +30,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRouter
 metadata:
   name: "{{ values.env }}-router"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   externalNetworkId:
@@ -41,7 +41,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRouterInterface
 metadata:
   name: "{{ values.env }}-router-interface"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   routerId:
@@ -59,7 +59,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSecurityGroup
 metadata:
   name: "{{ values.env }}-dev-sg"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   description: "Security group for {{ values.env }} developer environment"

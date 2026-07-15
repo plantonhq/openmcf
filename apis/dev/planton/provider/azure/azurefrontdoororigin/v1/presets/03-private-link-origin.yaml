@@ -9,7 +9,8 @@ spec:
       name: <origin-group-resource-name>
       fieldPath: status.outputs.origin_group_id
   originName: private-app
-  hostName: <app-name>.azurewebsites.net
+  hostName:
+    value: <app-name>.azurewebsites.net
   # Required with privateLink (Azure rejects the combination otherwise)
   # -- and the secure choice regardless.
   certificateNameCheckEnabled: true

@@ -1,6 +1,6 @@
 # AzurePublicIpPrefix install profile used as a fixture by scenarios that
 # prove prefix associations (declared via the
-# planton.dev/e2e-extra-prerequisites annotation -- a NAT gateway's prefixes
+# planton.dev/e2e-prerequisites annotation -- a NAT gateway's prefixes
 # are OPTIONAL references, so this is never a registry prerequisite). The
 # harness deploys this document (via the prefix's Pulumi module) after the
 # fixture resource group and captures its outputs -- public_ip_prefix_id in

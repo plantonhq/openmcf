@@ -1,0 +1,31 @@
+# Planton on DigitalOcean Kubernetes (DOKS).
+#
+#   helm install planton oci://ghcr.io/plantonhq/charts/planton \
+#     --namespace planton --create-namespace \
+#     --values https://raw.githubusercontent.com/plantonhq/planton/main/helm/planton/values.doks.yaml
+#
+# DOKS ships no ingress controller (ingress-nginx via the DigitalOcean
+# marketplace is the common choice), and cloud credentials on DigitalOcean
+# are API tokens rather than workload identity -- so this file is a recipe:
+# nothing here is active (the base install already works on DOKS with zero
+# values), and each block below is one uncommented edit away.
+
+platform:
+  spec: {}
+    # -- Publish at your own URL. Install ingress-nginx first (it provisions
+    # a DigitalOcean Load Balancer), then point your domain's DNS at it:
+    # ingress:
+    #   enabled: true
+    #   hostname: planton.example.com
+    #   ingressClassName: nginx
+    #   # HTTPS -- exactly one of the two, and hostname is required:
+    #   tls:
+    #     secretName: planton-tls                        # a cert you bring
+    #     issuer: {name: letsencrypt, kind: ClusterIssuer}  # or cert-manager
+
+    # -- Give the in-cluster runner cloud credentials via a Secret you own
+    # (created in the install namespace; keys become environment variables,
+    # e.g. DIGITALOCEAN_TOKEN, or AWS_ACCESS_KEY_ID/... to deploy to AWS
+    # from here):
+    # runner:
+    #   cloudCredentialsSecretName: my-cloud-credentials

@@ -50,13 +50,13 @@ message AzureFrontDoorOriginSpec {
   ];
 
   // The address Front Door connects to for content: a DNS hostname, an
-  // IPv4, or an IPv6 address. Examples: "myapp.azurewebsites.net" (App
-  // Service), "myaccount.blob.core.windows.net" (Blob Storage),
-  // "api.example.com" (anything reachable).
-  string host_name = 3 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
-  ];
+  // IPv4, or an IPv6 address. A reference or a literal: reference the
+  // backend's hostname output when the backend is part of the same
+  // deployment (an AzureLinuxWebApp's default_hostname, an
+  // AzureStorageAccount's primary_web_host), pass a literal for anything
+  // reachable outside it ("api.example.com"). No kind dominates origin
+  // backends, so references declare their kind explicitly.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host_name = 3 [(buf.validate.field).required = true];
 
   // Whether Front Door validates that the origin's TLS certificate
   // matches the host name it connects with. Default true -- keep it on;
@@ -71,8 +71,9 @@ message AzureFrontDoorOriginSpec {
   // Storage static sites) route BY Host header, so for them the default
   // is exactly right; override only when the backend expects the
   // client-facing domain instead (and then make sure it can serve it).
-  // A hostname, IPv4, or IPv6 address.
-  optional string origin_host_header = 5 [(buf.validate.field).string.min_len = 1];
+  // A hostname, IPv4, or IPv6 address -- as a reference to another
+  // resource's hostname output or a literal.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef origin_host_header = 5;
 
   // The port Front Door uses when connecting to the origin over HTTP,
   // 1-65535. Default 80.

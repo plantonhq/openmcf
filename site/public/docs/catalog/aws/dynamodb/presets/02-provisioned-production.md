@@ -1,6 +1,6 @@
 ---
 title: "Provisioned Production Table"
-description: "This preset creates a DynamoDB table with provisioned capacity, a composite primary key (partition + sort key), and server-side encryption with a customer-managed key. Provisioned mode is more..."
+description: "This preset creates a production DynamoDB table with provisioned capacity, a composite primary key (partition + sort), a global secondary index for an alternate query pattern, and the..."
 type: "preset"
 rank: "02"
 presetSlug: "02-provisioned-production"
@@ -13,26 +13,29 @@ order: 2
 
 # Provisioned Production Table
 
-This preset creates a DynamoDB table with provisioned capacity, a composite primary key (partition + sort key), and server-side encryption with a customer-managed key. Provisioned mode is more cost-effective than on-demand for predictable, steady-state workloads. The composite key supports rich query patterns like hierarchical data and time-series lookups.
+This preset creates a production DynamoDB table with provisioned capacity, a composite primary key (partition + sort), a global secondary index for an alternate query pattern, and the production-safety trio: point-in-time recovery, AWS-managed encryption, and deletion protection. Contributor insights is enabled so hot-key and throttling diagnostics are available from day one.
 
 ## When to Use
 
-- Workloads with predictable, steady read/write traffic where provisioned capacity saves money vs on-demand
-- Data models requiring range queries, sorting, or hierarchical access patterns (partition + sort key)
-- Applications needing customer-managed encryption keys for compliance
+- Sustained, predictable traffic where reserved capacity pricing beats on-demand
+- Single-table-design applications that query by composite key and at least one alternate shape
+- Workloads planning to purchase reserved capacity (which applies only to provisioned tables)
 
 ## Key Configuration Choices
 
-- **Provisioned billing** (`billingMode: PROVISIONED`) -- 25 RCUs and 25 WCUs as a starting point; enable auto-scaling in your application's scaling policy
-- **Composite key** (`pk` HASH + `sk` RANGE) -- Enables efficient range queries within a partition (e.g., all orders for a customer sorted by date)
-- **Server-side encryption** (`serverSideEncryption.enabled: true`) -- Uses a customer-managed KMS key for audit trails; omit to use AWS-owned key (free)
-- **Point-in-time recovery** -- Continuous backups for the last 35 days
-- **Deletion protection** -- Prevents accidental table deletion
+- **Provisioned billing** (`billingMode: PROVISIONED` + `provisionedThroughput`) -- 25 RCU / 25 WCU baseline; each global secondary index carries its own capacity (10/10 here)
+- **Composite primary key** (`pk` HASH + `sk` RANGE) -- The single-table-design shape: entity type and hierarchy encoded in the two key attributes
+- **Global secondary index** (`gsi1` on `gsi1pk`, projecting ALL) -- One alternate query pattern; add more GSIs (and per-index capacity) as access patterns emerge -- GSIs edit in place on a live table
+- **Contributor insights** (`contributorInsights.enabled: true`) -- CloudWatch per-key access profiling that answers "which partition keys are hot or throttled"
+- **Production safety** -- Point-in-time recovery, the AWS-managed `aws/dynamodb` encryption key (reference an `AwsKmsKey` via `serverSideEncryption.kmsKeyArn` to hold your own key), and deletion protection
 
 ## Placeholders to Replace
 
-This preset has no placeholders. Adjust `pk`/`sk` names and types to match your data model, and tune `readCapacityUnits`/`writeCapacityUnits` based on expected traffic. Consider enabling DynamoDB auto-scaling for production.
+- `<aws-region>` -- The AWS region for the table (e.g. `us-west-2`)
+
+Rename `pk`, `sk`, and `gsi1pk` to match your data model, and size `provisionedThroughput` for your sustained baseline -- if traffic is spiky, prefer the on-demand preset instead.
 
 ## Related Presets
 
-- **01-on-demand-simple** -- Use instead for unpredictable traffic or simple key-value access patterns
+- **01-on-demand-simple** -- Use instead for variable or unpredictable traffic
+- **03-global-table** -- Use instead for multi-region active-active deployments

@@ -35,7 +35,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsOpenSearchDomain
 metadata:
   name: my-search
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -126,9 +126,20 @@ This creates a single-node OpenSearch domain with gp3 storage, encryption at res
 |-------|------|---------|-------------|
 | `enabled` | `bool` | `false` | Enable FGAC. ForceNew if disabling (cannot be turned off once enabled). |
 | `internalUserDatabaseEnabled` | `bool` | `false` | Enable OpenSearch internal user database for username/password authentication. |
+| `anonymousAuthEnabled` | `bool` | `false` | Allow anonymous access when FGAC is enabled (only settable when migrating an existing domain onto FGAC). |
 | `masterUserArn` | `StringValueOrRef` | — | IAM user/role ARN as master user. Mutually exclusive with `masterUserName`. |
 | `masterUserName` | `string` | — | Internal DB master username. Mutually exclusive with `masterUserArn`. |
 | `masterUserPassword` | `StringValueOrRef` | — | Internal DB master password. Min 8 chars with mixed case, digit, and special character. |
+| `jwtOptions` | `object` | — | JWT bearer-token authentication: `enabled`, `jwksUrl` or `publicKey`, `rolesKey`, `subjectKey`. |
+
+### Dashboards Authentication (`cognitoOptions`)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `enabled` | `bool` | Enable Amazon Cognito authentication for OpenSearch Dashboards. |
+| `userPoolId` | `StringValueOrRef` | Cognito user pool. Required when enabled. |
+| `identityPoolId` | `string` | Cognito identity pool ID. Required when enabled. |
+| `roleArn` | `StringValueOrRef` | IAM role that grants OpenSearch access to the Cognito pools. Required when enabled. |
 
 ### Log Publishing (`logPublishingOptions`)
 
@@ -145,10 +156,15 @@ Repeated block, up to 4 entries (one per log type):
 | Field | Type | Description |
 |-------|------|-------------|
 | `accessPolicies` | `Struct` | IAM-based access policy (serialized to JSON). Controls domain and index-level access. |
-| `autoTuneEnabled` | `bool` | Enable Auto-Tune for JVM, disk I/O, and performance optimization. |
+| `autoTuneOptions` | `object` | Auto-Tune: `desiredState` (`ENABLED`/`DISABLED`), `maintenanceSchedules`, `rollbackOnDisable`, `useOffPeakWindow`. Not supported on t2/t3 instance types. |
+| `automatedSnapshotStartHour` | `int` | Hour (0-23) for the daily automated snapshot (legacy setting; modern domains snapshot continuously). |
+| `offPeakWindowOptions` | `object` | Off-peak maintenance window: `enabled`, `windowStartHour`, `windowStartMinute`. |
 | `autoSoftwareUpdateEnabled` | `bool` | Allow AWS to apply mandatory and optional software updates. |
+| `deploymentStrategy` | `string` | Blue/green vs in-place update preference for eligible changes. |
 | `ipAddressType` | `string` | `ipv4` (default) or `dualstack` (IPv4 + IPv6). Changing from dualstack to ipv4 is ForceNew. |
 | `advancedOptions` | `map<string, string>` | Low-level engine options (e.g., `rest.action.multi.allow_explicit_index`). |
+| `aimlOptions` | `object` | AI/ML: `naturalLanguageQueryGenerationDesiredState`, `s3VectorsEngineEnabled`, `serverlessVectorAccelerationEnabled`. |
+| `identityCenterOptions` | `object` | IAM Identity Center API access: `enabledApiAccess`, `identityCenterInstanceArn`, `rolesKey`, `subjectKey`. |
 
 ## Stack Outputs
 
@@ -161,6 +177,9 @@ After deployment, the following outputs are available in `status.outputs`:
 | `domain_arn` | `string` | Amazon Resource Name for IAM policies and cross-service references |
 | `endpoint` | `string` | Domain endpoint for index, search, and data upload requests |
 | `dashboard_endpoint` | `string` | OpenSearch Dashboards UI endpoint |
+| `endpoint_v2` | `string` | Dual-stack (IPv4 + IPv6) V2 domain endpoint |
+| `dashboard_endpoint_v2` | `string` | Dashboards endpoint on the dual-stack V2 domain endpoint |
+| `domain_endpoint_v2_hosted_zone_id` | `string` | Route 53 hosted zone ID for aliasing DNS records at the V2 endpoint |
 
 ## Related Components
 

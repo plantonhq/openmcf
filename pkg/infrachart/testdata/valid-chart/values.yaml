@@ -1,0 +1,13 @@
+params:
+  - name: aws_region
+    description: AWS region for all resources
+    value: us-west-2
+
+  - name: vpc_name
+    description: Name of the VPC
+    value: fixture-vpc
+
+  - name: subnetEnabled
+    description: Whether to create the subnet
+    type: bool
+    value: true

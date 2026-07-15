@@ -48,6 +48,8 @@ spec:
   database_options:
     password_policy: good
     brute_force_protection: true
+    # The three options below are Auth0 "advanced password options" and require a
+    # paid "password-advanced-options" entitlement; omit them on free/lower-tier tenants.
     password_history_size: 5
     password_no_personal_info: true
     password_dictionary: true

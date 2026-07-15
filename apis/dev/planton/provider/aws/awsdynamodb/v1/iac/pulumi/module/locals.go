@@ -10,22 +10,31 @@ import (
 )
 
 type Locals struct {
-	Target  *awsdynamodbv1.AwsDynamodb
-	Spec    *awsdynamodbv1.AwsDynamodbSpec
+	AwsDynamodb *awsdynamodbv1.AwsDynamodb
+
+	// TableName is metadata.name -- create-only in AWS, and the basis
+	// both engines share so a manifest deploys identically on either.
+	TableName string
+
 	AwsTags map[string]string
 }
 
-func initializeLocals(ctx *pulumi.Context, in *awsdynamodbv1.AwsDynamodbStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, stackInput *awsdynamodbv1.AwsDynamodbStackInput) *Locals {
 	locals := &Locals{}
-	locals.Target = in.Target
-	locals.Spec = in.Target.Spec
+	locals.AwsDynamodb = stackInput.Target
 
+	metadata := stackInput.Target.Metadata
+	locals.TableName = metadata.Name
+
+	// Resource-identity tags match the Terraform module key-for-key.
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
-		awstagkeys.Organization: locals.Target.Metadata.Org,
-		awstagkeys.Environment:  locals.Target.Metadata.Env,
+		awstagkeys.Organization: metadata.Org,
+		awstagkeys.Environment:  metadata.Env,
 		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsDynamodb.String(),
-		awstagkeys.ResourceId:   locals.Target.Metadata.Id,
+		awstagkeys.ResourceId:   metadata.Id,
 	}
+
 	return locals
 }

@@ -1,0 +1,33 @@
+# Each document carries exactly one defect class the validator must catch.
+---
+# Unknown field: the spec has cidrBlock, not cidrBlok.
+apiVersion: aws.planton.dev/v1
+kind: AwsVpc
+metadata:
+  name: unknown-field
+spec:
+  region: "{{ values.aws_region }}"
+  cidrBlok: 10.0.0.0/16
+---
+# Constraint violation: region is required but missing.
+apiVersion: aws.planton.dev/v1
+kind: AwsVpc
+metadata:
+  name: missing-region
+spec:
+  cidrBlock: 10.0.0.0/16
+---
+# Dangling reference: AwsVpc has no status.outputs.does_not_exist.
+apiVersion: aws.planton.dev/v1
+kind: AwsSubnet
+metadata:
+  name: dangling-ref
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: unknown-field
+      fieldPath: status.outputs.does_not_exist
+  availabilityZone: "{{ values.aws_region }}a"
+  cidrBlock: 10.0.1.0/24

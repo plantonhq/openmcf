@@ -9,6 +9,7 @@ import (
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	fkv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestAwsCloudwatchLogGroupSpec(t *testing.T) {
@@ -423,4 +424,444 @@ var _ = ginkgo.Describe("AwsCloudwatchLogGroupSpec validations", func() {
 		err := protovalidate.Validate(input)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
+
+	// -------------------------------------------------------------------------
+	// Metric filters
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a log group with a counting metric filter", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "app-logs-with-filter",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				MetricFilters: []*AwsCloudwatchLogGroupMetricFilter{
+					{
+						Name:    "error-count",
+						Pattern: "ERROR",
+						Transformation: &AwsCloudwatchLogGroupMetricTransformation{
+							MetricName:      "ErrorCount",
+							MetricNamespace: "MyApp/Errors",
+							MetricValue:     "1",
+							DefaultValue:    float64Ptr(0),
+						},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a metric filter extracting a value with dimensions", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "latency-logs",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				MetricFilters: []*AwsCloudwatchLogGroupMetricFilter{
+					{
+						Name:    "latency-by-route",
+						Pattern: "{ $.latencyMs = * }",
+						Transformation: &AwsCloudwatchLogGroupMetricTransformation{
+							MetricName:      "RequestLatency",
+							MetricNamespace: "MyApp/Performance",
+							MetricValue:     "$.latencyMs",
+							Dimensions: map[string]string{
+								"Route": "$.route",
+							},
+							Unit: "Milliseconds",
+						},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a metric filter has no transformation", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "filter-no-transformation",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				MetricFilters: []*AwsCloudwatchLogGroupMetricFilter{
+					{
+						Name:    "broken",
+						Pattern: "ERROR",
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when metric filter names are duplicated", func() {
+		filter := func() *AwsCloudwatchLogGroupMetricFilter {
+			return &AwsCloudwatchLogGroupMetricFilter{
+				Name:    "dup",
+				Pattern: "ERROR",
+				Transformation: &AwsCloudwatchLogGroupMetricTransformation{
+					MetricName:      "ErrorCount",
+					MetricNamespace: "MyApp",
+					MetricValue:     "1",
+				},
+			}
+		}
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "dup-filter-names",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region:        "us-west-2",
+				MetricFilters: []*AwsCloudwatchLogGroupMetricFilter{filter(), filter()},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when default_value is combined with dimensions", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "default-with-dimensions",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				MetricFilters: []*AwsCloudwatchLogGroupMetricFilter{
+					{
+						Name:    "conflicted",
+						Pattern: "{ $.latencyMs = * }",
+						Transformation: &AwsCloudwatchLogGroupMetricTransformation{
+							MetricName:      "RequestLatency",
+							MetricNamespace: "MyApp",
+							MetricValue:     "$.latencyMs",
+							DefaultValue:    float64Ptr(0),
+							Dimensions: map[string]string{
+								"Route": "$.route",
+							},
+						},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a metric filter has more than 3 dimensions", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "too-many-dimensions",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				MetricFilters: []*AwsCloudwatchLogGroupMetricFilter{
+					{
+						Name:    "over-dimensional",
+						Pattern: "{ $.a = * }",
+						Transformation: &AwsCloudwatchLogGroupMetricTransformation{
+							MetricName:      "M",
+							MetricNamespace: "MyApp",
+							MetricValue:     "$.a",
+							Dimensions: map[string]string{
+								"A": "$.a", "B": "$.b", "C": "$.c", "D": "$.d",
+							},
+						},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when the transformation unit is not a valid StandardUnit", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-unit",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				MetricFilters: []*AwsCloudwatchLogGroupMetricFilter{
+					{
+						Name:    "bad-unit-filter",
+						Pattern: "ERROR",
+						Transformation: &AwsCloudwatchLogGroupMetricTransformation{
+							MetricName:      "ErrorCount",
+							MetricNamespace: "MyApp",
+							MetricValue:     "1",
+							Unit:            "Percentage",
+						},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Subscription filters
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a subscription filter to a Kinesis stream with a delivery role", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "streamed-logs",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				SubscriptionFilters: []*AwsCloudwatchLogGroupSubscriptionFilter{
+					{
+						Name: "to-analytics",
+						DestinationArn: &fkv1.StringValueOrRef{
+							LiteralOrRef: &fkv1.StringValueOrRef_ValueFrom{
+								ValueFrom: &fkv1.ValueFromRef{
+									Kind:      cloudresourcekind.CloudResourceKind_AwsKinesisStream,
+									Name:      "analytics-stream",
+									FieldPath: "status.outputs.stream_arn",
+								},
+							},
+						},
+						RoleArn: &fkv1.StringValueOrRef{
+							LiteralOrRef: &fkv1.StringValueOrRef_ValueFrom{
+								ValueFrom: &fkv1.ValueFromRef{
+									Kind: cloudresourcekind.CloudResourceKind_AwsIamRole,
+									Name: "cwl-to-kinesis",
+								},
+							},
+						},
+						FilterPattern:    "",
+						Distribution:     "ByLogStream",
+						EmitSystemFields: []string{"@aws.account", "@aws.region"},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when more than 2 subscription filters are configured", func() {
+		filter := func(name string) *AwsCloudwatchLogGroupSubscriptionFilter {
+			return &AwsCloudwatchLogGroupSubscriptionFilter{
+				Name: name,
+				DestinationArn: &fkv1.StringValueOrRef{
+					LiteralOrRef: &fkv1.StringValueOrRef_Value{
+						Value: "arn:aws:kinesis:us-west-2:123456789012:stream/" + name,
+					},
+				},
+			}
+		}
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "too-many-subscriptions",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				SubscriptionFilters: []*AwsCloudwatchLogGroupSubscriptionFilter{
+					filter("a"), filter("b"), filter("c"),
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a subscription filter has no destination", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "subscription-no-destination",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				SubscriptionFilters: []*AwsCloudwatchLogGroupSubscriptionFilter{
+					{Name: "dangling"},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when distribution is an invalid value", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-distribution",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				SubscriptionFilters: []*AwsCloudwatchLogGroupSubscriptionFilter{
+					{
+						Name: "bad",
+						DestinationArn: &fkv1.StringValueOrRef{
+							LiteralOrRef: &fkv1.StringValueOrRef_Value{
+								Value: "arn:aws:kinesis:us-west-2:123456789012:stream/x",
+							},
+						},
+						Distribution: "RoundRobin",
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when emit_system_fields carries an unsupported field", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-system-field",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				SubscriptionFilters: []*AwsCloudwatchLogGroupSubscriptionFilter{
+					{
+						Name: "bad",
+						DestinationArn: &fkv1.StringValueOrRef{
+							LiteralOrRef: &fkv1.StringValueOrRef_Value{
+								Value: "arn:aws:kinesis:us-west-2:123456789012:stream/x",
+							},
+						},
+						EmitSystemFields: []string{"@aws.availability_zone"},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when subscription filter names are duplicated", func() {
+		filter := func() *AwsCloudwatchLogGroupSubscriptionFilter {
+			return &AwsCloudwatchLogGroupSubscriptionFilter{
+				Name: "dup",
+				DestinationArn: &fkv1.StringValueOrRef{
+					LiteralOrRef: &fkv1.StringValueOrRef_Value{
+						Value: "arn:aws:kinesis:us-west-2:123456789012:stream/x",
+					},
+				},
+			}
+		}
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "dup-subscription-names",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region:              "us-west-2",
+				SubscriptionFilters: []*AwsCloudwatchLogGroupSubscriptionFilter{filter(), filter()},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Class / filter coupling
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when an INFREQUENT_ACCESS group configures a metric filter", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "ia-with-filter",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region:        "us-west-2",
+				LogGroupClass: "INFREQUENT_ACCESS",
+				MetricFilters: []*AwsCloudwatchLogGroupMetricFilter{
+					{
+						Name:    "not-allowed",
+						Pattern: "ERROR",
+						Transformation: &AwsCloudwatchLogGroupMetricTransformation{
+							MetricName:      "ErrorCount",
+							MetricNamespace: "MyApp",
+							MetricValue:     "1",
+						},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Policies (Struct folds)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a data protection policy and a field index policy", func() {
+		dataProtection, err := structpb.NewStruct(map[string]any{
+			"Name":    "protect-pii",
+			"Version": "2021-06-01",
+			"Statement": []any{
+				map[string]any{
+					"Sid":            "audit",
+					"DataIdentifier": []any{"arn:aws:dataprotection::aws:data-identifier/EmailAddress"},
+					"Operation":      map[string]any{"Audit": map[string]any{"FindingsDestination": map[string]any{}}},
+				},
+				map[string]any{
+					"Sid":            "redact",
+					"DataIdentifier": []any{"arn:aws:dataprotection::aws:data-identifier/EmailAddress"},
+					"Operation":      map[string]any{"Deidentify": map[string]any{"MaskConfig": map[string]any{}}},
+				},
+			},
+		})
+		gomega.Expect(err).To(gomega.BeNil())
+
+		fieldIndex, err := structpb.NewStruct(map[string]any{
+			"Fields": []any{"requestId", "userId"},
+		})
+		gomega.Expect(err).To(gomega.BeNil())
+
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "governed-logs",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region:               "us-west-2",
+				DataProtectionPolicy: dataProtection,
+				FieldIndexPolicy:     fieldIndex,
+			},
+		}
+		err = protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
 })
+
+func float64Ptr(f float64) *float64 { return &f }

@@ -9,7 +9,12 @@ spec:
       name: <origin-group-resource-name>
       fieldPath: status.outputs.origin_group_id
   originName: primary-app
-  # The App Service default hostname. App Service routes BY Host header,
-  # and leaving originHostHeader unset sends exactly this hostname --
-  # the correct pairing for multi-tenant Azure backends.
-  hostName: <app-name>.azurewebsites.net
+  # The App Service default hostname, referenced from the web app so the
+  # origin always tracks it. App Service routes BY Host header, and
+  # leaving originHostHeader unset sends exactly this hostname -- the
+  # correct pairing for multi-tenant Azure backends.
+  hostName:
+    valueFrom:
+      kind: AzureLinuxWebApp
+      name: <web-app-resource-name>
+      fieldPath: status.outputs.default_hostname

@@ -15,7 +15,13 @@ TOOLS
 - Reference component (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1/iac/pulumi/`
   -- copy the shape of its root `main.go` (`package main` -> load `<Kind>StackInput` -> call
   `module.Resources`), `Pulumi.yaml` (`name: <kindfolder>-pulumi-project`, `runtime: name: go`),
-  and `Makefile`.
+  and `Makefile`. NEVER add `options: binary: <anything>` under `runtime` in
+  `Pulumi.yaml` — not `main`, and not a project-named value like
+  `binary: aws-<kind>` that looks deliberate: it tells the engine to exec a
+  prebuilt executable instead of compiling the Go program, so any `pulumi up`
+  or `preview` from a clean checkout (including the E2E harness) fails with
+  "unable to find '<value>' executable". Source-compile mode (`runtime: name: go`
+  with no options) is the only correct shape.
 
 CRITICAL -- ENTRYPOINT LOCATION (DO NOT REGRESS)
 The entrypoint files MUST be written at the `iac/pulumi/` ROOT, never in a `main/` or

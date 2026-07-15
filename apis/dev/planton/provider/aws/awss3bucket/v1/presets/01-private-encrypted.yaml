@@ -4,7 +4,14 @@ metadata:
   name: my-private-bucket
 spec:
   region: <aws-region>
-  isPublic: false  # Block Public Access enabled
-  versioningEnabled: true  # Recommended for production
-  encryptionType: ENCRYPTION_TYPE_SSE_S3  # Free AES-256 encryption
-  forceDestroy: false  # Prevents accidental data loss
+  versioningStatus: Enabled
+  encryption:
+    sseAlgorithm: aws:kms
+    kmsKeyId:
+      value: <kms-key-arn>
+    bucketKeyEnabled: true
+  lifecycleRules:
+    - id: prune-noncurrent-versions
+      noncurrentVersionExpiration:
+        noncurrentDays: 30
+      abortIncompleteMultipartUploadDays: 7

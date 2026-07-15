@@ -1,8 +1,10 @@
 terraform {
   required_providers {
     aws = {
+      # Floor 6.4.0: options.export (exportable certificates) landed there;
+      # everything else this module renders is older.
       source  = "hashicorp/aws"
-      version = ">= 5.0"
+      version = ">= 6.4.0"
     }
   }
 }

@@ -34,7 +34,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpBigtableInstance
 metadata:
   name: my-bigtable
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -95,7 +95,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpBigtableInstance
 metadata:
   name: analytics-bt
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -119,7 +119,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpBigtableInstance
 metadata:
   name: timeseries-bt
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -148,7 +148,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpBigtableInstance
 metadata:
   name: ha-bigtable
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -183,7 +183,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpBigtableInstance
 metadata:
   name: encrypted-bt
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -221,7 +221,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpBigtableInstance
 metadata:
   name: enterprise-bt
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: data-platform

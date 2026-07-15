@@ -1,0 +1,33 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsfsxontapvolume
+spec:
+  # An FSx ONTAP volume under live E2E: one composed lane riding the SVM
+  # prerequisite fixture (which rides the ONTAP file-system fixture). The
+  # lane proves a mounted RW FlexVol with a junction path, explicit
+  # security style, AUTO tiering with a cooling period, storage efficiency
+  # enabled, tag copying, and a clean-teardown final-backup decision
+  # (skip_final_backup: true so the destroy leaves no billed backup).
+  # Excluded arms recorded here: snaplock_configuration — a COMPLIANCE
+  # volume is UNDELETABLE until every WORM retention expires (it would
+  # permanently orphan the lane), and an ENTERPRISE volume only deletes
+  # via the privileged-delete + bypass path, so WORM is proven
+  # structurally by the offline plan/preview proof and the spec tests;
+  # size_in_bytes and FLEXGROUP aggregate layout (carried by the offline
+  # hack-manifest proof; a FlexGroup multiplies constituent cost for no
+  # additional verifier coverage); DP volume type (needs a SnapMirror
+  # relationship to be meaningful). Verification is DescribeVolumes keyed
+  # on volume_id, lifecycle-state-aware (DELETING counts as absent).
+  # Expected timings: the volume itself creates in ~5-10 minutes; the
+  # SVM + file-system prerequisite chain adds ~35-60 minutes on a cold
+  # install.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision: the volume lane's prerequisite chain
+    provisions an FSx ONTAP file system and SVM, which are long-provisioning
+    and expensive, so the family stops at the offline gate (green tofu plan
+    + pulumi preview per engine). Artifacts are complete and the lanes stay
+    re-runnable.
+  timeout_minutes: 120

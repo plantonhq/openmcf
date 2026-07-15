@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: AWS Network Foundation
+spec:
+  selector:
+    kind: platform
+  description: The production VPC baseline every AWS workload builds on — public/private subnets across AZs, managed internet and NAT egress, and a free S3 gateway endpoint, with the cost dials exposed honestly.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/aws/awsvpc/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/aws/network-foundation
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/aws/network-foundation/README.md

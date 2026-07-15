@@ -32,14 +32,25 @@ func int32Ptr(i int32) *int32 {
 var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 	var spec *AwsFsxOntapFileSystemSpec
 
+	// The implicit deployment type is SINGLE_AZ_2 with one HA pair, whose
+	// per-HA-pair throughput tiers are 384/768/1536/3072/6144.
 	ginkgo.BeforeEach(func() {
 		spec = &AwsFsxOntapFileSystemSpec{
 			Region:                      "us-west-2",
 			SubnetIds:                   []*foreignkeyv1.StringValueOrRef{strRef("subnet-abc123")},
 			StorageCapacityGib:          1024,
-			ThroughputCapacityPerHaPair: 128,
+			ThroughputCapacityPerHaPair: int32Ptr(384),
 		}
 	})
+
+	multiAzBase := func(deploymentType string) {
+		spec.DeploymentType = stringPtr(deploymentType)
+		spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
+			strRef("subnet-abc123"),
+			strRef("subnet-def456"),
+		}
+		spec.PreferredSubnetId = strRef("subnet-abc123")
+	}
 
 	// -------------------------------------------------------------------------
 	// Happy path — valid configurations
@@ -50,71 +61,64 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts SINGLE_AZ_1 deployment type", func() {
+	ginkgo.It("accepts SINGLE_AZ_1 with the whole-file-system throughput arm", func() {
 		spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+		spec.ThroughputCapacityPerHaPair = nil
+		spec.ThroughputCapacity = int32Ptr(128)
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts SINGLE_AZ_2 deployment type", func() {
+	ginkgo.It("accepts SINGLE_AZ_1 with a first-generation per-HA-pair value", func() {
+		spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+		spec.ThroughputCapacityPerHaPair = int32Ptr(128)
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts SINGLE_AZ_2 explicitly", func() {
 		spec.DeploymentType = stringPtr("SINGLE_AZ_2")
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts MULTI_AZ_1 deployment type with two subnets", func() {
-		spec.DeploymentType = stringPtr("MULTI_AZ_1")
-		spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
-			strRef("subnet-abc123"),
-			strRef("subnet-def456"),
-		}
-		spec.PreferredSubnetId = strRef("subnet-abc123")
+	ginkgo.It("accepts MULTI_AZ_1 with two subnets, a preferred subnet, and a gen1 tier", func() {
+		multiAzBase("MULTI_AZ_1")
+		spec.ThroughputCapacityPerHaPair = int32Ptr(512)
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts MULTI_AZ_2 deployment type with two subnets", func() {
-		spec.DeploymentType = stringPtr("MULTI_AZ_2")
-		spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
-			strRef("subnet-abc123"),
-			strRef("subnet-def456"),
-		}
-		spec.PreferredSubnetId = strRef("subnet-abc123")
+	ginkgo.It("accepts MULTI_AZ_2 with two subnets, a preferred subnet, and a gen2 tier", func() {
+		multiAzBase("MULTI_AZ_2")
+		spec.ThroughputCapacityPerHaPair = int32Ptr(768)
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
 	ginkgo.It("accepts multi-AZ with route_table_ids and endpoint_ip_address_range", func() {
-		spec.DeploymentType = stringPtr("MULTI_AZ_1")
-		spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
-			strRef("subnet-abc123"),
-			strRef("subnet-def456"),
-		}
-		spec.PreferredSubnetId = strRef("subnet-abc123")
+		multiAzBase("MULTI_AZ_1")
+		spec.ThroughputCapacityPerHaPair = int32Ptr(512)
 		spec.RouteTableIds = []*foreignkeyv1.StringValueOrRef{strRef("rtb-abc123")}
 		spec.EndpointIpAddressRange = "198.19.255.0/24"
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts SINGLE_AZ_2 with multiple HA pairs", func() {
+	ginkgo.It("accepts SINGLE_AZ_2 scale-out with multiple HA pairs", func() {
 		spec.DeploymentType = stringPtr("SINGLE_AZ_2")
 		spec.HaPairs = int32Ptr(6)
-		spec.ThroughputCapacityPerHaPair = 512
+		spec.StorageCapacityGib = 12288
+		spec.ThroughputCapacityPerHaPair = int32Ptr(1536)
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts SINGLE_AZ_1 with multiple HA pairs", func() {
-		spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+	ginkgo.It("accepts the maximum scale-out shape (12 HA pairs, 1 PiB)", func() {
+		spec.DeploymentType = stringPtr("SINGLE_AZ_2")
 		spec.HaPairs = int32Ptr(12)
-		spec.ThroughputCapacityPerHaPair = 256
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts HDD storage type", func() {
-		spec.StorageType = stringPtr("HDD")
+		spec.StorageCapacityGib = 1048576
+		spec.ThroughputCapacityPerHaPair = int32Ptr(6144)
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
@@ -134,10 +138,9 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 
 	ginkgo.It("accepts a full production SINGLE_AZ_2 configuration", func() {
 		spec.DeploymentType = stringPtr("SINGLE_AZ_2")
-		spec.StorageCapacityGib = 2048
+		spec.StorageCapacityGib = 4096
 		spec.StorageType = stringPtr("SSD")
-		spec.ThroughputCapacityPerHaPair = 512
-		spec.HaPairs = int32Ptr(2)
+		spec.ThroughputCapacityPerHaPair = int32Ptr(768)
 		spec.SecurityGroupIds = []*foreignkeyv1.StringValueOrRef{strRef("sg-abc123")}
 		spec.KmsKeyId = strRef("arn:aws:kms:us-east-1:123456789012:key/test-key")
 		spec.FsxAdminPassword = "OntapAdmin2024!"
@@ -147,22 +150,16 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 		}
 		spec.AutomaticBackupRetentionDays = int32Ptr(7)
 		spec.DailyAutomaticBackupStartTime = "05:00"
-		spec.CopyTagsToBackups = true
 		spec.WeeklyMaintenanceStartTime = "7:02:00"
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
 	ginkgo.It("accepts a full production MULTI_AZ_2 configuration", func() {
-		spec.DeploymentType = stringPtr("MULTI_AZ_2")
-		spec.StorageCapacityGib = 4096
+		multiAzBase("MULTI_AZ_2")
+		spec.StorageCapacityGib = 8192
 		spec.StorageType = stringPtr("SSD")
-		spec.ThroughputCapacityPerHaPair = 1024
-		spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
-			strRef("subnet-abc123"),
-			strRef("subnet-def456"),
-		}
-		spec.PreferredSubnetId = strRef("subnet-abc123")
+		spec.ThroughputCapacityPerHaPair = int32Ptr(1536)
 		spec.EndpointIpAddressRange = "198.19.255.0/24"
 		spec.RouteTableIds = []*foreignkeyv1.StringValueOrRef{
 			strRef("rtb-abc123"),
@@ -176,16 +173,33 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 		}
 		spec.AutomaticBackupRetentionDays = int32Ptr(14)
 		spec.DailyAutomaticBackupStartTime = "03:00"
-		spec.CopyTagsToBackups = true
-		spec.SkipFinalBackup = (*bool)(nil)
 		spec.WeeklyMaintenanceStartTime = "1:05:00"
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts all valid throughput_capacity_per_ha_pair values", func() {
-		for _, tp := range []int32{128, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144} {
-			spec.ThroughputCapacityPerHaPair = tp
+	ginkgo.It("accepts every gen2 single-HA-pair throughput tier", func() {
+		for _, tp := range []int32{384, 768, 1536, 3072, 6144} {
+			spec.ThroughputCapacityPerHaPair = int32Ptr(tp)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil(), "throughput %d should be valid", tp)
+		}
+	})
+
+	ginkgo.It("accepts every gen1 per-HA-pair throughput tier on SINGLE_AZ_1", func() {
+		spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+		for _, tp := range []int32{128, 256, 512, 1024, 2048, 4096} {
+			spec.ThroughputCapacityPerHaPair = int32Ptr(tp)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil(), "throughput %d should be valid", tp)
+		}
+	})
+
+	ginkgo.It("accepts every whole-file-system throughput tier", func() {
+		spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+		spec.ThroughputCapacityPerHaPair = nil
+		for _, tp := range []int32{128, 256, 512, 1024, 2048, 4096} {
+			spec.ThroughputCapacity = int32Ptr(tp)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil(), "throughput %d should be valid", tp)
 		}
@@ -203,10 +217,10 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts USER_PROVISIONED IOPS mode with iops", func() {
+	ginkgo.It("accepts USER_PROVISIONED IOPS mode with iops at the ceiling", func() {
 		spec.DiskIopsConfiguration = &AwsFsxOntapFileSystemDiskIopsConfiguration{
 			Mode: stringPtr("USER_PROVISIONED"),
-			Iops: 80000,
+			Iops: 2400000,
 		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
@@ -223,6 +237,14 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
+		ginkgo.It("fails when subnet_ids has more than two entries", func() {
+			spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
+				strRef("subnet-a"), strRef("subnet-b"), strRef("subnet-c"),
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
 		ginkgo.It("fails when storage_capacity_gib is below minimum (1024)", func() {
 			spec.StorageCapacityGib = 512
 			err := protovalidate.Validate(spec)
@@ -231,18 +253,6 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 
 		ginkgo.It("fails when storage_capacity_gib is zero", func() {
 			spec.StorageCapacityGib = 0
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("fails when throughput_capacity_per_ha_pair is zero", func() {
-			spec.ThroughputCapacityPerHaPair = 0
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("fails when throughput_capacity_per_ha_pair is negative", func() {
-			spec.ThroughputCapacityPerHaPair = -1
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
@@ -270,6 +280,15 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
+
+		ginkgo.It("fails when disk iops exceeds 2,400,000", func() {
+			spec.DiskIopsConfiguration = &AwsFsxOntapFileSystemDiskIopsConfiguration{
+				Mode: stringPtr("USER_PROVISIONED"),
+				Iops: 2400001,
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 	})
 
 	// -------------------------------------------------------------------------
@@ -289,7 +308,7 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails for OpenZFS deployment type MULTI_AZ_1 without multi-AZ fields", func() {
+		ginkgo.It("fails for a Lustre deployment type", func() {
 			spec.DeploymentType = stringPtr("SCRATCH_2")
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
@@ -297,12 +316,24 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 	})
 
 	// -------------------------------------------------------------------------
-	// CEL: storage_type_valid
+	// CEL: storage_type_valid — ONTAP is SSD-only
 	// -------------------------------------------------------------------------
 
 	ginkgo.Context("storage_type_valid", func() {
-		ginkgo.It("fails when storage_type is invalid", func() {
-			spec.StorageType = stringPtr("NVME")
+		ginkgo.It("accepts explicit SSD", func() {
+			spec.StorageType = stringPtr("SSD")
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("fails for HDD (a Windows/Lustre storage class)", func() {
+			spec.StorageType = stringPtr("HDD")
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails for INTELLIGENT_TIERING (an OpenZFS/Lustre storage class)", func() {
+			spec.StorageType = stringPtr("INTELLIGENT_TIERING")
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
@@ -315,76 +346,180 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 	})
 
 	// -------------------------------------------------------------------------
-	// CEL: throughput_valid
+	// CEL: throughput_exactly_one_arm
 	// -------------------------------------------------------------------------
 
-	ginkgo.Context("throughput_valid", func() {
-		ginkgo.It("fails when throughput is not a valid tier", func() {
-			spec.ThroughputCapacityPerHaPair = 100
+	ginkgo.Context("throughput_exactly_one_arm", func() {
+		ginkgo.It("fails when both throughput arms are set", func() {
+			spec.ThroughputCapacity = int32Ptr(1024)
+			spec.ThroughputCapacityPerHaPair = int32Ptr(384)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when throughput is 160 (valid for OpenZFS, not ONTAP)", func() {
-			spec.ThroughputCapacityPerHaPair = 160
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("fails when throughput is 64 (valid for Lustre, not ONTAP)", func() {
-			spec.ThroughputCapacityPerHaPair = 64
+		ginkgo.It("fails when neither throughput arm is set", func() {
+			spec.ThroughputCapacity = nil
+			spec.ThroughputCapacityPerHaPair = nil
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 	})
 
 	// -------------------------------------------------------------------------
-	// CEL: ha_pairs_single_az_only
+	// CEL: throughput value sets
 	// -------------------------------------------------------------------------
 
-	ginkgo.Context("ha_pairs_single_az_only", func() {
-		ginkgo.It("fails when ha_pairs > 1 on MULTI_AZ_1", func() {
-			spec.DeploymentType = stringPtr("MULTI_AZ_1")
+	ginkgo.Context("throughput value sets", func() {
+		ginkgo.It("fails when throughput_capacity uses a per-HA-pair-only tier", func() {
+			spec.ThroughputCapacityPerHaPair = nil
+			spec.ThroughputCapacity = int32Ptr(384)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when a gen2 single-pair file system uses a gen1 tier (128)", func() {
+			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
+			spec.ThroughputCapacityPerHaPair = int32Ptr(128)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when the implicit SINGLE_AZ_2 default uses a gen1 tier", func() {
+			spec.ThroughputCapacityPerHaPair = int32Ptr(1024)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when SINGLE_AZ_1 uses a gen2 tier (384)", func() {
+			spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+			spec.ThroughputCapacityPerHaPair = int32Ptr(384)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when scale-out (ha_pairs > 1) uses a single-pair tier (384)", func() {
+			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
 			spec.HaPairs = int32Ptr(2)
-			spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
-				strRef("subnet-abc123"),
-				strRef("subnet-def456"),
-			}
-			spec.PreferredSubnetId = strRef("subnet-abc123")
+			spec.StorageCapacityGib = 4096
+			spec.ThroughputCapacityPerHaPair = int32Ptr(384)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when throughput is not any valid tier", func() {
+			spec.ThroughputCapacityPerHaPair = int32Ptr(100)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: ha_pairs_scale_out_single_az_2_only
+	// -------------------------------------------------------------------------
+
+	ginkgo.Context("ha_pairs_scale_out_single_az_2_only", func() {
+		ginkgo.It("fails when ha_pairs > 1 on SINGLE_AZ_1", func() {
+			spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+			spec.HaPairs = int32Ptr(2)
+			spec.StorageCapacityGib = 4096
+			spec.ThroughputCapacityPerHaPair = int32Ptr(1024)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when ha_pairs > 1 on MULTI_AZ_1", func() {
+			multiAzBase("MULTI_AZ_1")
+			spec.HaPairs = int32Ptr(2)
+			spec.StorageCapacityGib = 4096
+			spec.ThroughputCapacityPerHaPair = int32Ptr(1024)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
 		ginkgo.It("fails when ha_pairs > 1 on MULTI_AZ_2", func() {
-			spec.DeploymentType = stringPtr("MULTI_AZ_2")
+			multiAzBase("MULTI_AZ_2")
 			spec.HaPairs = int32Ptr(3)
-			spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
-				strRef("subnet-abc123"),
-				strRef("subnet-def456"),
-			}
-			spec.PreferredSubnetId = strRef("subnet-abc123")
+			spec.StorageCapacityGib = 4096
+			spec.ThroughputCapacityPerHaPair = int32Ptr(1536)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
 		ginkgo.It("accepts ha_pairs = 1 on MULTI_AZ_1", func() {
-			spec.DeploymentType = stringPtr("MULTI_AZ_1")
+			multiAzBase("MULTI_AZ_1")
 			spec.HaPairs = int32Ptr(1)
-			spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
-				strRef("subnet-abc123"),
-				strRef("subnet-def456"),
-			}
-			spec.PreferredSubnetId = strRef("subnet-abc123")
+			spec.ThroughputCapacityPerHaPair = int32Ptr(512)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 	})
 
 	// -------------------------------------------------------------------------
-	// CEL: preferred_subnet_requires_multi_az
+	// CEL: storage capacity contracts
 	// -------------------------------------------------------------------------
 
-	ginkgo.Context("preferred_subnet_requires_multi_az", func() {
+	ginkgo.Context("storage capacity contracts", func() {
+		ginkgo.It("fails when capacity is below 1024 GiB per HA pair", func() {
+			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
+			spec.HaPairs = int32Ptr(4)
+			spec.StorageCapacityGib = 2048 // needs >= 4096
+			spec.ThroughputCapacityPerHaPair = int32Ptr(1536)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when capacity exceeds 512 TiB with a single HA pair", func() {
+			spec.StorageCapacityGib = 600000
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when a gen1 file system exceeds 192 TiB", func() {
+			spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+			spec.ThroughputCapacityPerHaPair = int32Ptr(1024)
+			spec.StorageCapacityGib = 200000
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts 192 TiB exactly on gen1", func() {
+			spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+			spec.ThroughputCapacityPerHaPair = int32Ptr(1024)
+			spec.StorageCapacityGib = 196608
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: subnet-count contracts
+	// -------------------------------------------------------------------------
+
+	ginkgo.Context("subnet-count contracts", func() {
+		ginkgo.It("fails when a single-AZ file system has two subnets", func() {
+			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
+			spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
+				strRef("subnet-abc123"),
+				strRef("subnet-def456"),
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when a multi-AZ file system has one subnet", func() {
+			spec.DeploymentType = stringPtr("MULTI_AZ_2")
+			spec.PreferredSubnetId = strRef("subnet-abc123")
+			spec.ThroughputCapacityPerHaPair = int32Ptr(768)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: preferred_subnet_multi_az_contract
+	// -------------------------------------------------------------------------
+
+	ginkgo.Context("preferred_subnet_multi_az_contract", func() {
 		ginkgo.It("fails when preferred_subnet_id is set on SINGLE_AZ_2", func() {
 			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
 			spec.PreferredSubnetId = strRef("subnet-abc123")
@@ -392,9 +527,19 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when preferred_subnet_id is set on SINGLE_AZ_1", func() {
-			spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+		ginkgo.It("fails when preferred_subnet_id is set on the implicit default", func() {
 			spec.PreferredSubnetId = strRef("subnet-abc123")
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when a multi-AZ file system omits preferred_subnet_id", func() {
+			spec.DeploymentType = stringPtr("MULTI_AZ_1")
+			spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
+				strRef("subnet-abc123"),
+				strRef("subnet-def456"),
+			}
+			spec.ThroughputCapacityPerHaPair = int32Ptr(512)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
@@ -408,13 +553,21 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 	})
 
 	// -------------------------------------------------------------------------
-	// CEL: endpoint_ip_range_requires_multi_az
+	// CEL: endpoint_ip_range contracts
 	// -------------------------------------------------------------------------
 
-	ginkgo.Context("endpoint_ip_range_requires_multi_az", func() {
+	ginkgo.Context("endpoint_ip_range contracts", func() {
 		ginkgo.It("fails when endpoint_ip_address_range is set on SINGLE_AZ_2", func() {
 			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
 			spec.EndpointIpAddressRange = "198.19.255.0/24"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when endpoint_ip_address_range is not CIDR-shaped", func() {
+			multiAzBase("MULTI_AZ_1")
+			spec.ThroughputCapacityPerHaPair = int32Ptr(512)
+			spec.EndpointIpAddressRange = "198.19.255.0"
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
@@ -441,6 +594,7 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 
 		ginkgo.It("fails when route_table_ids is set on SINGLE_AZ_1", func() {
 			spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+			spec.ThroughputCapacityPerHaPair = int32Ptr(128)
 			spec.RouteTableIds = []*foreignkeyv1.StringValueOrRef{strRef("rtb-abc123")}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
@@ -488,10 +642,10 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 	})
 
 	// -------------------------------------------------------------------------
-	// CEL: backup_time_requires_retention
+	// CEL: backup_time_requires_retention + time formats
 	// -------------------------------------------------------------------------
 
-	ginkgo.Context("backup_time_requires_retention", func() {
+	ginkgo.Context("backup and maintenance windows", func() {
 		ginkgo.It("fails when backup time is set but retention is 0", func() {
 			spec.AutomaticBackupRetentionDays = int32Ptr(0)
 			spec.DailyAutomaticBackupStartTime = "05:00"
@@ -505,26 +659,39 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
+		ginkgo.It("fails when backup time is not HH:MM", func() {
+			spec.AutomaticBackupRetentionDays = int32Ptr(7)
+			spec.DailyAutomaticBackupStartTime = "5:00"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when backup hour is out of range", func() {
+			spec.AutomaticBackupRetentionDays = int32Ptr(7)
+			spec.DailyAutomaticBackupStartTime = "25:00"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when maintenance day is out of range", func() {
+			spec.WeeklyMaintenanceStartTime = "8:02:00"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
 		ginkgo.It("accepts backup time with retention > 0", func() {
 			spec.AutomaticBackupRetentionDays = int32Ptr(7)
 			spec.DailyAutomaticBackupStartTime = "05:00"
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
-
-		ginkgo.It("accepts empty backup time with any retention", func() {
-			spec.AutomaticBackupRetentionDays = int32Ptr(7)
-			spec.DailyAutomaticBackupStartTime = ""
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
 	})
 
 	// -------------------------------------------------------------------------
-	// CEL: iops_mode_valid (nested message)
+	// CEL: iops mode contracts (nested message)
 	// -------------------------------------------------------------------------
 
-	ginkgo.Context("iops_mode_valid", func() {
+	ginkgo.Context("disk IOPS contracts", func() {
 		ginkgo.It("fails when IOPS mode is invalid", func() {
 			spec.DiskIopsConfiguration = &AwsFsxOntapFileSystemDiskIopsConfiguration{
 				Mode: stringPtr("MANUAL"),
@@ -533,20 +700,6 @@ var _ = ginkgo.Describe("AwsFsxOntapFileSystemSpec validations", func() {
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when IOPS mode is lowercase", func() {
-			spec.DiskIopsConfiguration = &AwsFsxOntapFileSystemDiskIopsConfiguration{
-				Mode: stringPtr("automatic"),
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-	})
-
-	// -------------------------------------------------------------------------
-	// CEL: iops_requires_user_provisioned (nested message)
-	// -------------------------------------------------------------------------
-
-	ginkgo.Context("iops_requires_user_provisioned", func() {
 		ginkgo.It("fails when iops is set with AUTOMATIC mode", func() {
 			spec.DiskIopsConfiguration = &AwsFsxOntapFileSystemDiskIopsConfiguration{
 				Mode: stringPtr("AUTOMATIC"),

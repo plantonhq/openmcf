@@ -4,24 +4,37 @@ metadata:
   name: awsdynamodb-demo
 spec:
   region: us-west-2
-  billingMode: BILLING_MODE_PAY_PER_REQUEST
+  billingMode: PAY_PER_REQUEST
   attributeDefinitions:
     - name: pk
-      type: ATTRIBUTE_TYPE_S
+      type: S
+    - name: sk
+      type: S
+    - name: gsi1pk
+      type: S
   keySchema:
     - attributeName: pk
-      keyType: KEY_TYPE_HASH
-  # ttl:
-  #   enabled: false
-  #   attributeName: ""
-  # streamEnabled: false
-  # streamViewType: STREAM_VIEW_TYPE_UNSPECIFIED
-  # pointInTimeRecoveryEnabled: false
-  # serverSideEncryption:
-  #   enabled: false
-  #   kmsKeyArn: ""
-  # tableClass: TABLE_CLASS_UNSPECIFIED
-  # deletionProtectionEnabled: false
-  # contributorInsightsEnabled: false
-
-
+      keyType: HASH
+    - attributeName: sk
+      keyType: RANGE
+  globalSecondaryIndexes:
+    - name: gsi1
+      keySchema:
+        - attributeName: gsi1pk
+          keyType: HASH
+      projection:
+        type: ALL
+  ttl:
+    enabled: true
+    attributeName: expiresAt
+  streamEnabled: true
+  streamViewType: NEW_AND_OLD_IMAGES
+  pointInTimeRecovery:
+    enabled: true
+  serverSideEncryption:
+    enabled: true
+  deletionProtectionEnabled: false
+  contributorInsights:
+    enabled: true
+    gsiIndexNames:
+      - gsi1

@@ -93,7 +93,7 @@ Routes are evaluated in order, with the first matching route handling the reques
 
 ### Integrations
 
-**Integrations** connect routes to backend services. HTTP APIs support two integration types:
+**Integrations** connect routes to backend services. HTTP APIs support two integration types (`AWS_PROXY` and `HTTP_PROXY`), which between them carry three backend shapes: Lambda proxy, HTTP proxy (public or private through a VPC link), and direct AWS service integrations.
 
 #### AWS_PROXY Integration
 
@@ -141,7 +141,43 @@ HTTP proxy integration where API Gateway:
 2. Forwards to upstream HTTP endpoint
 3. Returns upstream response
 
-Supports path rewriting, header manipulation, and query string forwarding.
+Supports path rewriting, header manipulation, and query string forwarding
+(expressed as `request_parameters` mapping instructions like
+`overwrite:header.x-tenant` or `remove:querystring.debug`).
+
+#### Private Integrations (VPC Link)
+
+An HTTP_PROXY integration with `connection_type: VPC_LINK` routes through an
+API Gateway v2 VPC link into a VPC, targeting an internal ALB listener, NLB
+listener, or Cloud Map service — the backend never needs to be internet-facing.
+The VPC link is its own composable resource (`AwsHttpApiVpcLink`): one link is
+shared by any number of APIs, and it owns the managed ENIs that reach into the
+chosen subnets. When the internal ALB terminates TLS with a certificate issued
+for the public domain, `tls_server_name_to_verify` overrides the SNI name API
+Gateway verifies.
+
+#### AWS Service Integrations (integration_subtype)
+
+First-class service integrations let a route call an AWS service action
+directly — no Lambda glue function. The route's integration sets
+`integration_type: AWS_PROXY` plus an `integration_subtype` selecting the
+action, and supplies the action's parameters in `request_parameters`:
+
+| Subtype | Action | Typical request_parameters |
+|---------|--------|---------------------------|
+| `SQS-SendMessage` | Enqueue the request | `QueueUrl`, `MessageBody: $request.body` |
+| `EventBridge-PutEvents` | Publish an event | `Detail`, `DetailType`, `Source`, `EventBusName` |
+| `StepFunctions-StartExecution` | Start a workflow | `StateMachineArn`, `Input: $request.body` |
+| `StepFunctions-StartSyncExecution` | Run an Express workflow synchronously | `StateMachineArn`, `Input` |
+| `Kinesis-PutRecord` | Write a stream record | `StreamName`, `Data`, `PartitionKey` |
+| `AppConfig-GetConfiguration` | Read configuration | `Application`, `Environment`, `Configuration` |
+
+Service integrations require `credentials_arn` — an IAM role trusted by
+`apigateway.amazonaws.com` granting the action — because unlike Lambda proxy
+integrations there is no resource policy on the target to authorize the call.
+They are fixed at payload format 1.0 by AWS, and their target is expressed
+entirely in `request_parameters` (AWS rejects an `integration_uri` alongside a
+subtype).
 
 ### Authorizers
 

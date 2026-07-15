@@ -39,4 +39,8 @@ spec:
         fieldPath: status.outputs.security_group_id
   dailySnapshotTime: "03:00"
   snapshotRetentionLimit: 14
-  userGroupId: ${user_group_id}
+  userGroupId:
+    valueFrom:
+      kind: AwsElasticacheUserGroup
+      name: ${user_group_name}
+      fieldPath: status.outputs.user_group_id

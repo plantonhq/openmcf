@@ -107,9 +107,17 @@ type AwsSqsQueueSpec struct {
 	// standard IAM policy document structure. Common use cases include granting
 	// SNS topics permission to publish to this queue or allowing cross-account
 	// access.
-	Policy        *structpb.Struct `protobuf:"bytes,15,opt,name=policy,proto3" json:"policy,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Policy *structpb.Struct `protobuf:"bytes,15,opt,name=policy,proto3" json:"policy,omitempty"`
+	// Controls which source queues are allowed to use THIS queue as their
+	// dead-letter queue. This is the permission side of the dead-letter
+	// relationship: `dead_letter_config` on a source queue points at a DLQ,
+	// while `redrive_allow_policy` on the DLQ itself restricts who may point
+	// at it. When unset, AWS allows all source queues in the account (the
+	// "allowAll" behavior). Locking a shared DLQ down with "byQueue" prevents
+	// unrelated workloads from silently routing their failures into it.
+	RedriveAllowPolicy *AwsSqsQueueRedriveAllowPolicy `protobuf:"bytes,16,opt,name=redrive_allow_policy,json=redriveAllowPolicy,proto3" json:"redrive_allow_policy,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *AwsSqsQueueSpec) Reset() {
@@ -247,6 +255,13 @@ func (x *AwsSqsQueueSpec) GetPolicy() *structpb.Struct {
 	return nil
 }
 
+func (x *AwsSqsQueueSpec) GetRedriveAllowPolicy() *AwsSqsQueueRedriveAllowPolicy {
+	if x != nil {
+		return x.RedriveAllowPolicy
+	}
+	return nil
+}
+
 // AwsSqsQueueDeadLetterConfig configures the dead letter queue for failed message routing.
 // When a consumer receives a message more than `max_receive_count` times without
 // deleting it, SQS automatically moves the message to the specified target queue.
@@ -308,11 +323,80 @@ func (x *AwsSqsQueueDeadLetterConfig) GetMaxReceiveCount() int32 {
 	return 0
 }
 
+// AwsSqsQueueRedriveAllowPolicy restricts which source queues may designate this
+// queue as their dead-letter queue. AWS evaluates this policy when a source
+// queue's redrive (dead-letter) configuration is created or updated — it does
+// not affect messages already in flight.
+type AwsSqsQueueRedriveAllowPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The redrive permission mode.
+	// Valid values:
+	//   - "allowAll": any source queue in the same account and region may use this
+	//     queue as its DLQ (AWS's default behavior when no policy is set).
+	//   - "denyAll": no source queue may use this queue as a DLQ. Use this to
+	//     protect a queue that must never receive redriven messages.
+	//   - "byQueue": only the queues listed in `source_queue_arns` may use this
+	//     queue as their DLQ. The recommended mode for shared/central DLQs.
+	RedrivePermission string `protobuf:"bytes,1,opt,name=redrive_permission,json=redrivePermission,proto3" json:"redrive_permission,omitempty"`
+	// ARNs of the source queues permitted to use this queue as their dead-letter
+	// queue. Each entry accepts a direct ARN or a reference to another
+	// AwsSqsQueue resource. Only valid (and required) when `redrive_permission`
+	// is "byQueue". AWS caps the list at 10 source queues; to allow more than
+	// 10, use "allowAll" instead.
+	SourceQueueArns []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=source_queue_arns,json=sourceQueueArns,proto3" json:"source_queue_arns,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AwsSqsQueueRedriveAllowPolicy) Reset() {
+	*x = AwsSqsQueueRedriveAllowPolicy{}
+	mi := &file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsSqsQueueRedriveAllowPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsSqsQueueRedriveAllowPolicy) ProtoMessage() {}
+
+func (x *AwsSqsQueueRedriveAllowPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsSqsQueueRedriveAllowPolicy.ProtoReflect.Descriptor instead.
+func (*AwsSqsQueueRedriveAllowPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsSqsQueueRedriveAllowPolicy) GetRedrivePermission() string {
+	if x != nil {
+		return x.RedrivePermission
+	}
+	return ""
+}
+
+func (x *AwsSqsQueueRedriveAllowPolicy) GetSourceQueueArns() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.SourceQueueArns
+	}
+	return nil
+}
+
 var File_dev_planton_provider_aws_awssqsqueue_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2dev/planton/provider/aws/awssqsqueue/v1/spec.proto\x12'dev.planton.provider.aws.awssqsqueue.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xa4\x15\n" +
+	"2dev/planton/provider/aws/awssqsqueue/v1/spec.proto\x12'dev.planton.provider.aws.awssqsqueue.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x9e\x16\n" +
 	"\x0fAwsSqsQueueSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x1d\n" +
 	"\n" +
@@ -332,7 +416,8 @@ const file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_rawDesc = "" +
 	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12G\n" +
 	"!kms_data_key_reuse_period_seconds\x18\r \x01(\x05R\x1ckmsDataKeyReusePeriodSeconds\x125\n" +
 	"\x17sqs_managed_sse_enabled\x18\x0e \x01(\bR\x14sqsManagedSseEnabled\x12/\n" +
-	"\x06policy\x18\x0f \x01(\v2\x17.google.protobuf.StructR\x06policy:\xe0\r\xbaH\xdc\r\x1a\xbb\x01\n" +
+	"\x06policy\x18\x0f \x01(\v2\x17.google.protobuf.StructR\x06policy\x12x\n" +
+	"\x14redrive_allow_policy\x18\x10 \x01(\v2F.dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueRedriveAllowPolicyR\x12redriveAllowPolicy:\xe0\r\xbaH\xdc\r\x1a\xbb\x01\n" +
 	")content_based_deduplication_requires_fifo\x12Xcontent_based_deduplication can only be enabled on FIFO queues (fifo_queue must be true)\x1a4!this.content_based_deduplication || this.fifo_queue\x1a\xea\x01\n" +
 	"!deduplication_scope_requires_fifo\x12Wdeduplication_scope is only valid for FIFO queues and must be 'messageGroup' or 'queue'\x1althis.deduplication_scope == '' || (this.fifo_queue && this.deduplication_scope in ['messageGroup', 'queue'])\x1a\x82\x02\n" +
 	"#fifo_throughput_limit_requires_fifo\x12afifo_throughput_limit is only valid for FIFO queues and must be 'perMessageGroupId' or 'perQueue'\x1axthis.fifo_throughput_limit == '' || (this.fifo_queue && this.fifo_throughput_limit in ['perMessageGroupId', 'perQueue'])\x1a\xb3\x01\n" +
@@ -345,7 +430,13 @@ const file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"target_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\ttargetArn\x126\n" +
 	"\x11max_receive_count\x18\x02 \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xe8\a(\x01R\x0fmaxReceiveCountB\xd4\x02\n" +
+	"\xbaH\a\x1a\x05\x18\xe8\a(\x01R\x0fmaxReceiveCount\"\x94\x05\n" +
+	"\x1dAwsSqsQueueRedriveAllowPolicy\x125\n" +
+	"\x12redrive_permission\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11redrivePermission\x12\x89\x01\n" +
+	"\x11source_queue_arns\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\x10\n" +
+	"\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\x0fsourceQueueArns:\xaf\x03\xbaH\xab\x03\x1a\x99\x01\n" +
+	"\x18redrive_permission_valid\x12>redrive_permission must be 'allowAll', 'denyAll', or 'byQueue'\x1a=this.redrive_permission in ['allowAll', 'denyAll', 'byQueue']\x1a\x8c\x02\n" +
+	"\x1esource_queues_match_permission\x12|source_queue_arns is required (1-10 entries) with redrive_permission 'byQueue' and must be empty for 'allowAll' or 'denyAll'\x1althis.redrive_permission == 'byQueue' ? size(this.source_queue_arns) >= 1 : size(this.source_queue_arns) == 0B\xd4\x02\n" +
 	"+com.dev.planton.provider.aws.awssqsqueue.v1B\tSpecProtoP\x01ZWgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awssqsqueue/v1;awssqsqueuev1\xa2\x02\x05DPPAA\xaa\x02'Dev.Planton.Provider.Aws.Awssqsqueue.V1\xca\x02'Dev\\Planton\\Provider\\Aws\\Awssqsqueue\\V1\xe2\x023Dev\\Planton\\Provider\\Aws\\Awssqsqueue\\V1\\GPBMetadata\xea\x02,Dev::Planton::Provider::Aws::Awssqsqueue::V1b\x06proto3"
 
 var (
@@ -360,23 +451,26 @@ func file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_rawDescGZIP() []byt
 	return file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_goTypes = []any{
-	(*AwsSqsQueueSpec)(nil),             // 0: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueSpec
-	(*AwsSqsQueueDeadLetterConfig)(nil), // 1: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueDeadLetterConfig
-	(*v1.StringValueOrRef)(nil),         // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*structpb.Struct)(nil),             // 3: google.protobuf.Struct
+	(*AwsSqsQueueSpec)(nil),               // 0: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueSpec
+	(*AwsSqsQueueDeadLetterConfig)(nil),   // 1: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueDeadLetterConfig
+	(*AwsSqsQueueRedriveAllowPolicy)(nil), // 2: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueRedriveAllowPolicy
+	(*v1.StringValueOrRef)(nil),           // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*structpb.Struct)(nil),               // 4: google.protobuf.Struct
 }
 var file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_depIdxs = []int32{
 	1, // 0: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueSpec.dead_letter_config:type_name -> dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueDeadLetterConfig
-	2, // 1: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueSpec.policy:type_name -> google.protobuf.Struct
-	2, // 3: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueDeadLetterConfig.target_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 1: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 2: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueSpec.policy:type_name -> google.protobuf.Struct
+	2, // 3: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueSpec.redrive_allow_policy:type_name -> dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueRedriveAllowPolicy
+	3, // 4: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueDeadLetterConfig.target_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 5: dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueRedriveAllowPolicy.source_queue_arns:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_init() }
@@ -390,7 +484,7 @@ func file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

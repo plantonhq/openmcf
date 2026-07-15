@@ -21,19 +21,22 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsKmsKeyStackOutputs describes the outputs returned by Pulumi/Terraform after creating a KMS key.
+// AwsKmsKeyStackOutputs captures the observable identifiers of a
+// deployed KMS key -- the join keys everything that encrypts with it
+// references.
 type AwsKmsKeyStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// key_id is the unique identifier of the KMS key (UUID).
+	// The generated key ID (UUID; "mrk-..." for multi-Region keys).
 	KeyId string `protobuf:"bytes,1,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
-	// key_arn is the full Amazon Resource Name of the KMS key.
+	// The key ARN -- the join key encryption-at-rest fields across the
+	// catalog reference (databases, queues, buckets, functions, ...).
 	KeyArn string `protobuf:"bytes,2,opt,name=key_arn,json=keyArn,proto3" json:"key_arn,omitempty"`
-	// alias_name echoes the alias assigned to the KMS key (if any).
-	AliasName string `protobuf:"bytes,3,opt,name=alias_name,json=aliasName,proto3" json:"alias_name,omitempty"`
-	// rotation_enabled indicates whether automatic key rotation is enabled (true) or disabled (false).
-	RotationEnabled bool `protobuf:"varint,4,opt,name=rotation_enabled,json=rotationEnabled,proto3" json:"rotation_enabled,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The alias names attached to the key (each "alias/..."), in spec
+	// order -- the human-friendly addresses SDK callers may use instead
+	// of the key ID.
+	AliasNames    []string `protobuf:"bytes,3,rep,name=alias_names,json=aliasNames,proto3" json:"alias_names,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsKmsKeyStackOutputs) Reset() {
@@ -80,31 +83,23 @@ func (x *AwsKmsKeyStackOutputs) GetKeyArn() string {
 	return ""
 }
 
-func (x *AwsKmsKeyStackOutputs) GetAliasName() string {
+func (x *AwsKmsKeyStackOutputs) GetAliasNames() []string {
 	if x != nil {
-		return x.AliasName
+		return x.AliasNames
 	}
-	return ""
-}
-
-func (x *AwsKmsKeyStackOutputs) GetRotationEnabled() bool {
-	if x != nil {
-		return x.RotationEnabled
-	}
-	return false
+	return nil
 }
 
 var File_dev_planton_provider_aws_awskmskey_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awskmskey_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/aws/awskmskey/v1/stack_outputs.proto\x12%dev.planton.provider.aws.awskmskey.v1\"\x91\x01\n" +
+	"9dev/planton/provider/aws/awskmskey/v1/stack_outputs.proto\x12%dev.planton.provider.aws.awskmskey.v1\"h\n" +
 	"\x15AwsKmsKeyStackOutputs\x12\x15\n" +
 	"\x06key_id\x18\x01 \x01(\tR\x05keyId\x12\x17\n" +
-	"\akey_arn\x18\x02 \x01(\tR\x06keyArn\x12\x1d\n" +
-	"\n" +
-	"alias_name\x18\x03 \x01(\tR\taliasName\x12)\n" +
-	"\x10rotation_enabled\x18\x04 \x01(\bR\x0frotationEnabledB\xce\x02\n" +
+	"\akey_arn\x18\x02 \x01(\tR\x06keyArn\x12\x1f\n" +
+	"\valias_names\x18\x03 \x03(\tR\n" +
+	"aliasNamesB\xce\x02\n" +
 	")com.dev.planton.provider.aws.awskmskey.v1B\x11StackOutputsProtoP\x01ZSgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awskmskey/v1;awskmskeyv1\xa2\x02\x05DPPAA\xaa\x02%Dev.Planton.Provider.Aws.Awskmskey.V1\xca\x02%Dev\\Planton\\Provider\\Aws\\Awskmskey\\V1\xe2\x021Dev\\Planton\\Provider\\Aws\\Awskmskey\\V1\\GPBMetadata\xea\x02*Dev::Planton::Provider::Aws::Awskmskey::V1b\x06proto3"
 
 var (

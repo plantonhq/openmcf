@@ -29,7 +29,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: my-nsg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: web-nsg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: web-tier-nsg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -180,7 +180,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: app-tier-nsg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -224,7 +224,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: data-tier-nsg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -271,7 +271,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: ref-nsg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

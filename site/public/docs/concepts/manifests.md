@@ -67,7 +67,7 @@ metadata:
   name: session-store
   org: acme
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform
@@ -143,7 +143,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPostgres
 metadata:
   name: kubernetes-postgres-example
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: organization
     pulumi.planton.dev/project: planton-examples
@@ -172,7 +172,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRdsInstance
 metadata:
   name: aws-postgres-example
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: organization
     pulumi.planton.dev/project: planton-examples
@@ -202,7 +202,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudSql
 metadata:
   name: gcp-postgres-example
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: organization
     pulumi.planton.dev/project: planton-examples

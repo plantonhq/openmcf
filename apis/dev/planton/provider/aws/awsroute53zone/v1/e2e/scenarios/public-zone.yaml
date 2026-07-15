@@ -1,0 +1,25 @@
+# Public AwsRoute53Zone scenario: metadata.name IS the domain (creating a
+# hosted zone requires no domain ownership — delegation only matters if the
+# registrar points at it, which this lane never does). The domain uses the
+# RFC-reserved .test TLD: AWS REJECTS CreateHostedZone for example.com and
+# its subdomains ("reserved by AWS", proven live), while .test names are
+# accepted and can never resolve publicly. force_destroy guards teardown,
+# and the comment proves the metadata surface round-trips.
+apiVersion: aws.planton.dev/v1
+kind: AwsRoute53Zone
+metadata:
+  name: planton-oss-e2e-zone.planton.test
+  id: planton-oss-e2e-awsroute53zone-pub
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsroute53zone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  comment: planton e2e public zone
+  forceDestroy: true

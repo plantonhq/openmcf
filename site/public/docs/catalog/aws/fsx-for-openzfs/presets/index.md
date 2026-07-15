@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Preset: Multi-AZ High Availability"
     excerpt: "**Use case**: Mission-critical production workloads requiring automatic failover across availability zones, provisioned IOPS, storage quotas, and extended backup retention."
+  - slug: "04-multi-az-intelligent-tiering"
+    rank: "04"
+    title: "Multi-AZ Intelligent-Tiering FSx OpenZFS"
+    excerpt: "MULTI_AZ_1 file system on the INTELLIGENT_TIERING storage class — elastic, pay-for-what-you-store NFS capacity with 1280 MB/s of provisioned throughput, an AWS-sized SSD read cache, and automatic..."
 ---
 
 # FSx for OpenZFS Presets

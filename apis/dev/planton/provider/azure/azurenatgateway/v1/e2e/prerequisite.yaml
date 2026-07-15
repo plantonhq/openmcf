@@ -1,6 +1,6 @@
 # AzureNatGateway install profile used as a fixture by scenarios that prove
 # the subnet-side attach seam (declared via the
-# planton.dev/e2e-extra-prerequisites annotation -- attaching a NAT gateway
+# planton.dev/e2e-prerequisites annotation -- attaching a NAT gateway
 # is OPTIONAL for a subnet, so it is never a registry prerequisite). The
 # harness deploys this document (via the gateway's Pulumi module) after the
 # fixture resource group and captures its outputs -- nat_gateway_id in

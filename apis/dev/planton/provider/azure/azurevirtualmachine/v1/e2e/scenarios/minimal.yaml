@@ -22,7 +22,7 @@ metadata:
     e2e-component: azurevirtualmachine
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "AzureManagedDisk"
+    planton.dev/e2e-prerequisites: "AzureManagedDisk"
   tags:
     - planton-e2e
 spec:

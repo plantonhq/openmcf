@@ -35,8 +35,10 @@ func init() {
 	// and developer tools on top of it.
 	root.RegisterCommands(rootCmd, root.Options{})
 	rootCmd.AddCommand(
+		root.Chart,
 		root.Downgrade,
 		root.E2E,
+		root.Explain,
 		root.Upgrade,
 		root.Version,
 	)

@@ -2,6 +2,10 @@
 # parent is addressed by the origin group's full ARM id; the provider
 # derives the resource group, profile, and group names from it. No Azure
 # tags: ARM does not support tags on origins.
+# host_name and origin_host_header are StringValueOrRef in the spec; the
+# tfvars converter flattens them to resolved literals (e.g. a web app's
+# default_hostname or a storage account's primary_web_host), so the
+# module reads plain strings.
 resource "azurerm_cdn_frontdoor_origin" "main" {
   name                          = var.spec.origin_name
   cdn_frontdoor_origin_group_id = var.spec.origin_group_id

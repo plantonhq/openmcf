@@ -24,7 +24,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoFirewall
 metadata:
   name: my-firewall
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -98,7 +98,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoFirewall
 metadata:
   name: web-ssh-firewall
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoFirewall
 metadata:
   name: backend-firewall
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -173,7 +173,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoFirewall
 metadata:
   name: ref-firewall
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

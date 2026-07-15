@@ -28,7 +28,7 @@ metadata:
     # The certificate fixture resolves through its kind's minimal
     # scenario; its vault prerequisite (and the vault's resource group)
     # chain transitively and deduplicate against the profile's chain.
-    planton.dev/e2e-extra-prerequisites: "AzureKeyVaultCertificate"
+    planton.dev/e2e-prerequisites: "AzureKeyVaultCertificate"
   tags:
     - planton-e2e
 spec:

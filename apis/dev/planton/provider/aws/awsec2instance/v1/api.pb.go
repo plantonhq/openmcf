@@ -24,17 +24,18 @@ const (
 )
 
 // AwsEc2Instance represents a single EC2 virtual machine instance on AWS.
-// This resource provisions one EC2 instance with networking, IAM, and access configuration.
+// This resource provisions one EC2 instance with networking, IAM, storage,
+// and access configuration.
 type AwsEc2Instance struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version must be set to "aws.planton.dev/v1".
 	ApiVersion string `protobuf:"bytes,1,opt,name=api_version,json=apiVersion,proto3" json:"api_version,omitempty"`
-	// resource-kind for this ECS service resource, typically "AwsEc2Instance".
+	// resource-kind for this resource, always "AwsEc2Instance".
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
 	// metadata captures identifying information (name, org, version, etc.)
 	// and must pass standard validations for resource naming.
 	Metadata *shared.CloudResourceMetadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	// spec holds the core configuration data defining how the ECS service is deployed.
+	// spec holds the core configuration data defining how the EC2 instance is deployed.
 	Spec *AwsEc2InstanceSpec `protobuf:"bytes,4,opt,name=spec,proto3" json:"spec,omitempty"`
 	// status holds runtime or post-deployment information.
 	Status        *AwsEc2InstanceStatus `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
@@ -107,7 +108,7 @@ func (x *AwsEc2Instance) GetStatus() *AwsEc2InstanceStatus {
 	return nil
 }
 
-// AwsEc2InstanceStatus describes the status fields for an ECS service resource.
+// AwsEc2InstanceStatus describes the status fields for an EC2 instance resource.
 type AwsEc2InstanceStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.

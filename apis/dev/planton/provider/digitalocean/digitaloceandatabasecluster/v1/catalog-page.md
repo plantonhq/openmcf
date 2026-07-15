@@ -25,7 +25,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDatabaseCluster
 metadata:
   name: my-database
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -79,7 +79,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDatabaseCluster
 metadata:
   name: mysql-app-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -104,7 +104,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDatabaseCluster
 metadata:
   name: prod-postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -130,7 +130,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDatabaseCluster
 metadata:
   name: cache-redis
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

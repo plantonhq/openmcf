@@ -1,7 +1,8 @@
 # Terraform Module to Deploy AwsClientVpn
 
-This module provisions an AWS Client VPN endpoint for secure remote access into a VPC using OpenVPN.
-It sets up the endpoint, target subnet associations, authorization rules, and optional connection logging.
+This module provisions an AWS Client VPN endpoint for secure remote access into AWS networks using OpenVPN.
+It sets up the endpoint (authentication, tunnel shape, sessions, logging) plus its three folded satellites:
+target network associations, authorization rules, and routes.
 
 Generated `variables.tf` reflects the proto schema for `AwsClientVpn`.
 
@@ -18,6 +19,6 @@ planton tofu destroy --manifest hack/manifest.yaml --auto-approve
 
 **Note**: Credentials are provided via stack input (CLI), not in the manifest `spec`.
 
-For more examples, see [`examples.md`](./examples.md) and [`hack/manifest.yaml`](../hack/manifest.yaml).
+For a full-surface example, see [`hack/manifest.yaml`](../hack/manifest.yaml).
 
 

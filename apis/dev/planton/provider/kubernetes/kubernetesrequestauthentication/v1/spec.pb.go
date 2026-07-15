@@ -34,7 +34,7 @@ const (
 // 100% fidelity with the upstream istio.io/api RequestAuthentication
 // (security/v1beta1/request_authentication.proto, served as security.istio.io/v1),
 // pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly
-// after the Planton namespaced envelope (target_cluster, namespace); there is no
+// after the Planton namespaced envelope (namespace); there is no
 // nested `request_authentication` sub-message.
 //
 // Scope semantics (upstream): if neither `selector` nor `target_refs` is set the
@@ -43,10 +43,6 @@ const (
 // (enforced below).
 type KubernetesRequestAuthenticationSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where this RequestAuthentication is created. The Istio
-	// CRDs (KubernetesIstioBaseCrds) must already be present on the cluster; the policy
-	// is only enforced where istiod (the Istio control plane) is running.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace in which the RequestAuthentication is created. The policy's scope is
 	// this namespace (or mesh-wide if this is the Istio root namespace and no selector
 	// or target_refs is set).
@@ -117,13 +113,6 @@ func (x *KubernetesRequestAuthenticationSpec) ProtoReflect() protoreflect.Messag
 // Deprecated: Use KubernetesRequestAuthenticationSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesRequestAuthenticationSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesrequestauthentication_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesRequestAuthenticationSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesRequestAuthenticationSpec) GetNamespace() *v1.StringValueOrRef {
@@ -428,9 +417,8 @@ var File_dev_planton_provider_kubernetes_kubernetesrequestauthentication_v1_spec
 
 const file_dev_planton_provider_kubernetes_kubernetesrequestauthentication_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Mdev/planton/provider/kubernetes/kubernetesrequestauthentication/v1/spec.proto\x12Bdev.planton.provider.kubernetes.kubernetesrequestauthentication.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x82\x06\n" +
-	"#KubernetesRequestAuthenticationSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Mdev/planton/provider/kubernetes/kubernetesrequestauthentication/v1/spec.proto\x12Bdev.planton.provider.kubernetes.kubernetesrequestauthentication.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9f\x05\n" +
+	"#KubernetesRequestAuthenticationSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12_\n" +
 	"\bselector\x18\x03 \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\bselector\x12s\n" +
 	"\vtarget_refs\x18\x04 \x03(\v2H.dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReferenceB\b\xbaH\x05\x92\x01\x02\x10\x10R\n" +
@@ -491,24 +479,22 @@ var file_dev_planton_provider_kubernetes_kubernetesrequestauthentication_v1_spec
 	(*KubernetesRequestAuthenticationJwtRule)(nil),             // 1: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtRule
 	(*KubernetesRequestAuthenticationJwtHeader)(nil),           // 2: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtHeader
 	(*KubernetesRequestAuthenticationClaimToHeader)(nil),       // 3: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationClaimToHeader
-	(*kubernetes.KubernetesClusterSelector)(nil),               // 4: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                                // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesIstioApiWorkloadSelector)(nil),      // 6: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
-	(*kubernetes.KubernetesIstioApiPolicyTargetReference)(nil), // 7: dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
+	(*v1.StringValueOrRef)(nil),                                // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesIstioApiWorkloadSelector)(nil),      // 5: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
+	(*kubernetes.KubernetesIstioApiPolicyTargetReference)(nil), // 6: dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
 }
 var file_dev_planton_provider_kubernetes_kubernetesrequestauthentication_v1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	5, // 1: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6, // 2: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationSpec.selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
-	7, // 3: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationSpec.target_refs:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
-	1, // 4: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationSpec.jwt_rules:type_name -> dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtRule
-	2, // 5: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtRule.from_headers:type_name -> dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtHeader
-	3, // 6: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtRule.output_claim_to_headers:type_name -> dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationClaimToHeader
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	4, // 0: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 1: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationSpec.selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
+	6, // 2: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationSpec.target_refs:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
+	1, // 3: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationSpec.jwt_rules:type_name -> dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtRule
+	2, // 4: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtRule.from_headers:type_name -> dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtHeader
+	3, // 5: dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtRule.output_claim_to_headers:type_name -> dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationClaimToHeader
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() {

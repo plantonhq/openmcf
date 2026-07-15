@@ -1,0 +1,63 @@
+# OAuth web client against the registry-prerequisite pool: the Authorization
+# Code grant with the standard OIDC scopes, a generated secret (proving the
+# sensitive client_secret output mints), unit-carrying token lifetimes,
+# rotating refresh tokens, and the recommended security posture. The pool
+# comes from the kind registry's AwsCognitoUserPool prerequisite.
+apiVersion: aws.planton.dev/v1
+kind: AwsCognitoUserPoolClient
+metadata:
+  name: planton-oss-e2e-awscogclient
+  id: planton-oss-e2e-awscogclient
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscognitouserpoolclient
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  userPoolId:
+    valueFrom:
+      kind: AwsCognitoUserPool
+      name: planton-oss-e2e-awscog-prereq
+      fieldPath: status.outputs.user_pool_id
+  generateSecret: true
+  allowedOauthFlowsUserPoolClient: true
+  allowedOauthFlows:
+    - code
+  allowedOauthScopes:
+    - openid
+    - email
+    - profile
+  callbackUrls:
+    - https://e2e.planton-oss.example.com/callback
+  logoutUrls:
+    - https://e2e.planton-oss.example.com/logout
+  defaultRedirectUri: https://e2e.planton-oss.example.com/callback
+  supportedIdentityProviders:
+    - value: COGNITO
+  # ALLOW_REFRESH_TOKEN_AUTH is deliberately absent: refresh_token_rotation
+  # is ENABLED below, and AWS rejects the explicit refresh flow alongside it.
+  explicitAuthFlows:
+    - ALLOW_USER_SRP_AUTH
+  authSessionValidity: 5
+  accessTokenValidity: 60
+  idTokenValidity: 60
+  refreshTokenValidity: 30
+  tokenValidityUnits:
+    accessToken: minutes
+    idToken: minutes
+    refreshToken: days
+  refreshTokenRotation:
+    feature: ENABLED
+    retryGracePeriodSeconds: 30
+  enableTokenRevocation: true
+  preventUserExistenceErrors: ENABLED
+  readAttributes:
+    - email
+    - email_verified
+  writeAttributes:
+    - email

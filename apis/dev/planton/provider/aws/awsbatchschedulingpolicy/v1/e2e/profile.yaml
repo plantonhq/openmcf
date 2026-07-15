@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbatchschedulingpolicy
+spec:
+  # A Batch fair-share scheduling policy under live E2E: a dependency-free
+  # leaf that creates and deletes in seconds. The single scenario sets every
+  # fair-share dial -- compute reservation, share decay, weighted share
+  # distributions including a wildcard prefix -- so the full
+  # fairsharePolicy payload is proven on both engines. Deletion is
+  # synchronous (no lifecycle states), so verify-absent is a plain
+  # empty-result check.
+  # Live dual-engine run 2026-07-08: both lanes green (the combined
+  # scheduling-policy + job-definition four-lane run completed in 2m01s).
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

@@ -38,7 +38,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalDns
 metadata:
   name: my-external-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -72,8 +72,6 @@ This creates an ExternalDNS instance in the `external-dns` namespace configured 
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `externalDnsVersion` | `string` | `v0.19.0` | ExternalDNS container image tag. |
 | `helmChartVersion` | `string` | `1.19.0` | Helm chart version for the external-dns chart. |
@@ -120,7 +118,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalDns
 metadata:
   name: gke-external-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -144,7 +142,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalDns
 metadata:
   name: eks-external-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -170,7 +168,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalDns
 metadata:
   name: cf-external-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -195,7 +193,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalDns
 metadata:
   name: platform-external-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

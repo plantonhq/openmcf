@@ -1,0 +1,391 @@
+{
+  "region": "us-west-2",
+  "resources": [
+    {
+      "typeName": "AWS::EC2::VPC",
+      "identifier": "vpc-0aaa111prodfix0001",
+      "properties": {
+        "VpcId": "vpc-0aaa111prodfix0001",
+        "CidrBlock": "10.20.0.0/16",
+        "EnableDnsSupport": true,
+        "EnableDnsHostnames": true,
+        "InstanceTenancy": "default",
+        "Tags": [
+          {"Key": "Name", "Value": "orders-prod-vpc"},
+          {"Key": "planton.ai/resource", "Value": "true"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsVpc"},
+          {"Key": "planton.ai/environment", "Value": "prod"},
+          {"Key": "managed-by", "Value": "planton-e2e"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::VPC",
+      "identifier": "vpc-0bbb222stgfix00001",
+      "properties": {
+        "VpcId": "vpc-0bbb222stgfix00001",
+        "CidrBlock": "10.20.0.0/16",
+        "EnableDnsSupport": true,
+        "EnableDnsHostnames": true,
+        "InstanceTenancy": "default",
+        "Tags": [
+          {"Key": "Name", "Value": "orders-stg-vpc"},
+          {"Key": "planton.ai/resource", "Value": "true"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsVpc"},
+          {"Key": "planton.ai/environment", "Value": "staging"},
+          {"Key": "managed-by", "Value": "planton-e2e"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::VPC",
+      "identifier": "vpc-0fff666default0001",
+      "properties": {
+        "VpcId": "vpc-0fff666default0001",
+        "CidrBlock": "172.31.0.0/16",
+        "EnableDnsSupport": true,
+        "EnableDnsHostnames": true,
+        "InstanceTenancy": "default",
+        "Tags": []
+      }
+    },
+    {
+      "typeName": "AWS::EC2::InternetGateway",
+      "identifier": "igw-0ccc333prodfix001",
+      "properties": {
+        "InternetGatewayId": "igw-0ccc333prodfix001",
+        "Tags": [
+          {"Key": "Name", "Value": "orders-prod-igw"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsInternetGateway"},
+          {"Key": "planton.ai/environment", "Value": "prod"}
+        ],
+        "Attachments": [
+          {"VpcId": "vpc-0aaa111prodfix0001"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::Subnet",
+      "identifier": "subnet-0ddd444prodfix01",
+      "properties": {
+        "SubnetId": "subnet-0ddd444prodfix01",
+        "VpcId": "vpc-0aaa111prodfix0001",
+        "AvailabilityZone": "us-west-2a",
+        "CidrBlock": "10.20.1.0/24",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {"Key": "Name", "Value": "orders-prod-app-subnet"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsSubnet"},
+          {"Key": "planton.ai/environment", "Value": "prod"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::Subnet",
+      "identifier": "subnet-0eee555stgfix01",
+      "properties": {
+        "SubnetId": "subnet-0eee555stgfix01",
+        "VpcId": "vpc-0bbb222stgfix00001",
+        "AvailabilityZone": "us-west-2a",
+        "CidrBlock": "10.20.1.0/24",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {"Key": "Name", "Value": "orders-stg-app-subnet"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsSubnet"},
+          {"Key": "planton.ai/environment", "Value": "staging"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::Subnet",
+      "identifier": "subnet-0fff777default01",
+      "properties": {
+        "SubnetId": "subnet-0fff777default01",
+        "VpcId": "vpc-0fff666default0001",
+        "AvailabilityZone": "us-west-2a",
+        "CidrBlock": "172.31.0.0/20",
+        "MapPublicIpOnLaunch": true,
+        "Tags": []
+      }
+    },
+    {
+      "typeName": "AWS::EC2::RouteTable",
+      "identifier": "rtb-0ggg888prodfix001",
+      "properties": {
+        "RouteTableId": "rtb-0ggg888prodfix001",
+        "VpcId": "vpc-0aaa111prodfix0001",
+        "Routes": [
+          {"DestinationCidrBlock": "10.20.0.0/16", "GatewayId": "local"},
+          {"DestinationCidrBlock": "0.0.0.0/0", "GatewayId": "igw-0ccc333prodfix001"}
+        ],
+        "Associations": [
+          {"RouteTableAssociationId": "rtbassoc-0hhh999pfx01", "SubnetId": "subnet-0ddd444prodfix01"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::RouteTable",
+      "identifier": "rtb-0main001prodfix01",
+      "properties": {
+        "RouteTableId": "rtb-0main001prodfix01",
+        "VpcId": "vpc-0aaa111prodfix0001",
+        "Routes": [
+          {"DestinationCidrBlock": "10.20.0.0/16", "GatewayId": "local"}
+        ],
+        "Associations": [
+          {"RouteTableAssociationId": "rtbassoc-0main01pfx01", "Main": true}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::RouteTable",
+      "identifier": "rtb-0main002stgfix001",
+      "properties": {
+        "RouteTableId": "rtb-0main002stgfix001",
+        "VpcId": "vpc-0bbb222stgfix00001",
+        "Routes": [
+          {"DestinationCidrBlock": "10.20.0.0/16", "GatewayId": "local"}
+        ],
+        "Associations": [
+          {"RouteTableAssociationId": "rtbassoc-0main02sfx01", "Main": true}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::RouteTable",
+      "identifier": "rtb-0main003default01",
+      "properties": {
+        "RouteTableId": "rtb-0main003default01",
+        "VpcId": "vpc-0fff666default0001",
+        "Routes": [
+          {"DestinationCidrBlock": "172.31.0.0/16", "GatewayId": "local"}
+        ],
+        "Associations": [
+          {"RouteTableAssociationId": "rtbassoc-0main03dfx01", "Main": true}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SubnetRouteTableAssociation",
+      "identifier": "rtbassoc-0hhh999pfx01",
+      "properties": {
+        "RouteTableId": "rtb-0ggg888prodfix001",
+        "SubnetId": "subnet-0ddd444prodfix01"
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SubnetRouteTableAssociation",
+      "identifier": "rtbassoc-0main01pfx01",
+      "properties": {
+        "RouteTableId": "rtb-0main001prodfix01"
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SubnetRouteTableAssociation",
+      "identifier": "rtbassoc-0main02sfx01",
+      "properties": {
+        "RouteTableId": "rtb-0main002stgfix001"
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SubnetRouteTableAssociation",
+      "identifier": "rtbassoc-0main03dfx01",
+      "properties": {
+        "RouteTableId": "rtb-0main003default01"
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SecurityGroup",
+      "identifier": "sg-0iii000prodfix0001",
+      "properties": {
+        "Id": "sg-0iii000prodfix0001",
+        "GroupName": "orders-prod-app-sg",
+        "GroupDescription": "Allows inbound HTTPS to the orders application tier",
+        "VpcId": "vpc-0aaa111prodfix0001",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Public HTTPS"
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "-1",
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound"
+          }
+        ],
+        "Tags": [
+          {"Key": "Name", "Value": "orders-prod-app-sg"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsSecurityGroup"},
+          {"Key": "planton.ai/environment", "Value": "prod"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SecurityGroup",
+      "identifier": "sg-0jjj111proddefault",
+      "properties": {
+        "Id": "sg-0jjj111proddefault",
+        "GroupName": "default",
+        "GroupDescription": "default VPC security group",
+        "VpcId": "vpc-0aaa111prodfix0001",
+        "Tags": []
+      }
+    },
+    {
+      "typeName": "AWS::EC2::SecurityGroup",
+      "identifier": "sg-0kkk222stgdefault0",
+      "properties": {
+        "Id": "sg-0kkk222stgdefault0",
+        "GroupName": "default",
+        "GroupDescription": "default VPC security group",
+        "VpcId": "vpc-0bbb222stgfix00001",
+        "Tags": []
+      }
+    },
+    {
+      "typeName": "AWS::KMS::Key",
+      "identifier": "1a2b3c4d-f1x7-4e5f-8a9b-000000000001",
+      "properties": {
+        "KeyId": "1a2b3c4d-f1x7-4e5f-8a9b-000000000001",
+        "Arn": "arn:aws:kms:us-west-2:123456789012:key/1a2b3c4d-f1x7-4e5f-8a9b-000000000001",
+        "Description": "Encryption key for orders production data stores",
+        "Enabled": true,
+        "EnableKeyRotation": true,
+        "KeySpec": "SYMMETRIC_DEFAULT",
+        "KeyUsage": "ENCRYPT_DECRYPT",
+        "Tags": [
+          {"Key": "Name", "Value": "orders-prod-data-key"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsKmsKey"},
+          {"Key": "planton.ai/environment", "Value": "prod"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::KMS::Key",
+      "identifier": "9z8y7x6w-aw5m-4n3o-2p1q-000000000099",
+      "properties": {
+        "KeyId": "9z8y7x6w-aw5m-4n3o-2p1q-000000000099",
+        "Arn": "arn:aws:kms:us-west-2:123456789012:key/9z8y7x6w-aw5m-4n3o-2p1q-000000000099",
+        "Description": "Default key that protects my S3 objects when no other key is defined",
+        "Enabled": true,
+        "KeySpec": "SYMMETRIC_DEFAULT",
+        "KeyUsage": "ENCRYPT_DECRYPT"
+      }
+    },
+    {
+      "typeName": "AWS::KMS::Alias",
+      "identifier": "alias/orders-prod-data-key",
+      "properties": {
+        "AliasName": "alias/orders-prod-data-key",
+        "TargetKeyId": "1a2b3c4d-f1x7-4e5f-8a9b-000000000001"
+      }
+    },
+    {
+      "typeName": "AWS::KMS::Alias",
+      "identifier": "alias/aws/s3",
+      "properties": {
+        "AliasName": "alias/aws/s3",
+        "TargetKeyId": "9z8y7x6w-aw5m-4n3o-2p1q-000000000099"
+      }
+    },
+    {
+      "typeName": "AWS::DynamoDB::Table",
+      "identifier": "orders-prod-table",
+      "properties": {
+        "TableName": "orders-prod-table",
+        "Arn": "arn:aws:dynamodb:us-west-2:123456789012:table/orders-prod-table",
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {"AttributeName": "pk", "AttributeType": "S"},
+          {"AttributeName": "sk", "AttributeType": "S"},
+          {"AttributeName": "gsi1pk", "AttributeType": "S"}
+        ],
+        "KeySchema": [
+          {"AttributeName": "pk", "KeyType": "HASH"},
+          {"AttributeName": "sk", "KeyType": "RANGE"}
+        ],
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "gsi1",
+            "KeySchema": [
+              {"AttributeName": "gsi1pk", "KeyType": "HASH"}
+            ],
+            "Projection": {"ProjectionType": "KEYS_ONLY"}
+          }
+        ],
+        "TimeToLiveSpecification": {"AttributeName": "expiresAt", "Enabled": true},
+        "StreamSpecification": {"StreamViewType": "NEW_AND_OLD_IMAGES"},
+        "StreamArn": "arn:aws:dynamodb:us-west-2:123456789012:table/orders-prod-table/stream/2026-07-11T00:00:00.000",
+        "PointInTimeRecoverySpecification": {"PointInTimeRecoveryEnabled": true},
+        "SSESpecification": {
+          "SSEEnabled": true,
+          "SSEType": "KMS",
+          "KMSMasterKeyId": "arn:aws:kms:us-west-2:123456789012:key/1a2b3c4d-f1x7-4e5f-8a9b-000000000001"
+        },
+        "Tags": [
+          {"Key": "Name", "Value": "orders-prod-table"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsDynamodb"},
+          {"Key": "planton.ai/environment", "Value": "prod"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::SQS::Queue",
+      "identifier": "https://sqs.us-west-2.amazonaws.com/123456789012/orders-prod-events",
+      "properties": {
+        "QueueName": "orders-prod-events",
+        "QueueUrl": "https://sqs.us-west-2.amazonaws.com/123456789012/orders-prod-events",
+        "Arn": "arn:aws:sqs:us-west-2:123456789012:orders-prod-events",
+        "VisibilityTimeout": 120,
+        "MessageRetentionPeriod": 1209600,
+        "DelaySeconds": 0,
+        "MaximumMessageSize": 262144,
+        "ReceiveMessageWaitTimeSeconds": 0,
+        "KmsMasterKeyId": "arn:aws:kms:us-west-2:123456789012:key/1a2b3c4d-f1x7-4e5f-8a9b-000000000001",
+        "Tags": [
+          {"Key": "Name", "Value": "orders-prod-events"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsSqsQueue"},
+          {"Key": "planton.ai/environment", "Value": "prod"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::ECR::Repository",
+      "identifier": "orders-api",
+      "properties": {
+        "RepositoryName": "orders-api",
+        "Arn": "arn:aws:ecr:us-west-2:123456789012:repository/orders-api",
+        "RepositoryUri": "123456789012.dkr.ecr.us-west-2.amazonaws.com/orders-api",
+        "ImageTagMutability": "IMMUTABLE",
+        "ImageScanningConfiguration": {"ScanOnPush": true},
+        "EncryptionConfiguration": {"EncryptionType": "AES256"},
+        "LifecyclePolicy": {
+          "LifecyclePolicyText": "{\"rules\":[{\"rulePriority\":1,\"description\":\"Expire untagged images\",\"selection\":{\"tagStatus\":\"untagged\",\"countType\":\"sinceImagePushed\",\"countUnit\":\"days\",\"countNumber\":14},\"action\":{\"type\":\"expire\"}},{\"rulePriority\":2,\"description\":\"Keep the most recent images\",\"selection\":{\"tagStatus\":\"any\",\"countType\":\"imageCountMoreThan\",\"countNumber\":100},\"action\":{\"type\":\"expire\"}}]}"
+        },
+        "Tags": [
+          {"Key": "Name", "Value": "orders-api"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsEcrRepo"},
+          {"Key": "planton.ai/environment", "Value": "prod"}
+        ]
+      }
+    },
+    {
+      "typeName": "AWS::S3::Bucket",
+      "identifier": "orders-archive-planton-eval",
+      "properties": {
+        "BucketName": "orders-archive-planton-eval",
+        "Region": "us-west-2",
+        "Tags": [
+          {"Key": "Name", "Value": "orders-archive-planton-eval"},
+          {"Key": "planton.ai/resource-kind", "Value": "AwsS3Bucket"},
+          {"Key": "planton.ai/environment", "Value": "prod"}
+        ]
+      }
+    }
+  ]
+}

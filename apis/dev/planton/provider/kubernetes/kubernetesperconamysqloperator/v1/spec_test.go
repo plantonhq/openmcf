@@ -8,7 +8,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -28,10 +27,6 @@ var _ = ginkgo.Describe("KubernetesPerconaMysqlOperator Validation Tests", func(
 				Name: "test-percona-mysql-operator",
 			},
 			Spec: &KubernetesPerconaMysqlOperatorSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: &foreignkeyv1.StringValueOrRef{
 					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 						Value: "percona-mysql-operator",

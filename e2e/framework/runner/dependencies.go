@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,31 +16,6 @@ import (
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
-
-// ExtraPrerequisitesAnnotation is the scenario-manifest annotation through which
-// a scenario declares fixtures BEYOND its kind's registry prerequisites. Registry
-// `prerequisites` carry a strict meaning -- the parents a resource cannot exist
-// without -- and double as deploy-ordering metadata, so optional composition
-// seams (a subnet's route-table attachment, a NAT gateway's public-IP
-// association, a peering's second network) must never be encoded there: doing so
-// would force every downstream kind's fixture chain to deploy them forever.
-// This annotation is the honest home for such seams: the scenario that proves an
-// optional edge opts into the fixtures it needs, and no other chain pays for it.
-//
-// The value is a comma-separated list where each entry is either:
-//   - a registered kind name (e.g. "AzureRouteTable") -- installed through the
-//     kind's standard install profile (prerequisite.yaml, else minimal scenario),
-//     skipped if the registry chain already deploys that kind; or
-//   - a repo-relative manifest path (recognized by containing a "/") -- deployed
-//     as an EXTRA INSTANCE of whatever kind the manifest declares, for scenarios
-//     that need more instances than the standard profiles provide (e.g. a
-//     virtual-network peering's remote network).
-//
-// Entries deploy in listed order after the registry prerequisites, each preceded
-// by any of its own transitive registry prerequisites not already deployed. All
-// fixtures join the same transitive reference resolution, and teardown runs in
-// reverse across the merged chain.
-const ExtraPrerequisitesAnnotation = "planton.dev/e2e-extra-prerequisites"
 
 // Dependency is a single prerequisite deployment that must exist before a
 // component's own scenario is applied.
@@ -71,13 +47,54 @@ type DependencyState struct {
 	Outputs map[string]interface{}
 }
 
+// scenarioPrerequisitesAnnotation is the manifest annotation through which a
+// scenario declares prerequisites BEYOND the component kind's registry graph.
+// The registry's `kind_meta.prerequisites` stays the honest statement of what
+// the kind REQUIRES to deploy at all; this annotation is how one scenario says
+// what it additionally COMPOSES -- optional references (a folded capacity
+// provider's auto-scaling group, a subnet's route-table attachment) that only
+// that scenario exercises. Without it, live-testing an optional composition
+// would force a false prerequisite onto every consumer of the kind.
+//
+// The value is a comma-separated list where each entry is either:
+//   - a registered kind name (e.g. "AwsSubnet,AwsAutoScalingGroup") --
+//     installed through the kind's standard install profile
+//     (prerequisite.yaml, else its minimal scenario), expanded through its
+//     own prerequisite edges so naming the deepest kind of a chain is
+//     enough, and skipped if the chain already deploys that kind; or
+//   - a repo-relative manifest path (recognized by containing a "/") --
+//     deployed as an EXTRA INSTANCE of whatever kind the manifest declares,
+//     for scenarios that need more instances than the standard profiles
+//     provide (e.g. a virtual-network peering's remote network). Path
+//     entries deploy after the kind-driven chain, each preceded by any of
+//     its own transitive prerequisites not already deployed, and never
+//     substitute for the kind's install profile.
+//
+// All fixtures join the same transitive reference resolution, and teardown
+// runs in reverse across the merged chain.
+const scenarioPrerequisitesAnnotation = "planton.dev/e2e-prerequisites"
+
 // ResolveDependencies returns the ordered, deduplicated list of prerequisite
 // deployments a component needs before its own scenario is applied. Dependencies
-// come from the component's CloudResourceKindMeta.prerequisites graph in the proto
-// registry (resolved transitively, deploy-first order): declaring
-// `prerequisites: [X]` on a kind is enough for the harness to install X first,
-// with no per-component wiring. Teardown runs in reverse, so the most foundational
-// dependency is removed last.
+// come from three sources, merged and expanded transitively in deploy-first order:
+//
+//  1. The component's CloudResourceKindMeta.prerequisites graph in the proto
+//     registry: declaring `prerequisites: [X]` on a kind is enough for the
+//     harness to install X first, with no per-component wiring.
+//  2. The scenario manifest's `planton.dev/e2e-prerequisites` annotation, for
+//     compositions that are optional on the kind and therefore must not be
+//     registry prerequisites (see scenarioPrerequisitesAnnotation). Kind-name
+//     entries join the graph; manifest-path entries deploy as extra instances
+//     AFTER it, each preceded by its own not-yet-scheduled prerequisites.
+//  3. The same annotation on each prerequisite's OWN install manifest: an
+//     install profile that composes fixtures of other kinds (e.g. the
+//     zip-backed Lambda scenario referencing the S3 object-set fixture)
+//     declares them there, and the harness orders those fixtures BEFORE the
+//     declaring kind so its value_from references resolve. Without this, a
+//     dependency whose install manifest references sibling fixtures would
+//     deploy before them and fail.
+//
+// Teardown runs in reverse, so the most foundational dependency is removed last.
 //
 // The install manifest for each prerequisite is, in order of preference:
 //   - <dep>/v1/e2e/prerequisite.yaml      (the dependency's published install profile)
@@ -88,16 +105,31 @@ type DependencyState struct {
 // needs two subnets in different availability zones, so the subnet profile
 // publishes a two-AZ pair. Each document deploys as its own stack and its
 // outputs are captured under its own manifest name.
-func ResolveDependencies(repoRoot, componentProvider, component string) ([]Dependency, error) {
+func ResolveDependencies(repoRoot, componentProvider, component, scenarioManifestPath string) ([]Dependency, error) {
 	kind := crkreflect.KindFromString(component)
 	if kind == cloudresourcekind.CloudResourceKind_unspecified {
 		// Not a registered kind (or an alias mismatch); no prerequisites.
 		return nil, nil
 	}
 
-	prereqs, err := crkreflect.TransitivePrerequisites(kind)
+	// Copy before appending: Prerequisites returns the registry's own slice.
+	roots := append([]cloudresourcekind.CloudResourceKind{}, crkreflect.Prerequisites(kind)...)
+
+	declaredKinds, declaredPaths, err := scenarioDeclaredPrerequisites(scenarioManifestPath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "resolving prerequisites for %s", component)
+		return nil, err
+	}
+	for _, d := range declaredKinds {
+		if d == kind {
+			return nil, errors.Errorf("scenario %s declares the component's own kind %s as an E2E prerequisite", scenarioManifestPath, component)
+		}
+		roots = append(roots, d)
+	}
+
+	visited := make(map[cloudresourcekind.CloudResourceKind]bool)
+	prereqs, err := expandPrerequisiteGraph(repoRoot, componentProvider, component, roots, visited)
+	if err != nil {
+		return nil, err
 	}
 
 	var deps []Dependency
@@ -112,125 +144,151 @@ func ResolveDependencies(repoRoot, componentProvider, component string) ([]Depen
 			ManifestPath: manifestPath,
 		})
 	}
-	return deps, nil
-}
 
-// ResolveAllDependencies returns the registry-driven prerequisites followed by
-// any extra fixtures the scenario manifest declares through
-// ExtraPrerequisitesAnnotation, deduplicated and in deploy-first order.
-func ResolveAllDependencies(repoRoot, componentProvider, component, scenarioManifestPath string) ([]Dependency, error) {
-	deps, err := ResolveDependencies(repoRoot, componentProvider, component)
-	if err != nil {
-		return nil, err
-	}
-	extras, err := resolveExtraDependencies(repoRoot, componentProvider, scenarioManifestPath, deps)
-	if err != nil {
-		return nil, err
-	}
-	return append(deps, extras...), nil
-}
-
-// resolveExtraDependencies reads ExtraPrerequisitesAnnotation from the scenario
-// manifest and expands it into deployable dependencies. Kind-name entries are
-// skipped when the registry chain already deploys that kind; path entries always
-// deploy (they exist precisely to add another instance). Every entry is preceded
-// by its own transitive registry prerequisites that are not yet scheduled, so an
-// extra fixture with parents of its own (e.g. a NAT gateway needing a resource
-// group) works without the scenario spelling the whole chain out.
-func resolveExtraDependencies(repoRoot, componentProvider, scenarioManifestPath string, registry []Dependency) ([]Dependency, error) {
-	if scenarioManifestPath == "" {
-		return nil, nil
-	}
-	raw, err := manifestAnnotation(scenarioManifestPath, ExtraPrerequisitesAnnotation)
-	if err != nil {
-		return nil, errors.Wrapf(err, "reading %s annotation from %s", ExtraPrerequisitesAnnotation, scenarioManifestPath)
-	}
-	if raw == "" {
-		return nil, nil
-	}
-
-	scheduled := make(map[string]bool, len(registry))
-	for _, d := range registry {
-		scheduled[d.KindSlug] = true
-	}
-
-	var extras []Dependency
-	for _, entry := range strings.Split(raw, ",") {
-		entry = strings.TrimSpace(entry)
-		if entry == "" {
-			continue
+	// Manifest-path entries deploy after the kind-driven chain, in listed
+	// order. Each is an EXTRA INSTANCE of its declared kind: it never marks
+	// the kind as scheduled (it is not a substitute for the kind's install
+	// profile), but its own transitive prerequisites join the chain first if
+	// the graph has not already scheduled them.
+	for _, entry := range declaredPaths {
+		full := filepath.Join(repoRoot, entry)
+		if !pathExists(full) {
+			return nil, errors.Errorf("%s annotation entry %q: manifest not found at %s", scenarioPrerequisitesAnnotation, entry, full)
 		}
-
-		if strings.Contains(entry, "/") {
-			// A repo-relative manifest path: an extra instance of its declared kind.
-			full := filepath.Join(repoRoot, entry)
-			if !pathExists(full) {
-				return nil, errors.Errorf("%s annotation entry %q: manifest not found at %s", ExtraPrerequisitesAnnotation, entry, full)
-			}
-			slug, err := manifestKindSlug(full)
-			if err != nil {
-				return nil, errors.Wrapf(err, "%s annotation entry %q", ExtraPrerequisitesAnnotation, entry)
-			}
-			pre, err := unscheduledTransitives(repoRoot, componentProvider, slug, scheduled)
+		slug, err := manifestKindSlug(full)
+		if err != nil {
+			return nil, errors.Wrapf(err, "%s annotation entry %q", scenarioPrerequisitesAnnotation, entry)
+		}
+		entryKind := crkreflect.KindFromString(slug)
+		pre, err := expandPrerequisiteGraph(repoRoot, componentProvider, component, crkreflect.Prerequisites(entryKind), visited)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range pre {
+			pSlug := strings.ToLower(p.String())
+			manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, pSlug)
 			if err != nil {
 				return nil, err
 			}
-			extras = append(extras, pre...)
-			// The path instance itself never marks its kind as scheduled: it is an
-			// additional instance, not a substitute for the kind's install profile.
-			extras = append(extras, Dependency{KindSlug: slug, ManifestPath: full})
-			continue
+			deps = append(deps, Dependency{KindSlug: pSlug, ManifestPath: manifestPath})
 		}
-
-		// A registered kind name, installed through its standard profile.
-		kind := crkreflect.KindFromString(entry)
-		if kind == cloudresourcekind.CloudResourceKind_unspecified {
-			return nil, errors.Errorf("%s annotation entry %q is neither a registered kind nor a manifest path", ExtraPrerequisitesAnnotation, entry)
-		}
-		slug := strings.ToLower(kind.String())
-		if scheduled[slug] {
-			continue
-		}
-		pre, err := unscheduledTransitives(repoRoot, componentProvider, slug, scheduled)
-		if err != nil {
-			return nil, err
-		}
-		extras = append(extras, pre...)
-		manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, slug)
-		if err != nil {
-			return nil, err
-		}
-		extras = append(extras, Dependency{KindSlug: slug, ManifestPath: manifestPath})
-		scheduled[slug] = true
-	}
-	return extras, nil
-}
-
-// unscheduledTransitives returns the transitive registry prerequisites of a kind
-// that are not yet scheduled, in deploy-first order, marking them scheduled.
-func unscheduledTransitives(repoRoot, componentProvider, slug string, scheduled map[string]bool) ([]Dependency, error) {
-	kind := crkreflect.KindFromString(slug)
-	if kind == cloudresourcekind.CloudResourceKind_unspecified {
-		return nil, errors.Errorf("kind %q is not registered", slug)
-	}
-	prereqs, err := crkreflect.TransitivePrerequisites(kind)
-	if err != nil {
-		return nil, errors.Wrapf(err, "resolving prerequisites for extra fixture %s", slug)
-	}
-	var deps []Dependency
-	for _, p := range prereqs {
-		pSlug := strings.ToLower(p.String())
-		if scheduled[pSlug] {
-			continue
-		}
-		manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, pSlug)
-		if err != nil {
-			return nil, err
-		}
-		deps = append(deps, Dependency{KindSlug: pSlug, ManifestPath: manifestPath})
-		scheduled[pSlug] = true
+		deps = append(deps, Dependency{KindSlug: slug, ManifestPath: full})
 	}
 	return deps, nil
+}
+
+// expandPrerequisiteGraph topologically orders the root prerequisites plus
+// everything they transitively require, deduplicated, deploy-first. Each
+// kind's edges come from two sources: its registry prerequisites (the honest
+// statement of what it needs to deploy at all) and the e2e-prerequisites
+// annotation on its own install manifest (the fixtures that manifest's
+// value_from references compose -- see ResolveDependencies point 3). Cycles
+// across either edge source indicate a modeling mistake and fail loudly.
+//
+// visited carries kinds already scheduled by an earlier expansion (they are
+// skipped, and newly visited kinds are added to it), so a scenario's
+// manifest-path entries can extend one chain without re-deploying fixtures
+// the graph already ordered. Only NEWLY visited kinds are returned.
+func expandPrerequisiteGraph(repoRoot, componentProvider, component string, roots []cloudresourcekind.CloudResourceKind, visited map[cloudresourcekind.CloudResourceKind]bool) ([]cloudresourcekind.CloudResourceKind, error) {
+	var result []cloudresourcekind.CloudResourceKind
+	if visited == nil {
+		visited = make(map[cloudresourcekind.CloudResourceKind]bool)
+	}
+	inStack := make(map[cloudresourcekind.CloudResourceKind]bool)
+
+	var visit func(k cloudresourcekind.CloudResourceKind) error
+	visit = func(k cloudresourcekind.CloudResourceKind) error {
+		if inStack[k] {
+			return errors.Errorf("prerequisite cycle detected at %s while resolving dependencies for %s", k.String(), component)
+		}
+		if visited[k] {
+			return nil
+		}
+		inStack[k] = true
+
+		edges := append([]cloudresourcekind.CloudResourceKind{}, crkreflect.Prerequisites(k)...)
+		manifestDeclared, err := installManifestPrerequisites(repoRoot, componentProvider, k)
+		if err != nil {
+			return err
+		}
+		edges = append(edges, manifestDeclared...)
+
+		for _, e := range edges {
+			if err := visit(e); err != nil {
+				return err
+			}
+		}
+
+		inStack[k] = false
+		visited[k] = true
+		result = append(result, k)
+		return nil
+	}
+
+	for _, r := range roots {
+		if err := visit(r); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+// installManifestPrerequisites reads the e2e-prerequisites annotation from a
+// prerequisite kind's install manifest (every document of a multi-document
+// profile), returning the extra kinds that must deploy before it. A kind with
+// no install manifest contributes no edges here -- the missing manifest fails
+// loudly later, when the dependency list is materialized, keeping that the
+// single authoritative error. A manifest that cannot be parsed also
+// contributes no edges: deploying it will fail with the real parse error, so
+// swallowing it here never hides a failure. An annotation naming an unknown
+// kind, however, errors immediately -- silently skipping it would deploy the
+// manifest without a fixture it relies on.
+func installManifestPrerequisites(repoRoot, componentProvider string, k cloudresourcekind.CloudResourceKind) ([]cloudresourcekind.CloudResourceKind, error) {
+	slug := strings.ToLower(k.String())
+	manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, slug)
+	if err != nil {
+		return nil, nil
+	}
+
+	docPaths, err := splitManifestDocuments(manifestPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "splitting install profile for prerequisite %q", slug)
+	}
+
+	var kinds []cloudresourcekind.CloudResourceKind
+	seen := make(map[cloudresourcekind.CloudResourceKind]bool)
+	for _, docPath := range docPaths {
+		raw, err := manifestAnnotation(docPath, scenarioPrerequisitesAnnotation)
+		if err != nil {
+			// Unparseable document: its deploy will surface the real error.
+			continue
+		}
+		if raw == "" {
+			continue
+		}
+		for _, token := range strings.Split(raw, ",") {
+			token = strings.TrimSpace(token)
+			if token == "" {
+				continue
+			}
+			if strings.Contains(token, "/") {
+				// Manifest-path entries are scenario-scoped extra instances;
+				// an install manifest's edges must be kind names so the graph
+				// can dedup them against the rest of the chain.
+				return nil, errors.Errorf("install manifest %s declares manifest-path entry %q in the %s annotation; install-manifest edges must be kind names (path entries are only valid on scenario manifests)", manifestPath, token, scenarioPrerequisitesAnnotation)
+			}
+			declared := crkreflect.KindFromString(token)
+			if declared == cloudresourcekind.CloudResourceKind_unspecified {
+				return nil, errors.Errorf("install manifest %s declares unknown kind %q in the %s annotation", manifestPath, token, scenarioPrerequisitesAnnotation)
+			}
+			if declared == k || seen[declared] {
+				continue
+			}
+			seen[declared] = true
+			kinds = append(kinds, declared)
+		}
+	}
+	return kinds, nil
 }
 
 // prerequisiteManifestPath returns the manifest used to install a prerequisite:
@@ -251,13 +309,13 @@ func prerequisiteManifestPath(repoRoot, componentProvider, slug string) (string,
 }
 
 // DeployDependencies resolves and deploys all prerequisite deployments for a
-// component in order, via Pulumi: the registry prerequisites first, then any
-// extra fixtures the scenario manifest declares (ExtraPrerequisitesAnnotation).
-// Returns the deployed states (needed for teardown) and any error. On the first
-// failure it stops and returns whatever was already deployed so the caller can
-// tear it down.
+// component in order, via Pulumi. scenarioManifestPath (optional, "" to skip)
+// lets the scenario under test add composed-but-optional prerequisites via its
+// annotation. Returns the deployed states (needed for teardown) and any error.
+// On the first failure it stops and returns whatever was already deployed so
+// the caller can tear it down.
 func DeployDependencies(ctx context.Context, repoRoot, componentProvider, component, scenarioManifestPath, backendURL, runID string, harness provider.Harness) ([]DependencyState, error) {
-	deps, err := ResolveAllDependencies(repoRoot, componentProvider, component, scenarioManifestPath)
+	deps, err := ResolveDependencies(repoRoot, componentProvider, component, scenarioManifestPath)
 	if err != nil {
 		return nil, err
 	}
@@ -276,18 +334,13 @@ func DeployDependencies(ctx context.Context, repoRoot, componentProvider, compon
 	// tested standalone.
 	accumulated := make(DependencyOutputs, len(deps))
 
-	// instanceCounts disambiguates stack names when the same kind deploys more
-	// than once in a chain -- whether as several documents of one install profile
-	// or as a scenario-declared extra instance of an already-deployed kind.
-	instanceCounts := make(map[string]int, len(deps))
-
 	var deployed []DependencyState
 	for _, dep := range deps {
 		docPaths, err := splitManifestDocuments(dep.ManifestPath)
 		if err != nil {
 			return deployed, errors.Wrapf(err, "failed to split install profile for dependency %q", dep.KindSlug)
 		}
-		for _, docPath := range docPaths {
+		for docIndex, docPath := range docPaths {
 			docDep := Dependency{KindSlug: dep.KindSlug, ManifestPath: docPath}
 
 			resolvedManifestPath, err := ResolveManifestRefs(docDep.ManifestPath, accumulated)
@@ -296,10 +349,7 @@ func DeployDependencies(ctx context.Context, repoRoot, componentProvider, compon
 			}
 			docDep.ManifestPath = resolvedManifestPath
 
-			instanceIndex := instanceCounts[dep.KindSlug]
-			instanceCounts[dep.KindSlug]++
-
-			state, err := deployDependency(ctx, repoRoot, componentProvider, docDep, backendURL, runID, harness, instanceIndex)
+			state, err := deployDependency(ctx, repoRoot, componentProvider, docDep, backendURL, runID, harness, docIndex)
 			// A non-empty stack name means Pulumi created resources we must track
 			// for teardown, even if verification afterwards failed.
 			if state.StackName != "" {
@@ -322,17 +372,17 @@ func DeployDependencies(ctx context.Context, repoRoot, componentProvider, compon
 // deployDependency builds the stack input, runs `pulumi up`, and verifies the
 // dependency is present. The dependency's own pulumi module is always used
 // (dependencies deploy via Pulumi even when the component under test uses
-// Terraform). instanceIndex disambiguates the stack name when the chain deploys
-// several instances of the same kind.
-func deployDependency(ctx context.Context, repoRoot, componentProvider string, dep Dependency, backendURL, runID string, harness provider.Harness, instanceIndex int) (DependencyState, error) {
+// Terraform). docIndex disambiguates the stack name when an install profile
+// deploys several instances of the same kind.
+func deployDependency(ctx context.Context, repoRoot, componentProvider string, dep Dependency, backendURL, runID string, harness provider.Harness, docIndex int) (DependencyState, error) {
 	moduleDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", componentProvider, dep.KindSlug, "v1", "iac", "pulumi")
 	if !pathExists(moduleDir) {
 		return DependencyState{}, errors.Errorf("dependency %q pulumi module not found at %s", dep.KindSlug, moduleDir)
 	}
 
 	stackLabel := "dep-" + dep.KindSlug
-	if instanceIndex > 0 {
-		stackLabel = fmt.Sprintf("%s-%d", stackLabel, instanceIndex)
+	if docIndex > 0 {
+		stackLabel = fmt.Sprintf("%s-%d", stackLabel, docIndex)
 	}
 	stackName := GenerateStackName(stackLabel, runID)
 	if len(stackName) > 50 {
@@ -352,14 +402,10 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 		return DependencyState{}, errors.Wrapf(err, "failed to build stack input for dependency %q", dep.KindSlug)
 	}
 
-	// The state is constructed BEFORE `pulumi up` runs: a failed deploy may
-	// still have created any number of resources (the stack exists the moment
-	// the update starts), and returning an empty state here would hide them
-	// from teardown -- the partially-created fixture then orphans and blocks
-	// the whole reverse teardown chain (a leftover load balancer holds its
-	// subnet, the subnet holds the network, the network holds the resource
-	// group). Destroying a stack whose update failed is safe: destroy removes
-	// whatever was actually created.
+	if _, err := PulumiDeploy(moduleDir, stackName, backendURL, stackInputPath); err != nil {
+		return DependencyState{}, errors.Wrapf(err, "failed to deploy dependency %q", dep.KindSlug)
+	}
+
 	state := DependencyState{
 		Dependency:     dep,
 		ModuleDir:      moduleDir,
@@ -367,10 +413,6 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 		BackendURL:     backendURL,
 		StackInputPath: stackInputPath,
 		ManifestName:   manifestName,
-	}
-
-	if _, err := PulumiDeploy(moduleDir, stackName, backendURL, stackInputPath); err != nil {
-		return state, errors.Wrapf(err, "failed to deploy dependency %q", dep.KindSlug)
 	}
 
 	// Capture the dependency's outputs so its verifier can confirm it (cloud
@@ -395,20 +437,37 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 	return state, nil
 }
 
-// TeardownDependencies destroys deployed dependencies in reverse order.
-func TeardownDependencies(deployed []DependencyState) {
+// pulumiDestroyFn / pulumiRemoveStackFn are seams over the Pulumi CLI wrappers
+// so teardown aggregation can be unit-tested without a live Pulumi backend.
+// Production code never overrides them.
+var (
+	pulumiDestroyFn     = PulumiDestroy
+	pulumiRemoveStackFn = PulumiRemoveStack
+)
+
+// TeardownDependencies destroys deployed dependencies in reverse order and
+// returns the aggregated failures. Teardown is best-effort in the sense that
+// one dependency's failure never stops the remaining teardowns (stopping early
+// would leak everything deployed before it) -- but every failure is collected
+// and returned so the caller FAILS the run. A destroy that cannot run (for
+// example because the ephemeral backend state disappeared before teardown)
+// means real cloud resources may still exist; reporting success would leave
+// them leaking silently, invisible until someone audits the account.
+func TeardownDependencies(deployed []DependencyState) error {
+	var failures []error
 	for i := len(deployed) - 1; i >= 0; i-- {
 		dep := deployed[i]
 		fmt.Printf("  [deps] Destroying dependency %s...\n", dep.Dependency.KindSlug)
 
-		if _, err := PulumiDestroy(dep.ModuleDir, dep.StackName, dep.BackendURL, dep.StackInputPath); err != nil {
-			fmt.Printf("  [WARN] dependency %s destroy failed: %v\n", dep.Dependency.KindSlug, err)
+		if _, err := pulumiDestroyFn(dep.ModuleDir, dep.StackName, dep.BackendURL, dep.StackInputPath); err != nil {
+			failures = append(failures, errors.Wrapf(err, "dependency %s (stack %s) destroy failed", dep.Dependency.KindSlug, dep.StackName))
 			continue
 		}
-		if err := PulumiRemoveStack(dep.ModuleDir, dep.StackName, dep.BackendURL); err != nil {
-			fmt.Printf("  [WARN] dependency %s stack removal failed: %v\n", dep.Dependency.KindSlug, err)
+		if err := pulumiRemoveStackFn(dep.ModuleDir, dep.StackName, dep.BackendURL); err != nil {
+			failures = append(failures, errors.Wrapf(err, "dependency %s (stack %s) stack removal failed", dep.Dependency.KindSlug, dep.StackName))
 		}
 	}
+	return stderrors.Join(failures...)
 }
 
 func pathExists(path string) bool {
@@ -469,6 +528,83 @@ func splitManifestDocuments(manifestPath string) ([]string, error) {
 	return paths, nil
 }
 
+// scenarioDeclaredPrerequisites reads the scenario manifest's
+// `planton.dev/e2e-prerequisites` annotation and returns the declared kind
+// entries and manifest-path entries (recognized by containing a "/") in
+// their listed order. An empty path or an absent annotation returns nil
+// (the registry graph alone drives resolution); an unknown kind name errors
+// loudly rather than silently skipping a dependency the scenario relies on.
+func scenarioDeclaredPrerequisites(manifestPath string) ([]cloudresourcekind.CloudResourceKind, []string, error) {
+	if manifestPath == "" {
+		return nil, nil, nil
+	}
+	raw, err := manifestAnnotation(manifestPath, scenarioPrerequisitesAnnotation)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "reading scenario manifest %s", manifestPath)
+	}
+	if raw == "" {
+		return nil, nil, nil
+	}
+
+	var kinds []cloudresourcekind.CloudResourceKind
+	var paths []string
+	for _, token := range strings.Split(raw, ",") {
+		token = strings.TrimSpace(token)
+		if token == "" {
+			continue
+		}
+		if strings.Contains(token, "/") {
+			paths = append(paths, token)
+			continue
+		}
+		kind := crkreflect.KindFromString(token)
+		if kind == cloudresourcekind.CloudResourceKind_unspecified {
+			return nil, nil, errors.Errorf("scenario %s declares unknown kind %q in the %s annotation", manifestPath, token, scenarioPrerequisitesAnnotation)
+		}
+		kinds = append(kinds, kind)
+	}
+	return kinds, paths, nil
+}
+
+// manifestKindSlug reads the kind a manifest declares and returns its lowercase
+// component directory slug, erroring on unregistered kinds so a mistyped
+// manifest-path fixture fails at resolution time rather than mid-deploy.
+func manifestKindSlug(manifestPath string) (string, error) {
+	obj, err := manifest.LoadManifest(manifestPath)
+	if err != nil {
+		return "", err
+	}
+	name := string(obj.ProtoReflect().Descriptor().Name())
+	kind := crkreflect.KindFromString(name)
+	if kind == cloudresourcekind.CloudResourceKind_unspecified {
+		return "", errors.Errorf("manifest %s declares kind %q, which is not a registered cloud resource kind", manifestPath, name)
+	}
+	return strings.ToLower(kind.String()), nil
+}
+
+// manifestAnnotation reads a single metadata annotation from a KRM manifest,
+// returning "" when the annotation (or the annotations map) is absent.
+func manifestAnnotation(manifestPath, key string) (string, error) {
+	obj, err := manifest.LoadManifest(manifestPath)
+	if err != nil {
+		return "", err
+	}
+	top := obj.ProtoReflect()
+	metaFd := top.Descriptor().Fields().ByName("metadata")
+	if metaFd == nil || metaFd.Kind() != protoreflect.MessageKind {
+		return "", nil
+	}
+	annFd := metaFd.Message().Fields().ByName("annotations")
+	if annFd == nil || !annFd.IsMap() {
+		return "", nil
+	}
+	value := top.Get(metaFd).Message().Get(annFd).Map().Get(protoreflect.ValueOfString(key).MapKey())
+	if !value.IsValid() {
+		return "", nil
+	}
+	return value.String(), nil
+}
+
 // manifestMetadataName reads metadata.name from a KRM manifest. The name keys
 // the deployed instance's outputs in DependencyOutputs, which is what lets a
 // reference address one specific instance of a multi-instance prerequisite.
@@ -491,44 +627,4 @@ func manifestMetadataName(manifestPath string) (string, error) {
 		return "", errors.Errorf("manifest %s has an empty metadata.name", manifestPath)
 	}
 	return name, nil
-}
-
-// manifestAnnotation reads a single metadata.annotations value from a KRM
-// manifest, returning "" when the annotation (or the annotations map) is absent.
-func manifestAnnotation(manifestPath, key string) (string, error) {
-	obj, err := manifest.LoadManifest(manifestPath)
-	if err != nil {
-		return "", err
-	}
-	top := obj.ProtoReflect()
-	metaFd := top.Descriptor().Fields().ByName("metadata")
-	if metaFd == nil || metaFd.Kind() != protoreflect.MessageKind {
-		return "", nil
-	}
-	meta := top.Get(metaFd).Message()
-	annFd := meta.Descriptor().Fields().ByName("annotations")
-	if annFd == nil || !annFd.IsMap() {
-		return "", nil
-	}
-	value := meta.Get(annFd).Map().Get(protoreflect.ValueOfString(key).MapKey())
-	if !value.IsValid() {
-		return "", nil
-	}
-	return value.String(), nil
-}
-
-// manifestKindSlug derives the lowercase kind slug from a manifest's declared
-// kind, erroring on unregistered kinds so a typo in a path-declared extra
-// fixture fails at resolution rather than at module lookup.
-func manifestKindSlug(manifestPath string) (string, error) {
-	obj, err := manifest.LoadManifest(manifestPath)
-	if err != nil {
-		return "", err
-	}
-	name := string(obj.ProtoReflect().Descriptor().Name())
-	kind := crkreflect.KindFromString(name)
-	if kind == cloudresourcekind.CloudResourceKind_unspecified {
-		return "", errors.Errorf("manifest %s declares kind %q, which is not a registered cloud resource kind", manifestPath, name)
-	}
-	return strings.ToLower(kind.String()), nil
 }

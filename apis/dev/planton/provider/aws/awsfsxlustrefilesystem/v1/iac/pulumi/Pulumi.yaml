@@ -1,6 +1,3 @@
 name: aws-fsx-lustre-file-system
-runtime:
-  name: go
-  options:
-    binary: aws-fsx-lustre-file-system
-description: AWS FSx Lustre File System
+runtime: go
+description: Deploy an Amazon FSx for Lustre file system using Planton

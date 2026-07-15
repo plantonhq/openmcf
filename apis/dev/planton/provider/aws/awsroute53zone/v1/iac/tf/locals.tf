@@ -1,57 +1,38 @@
 locals {
-  # Derive a stable resource ID
-  resource_id = (
-    var.metadata.id != null && var.metadata.id != ""
-    ? var.metadata.id
-    : var.metadata.name
-  )
+  # metadata.name IS the zone's domain name (ForceNew — a hosted zone cannot
+  # be renamed).
+  zone_name = var.metadata.name
 
-  # Base tags
-  base_tags = {
-    "resource"      = "true"
-    "resource_id"   = local.resource_id
-    "resource_kind" = "aws_route53_zone"
+  # Resource-identity tags follow the catalog convention.
+  aws_tags = {
+    "Name"                     = var.metadata.name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsRoute53Zone"
+    "planton.ai/resource-id"   = var.metadata.id
   }
 
-  # Organization tag only if var.metadata.org is non-empty
-  org_tag = (
-  var.metadata.org != null && var.metadata.org != ""
-  ) ? {
-    "organization" = var.metadata.org
-  } : {}
+  # Private-zone VPC set — vpc_region defaults to the zone's region so
+  # single-region graphs never repeat it. Public zones carry no VPCs
+  # (CEL-enforced), so this list is empty for them.
+  vpc_associations = var.spec.is_private ? [
+    for association in var.spec.vpc_associations : {
+      vpc_id     = association.vpc_id
+      vpc_region = association.vpc_region != "" ? association.vpc_region : var.spec.region
+    }
+  ] : []
 
-  # Environment tag only if var.metadata.env is non-empty
-  env_tag = (
-  var.metadata.env != null &&
-  try(var.metadata.env, "") != ""
-  ) ? {
-    "environment" = var.metadata.env
-  } : {}
+  # Null-when-unset scalars so the provider applies its own defaults instead
+  # of this module freezing them.
+  comment           = var.spec.comment != "" ? var.spec.comment : null
+  delegation_set_id = var.spec.delegation_set_id != "" ? var.spec.delegation_set_id : null
 
-  # Merge base, org, and environment tags
-  final_tags = merge(local.base_tags, local.org_tag, local.env_tag)
+  # DNSSEC — the KSK name defaults to a zone-derived name when omitted.
+  dnssec_enabled = var.spec.dnssec != null
+  ksk_name = local.dnssec_enabled ? (
+    var.spec.dnssec.key_signing_key_name != "" ? var.spec.dnssec.key_signing_key_name : "${replace(local.zone_name, ".", "-")}-ksk"
+  ) : null
 
-  # replace '.' with '-' in hosted zone name
-
-  normalized_r53_zone_name = replace(var.metadata.name, ".", "-")
-
-  # Normalize record names to produce stable keys for for_each.
-  # 1. trim starting and trailing dot
-  # 2. replace '.' with '_'
-  # 3. replace '*' with 'wildcard'
-
-  normalized_records = {
-    for rec in var.spec.records :
-    format(
-      "%s_%s",
-      replace(
-        replace(
-          trim(rec.name, "."),
-          ".", "_"
-        ),
-        "*", "wildcard"
-      ),
-      rec.record_type
-    ) => rec
-  }
+  query_logging_enabled = var.spec.query_logging != null
 }

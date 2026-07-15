@@ -1,0 +1,48 @@
+# The optional private-egress plane. A VPC connector places network
+# interfaces in your private subnets so the app's OUTBOUND traffic follows
+# your VPC's routing — reaching databases and caches that never face the
+# internet. Inbound traffic is unaffected: it still arrives through App
+# Runner's managed public endpoint.
+{% if values.vpc_connector_enabled | bool %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSecurityGroup
+metadata:
+  name: "{{ values.service_name }}-connector-sg"
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    value: "{{ values.vpc_id }}"
+  description: "Egress for the {{ values.service_name }} App Runner VPC connector"
+  # No ingress: the connector only ORIGINATES connections — nothing in the
+  # VPC ever needs to open a connection to it. Downstream resources admit
+  # the app by referencing THIS group as their ingress source (e.g. a
+  # database SG allowing 5432 from this group), which is the auditable way
+  # to say "the API may reach the database".
+  egress:
+    - description: "Outbound to VPC resources and the internet via the subnets' routing"
+      protocol: "-1"
+      fromPort: 0
+      toPort: 0
+      ipv4Cidrs:
+        - 0.0.0.0/0
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsAppRunnerVpcConnector
+metadata:
+  name: "{{ values.service_name }}-connector"
+spec:
+  region: "{{ values.aws_region }}"
+  # Two-plus private subnets in different AZs keep egress alive through a
+  # zone event. Everything here is create-time immutable — changing subnets
+  # or groups replaces the connector (a new revision the service rolls to).
+  subnetIds:
+{% for subnet_id in values.connector_subnet_ids %}
+    - value: "{{ subnet_id }}"
+{% endfor %}
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: "{{ values.service_name }}-connector-sg"
+        fieldPath: status.outputs.security_group_id
+{% endif %}

@@ -23,6 +23,15 @@ func literal(value string) *foreignkeyv1.StringValueOrRef {
 	}
 }
 
+// ref builds a StringValueOrRef carrying a value_from reference.
+func ref(name string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{Name: name},
+		},
+	}
+}
+
 const originGroupId = "/subscriptions/s/resourceGroups/rg/providers/Microsoft.Cdn/profiles/planton-fd/originGroups/api-backends"
 const appServiceId = "/subscriptions/s/resourceGroups/rg/providers/Microsoft.Web/sites/my-app"
 const plsId = "/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/privateLinkServices/my-pls"
@@ -39,7 +48,7 @@ func minimalSpec() *AzureFrontDoorOrigin {
 		Spec: &AzureFrontDoorOriginSpec{
 			OriginGroupId: literal(originGroupId),
 			OriginName:    "test-origin",
-			HostName:      "myapp.azurewebsites.net",
+			HostName:      literal("myapp.azurewebsites.net"),
 		},
 	}
 }
@@ -60,9 +69,15 @@ var _ = ginkgo.Describe("AzureFrontDoorOriginSpec Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(minimalSpec())).To(gomega.BeNil())
 		})
 
+		ginkgo.It("should accept a host name resolved by reference", func() {
+			input := minimalSpec()
+			input.Spec.HostName = ref("my-web-app")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
 		ginkgo.It("should accept all optional dials at their boundaries", func() {
 			input := minimalSpec()
-			input.Spec.OriginHostHeader = proto.String("myapp.azurewebsites.net")
+			input.Spec.OriginHostHeader = literal("myapp.azurewebsites.net")
 			input.Spec.HttpPort = proto.Int32(1)
 			input.Spec.HttpsPort = proto.Int32(65535)
 			input.Spec.Priority = proto.Int32(5)
@@ -156,13 +171,7 @@ var _ = ginkgo.Describe("AzureFrontDoorOriginSpec Validation Tests", func() {
 
 		ginkgo.It("should reject a missing host name", func() {
 			input := minimalSpec()
-			input.Spec.HostName = ""
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("should reject an empty origin host header when set", func() {
-			input := minimalSpec()
-			input.Spec.OriginHostHeader = proto.String("")
+			input.Spec.HostName = nil
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 

@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awswafipset
+spec:
+  # A WAFv2 IP set under live E2E: the harness runs deploy -> GetIPSet
+  # verify (id/name/scope parsed from the ARN output) -> destroy ->
+  # verify-destroyed on both provisioners. A true leaf that creates in
+  # seconds. Deliberately not in the live scenario: CLOUDFRONT scope (same
+  # API surface, but pinned to us-east-1 while the shared fixtures live in
+  # us-west-2 -- the REGIONAL lane exercises the identical resource shape)
+  # and IPV6 sets (a second run of the same two-field surface). Both are
+  # proven by CEL spec tests and the offline gate.
+  # Live dual-engine run 2026-07-08: Pulumi 28s / Terraform 43s.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

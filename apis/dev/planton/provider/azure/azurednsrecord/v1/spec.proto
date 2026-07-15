@@ -113,11 +113,14 @@ message AzureDnsRecordSpec {
   // Text values (SPF, DKIM, DMARC, domain verification). Each value may
   // be up to 4096 characters -- Azure transparently splits long values
   // into the 254-character strings DNS requires and reassembles them on
-  // read. Set exactly one payload field on this spec.
-  repeated string txt = 12 [(buf.validate.field).repeated.items.string = {
-    min_len: 1
-    max_len: 4096
-  }];
+  // read. Values are references or literals and may mix freely in one
+  // record set: reference another resource's output when the value is
+  // minted at deploy time (an AzureFrontDoorCustomDomain's
+  // validation_token published at `_dnsauth.<host>`), pass literals for
+  // everything hand-authored (SPF policies, DKIM keys). No kind dominates
+  // TXT values, so references declare their kind explicitly. Set exactly
+  // one payload field on this spec.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef txt = 12;
 
   // Name-server hostnames, for delegating a CHILD subdomain to another
   // zone's name servers (e.g. "team" NS records pointing at the
@@ -183,10 +186,15 @@ message AzureDnsAaaaRecord {
 
 // Canonical-name record: one target hostname XOR an Azure-resource alias.
 message AzureDnsCnameRecord {
-  // The hostname this name is an alias for (e.g. "myapp.azurefd.net").
-  // A trailing dot is optional -- Azure treats the value as fully
-  // qualified either way. Mutually exclusive with target_resource_id.
-  string value = 1 [(buf.validate.field).string.max_len = 253];
+  // The hostname this name is an alias for, at most 253 characters (e.g.
+  // "myapp.azurefd.net"). A trailing dot is optional -- Azure treats the
+  // value as fully qualified either way. A reference or a literal:
+  // reference another resource's hostname output when the target is
+  // minted at deploy time (an AzureFrontDoorEndpoint's hash-suffixed
+  // host_name), pass a literal for externally-known hostnames. No kind
+  // dominates CNAME targets, so references declare their kind explicitly.
+  // Mutually exclusive with target_resource_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef value = 1;
 
   // Alias target: the ARM ID of an Azure resource this CNAME should
   // track (a Traffic Manager profile, CDN endpoint, or Front Door
@@ -198,7 +206,7 @@ message AzureDnsCnameRecord {
   option (buf.validate.message).cel = {
     id: "azure_dns_cname_record_value_xor_alias"
     message: "Provide either the target hostname in value or an alias target_resource_id, not both and not neither -- a CNAME answers with exactly one canonical name"
-    expression: "(this.value != '' ? 1 : 0) + (has(this.target_resource_id) ? 1 : 0) == 1"
+    expression: "(has(this.value) ? 1 : 0) + (has(this.target_resource_id) ? 1 : 0) == 1"
   };
 }
 

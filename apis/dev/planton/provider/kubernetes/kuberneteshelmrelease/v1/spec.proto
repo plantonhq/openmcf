@@ -3,16 +3,12 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kuberneteshelmrelease.v1;
 
 import "buf/validate/validate.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // **KubernetesHelmReleaseSpec** defines the configuration for deploying a Helm release on a Kubernetes cluster.
 // This message specifies the parameters needed to create and manage a Helm chart deployment within a Kubernetes environment.
 // By configuring the Helm chart specifications, you can deploy applications packaged as Helm charts with customized values.
 message KubernetesHelmReleaseSpec {
-  // Target Kubernetes Cluster
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

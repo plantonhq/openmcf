@@ -36,7 +36,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCronJob
 metadata:
   name: my-cronjob
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -76,8 +76,6 @@ This creates a CronJob in the `my-namespace` namespace that runs every hour usin
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `image.repo` | `string` | — | Container image repository (e.g., `busybox`, `gcr.io/project/image`). |
 | `image.tag` | `string` | — | Container image tag (e.g., `latest`, `1.36`). |
@@ -111,7 +109,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCronJob
 metadata:
   name: log-cleanup
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -146,7 +144,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCronJob
 metadata:
   name: db-backup
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -201,7 +199,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCronJob
 metadata:
   name: scheduled-backup
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -276,7 +274,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCronJob
 metadata:
   name: data-migration
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

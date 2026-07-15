@@ -34,7 +34,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanKubernetesCluster
 metadata:
   name: my-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -97,7 +97,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanKubernetesCluster
 metadata:
   name: prod-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -125,7 +125,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanKubernetesCluster
 metadata:
   name: secure-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -160,7 +160,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanKubernetesCluster
 metadata:
   name: full-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

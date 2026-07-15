@@ -1,0 +1,10 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsGlueCatalogDatabase
+metadata:
+  name: shared_sales_link
+spec:
+  region: us-west-2
+  description: "Resource link to the sales database shared by the data-platform account"
+  targetDatabase:
+    catalogId: "123456789012"
+    databaseName: sales_curated

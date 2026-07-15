@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "distiller_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/plantonhq/planton/pkg/protodocs/distiller",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/descriptorpb",
+    ],
+)
+
+go_binary(
+    name = "distiller",
+    embed = [":distiller_lib"],
+    visibility = ["//visibility:public"],
+)

@@ -128,3 +128,28 @@ func TestWriteMapToHCL_Array(t *testing.T) {
 		t.Errorf("array element missing, got:\n%s", out)
 	}
 }
+
+func TestWriteMapToHCL_EscapesTemplateIntroducers(t *testing.T) {
+	data := map[string]interface{}{
+		"resource_policy": `{"Condition":{"StringEquals":{"aws:PrincipalAccount":"${aws:ResourceAccount}"}}}`,
+		"user_data":       `%{ if true }never-template%{ endif }`,
+		"items":           []interface{}{"${literal}"},
+	}
+	var buf bytes.Buffer
+	if err := WriteMapToHCL(&buf, data, 0); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, `$${aws:ResourceAccount}`) {
+		t.Errorf("interpolation introducer must be escaped as $${, got:\n%s", out)
+	}
+	if !strings.Contains(out, `%%{ if true }`) {
+		t.Errorf("directive introducer must be escaped as %%%%{, got:\n%s", out)
+	}
+	if !strings.Contains(out, `"$${literal}",`) {
+		t.Errorf("array elements must escape introducers too, got:\n%s", out)
+	}
+	if strings.Contains(out, ` = "{"Condition"`) {
+		t.Errorf("quoting must remain JSON-escaped, got:\n%s", out)
+	}
+}

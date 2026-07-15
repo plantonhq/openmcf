@@ -1,6 +1,6 @@
 ---
-title: "MySQL Production Instance"
-description: "This preset creates a Multi-AZ RDS MySQL instance with encrypted storage and private network access. Same production-grade defaults as the PostgreSQL preset, but configured for MySQL 8.0. Suitable..."
+title: "MySQL (Production Multi-AZ)"
+description: "This preset creates a production-shaped MySQL instance: Multi-AZ with a synchronous standby, gp3 storage with autoscaling headroom, an AWS-managed master password, encrypted storage, deletion..."
 type: "preset"
 rank: "02"
 presetSlug: "02-mysql-production"
@@ -11,34 +11,32 @@ icon: "package"
 order: 2
 ---
 
-# MySQL Production Instance
+# MySQL (Production Multi-AZ)
 
-This preset creates a Multi-AZ RDS MySQL instance with encrypted storage and private network access. Same production-grade defaults as the PostgreSQL preset, but configured for MySQL 8.0. Suitable for applications that require MySQL-compatible SQL.
+This preset creates a production-shaped MySQL instance: Multi-AZ with a synchronous standby, gp3 storage with autoscaling headroom, an AWS-managed master password, encrypted storage, deletion protection, seven days of backups, Performance Insights, and RDS Blue/Green Deployments for near-zero-downtime engine upgrades.
 
 ## When to Use
 
-- Production MySQL databases that need automatic failover (Multi-AZ)
-- Applications migrating from on-premises MySQL to AWS
-- Workloads that don't need Aurora's performance benefits and prefer standard RDS MySQL
+- Production MySQL that needs a single-node instance rather than an Aurora cluster
+- Teams that upgrade engines regularly and want Blue/Green's under-a-minute switchover instead of an in-place upgrade outage
+- Workloads standardizing on the community mysql engine across environments
 
 ## Key Configuration Choices
 
-- **MySQL 8.0** (`engine: mysql`, `engineVersion: "8.0.35"`) -- Standard RDS MySQL; update to latest minor version
-- **Multi-AZ** (`multiAz: true`) -- Synchronous standby for automatic failover
-- **db.t3.medium** -- 2 vCPUs, 4 GiB RAM; increase for production workloads
-- **50 GiB storage** -- GP2/GP3 SSD; increase based on data requirements
-- **Encrypted and private** -- Same security defaults as the PostgreSQL preset
+- **Blue/Green updates** (`blueGreenUpdateEnabled: true`) -- engine upgrades and parameter changes are applied to a synchronized green copy, then switched over in under a minute; a bad upgrade never takes the primary down.
+- **Managed master password** (`manageMasterUserPassword: true`) -- AWS generates, stores, and rotates the credential; the secret's ARN is exported as `master_user_secret_arn`.
+- **Multi-AZ + storage autoscaling + encryption + deletion safety** -- the same production posture as the PostgreSQL preset.
+- **MySQL log export** -- `error` and `slowquery` logs stream to CloudWatch Logs.
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<private-subnet-id-az1>` | Private subnet in the first Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<private-subnet-id-az2>` | Private subnet in the second Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<security-group-id>` | Security group allowing MySQL port (3306) from application tier | AWS EC2 console or `AwsSecurityGroup` status outputs |
-| `<master-username>` | Master database username (e.g., `dbadmin`) | Your credential management system |
-| `<master-password>` | Master database password | Your credential management system |
+| `subnet-replace-with-private-az1` | Private subnet in the first Availability Zone | `AwsSubnet` status outputs or the AWS VPC console |
+| `subnet-replace-with-private-az2` | Private subnet in the second Availability Zone | `AwsSubnet` status outputs or the AWS VPC console |
+| `sg-replace-with-database-sg` | Security group allowing port 3306 from the application tier | `AwsSecurityGroup` status outputs or the AWS EC2 console |
 
 ## Related Presets
 
-- **01-postgresql-production** -- Use instead for PostgreSQL workloads
+- **01-postgresql-production** -- The same production shape for PostgreSQL
+- **03-read-replica** -- Add read capacity to this instance without touching it

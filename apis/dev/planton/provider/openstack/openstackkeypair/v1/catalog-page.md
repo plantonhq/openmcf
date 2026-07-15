@@ -25,10 +25,16 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackKeypair
 metadata:
   name: my-keypair
-  labels:
-    planton.dev/provisioner: pulumi
+  annotations:
+    planton.dev/stack.jobId: prod.OpenstackKeypair.us-west-keypair
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1/iac/pulumi/module
+    planton.dev/stack.jobId: staging.OpenstackKeypair.ephemeral-keypair
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1/iac/pulumi/module
+    planton.dev/stack.jobId: dev.OpenstackKeypair.dev-keypair
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackKeypair.my-keypair
     planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1/iac/pulumi/module
+    planton.dev/provisioner: pulumi
 spec:
   publicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ... user@host"
 ```
@@ -65,10 +71,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackKeypair
 metadata:
   name: dev-keypair
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: dev.OpenstackKeypair.dev-keypair
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1/iac/pulumi/module
 spec:
   publicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKeyData developer@workstation"
 ```
@@ -82,10 +86,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackKeypair
 metadata:
   name: ephemeral-keypair
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: staging.OpenstackKeypair.ephemeral-keypair
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1/iac/pulumi/module
 spec: {}
 ```
 
@@ -104,10 +106,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackKeypair
 metadata:
   name: us-west-keypair
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackKeypair.us-west-keypair
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1/iac/pulumi/module
 spec:
   publicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC7ExampleProdKeyData ops-team@corp"
   region: us-west-1

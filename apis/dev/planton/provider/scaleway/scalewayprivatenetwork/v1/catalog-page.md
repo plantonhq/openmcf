@@ -25,7 +25,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayPrivateNetwork
 metadata:
   name: my-network
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -71,7 +71,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayPrivateNetwork
 metadata:
   name: dev-network
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,7 +90,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayPrivateNetwork
 metadata:
   name: app-network
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -111,7 +111,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayPrivateNetwork
 metadata:
   name: dual-stack-network
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

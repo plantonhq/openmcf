@@ -25,7 +25,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsIamOidcProvider
 metadata:
   name: github-actions-oidc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -73,7 +73,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsIamOidcProvider
 metadata:
   name: eks-irsa
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -98,7 +98,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsIamOidcProvider
 metadata:
   name: partner-oidc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -23,223 +23,110 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Supported DNS record types for AWS Route53.
-type AwsRoute53DnsRecordSpec_RecordType int32
-
-const (
-	// Unspecified record type (invalid).
-	AwsRoute53DnsRecordSpec_record_type_unspecified AwsRoute53DnsRecordSpec_RecordType = 0
-	// IPv4 address record.
-	AwsRoute53DnsRecordSpec_A AwsRoute53DnsRecordSpec_RecordType = 1
-	// IPv6 address record.
-	AwsRoute53DnsRecordSpec_AAAA AwsRoute53DnsRecordSpec_RecordType = 2
-	// Canonical name (alias) record.
-	AwsRoute53DnsRecordSpec_CNAME AwsRoute53DnsRecordSpec_RecordType = 3
-	// Mail exchange record.
-	AwsRoute53DnsRecordSpec_MX AwsRoute53DnsRecordSpec_RecordType = 4
-	// Text record (SPF, DKIM, verification, etc.).
-	AwsRoute53DnsRecordSpec_TXT AwsRoute53DnsRecordSpec_RecordType = 5
-	// Service locator record.
-	AwsRoute53DnsRecordSpec_SRV AwsRoute53DnsRecordSpec_RecordType = 6
-	// Nameserver record.
-	AwsRoute53DnsRecordSpec_NS AwsRoute53DnsRecordSpec_RecordType = 7
-	// Certificate Authority Authorization record.
-	AwsRoute53DnsRecordSpec_CAA AwsRoute53DnsRecordSpec_RecordType = 8
-)
-
-// Enum value maps for AwsRoute53DnsRecordSpec_RecordType.
-var (
-	AwsRoute53DnsRecordSpec_RecordType_name = map[int32]string{
-		0: "record_type_unspecified",
-		1: "A",
-		2: "AAAA",
-		3: "CNAME",
-		4: "MX",
-		5: "TXT",
-		6: "SRV",
-		7: "NS",
-		8: "CAA",
-	}
-	AwsRoute53DnsRecordSpec_RecordType_value = map[string]int32{
-		"record_type_unspecified": 0,
-		"A":                       1,
-		"AAAA":                    2,
-		"CNAME":                   3,
-		"MX":                      4,
-		"TXT":                     5,
-		"SRV":                     6,
-		"NS":                      7,
-		"CAA":                     8,
-	}
-)
-
-func (x AwsRoute53DnsRecordSpec_RecordType) Enum() *AwsRoute53DnsRecordSpec_RecordType {
-	p := new(AwsRoute53DnsRecordSpec_RecordType)
-	*p = x
-	return p
-}
-
-func (x AwsRoute53DnsRecordSpec_RecordType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (AwsRoute53DnsRecordSpec_RecordType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (AwsRoute53DnsRecordSpec_RecordType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes[0]
-}
-
-func (x AwsRoute53DnsRecordSpec_RecordType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use AwsRoute53DnsRecordSpec_RecordType.Descriptor instead.
-func (AwsRoute53DnsRecordSpec_RecordType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescGZIP(), []int{0, 0}
-}
-
-// Failover type enum
-type AwsRoute53FailoverPolicy_FailoverType int32
-
-const (
-	// Default (invalid - must specify PRIMARY or SECONDARY)
-	AwsRoute53FailoverPolicy_failover_type_unspecified AwsRoute53FailoverPolicy_FailoverType = 0
-	// Primary record - serves traffic when healthy
-	AwsRoute53FailoverPolicy_primary AwsRoute53FailoverPolicy_FailoverType = 1
-	// Secondary record - serves traffic when primary fails health check
-	AwsRoute53FailoverPolicy_secondary AwsRoute53FailoverPolicy_FailoverType = 2
-)
-
-// Enum value maps for AwsRoute53FailoverPolicy_FailoverType.
-var (
-	AwsRoute53FailoverPolicy_FailoverType_name = map[int32]string{
-		0: "failover_type_unspecified",
-		1: "primary",
-		2: "secondary",
-	}
-	AwsRoute53FailoverPolicy_FailoverType_value = map[string]int32{
-		"failover_type_unspecified": 0,
-		"primary":                   1,
-		"secondary":                 2,
-	}
-)
-
-func (x AwsRoute53FailoverPolicy_FailoverType) Enum() *AwsRoute53FailoverPolicy_FailoverType {
-	p := new(AwsRoute53FailoverPolicy_FailoverType)
-	*p = x
-	return p
-}
-
-func (x AwsRoute53FailoverPolicy_FailoverType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (AwsRoute53FailoverPolicy_FailoverType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes[1].Descriptor()
-}
-
-func (AwsRoute53FailoverPolicy_FailoverType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes[1]
-}
-
-func (x AwsRoute53FailoverPolicy_FailoverType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use AwsRoute53FailoverPolicy_FailoverType.Descriptor instead.
-func (AwsRoute53FailoverPolicy_FailoverType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescGZIP(), []int{5, 0}
-}
-
-// AwsRoute53DnsRecordSpec defines the configuration for creating a DNS record in an AWS Route53 hosted zone.
-// This component supports creating individual DNS records with common record types, alias records,
-// and advanced routing policies (weighted, latency, failover, geolocation).
+// AwsRoute53DnsRecordSpec defines one DNS resource record set in a Route 53
+// hosted zone.
 //
-// Route53 DNS records enable mapping domain names to IP addresses, other domains, or AWS resources.
-// Alias records are Route53's killer feature - they allow pointing zone apex domains to AWS resources
-// without CNAME restrictions and with no query charges.
+// A record is either a STANDARD record (values + ttl) or an ALIAS record
+// (alias_target) — exactly one of the two. Alias records are Route 53's
+// killer feature: they point a name (including the zone apex, where CNAME is
+// forbidden) at an AWS resource such as an ALB, CloudFront distribution, S3
+// website, or API Gateway, with free queries and automatic target updates.
+//
+// Beyond simple resolution, a record can carry ONE routing policy — weighted
+// (traffic splitting), latency (nearest region), failover (active-passive),
+// geolocation (user's location), geoproximity (bias-adjustable distance),
+// CIDR (per-subnet routing), or multivalue answer (client-side load
+// balancing). Records sharing a name and type but carrying different
+// set_identifier values form one routing group.
+//
+// The record's identity in AWS is (zone, name, type, set_identifier) —
+// changing zone_id or name replaces the record (ForceNew).
 type AwsRoute53DnsRecordSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Route53 hosted zone ID where this DNS record will be created.
-	// Can be provided as a literal value or referenced from an AwsRoute53Zone resource.
-	//
-	// When using value_from, the default kind is AwsRoute53Zone and the default field path
-	// is "status.outputs.zone_id", allowing you to wire this directly to a zone resource.
-	//
-	// Example literal: "Z1234567890ABC"
-	// Example value_from:
-	//
-	//	value_from:
-	//	  name: my-zone
-	//
 	// The AWS region where the resource will be created.
+	// Route 53 is a global service; this selects the region used for provider
+	// API calls.
 	// Example: "us-west-2", "eu-west-1"
-	Region string               `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
+	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
+	// The Route 53 hosted zone that owns this record. Create-time immutable
+	// (ForceNew). Can reference an AwsRoute53Zone resource — the default field
+	// path wires to "status.outputs.zone_id".
 	ZoneId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
-	// The name of the DNS record (fully qualified domain name or subdomain).
+	// The record name (fully qualified domain name or subdomain). Create-time
+	// immutable (ForceNew).
 	// Examples:
-	//   - "example.com" for zone apex
-	//   - "www.example.com" for subdomain
-	//   - "*.example.com" for wildcard
+	//   - "example.com" for the zone apex
+	//   - "www.example.com" for a subdomain
+	//   - "*.example.com" for a wildcard (catch-all subdomains)
+	//   - "_dmarc.example.com" / "_sip._tcp.example.com" — underscore-prefixed
+	//     labels, the convention for records that configure services rather
+	//     than name hosts (DMARC/DKIM email authentication, SRV service
+	//     discovery, ACME challenges); Route 53 accepts them like any label.
 	//
-	// Route53 automatically appends a trailing dot if not provided.
+	// Route 53 normalizes the trailing dot automatically.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// The type of DNS record to create.
-	// Common types: A (IPv4), AAAA (IPv6), CNAME, MX, TXT, NS, SRV, CAA
-	Type AwsRoute53DnsRecordSpec_RecordType `protobuf:"varint,4,opt,name=type,proto3,enum=dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec_RecordType" json:"type,omitempty"`
-	// Time to live (TTL) for the DNS record in seconds.
-	// TTL specifies how long DNS resolvers should cache the record.
-	// Common values:
-	//   - 60: For records you might change during incidents
-	//   - 300: Default for most records (5 minutes)
-	//   - 86400: For static records (1 day)
-	//
-	// Note: TTL is ignored for alias records (uses target resource's TTL).
-	// Default: 300 seconds.
+	// The DNS record type. All Route 53 resource record set types are
+	// supported:
+	//   - "A" / "AAAA": IPv4 / IPv6 addresses (also the alias record types).
+	//   - "CNAME": canonical-name redirection (not at the zone apex — use an
+	//     A/AAAA alias there).
+	//   - "MX": mail exchangers ("<priority> <host>" values).
+	//   - "TXT": text data (SPF, DKIM, domain verification).
+	//   - "NS" / "SOA": delegation and authority records (usually managed by the
+	//     zone itself; override TTLs only with care).
+	//   - "SRV": service locators ("<priority> <weight> <port> <target>").
+	//   - "PTR": reverse-DNS pointers.
+	//   - "CAA": certificate-authority authorization.
+	//   - "DS": delegation signer, for DNSSEC-signed child zone delegation.
+	//   - "NAPTR": name authority pointers (telephony/SIP).
+	//   - "SPF": legacy sender-policy type (RFC 7208 deprecates it — use TXT).
+	//   - "HTTPS" / "SVCB": service binding records (protocol hints, ECH).
+	//   - "SSHFP": SSH host key fingerprints.
+	//   - "TLSA": DANE TLS certificate association.
+	Type string `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
+	// Time to live in seconds — how long resolvers cache the record. Required
+	// for standard records; must be omitted for alias records (the target's
+	// TTL applies).
+	// Common values: 60 (fast cutover during incidents), 300 (general
+	// default), 86400 (static records like MX/NS).
 	Ttl int32 `protobuf:"varint,5,opt,name=ttl,proto3" json:"ttl,omitempty"`
-	// The values for the DNS record.
-	// Format depends on record type:
-	//   - A record: IPv4 addresses (e.g., ["192.0.2.1", "192.0.2.2"])
-	//   - AAAA record: IPv6 addresses (e.g., ["2001:db8::1"])
-	//   - CNAME record: Target hostname (e.g., ["target.example.com"])
-	//   - MX record: Priority and mail server (e.g., ["10 mail1.example.com", "20 mail2.example.com"])
-	//   - TXT record: Text values (e.g., ["v=spf1 include:_spf.google.com ~all"])
+	// The record data for standard records. Format depends on type:
+	//   - A: IPv4 addresses (e.g. ["192.0.2.1", "192.0.2.2"])
+	//   - AAAA: IPv6 addresses (e.g. ["2001:db8::1"])
+	//   - CNAME: one target hostname (e.g. ["target.example.com"])
+	//   - MX: priority + mail server (e.g. ["10 mail1.example.com"])
+	//   - TXT: text values (e.g. ["v=spf1 include:_spf.google.com ~all"])
 	//
-	// Note: Mutually exclusive with alias_target. Use one or the other.
+	// Mutually exclusive with alias_target — a record is standard or alias,
+	// never both.
 	Values []string `protobuf:"bytes,6,rep,name=values,proto3" json:"values,omitempty"`
-	// Alias target configuration for Route53 alias records.
-	// Alias records are Route53's killer feature - they allow:
-	//  1. Pointing zone apex (example.com) to AWS resources without CNAME restrictions
-	//  2. Free queries (no Route53 charges for alias queries to AWS resources)
-	//  3. Automatic IP updates when target resource changes
-	//
-	// Common targets: CloudFront, ALB/NLB, S3 website, API Gateway, another Route53 record.
-	// Note: Mutually exclusive with values. Use one or the other.
+	// Alias target for A/AAAA alias records: point this name at an AWS
+	// resource (ALB, NLB, CloudFront, S3 website, API Gateway, another record
+	// in the zone) instead of literal addresses. Works at the zone apex,
+	// queries are free, and Route 53 tracks the target's address changes
+	// automatically. Mutually exclusive with values (and ttl).
 	AliasTarget *AwsRoute53AliasTarget `protobuf:"bytes,7,opt,name=alias_target,json=aliasTarget,proto3" json:"alias_target,omitempty"`
-	// Routing policy configuration for advanced traffic management.
-	// Route53 supports multiple routing strategies:
-	//   - Simple: Default single-value response (no config needed)
-	//   - Weighted: Split traffic across resources (blue/green, canary)
-	//   - Latency: Route to lowest-latency endpoint (global apps)
-	//   - Failover: Active-passive with automatic failover
-	//   - Geolocation: Route based on user location (GDPR, localization)
-	//
-	// If not specified, simple routing is used.
+	// Routing policy for advanced traffic management. At most one policy per
+	// record; records with the same name and type but different set_identifier
+	// values combine into one routing group. Omit for simple routing.
 	RoutingPolicy *AwsRoute53RoutingPolicy `protobuf:"bytes,8,opt,name=routing_policy,json=routingPolicy,proto3" json:"routing_policy,omitempty"`
-	// Health check ID to attach for failover routing.
-	// Health checks monitor endpoint availability and trigger automatic failover.
-	// Create health checks separately in Route53 and reference by ID.
-	// Only used with failover routing policy.
-	HealthCheckId string `protobuf:"bytes,9,opt,name=health_check_id,json=healthCheckId,proto3" json:"health_check_id,omitempty"`
-	// Set identifier for routing policies.
-	// Required for weighted, latency, failover, and geolocation routing.
-	// Must be unique among records with the same name and type.
-	// Example: "primary", "secondary", "us-east-1", "weight-70"
+	// Health check gating this record's answers: Route 53 only serves the
+	// record while the health check passes. Most commonly paired with failover
+	// routing (primary/secondary), but valid with any non-simple routing
+	// policy — e.g. weighted records that drop out of rotation when unhealthy.
+	// Can reference an AwsRoute53HealthCheck resource.
+	HealthCheckId *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=health_check_id,json=healthCheckId,proto3" json:"health_check_id,omitempty"`
+	// Distinguishes this record among records with the same name and type in a
+	// routing group. Required by every routing policy; must be unique within
+	// the group. Examples: "primary", "secondary", "us-east-1", "weight-70".
 	SetIdentifier string `protobuf:"bytes,10,opt,name=set_identifier,json=setIdentifier,proto3" json:"set_identifier,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// When true, creating this record overwrites an existing record set with
+	// the same name and type instead of failing. Useful when adopting records
+	// that were created outside the resource graph (e.g. a zone's auto-created
+	// records or a manually-created record being brought under management).
+	AllowOverwrite bool `protobuf:"varint,11,opt,name=allow_overwrite,json=allowOverwrite,proto3" json:"allow_overwrite,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AwsRoute53DnsRecordSpec) Reset() {
@@ -293,11 +180,11 @@ func (x *AwsRoute53DnsRecordSpec) GetName() string {
 	return ""
 }
 
-func (x *AwsRoute53DnsRecordSpec) GetType() AwsRoute53DnsRecordSpec_RecordType {
+func (x *AwsRoute53DnsRecordSpec) GetType() string {
 	if x != nil {
 		return x.Type
 	}
-	return AwsRoute53DnsRecordSpec_record_type_unspecified
+	return ""
 }
 
 func (x *AwsRoute53DnsRecordSpec) GetTtl() int32 {
@@ -328,11 +215,11 @@ func (x *AwsRoute53DnsRecordSpec) GetRoutingPolicy() *AwsRoute53RoutingPolicy {
 	return nil
 }
 
-func (x *AwsRoute53DnsRecordSpec) GetHealthCheckId() string {
+func (x *AwsRoute53DnsRecordSpec) GetHealthCheckId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.HealthCheckId
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsRoute53DnsRecordSpec) GetSetIdentifier() string {
@@ -342,58 +229,36 @@ func (x *AwsRoute53DnsRecordSpec) GetSetIdentifier() string {
 	return ""
 }
 
-// AwsRoute53AliasTarget defines an alias record target.
-// Alias records are a Route53-specific extension to DNS that allows routing traffic
-// to AWS resources without the limitations of CNAME records.
+func (x *AwsRoute53DnsRecordSpec) GetAllowOverwrite() bool {
+	if x != nil {
+		return x.AllowOverwrite
+	}
+	return false
+}
+
+// AwsRoute53AliasTarget defines an alias record's target: the AWS resource
+// this name resolves to. Both coordinates of the target are needed — its DNS
+// name and the target service's OWN hosted zone ID (every AWS service
+// publishes one per region; this is NOT your Route 53 zone's ID).
 //
-// Key benefits:
-//   - Works at zone apex (example.com) where CNAME is not allowed
-//   - No query charges for alias queries to AWS resources
-//   - Automatic updates when target resource's IP changes
-//
-// Both dns_name and zone_id can be provided as literals or referenced from AWS resources.
-// The default kind for both is AwsAlb, enabling seamless wiring to Application Load Balancers.
+// Both fields default to wiring from an AwsAlb; compose to other targets by
+// overriding the ref kind/fieldPath (e.g. AwsCloudFront exports domain_name +
+// hosted_zone_id, AwsNlb exports its DNS pair) or by passing literals.
 type AwsRoute53AliasTarget struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The DNS name of the target resource.
-	// Can be provided as a literal value or referenced from an AWS resource.
-	//
-	// When using value_from, the default kind is AwsAlb and the default field path
-	// is "status.outputs.load_balancer_dns_name".
-	//
 	// Example literals:
 	//   - CloudFront: "d1234abcd.cloudfront.net"
 	//   - ALB: "my-alb-1234567890.us-east-1.elb.amazonaws.com"
 	//   - S3 website: "my-bucket.s3-website-us-east-1.amazonaws.com"
-	//   - API Gateway: "abc123.execute-api.us-east-1.amazonaws.com"
-	//
-	// Example value_from (ALB):
-	//
-	//	value_from:
-	//	  name: my-alb
 	DnsName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
-	// The hosted zone ID of the target resource (AWS service's zone ID, not your Route53 zone).
-	// Can be provided as a literal value or referenced from an AWS resource.
-	//
-	// When using value_from, the default kind is AwsAlb and the default field path
-	// is "status.outputs.load_balancer_hosted_zone_id".
-	//
-	// Common hosted zone IDs (for literal values):
-	//   - CloudFront: "Z2FDTNDATAQYW2" (global)
-	//   - ALB (us-east-1): "Z35SXDOTRQ7X7K"
-	//   - S3 website (us-east-1): "Z3AQBSTGFYJSTF"
-	//
-	// Example value_from (ALB):
-	//
-	//	value_from:
-	//	  name: my-alb
-	//
-	// Note: This is NOT your Route53 zone ID - it's the AWS service's zone ID.
+	// The target AWS service's hosted zone ID for the target's region.
+	// Example literals: CloudFront "Z2FDTNDATAQYW2" (global), ALB us-east-1
+	// "Z35SXDOTRQ7X7K", S3 website us-east-1 "Z3AQBSTGFYJSTF".
 	ZoneId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
-	// Evaluate target health.
-	// If true, Route53 checks the health of the target before responding.
-	// Useful for automatic failover when combined with health checks.
-	// Default: false
+	// When true, Route 53 checks the target's own health (e.g. an ALB with no
+	// healthy targets is treated as failed) before answering with this record.
+	// The building block for alias-based failover.
 	EvaluateTargetHealth bool `protobuf:"varint,3,opt,name=evaluate_target_health,json=evaluateTargetHealth,proto3" json:"evaluate_target_health,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
@@ -450,8 +315,9 @@ func (x *AwsRoute53AliasTarget) GetEvaluateTargetHealth() bool {
 	return false
 }
 
-// AwsRoute53RoutingPolicy defines traffic routing policies for DNS records.
-// Route53 supports multiple routing strategies beyond simple DNS resolution.
+// AwsRoute53RoutingPolicy selects ONE traffic-management strategy for the
+// record. Records with the same name and type but different set_identifier
+// values form a routing group evaluated under the chosen policy.
 type AwsRoute53RoutingPolicy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Policy:
@@ -460,6 +326,9 @@ type AwsRoute53RoutingPolicy struct {
 	//	*AwsRoute53RoutingPolicy_Latency
 	//	*AwsRoute53RoutingPolicy_Failover
 	//	*AwsRoute53RoutingPolicy_Geolocation
+	//	*AwsRoute53RoutingPolicy_Geoproximity
+	//	*AwsRoute53RoutingPolicy_Cidr
+	//	*AwsRoute53RoutingPolicy_MultivalueAnswer
 	Policy        isAwsRoute53RoutingPolicy_Policy `protobuf_oneof:"policy"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -538,32 +407,80 @@ func (x *AwsRoute53RoutingPolicy) GetGeolocation() *AwsRoute53GeolocationPolicy 
 	return nil
 }
 
+func (x *AwsRoute53RoutingPolicy) GetGeoproximity() *AwsRoute53GeoproximityPolicy {
+	if x != nil {
+		if x, ok := x.Policy.(*AwsRoute53RoutingPolicy_Geoproximity); ok {
+			return x.Geoproximity
+		}
+	}
+	return nil
+}
+
+func (x *AwsRoute53RoutingPolicy) GetCidr() *AwsRoute53CidrPolicy {
+	if x != nil {
+		if x, ok := x.Policy.(*AwsRoute53RoutingPolicy_Cidr); ok {
+			return x.Cidr
+		}
+	}
+	return nil
+}
+
+func (x *AwsRoute53RoutingPolicy) GetMultivalueAnswer() *AwsRoute53MultivalueAnswerPolicy {
+	if x != nil {
+		if x, ok := x.Policy.(*AwsRoute53RoutingPolicy_MultivalueAnswer); ok {
+			return x.MultivalueAnswer
+		}
+	}
+	return nil
+}
+
 type isAwsRoute53RoutingPolicy_Policy interface {
 	isAwsRoute53RoutingPolicy_Policy()
 }
 
 type AwsRoute53RoutingPolicy_Weighted struct {
-	// Weighted routing: distribute traffic based on assigned weights.
-	// Use cases: blue/green deployments, canary releases, load distribution.
+	// Weighted: split traffic across group members proportionally to their
+	// weights. Blue/green deployments, canary releases, gradual migrations.
 	Weighted *AwsRoute53WeightedPolicy `protobuf:"bytes,1,opt,name=weighted,proto3,oneof"`
 }
 
 type AwsRoute53RoutingPolicy_Latency struct {
-	// Latency-based routing: route to the lowest-latency endpoint.
-	// Use cases: global applications, multi-region deployments.
+	// Latency: answer with the group member whose AWS region has the lowest
+	// measured latency to the resolver. Multi-region applications.
 	Latency *AwsRoute53LatencyPolicy `protobuf:"bytes,2,opt,name=latency,proto3,oneof"`
 }
 
 type AwsRoute53RoutingPolicy_Failover struct {
-	// Failover routing: automatic failover to secondary when primary fails.
-	// Use cases: active-passive disaster recovery, high availability.
+	// Failover: active-passive — the PRIMARY answers while healthy, the
+	// SECONDARY takes over when the primary's health check fails.
 	Failover *AwsRoute53FailoverPolicy `protobuf:"bytes,3,opt,name=failover,proto3,oneof"`
 }
 
 type AwsRoute53RoutingPolicy_Geolocation struct {
-	// Geolocation routing: route based on user's geographic location.
-	// Use cases: GDPR compliance, localized content, geographic restrictions.
+	// Geolocation: answer based on WHERE the user is (continent, country, or
+	// US state). Compliance boundaries, localized content.
 	Geolocation *AwsRoute53GeolocationPolicy `protobuf:"bytes,4,opt,name=geolocation,proto3,oneof"`
+}
+
+type AwsRoute53RoutingPolicy_Geoproximity struct {
+	// Geoproximity: answer based on DISTANCE between the user and the
+	// resource, with a bias dial to grow or shrink each resource's catchment
+	// area. Traffic shifting between nearby regions.
+	Geoproximity *AwsRoute53GeoproximityPolicy `protobuf:"bytes,5,opt,name=geoproximity,proto3,oneof"`
+}
+
+type AwsRoute53RoutingPolicy_Cidr struct {
+	// CIDR: answer based on the resolver's IP block, using a Route 53 CIDR
+	// collection. Fine-grained per-network routing (e.g. ISP or office
+	// egress ranges).
+	Cidr *AwsRoute53CidrPolicy `protobuf:"bytes,6,opt,name=cidr,proto3,oneof"`
+}
+
+type AwsRoute53RoutingPolicy_MultivalueAnswer struct {
+	// Multivalue answer: return up to eight healthy records so clients pick
+	// among them — poor-man's load balancing with health-check awareness.
+	// Not compatible with alias records.
+	MultivalueAnswer *AwsRoute53MultivalueAnswerPolicy `protobuf:"bytes,7,opt,name=multivalue_answer,json=multivalueAnswer,proto3,oneof"`
 }
 
 func (*AwsRoute53RoutingPolicy_Weighted) isAwsRoute53RoutingPolicy_Policy() {}
@@ -574,14 +491,18 @@ func (*AwsRoute53RoutingPolicy_Failover) isAwsRoute53RoutingPolicy_Policy() {}
 
 func (*AwsRoute53RoutingPolicy_Geolocation) isAwsRoute53RoutingPolicy_Policy() {}
 
-// AwsRoute53WeightedPolicy enables traffic splitting across resources.
-// Weights are relative - Route53 calculates percentage based on sum of all weights.
+func (*AwsRoute53RoutingPolicy_Geoproximity) isAwsRoute53RoutingPolicy_Policy() {}
+
+func (*AwsRoute53RoutingPolicy_Cidr) isAwsRoute53RoutingPolicy_Policy() {}
+
+func (*AwsRoute53RoutingPolicy_MultivalueAnswer) isAwsRoute53RoutingPolicy_Policy() {}
+
+// AwsRoute53WeightedPolicy splits traffic proportionally. Route 53 answers
+// each member with probability weight / (sum of the group's weights).
 type AwsRoute53WeightedPolicy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Weight value (0-255).
-	// Higher weight means more traffic.
-	// Weight of 0 stops traffic to this record (useful for quick traffic draining).
-	// Example: Records with weights 70 and 30 get 70% and 30% of traffic.
+	// Relative weight (0–255). Higher gets more traffic; 0 drains this record
+	// (it is answered only if every group member is at 0 or unhealthy).
 	Weight        int32 `protobuf:"varint,1,opt,name=weight,proto3" json:"weight,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -624,12 +545,11 @@ func (x *AwsRoute53WeightedPolicy) GetWeight() int32 {
 	return 0
 }
 
-// AwsRoute53LatencyPolicy routes users to the resource with lowest latency.
-// Route53 measures latency from AWS regions and routes to best performer.
+// AwsRoute53LatencyPolicy answers with the lowest-latency region's record.
 type AwsRoute53LatencyPolicy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The AWS region where this resource is located.
-	// Route53 uses this to measure latency from user locations.
+	// The AWS region this record's resource lives in — the region whose
+	// latency measurements represent this group member.
 	// Example: "us-east-1", "eu-west-1", "ap-southeast-1"
 	Region        string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -673,13 +593,15 @@ func (x *AwsRoute53LatencyPolicy) GetRegion() string {
 	return ""
 }
 
-// AwsRoute53FailoverPolicy enables active-passive failover.
-// Primary serves traffic when healthy; secondary takes over on failure.
+// AwsRoute53FailoverPolicy implements active-passive failover. A routing
+// group has exactly one PRIMARY and one SECONDARY record; pair the primary
+// with a health_check_id so Route 53 knows when to fail over.
 type AwsRoute53FailoverPolicy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Failover record type.
-	// Must have exactly one PRIMARY and one SECONDARY record per name/type combo.
-	FailoverType  AwsRoute53FailoverPolicy_FailoverType `protobuf:"varint,1,opt,name=failover_type,json=failoverType,proto3,enum=dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy_FailoverType" json:"failover_type,omitempty"`
+	// This record's role in the failover pair:
+	// - "PRIMARY": answered while its health check passes.
+	// - "SECONDARY": answered when the primary is unhealthy.
+	FailoverType  string `protobuf:"bytes,1,opt,name=failover_type,json=failoverType,proto3" json:"failover_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -714,27 +636,26 @@ func (*AwsRoute53FailoverPolicy) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *AwsRoute53FailoverPolicy) GetFailoverType() AwsRoute53FailoverPolicy_FailoverType {
+func (x *AwsRoute53FailoverPolicy) GetFailoverType() string {
 	if x != nil {
 		return x.FailoverType
 	}
-	return AwsRoute53FailoverPolicy_failover_type_unspecified
+	return ""
 }
 
-// AwsRoute53GeolocationPolicy routes traffic based on user's location.
-// Supports routing at continent, country, or US state level.
+// AwsRoute53GeolocationPolicy answers based on the user's location. Route 53
+// picks the most specific match (subdivision > country > continent); create
+// a default member (country "*") to catch unmatched locations.
 type AwsRoute53GeolocationPolicy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Continent code (two-letter).
-	// Examples: "NA" (North America), "EU" (Europe), "AS" (Asia)
-	// Note: Use continent OR country, not both. Country is more specific.
+	// Two-letter continent code: "AF", "AN", "AS", "EU", "OC", "NA", "SA".
+	// Use continent OR country, not both.
 	Continent string `protobuf:"bytes,1,opt,name=continent,proto3" json:"continent,omitempty"`
-	// Country code (two-letter ISO 3166-1 alpha-2).
-	// Examples: "US" (United States), "GB" (United Kingdom), "DE" (Germany)
+	// Two-letter ISO 3166-1 alpha-2 country code (e.g. "US", "GB", "DE"), or
+	// "*" for the default record that answers unmatched locations.
 	Country string `protobuf:"bytes,2,opt,name=country,proto3" json:"country,omitempty"`
-	// Subdivision code (US state only).
-	// Only valid when country is "US".
-	// Examples: "CA" (California), "NY" (New York), "TX" (Texas)
+	// Subdivision code — US states only (e.g. "CA", "NY"); requires country
+	// "US".
 	Subdivision   string `protobuf:"bytes,3,opt,name=subdivision,proto3" json:"subdivision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -791,64 +712,306 @@ func (x *AwsRoute53GeolocationPolicy) GetSubdivision() string {
 	return ""
 }
 
+// AwsRoute53GeoproximityPolicy answers based on the distance between the user
+// and the resource's location, with an optional bias that expands or shrinks
+// this resource's share of the map. Exactly one location determinant —
+// aws_region, coordinates, or local_zone_group — identifies where the
+// resource is.
+type AwsRoute53GeoproximityPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The AWS region hosting the resource (for resources in AWS regions).
+	AwsRegion string `protobuf:"bytes,1,opt,name=aws_region,json=awsRegion,proto3" json:"aws_region,omitempty"`
+	// Latitude/longitude of the resource (for resources outside AWS).
+	Coordinates *AwsRoute53Coordinates `protobuf:"bytes,2,opt,name=coordinates,proto3" json:"coordinates,omitempty"`
+	// The AWS Local Zone group hosting the resource (for Local Zone
+	// deployments). Example: "us-east-1-bue-1".
+	LocalZoneGroup string `protobuf:"bytes,3,opt,name=local_zone_group,json=localZoneGroup,proto3" json:"local_zone_group,omitempty"`
+	// Expands (positive) or shrinks (negative) the geographic area this
+	// resource answers for, from -99 to 99. Use it to shift traffic gradually
+	// between neighboring locations.
+	Bias          int32 `protobuf:"varint,4,opt,name=bias,proto3" json:"bias,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRoute53GeoproximityPolicy) Reset() {
+	*x = AwsRoute53GeoproximityPolicy{}
+	mi := &file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRoute53GeoproximityPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRoute53GeoproximityPolicy) ProtoMessage() {}
+
+func (x *AwsRoute53GeoproximityPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRoute53GeoproximityPolicy.ProtoReflect.Descriptor instead.
+func (*AwsRoute53GeoproximityPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AwsRoute53GeoproximityPolicy) GetAwsRegion() string {
+	if x != nil {
+		return x.AwsRegion
+	}
+	return ""
+}
+
+func (x *AwsRoute53GeoproximityPolicy) GetCoordinates() *AwsRoute53Coordinates {
+	if x != nil {
+		return x.Coordinates
+	}
+	return nil
+}
+
+func (x *AwsRoute53GeoproximityPolicy) GetLocalZoneGroup() string {
+	if x != nil {
+		return x.LocalZoneGroup
+	}
+	return ""
+}
+
+func (x *AwsRoute53GeoproximityPolicy) GetBias() int32 {
+	if x != nil {
+		return x.Bias
+	}
+	return 0
+}
+
+// AwsRoute53Coordinates is a latitude/longitude pair for geoproximity routing
+// of resources that are not in an AWS region or Local Zone.
+type AwsRoute53Coordinates struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Latitude in decimal degrees, "-90" to "90" (e.g. "40.71").
+	Latitude string `protobuf:"bytes,1,opt,name=latitude,proto3" json:"latitude,omitempty"`
+	// Longitude in decimal degrees, "-180" to "180" (e.g. "-74.01").
+	Longitude     string `protobuf:"bytes,2,opt,name=longitude,proto3" json:"longitude,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRoute53Coordinates) Reset() {
+	*x = AwsRoute53Coordinates{}
+	mi := &file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRoute53Coordinates) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRoute53Coordinates) ProtoMessage() {}
+
+func (x *AwsRoute53Coordinates) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRoute53Coordinates.ProtoReflect.Descriptor instead.
+func (*AwsRoute53Coordinates) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AwsRoute53Coordinates) GetLatitude() string {
+	if x != nil {
+		return x.Latitude
+	}
+	return ""
+}
+
+func (x *AwsRoute53Coordinates) GetLongitude() string {
+	if x != nil {
+		return x.Longitude
+	}
+	return ""
+}
+
+// AwsRoute53CidrPolicy answers based on which CIDR block of a Route 53 CIDR
+// collection the resolver's address falls in. The collection and its named
+// locations are managed outside this resource (a separate Route 53 API
+// surface); the record composes onto them by ID and location name.
+type AwsRoute53CidrPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ID of the Route 53 CIDR collection holding the location's CIDR blocks.
+	CollectionId string `protobuf:"bytes,1,opt,name=collection_id,json=collectionId,proto3" json:"collection_id,omitempty"`
+	// Name of the location within the collection this record answers for, or
+	// "*" for the collection's default location.
+	LocationName  string `protobuf:"bytes,2,opt,name=location_name,json=locationName,proto3" json:"location_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRoute53CidrPolicy) Reset() {
+	*x = AwsRoute53CidrPolicy{}
+	mi := &file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRoute53CidrPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRoute53CidrPolicy) ProtoMessage() {}
+
+func (x *AwsRoute53CidrPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRoute53CidrPolicy.ProtoReflect.Descriptor instead.
+func (*AwsRoute53CidrPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AwsRoute53CidrPolicy) GetCollectionId() string {
+	if x != nil {
+		return x.CollectionId
+	}
+	return ""
+}
+
+func (x *AwsRoute53CidrPolicy) GetLocationName() string {
+	if x != nil {
+		return x.LocationName
+	}
+	return ""
+}
+
+// AwsRoute53MultivalueAnswerPolicy marks the record as one member of a
+// multivalue answer group: Route 53 returns up to eight healthy members per
+// query and clients choose among them. Pair each member with a
+// health_check_id so unhealthy answers drop out. The policy has no
+// parameters — its presence on the record is the configuration.
+type AwsRoute53MultivalueAnswerPolicy struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRoute53MultivalueAnswerPolicy) Reset() {
+	*x = AwsRoute53MultivalueAnswerPolicy{}
+	mi := &file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRoute53MultivalueAnswerPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRoute53MultivalueAnswerPolicy) ProtoMessage() {}
+
+func (x *AwsRoute53MultivalueAnswerPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRoute53MultivalueAnswerPolicy.ProtoReflect.Descriptor instead.
+func (*AwsRoute53MultivalueAnswerPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
 var File_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	":dev/planton/provider/aws/awsroute53dnsrecord/v1/spec.proto\x12/dev.planton.provider.aws.awsroute53dnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb9\x0f\n" +
+	":dev/planton/provider/aws/awsroute53dnsrecord/v1/spec.proto\x12/dev.planton.provider.aws.awsroute53dnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x88\x10\n" +
 	"\x17AwsRoute53DnsRecordSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12r\n" +
-	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12h\n" +
-	"\x04name\x18\x03 \x01(\tBT\xbaHQ\xc8\x01\x01rL2J^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,}|[A-Za-z0-9\\-\\.]+)$R\x04name\x12\xd4\x01\n" +
-	"\x04type\x18\x04 \x01(\x0e2S.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.RecordTypeBk\xbaHh\xba\x01]\n" +
-	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x8e\x01\n" +
-	"\x03ttl\x18\x05 \x01(\x05B|\xbaHy\xba\x01v\n" +
-	"\x0fttl.valid_range\x12Fttl must be 0 (for alias) or between 1 and 604800 seconds (1 week max)\x1a\x1bthis >= 0 && this <= 604800R\x03ttl\x12\x16\n" +
+	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12k\n" +
+	"\x04name\x18\x03 \x01(\tBW\xbaHT\xc8\x01\x01rO2M^(?:\\*\\.[A-Za-z0-9_\\-\\.]+|[A-Za-z0-9_\\-\\.]+\\.[A-Za-z]{2,}|[A-Za-z0-9_\\-\\.]+)$R\x04name\x12w\n" +
+	"\x04type\x18\x04 \x01(\tBc\xbaH`\xc8\x01\x01r[R\x01AR\x04AAAAR\x03CAAR\x05CNAMER\x02DSR\x05HTTPSR\x02MXR\x05NAPTRR\x02NSR\x03PTRR\x03SOAR\x03SPFR\x03SRVR\x05SSHFPR\x04SVCBR\x04TLSAR\x03TXTR\x04type\x12\x93\x01\n" +
+	"\x03ttl\x18\x05 \x01(\x05B\x80\x01\xbaH}\xba\x01z\n" +
+	"\x0fttl.valid_range\x12Jttl must be 0 (alias records) or between 1 and 604800 seconds (1 week max)\x1a\x1bthis >= 0 && this <= 604800R\x03ttl\x12\x16\n" +
 	"\x06values\x18\x06 \x03(\tR\x06values\x12i\n" +
 	"\falias_target\x18\a \x01(\v2F.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTargetR\valiasTarget\x12o\n" +
-	"\x0erouting_policy\x18\b \x01(\v2H.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicyR\rroutingPolicy\x12&\n" +
-	"\x0fhealth_check_id\x18\t \x01(\tR\rhealthCheckId\x12%\n" +
+	"\x0erouting_policy\x18\b \x01(\v2H.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicyR\rroutingPolicy\x12\x83\x01\n" +
+	"\x0fhealth_check_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xf8\x02\x92\xd4a\x1estatus.outputs.health_check_idR\rhealthCheckId\x12/\n" +
 	"\x0eset_identifier\x18\n" +
-	" \x01(\tR\rsetIdentifier\"p\n" +
-	"\n" +
-	"RecordType\x12\x1b\n" +
-	"\x17record_type_unspecified\x10\x00\x12\x05\n" +
-	"\x01A\x10\x01\x12\b\n" +
-	"\x04AAAA\x10\x02\x12\t\n" +
-	"\x05CNAME\x10\x03\x12\x06\n" +
-	"\x02MX\x10\x04\x12\a\n" +
-	"\x03TXT\x10\x05\x12\a\n" +
-	"\x03SRV\x10\x06\x12\x06\n" +
-	"\x02NS\x10\a\x12\a\n" +
-	"\x03CAA\x10\b:\x81\a\xbaH\xfd\x06\x1a\x9e\x02\n" +
-	"\x1espec.values_or_alias_exclusive\x12Ivalues and alias_target are mutually exclusive - specify one or the other\x1a\xb0\x01size(this.values) == 0 || !has(this.alias_target) || (!has(this.alias_target.dns_name) && !has(this.alias_target.dns_name.value) && !has(this.alias_target.dns_name.value_from))\x1a\x80\x02\n" +
-	"\x1dspec.values_or_alias_required\x12/either values or alias_target must be specified\x1a\xad\x01size(this.values) > 0 || (has(this.alias_target) && has(this.alias_target.dns_name) && (has(this.alias_target.dns_name.value) || has(this.alias_target.dns_name.value_from)))\x1a\xd6\x02\n" +
-	"&spec.set_identifier_for_routing_policy\x12Yset_identifier is required when using weighted, latency, failover, or geolocation routing\x1a\xd0\x01!has(this.routing_policy) || !has(this.routing_policy.weighted) && !has(this.routing_policy.latency) && !has(this.routing_policy.failover) && !has(this.routing_policy.geolocation) || this.set_identifier != ''\"\xdd\x02\n" +
+	" \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\rsetIdentifier\x12'\n" +
+	"\x0fallow_overwrite\x18\v \x01(\bR\x0eallowOverwrite:\x87\b\xbaH\x83\b\x1a\xbc\x01\n" +
+	"\x19values_or_alias_exclusive\x12jvalues and alias_target are mutually exclusive — a record is either a standard record or an alias record\x1a3!(this.values.size() > 0 && has(this.alias_target))\x1a\x9e\x01\n" +
+	"\x18values_or_alias_required\x12Peither values (standard record) or alias_target (alias record) must be specified\x1a0this.values.size() > 0 || has(this.alias_target)\x1a\x88\x01\n" +
+	"\x11alias_forbids_ttl\x12Ittl cannot be set on alias records (Route 53 uses the alias target's TTL)\x1a(!has(this.alias_target) || this.ttl == 0\x1aw\n" +
+	"\x12values_require_ttl\x128ttl is required for standard records (set 300 if unsure)\x1a'this.values.size() == 0 || this.ttl > 0\x1a\xcc\x01\n" +
+	"!set_identifier_for_routing_policy\x12oset_identifier is required when a routing_policy is set (it distinguishes this record within its routing group)\x1a6!has(this.routing_policy) || this.set_identifier != ''\x1a\xcd\x01\n" +
+	"\x18multivalue_forbids_alias\x12Lmultivalue answer routing cannot be used with alias records (AWS limitation)\x1ac!(has(this.routing_policy) && has(this.routing_policy.multivalue_answer) && has(this.alias_target))\"\xdd\x02\n" +
 	"\x15AwsRoute53AliasTarget\x12\x83\x01\n" +
 	"\bdns_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\xc8\x01\x92\xd4a%status.outputs.load_balancer_dns_nameR\adnsName\x12\x87\x01\n" +
 	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB:\xbaH\x03\xc8\x01\x01\x88\xd4a\xc8\x01\x92\xd4a+status.outputs.load_balancer_hosted_zone_idR\x06zoneId\x124\n" +
-	"\x16evaluate_target_health\x18\x03 \x01(\bR\x14evaluateTargetHealth\"\xcd\x03\n" +
+	"\x16evaluate_target_health\x18\x03 \x01(\bR\x14evaluateTargetHealth\"\xa2\x06\n" +
 	"\x17AwsRoute53RoutingPolicy\x12g\n" +
 	"\bweighted\x18\x01 \x01(\v2I.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicyH\x00R\bweighted\x12d\n" +
 	"\alatency\x18\x02 \x01(\v2H.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53LatencyPolicyH\x00R\alatency\x12g\n" +
 	"\bfailover\x18\x03 \x01(\v2I.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicyH\x00R\bfailover\x12p\n" +
-	"\vgeolocation\x18\x04 \x01(\v2L.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicyH\x00R\vgeolocationB\b\n" +
+	"\vgeolocation\x18\x04 \x01(\v2L.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicyH\x00R\vgeolocation\x12s\n" +
+	"\fgeoproximity\x18\x05 \x01(\v2M.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeoproximityPolicyH\x00R\fgeoproximity\x12[\n" +
+	"\x04cidr\x18\x06 \x01(\v2E.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53CidrPolicyH\x00R\x04cidr\x12\x80\x01\n" +
+	"\x11multivalue_answer\x18\a \x01(\v2Q.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53MultivalueAnswerPolicyH\x00R\x10multivalueAnswerB\b\n" +
 	"\x06policy\">\n" +
 	"\x18AwsRoute53WeightedPolicy\x12\"\n" +
 	"\x06weight\x18\x01 \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\xff\x01(\x00R\x06weight\"9\n" +
 	"\x17AwsRoute53LatencyPolicy\x12\x1e\n" +
-	"\x06region\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\"\xeb\x01\n" +
-	"\x18AwsRoute53FailoverPolicy\x12\x83\x01\n" +
-	"\rfailover_type\x18\x01 \x01(\x0e2V.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.FailoverTypeB\x06\xbaH\x03\xc8\x01\x01R\ffailoverType\"I\n" +
-	"\fFailoverType\x12\x1d\n" +
-	"\x19failover_type_unspecified\x10\x00\x12\v\n" +
-	"\aprimary\x10\x01\x12\r\n" +
-	"\tsecondary\x10\x02\"w\n" +
+	"\x06region\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\"]\n" +
+	"\x18AwsRoute53FailoverPolicy\x12A\n" +
+	"\rfailover_type\x18\x01 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14R\aPRIMARYR\tSECONDARYR\ffailoverType\"\xa7\x02\n" +
 	"\x1bAwsRoute53GeolocationPolicy\x12\x1c\n" +
 	"\tcontinent\x18\x01 \x01(\tR\tcontinent\x12\x18\n" +
 	"\acountry\x18\x02 \x01(\tR\acountry\x12 \n" +
-	"\vsubdivision\x18\x03 \x01(\tR\vsubdivisionB\x8c\x03\n" +
+	"\vsubdivision\x18\x03 \x01(\tR\vsubdivision:\xad\x01\xbaH\xa9\x01\x1a\xa6\x01\n" +
+	"\x1dgeolocation_location_required\x12?geolocation routing requires continent, country, or subdivision\x1aDthis.continent != '' || this.country != '' || this.subdivision != ''\"\xeb\x03\n" +
+	"\x1cAwsRoute53GeoproximityPolicy\x12\x1d\n" +
+	"\n" +
+	"aws_region\x18\x01 \x01(\tR\tawsRegion\x12h\n" +
+	"\vcoordinates\x18\x02 \x01(\v2F.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53CoordinatesR\vcoordinates\x12(\n" +
+	"\x10local_zone_group\x18\x03 \x01(\tR\x0elocalZoneGroup\x12&\n" +
+	"\x04bias\x18\x04 \x01(\x05B\x12\xbaH\x0f\x1a\r\x18c(\x9d\xff\xff\xff\xff\xff\xff\xff\xff\x01R\x04bias:\xef\x01\xbaH\xeb\x01\x1a\xe8\x01\n" +
+	"\x19geoproximity_one_location\x12Ygeoproximity routing requires exactly one of aws_region, coordinates, or local_zone_group\x1ap((this.aws_region != '' ? 1 : 0) + (has(this.coordinates) ? 1 : 0) + (this.local_zone_group != '' ? 1 : 0)) == 1\"a\n" +
+	"\x15AwsRoute53Coordinates\x12\"\n" +
+	"\blatitude\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blatitude\x12$\n" +
+	"\tlongitude\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tlongitude\"p\n" +
+	"\x14AwsRoute53CidrPolicy\x12+\n" +
+	"\rcollection_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fcollectionId\x12+\n" +
+	"\rlocation_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\flocationName\"\"\n" +
+	" AwsRoute53MultivalueAnswerPolicyB\x8c\x03\n" +
 	"3com.dev.planton.provider.aws.awsroute53dnsrecord.v1B\tSpecProtoP\x01Zggithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53dnsrecord/v1;awsroute53dnsrecordv1\xa2\x02\x05DPPAA\xaa\x02/Dev.Planton.Provider.Aws.Awsroute53dnsrecord.V1\xca\x02/Dev\\Planton\\Provider\\Aws\\Awsroute53dnsrecord\\V1\xe2\x02;Dev\\Planton\\Provider\\Aws\\Awsroute53dnsrecord\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Aws::Awsroute53dnsrecord::V1b\x06proto3"
 
 var (
@@ -863,37 +1026,41 @@ func file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescGZIP
 	return file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_goTypes = []any{
-	(AwsRoute53DnsRecordSpec_RecordType)(0),    // 0: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.RecordType
-	(AwsRoute53FailoverPolicy_FailoverType)(0), // 1: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.FailoverType
-	(*AwsRoute53DnsRecordSpec)(nil),            // 2: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec
-	(*AwsRoute53AliasTarget)(nil),              // 3: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget
-	(*AwsRoute53RoutingPolicy)(nil),            // 4: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy
-	(*AwsRoute53WeightedPolicy)(nil),           // 5: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicy
-	(*AwsRoute53LatencyPolicy)(nil),            // 6: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53LatencyPolicy
-	(*AwsRoute53FailoverPolicy)(nil),           // 7: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy
-	(*AwsRoute53GeolocationPolicy)(nil),        // 8: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicy
-	(*v1.StringValueOrRef)(nil),                // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsRoute53DnsRecordSpec)(nil),          // 0: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec
+	(*AwsRoute53AliasTarget)(nil),            // 1: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget
+	(*AwsRoute53RoutingPolicy)(nil),          // 2: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy
+	(*AwsRoute53WeightedPolicy)(nil),         // 3: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicy
+	(*AwsRoute53LatencyPolicy)(nil),          // 4: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53LatencyPolicy
+	(*AwsRoute53FailoverPolicy)(nil),         // 5: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy
+	(*AwsRoute53GeolocationPolicy)(nil),      // 6: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicy
+	(*AwsRoute53GeoproximityPolicy)(nil),     // 7: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeoproximityPolicy
+	(*AwsRoute53Coordinates)(nil),            // 8: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53Coordinates
+	(*AwsRoute53CidrPolicy)(nil),             // 9: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53CidrPolicy
+	(*AwsRoute53MultivalueAnswerPolicy)(nil), // 10: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53MultivalueAnswerPolicy
+	(*v1.StringValueOrRef)(nil),              // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_depIdxs = []int32{
-	9,  // 0: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0,  // 1: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.type:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.RecordType
-	3,  // 2: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.alias_target:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget
-	4,  // 3: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.routing_policy:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy
-	9,  // 4: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget.dns_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 5: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 6: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.weighted:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicy
-	6,  // 7: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.latency:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53LatencyPolicy
-	7,  // 8: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.failover:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy
-	8,  // 9: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.geolocation:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicy
-	1,  // 10: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.failover_type:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.FailoverType
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	11, // 0: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.alias_target:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget
+	2,  // 2: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.routing_policy:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy
+	11, // 3: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.health_check_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 4: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget.dns_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 5: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 6: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.weighted:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicy
+	4,  // 7: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.latency:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53LatencyPolicy
+	5,  // 8: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.failover:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy
+	6,  // 9: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.geolocation:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicy
+	7,  // 10: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.geoproximity:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeoproximityPolicy
+	9,  // 11: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.cidr:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53CidrPolicy
+	10, // 12: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.multivalue_answer:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53MultivalueAnswerPolicy
+	8,  // 13: dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeoproximityPolicy.coordinates:type_name -> dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53Coordinates
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_init() }
@@ -906,20 +1073,22 @@ func file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_init() {
 		(*AwsRoute53RoutingPolicy_Latency)(nil),
 		(*AwsRoute53RoutingPolicy_Failover)(nil),
 		(*AwsRoute53RoutingPolicy_Geolocation)(nil),
+		(*AwsRoute53RoutingPolicy_Geoproximity)(nil),
+		(*AwsRoute53RoutingPolicy_Cidr)(nil),
+		(*AwsRoute53RoutingPolicy_MultivalueAnswer)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   7,
+			NumEnums:      0,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto = out.File

@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsapprunnerobservabilityconfiguration.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/aws/awsapprunnerobservabilityconfiguration/v1/spec.proto";
+import "dev/planton/provider/aws/awsapprunnerobservabilityconfiguration/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AwsAppRunnerObservabilityConfiguration is the API envelope for an App
+// Runner observability configuration -- the reusable, versioned tracing
+// policy that App Runner services reference to enable distributed request
+// tracing.
+message AwsAppRunnerObservabilityConfiguration {
+  // api-version must be set to "aws.planton.dev/v1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1"];
+
+  // resource-kind for this resource, must be
+  // "AwsAppRunnerObservabilityConfiguration".
+  string kind = 2 [(buf.validate.field).string.const = "AwsAppRunnerObservabilityConfiguration"];
+
+  // metadata captures identifying information (name, org, environment,
+  // labels) and must pass standard validations for resource naming.
+  // The configuration's AWS name is metadata.name; revisions register under
+  // this name.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the desired configuration of the observability configuration.
+  AwsAppRunnerObservabilityConfigurationSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds post-deployment information.
+  AwsAppRunnerObservabilityConfigurationStatus status = 5;
+}
+
+// AwsAppRunnerObservabilityConfigurationStatus describes the status of an
+// App Runner observability configuration resource.
+message AwsAppRunnerObservabilityConfigurationStatus {
+  // outputs captures the observable values returned by Pulumi/Terraform
+  // after provisioning.
+  AwsAppRunnerObservabilityConfigurationStackOutputs outputs = 1;
+}

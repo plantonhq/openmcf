@@ -1,0 +1,35 @@
+# FIFO AwsSqsQueue scenario with the full FIFO delivery surface: content-based
+# deduplication, per-message-group deduplication scope, high-throughput mode,
+# SSE-SQS encryption, and tuned delivery settings. Full metadata is supplied
+# for tagging/orphan cleanup.
+#
+# Deliberately not composed here: a dead-letter queue. The harness forbids a
+# scenario declaring its OWN kind as an e2e prerequisite (the annotation is
+# for cross-kind composition), and a FIFO queue's DLQ must itself be FIFO —
+# the shared standard-queue fixture would be rejected by AWS anyway. The
+# dead_letter_config surface is proven by CEL spec tests and the offline gate,
+# and SQS-as-DLQ wiring is exercised live by the AwsEventBridgeBus lane.
+apiVersion: aws.planton.dev/v1
+kind: AwsSqsQueue
+metadata:
+  name: planton-oss-e2e-awssqsqueue-fifo-full-surface
+  id: planton-oss-e2e-awssqsqueue-fifo-full-surface
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssqsqueue
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  fifoQueue: true
+  contentBasedDeduplication: true
+  deduplicationScope: messageGroup
+  fifoThroughputLimit: perMessageGroupId
+  sqsManagedSseEnabled: true
+  visibilityTimeoutSeconds: 60
+  messageRetentionSeconds: 345600
+  receiveWaitTimeSeconds: 10

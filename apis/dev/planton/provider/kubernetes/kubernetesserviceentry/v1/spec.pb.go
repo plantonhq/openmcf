@@ -33,7 +33,7 @@ const (
 // 100% fidelity with the upstream istio.io/api ServiceEntry
 // (networking/v1alpha3/service_entry.proto, served as networking.istio.io/v1), pinned to
 // the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after the
-// Planton namespaced envelope (target_cluster, namespace); there is no nested
+// Planton namespaced envelope (namespace); there is no nested
 // `service_entry` sub-message.
 //
 // Attachment model (upstream): `endpoints` (static addresses) and `workload_selector`
@@ -41,10 +41,6 @@ const (
 // (enforced below). Both omitted is valid (e.g. a `resolution: DNS` external host).
 type KubernetesServiceEntrySpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where this ServiceEntry is created. The Istio CRDs
-	// (KubernetesIstioBaseCrds) must already be present on the cluster; the registry entry
-	// is only honored where istiod (the Istio control plane) is running.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace in which the ServiceEntry is created. By default the service is visible to
 	// the whole mesh; `export_to` narrows the visibility scope.
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
@@ -132,13 +128,6 @@ func (x *KubernetesServiceEntrySpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesServiceEntrySpec.ProtoReflect.Descriptor instead.
 func (*KubernetesServiceEntrySpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesserviceentry_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesServiceEntrySpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesServiceEntrySpec) GetNamespace() *v1.StringValueOrRef {
@@ -403,9 +392,8 @@ var File_dev_planton_provider_kubernetes_kubernetesserviceentry_v1_spec_proto pr
 
 const file_dev_planton_provider_kubernetes_kubernetesserviceentry_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/kubernetes/kubernetesserviceentry/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesserviceentry.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xed\x10\n" +
-	"\x1aKubernetesServiceEntrySpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Ddev/planton/provider/kubernetes/kubernetesserviceentry/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesserviceentry.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x8a\x10\n" +
+	"\x1aKubernetesServiceEntrySpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x81\x01\n" +
 	"\x05hosts\x18\x03 \x03(\tBk\xbaHh\x92\x01e\b\x01\x10\x80\x02\"^\xba\x01W\n" +
 	"$service_entry_host.not_bare_wildcard\x12\"host cannot be a bare wildcard '*'\x1a\vthis != '*'r\x02\x10\x01R\x05hosts\x12-\n" +
@@ -484,23 +472,21 @@ var file_dev_planton_provider_kubernetes_kubernetesserviceentry_v1_spec_proto_go
 	(*KubernetesServiceEntryEndpoint)(nil), // 2: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint
 	nil,                                    // 3: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint.PortsEntry
 	nil,                                    // 4: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint.LabelsEntry
-	(*kubernetes.KubernetesClusterSelector)(nil),                    // 5: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                                     // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesIstioApiNetworkingWorkloadSelector)(nil), // 7: dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector
+	(*v1.StringValueOrRef)(nil),            // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesIstioApiNetworkingWorkloadSelector)(nil), // 6: dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector
 }
 var file_dev_planton_provider_kubernetes_kubernetesserviceentry_v1_spec_proto_depIdxs = []int32{
-	5, // 0: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntrySpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	6, // 1: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntrySpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntrySpec.ports:type_name -> dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryPort
-	2, // 3: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntrySpec.endpoints:type_name -> dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint
-	7, // 4: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntrySpec.workload_selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector
-	3, // 5: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint.ports:type_name -> dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint.PortsEntry
-	4, // 6: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint.labels:type_name -> dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint.LabelsEntry
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	5, // 0: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntrySpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntrySpec.ports:type_name -> dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryPort
+	2, // 2: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntrySpec.endpoints:type_name -> dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint
+	6, // 3: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntrySpec.workload_selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector
+	3, // 4: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint.ports:type_name -> dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint.PortsEntry
+	4, // 5: dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint.labels:type_name -> dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpoint.LabelsEntry
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesserviceentry_v1_spec_proto_init() }

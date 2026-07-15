@@ -158,10 +158,10 @@ var _ = ginkgo.Describe("AwsMemcachedElasticacheSpec validations", func() {
 	// Required field validations
 	// -------------------------------------------------------------------------
 
-	ginkgo.It("fails when engine_version is missing", func() {
+	ginkgo.It("accepts when engine_version is omitted (AWS default)", func() {
 		spec.EngineVersion = ""
 		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err).To(gomega.BeNil())
 	})
 
 	ginkgo.It("fails when node_type is missing", func() {

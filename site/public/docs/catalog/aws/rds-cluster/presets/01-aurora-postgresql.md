@@ -1,6 +1,6 @@
 ---
-title: "Aurora PostgreSQL Cluster"
-description: "This preset creates a production-ready Aurora PostgreSQL cluster with RDS-managed master password (stored in Secrets Manager), encrypted storage, deletion protection, 7-day backup retention, and..."
+title: "Aurora PostgreSQL (Provisioned)"
+description: "This preset creates a production-shaped Aurora PostgreSQL cluster: one writer and one reader instance on shared cluster storage, an AWS-managed master password in Secrets Manager, encrypted storage,..."
 type: "preset"
 rank: "01"
 presetSlug: "01-aurora-postgresql"
@@ -11,37 +11,33 @@ icon: "package"
 order: 1
 ---
 
-# Aurora PostgreSQL Cluster
+# Aurora PostgreSQL (Provisioned)
 
-This preset creates a production-ready Aurora PostgreSQL cluster with RDS-managed master password (stored in Secrets Manager), encrypted storage, deletion protection, 7-day backup retention, and PostgreSQL logs exported to CloudWatch. Aurora PostgreSQL is the most popular engine choice for new relational database deployments on AWS.
+This preset creates a production-shaped Aurora PostgreSQL cluster: one writer and one reader instance on shared cluster storage, an AWS-managed master password in Secrets Manager, encrypted storage, deletion protection, seven days of continuous backup, and Performance Insights. The reader doubles as the failover target -- Aurora promotes it in seconds because it already reads from the same storage volume.
 
 ## When to Use
 
-- Production relational databases using PostgreSQL-compatible SQL
-- Applications requiring high availability (Aurora automatically replicates across 3 AZs)
-- Workloads benefiting from Aurora's performance improvements over standard PostgreSQL (up to 3x throughput)
+- Production PostgreSQL workloads with steady, predictable capacity needs
+- Applications that need a reader endpoint for report/analytics traffic without touching the writer
+- Anywhere failover time matters: an Aurora replica promotes in seconds, unlike a Multi-AZ instance restore
 
 ## Key Configuration Choices
 
-- **Aurora PostgreSQL 15.4** (`engine: aurora-postgresql`, `engineVersion: "15.4"`) -- Update to the latest minor version for your environment
-- **Managed password** (`manageMasterUserPassword: true`) -- RDS creates and rotates the master password in AWS Secrets Manager automatically
-- **Encrypted storage** (`storageEncrypted: true`) -- Data at rest encrypted with AWS-managed key; specify `kmsKeyId` for customer-managed key
-- **Deletion protection** (`deletionProtection: true`) -- Prevents accidental cluster deletion
-- **7-day backup retention** -- Automated daily backups retained for 1 week; increase up to 35 days for compliance
-- **Final snapshot required** (`skipFinalSnapshot: false`) -- Creates a snapshot before deletion for recovery
-- **CloudWatch logs** (`enabledCloudwatchLogsExports: [postgresql]`) -- PostgreSQL logs exported to CloudWatch for debugging and monitoring
+- **Managed master password** (`manageMasterUserPassword: true`) -- AWS generates, stores, and rotates the credential in Secrets Manager; no secret in the manifest or IaC state. The secret's ARN is exported as `master_user_secret_arn`.
+- **Writer + reader instances** (`instances`) -- each entry is its own managed resource; add readers by appending entries, never touching the cluster. `promotionTier: 1` on the reader makes it the failover target.
+- **Encrypted storage** (`storageEncrypted: true`) -- a create-time one-way door; an unencrypted cluster cannot be encrypted later.
+- **Deletion safety** -- `deletionProtection` plus a named final snapshot: a delete is a deliberate two-step, never an accident.
+- **PostgreSQL log export** -- `postgresql` engine logs stream to CloudWatch Logs.
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<private-subnet-id-az1>` | Private subnet in the first Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<private-subnet-id-az2>` | Private subnet in the second Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<security-group-id>` | Security group allowing database port (5432) from application tier | AWS EC2 console or `AwsSecurityGroup` status outputs |
-| `<database-name>` | Name of the initial database to create | Your application configuration |
-| `<final-snapshot-name>` | Identifier for the final snapshot (e.g., `myapp-final-2026-02-14`) | Your naming convention |
+| `subnet-replace-with-private-az1` | Private subnet in the first Availability Zone | `AwsSubnet` status outputs or the AWS VPC console |
+| `subnet-replace-with-private-az2` | Private subnet in the second Availability Zone | `AwsSubnet` status outputs or the AWS VPC console |
+| `sg-replace-with-database-sg` | Security group allowing the database port from the application tier | `AwsSecurityGroup` status outputs or the AWS EC2 console |
 
 ## Related Presets
 
-- **02-aurora-mysql** -- Use instead for MySQL-compatible workloads
-- **03-aurora-serverless-v2** -- Use instead for workloads with variable or unpredictable traffic patterns
+- **02-aurora-mysql** -- The same shape for MySQL-compatible workloads
+- **03-aurora-serverless-v2** -- Use instead when traffic is variable or spiky and capacity should track demand

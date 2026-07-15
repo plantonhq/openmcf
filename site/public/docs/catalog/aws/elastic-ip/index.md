@@ -30,7 +30,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsElasticIp
 metadata:
   name: my-eip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -74,7 +74,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsElasticIp
 metadata:
   name: nlb-eip-az1
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsNlb
 metadata:
   name: api-nlb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -126,7 +126,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsElasticIp
 metadata:
   name: byoip-eip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

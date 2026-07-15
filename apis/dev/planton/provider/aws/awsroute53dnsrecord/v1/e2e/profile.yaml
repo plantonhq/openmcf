@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsroute53dnsrecord
+spec:
+  # A DNS record under live E2E: the harness deploys the AwsRoute53Zone
+  # prerequisite first (the kind's registry prerequisite — every record
+  # lives in a zone), resolves the record's zone_id reference against its
+  # outputs, then runs deploy -> ListResourceRecordSets verify -> destroy ->
+  # verify-destroyed on both provisioners. The weighted scenario exercises
+  # the ref-resolved zone_id, a multi-value A record, a routing policy with
+  # its set_identifier, and a low TTL — records create in seconds at zero
+  # cost. Deliberately not in the live scenario: alias targets (need a live
+  # ALB/CloudFront chain — the alias block is proven by the static-website
+  # chart shape + spec tests), health-check gating (its own kind's lane
+  # proves the checks; the ref wiring is a plain string pass-through), and
+  # CIDR routing (needs a CIDR collection, a surface with no kind). All
+  # proven by CEL spec tests and the offline gate.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

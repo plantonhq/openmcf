@@ -38,8 +38,6 @@ kind: NatsKubernetes
 metadata:
   name: exampleNats
 spec:
-  target_cluster:
-    cluster_name: "my-gke-cluster"
   namespace:
     value: "nats-system"
   create_namespace: true

@@ -32,12 +32,22 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMember
 metadata:
   name: web-backend-1
-  labels:
+  annotations:
+    planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.ref-backend
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.maintenance-backend
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.app-backend-secondary
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.app-backend-primary
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
+    planton.dev/stack.jobId: dev.OpenstackLoadBalancerMember.web-backend-1
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
+    planton.dev/stack.jobId: dev.OpenstackLoadBalancerMember.web-backend-1
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    planton.dev/stack.jobId: dev.OpenstackLoadBalancerMember.web-backend-1
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
 spec:
   poolId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
   address: "10.0.0.10"
@@ -83,12 +93,10 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMember
 metadata:
   name: web-backend-1
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    planton.dev/stack.jobId: dev.OpenstackLoadBalancerMember.web-backend-1
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
 spec:
   poolId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
   address: "10.0.0.10"
@@ -104,12 +112,10 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMember
 metadata:
   name: app-backend-primary
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.app-backend-primary
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
 spec:
   poolId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
   address: "10.1.0.10"
@@ -124,12 +130,10 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMember
 metadata:
   name: app-backend-secondary
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.app-backend-secondary
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
 spec:
   poolId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
   address: "10.1.0.11"
@@ -152,12 +156,10 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMember
 metadata:
   name: maintenance-backend
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.maintenance-backend
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
 spec:
   poolId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
   address: "10.0.0.12"
@@ -177,12 +179,10 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMember
 metadata:
   name: ref-backend
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.ref-backend
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
 spec:
   poolId:
     valueFrom:

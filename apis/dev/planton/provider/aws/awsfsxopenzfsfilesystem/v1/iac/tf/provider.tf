@@ -1,8 +1,12 @@
 terraform {
   required_providers {
     aws = {
+      # Family floor: >= 6.22.1 carries the full OpenZFS surface used by this
+      # module — the INTELLIGENT_TIERING storage type with
+      # read_cache_configuration (landed in 6.22.1), plus backup_id,
+      # delete_options, and final_backup_tags.
       source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      version = ">= 6.22.1"
     }
   }
 }

@@ -17,16 +17,22 @@ type Locals struct {
 }
 
 // initializeLocals prepares a Locals object by resolving stack input and metadata-derived tags.
-func initializeLocals(ctx *pulumi.Context, stackInput *awscertv1.AwsCertManagerCertStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, stackInput *awscertv1.AwsCertManagerCertStackInput) *Locals {
 	locals := &Locals{}
 	locals.AwsCertManagerCert = stackInput.Target
 
+	metadata := stackInput.Target.Metadata
+
+	// Resource-identity tags match the Terraform module key-for-key. ACM
+	// certificates have no AWS name -- metadata.name drives the Name tag and
+	// consumers address the certificate through its ARN.
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
-		awstagkeys.Organization: locals.AwsCertManagerCert.Metadata.Org,
-		awstagkeys.Environment:  locals.AwsCertManagerCert.Metadata.Env,
+		awstagkeys.Organization: metadata.Org,
+		awstagkeys.Environment:  metadata.Env,
 		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsCertManagerCert.String(),
-		awstagkeys.ResourceId:   locals.AwsCertManagerCert.Metadata.Id,
+		awstagkeys.ResourceId:   metadata.Id,
 	}
 
 	return locals

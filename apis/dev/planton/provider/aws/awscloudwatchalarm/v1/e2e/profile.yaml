@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscloudwatchalarm
+spec:
+  # A CloudWatch metric alarm under live E2E: deploy -> DescribeAlarms verify
+  # -> destroy -> verify-destroyed on both provisioners. The scenario runs
+  # metric-query mode (the deepest arm): a three-query error-rate expression
+  # with M-of-N evaluation and an explicit actions_enabled: false — proving
+  # the presence-aware tri-state reaches the provider on both engines. The
+  # alarm is a true leaf (INSUFFICIENT_DATA against placeholder dimensions is
+  # a valid, expected state — no live traffic is required). Deliberately not
+  # in the live scenario: PromQL mode (evaluation_criteria needs an Amazon
+  # Managed Service for Prometheus workspace — a separate product surface;
+  # its wiring is proven by spec tests, tofu validate, and both engines'
+  # builds) and anomaly-detection bands (the same metric-query plumbing with
+  # an expression function). Simple-metric mode is exercised by the
+  # prerequisite fixture that composite-alarm lanes deploy.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

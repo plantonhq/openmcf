@@ -1,6 +1,8 @@
 package module
 
 import (
+	"strconv"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/fsx"
@@ -14,8 +16,17 @@ func volume(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*fsx.O
 	args := &fsx.OntapVolumeArgs{
 		StorageVirtualMachineId: pulumi.String(spec.StorageVirtualMachineId.GetValue()),
 		Name:                    pulumi.StringPtr(spec.Name),
-		SizeInMegabytes:         pulumi.Int(int(spec.SizeInMegabytes)),
 		Tags:                    pulumi.ToStringMap(locals.AwsTags),
+	}
+
+	// Size flows through exactly one arm (spec-enforced XOR). SizeInBytes is
+	// the byte-precise arm and the only way past 2 PiB — the provider types
+	// it as a string because the value exceeds a 32-bit integer.
+	if spec.SizeInMegabytes != nil {
+		args.SizeInMegabytes = pulumi.IntPtr(int(spec.GetSizeInMegabytes()))
+	}
+	if spec.SizeInBytes != nil {
+		args.SizeInBytes = pulumi.StringPtr(strconv.FormatInt(spec.GetSizeInBytes(), 10))
 	}
 
 	// Junction path (optional — unmounted volume if omitted).
@@ -23,12 +34,14 @@ func volume(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*fsx.O
 		args.JunctionPath = pulumi.StringPtr(spec.JunctionPath)
 	}
 
-	// ONTAP volume type (ForceNew, default RW via Planton middleware).
+	// ONTAP volume type (ForceNew; spec default RW, materialized before the
+	// module runs).
 	if spec.GetOntapVolumeType() != "" {
 		args.OntapVolumeType = pulumi.StringPtr(spec.GetOntapVolumeType())
 	}
 
-	// Volume style (ForceNew, default FLEXVOL via Planton middleware).
+	// Volume style (ForceNew; spec default FLEXVOL, materialized before the
+	// module runs).
 	if spec.GetVolumeStyle() != "" {
 		args.VolumeStyle = pulumi.StringPtr(spec.GetVolumeStyle())
 	}
@@ -38,28 +51,32 @@ func volume(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*fsx.O
 		args.SecurityStyle = pulumi.StringPtr(spec.SecurityStyle)
 	}
 
-	// Snapshot policy (optional).
+	// Snapshot policy (optional — ONTAP's "default" policy if omitted).
 	if spec.SnapshotPolicy != "" {
 		args.SnapshotPolicy = pulumi.StringPtr(spec.SnapshotPolicy)
 	}
 
-	// Storage efficiency (deduplication, compression, compaction).
-	if spec.StorageEfficiencyEnabled {
-		args.StorageEfficiencyEnabled = pulumi.BoolPtr(spec.StorageEfficiencyEnabled)
+	// Tri-state efficiency switch: the resolved value is sent whenever
+	// present so an explicit false genuinely disables dedup/compression —
+	// an only-send-true guard would silently drop the disable.
+	if spec.StorageEfficiencyEnabled != nil {
+		args.StorageEfficiencyEnabled = pulumi.BoolPtr(spec.GetStorageEfficiencyEnabled())
 	}
 
-	// Copy tags to backups.
-	if spec.GetCopyTagsToBackups() {
+	// Backup and delete-time controls are presence-honest: explicit false
+	// values must reach AWS rather than being coerced away. The delete-time
+	// trio (skip final backup, its tags, the SnapLock bypass) is read from
+	// state at destroy time, so it must be applied BEFORE the deletion.
+	if spec.CopyTagsToBackups != nil {
 		args.CopyTagsToBackups = pulumi.BoolPtr(spec.GetCopyTagsToBackups())
 	}
-
-	// Skip final backup on deletion.
-	if spec.GetSkipFinalBackup() {
+	if spec.SkipFinalBackup != nil {
 		args.SkipFinalBackup = pulumi.BoolPtr(spec.GetSkipFinalBackup())
 	}
-
-	// Bypass SnapLock Enterprise retention on deletion.
-	if spec.GetBypassSnaplockEnterpriseRetention() {
+	if len(spec.FinalBackupTags) > 0 {
+		args.FinalBackupTags = pulumi.ToStringMap(spec.FinalBackupTags)
+	}
+	if spec.BypassSnaplockEnterpriseRetention != nil {
 		args.BypassSnaplockEnterpriseRetention = pulumi.BoolPtr(spec.GetBypassSnaplockEnterpriseRetention())
 	}
 
@@ -82,7 +99,8 @@ func volume(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*fsx.O
 			SnaplockType: pulumi.String(sl.SnaplockType),
 		}
 
-		if sl.GetAuditLogVolume() {
+		// Presence-honest booleans: explicit false must reach AWS.
+		if sl.AuditLogVolume != nil {
 			slArgs.AuditLogVolume = pulumi.BoolPtr(sl.GetAuditLogVolume())
 		}
 
@@ -90,7 +108,7 @@ func volume(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*fsx.O
 			slArgs.PrivilegedDelete = pulumi.StringPtr(sl.GetPrivilegedDelete())
 		}
 
-		if sl.GetVolumeAppendModeEnabled() {
+		if sl.VolumeAppendModeEnabled != nil {
 			slArgs.VolumeAppendModeEnabled = pulumi.BoolPtr(sl.GetVolumeAppendModeEnabled())
 		}
 
@@ -105,38 +123,39 @@ func volume(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*fsx.O
 			slArgs.AutocommitPeriod = acArgs
 		}
 
-		// Retention period (default, minimum, maximum).
+		// Retention bounds (default, minimum, maximum). A value of 0 IS
+		// meaningful for unit types (e.g. a 0-day minimum retention), so the
+		// value is sent whenever the type is a unit type and only elided for
+		// INFINITE/UNSPECIFIED, where AWS ignores it.
 		if sl.RetentionPeriod != nil {
+			retentionValue := func(retentionType string, value int32) pulumi.IntPtrInput {
+				if retentionType == "INFINITE" || retentionType == "UNSPECIFIED" || retentionType == "" {
+					return nil
+				}
+				return pulumi.IntPtr(int(value))
+			}
+
 			rp := &fsx.OntapVolumeSnaplockConfigurationRetentionPeriodArgs{}
 
-			if sl.RetentionPeriod.DefaultRetention != nil && sl.RetentionPeriod.DefaultRetention.Type != "" {
-				drArgs := &fsx.OntapVolumeSnaplockConfigurationRetentionPeriodDefaultRetentionArgs{
-					Type: pulumi.StringPtr(sl.RetentionPeriod.DefaultRetention.Type),
+			if dr := sl.RetentionPeriod.DefaultRetention; dr != nil && dr.Type != "" {
+				rp.DefaultRetention = &fsx.OntapVolumeSnaplockConfigurationRetentionPeriodDefaultRetentionArgs{
+					Type:  pulumi.StringPtr(dr.Type),
+					Value: retentionValue(dr.Type, dr.Value),
 				}
-				if sl.RetentionPeriod.DefaultRetention.Value > 0 {
-					drArgs.Value = pulumi.IntPtr(int(sl.RetentionPeriod.DefaultRetention.Value))
-				}
-				rp.DefaultRetention = drArgs
 			}
 
-			if sl.RetentionPeriod.MinimumRetention != nil && sl.RetentionPeriod.MinimumRetention.Type != "" {
-				mnArgs := &fsx.OntapVolumeSnaplockConfigurationRetentionPeriodMinimumRetentionArgs{
-					Type: pulumi.StringPtr(sl.RetentionPeriod.MinimumRetention.Type),
+			if mn := sl.RetentionPeriod.MinimumRetention; mn != nil && mn.Type != "" {
+				rp.MinimumRetention = &fsx.OntapVolumeSnaplockConfigurationRetentionPeriodMinimumRetentionArgs{
+					Type:  pulumi.StringPtr(mn.Type),
+					Value: retentionValue(mn.Type, mn.Value),
 				}
-				if sl.RetentionPeriod.MinimumRetention.Value > 0 {
-					mnArgs.Value = pulumi.IntPtr(int(sl.RetentionPeriod.MinimumRetention.Value))
-				}
-				rp.MinimumRetention = mnArgs
 			}
 
-			if sl.RetentionPeriod.MaximumRetention != nil && sl.RetentionPeriod.MaximumRetention.Type != "" {
-				mxArgs := &fsx.OntapVolumeSnaplockConfigurationRetentionPeriodMaximumRetentionArgs{
-					Type: pulumi.StringPtr(sl.RetentionPeriod.MaximumRetention.Type),
+			if mx := sl.RetentionPeriod.MaximumRetention; mx != nil && mx.Type != "" {
+				rp.MaximumRetention = &fsx.OntapVolumeSnaplockConfigurationRetentionPeriodMaximumRetentionArgs{
+					Type:  pulumi.StringPtr(mx.Type),
+					Value: retentionValue(mx.Type, mx.Value),
 				}
-				if sl.RetentionPeriod.MaximumRetention.Value > 0 {
-					mxArgs.Value = pulumi.IntPtr(int(sl.RetentionPeriod.MaximumRetention.Value))
-				}
-				rp.MaximumRetention = mxArgs
 			}
 
 			slArgs.RetentionPeriod = rp

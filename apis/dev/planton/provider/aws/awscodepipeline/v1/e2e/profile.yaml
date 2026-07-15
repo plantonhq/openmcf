@@ -1,0 +1,45 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscodepipeline
+spec:
+  # A CodePipeline pipeline under live E2E: one composed lane, because the
+  # pipeline is a metadata-only control-plane resource whose single
+  # interesting live proof is the composed graph -- role + versioned bucket
+  # + CodeBuild project all resolving as references/fixtures.
+  #
+  # - s3-codebuild-chain: a two-stage V2 pipeline (S3 source -> CodeBuild
+  #   build) against the shared S3 bucket fixture (registry prerequisite;
+  #   the fixture bucket ships versioning enabled, which S3 source actions
+  #   require), the CodePipeline IAM role fixture (registry prerequisite),
+  #   and the CodeBuild fixture project (scenario-declared prerequisite).
+  #   QUEUED execution, a pipeline variable, a namespaced action, and
+  #   ROLLBACK failure handling prove the V2 surface. (No action timeout
+  #   override in the lane: AWS supports it only on Manual Approval
+  #   actions, and the spec CEL enforces that.)
+  #
+  # Excluded from the live lane with reasons (proven by spec tests + the
+  # offline plan gate against iac/hack/manifest.yaml, which exercises every
+  # one of these arms):
+  # - triggers (push/pull_request filters): require a
+  #   CodeStarSourceConnection source action, and the connection object
+  #   cannot reach a usable state without a manual console OAuth handshake.
+  # - cross-region artifact stores: a second-region bucket fixture for an
+  #   arm that is pure pass-through mapping.
+  # - condition rules (DeploymentWindow / CloudWatchAlarm / Commands):
+  #   accepted at create but only act during executions, which the
+  #   create-and-destroy contract never runs.
+  #
+  # Verification is GetPipeline keyed on pipeline_name (a deleted pipeline
+  # returns PipelineNotFoundException; deletion is synchronous).
+  #
+  # Observed live timings (2026-07-09): Pulumi 5m47s total / Terraform
+  # 5m58s total (the pipeline deploy itself took 13s/10s; the composed
+  # fixture chain -- roles + versioned bucket + CodeBuild project --
+  # dominates both lanes).
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

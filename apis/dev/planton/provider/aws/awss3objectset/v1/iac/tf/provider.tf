@@ -1,8 +1,14 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0"
+      source = "hashicorp/aws"
+      # Floor 6.1.0: the earliest release whose vendored S3 SDK accepts every
+      # enum value the spec allows — the FSx-flavored storage classes
+      # (FSX_OPENZFS / FSX_ONTAP) and the aws:fsx encryption value land in
+      # 6.1.0's SDK; the provider validates these client-side, so an older
+      # provider would reject manifests using them. Everything else on
+      # aws_s3_object predates the v6 line.
+      version = ">= 6.1.0"
     }
   }
 }

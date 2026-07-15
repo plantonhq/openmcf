@@ -32,8 +32,6 @@ const (
 // cron-job is deployed, executed, and how concurrency and retries are handled.
 type KubernetesCronJobSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -155,13 +153,6 @@ func (x *KubernetesCronJobSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesCronJobSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesCronJobSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesCronJobSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesCronJobSpec) GetNamespace() *v1.StringValueOrRef {
@@ -287,9 +278,8 @@ var File_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto protore
 
 const file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetescronjob/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetescronjob.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x83\f\n" +
-	"\x15KubernetesCronJobSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"?dev/planton/provider/kubernetes/kubernetescronjob/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetescronjob.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa0\v\n" +
+	"\x15KubernetesCronJobSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12E\n" +
 	"\x05image\x18\x04 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\x12t\n" +
@@ -339,28 +329,26 @@ func file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDes
 
 var file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_goTypes = []any{
-	(*KubernetesCronJobSpec)(nil), // 0: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec
-	nil,                           // 1: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.ConfigMapsEntry
-	(*kubernetes.KubernetesClusterSelector)(nil), // 2: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerImage)(nil),            // 4: dev.planton.provider.kubernetes.ContainerImage
-	(*kubernetes.ContainerResources)(nil),        // 5: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.ContainerEnv)(nil),              // 6: dev.planton.provider.kubernetes.ContainerEnv
-	(*kubernetes.VolumeMount)(nil),               // 7: dev.planton.provider.kubernetes.VolumeMount
+	(*KubernetesCronJobSpec)(nil),         // 0: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec
+	nil,                                   // 1: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.ConfigMapsEntry
+	(*v1.StringValueOrRef)(nil),           // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerImage)(nil),     // 3: dev.planton.provider.kubernetes.ContainerImage
+	(*kubernetes.ContainerResources)(nil), // 4: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.ContainerEnv)(nil),       // 5: dev.planton.provider.kubernetes.ContainerEnv
+	(*kubernetes.VolumeMount)(nil),        // 6: dev.planton.provider.kubernetes.VolumeMount
 }
 var file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	3, // 1: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 2: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	5, // 3: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	6, // 4: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
-	1, // 5: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.config_maps:type_name -> dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.ConfigMapsEntry
-	7, // 6: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.volume_mounts:type_name -> dev.planton.provider.kubernetes.VolumeMount
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	2, // 0: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 1: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	4, // 2: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	5, // 3: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
+	1, // 4: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.config_maps:type_name -> dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.ConfigMapsEntry
+	6, // 5: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.volume_mounts:type_name -> dev.planton.provider.kubernetes.VolumeMount
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_init() }

@@ -1,0 +1,23 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsEksAddon
+metadata:
+  name: <addon-resource-name>
+spec:
+  region: <aws-region>
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: <cluster-resource-name>
+      fieldPath: status.outputs.name
+  addonName: aws-ebs-csi-driver
+  # The driver calls EC2 APIs (create/attach volumes), so it needs its
+  # own IAM identity. Pod Identity is the modern path: the role trusts
+  # pods.eks.amazonaws.com -- no per-cluster OIDC provider needed. The
+  # eks-pod-identity-agent add-on must be installed on the cluster.
+  podIdentityAssociations:
+    - roleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: <ebs-csi-role-resource-name>
+          fieldPath: status.outputs.role_arn
+      serviceAccount: ebs-csi-controller-sa

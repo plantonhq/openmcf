@@ -20,7 +20,7 @@ metadata:
     # sequential subtests that destroy and recreate the same name hang
     # on the post-delete hold. Deploy order: namespace, account,
     # container (the container rides the account).
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azureeventhub/v1/e2e/fixture-namespace.yaml,apis/dev/planton/provider/azure/azureeventhub/v1/e2e/fixture-capture-account.yaml,apis/dev/planton/provider/azure/azureeventhub/v1/e2e/fixture-capture-container.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azureeventhub/v1/e2e/fixture-namespace.yaml,apis/dev/planton/provider/azure/azureeventhub/v1/e2e/fixture-capture-account.yaml,apis/dev/planton/provider/azure/azureeventhub/v1/e2e/fixture-capture-container.yaml"
   tags:
     - planton-e2e
 spec:

@@ -941,10 +941,19 @@ message AzureFunctionAppIpRestrictionHeaders {
   // Up to 8 entries.
   repeated string x_forwarded_host = 2 [(buf.validate.field).repeated.max_items = 8];
 
-  // X-Azure-FDID (Front Door ID) header values to match.
-  // Up to 8 entries. Used to ensure traffic comes from your specific
-  // Front Door instance.
-  repeated string x_azure_fdid = 3 [(buf.validate.field).repeated.max_items = 8];
+  // X-Azure-FDID (Front Door ID) header values to match, up to 8
+  // entries. Locks the app to specific Front Door instances: pair an
+  // ALLOW rule on the AzureFrontDoor.Backend service tag with this
+  // filter so only YOUR profile's traffic reaches the origin -- without
+  // it, anyone who discovers the app's default hostname bypasses the
+  // edge (and its WAF) entirely. Each entry references an
+  // AzureFrontDoorProfile's resource_guid output or carries the GUID as
+  // a literal.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef x_azure_fdid = 3 [
+    (buf.validate.field).repeated.max_items = 8,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorProfile,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_guid"
+  ];
 
   // X-FD-HealthProbe header values to match.
   // The only supported value is "1" (allow Front Door health probes).

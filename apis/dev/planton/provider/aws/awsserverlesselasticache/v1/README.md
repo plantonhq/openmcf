@@ -60,6 +60,7 @@ Choose provisioned when:
 |---|---|---|---|
 | `subnet_ids` | repeated StringValueOrRef | No | VPC subnet IDs. ForceNew |
 | `security_group_ids` | repeated StringValueOrRef | No | VPC security group IDs |
+| `network_type` | string | No | IP addressing: `ipv4`, `ipv6`, `dual_stack`. ForceNew |
 
 ### Encryption
 
@@ -73,12 +74,13 @@ Choose provisioned when:
 |---|---|---|---|---|
 | `daily_snapshot_time` | string | No | — | UTC time in `HH:mm` format |
 | `snapshot_retention_limit` | int32 | No | 0–35 | Days to retain automatic snapshots |
+| `snapshot_arns_to_restore` | repeated string | No | — | ARNs of existing snapshots to seed from. Create-time only. Redis/Valkey only. |
 
 ### Authentication (Redis/Valkey Only)
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `user_group_id` | string | No | Redis ACL user group ID |
+| `user_group_id` | StringValueOrRef | No | Redis ACL user group via `AwsElasticacheUserGroup`. Exactly one group. |
 
 ## Stack Outputs
 
@@ -97,7 +99,8 @@ Choose provisioned when:
 - `engine` must be `redis`, `valkey`, or `memcached`
 - `data_storage_min_gb` must not exceed `data_storage_max_gb` when both set
 - `ecpu_min` must not exceed `ecpu_max` when both set
-- `daily_snapshot_time`, `snapshot_retention_limit`, and `user_group_id` are only valid for `redis` or `valkey`
+- `daily_snapshot_time`, `snapshot_retention_limit`, `user_group_id`, and `snapshot_arns_to_restore` are only valid for `redis` or `valkey`
+- `network_type` must be `ipv4`, `ipv6`, or `dual_stack` when set
 - ECPU values must be at least 1000 when set (non-zero)
 - Data storage values must be at least 1 GB when set (non-zero)
 
@@ -107,6 +110,7 @@ These fields cannot be changed after creation — modifying them destroys and re
 
 - `kms_key_id`
 - `subnet_ids`
+- `network_type`
 - Engine changes to/from `memcached` (switching between `redis` and `valkey` is in-place)
 
 ## Prerequisites
@@ -114,4 +118,4 @@ These fields cannot be changed after creation — modifying them destroys and re
 - An AWS account with ElastiCache Serverless availability in your target region
 - (Optional) A VPC with private subnets for VPC-based deployment
 - (Optional) A KMS key for customer-managed encryption
-- (Optional) A Redis ACL user group for fine-grained access control
+- (Optional) A Redis ACL user group (`AwsElasticacheUserGroup`) for fine-grained access control — compose via `AwsElasticacheUser` → `AwsElasticacheUserGroup` → cache

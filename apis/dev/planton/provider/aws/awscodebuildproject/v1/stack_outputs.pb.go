@@ -28,20 +28,35 @@ type AwsCodeBuildProjectStackOutputs struct {
 	// The Amazon Resource Name (ARN) of the CodeBuild project.
 	// Use this for IAM policies, EventBridge targets, and cross-resource references.
 	ProjectArn string `protobuf:"bytes,1,opt,name=project_arn,json=projectArn,proto3" json:"project_arn,omitempty"`
-	// The name of the CodeBuild project.
+	// The name of the CodeBuild project. Use this in CodePipeline Build
+	// action configurations (the ProjectName key).
 	ProjectName string `protobuf:"bytes,2,opt,name=project_name,json=projectName,proto3" json:"project_name,omitempty"`
 	// The IAM service role ARN used by the project. Echoed back for
 	// downstream reference in job definitions or policies.
 	ServiceRoleArn string `protobuf:"bytes,3,opt,name=service_role_arn,json=serviceRoleArn,proto3" json:"service_role_arn,omitempty"`
+	// The build badge URL, when badge_enabled is true. Embed it in a
+	// repository README to show live build status. Empty when the badge is
+	// disabled.
+	BadgeUrl string `protobuf:"bytes,4,opt,name=badge_url,json=badgeUrl,proto3" json:"badge_url,omitempty"`
+	// The public alias of the project, when project_visibility is
+	// PUBLIC_READ. This is the identifier in the public build results URL.
+	// Empty for private projects.
+	PublicProjectAlias string `protobuf:"bytes,5,opt,name=public_project_alias,json=publicProjectAlias,proto3" json:"public_project_alias,omitempty"`
 	// The webhook URL for the source provider, if a webhook was created.
 	// Empty when no webhook is configured.
-	WebhookUrl string `protobuf:"bytes,4,opt,name=webhook_url,json=webhookUrl,proto3" json:"webhook_url,omitempty"`
-	// The webhook payload URL, if a webhook was created.
-	// This is the URL that receives webhook payloads from the source provider.
-	// Empty when no webhook is configured.
-	WebhookPayloadUrl string `protobuf:"bytes,5,opt,name=webhook_payload_url,json=webhookPayloadUrl,proto3" json:"webhook_payload_url,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	WebhookUrl string `protobuf:"bytes,6,opt,name=webhook_url,json=webhookUrl,proto3" json:"webhook_url,omitempty"`
+	// The webhook payload URL, if a webhook was created. This is the URL the
+	// source provider posts events to; with webhook.manual_creation, register
+	// it on the repository by hand. Empty when no webhook is configured.
+	WebhookPayloadUrl string `protobuf:"bytes,7,opt,name=webhook_payload_url,json=webhookPayloadUrl,proto3" json:"webhook_payload_url,omitempty"`
+	// The webhook's HMAC signing secret (sensitive — a provider-minted
+	// credential, only returned at webhook creation). With
+	// webhook.manual_creation, configure it on the repository webhook so
+	// CodeBuild can authenticate payloads. Empty when no webhook is
+	// configured.
+	WebhookSecret string `protobuf:"bytes,8,opt,name=webhook_secret,json=webhookSecret,proto3" json:"webhook_secret,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsCodeBuildProjectStackOutputs) Reset() {
@@ -95,6 +110,20 @@ func (x *AwsCodeBuildProjectStackOutputs) GetServiceRoleArn() string {
 	return ""
 }
 
+func (x *AwsCodeBuildProjectStackOutputs) GetBadgeUrl() string {
+	if x != nil {
+		return x.BadgeUrl
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildProjectStackOutputs) GetPublicProjectAlias() string {
+	if x != nil {
+		return x.PublicProjectAlias
+	}
+	return ""
+}
+
 func (x *AwsCodeBuildProjectStackOutputs) GetWebhookUrl() string {
 	if x != nil {
 		return x.WebhookUrl
@@ -109,19 +138,29 @@ func (x *AwsCodeBuildProjectStackOutputs) GetWebhookPayloadUrl() string {
 	return ""
 }
 
+func (x *AwsCodeBuildProjectStackOutputs) GetWebhookSecret() string {
+	if x != nil {
+		return x.WebhookSecret
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awscodebuildproject_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awscodebuildproject_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/aws/awscodebuildproject/v1/stack_outputs.proto\x12/dev.planton.provider.aws.awscodebuildproject.v1\"\xe0\x01\n" +
+	"Cdev/planton/provider/aws/awscodebuildproject/v1/stack_outputs.proto\x12/dev.planton.provider.aws.awscodebuildproject.v1\"\xd6\x02\n" +
 	"\x1fAwsCodeBuildProjectStackOutputs\x12\x1f\n" +
 	"\vproject_arn\x18\x01 \x01(\tR\n" +
 	"projectArn\x12!\n" +
 	"\fproject_name\x18\x02 \x01(\tR\vprojectName\x12(\n" +
-	"\x10service_role_arn\x18\x03 \x01(\tR\x0eserviceRoleArn\x12\x1f\n" +
-	"\vwebhook_url\x18\x04 \x01(\tR\n" +
+	"\x10service_role_arn\x18\x03 \x01(\tR\x0eserviceRoleArn\x12\x1b\n" +
+	"\tbadge_url\x18\x04 \x01(\tR\bbadgeUrl\x120\n" +
+	"\x14public_project_alias\x18\x05 \x01(\tR\x12publicProjectAlias\x12\x1f\n" +
+	"\vwebhook_url\x18\x06 \x01(\tR\n" +
 	"webhookUrl\x12.\n" +
-	"\x13webhook_payload_url\x18\x05 \x01(\tR\x11webhookPayloadUrlB\x94\x03\n" +
+	"\x13webhook_payload_url\x18\a \x01(\tR\x11webhookPayloadUrl\x12%\n" +
+	"\x0ewebhook_secret\x18\b \x01(\tR\rwebhookSecretB\x94\x03\n" +
 	"3com.dev.planton.provider.aws.awscodebuildproject.v1B\x11StackOutputsProtoP\x01Zggithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awscodebuildproject/v1;awscodebuildprojectv1\xa2\x02\x05DPPAA\xaa\x02/Dev.Planton.Provider.Aws.Awscodebuildproject.V1\xca\x02/Dev\\Planton\\Provider\\Aws\\Awscodebuildproject\\V1\xe2\x02;Dev\\Planton\\Provider\\Aws\\Awscodebuildproject\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Aws::Awscodebuildproject::V1b\x06proto3"
 
 var (

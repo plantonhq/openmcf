@@ -8,26 +8,28 @@ componentName: "awsdynamodb"
 
 # AWS DynamoDB
 
-Deploys an AWS DynamoDB table with configurable key schema, billing mode, secondary indexes, streams, encryption, and point-in-time recovery. The component manages all attribute definitions and index configurations through a single declarative manifest.
+Deploys an Amazon DynamoDB table through a single declarative manifest: key schema and indexes, capacity in any of AWS's three shapes (on-demand, provisioned, pre-warmed), streams, Global Tables v2 multi-region replication, encryption, recovery, and the table-scoped governance surface -- resource policy, Kinesis change-data destination, and CloudWatch contributor insights.
 
 ## What Gets Created
 
 When you deploy an AwsDynamodb resource, Planton provisions:
 
-- **DynamoDB Table** — a `dynamodb.Table` resource with the specified key schema, billing mode, and attribute definitions
-- **Global Secondary Indexes** — created when `globalSecondaryIndexes` entries are defined, each with its own key schema, projection, and optional provisioned throughput
-- **Local Secondary Indexes** — created when `localSecondaryIndexes` entries are defined, sharing the table's partition key with an alternate sort key
-- **Server-Side Encryption** — configured when `serverSideEncryption.enabled` is `true`, optionally using a customer-managed KMS key
-- **Point-in-Time Recovery** — enabled when `pointInTimeRecoveryEnabled` is `true`
-- **DynamoDB Streams** — activated when `streamEnabled` is `true` with the specified `streamViewType`
+- **DynamoDB Table** — keyed by `metadata.name`, with the specified key schema, billing mode, indexes, streams, replicas, encryption, and recovery settings
+- **Global Secondary Indexes** — from `globalSecondaryIndexes`, each with its own key schema (including multi-attribute keys), projection, and per-index capacity
+- **Local Secondary Indexes** — from `localSecondaryIndexes` (create-time only; they can never be added or removed later)
+- **Global Table Replicas** — from `replicas`, one active read/write copy per listed region, up to Multi-Region Strong Consistency with an optional witness region
+- **Resource Policy** — when `resourcePolicy` is set, a resource-based IAM policy attached to the table
+- **Kinesis Streaming Destination** — when `kinesisStreamingDestination` is set, item-level change data flows into the referenced Kinesis Data Stream
+- **Contributor Insights** — when `contributorInsights.enabled` is `true`, CloudWatch per-key access profiling on the table and each opted-in GSI
 
 All resources are tagged with Planton metadata (organization, environment, resource kind, resource ID).
 
 ## Prerequisites
 
 - **AWS credentials** configured via environment variables or Planton provider config
-- **A billing mode decision** — choose between `PROVISIONED` (with explicit read/write capacity) or `PAY_PER_REQUEST` (on-demand)
-- **A KMS key ARN** if using customer-managed server-side encryption
+- **A KMS key** (optional) — reference an `AwsKmsKey` for customer-managed encryption at rest
+- **A Kinesis Data Stream** (optional) — reference an `AwsKinesisStream` to receive change data
+- **An S3 bucket with source data** (optional) — reference an `AwsS3Bucket` to seed the table via `importTable`
 
 ## Quick Start
 
@@ -38,11 +40,6 @@ apiVersion: aws.planton.dev/v1
 kind: AwsDynamodb
 metadata:
   name: my-table
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsDynamodb.my-table
 spec:
   region: us-east-1
   billingMode: PAY_PER_REQUEST
@@ -68,61 +65,73 @@ This creates an on-demand DynamoDB table with a single string partition key.
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `region` | `string` | The AWS region where the resource will be created. | Must be a valid AWS region |
-| `billingMode` | `enum` | Billing mode for the table. Valid values: `PROVISIONED`, `PAY_PER_REQUEST`. | Must be set (not `BILLING_MODE_UNSPECIFIED`) |
-| `attributeDefinitions` | `object[]` | Attribute definitions referenced by the primary key and indexes. | Minimum 1 item |
-| `attributeDefinitions[].name` | `string` | Attribute name. | Minimum length 1 |
-| `attributeDefinitions[].type` | `enum` | Attribute data type. Valid values: `S` (String), `N` (Number), `B` (Binary). | Must be a defined value |
-| `keySchema` | `object[]` | Primary key schema for the table. Must have exactly one `HASH` key and at most one `RANGE` key. | Minimum 1 item, maximum 2 items |
-| `keySchema[].attributeName` | `string` | Must reference an attribute defined in `attributeDefinitions`. | Minimum length 1 |
-| `keySchema[].keyType` | `enum` | Key type. Valid values: `HASH` (partition key), `RANGE` (sort key). | Must be a defined value |
-| `provisionedThroughput` | `object` | Provisioned capacity settings. Required when `billingMode` is `PROVISIONED`; must be unset or zero for `PAY_PER_REQUEST`. | Conditional |
-| `provisionedThroughput.readCapacityUnits` | `int64` | Read capacity units (RCUs). | >= 0; must be > 0 when `PROVISIONED` |
-| `provisionedThroughput.writeCapacityUnits` | `int64` | Write capacity units (WCUs). | >= 0; must be > 0 when `PROVISIONED` |
+| `region` | `string` | The AWS region the table is created in. | Must be a valid AWS region |
+| `attributeDefinitions` | `object[]` | Key attributes only (name + type `S`/`N`/`B`) -- DynamoDB is schemaless beyond the keys. | Required unless the table is created by restore |
+| `keySchema` | `object[]` | The primary key: exactly one `HASH` element and at most one `RANGE` element, `HASH` first. Create-time immutable. | Required unless the table is created by restore |
 
-### Optional Fields
+### Capacity
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `globalSecondaryIndexes` | `object[]` | `[]` | Global secondary indexes. Each GSI requires its own key schema (one `HASH`, optional `RANGE`), projection, and provisioned throughput when billing mode is `PROVISIONED`. |
-| `globalSecondaryIndexes[].name` | `string` | — | Index name. |
-| `globalSecondaryIndexes[].keySchema` | `object[]` | — | Key schema for the GSI (same structure as table `keySchema`). |
-| `globalSecondaryIndexes[].projection.type` | `enum` | — | Projection type. Valid values: `ALL`, `KEYS_ONLY_PROJECTION`, `INCLUDE`. |
-| `globalSecondaryIndexes[].projection.nonKeyAttributes` | `string[]` | `[]` | Non-key attributes to project. Required when projection type is `INCLUDE`, must be empty otherwise. Must be unique. |
-| `globalSecondaryIndexes[].provisionedThroughput` | `object` | — | RCU/WCU settings. Required when `billingMode` is `PROVISIONED`. |
-| `localSecondaryIndexes` | `object[]` | `[]` | Local secondary indexes. Each LSI must have the same `HASH` key as the table and exactly one `RANGE` key. |
-| `localSecondaryIndexes[].name` | `string` | — | Index name. |
-| `localSecondaryIndexes[].keySchema` | `object[]` | — | Must have exactly one `HASH` key (same as table) and one `RANGE` key. Minimum 2 items. |
-| `localSecondaryIndexes[].projection` | `object` | — | Projection configuration (same structure as GSI projection). |
-| `ttl` | `object` | — | Time-to-live (TTL) configuration. |
-| `ttl.enabled` | `bool` | `false` | Enable TTL expiration. |
-| `ttl.attributeName` | `string` | — | Attribute storing TTL epoch time in seconds. Required when `ttl.enabled` is `true`, must be empty when disabled. |
-| `streamEnabled` | `bool` | `false` | Enables DynamoDB Streams on the table. |
-| `streamViewType` | `enum` | — | Stream view type. Valid values: `KEYS_ONLY`, `NEW_IMAGE`, `OLD_IMAGE`, `NEW_AND_OLD_IMAGES`. Required when `streamEnabled` is `true`, must be unspecified when disabled. |
-| `pointInTimeRecoveryEnabled` | `bool` | `false` | Enables point-in-time recovery (PITR) for continuous backups. |
-| `serverSideEncryption` | `object` | — | Server-side encryption settings. |
-| `serverSideEncryption.enabled` | `bool` | `false` | Enable server-side encryption. |
-| `serverSideEncryption.kmsKeyArn` | `string` | — | Customer-managed KMS key ARN. When omitted, AWS-managed encryption is used. |
-| `tableClass` | `enum` | `STANDARD` | Table storage class. Valid values: `STANDARD`, `STANDARD_INFREQUENT_ACCESS`. |
-| `deletionProtectionEnabled` | `bool` | `false` | Prevents accidental deletion of the table when enabled. |
-| `contributorInsightsEnabled` | `bool` | `false` | Enables CloudWatch Contributor Insights for the table. |
+| `billingMode` | `string` | `PROVISIONED` | `PAY_PER_REQUEST` (on-demand, the recommended default for new tables) or `PROVISIONED` (reserved units). Empty keeps the AWS default -- which then requires `provisionedThroughput`. |
+| `provisionedThroughput` | `object` | — | `readCapacityUnits` + `writeCapacityUnits`. Required when the effective billing mode is `PROVISIONED`; must stay unset for `PAY_PER_REQUEST`. |
+| `onDemandThroughput` | `object` | — | `maxReadRequestUnits` + `maxWriteRequestUnits` spend ceilings on a `PAY_PER_REQUEST` table; requests beyond the ceiling throttle instead of billing. `-1` removes a previously-set ceiling. |
+| `warmThroughput` | `object` | — | `readUnitsPerSecond` (>= 12000) + `writeUnitsPerSecond` (>= 4000) pre-warmed instant capacity. Increase-only: lowering it replaces the table. |
+
+### Indexes
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `globalSecondaryIndexes` | `object[]` | `[]` | Alternate query shapes, edited in place. Each carries `name`, `keySchema` (1-4 `HASH` elements first, then 0-4 `RANGE` -- multi-attribute keys), `projection`, and capacity matching the table's billing mode (`provisionedThroughput`, `onDemandThroughput`, `warmThroughput`). |
+| `localSecondaryIndexes` | `object[]` | `[]` | Alternate sort orders over the table's partition key: `name`, `rangeKey`, `projection`. **Create-time only** and permanently caps item collections at 10 GB -- prefer a GSI unless you need strongly consistent reads. |
+| `*.projection.type` | `string` | — | `ALL`, `KEYS_ONLY`, or `INCLUDE` (with `nonKeyAttributes`). |
+
+### Streams, Recovery, and Safety
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `streamEnabled` | `bool` | `false` | Emit an ordered change stream of item modifications. Required (with `NEW_AND_OLD_IMAGES`) when the table has replicas. |
+| `streamViewType` | `string` | — | `KEYS_ONLY`, `NEW_IMAGE`, `OLD_IMAGE`, or `NEW_AND_OLD_IMAGES`. Required when streams are enabled. |
+| `pointInTimeRecovery` | `object` | — | `enabled` + `recoveryPeriodInDays` (1-35; 0 keeps the AWS default of 35). Continuous backups with per-second restore granularity. |
+| `serverSideEncryption` | `object` | — | `enabled` switches from the AWS-owned key to the AWS-managed `aws/dynamodb` key; set `kmsKeyArn` (an `AwsKmsKey` reference or literal ARN) for a customer-managed key. |
+| `tableClass` | `string` | `STANDARD` | `STANDARD` or `STANDARD_INFREQUENT_ACCESS` (~60% cheaper storage, ~25% costlier reads/writes). |
+| `deletionProtectionEnabled` | `bool` | `false` | Refuse table deletion while `true`. |
+| `ttl` | `object` | — | `enabled` + `attributeName` holding expiry as epoch seconds; expired items delete free of write cost. |
+
+### Global Tables
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `replicas` | `object[]` | `[]` | Global Tables v2: one active read/write replica per listed region (`regionName`, per-replica `kmsKeyArn` reference, `pointInTimeRecovery`, `deletionProtectionEnabled`, `propagateTags`, `consistencyMode`). Requires streams with `NEW_AND_OLD_IMAGES`. |
+| `replicas[].consistencyMode` | `string` | `EVENTUAL` | `EVENTUAL` (classic global tables) or `STRONG` (Multi-Region Strong Consistency: exactly two STRONG replicas, or one plus the witness). |
+| `globalTableWitness` | `object` | — | The MRSC witness region -- stores replicated writes for quorum but serves no reads or writes. Must accompany exactly one `STRONG` replica. |
+
+### Create Sources (mutually exclusive)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `restoreSourceName` | `string` | Create by point-in-time restore of a same-account, same-region table (with `restoreDateTime` XOR `restoreToLatestTime`). Key schema is inherited from the source. |
+| `restoreSourceTableArn` | `string` | The cross-region / cross-account point-in-time restore form. |
+| `restoreBackupArn` | `string` | Create by restoring an on-demand or AWS Backup backup. |
+| `importTable` | `object` | Seed a brand-new table from S3 (`s3Bucket` reference, `inputFormat` `CSV`/`DYNAMODB_JSON`/`ION`, optional compression and CSV options) -- billed as a one-time import. |
+
+### Governance
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `resourcePolicy` | `string` | — | A resource-based IAM policy document (JSON) attached to the table -- cross-account access without role assumption. |
+| `kinesisStreamingDestination` | `object` | — | Streams item-level change data into a Kinesis Data Stream (`streamArn` reference; optional timestamp precision). One destination per table. |
+| `contributorInsights` | `object` | — | `enabled`, optional `mode` (`ACCESSED_AND_THROTTLED_KEYS` or `THROTTLED_KEYS`), and `gsiIndexNames` that also get insights. |
 
 ## Examples
 
-### On-Demand Table with Composite Key
-
-A table using pay-per-request billing with a partition key and sort key:
+### On-Demand Table with Composite Key and Spend Ceiling
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsDynamodb
 metadata:
   name: orders-table
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsDynamodb.orders-table
 spec:
   region: us-east-1
   billingMode: PAY_PER_REQUEST
@@ -136,87 +145,18 @@ spec:
       keyType: HASH
     - attributeName: orderId
       keyType: RANGE
+  onDemandThroughput:
+    maxReadRequestUnits: 10000
+    maxWriteRequestUnits: 5000
 ```
 
-### Provisioned Table with TTL
-
-A table with explicit read/write capacity and TTL expiration:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsDynamodb
-metadata:
-  name: sessions-table
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsDynamodb.sessions-table
-spec:
-  region: us-east-1
-  billingMode: PROVISIONED
-  provisionedThroughput:
-    readCapacityUnits: 10
-    writeCapacityUnits: 5
-  attributeDefinitions:
-    - name: sessionId
-      type: S
-  keySchema:
-    - attributeName: sessionId
-      keyType: HASH
-  ttl:
-    enabled: true
-    attributeName: expiresAt
-```
-
-### Table with Global Secondary Index
-
-An on-demand table with a GSI for querying by an alternate key:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsDynamodb
-metadata:
-  name: users-table
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsDynamodb.users-table
-spec:
-  region: us-east-1
-  billingMode: PAY_PER_REQUEST
-  attributeDefinitions:
-    - name: userId
-      type: S
-    - name: email
-      type: S
-  keySchema:
-    - attributeName: userId
-      keyType: HASH
-  globalSecondaryIndexes:
-    - name: email-index
-      keySchema:
-        - attributeName: email
-          keyType: HASH
-      projection:
-        type: ALL
-```
-
-### Production Table with Streams and Encryption
-
-A fully configured production table with DynamoDB Streams, customer-managed encryption, point-in-time recovery, and deletion protection:
+### Production Table with Customer-Managed Encryption and Insights
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsDynamodb
 metadata:
   name: audit-log
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsDynamodb.audit-log
 spec:
   region: us-east-1
   billingMode: PAY_PER_REQUEST
@@ -227,8 +167,6 @@ spec:
       type: S
     - name: eventType
       type: S
-    - name: timestamp
-      type: N
   keySchema:
     - attributeName: pk
       keyType: HASH
@@ -239,8 +177,6 @@ spec:
       keySchema:
         - attributeName: eventType
           keyType: HASH
-        - attributeName: timestamp
-          keyType: RANGE
       projection:
         type: INCLUDE
         nonKeyAttributes:
@@ -248,57 +184,98 @@ spec:
           - action
   streamEnabled: true
   streamViewType: NEW_AND_OLD_IMAGES
-  pointInTimeRecoveryEnabled: true
+  pointInTimeRecovery:
+    enabled: true
   serverSideEncryption:
     enabled: true
-    kmsKeyArn: arn:aws:kms:us-east-1:123456789012:key/abcd-1234-efgh-5678
-  tableClass: STANDARD
+    kmsKeyArn:
+      valueFrom:
+        kind: AwsKmsKey
+        name: audit-log-key
+        fieldPath: status.outputs.key_arn
   deletionProtectionEnabled: true
-  contributorInsightsEnabled: true
+  contributorInsights:
+    enabled: true
+    gsiIndexNames:
+      - event-type-index
 ```
 
-### Provisioned Table with GSI Throughput
+### Global Table with Strong Consistency
 
-When using `PROVISIONED` billing, each GSI must also specify its own throughput:
+Two STRONG replicas give synchronous multi-region writes; swap one replica for `globalTableWitness` for the cheaper witness topology:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsDynamodb
 metadata:
-  name: products-table
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsDynamodb.products-table
+  name: payments-ledger
 spec:
   region: us-east-1
-  billingMode: PROVISIONED
-  provisionedThroughput:
-    readCapacityUnits: 50
-    writeCapacityUnits: 25
+  billingMode: PAY_PER_REQUEST
   attributeDefinitions:
-    - name: productId
+    - name: pk
       type: S
-    - name: category
-      type: S
-    - name: price
-      type: N
   keySchema:
-    - attributeName: productId
+    - attributeName: pk
       keyType: HASH
-  globalSecondaryIndexes:
-    - name: category-price-index
-      keySchema:
-        - attributeName: category
-          keyType: HASH
-        - attributeName: price
-          keyType: RANGE
-      projection:
-        type: ALL
-      provisionedThroughput:
-        readCapacityUnits: 20
-        writeCapacityUnits: 10
+  streamEnabled: true
+  streamViewType: NEW_AND_OLD_IMAGES
+  replicas:
+    - regionName: us-east-2
+      consistencyMode: STRONG
+    - regionName: us-west-2
+      consistencyMode: STRONG
+```
+
+### Change-Data Fan-Out to Kinesis
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsDynamodb
+metadata:
+  name: events-table
+spec:
+  region: us-east-1
+  billingMode: PAY_PER_REQUEST
+  attributeDefinitions:
+    - name: pk
+      type: S
+  keySchema:
+    - attributeName: pk
+      keyType: HASH
+  kinesisStreamingDestination:
+    streamArn:
+      valueFrom:
+        kind: AwsKinesisStream
+        name: events-cdc
+        fieldPath: status.outputs.stream_arn
+```
+
+### Seed a Table from S3
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsDynamodb
+metadata:
+  name: catalog-table
+spec:
+  region: us-east-1
+  billingMode: PAY_PER_REQUEST
+  attributeDefinitions:
+    - name: sku
+      type: S
+  keySchema:
+    - attributeName: sku
+      keyType: HASH
+  importTable:
+    s3Bucket:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: catalog-seed-data
+        fieldPath: status.outputs.bucket_id
+    s3KeyPrefix: exports/catalog/
+    inputFormat: DYNAMODB_JSON
+    inputCompressionType: GZIP
 ```
 
 ## Stack Outputs
@@ -307,14 +284,16 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `table_name` | `string` | Name of the created DynamoDB table |
-| `table_arn` | `string` | ARN of the DynamoDB table |
+| `table_name` | `string` | Name of the DynamoDB table -- what SDK calls and IAM policies reference |
+| `table_arn` | `string` | ARN of the table -- the join key for policies and cross-service integrations |
 | `table_id` | `string` | Provider-assigned table ID |
-| `stream_arn` | `string` | Stream ARN, populated when `streamEnabled` is `true` |
+| `stream_arn` | `string` | Stream ARN, populated when `streamEnabled` is `true` -- what Lambda event-source mappings attach to |
 | `stream_label` | `string` | Stream label, populated when `streamEnabled` is `true` |
 
 ## Related Components
 
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides a customer-managed KMS key for server-side encryption
-- [AwsIamRole](/docs/catalog/aws/iam-role) — creates IAM roles with policies for DynamoDB table access
-- [AwsLambda](/docs/catalog/aws/lambda) — can be triggered by DynamoDB Streams events
+- [AwsKmsKey](/docs/catalog/aws/kms-key) — customer-managed encryption keys for the table and its replicas
+- [AwsKinesisStream](/docs/catalog/aws/kinesis-data-stream) — receives the table's item-level change data
+- [AwsS3Bucket](/docs/catalog/aws/s3-bucket) — holds source data for table imports
+- [AwsIamRole](/docs/catalog/aws/iam-role) — IAM roles with policies for table access
+- [AwsLambda](/docs/catalog/aws/lambda) — triggered by DynamoDB Streams events

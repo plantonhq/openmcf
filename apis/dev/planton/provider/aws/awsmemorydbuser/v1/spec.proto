@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsmemorydbuser.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/options/options.proto";
+
+// AwsMemorydbUserSpec defines the desired configuration for an AWS MemoryDB
+// user — one identity in MemoryDB's Access Control List (ACL) authentication
+// system.
+//
+// MemoryDB has exactly one authentication model: every cluster attaches an
+// ACL, and an ACL is a set of users. There is no AUTH-token mode and no
+// security-group-only mode — if an application should reach a MemoryDB
+// cluster with credentials, a user is how that identity exists. Each user
+// carries a Redis ACL access string scoping which commands and keys it may
+// touch, so per-application least-privilege access is the natural shape:
+// one user per application, grouped into ACLs (AwsMemorydbAcl), with the
+// ACL attached to the cluster.
+//
+// The user's name — the identity clients present in the AUTH command and the
+// identifier ACLs reference — is taken from `metadata.name`. Unlike
+// ElastiCache (where a user has a separate id and a reusable user name),
+// MemoryDB has a single flat user name that IS the identity: it must be
+// unique in the region and is create-time immutable, so renaming means
+// replacement.
+//
+// Notes:
+// - AWS caps the user name at 40 characters; longer `metadata.name` values
+//   are rejected by AWS at create time.
+// - `access_string` and the authentication mode update in place — tightening
+//   permissions or rotating passwords never recreates the user.
+// - Credentials, region, and deployment workflow live outside this spec in
+//   stack inputs.
+message AwsMemorydbUserSpec {
+  // The AWS region where the user is created. MemoryDB users are regional
+  // resources — an ACL can only contain users from its own region.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Redis ACL access string scoping what this user may do — the same syntax
+  // as the Redis ACL SETUSER rule list. Composed of switches ("on"/"off"
+  // enables or disables the user), key patterns ("~app1:*" grants access to
+  // matching keys, "~*" to all keys), and command categories ("+@read"
+  // grants the read category, "+@all" everything, "-@dangerous" subtracts
+  // the dangerous category).
+  //
+  // Common shapes:
+  //   "on ~* +@all"                — full access (an admin user)
+  //   "on ~app1:* +@read +@write"  — read/write scoped to one key prefix
+  //   "on ~* +@read -@dangerous"   — read-only, no admin commands
+  //
+  // Updates apply in place — a tightened access string takes effect on new
+  // connections without recreating the user.
+  string access_string = 2 [(buf.validate.field).required = true];
+
+  // How clients prove they are this user. Exactly one authentication type,
+  // with passwords carried inline only for the "password" type.
+  AwsMemorydbUserAuthenticationMode authentication_mode = 3 [(buf.validate.field).required = true];
+}
+
+// AwsMemorydbUserAuthenticationMode selects how a client authenticates as
+// this user. MemoryDB accepts exactly two mechanisms at create/update time;
+// the type discriminates which one is in effect, and only the "password"
+// type carries credential material. (MemoryDB has no "no-password-required"
+// user type — unauthenticated access exists only through the built-in
+// open-access ACL, never through a user.)
+message AwsMemorydbUserAuthenticationMode {
+  // Authentication mechanism. Values:
+  //
+  // - "password": the client presents one of the passwords below in the AUTH
+  //   command. Two passwords may be set simultaneously so credentials rotate
+  //   with zero downtime (add the new password, roll clients, remove the old).
+  //
+  // - "iam": the client signs a short-lived token with its AWS IAM identity —
+  //   no long-lived secret anywhere. AWS requires TLS on the cluster for
+  //   IAM-authenticated connections, and the IAM principal needs
+  //   `memorydb:Connect` on both the user ARN and the cluster ARN.
+  string type = 1 [(buf.validate.field).required = true];
+
+  // Passwords for the "password" authentication type. One or two entries,
+  // each 16–128 characters; two entries enable zero-downtime rotation.
+  // Must be empty for the "iam" type.
+  repeated string passwords = 2 [
+    (dev.planton.shared.options.sensitive) = true,
+    (buf.validate.field).repeated = {
+      max_items: 2
+      items: {
+        string: {
+          min_len: 16
+          max_len: 128
+        }
+      }
+    }
+  ];
+
+  // type valid values.
+  option (buf.validate.message).cel = {
+    id: "auth_type_valid_values"
+    message: "authentication type must be 'password' or 'iam' — MemoryDB users have no passwordless type"
+    expression: "this.type in ['password', 'iam']"
+  };
+
+  // password type requires at least one password.
+  option (buf.validate.message).cel = {
+    id: "password_type_requires_passwords"
+    message: "provide 1 or 2 passwords when the authentication type is 'password'"
+    expression: "this.type != 'password' || this.passwords.size() >= 1"
+  };
+
+  // iam type must not carry passwords.
+  option (buf.validate.message).cel = {
+    id: "passwords_only_for_password_type"
+    message: "passwords are only accepted when the authentication type is 'password' — 'iam' authenticates with short-lived signed tokens instead"
+    expression: "this.type == 'password' || this.passwords.size() == 0"
+  };
+}

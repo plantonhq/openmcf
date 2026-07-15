@@ -1,10 +1,10 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapVolume
 metadata:
-  name: <REPLACE>
-  id: <REPLACE>
-  org: <REPLACE>
-  env: <REPLACE>
+  name: compliance-volume
+  id: awsfxov-compliance-volume-prod
+  org: example-org
+  env: prod
 spec:
   region: <aws-region>
   storage_virtual_machine_id:

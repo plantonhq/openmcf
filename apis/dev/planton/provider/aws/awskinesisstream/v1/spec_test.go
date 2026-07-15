@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestAwsKinesisStreamSpec(t *testing.T) {
@@ -261,10 +262,50 @@ var _ = ginkgo.Describe("AwsKinesisStreamSpec validations", func() {
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("fails when shard_level_metrics contains 'ALL' (must list individual metrics)", func() {
+	ginkgo.It("accepts 'ALL' as a shard-level metric (the provider's shorthand for every metric)", func() {
 		spec.ShardLevelMetrics = []string{"ALL"}
 		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: warm_throughput_conflicts_with_shard_count
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts warm_throughput_mib_ps on an ON_DEMAND stream", func() {
+		spec.WarmThroughputMibPs = 100
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when warm_throughput_mib_ps is combined with shard_count", func() {
+		spec.StreamMode = "PROVISIONED"
+		spec.ShardCount = 2
+		spec.WarmThroughputMibPs = 100
+		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Resource policy (no CEL — any policy document is accepted)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a resource policy document", func() {
+		policy, err := structpb.NewStruct(map[string]interface{}{
+			"Version": "2012-10-17",
+			"Statement": []interface{}{
+				map[string]interface{}{
+					"Sid":       "CrossAccountRead",
+					"Effect":    "Allow",
+					"Principal": map[string]interface{}{"AWS": "arn:aws:iam::123456789012:root"},
+					"Action":    []interface{}{"kinesis:DescribeStreamSummary", "kinesis:GetRecords"},
+					"Resource":  "*",
+				},
+			},
+		})
+		gomega.Expect(err).To(gomega.BeNil())
+		spec.ResourcePolicy = policy
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 
 	// -------------------------------------------------------------------------

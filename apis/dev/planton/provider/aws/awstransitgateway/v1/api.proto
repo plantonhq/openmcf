@@ -8,9 +8,10 @@ import "dev/planton/provider/aws/awstransitgateway/v1/stack_outputs.proto";
 import "dev/planton/shared/metadata.proto";
 
 // AwsTransitGateway represents a managed AWS Transit Gateway deployed via
-// Planton. This resource provisions a regional networking hub with one or
-// more VPC attachments, enabling hub-and-spoke or full-mesh connectivity
-// between VPCs.
+// Planton. This resource provisions the regional networking hub that VPC
+// attachments, route tables, VPN connections, and Direct Connect gateways
+// compose onto, enabling hub-and-spoke or full-mesh connectivity between
+// VPCs.
 message AwsTransitGateway {
   // api-version must be set to "aws.planton.dev/v1".
   string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1"];
@@ -22,8 +23,8 @@ message AwsTransitGateway {
   // and must pass standard validations for resource naming.
   dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
 
-  // spec holds the core configuration defining how the Transit Gateway and
-  // its VPC attachments are provisioned.
+  // spec holds the core configuration defining how the Transit Gateway is
+  // provisioned.
   AwsTransitGatewaySpec spec = 4 [(buf.validate.field).required = true];
 
   // status holds runtime or post-deployment information.

@@ -19,7 +19,7 @@ metadata:
     e2e-component: azuremonitormetricalert
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azuremonitormetricalert/v1/e2e/metric-target-account.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azuremonitormetricalert/v1/e2e/metric-target-account.yaml"
   tags:
     - planton-e2e
 spec:

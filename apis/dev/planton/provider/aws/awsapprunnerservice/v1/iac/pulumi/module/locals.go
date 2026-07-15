@@ -9,27 +9,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals mirrors Terraform-style locals: the target resource and the identity
+// tag set applied to the service.
 type Locals struct {
 	AwsAppRunnerService *awsapprunnerservicev1.AwsAppRunnerService
 	AwsTags             map[string]string
 }
 
-func initializeLocals(ctx *pulumi.Context, in *awsapprunnerservicev1.AwsAppRunnerServiceStackInput) *Locals {
-	locals := &Locals{
-		AwsAppRunnerService: in.Target,
-	}
+func initializeLocals(ctx *pulumi.Context, stackInput *awsapprunnerservicev1.AwsAppRunnerServiceStackInput) *Locals {
+	locals := &Locals{}
+	locals.AwsAppRunnerService = stackInput.Target
 
-	if in.Target != nil {
-		locals.AwsTags = map[string]string{
-			awstagkeys.Resource:     strconv.FormatBool(true),
-			awstagkeys.Organization: in.Target.Metadata.Org,
-			awstagkeys.Environment:  in.Target.Metadata.Env,
-			awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsAppRunnerService.String(),
-			awstagkeys.ResourceId:   in.Target.Metadata.Id,
-			awstagkeys.Name:         in.Target.Metadata.Name,
-		}
-	} else {
-		locals.AwsTags = map[string]string{}
+	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsAppRunnerService.Metadata.Name,
+		awstagkeys.Resource:     strconv.FormatBool(true),
+		awstagkeys.Organization: locals.AwsAppRunnerService.Metadata.Org,
+		awstagkeys.Environment:  locals.AwsAppRunnerService.Metadata.Env,
+		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsAppRunnerService.String(),
+		awstagkeys.ResourceId:   locals.AwsAppRunnerService.Metadata.Id,
 	}
 
 	return locals

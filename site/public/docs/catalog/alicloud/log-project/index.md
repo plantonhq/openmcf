@@ -32,7 +32,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudLogProject
 metadata:
   name: my-log-project
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -88,7 +88,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudLogProject
 metadata:
   name: empty-project
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -107,7 +107,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudLogProject
 metadata:
   name: dev-logging
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudLogProject
 metadata:
   name: prod-logging
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -171,7 +171,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudLogProject
 metadata:
   name: archive-project
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

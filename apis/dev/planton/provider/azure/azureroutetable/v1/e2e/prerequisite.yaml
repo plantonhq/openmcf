@@ -1,6 +1,6 @@
 # AzureRouteTable install profile used as a fixture by scenarios that prove
 # the subnet-side attach seam (declared via the
-# planton.dev/e2e-extra-prerequisites annotation -- attaching a route table
+# planton.dev/e2e-prerequisites annotation -- attaching a route table
 # is OPTIONAL for a subnet, so it is never a registry prerequisite). The
 # harness deploys this document (via the table's Pulumi module) after the
 # fixture resource group and captures its outputs -- route_table_id in

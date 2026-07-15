@@ -1,112 +1,71 @@
 variable "metadata" {
-  description = "Resource metadata from the manifest"
+  description = "Cloud resource metadata"
   type = object({
     name = string
-    id   = string
-    org  = string
-    env  = string
-    labels = object({
-      key   = string
-      value = string
-    })
-    annotations = object({
-      key   = string
-      value = string
-    })
-    tags = list(string)
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "AwsDocumentDbSpec configuration"
+  description = "AwsDocumentDb specification"
   type = object({
-    # The AWS region where the resource will be created.
     region = string
-
-    # Subnets for the DB subnet group
-    subnets = list(object({
-      value = string
+    subnet_ids = optional(list(string), [])
+    db_subnet_group_name = optional(string, "")
+    security_group_ids = optional(list(string), [])
+    availability_zones = optional(list(string), [])
+    network_type = optional(string, "")
+    port = optional(number, 0)
+    engine_version = optional(string, "")
+    storage_type = optional(string, "")
+    instances = optional(list(object({
+      name = string
+      instance_class = string
+      promotion_tier = optional(number, 0)
+      availability_zone = optional(string, "")
+      auto_minor_version_upgrade = optional(bool)
+      performance_insights_enabled = optional(bool, false)
+      performance_insights_kms_key_id = optional(string, "")
+      preferred_maintenance_window = optional(string, "")
+      ca_cert_identifier = optional(string, "")
+      copy_tags_to_snapshot = optional(bool, false)
+    })), [])
+    serverless_v2_scaling = optional(object({
+      min_capacity = number
+      max_capacity = number
     }))
-
-    # Existing DB subnet group (alternative to subnets)
-    db_subnet_group = object({
-      value = string
-    })
-
-    # Security groups to associate with the cluster
-    security_groups = list(object({
-      value = string
+    master_username = optional(string, "")
+    manage_master_user_password = optional(bool, false)
+    master_password = optional(string, "")
+    storage_encrypted = optional(bool, false)
+    kms_key_id = optional(string, "")
+    backup_retention_period = optional(number, 0)
+    preferred_backup_window = optional(string, "")
+    preferred_maintenance_window = optional(string, "")
+    skip_final_snapshot = optional(bool, false)
+    final_snapshot_identifier = optional(string, "")
+    deletion_protection = optional(bool, false)
+    enabled_cloudwatch_logs_exports = optional(list(string), [])
+    snapshot_identifier = optional(string, "")
+    restore_to_point_in_time = optional(object({
+      source_cluster_identifier = string
+      restore_to_time = optional(string, "")
+      use_latest_restorable_time = optional(bool, false)
+      restore_type = optional(string, "")
     }))
-
-    # IPv4 CIDRs to allow ingress
-    allowed_cidrs = list(string)
-
-    # VPC
-    vpc = object({
+    global_cluster_identifier = optional(string, "")
+    db_cluster_parameter_group_name = optional(string, "")
+    parameters = optional(list(object({
+      name = string
       value = string
-    })
-
-    # DocumentDB engine version (e.g., "4.0.0", "5.0.0")
-    engine_version = string
-
-    # Connection port (default: 27017)
-    port = number
-
-    # Master username
-    master_username = string
-
-    # Master password
-    master_password = string
-
-    # Number of instances in the cluster
-    instance_count = number
-
-    # Instance class (e.g., "db.r6g.large")
-    instance_class = string
-
-    # Enable storage encryption
-    storage_encrypted = bool
-
-    # KMS key for storage encryption
-    kms_key = object({
-      value = string
-    })
-
-    # Backup retention period in days (1-35)
-    backup_retention_period = number
-
-    # Daily backup window (hh24:mi-hh24:mi)
-    preferred_backup_window = string
-
-    # Weekly maintenance window (ddd:hh24:mi-ddd:hh24:mi)
-    preferred_maintenance_window = string
-
-    # Enable deletion protection
-    deletion_protection = bool
-
-    # Skip final snapshot on deletion
-    skip_final_snapshot = bool
-
-    # Final snapshot identifier
-    final_snapshot_identifier = string
-
-    # CloudWatch logs to export (audit, profiler)
-    enabled_cloudwatch_logs_exports = list(string)
-
-    # Apply modifications immediately
-    apply_immediately = bool
-
-    # Enable automatic minor version upgrades
-    auto_minor_version_upgrade = bool
-
-    # Cluster parameter group name
-    cluster_parameter_group_name = string
-
-    # Cluster parameters
-    cluster_parameters = list(object({
-      name         = string
-      value        = string
-      apply_method = string
-    }))
+      apply_method = optional(string, "")
+    })), [])
+    apply_immediately = optional(bool, false)
+    allow_major_version_upgrade = optional(bool, false)
   })
 }

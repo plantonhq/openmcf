@@ -31,15 +31,17 @@ Configuring AWS ECR repositories can be intricate due to numerous security consi
 
 #### Security Configuration
 
-- **Image Immutability**: Toggle to prevent tag overwrites, ensuring that `my-app:v1.0` always refers to exactly one image build.
+- **Tag Mutability**: Four modes — `MUTABLE`, `IMMUTABLE`, and the exclusion-filtered pair (`IMMUTABLE_WITH_EXCLUSION` / `MUTABLE_WITH_EXCLUSION`) that freeze release tags while floating tags like `latest` stay movable, so `my-app:v1.0` always refers to exactly one image build.
 - **Image Scanning**: Enable automatic vulnerability scanning when images are pushed (defaults to enabled for security).
-- **Encryption**: Choose between AWS-managed encryption (AES256) or customer-managed KMS keys for compliance requirements.
+- **Encryption**: Choose AWS-managed encryption (AES256), a customer-managed KMS key, or dual-layer KMS_DSSE for the strictest data-at-rest regimes. The whole encryption configuration is create-time.
 
 #### Cost Control
 
-- **Lifecycle Policies**: Simplified configuration for automatic image expiration:
-  - **Expire Untagged Images**: Remove intermediate build layers and failed builds after N days.
-  - **Max Image Count**: Keep only the most recent N images to prevent unbounded storage growth.
+- **Structured Lifecycle Rules**: The full ECR lifecycle rule model — priority-ordered rules selecting images by tag state (`tagged` with prefix or wildcard-pattern lists, `untagged`, `any`) and expiring them by age (`sinceImagePushed`) or count (`imageCountMoreThan`) — validated at authoring time so a policy AWS would reject never reaches an apply.
+
+#### Access Control
+
+- **Repository Policy**: A folded resource-based IAM policy for cross-account pulls and service principals (e.g. AWS Lambda pulling container images).
 
 #### Safety Features
 
@@ -67,7 +69,7 @@ This API resource encodes production best practices identified through industry 
 - **Simplified Deployment**: Abstracts the complexities of AWS ECR configurations, lifecycle policies, and scanning into an easy-to-use API.
 - **Secure Defaults**: Production-ready configurations out of the box - image scanning enabled, encryption enforced, immutability supported.
 - **Consistency**: Ensures all ECR repositories adhere to organizational standards for security, compliance, and cost control.
-- **No JSON Complexity**: Define lifecycle policies with simple fields like `expire_untagged_after_days` instead of verbose JSON syntax.
+- **No JSON Complexity**: Define lifecycle policies as structured, validated rule objects instead of hand-written policy JSON — constraint violations fail at authoring time, not at apply.
 - **Compliance Ready**: Support for KMS encryption with customer-managed keys for HIPAA, PCI-DSS, and other compliance regimes.
 - **Cost Efficiency**: Automated lifecycle policies prevent storage costs from growing indefinitely due to CI/CD pipelines creating thousands of images.
 - **Production Stability**: Immutable tags prevent the "worked yesterday" problem where production images get accidentally overwritten.

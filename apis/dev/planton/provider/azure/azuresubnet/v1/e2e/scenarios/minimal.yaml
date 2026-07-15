@@ -24,7 +24,7 @@ metadata:
     e2e-component: azuresubnet
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "AzureRouteTable, AzureNetworkSecurityGroup, AzureNatGateway"
+    planton.dev/e2e-prerequisites: "AzureRouteTable, AzureNetworkSecurityGroup, AzureNatGateway"
   tags:
     - planton-e2e
 spec:

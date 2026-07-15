@@ -1,0 +1,61 @@
+# Full-surface AwsKinesisStream scenario: ON_DEMAND mode with extended
+# retention, KMS encryption via the AWS-managed Kinesis key (no KMS
+# prerequisite needed), the 10 MiB large-record surface (maxRecordSizeInKib
+# above the 1 MiB default), shard-level enhanced monitoring, and the folded
+# resource policy (its own provider resource, so the satellite materializes
+# live). The policy grants the test account's own root principal
+# DescribeStreamSummary only (Kinesis rejects wildcard principals in
+# resource policies, so the grant names the E2E account explicitly -- the
+# same account every fixture in this tree is coupled to), and its
+# aws:PrincipalAccount condition value carries a literal ${...} sequence --
+# proving the tfvars template-introducer escaping end to end, the same trick
+# the DynamoDB lane uses. forceNew fields are all set at create, so the lane
+# is a single deploy -> verify -> destroy pass.
+#
+# Deliberately not composed here: warm_throughput_mib_ps (CreateStream
+# rejects it unless the account carries the minimum-throughput billing
+# commitment entitlement -- the test account does not, and the live
+# rejection itself proved the wiring reaches AWS; the field is covered by
+# CEL spec tests and the offline gate), a customer-managed KMS key (the
+# AWS-managed alias proves the same encryption wiring without a
+# prerequisite), and PROVISIONED mode (shard_count is proven by spec tests).
+apiVersion: aws.planton.dev/v1
+kind: AwsKinesisStream
+metadata:
+  name: planton-oss-e2e-awskinesisstream-full
+  id: planton-oss-e2e-awskinesisstream-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awskinesisstream
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  streamMode: ON_DEMAND
+  retentionPeriodHours: 48
+  kmsKeyId:
+    value: alias/aws/kinesis
+  maxRecordSizeInKib: 2048
+  shardLevelMetrics:
+    - IncomingBytes
+    - IteratorAgeMilliseconds
+  enforceConsumerDeletion: true
+  resourcePolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowOwnAccountDescribe
+        Effect: Allow
+        Principal:
+          AWS: arn:aws:iam::859666865785:root
+        Action: kinesis:DescribeStreamSummary
+        # Kinesis requires the policy's Resource to equal the stream ARN
+        # exactly (no wildcards) -- deterministic from region + account +
+        # metadata.name, so it can be spelled out statically.
+        Resource: arn:aws:kinesis:us-west-2:859666865785:stream/planton-oss-e2e-awskinesisstream-full
+        Condition:
+          StringEquals:
+            aws:PrincipalAccount: "${aws:ResourceAccount}"

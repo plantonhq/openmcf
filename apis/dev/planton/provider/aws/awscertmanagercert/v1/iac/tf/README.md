@@ -1,9 +1,13 @@
 # Terraform Module to Deploy AwsCertManagerCert
 
-This module provisions an AWS Certificate Manager (ACM) certificate with DNS validation,
-creates Route53 DNS records for validation, and completes certificate validation.
+This module provisions an AWS Certificate Manager (ACM) certificate in any of
+ACM's three creation modes — requested (Amazon-issued, DNS or EMAIL validated),
+imported (bring-your-own PEM material), or private (issued by an ACM-PCA
+authority). For DNS-validated certificates with a managed Route53 zone it also
+creates the validation CNAME records and (by default) waits for issuance.
 
-Generated `variables.tf` reflects the proto schema for `AwsCertManagerCert`.
+Generated `variables.tf` reflects the proto schema for `AwsCertManagerCert`
+(generator-owned; regenerate with the variables.tf drift test, never hand-edit).
 
 ## Usage
 
@@ -18,6 +22,5 @@ planton tofu destroy --manifest hack/manifest.yaml --auto-approve
 
 **Note**: Credentials are provided via stack input (CLI), not in the manifest `spec`.
 
-For more examples, see [`examples.md`](./examples.md) and [`hack/manifest.yaml`](../hack/manifest.yaml).
-
-
+For more examples, see [`hack/manifest.yaml`](../hack/manifest.yaml) and the
+component presets.

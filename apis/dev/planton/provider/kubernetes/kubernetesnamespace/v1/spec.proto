@@ -3,7 +3,6 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetesnamespace.v1;
 
 import "buf/validate/validate.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 
 /**
  * **KubernetesNamespaceSpec** defines the configuration for creating and managing a Kubernetes namespace.
@@ -16,9 +15,6 @@ import "dev/planton/provider/kubernetes/target_cluster.proto";
  * flexibility for advanced use cases.
  */
 message KubernetesNamespaceSpec {
-  // The Kubernetes cluster in which the namespace should be created
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   /**
    * **KubernetesNamespacePodSecurityStandard** defines Pod Security Standards enforcement.
    * These are Kubernetes-native policies that enforce security best practices.

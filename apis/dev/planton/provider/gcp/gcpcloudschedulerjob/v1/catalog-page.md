@@ -26,7 +26,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudSchedulerJob
 metadata:
   name: my-cron-job
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -123,7 +123,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudSchedulerJob
 metadata:
   name: daily-report
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -163,7 +163,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudSchedulerJob
 metadata:
   name: pipeline-trigger
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -195,7 +195,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudSchedulerJob
 metadata:
   name: composed-scheduler
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

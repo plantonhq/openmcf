@@ -33,7 +33,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSqsQueue
 metadata:
   name: my-queue
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -80,6 +80,8 @@ All other configuration is optional with AWS defaults.
 | `kmsDataKeyReusePeriodSeconds` | `int32` | AWS: 300 | Duration in seconds SQS reuses a data key before calling KMS again (60–86400). Only relevant when `kmsKeyId` is set. |
 | `sqsManagedSseEnabled` | `bool` | `false` | Enable SQS-managed server-side encryption (SSE-SQS). Mutually exclusive with `kmsKeyId`. |
 | `policy` | `Struct` | — | IAM access policy document controlling which principals can perform actions on this queue. Expressed as a JSON structure in YAML. |
+| `redriveAllowPolicy.redrivePermission` | `string` | AWS: `allowAll` | Which SOURCE queues may use this queue as their DLQ: `"allowAll"`, `"denyAll"`, or `"byQueue"`. |
+| `redriveAllowPolicy.sourceQueueArns` | `StringValueOrRef[]` | — | With `"byQueue"`, the 1–10 source queues permitted to redrive into this queue. Can reference AwsSqsQueue via `valueFrom`. Must be empty for the other modes. |
 
 ## Examples
 
@@ -92,7 +94,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSqsQueue
 metadata:
   name: payment-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +123,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSqsQueue
 metadata:
   name: task-queue
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +145,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSqsQueue
 metadata:
   name: notifications-queue
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -19,7 +19,7 @@ metadata:
     # registry prerequisite: namespace names are globally unique and
     # sequential subtests that destroy and recreate the same name hang
     # on the post-delete hold.
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azureservicebusqueue/v1/e2e/fixture-namespace.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azureservicebusqueue/v1/e2e/fixture-namespace.yaml"
   tags:
     - planton-e2e
 spec:

@@ -4,17 +4,31 @@ metadata:
   name: my-full-tunnel-vpn
 spec:
   region: <aws-region>
-  description: Full-tunnel VPN routing all traffic through VPN
-  vpcId:
-    value: "<vpc-id>"
-  subnets:
-    - value: "<private-subnet-id>"
-  clientCidrBlock: 10.100.0.0/22
-  authenticationType: certificate
+  description: Full-tunnel VPN routing all client traffic through AWS
+  authenticationOptions:
+    - type: certificate-authentication
+      rootCertificateChainArn:
+        value: <client-ca-certificate-arn>
   serverCertificateArn:
-    value: "<server-certificate-arn>"
-  cidrAuthorizationRules:
-    - 0.0.0.0/0
-  disableSplitTunnel: true  # Full-tunnel: all client traffic routes through VPN
-  vpnPort: 443  # default from spec
-  transportProtocol: tcp  # recommended_default from spec
+    value: <server-certificate-arn>
+  clientCidrBlock: 10.100.0.0/22
+  # Full tunnel (AWS's default): ALL client traffic enters the VPN. The
+  # 0.0.0.0/0 route + rule below pair with a NAT-ed subnet so clients keep
+  # internet access.
+  splitTunnel: false
+  vpcId:
+    value: <vpc-id>
+  subnetIds:
+    - value: <nat-routed-private-subnet-id>
+  authorizationRules:
+    - targetNetworkCidr: 0.0.0.0/0
+      authorizeAllGroups: true
+      description: internet egress through the VPN
+  routes:
+    - destinationCidrBlock: 0.0.0.0/0
+      targetSubnetId:
+        value: <nat-routed-private-subnet-id>
+      description: full-tunnel internet egress via the NAT-ed subnet
+  connectionLog:
+    cloudwatchLogGroup:
+      value: <vpn-log-group-name>

@@ -1,0 +1,8 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: Broken Validation Fixture
+spec:
+  selector:
+    kind: platform
+  description: Hermetic fixture chart carrying one defect of each class the validator must catch.

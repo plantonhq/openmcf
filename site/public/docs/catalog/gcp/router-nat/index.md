@@ -36,7 +36,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpRouterNat
 metadata:
   name: my-nat
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -88,7 +88,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpRouterNat
 metadata:
   name: uscentral1-nat
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -111,7 +111,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpRouterNat
 metadata:
   name: prod-nat
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpRouterNat
 metadata:
   name: audit-nat
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -165,7 +165,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpRouterNat
 metadata:
   name: ref-nat
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -1,5 +1,5 @@
 # AzurePublicIp install profile used as a fixture by scenarios that prove
-# address associations (declared via the planton.dev/e2e-extra-prerequisites
+# address associations (declared via the planton.dev/e2e-prerequisites
 # annotation -- a NAT gateway's addresses are OPTIONAL references, so this
 # is never a registry prerequisite). The harness deploys this document (via
 # the address's Pulumi module) after the fixture resource group and captures

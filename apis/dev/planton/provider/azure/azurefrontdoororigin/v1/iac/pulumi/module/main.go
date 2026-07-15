@@ -31,19 +31,23 @@ func Resources(ctx *pulumi.Context, stackInput *azurefrontdoororiginv1.AzureFron
 
 	// The origin addresses its parent by the origin group's full ARM id
 	// -- the provider derives the resource group, profile, and group
-	// names from it. ARM does not support tags on origins.
+	// names from it. ARM does not support tags on origins. host_name is
+	// a StringValueOrRef; the platform resolves valueFrom references
+	// before the module runs (e.g. a web app's default_hostname or a
+	// storage account's primary_web_host), so GetValue() is the resolved
+	// literal.
 	originArgs := &cdn.FrontdoorOriginArgs{
 		Name:                        pulumi.String(spec.OriginName),
 		CdnFrontdoorOriginGroupId:   pulumi.String(locals.OriginGroupId),
-		HostName:                    pulumi.String(spec.HostName),
+		HostName:                    pulumi.String(spec.HostName.GetValue()),
 		CertificateNameCheckEnabled: pulumi.Bool(certificateNameCheckEnabled),
 	}
 
 	// Optional dials are sent only when set: Azure's own defaults (ports
 	// 80/443, priority 1, weight 500, enabled) apply when omitted, and
 	// the platform materializes the documented defaults centrally.
-	if spec.OriginHostHeader != nil {
-		originArgs.OriginHostHeader = pulumi.String(spec.GetOriginHostHeader())
+	if spec.OriginHostHeader != nil && spec.OriginHostHeader.GetValue() != "" {
+		originArgs.OriginHostHeader = pulumi.String(spec.OriginHostHeader.GetValue())
 	}
 	if spec.HttpPort != nil {
 		originArgs.HttpPort = pulumi.Int(int(spec.GetHttpPort()))

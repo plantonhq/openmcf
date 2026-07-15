@@ -116,7 +116,7 @@ var _ = ginkgo.Describe("AwsServerlessElasticacheSpec validations", func() {
 	})
 
 	ginkgo.It("accepts Redis user group", func() {
-		spec.UserGroupId = "my-user-group"
+		spec.UserGroupId = strRef("my-user-group")
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
@@ -138,7 +138,7 @@ var _ = ginkgo.Describe("AwsServerlessElasticacheSpec validations", func() {
 		spec.KmsKeyId = strRef("arn:aws:kms:us-east-1:123456789012:key/my-key")
 		spec.DailySnapshotTime = "03:00"
 		spec.SnapshotRetentionLimit = 14
-		spec.UserGroupId = "app-users"
+		spec.UserGroupId = strRef("app-users")
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
@@ -243,7 +243,7 @@ var _ = ginkgo.Describe("AwsServerlessElasticacheSpec validations", func() {
 
 	ginkgo.It("fails when user_group_id is set for memcached", func() {
 		spec.Engine = "memcached"
-		spec.UserGroupId = "my-group"
+		spec.UserGroupId = strRef("my-group")
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
@@ -261,7 +261,7 @@ var _ = ginkgo.Describe("AwsServerlessElasticacheSpec validations", func() {
 
 	ginkgo.It("accepts user_group_id for valkey", func() {
 		spec.Engine = "valkey"
-		spec.UserGroupId = "valkey-users"
+		spec.UserGroupId = strRef("valkey-users")
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})

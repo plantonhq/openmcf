@@ -1,6 +1,6 @@
 # Production Immutable ECR Repository
 
-This preset creates an ECR repository with immutable image tags, automatic vulnerability scanning, and a lifecycle policy that balances cost control with rollback capability. Immutable tags ensure that production image references are stable and cannot be accidentally overwritten by a CI/CD pipeline.
+This preset creates an ECR repository where release tags are frozen forever while the floating `latest` tag stays movable, with automatic vulnerability scanning and lifecycle rules that balance cost control with rollback capability. Exclusion-filtered immutability gives production the best of both worlds: `v1.2.3` can never be overwritten by a CI/CD pipeline, and `latest` keeps working as a convenience pointer.
 
 ## When to Use
 
@@ -10,11 +10,11 @@ This preset creates an ECR repository with immutable image tags, automatic vulne
 
 ## Key Configuration Choices
 
-- **Immutable tags** (`imageImmutable: true`) -- Once pushed, a tag cannot be overwritten; guarantees that `v1.2.3` always refers to the same image
-- **Scan on push** (`scanOnPush: true`) -- Automatic vulnerability scanning via Amazon Inspector when images are pushed
+- **Exclusion-filtered immutability** (`imageTagMutability: IMMUTABLE_WITH_EXCLUSION` + `latest` filter) -- Every tag is frozen once pushed, except tags matching the filters; guarantees `v1.2.3` always refers to the same image while `latest` stays movable
+- **Scan on push** (`scanOnPush: true`) -- Automatic vulnerability scanning when images are pushed
 - **AES256 encryption** (`encryptionType: AES256`) -- AWS-managed server-side encryption at rest (default, no additional cost)
-- **7-day untagged expiration** (`expireUntaggedAfterDays: 7`) -- Removes orphaned layers and failed builds quickly to control costs
-- **100 image retention** (`maxImageCount: 100`) -- Keeps recent images available for rollback; older images are automatically expired
+- **Untagged cleanup rule** (priority 1, `sinceImagePushed` 7 days) -- Removes orphaned layers and failed builds quickly to control costs
+- **Keep-last-100 rule** (priority 2, `imageCountMoreThan` 100 on `any`) -- Keeps recent images available for rollback; the `any` rule carries the highest priority, as AWS requires
 - **Force delete disabled** (`forceDelete: false`) -- Repository cannot be deleted while it contains images
 
 ## Placeholders to Replace

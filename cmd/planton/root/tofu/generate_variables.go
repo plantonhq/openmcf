@@ -1,6 +1,8 @@
 package tofu
 
 import (
+	"fmt"
+
 	"github.com/plantonhq/planton/internal/cli/flag"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/iac/tofu/generators"
@@ -61,6 +63,8 @@ func generateVariablesHandler(cmd *cobra.Command, args []string) {
 		}
 		log.Infof("Terraform variables written to file %s", outputFile)
 	} else {
-		println(variablesTfContent)
+		// fmt.Println writes to stdout; the builtin println writes to stderr,
+		// which silently breaks `> variables.tf` capture in scripts.
+		fmt.Println(variablesTfContent)
 	}
 }

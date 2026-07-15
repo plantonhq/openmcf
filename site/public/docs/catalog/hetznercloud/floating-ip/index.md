@@ -29,7 +29,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudFloatingIp
 metadata:
   name: my-fip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -76,7 +76,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudFloatingIp
 metadata:
   name: dev-fip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -97,7 +97,7 @@ metadata:
   name: mail-fip
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
@@ -121,7 +121,7 @@ metadata:
   name: web-ipv6
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
@@ -144,7 +144,7 @@ metadata:
   name: app-failover
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
@@ -171,7 +171,7 @@ metadata:
   name: app-01
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure

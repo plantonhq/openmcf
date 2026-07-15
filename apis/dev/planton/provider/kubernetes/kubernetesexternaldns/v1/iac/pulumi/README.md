@@ -81,9 +81,6 @@ target:
   metadata:
     name: external-dns-prod
   spec:
-    target_cluster:
-      kubernetes_cluster_id:
-        value: prod-gke-cluster
     # Optional: override defaults
     namespace: external-dns  # default
     kubernetes_external_dns_version: v0.19.0  # default
@@ -108,9 +105,6 @@ kind: KubernetesExternalDns
 metadata:
   name: external-dns-prod
 spec:
-  target_cluster:
-    kubernetes_cluster_id:
-      value: prod-gke-cluster
   gke:
     project_id:
       value: my-gcp-project

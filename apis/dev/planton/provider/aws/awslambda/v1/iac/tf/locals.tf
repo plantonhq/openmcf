@@ -1,50 +1,41 @@
 locals {
-  # Naming and tags
-  resource_name = coalesce(try(var.metadata.name, null), coalesce(try(var.spec.function.handler, null), "aws-lambda-function"))
-  tags          = merge({
-    "Name" = local.resource_name
-  }, try(var.metadata.labels, {}))
+  # The function name is metadata.name -- create-time immutable in AWS,
+  # and the basis both engines share so a manifest deploys identically
+  # on either.
+  function_name = var.metadata.name
 
-  # VPC networking
-  safe_subnet_ids = try(var.spec.function.vpc_config.subnet_ids, [])
-  safe_security_group_ids = try(var.spec.function.vpc_config.security_group_ids, [])
+  # Resource-identity tags match the Pulumi module key-for-key.
+  aws_tags = {
+    "Name"                     = var.metadata.name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsLambda"
+    "planton.ai/resource-id"   = var.metadata.id
+  }
 
-  # Package type and runtime/handler handling
-  package_type = coalesce(try(var.spec.function.package_type, null), "Zip")
-  is_image     = local.package_type == "Image"
-  runtime      = local.is_image ? null : coalesce(try(var.spec.function.runtime, null), "nodejs18.x")
-  handler      = local.is_image ? null : coalesce(try(var.spec.function.handler, null), "index.handler")
+  # Zip vs container image decides package_type and which code
+  # arguments are sent (CEL guarantees exactly one source is set).
+  is_image = var.spec.image_uri != ""
 
-  # Code sources
-  image_uri        = try(var.spec.function.image_uri, null)
-  s3_bucket        = try(var.spec.function.s3_bucket, null)
-  s3_key           = try(var.spec.function.s3_key, null)
-  s3_object_version = try(var.spec.function.s3_object_version, null)
+  # The log group the function writes to: the custom group from
+  # logging_config, or the AWS-default "/aws/lambda/<name>" that Lambda
+  # creates on first invocation. Exported so log-consuming resources
+  # (subscription filters, dashboards) can compose either way.
+  custom_log_group = var.spec.logging_config != null ? var.spec.logging_config.log_group : ""
+  log_group_name   = local.custom_log_group != "" && local.custom_log_group != null ? local.custom_log_group : "/aws/lambda/${local.function_name}"
 
-  # Whether we have enough inputs to create the function
-  create_function = local.is_image ? (local.image_uri != null) : (local.s3_bucket != null && local.s3_key != null)
+  # Aliases keyed by name so each materializes as its own resource and
+  # list edits update in place. CEL enforces name uniqueness.
+  aliases = { for a in coalesce(var.spec.aliases, []) : a.name => a }
 
-  # KMS for env vars
-  kms_key_arn = try(var.spec.function.kms_key_arn, null)
+  # Aliases that also pin provisioned concurrency (pre-warmed
+  # execution environments keyed by the alias qualifier).
+  provisioned_aliases = {
+    for name, a in local.aliases : name => a
+    if a.provisioned_concurrent_executions != null
+  }
 
-  # Environment variables as single key/value → convert to map(string) if present
-  env_var_object = try(var.spec.function.variables, null)
-  env_var_map    = local.env_var_object != null ? tomap({ (local.env_var_object.key) = local.env_var_object.value }) : null
-
-  # Layers
-  layer_arns = try(var.spec.function.layers, [])
-
-  # CloudWatch log group settings
-  log_retention_days = try(var.spec.cloudwatch_log_group.retention_in_days, null)
-  log_kms_key_arn    = try(var.spec.cloudwatch_log_group.kms_key_arn, null)
-
-  # IAM role toggles
-  enable_lambda_at_edge              = coalesce(try(var.spec.iam_role.lambda_at_edge_enabled, null), false)
-  enable_cloudwatch_lambda_insights  = coalesce(try(var.spec.iam_role.cloudwatch_lambda_insights_enabled, null), false)
-  custom_policy_arns                 = try(var.spec.iam_role.custom_iam_policy_arns, [])
-  ssm_parameter_names                = try(var.spec.iam_role.ssm_parameter_names, [])
-  inline_policy_json_raw             = try(var.spec.iam_role.inline_iam_policy, "")
-  inline_policy_json                 = length(trimspace(local.inline_policy_json_raw)) > 0 ? trimspace(local.inline_policy_json_raw) : null
+  # Invoke permissions keyed by statement_id (CEL enforces uniqueness).
+  invoke_permissions = { for p in coalesce(var.spec.invoke_permissions, []) : p.statement_id => p }
 }
-
-

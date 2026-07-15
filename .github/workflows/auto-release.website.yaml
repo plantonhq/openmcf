@@ -122,9 +122,14 @@ jobs:
             echo "Release ${TAG} already exists"
           else
             echo "Creating release ${TAG}..."
+            # --latest=false: component point releases carry no infra-charts/version.txt
+            # assets, so they must never move the /releases/latest pointer that chart
+            # consumers (e.g. the desktop daemon's chart seeder) resolve. Only the
+            # strict-semver orchestrated release marks latest.
             gh release create "${TAG}" \
               --title "${TAG}" \
-              --notes-file release-notes.md
+              --notes-file release-notes.md \
+              --latest=false
           fi
 
       - name: Summary

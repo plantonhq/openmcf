@@ -16,7 +16,7 @@ This preset creates an IAM role that the ECS agent assumes to pull container ima
 
 ## Placeholders to Replace
 
-This preset has no placeholders. Deploy as-is and reference the role ARN from `AwsEcsService.iam.taskExecutionRoleArn`.
+This preset has no placeholders. Deploy as-is and reference the role ARN from `AwsEcsTaskDefinition.executionRole`.
 
 ## Related Presets
 

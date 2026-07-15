@@ -25,7 +25,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Client
 metadata:
   name: my-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -162,7 +162,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Client
 metadata:
   name: my-spa
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -195,7 +195,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Client
 metadata:
   name: backend-service
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -225,7 +225,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Client
 metadata:
   name: web-portal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -263,7 +263,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0Client
 metadata:
   name: ref-client
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

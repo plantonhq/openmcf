@@ -1,9 +1,7 @@
 package backendconfig
 
 import (
-	"fmt"
-
-	"github.com/plantonhq/planton/pkg/iac/tofu/tofulabels"
+	"github.com/plantonhq/planton/pkg/iac/tofu/tofuannotationkeys"
 	"github.com/plantonhq/planton/pkg/reflection/metadatareflect"
 	"google.golang.org/protobuf/proto"
 )
@@ -30,43 +28,27 @@ func (c *TofuBackendConfig) IsS3Compatible() bool {
 	return c.BackendEndpoint != "" || c.BackendRegion == "auto"
 }
 
-// ExtractFromManifest extracts Terraform/Tofu backend configuration from manifest labels.
-// The provisionerType should be "terraform" or "tofu" to determine which label prefix to use.
-// It first checks for provisioner-specific labels (e.g., tofu.planton.dev/backend.type),
-// then falls back to legacy terraform.* labels for backward compatibility.
+// ExtractFromManifest extracts Terraform/Tofu backend configuration from manifest annotations.
+// The provisionerType should be "terraform" or "tofu" to determine which annotation prefix to use
+// (e.g., tofu.planton.dev/backend.type vs terraform.planton.dev/backend.type).
 func ExtractFromManifest(manifest proto.Message, provisionerType string) (*TofuBackendConfig, error) {
-	labels := metadatareflect.ExtractLabels(manifest)
-	if labels == nil {
-		return nil, fmt.Errorf("no labels found in manifest")
+	annotations := metadatareflect.ExtractAnnotations(manifest)
+	if annotations == nil {
+		return nil, nil
 	}
 
-	// Try provisioner-specific labels first
-	backendType, hasType := labels[tofulabels.BackendTypeLabelKey(provisionerType)]
-	backendBucket, hasBucket := labels[tofulabels.BackendBucketLabelKey(provisionerType)]
-	backendKey, hasKey := labels[tofulabels.BackendKeyLabelKey(provisionerType)]
-	backendRegion, _ := labels[tofulabels.BackendRegionLabelKey(provisionerType)]
-	backendEndpoint, _ := labels[tofulabels.BackendEndpointLabelKey(provisionerType)]
+	backendType, hasType := annotations[tofuannotationkeys.BackendTypeAnnotationKey(provisionerType)]
+	backendBucket, hasBucket := annotations[tofuannotationkeys.BackendBucketAnnotationKey(provisionerType)]
+	backendKey, hasKey := annotations[tofuannotationkeys.BackendKeyAnnotationKey(provisionerType)]
+	backendRegion := annotations[tofuannotationkeys.BackendRegionAnnotationKey(provisionerType)]
+	backendEndpoint := annotations[tofuannotationkeys.BackendEndpointAnnotationKey(provisionerType)]
 
-	// If provisioner-specific labels not found, fall back to legacy terraform.* labels
-	// This ensures backward compatibility for existing manifests
-	if !hasType && !hasBucket && !hasKey {
-		backendType, hasType = labels[tofulabels.LegacyBackendTypeLabelKey]
-		backendBucket, hasBucket = labels[tofulabels.LegacyBackendBucketLabelKey]
-		// Try backend.key first, then fall back to deprecated backend.object
-		backendKey, hasKey = labels[tofulabels.LegacyBackendKeyLabelKey]
-		if !hasKey {
-			backendKey, hasKey = labels[tofulabels.LegacyBackendObjectLabelKey]
-		}
-		backendRegion, _ = labels[tofulabels.LegacyBackendRegionLabelKey]
-		backendEndpoint, _ = labels[tofulabels.LegacyBackendEndpointLabelKey]
-	}
-
-	// Return nil if no backend labels are present
+	// Return nil if no backend annotations are present
 	if !hasType && !hasBucket && !hasKey {
 		return nil, nil
 	}
 
-	// Extract whatever labels are present - validation happens later via Validate()
+	// Extract whatever annotations are present - validation happens later via Validate()
 	config := &TofuBackendConfig{
 		BackendType:     backendType,
 		BackendBucket:   backendBucket,

@@ -43,8 +43,19 @@ spec:
     http2Enabled: true
     appScaleLimit: 50
     ipRestrictions:
-      - name: office
+      # The Front Door origin lockdown: allow only the AzureFrontDoor.Backend
+      # ranges AND filter by the profile's FDID GUID (a reference-or-literal;
+      # the literal form exercised here) so only YOUR profile's traffic
+      # reaches the origin.
+      - name: front-door-only
         priority: 100
+        action: ALLOW
+        serviceTag: AzureFrontDoor.Backend
+        headers:
+          xAzureFdid:
+            - value: 11111111-2222-3333-4444-555555555555
+      - name: office
+        priority: 200
         action: ALLOW
         ipAddress: 203.0.113.0/24
     ipRestrictionDefaultAction: DENY

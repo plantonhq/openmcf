@@ -1,0 +1,23 @@
+# The Glue Data Catalog database — the schema layer that turns objects in S3
+# into tables a query engine understands. Athena, Spark, and Redshift Spectrum
+# all resolve "FROM <database>.<table>" through this catalog, so one database
+# here serves every engine the team adopts later.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsGlueCatalogDatabase
+metadata:
+  # Glue database names allow only lowercase letters, digits, and
+  # underscores — no hyphens — which is why this comes from its own
+  # underscore-safe parameter rather than the hyphenated bucket name.
+  name: "{{ values.database_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+  description: "Lakehouse catalog for s3://{{ values.lake_bucket_name }}"
+
+  # Default S3 location for tables created in this database without an
+  # explicit LOCATION — new tables land under the lake's data/ prefix, next
+  # to what Firehose delivers. This is a plain string by the spec's design
+  # (an S3 URI with a user-chosen path, not a resource identifier), and the
+  # chart controls the bucket name on both sides, so the URI is closed at
+  # render time.
+  locationUri: "s3://{{ values.lake_bucket_name }}/data/"

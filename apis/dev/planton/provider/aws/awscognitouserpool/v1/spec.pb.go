@@ -24,31 +24,40 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsCognitoUserPoolSpec defines the desired configuration for an AWS Cognito User Pool
-// with bundled app clients and an optional hosted UI domain.
+// AwsCognitoUserPoolSpec defines the desired configuration for an AWS Cognito
+// User Pool -- the user directory and authentication service for web and
+// mobile applications.
 //
-// A Cognito User Pool provides user directory and authentication services for web and
-// mobile applications. This component bundles three tightly coupled resources:
+// The user pool owns everything that is pool-scoped configuration: the
+// identity model, password and sign-in policies, MFA, email/SMS delivery,
+// verification and invitation messaging, custom schema attributes, Lambda
+// triggers, threat protection, log delivery, and the hosted-UI domain.
 //
-//   - **User Pool**: the user directory with password policy, MFA, email config, and
-//     optional Lambda triggers for custom auth flows.
-//   - **App Clients** (repeated): application-specific OAuth/OIDC configurations that
-//     control how each application authenticates against the pool.
-//   - **Domain** (optional): a Cognito-hosted or custom domain prefix for the hosted
-//     sign-in UI and OAuth endpoints.
+// Resources with their own AWS lifecycle compose onto the pool as separate
+// kinds rather than being buried inside it:
+//   - **App clients** (`AwsCognitoUserPoolClient`): many per pool, each with its
+//     own OAuth contract and its own client ID that downstream systems (JWT
+//     authorizers, ALB authentication actions) reference.
+//   - **Identity providers** (`AwsCognitoIdentityProvider`): many per pool,
+//     federating social/OIDC/SAML sign-in.
+//   - **Resource servers** (`AwsCognitoResourceServer`): many per pool, defining
+//     custom OAuth scopes for machine-to-machine clients.
 //
-// Key design choices:
-//   - Identity model fields (`username_attributes`, `alias_attributes`, `username_case_sensitive`)
-//     are **ForceNew** in AWS — changing them destroys and recreates the pool with all users.
-//   - App clients are bundled because they cannot exist without a pool and are always
-//     configured together. Each client's `name` field serves as a key in the `client_ids`
-//     and `client_secrets` output maps.
-//   - Identity providers (social/OIDC/SAML) are intentionally excluded from v1 —
-//     they have independent lifecycles and warrant a separate AwsCognitoIdentityProvider component.
-//   - SMS configuration is excluded from v1 — most deployments use email-only verification
-//     and adding SMS requires a separate IAM role and SNS setup.
+// The hosted-UI **domain** stays folded here: AWS allows one domain per pool
+// and the domain string is its identity, so it shares the pool's lifecycle.
 //
-// Credentials, region, and deployment workflow live outside this spec in stack inputs.
+// Key design notes:
+//   - Identity model fields (`username_attributes`, `alias_attributes`,
+//     `username_case_sensitive`) are **ForceNew** in AWS -- changing them
+//     destroys and recreates the pool along with every user in it.
+//   - Custom schema attributes are **append-only**: new attributes can be added
+//     in place, but an existing attribute can never be modified or removed
+//     (AWS has no API for it).
+//   - Threat protection (`user_pool_add_ons`) beyond audit-only requires the
+//     PLUS feature tier (`user_pool_tier`).
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
 type AwsCognitoUserPoolSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the resource will be created.
@@ -69,54 +78,116 @@ type AwsCognitoUserPoolSpec struct {
 	// Mutually exclusive with `username_attributes`. ForceNew.
 	AliasAttributes []string `protobuf:"bytes,3,rep,name=alias_attributes,json=aliasAttributes,proto3" json:"alias_attributes,omitempty"`
 	// Whether usernames are case-sensitive. When false (default in AWS), "User" and "user"
-	// are treated as the same username. ForceNew — cannot be changed after pool creation.
+	// are treated as the same username. ForceNew -- cannot be changed after pool creation.
 	UsernameCaseSensitive bool `protobuf:"varint,4,opt,name=username_case_sensitive,json=usernameCaseSensitive,proto3" json:"username_case_sensitive,omitempty"`
+	// Enable deletion protection. When true, the user pool cannot be deleted
+	// without first disabling this setting. Recommended for production pools --
+	// a deleted pool takes every user account with it, unrecoverably.
+	DeletionProtection bool `protobuf:"varint,5,opt,name=deletion_protection,json=deletionProtection,proto3" json:"deletion_protection,omitempty"`
+	// The feature tier of the user pool. Governs which capabilities AWS makes
+	// available (and how the pool is billed):
+	//   - "LITE": lowest-cost tier; core sign-in only.
+	//   - "ESSENTIALS": the AWS default for new pools; adds passwordless
+	//     sign-in (email/SMS OTP, passkeys) and managed login branding.
+	//   - "PLUS": adds threat protection (advanced security features).
+	//
+	// When omitted, AWS creates the pool on the ESSENTIALS tier. Downgrading a
+	// tier is allowed but AWS rejects it while a feature exclusive to the
+	// higher tier is still configured (e.g. PLUS -> ESSENTIALS with threat
+	// protection enforced).
+	UserPoolTier string `protobuf:"bytes,6,opt,name=user_pool_tier,json=userPoolTier,proto3" json:"user_pool_tier,omitempty"`
 	// Password policy configuration. Controls password strength requirements for
 	// user self-registration and admin-created passwords.
-	PasswordPolicy *AwsCognitoUserPoolPasswordPolicy `protobuf:"bytes,5,opt,name=password_policy,json=passwordPolicy,proto3" json:"password_policy,omitempty"`
+	PasswordPolicy *AwsCognitoUserPoolPasswordPolicy `protobuf:"bytes,7,opt,name=password_policy,json=passwordPolicy,proto3" json:"password_policy,omitempty"`
+	// The authentication factors users may present as their FIRST factor when
+	// signing in. This is the passwordless dial: leaving it empty keeps the
+	// classic password-first behavior, while setting it enables the choice-based
+	// sign-in flow (USER_AUTH) with the listed factors.
+	//
+	// Valid values:
+	//   - "PASSWORD": classic password sign-in.
+	//   - "EMAIL_OTP": one-time code delivered by email (ESSENTIALS tier or higher).
+	//   - "SMS_OTP": one-time code delivered by SMS (requires `sms_configuration`).
+	//   - "WEB_AUTHN": passkeys/security keys (configure `web_authn_configuration`
+	//     to pin the relying-party ID your apps expect).
+	AllowedFirstAuthFactors []string `protobuf:"bytes,8,rep,name=allowed_first_auth_factors,json=allowedFirstAuthFactors,proto3" json:"allowed_first_auth_factors,omitempty"`
 	// Multi-factor authentication enforcement level.
 	// - "OFF": MFA is not used (default).
 	// - "OPTIONAL": Users can opt in to MFA.
 	// - "ON": MFA is required for all users.
-	MfaConfiguration string `protobuf:"bytes,6,opt,name=mfa_configuration,json=mfaConfiguration,proto3" json:"mfa_configuration,omitempty"`
+	MfaConfiguration string `protobuf:"bytes,9,opt,name=mfa_configuration,json=mfaConfiguration,proto3" json:"mfa_configuration,omitempty"`
 	// Enable TOTP-based (time-based one-time password) software token MFA. When
 	// true, users can configure authenticator apps like Google Authenticator or
 	// Authy. Requires `mfa_configuration` to be "OPTIONAL" or "ON".
-	SoftwareTokenMfaEnabled bool `protobuf:"varint,7,opt,name=software_token_mfa_enabled,json=softwareTokenMfaEnabled,proto3" json:"software_token_mfa_enabled,omitempty"`
+	SoftwareTokenMfaEnabled bool `protobuf:"varint,10,opt,name=software_token_mfa_enabled,json=softwareTokenMfaEnabled,proto3" json:"software_token_mfa_enabled,omitempty"`
+	// Email-based MFA: Cognito emails a one-time code as the second factor.
+	// Requires `mfa_configuration` to be "OPTIONAL" or "ON", and AWS requires
+	// the pool to send email through SES (`email_configuration` in "DEVELOPER"
+	// mode) because MFA codes exceed the built-in sender's delivery guarantees.
+	EmailMfa *AwsCognitoUserPoolEmailMfaConfig `protobuf:"bytes,11,opt,name=email_mfa,json=emailMfa,proto3" json:"email_mfa,omitempty"`
+	// WebAuthn (passkey / security key) relying-party configuration. Configure
+	// this when "WEB_AUTHN" is an allowed first factor so registered passkeys
+	// are bound to the domain your applications serve.
+	WebAuthn *AwsCognitoUserPoolWebAuthnConfig `protobuf:"bytes,12,opt,name=web_authn,json=webAuthn,proto3" json:"web_authn,omitempty"`
+	// SMS delivery configuration. Cognito publishes SMS messages (verification
+	// codes, MFA codes, invitations) through Amazon SNS by assuming the IAM role
+	// referenced here. Required whenever any SMS-dependent feature is enabled:
+	// phone_number in `auto_verified_attributes`, "SMS_OTP" as a first factor,
+	// or SMS MFA.
+	SmsConfiguration *AwsCognitoUserPoolSmsConfig `protobuf:"bytes,13,opt,name=sms_configuration,json=smsConfiguration,proto3" json:"sms_configuration,omitempty"`
+	// The SMS message sent for sign-in authentication codes. Must contain the
+	// "{####}" placeholder where Cognito injects the code. 6-140 characters.
+	// When omitted, AWS uses its default message.
+	SmsAuthenticationMessage string `protobuf:"bytes,14,opt,name=sms_authentication_message,json=smsAuthenticationMessage,proto3" json:"sms_authentication_message,omitempty"`
 	// Attributes to auto-verify when users sign up. Cognito sends a verification
 	// code to these attributes. Common values: ["email"].
 	// Valid values: "email", "phone_number".
-	AutoVerifiedAttributes []string `protobuf:"bytes,8,rep,name=auto_verified_attributes,json=autoVerifiedAttributes,proto3" json:"auto_verified_attributes,omitempty"`
+	AutoVerifiedAttributes []string `protobuf:"bytes,15,rep,name=auto_verified_attributes,json=autoVerifiedAttributes,proto3" json:"auto_verified_attributes,omitempty"`
+	// Attributes that must be verified before an update to them takes effect.
+	// While the new value is pending verification, Cognito keeps the previous
+	// value active -- without this, an unverified typo in an email update can
+	// lock a user out of account recovery. Valid values: "email", "phone_number".
+	AttributesRequireVerificationBeforeUpdate []string `protobuf:"bytes,16,rep,name=attributes_require_verification_before_update,json=attributesRequireVerificationBeforeUpdate,proto3" json:"attributes_require_verification_before_update,omitempty"`
 	// Account recovery mechanisms in priority order. Each mechanism defines a
 	// fallback method for users who forget their password.
-	AccountRecoveryMechanisms []*AwsCognitoUserPoolRecoveryMechanism `protobuf:"bytes,9,rep,name=account_recovery_mechanisms,json=accountRecoveryMechanisms,proto3" json:"account_recovery_mechanisms,omitempty"`
+	AccountRecoveryMechanisms []*AwsCognitoUserPoolRecoveryMechanism `protobuf:"bytes,17,rep,name=account_recovery_mechanisms,json=accountRecoveryMechanisms,proto3" json:"account_recovery_mechanisms,omitempty"`
 	// Email sending configuration. Controls whether Cognito sends emails using
 	// its built-in service (limited to 50/day in sandbox) or your verified SES
 	// identity (production sending).
-	EmailConfiguration *AwsCognitoUserPoolEmailConfig `protobuf:"bytes,10,opt,name=email_configuration,json=emailConfiguration,proto3" json:"email_configuration,omitempty"`
-	// When true, only administrators can create users — self-registration is
+	EmailConfiguration *AwsCognitoUserPoolEmailConfig `protobuf:"bytes,18,opt,name=email_configuration,json=emailConfiguration,proto3" json:"email_configuration,omitempty"`
+	// Templates for the verification message Cognito sends when users sign up
+	// or change a verified attribute. Also selects between code-based and
+	// link-based email verification.
+	VerificationMessageTemplate *AwsCognitoUserPoolVerificationMessageTemplate `protobuf:"bytes,19,opt,name=verification_message_template,json=verificationMessageTemplate,proto3" json:"verification_message_template,omitempty"`
+	// When true, only administrators can create users -- self-registration is
 	// disabled. Users must be created via the admin API or AWS console.
-	AllowAdminCreateUserOnly bool `protobuf:"varint,11,opt,name=allow_admin_create_user_only,json=allowAdminCreateUserOnly,proto3" json:"allow_admin_create_user_only,omitempty"`
-	// Enable deletion protection. When "ACTIVE", the user pool cannot be deleted
-	// without first disabling this setting. Recommended for production pools.
-	DeletionProtection bool `protobuf:"varint,12,opt,name=deletion_protection,json=deletionProtection,proto3" json:"deletion_protection,omitempty"`
+	AllowAdminCreateUserOnly bool `protobuf:"varint,20,opt,name=allow_admin_create_user_only,json=allowAdminCreateUserOnly,proto3" json:"allow_admin_create_user_only,omitempty"`
+	// Templates for the invitation message sent to admin-created users with
+	// their temporary credentials.
+	InviteMessageTemplate *AwsCognitoUserPoolInviteMessageTemplate `protobuf:"bytes,21,opt,name=invite_message_template,json=inviteMessageTemplate,proto3" json:"invite_message_template,omitempty"`
+	// Remembered-device configuration. When devices are remembered, users can
+	// skip MFA on trusted devices, and sign-in events carry a device key.
+	DeviceConfiguration *AwsCognitoUserPoolDeviceConfig `protobuf:"bytes,22,opt,name=device_configuration,json=deviceConfiguration,proto3" json:"device_configuration,omitempty"`
 	// Custom user attributes beyond the standard set (email, phone, name, etc.).
-	// Each attribute is added to the pool's schema. Note: the `mutable` and
-	// `required` flags are ForceNew — they cannot be changed after creation.
+	// Each attribute is added to the pool's schema. The schema is APPEND-ONLY:
+	// new attributes can be added at any time, but an existing attribute can
+	// never be modified or removed (AWS has no API for it -- removing one from
+	// this list errors instead of recreating the pool). The `mutable` and
+	// `required` flags are likewise fixed at the moment the attribute is added.
 	// Maximum 50 custom attributes per pool.
-	CustomAttributes []*AwsCognitoUserPoolSchemaAttribute `protobuf:"bytes,13,rep,name=custom_attributes,json=customAttributes,proto3" json:"custom_attributes,omitempty"`
+	CustomAttributes []*AwsCognitoUserPoolSchemaAttribute `protobuf:"bytes,23,rep,name=custom_attributes,json=customAttributes,proto3" json:"custom_attributes,omitempty"`
 	// Lambda trigger configuration for custom authentication and user lifecycle
 	// hooks. Each trigger is an optional Lambda function ARN that Cognito invokes
 	// at the corresponding lifecycle point.
-	LambdaConfig *AwsCognitoUserPoolLambdaConfig `protobuf:"bytes,14,opt,name=lambda_config,json=lambdaConfig,proto3" json:"lambda_config,omitempty"`
-	// Application clients that authenticate against this user pool. Each client
-	// defines an OAuth/OIDC configuration for a specific application (e.g., a
-	// web frontend, a mobile app, a server-side backend).
-	//
-	// At least one client is required — a pool without clients cannot authenticate
-	// any application. The client `name` field serves as a key in the `client_ids`
-	// and `client_secrets` output maps.
-	Clients []*AwsCognitoUserPoolClient `protobuf:"bytes,15,rep,name=clients,proto3" json:"clients,omitempty"`
+	LambdaConfig *AwsCognitoUserPoolLambdaConfig `protobuf:"bytes,24,opt,name=lambda_config,json=lambdaConfig,proto3" json:"lambda_config,omitempty"`
+	// Threat protection posture (AWS "advanced security features"). Beyond
+	// audit-only logging this requires the PLUS feature tier.
+	UserPoolAddOns *AwsCognitoUserPoolAddOns `protobuf:"bytes,25,opt,name=user_pool_add_ons,json=userPoolAddOns,proto3" json:"user_pool_add_ons,omitempty"`
+	// Where Cognito delivers detailed event logs. Each entry routes one event
+	// source (user notifications, or auth events from threat protection) to
+	// exactly one destination: a CloudWatch log group, a Firehose stream, or an
+	// S3 bucket. "userAuthEvents" logging requires threat protection (PLUS tier).
+	LogConfigurations []*AwsCognitoUserPoolLogConfiguration `protobuf:"bytes,26,rep,name=log_configurations,json=logConfigurations,proto3" json:"log_configurations,omitempty"`
 	// Domain configuration for the hosted sign-in UI and OAuth2 endpoints. When
 	// set, Cognito provides a hosted login page at:
 	//
@@ -126,7 +197,7 @@ type AwsCognitoUserPoolSpec struct {
 	//
 	// Required for OAuth flows that use the Authorization Code grant with a
 	// hosted UI redirect.
-	Domain        *AwsCognitoUserPoolDomainConfig `protobuf:"bytes,16,opt,name=domain,proto3" json:"domain,omitempty"`
+	Domain        *AwsCognitoUserPoolDomainConfig `protobuf:"bytes,27,opt,name=domain,proto3" json:"domain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -189,9 +260,30 @@ func (x *AwsCognitoUserPoolSpec) GetUsernameCaseSensitive() bool {
 	return false
 }
 
+func (x *AwsCognitoUserPoolSpec) GetDeletionProtection() bool {
+	if x != nil {
+		return x.DeletionProtection
+	}
+	return false
+}
+
+func (x *AwsCognitoUserPoolSpec) GetUserPoolTier() string {
+	if x != nil {
+		return x.UserPoolTier
+	}
+	return ""
+}
+
 func (x *AwsCognitoUserPoolSpec) GetPasswordPolicy() *AwsCognitoUserPoolPasswordPolicy {
 	if x != nil {
 		return x.PasswordPolicy
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolSpec) GetAllowedFirstAuthFactors() []string {
+	if x != nil {
+		return x.AllowedFirstAuthFactors
 	}
 	return nil
 }
@@ -210,9 +302,44 @@ func (x *AwsCognitoUserPoolSpec) GetSoftwareTokenMfaEnabled() bool {
 	return false
 }
 
+func (x *AwsCognitoUserPoolSpec) GetEmailMfa() *AwsCognitoUserPoolEmailMfaConfig {
+	if x != nil {
+		return x.EmailMfa
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolSpec) GetWebAuthn() *AwsCognitoUserPoolWebAuthnConfig {
+	if x != nil {
+		return x.WebAuthn
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolSpec) GetSmsConfiguration() *AwsCognitoUserPoolSmsConfig {
+	if x != nil {
+		return x.SmsConfiguration
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolSpec) GetSmsAuthenticationMessage() string {
+	if x != nil {
+		return x.SmsAuthenticationMessage
+	}
+	return ""
+}
+
 func (x *AwsCognitoUserPoolSpec) GetAutoVerifiedAttributes() []string {
 	if x != nil {
 		return x.AutoVerifiedAttributes
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolSpec) GetAttributesRequireVerificationBeforeUpdate() []string {
+	if x != nil {
+		return x.AttributesRequireVerificationBeforeUpdate
 	}
 	return nil
 }
@@ -231,6 +358,13 @@ func (x *AwsCognitoUserPoolSpec) GetEmailConfiguration() *AwsCognitoUserPoolEmai
 	return nil
 }
 
+func (x *AwsCognitoUserPoolSpec) GetVerificationMessageTemplate() *AwsCognitoUserPoolVerificationMessageTemplate {
+	if x != nil {
+		return x.VerificationMessageTemplate
+	}
+	return nil
+}
+
 func (x *AwsCognitoUserPoolSpec) GetAllowAdminCreateUserOnly() bool {
 	if x != nil {
 		return x.AllowAdminCreateUserOnly
@@ -238,11 +372,18 @@ func (x *AwsCognitoUserPoolSpec) GetAllowAdminCreateUserOnly() bool {
 	return false
 }
 
-func (x *AwsCognitoUserPoolSpec) GetDeletionProtection() bool {
+func (x *AwsCognitoUserPoolSpec) GetInviteMessageTemplate() *AwsCognitoUserPoolInviteMessageTemplate {
 	if x != nil {
-		return x.DeletionProtection
+		return x.InviteMessageTemplate
 	}
-	return false
+	return nil
+}
+
+func (x *AwsCognitoUserPoolSpec) GetDeviceConfiguration() *AwsCognitoUserPoolDeviceConfig {
+	if x != nil {
+		return x.DeviceConfiguration
+	}
+	return nil
 }
 
 func (x *AwsCognitoUserPoolSpec) GetCustomAttributes() []*AwsCognitoUserPoolSchemaAttribute {
@@ -259,9 +400,16 @@ func (x *AwsCognitoUserPoolSpec) GetLambdaConfig() *AwsCognitoUserPoolLambdaConf
 	return nil
 }
 
-func (x *AwsCognitoUserPoolSpec) GetClients() []*AwsCognitoUserPoolClient {
+func (x *AwsCognitoUserPoolSpec) GetUserPoolAddOns() *AwsCognitoUserPoolAddOns {
 	if x != nil {
-		return x.Clients
+		return x.UserPoolAddOns
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolSpec) GetLogConfigurations() []*AwsCognitoUserPoolLogConfiguration {
+	if x != nil {
+		return x.LogConfigurations
 	}
 	return nil
 }
@@ -286,9 +434,13 @@ type AwsCognitoUserPoolPasswordPolicy struct {
 	RequireNumbers bool `protobuf:"varint,4,opt,name=require_numbers,json=requireNumbers,proto3" json:"require_numbers,omitempty"`
 	// Require at least one special character.
 	RequireSymbols bool `protobuf:"varint,5,opt,name=require_symbols,json=requireSymbols,proto3" json:"require_symbols,omitempty"`
+	// Number of previous passwords a new password must differ from. Range: 0-24
+	// (0 disables history checking). Password history requires the pool to be on
+	// the ESSENTIALS tier or higher.
+	PasswordHistorySize int32 `protobuf:"varint,6,opt,name=password_history_size,json=passwordHistorySize,proto3" json:"password_history_size,omitempty"`
 	// Number of days temporary passwords (admin-created) are valid.
 	// Range: 0-365 (0 means no expiration). AWS default: 7.
-	TemporaryPasswordValidityDays int32 `protobuf:"varint,6,opt,name=temporary_password_validity_days,json=temporaryPasswordValidityDays,proto3" json:"temporary_password_validity_days,omitempty"`
+	TemporaryPasswordValidityDays int32 `protobuf:"varint,7,opt,name=temporary_password_validity_days,json=temporaryPasswordValidityDays,proto3" json:"temporary_password_validity_days,omitempty"`
 	unknownFields                 protoimpl.UnknownFields
 	sizeCache                     protoimpl.SizeCache
 }
@@ -358,11 +510,211 @@ func (x *AwsCognitoUserPoolPasswordPolicy) GetRequireSymbols() bool {
 	return false
 }
 
+func (x *AwsCognitoUserPoolPasswordPolicy) GetPasswordHistorySize() int32 {
+	if x != nil {
+		return x.PasswordHistorySize
+	}
+	return 0
+}
+
 func (x *AwsCognitoUserPoolPasswordPolicy) GetTemporaryPasswordValidityDays() int32 {
 	if x != nil {
 		return x.TemporaryPasswordValidityDays
 	}
 	return 0
+}
+
+// AwsCognitoUserPoolEmailMfaConfig customizes the email message Cognito sends
+// when email is used as the second authentication factor.
+type AwsCognitoUserPoolEmailMfaConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The email body for MFA codes. Must contain the "{####}" placeholder where
+	// Cognito injects the code. 6-20000 characters. When omitted, AWS uses its
+	// default message.
+	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	// The email subject for MFA codes. 1-140 characters. When omitted, AWS uses
+	// its default subject.
+	Subject       string `protobuf:"bytes,2,opt,name=subject,proto3" json:"subject,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolEmailMfaConfig) Reset() {
+	*x = AwsCognitoUserPoolEmailMfaConfig{}
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolEmailMfaConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolEmailMfaConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolEmailMfaConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolEmailMfaConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolEmailMfaConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsCognitoUserPoolEmailMfaConfig) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolEmailMfaConfig) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+// AwsCognitoUserPoolWebAuthnConfig pins the WebAuthn relying party for
+// passkey (FIDO2) sign-in.
+type AwsCognitoUserPoolWebAuthnConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The relying-party ID passkeys are registered against -- the domain your
+	// applications serve (e.g. "auth.example.com"). A passkey registered for one
+	// relying-party ID does not work for another, so set this BEFORE users start
+	// registering passkeys; changing it later invalidates existing registrations.
+	// When omitted, Cognito uses the pool's own domain.
+	RelyingPartyId string `protobuf:"bytes,1,opt,name=relying_party_id,json=relyingPartyId,proto3" json:"relying_party_id,omitempty"`
+	// Whether the authenticator must verify the user (PIN, biometric):
+	// - "required": authenticators must perform user verification.
+	// - "preferred": verification is requested but not required (AWS default).
+	UserVerification string `protobuf:"bytes,2,opt,name=user_verification,json=userVerification,proto3" json:"user_verification,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolWebAuthnConfig) Reset() {
+	*x = AwsCognitoUserPoolWebAuthnConfig{}
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolWebAuthnConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolWebAuthnConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolWebAuthnConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolWebAuthnConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolWebAuthnConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsCognitoUserPoolWebAuthnConfig) GetRelyingPartyId() string {
+	if x != nil {
+		return x.RelyingPartyId
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolWebAuthnConfig) GetUserVerification() string {
+	if x != nil {
+		return x.UserVerification
+	}
+	return ""
+}
+
+// AwsCognitoUserPoolSmsConfig wires Cognito to Amazon SNS for SMS delivery.
+// Cognito assumes the referenced IAM role to publish messages, so the role's
+// trust policy must allow "cognito-idp.amazonaws.com" (with the external ID
+// below as the sts:ExternalId condition) and grant "sns:Publish".
+type AwsCognitoUserPoolSmsConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The IAM role Cognito assumes to send SMS via SNS. Accepts a direct role
+	// ARN or a reference to an AwsIamRole resource.
+	SnsCallerArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=sns_caller_arn,json=snsCallerArn,proto3" json:"sns_caller_arn,omitempty"`
+	// The external ID Cognito presents when assuming the role -- the standard
+	// confused-deputy guard. Must match the sts:ExternalId condition in the
+	// role's trust policy.
+	ExternalId string `protobuf:"bytes,2,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	// The AWS region of the SNS topic-less publish (where SMS messages
+	// originate). When omitted, AWS uses the pool's region. Set this when the
+	// pool's region does not support SMS sending.
+	SnsRegion     string `protobuf:"bytes,3,opt,name=sns_region,json=snsRegion,proto3" json:"sns_region,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolSmsConfig) Reset() {
+	*x = AwsCognitoUserPoolSmsConfig{}
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolSmsConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolSmsConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolSmsConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolSmsConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolSmsConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsCognitoUserPoolSmsConfig) GetSnsCallerArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SnsCallerArn
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolSmsConfig) GetExternalId() string {
+	if x != nil {
+		return x.ExternalId
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolSmsConfig) GetSnsRegion() string {
+	if x != nil {
+		return x.SnsRegion
+	}
+	return ""
 }
 
 // AwsCognitoUserPoolRecoveryMechanism defines a single account recovery option.
@@ -382,7 +734,7 @@ type AwsCognitoUserPoolRecoveryMechanism struct {
 
 func (x *AwsCognitoUserPoolRecoveryMechanism) Reset() {
 	*x = AwsCognitoUserPoolRecoveryMechanism{}
-	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -394,7 +746,7 @@ func (x *AwsCognitoUserPoolRecoveryMechanism) String() string {
 func (*AwsCognitoUserPoolRecoveryMechanism) ProtoMessage() {}
 
 func (x *AwsCognitoUserPoolRecoveryMechanism) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -407,7 +759,7 @@ func (x *AwsCognitoUserPoolRecoveryMechanism) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use AwsCognitoUserPoolRecoveryMechanism.ProtoReflect.Descriptor instead.
 func (*AwsCognitoUserPoolRecoveryMechanism) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AwsCognitoUserPoolRecoveryMechanism) GetName() string {
@@ -452,7 +804,7 @@ type AwsCognitoUserPoolEmailConfig struct {
 
 func (x *AwsCognitoUserPoolEmailConfig) Reset() {
 	*x = AwsCognitoUserPoolEmailConfig{}
-	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -464,7 +816,7 @@ func (x *AwsCognitoUserPoolEmailConfig) String() string {
 func (*AwsCognitoUserPoolEmailConfig) ProtoMessage() {}
 
 func (x *AwsCognitoUserPoolEmailConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -477,7 +829,7 @@ func (x *AwsCognitoUserPoolEmailConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCognitoUserPoolEmailConfig.ProtoReflect.Descriptor instead.
 func (*AwsCognitoUserPoolEmailConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AwsCognitoUserPoolEmailConfig) GetEmailSendingAccount() string {
@@ -515,6 +867,232 @@ func (x *AwsCognitoUserPoolEmailConfig) GetConfigurationSet() string {
 	return ""
 }
 
+// AwsCognitoUserPoolVerificationMessageTemplate customizes the message users
+// receive to verify their email or phone number, and selects between
+// code-based and link-based email verification.
+type AwsCognitoUserPoolVerificationMessageTemplate struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How email verification is performed:
+	//   - "CONFIRM_WITH_CODE": the email carries a code the user types back
+	//     (AWS default; uses `email_message`/`email_subject`).
+	//   - "CONFIRM_WITH_LINK": the email carries a click-through confirmation
+	//     link (uses `email_message_by_link`/`email_subject_by_link`).
+	DefaultEmailOption string `protobuf:"bytes,1,opt,name=default_email_option,json=defaultEmailOption,proto3" json:"default_email_option,omitempty"`
+	// Email body for code-based verification. Must contain the "{####}"
+	// placeholder where Cognito injects the code. 6-20000 characters.
+	EmailMessage string `protobuf:"bytes,2,opt,name=email_message,json=emailMessage,proto3" json:"email_message,omitempty"`
+	// Email subject for code-based verification. 1-140 characters.
+	EmailSubject string `protobuf:"bytes,3,opt,name=email_subject,json=emailSubject,proto3" json:"email_subject,omitempty"`
+	// Email body for link-based verification. Must contain the "{##...##}"
+	// placeholder pair wrapping the link text, e.g.
+	// "Click {##here##} to verify your address." 6-20000 characters.
+	EmailMessageByLink string `protobuf:"bytes,4,opt,name=email_message_by_link,json=emailMessageByLink,proto3" json:"email_message_by_link,omitempty"`
+	// Email subject for link-based verification. 1-140 characters.
+	EmailSubjectByLink string `protobuf:"bytes,5,opt,name=email_subject_by_link,json=emailSubjectByLink,proto3" json:"email_subject_by_link,omitempty"`
+	// SMS body for phone verification. Must contain the "{####}" placeholder.
+	// 6-140 characters.
+	SmsMessage    string `protobuf:"bytes,6,opt,name=sms_message,json=smsMessage,proto3" json:"sms_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolVerificationMessageTemplate) Reset() {
+	*x = AwsCognitoUserPoolVerificationMessageTemplate{}
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolVerificationMessageTemplate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolVerificationMessageTemplate) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolVerificationMessageTemplate) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolVerificationMessageTemplate.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolVerificationMessageTemplate) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AwsCognitoUserPoolVerificationMessageTemplate) GetDefaultEmailOption() string {
+	if x != nil {
+		return x.DefaultEmailOption
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolVerificationMessageTemplate) GetEmailMessage() string {
+	if x != nil {
+		return x.EmailMessage
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolVerificationMessageTemplate) GetEmailSubject() string {
+	if x != nil {
+		return x.EmailSubject
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolVerificationMessageTemplate) GetEmailMessageByLink() string {
+	if x != nil {
+		return x.EmailMessageByLink
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolVerificationMessageTemplate) GetEmailSubjectByLink() string {
+	if x != nil {
+		return x.EmailSubjectByLink
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolVerificationMessageTemplate) GetSmsMessage() string {
+	if x != nil {
+		return x.SmsMessage
+	}
+	return ""
+}
+
+// AwsCognitoUserPoolInviteMessageTemplate customizes the invitation sent to
+// admin-created users with their username and temporary password.
+type AwsCognitoUserPoolInviteMessageTemplate struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Email body for invitations. Must contain BOTH the "{username}" and
+	// "{####}" placeholders (Cognito injects the username and the temporary
+	// password). 6-20000 characters.
+	EmailMessage string `protobuf:"bytes,1,opt,name=email_message,json=emailMessage,proto3" json:"email_message,omitempty"`
+	// Email subject for invitations. 1-140 characters.
+	EmailSubject string `protobuf:"bytes,2,opt,name=email_subject,json=emailSubject,proto3" json:"email_subject,omitempty"`
+	// SMS body for invitations. Must contain BOTH the "{username}" and "{####}"
+	// placeholders. 6-140 characters.
+	SmsMessage    string `protobuf:"bytes,3,opt,name=sms_message,json=smsMessage,proto3" json:"sms_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolInviteMessageTemplate) Reset() {
+	*x = AwsCognitoUserPoolInviteMessageTemplate{}
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolInviteMessageTemplate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolInviteMessageTemplate) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolInviteMessageTemplate) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolInviteMessageTemplate.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolInviteMessageTemplate) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AwsCognitoUserPoolInviteMessageTemplate) GetEmailMessage() string {
+	if x != nil {
+		return x.EmailMessage
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolInviteMessageTemplate) GetEmailSubject() string {
+	if x != nil {
+		return x.EmailSubject
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolInviteMessageTemplate) GetSmsMessage() string {
+	if x != nil {
+		return x.SmsMessage
+	}
+	return ""
+}
+
+// AwsCognitoUserPoolDeviceConfig controls remembered-device behavior.
+type AwsCognitoUserPoolDeviceConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// When true, a remembered device still requires a challenge (MFA) the first
+	// time it is seen -- remembering only suppresses challenges afterwards.
+	ChallengeRequiredOnNewDevice bool `protobuf:"varint,1,opt,name=challenge_required_on_new_device,json=challengeRequiredOnNewDevice,proto3" json:"challenge_required_on_new_device,omitempty"`
+	// When true, devices are remembered only after the user opts in when
+	// prompted. When false, every device is remembered automatically.
+	DeviceOnlyRememberedOnUserPrompt bool `protobuf:"varint,2,opt,name=device_only_remembered_on_user_prompt,json=deviceOnlyRememberedOnUserPrompt,proto3" json:"device_only_remembered_on_user_prompt,omitempty"`
+	unknownFields                    protoimpl.UnknownFields
+	sizeCache                        protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolDeviceConfig) Reset() {
+	*x = AwsCognitoUserPoolDeviceConfig{}
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolDeviceConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolDeviceConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolDeviceConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolDeviceConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolDeviceConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AwsCognitoUserPoolDeviceConfig) GetChallengeRequiredOnNewDevice() bool {
+	if x != nil {
+		return x.ChallengeRequiredOnNewDevice
+	}
+	return false
+}
+
+func (x *AwsCognitoUserPoolDeviceConfig) GetDeviceOnlyRememberedOnUserPrompt() bool {
+	if x != nil {
+		return x.DeviceOnlyRememberedOnUserPrompt
+	}
+	return false
+}
+
 // AwsCognitoUserPoolSchemaAttribute defines a custom user attribute added to the
 // pool's schema. Custom attributes are prefixed with "custom:" in Cognito (e.g.,
 // a name of "tenant_id" becomes "custom:tenant_id").
@@ -524,26 +1102,31 @@ type AwsCognitoUserPoolSchemaAttribute struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Data type. Valid values: "String", "Number", "DateTime", "Boolean".
 	AttributeDataType string `protobuf:"bytes,2,opt,name=attribute_data_type,json=attributeDataType,proto3" json:"attribute_data_type,omitempty"`
-	// Whether the attribute value can be changed after creation. ForceNew — this
-	// flag itself cannot be changed after the attribute is added to the pool.
+	// Whether the attribute value can be changed after creation. Fixed at the
+	// moment the attribute is added to the pool (the schema is append-only).
 	Mutable bool `protobuf:"varint,3,opt,name=mutable,proto3" json:"mutable,omitempty"`
-	// Whether the attribute is required during user registration. ForceNew.
+	// Whether the attribute is required during user registration. Fixed at the
+	// moment the attribute is added to the pool.
 	Required bool `protobuf:"varint,4,opt,name=required,proto3" json:"required,omitempty"`
+	// When true, only administrators (not the user themselves) can read and
+	// write this attribute -- for backend bookkeeping like an external system's
+	// record ID. Fixed at the moment the attribute is added.
+	DeveloperOnlyAttribute bool `protobuf:"varint,5,opt,name=developer_only_attribute,json=developerOnlyAttribute,proto3" json:"developer_only_attribute,omitempty"`
 	// Minimum string length (for String attributes). Leave at 0 for no minimum.
-	StringMinLength string `protobuf:"bytes,5,opt,name=string_min_length,json=stringMinLength,proto3" json:"string_min_length,omitempty"`
+	StringMinLength string `protobuf:"bytes,6,opt,name=string_min_length,json=stringMinLength,proto3" json:"string_min_length,omitempty"`
 	// Maximum string length (for String attributes). Leave empty for no maximum.
-	StringMaxLength string `protobuf:"bytes,6,opt,name=string_max_length,json=stringMaxLength,proto3" json:"string_max_length,omitempty"`
+	StringMaxLength string `protobuf:"bytes,7,opt,name=string_max_length,json=stringMaxLength,proto3" json:"string_max_length,omitempty"`
 	// Minimum numeric value (for Number attributes). Leave empty for no minimum.
-	NumberMinValue string `protobuf:"bytes,7,opt,name=number_min_value,json=numberMinValue,proto3" json:"number_min_value,omitempty"`
+	NumberMinValue string `protobuf:"bytes,8,opt,name=number_min_value,json=numberMinValue,proto3" json:"number_min_value,omitempty"`
 	// Maximum numeric value (for Number attributes). Leave empty for no maximum.
-	NumberMaxValue string `protobuf:"bytes,8,opt,name=number_max_value,json=numberMaxValue,proto3" json:"number_max_value,omitempty"`
+	NumberMaxValue string `protobuf:"bytes,9,opt,name=number_max_value,json=numberMaxValue,proto3" json:"number_max_value,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AwsCognitoUserPoolSchemaAttribute) Reset() {
 	*x = AwsCognitoUserPoolSchemaAttribute{}
-	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -555,7 +1138,7 @@ func (x *AwsCognitoUserPoolSchemaAttribute) String() string {
 func (*AwsCognitoUserPoolSchemaAttribute) ProtoMessage() {}
 
 func (x *AwsCognitoUserPoolSchemaAttribute) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -568,7 +1151,7 @@ func (x *AwsCognitoUserPoolSchemaAttribute) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AwsCognitoUserPoolSchemaAttribute.ProtoReflect.Descriptor instead.
 func (*AwsCognitoUserPoolSchemaAttribute) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AwsCognitoUserPoolSchemaAttribute) GetName() string {
@@ -595,6 +1178,13 @@ func (x *AwsCognitoUserPoolSchemaAttribute) GetMutable() bool {
 func (x *AwsCognitoUserPoolSchemaAttribute) GetRequired() bool {
 	if x != nil {
 		return x.Required
+	}
+	return false
+}
+
+func (x *AwsCognitoUserPoolSchemaAttribute) GetDeveloperOnlyAttribute() bool {
+	if x != nil {
+		return x.DeveloperOnlyAttribute
 	}
 	return false
 }
@@ -644,25 +1234,45 @@ type AwsCognitoUserPoolLambdaConfig struct {
 	PostAuthentication *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=post_authentication,json=postAuthentication,proto3" json:"post_authentication,omitempty"`
 	// Invoked after user confirmation to trigger welcome emails or provisioning.
 	PostConfirmation *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=post_confirmation,json=postConfirmation,proto3" json:"post_confirmation,omitempty"`
-	// Invoked before token generation to add, remove, or modify claims.
+	// Invoked before token generation to add, remove, or modify claims. This is
+	// the V1_0 trigger event; use `pre_token_generation_config` instead when the
+	// function needs the V2_0/V3_0 event shape (access-token customization).
 	PreTokenGeneration *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=pre_token_generation,json=preTokenGeneration,proto3" json:"pre_token_generation,omitempty"`
+	// Versioned pre-token-generation trigger. Unlike the plain
+	// `pre_token_generation` field (which pins the V1_0 event), this selects the
+	// trigger event version -- V2_0/V3_0 deliver the richer event that can also
+	// customize ACCESS tokens, not just identity tokens. Set one or the other,
+	// never both.
+	PreTokenGenerationConfig *AwsCognitoUserPoolPreTokenGenerationConfig `protobuf:"bytes,6,opt,name=pre_token_generation_config,json=preTokenGenerationConfig,proto3" json:"pre_token_generation_config,omitempty"`
 	// Invoked to customize verification and invitation messages.
-	CustomMessage *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=custom_message,json=customMessage,proto3" json:"custom_message,omitempty"`
+	CustomMessage *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=custom_message,json=customMessage,proto3" json:"custom_message,omitempty"`
 	// Invoked during user migration from an external identity provider.
-	UserMigration *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=user_migration,json=userMigration,proto3" json:"user_migration,omitempty"`
+	UserMigration *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=user_migration,json=userMigration,proto3" json:"user_migration,omitempty"`
 	// Invoked to define a custom authentication challenge (custom auth flow).
-	DefineAuthChallenge *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=define_auth_challenge,json=defineAuthChallenge,proto3" json:"define_auth_challenge,omitempty"`
+	DefineAuthChallenge *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=define_auth_challenge,json=defineAuthChallenge,proto3" json:"define_auth_challenge,omitempty"`
 	// Invoked to create a custom authentication challenge (custom auth flow).
-	CreateAuthChallenge *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=create_auth_challenge,json=createAuthChallenge,proto3" json:"create_auth_challenge,omitempty"`
+	CreateAuthChallenge *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=create_auth_challenge,json=createAuthChallenge,proto3" json:"create_auth_challenge,omitempty"`
 	// Invoked to verify the response to a custom authentication challenge.
-	VerifyAuthChallengeResponse *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=verify_auth_challenge_response,json=verifyAuthChallengeResponse,proto3" json:"verify_auth_challenge_response,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	VerifyAuthChallengeResponse *v1.StringValueOrRef `protobuf:"bytes,11,opt,name=verify_auth_challenge_response,json=verifyAuthChallengeResponse,proto3" json:"verify_auth_challenge_response,omitempty"`
+	// Custom email sender: Cognito calls this function to deliver email itself
+	// (instead of SES). The event carries the message encrypted with
+	// `kms_key_id`, so that key is required.
+	CustomEmailSender *AwsCognitoUserPoolCustomSenderConfig `protobuf:"bytes,12,opt,name=custom_email_sender,json=customEmailSender,proto3" json:"custom_email_sender,omitempty"`
+	// Custom SMS sender: Cognito calls this function to deliver SMS itself
+	// (instead of SNS). The event carries the message encrypted with
+	// `kms_key_id`, so that key is required.
+	CustomSmsSender *AwsCognitoUserPoolCustomSenderConfig `protobuf:"bytes,13,opt,name=custom_sms_sender,json=customSmsSender,proto3" json:"custom_sms_sender,omitempty"`
+	// The KMS key Cognito uses to encrypt the code/message payload delivered to
+	// custom sender functions. Required when either custom sender is set.
+	// Accepts a direct key ARN or a reference to an AwsKmsKey resource.
+	KmsKeyId      *v1.StringValueOrRef `protobuf:"bytes,14,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsCognitoUserPoolLambdaConfig) Reset() {
 	*x = AwsCognitoUserPoolLambdaConfig{}
-	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -674,7 +1284,7 @@ func (x *AwsCognitoUserPoolLambdaConfig) String() string {
 func (*AwsCognitoUserPoolLambdaConfig) ProtoMessage() {}
 
 func (x *AwsCognitoUserPoolLambdaConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -687,7 +1297,7 @@ func (x *AwsCognitoUserPoolLambdaConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCognitoUserPoolLambdaConfig.ProtoReflect.Descriptor instead.
 func (*AwsCognitoUserPoolLambdaConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AwsCognitoUserPoolLambdaConfig) GetPreSignUp() *v1.StringValueOrRef {
@@ -721,6 +1331,13 @@ func (x *AwsCognitoUserPoolLambdaConfig) GetPostConfirmation() *v1.StringValueOr
 func (x *AwsCognitoUserPoolLambdaConfig) GetPreTokenGeneration() *v1.StringValueOrRef {
 	if x != nil {
 		return x.PreTokenGeneration
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolLambdaConfig) GetPreTokenGenerationConfig() *AwsCognitoUserPoolPreTokenGenerationConfig {
+	if x != nil {
+		return x.PreTokenGenerationConfig
 	}
 	return nil
 }
@@ -760,90 +1377,59 @@ func (x *AwsCognitoUserPoolLambdaConfig) GetVerifyAuthChallengeResponse() *v1.St
 	return nil
 }
 
-// AwsCognitoUserPoolClient defines an application client that authenticates
-// against the user pool. Each client controls how a specific application
-// (web, mobile, server) interacts with the pool via OAuth 2.0 / OIDC.
-//
-// The client `name` field is used as a key in the `client_ids` and
-// `client_secrets` output maps.
-type AwsCognitoUserPoolClient struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Unique name for this client. Used as the key in output maps and as the
-	// Cognito app client name. Must be unique across all clients in this spec.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Whether to generate a client secret. ForceNew — cannot be changed after
-	// creation. Set to true for server-side applications that can securely store
-	// the secret. Set to false for SPAs and mobile apps.
-	GenerateSecret bool `protobuf:"varint,2,opt,name=generate_secret,json=generateSecret,proto3" json:"generate_secret,omitempty"`
-	// Enable OAuth 2.0 flows for this client. Must be true for `allowed_oauth_flows`
-	// and `allowed_oauth_scopes` to take effect.
-	AllowedOauthFlowsUserPoolClient bool `protobuf:"varint,3,opt,name=allowed_oauth_flows_user_pool_client,json=allowedOauthFlowsUserPoolClient,proto3" json:"allowed_oauth_flows_user_pool_client,omitempty"`
-	// OAuth 2.0 grant types this client can use. Valid values:
-	// - "code": Authorization Code grant (recommended for most apps)
-	// - "implicit": Implicit grant (legacy, not recommended)
-	// - "client_credentials": Client Credentials grant (machine-to-machine)
-	AllowedOauthFlows []string `protobuf:"bytes,4,rep,name=allowed_oauth_flows,json=allowedOauthFlows,proto3" json:"allowed_oauth_flows,omitempty"`
-	// OAuth 2.0 scopes this client can request. Common values:
-	// "openid", "email", "profile", "phone", "aws.cognito.signin.user.admin".
-	// Custom scopes from resource servers use format: "{identifier}/{scope_name}".
-	AllowedOauthScopes []string `protobuf:"bytes,5,rep,name=allowed_oauth_scopes,json=allowedOauthScopes,proto3" json:"allowed_oauth_scopes,omitempty"`
-	// Callback URLs for OAuth redirects after authentication. Required for
-	// Authorization Code and Implicit grants. At least one URL must be provided
-	// when OAuth flows are enabled.
-	CallbackUrls []string `protobuf:"bytes,6,rep,name=callback_urls,json=callbackUrls,proto3" json:"callback_urls,omitempty"`
-	// URLs where Cognito redirects after sign-out.
-	LogoutUrls []string `protobuf:"bytes,7,rep,name=logout_urls,json=logoutUrls,proto3" json:"logout_urls,omitempty"`
-	// Default redirect URI. Must be one of the `callback_urls`. Used when no
-	// redirect_uri is specified in the authorization request.
-	DefaultRedirectUri string `protobuf:"bytes,8,opt,name=default_redirect_uri,json=defaultRedirectUri,proto3" json:"default_redirect_uri,omitempty"`
-	// Identity providers supported by this client. Defaults to ["COGNITO"] for
-	// user pool authentication. Add social/OIDC/SAML provider names to enable
-	// federated sign-in (e.g., "Google", "Facebook", "SignInWithApple").
-	SupportedIdentityProviders []string `protobuf:"bytes,9,rep,name=supported_identity_providers,json=supportedIdentityProviders,proto3" json:"supported_identity_providers,omitempty"`
-	// Explicit authentication flows enabled for this client. Controls which
-	// authentication APIs the client can use. Common values:
-	// - "ALLOW_USER_SRP_AUTH": Secure Remote Password (recommended)
-	// - "ALLOW_REFRESH_TOKEN_AUTH": Enable token refresh (always recommended)
-	// - "ALLOW_USER_PASSWORD_AUTH": Direct username/password (less secure)
-	// - "ALLOW_ADMIN_USER_PASSWORD_AUTH": Admin-initiated auth
-	// - "ALLOW_CUSTOM_AUTH": Custom auth flow via Lambda triggers
-	ExplicitAuthFlows []string `protobuf:"bytes,10,rep,name=explicit_auth_flows,json=explicitAuthFlows,proto3" json:"explicit_auth_flows,omitempty"`
-	// Access token validity in minutes. Range: 5-1440 (5 min to 24 hours).
-	// AWS default: 60 minutes.
-	AccessTokenValidityMinutes int32 `protobuf:"varint,11,opt,name=access_token_validity_minutes,json=accessTokenValidityMinutes,proto3" json:"access_token_validity_minutes,omitempty"`
-	// ID token validity in minutes. Range: 5-1440 (5 min to 24 hours).
-	// AWS default: 60 minutes.
-	IdTokenValidityMinutes int32 `protobuf:"varint,12,opt,name=id_token_validity_minutes,json=idTokenValidityMinutes,proto3" json:"id_token_validity_minutes,omitempty"`
-	// Refresh token validity in days. Range: 1-3650 (1 day to 10 years).
-	// AWS default: 30 days.
-	RefreshTokenValidityDays int32 `protobuf:"varint,13,opt,name=refresh_token_validity_days,json=refreshTokenValidityDays,proto3" json:"refresh_token_validity_days,omitempty"`
-	// Enable token revocation. When true, Cognito revokes all of a user's tokens
-	// when they sign out. Recommended for security.
-	EnableTokenRevocation bool `protobuf:"varint,14,opt,name=enable_token_revocation,json=enableTokenRevocation,proto3" json:"enable_token_revocation,omitempty"`
-	// How to handle requests for non-existent users. Valid values:
-	//   - "ENABLED": Return the same error for non-existent and incorrect-password
-	//     users to prevent user enumeration attacks.
-	//   - "LEGACY": Return different errors (reveals whether user exists).
-	PreventUserExistenceErrors string `protobuf:"bytes,15,opt,name=prevent_user_existence_errors,json=preventUserExistenceErrors,proto3" json:"prevent_user_existence_errors,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+func (x *AwsCognitoUserPoolLambdaConfig) GetCustomEmailSender() *AwsCognitoUserPoolCustomSenderConfig {
+	if x != nil {
+		return x.CustomEmailSender
+	}
+	return nil
 }
 
-func (x *AwsCognitoUserPoolClient) Reset() {
-	*x = AwsCognitoUserPoolClient{}
-	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[6]
+func (x *AwsCognitoUserPoolLambdaConfig) GetCustomSmsSender() *AwsCognitoUserPoolCustomSenderConfig {
+	if x != nil {
+		return x.CustomSmsSender
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolLambdaConfig) GetKmsKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KmsKeyId
+	}
+	return nil
+}
+
+// AwsCognitoUserPoolPreTokenGenerationConfig selects the pre-token-generation
+// trigger with an explicit event version.
+type AwsCognitoUserPoolPreTokenGenerationConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Lambda function to invoke. Accepts a direct ARN or a reference to an
+	// AwsLambda resource.
+	LambdaArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=lambda_arn,json=lambdaArn,proto3" json:"lambda_arn,omitempty"`
+	// The trigger event version:
+	// - "V1_0": identity-token customization only.
+	// - "V2_0": adds access-token customization.
+	// - "V3_0": V2_0 plus group/role overrides for machine-to-machine flows.
+	// V2_0/V3_0 require the ESSENTIALS tier or higher.
+	LambdaVersion string `protobuf:"bytes,2,opt,name=lambda_version,json=lambdaVersion,proto3" json:"lambda_version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolPreTokenGenerationConfig) Reset() {
+	*x = AwsCognitoUserPoolPreTokenGenerationConfig{}
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AwsCognitoUserPoolClient) String() string {
+func (x *AwsCognitoUserPoolPreTokenGenerationConfig) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AwsCognitoUserPoolClient) ProtoMessage() {}
+func (*AwsCognitoUserPoolPreTokenGenerationConfig) ProtoMessage() {}
 
-func (x *AwsCognitoUserPoolClient) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[6]
+func (x *AwsCognitoUserPoolPreTokenGenerationConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -854,138 +1440,272 @@ func (x *AwsCognitoUserPoolClient) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AwsCognitoUserPoolClient.ProtoReflect.Descriptor instead.
-func (*AwsCognitoUserPoolClient) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{6}
+// Deprecated: Use AwsCognitoUserPoolPreTokenGenerationConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolPreTokenGenerationConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{12}
 }
 
-func (x *AwsCognitoUserPoolClient) GetName() string {
+func (x *AwsCognitoUserPoolPreTokenGenerationConfig) GetLambdaArn() *v1.StringValueOrRef {
 	if x != nil {
-		return x.Name
+		return x.LambdaArn
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolPreTokenGenerationConfig) GetLambdaVersion() string {
+	if x != nil {
+		return x.LambdaVersion
 	}
 	return ""
 }
 
-func (x *AwsCognitoUserPoolClient) GetGenerateSecret() bool {
-	if x != nil {
-		return x.GenerateSecret
-	}
-	return false
-}
-
-func (x *AwsCognitoUserPoolClient) GetAllowedOauthFlowsUserPoolClient() bool {
-	if x != nil {
-		return x.AllowedOauthFlowsUserPoolClient
-	}
-	return false
-}
-
-func (x *AwsCognitoUserPoolClient) GetAllowedOauthFlows() []string {
-	if x != nil {
-		return x.AllowedOauthFlows
-	}
-	return nil
-}
-
-func (x *AwsCognitoUserPoolClient) GetAllowedOauthScopes() []string {
-	if x != nil {
-		return x.AllowedOauthScopes
-	}
-	return nil
-}
-
-func (x *AwsCognitoUserPoolClient) GetCallbackUrls() []string {
-	if x != nil {
-		return x.CallbackUrls
-	}
-	return nil
-}
-
-func (x *AwsCognitoUserPoolClient) GetLogoutUrls() []string {
-	if x != nil {
-		return x.LogoutUrls
-	}
-	return nil
-}
-
-func (x *AwsCognitoUserPoolClient) GetDefaultRedirectUri() string {
-	if x != nil {
-		return x.DefaultRedirectUri
-	}
-	return ""
-}
-
-func (x *AwsCognitoUserPoolClient) GetSupportedIdentityProviders() []string {
-	if x != nil {
-		return x.SupportedIdentityProviders
-	}
-	return nil
-}
-
-func (x *AwsCognitoUserPoolClient) GetExplicitAuthFlows() []string {
-	if x != nil {
-		return x.ExplicitAuthFlows
-	}
-	return nil
-}
-
-func (x *AwsCognitoUserPoolClient) GetAccessTokenValidityMinutes() int32 {
-	if x != nil {
-		return x.AccessTokenValidityMinutes
-	}
-	return 0
-}
-
-func (x *AwsCognitoUserPoolClient) GetIdTokenValidityMinutes() int32 {
-	if x != nil {
-		return x.IdTokenValidityMinutes
-	}
-	return 0
-}
-
-func (x *AwsCognitoUserPoolClient) GetRefreshTokenValidityDays() int32 {
-	if x != nil {
-		return x.RefreshTokenValidityDays
-	}
-	return 0
-}
-
-func (x *AwsCognitoUserPoolClient) GetEnableTokenRevocation() bool {
-	if x != nil {
-		return x.EnableTokenRevocation
-	}
-	return false
-}
-
-func (x *AwsCognitoUserPoolClient) GetPreventUserExistenceErrors() string {
-	if x != nil {
-		return x.PreventUserExistenceErrors
-	}
-	return ""
-}
-
-// AwsCognitoUserPoolDomainConfig configures the hosted UI domain for the user pool.
-// This enables the Cognito-hosted sign-in/sign-up pages and OAuth2 endpoints.
-type AwsCognitoUserPoolDomainConfig struct {
+// AwsCognitoUserPoolCustomSenderConfig points a custom email/SMS sender slot
+// at a Lambda function.
+type AwsCognitoUserPoolCustomSenderConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Domain prefix (for Cognito-hosted domains) or fully-qualified domain name
-	// (for custom domains). For Cognito-hosted: provide a unique prefix like
-	// "myapp-auth" which creates "myapp-auth.auth.{region}.amazoncognito.com".
-	// For custom domains: provide the FQDN like "auth.example.com".
-	// ForceNew — the domain cannot be changed after creation.
-	Domain string `protobuf:"bytes,1,opt,name=domain,proto3" json:"domain,omitempty"`
-	// ACM certificate ARN for custom domains. Required when `domain` contains
-	// a dot (custom domain). The certificate must be in us-east-1 regardless
-	// of the user pool's region (Cognito uses CloudFront for custom domains).
-	// Not applicable for Cognito-hosted prefix domains.
-	CertificateArn *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=certificate_arn,json=certificateArn,proto3" json:"certificate_arn,omitempty"`
+	// The Lambda function Cognito invokes to deliver the message. Accepts a
+	// direct ARN or a reference to an AwsLambda resource.
+	LambdaArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=lambda_arn,json=lambdaArn,proto3" json:"lambda_arn,omitempty"`
+	// The sender event version. "V1_0" is the only version AWS currently
+	// defines; modeled as a field so new versions are additive, not breaking.
+	LambdaVersion string `protobuf:"bytes,2,opt,name=lambda_version,json=lambdaVersion,proto3" json:"lambda_version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolCustomSenderConfig) Reset() {
+	*x = AwsCognitoUserPoolCustomSenderConfig{}
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolCustomSenderConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolCustomSenderConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolCustomSenderConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolCustomSenderConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolCustomSenderConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AwsCognitoUserPoolCustomSenderConfig) GetLambdaArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.LambdaArn
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolCustomSenderConfig) GetLambdaVersion() string {
+	if x != nil {
+		return x.LambdaVersion
+	}
+	return ""
+}
+
+// AwsCognitoUserPoolAddOns configures threat protection (AWS "advanced
+// security features").
+type AwsCognitoUserPoolAddOns struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Threat protection mode for standard authentication flows:
+	//   - "OFF": no threat protection.
+	//   - "AUDIT": Cognito gathers risk signals and metrics without acting.
+	//   - "ENFORCED": Cognito acts on risk (blocks, requires MFA) per the pool's
+	//     risk configuration.
+	//
+	// AUDIT and ENFORCED require the PLUS feature tier.
+	AdvancedSecurityMode string `protobuf:"bytes,1,opt,name=advanced_security_mode,json=advancedSecurityMode,proto3" json:"advanced_security_mode,omitempty"`
+	// Extends threat protection to CUSTOM authentication flows (Lambda-driven
+	// challenges), which standard mode does not cover. Valid values: "AUDIT",
+	// "ENFORCED". When omitted, custom auth flows are not covered.
+	CustomAuthMode string `protobuf:"bytes,2,opt,name=custom_auth_mode,json=customAuthMode,proto3" json:"custom_auth_mode,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
+func (x *AwsCognitoUserPoolAddOns) Reset() {
+	*x = AwsCognitoUserPoolAddOns{}
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolAddOns) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolAddOns) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolAddOns) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolAddOns.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolAddOns) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AwsCognitoUserPoolAddOns) GetAdvancedSecurityMode() string {
+	if x != nil {
+		return x.AdvancedSecurityMode
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolAddOns) GetCustomAuthMode() string {
+	if x != nil {
+		return x.CustomAuthMode
+	}
+	return ""
+}
+
+// AwsCognitoUserPoolLogConfiguration routes one Cognito event source to one
+// log destination.
+type AwsCognitoUserPoolLogConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The event source to deliver:
+	//   - "userNotification": message-delivery errors (email/SMS send failures).
+	//     Supports the ERROR log level.
+	//   - "userAuthEvents": detailed auth events from threat protection. Requires
+	//     the PLUS tier with advanced security enabled; supports the INFO level.
+	EventSource string `protobuf:"bytes,1,opt,name=event_source,json=eventSource,proto3" json:"event_source,omitempty"`
+	// The log level to deliver: "ERROR" (userNotification) or "INFO"
+	// (userAuthEvents).
+	LogLevel string `protobuf:"bytes,2,opt,name=log_level,json=logLevel,proto3" json:"log_level,omitempty"`
+	// CloudWatch Logs destination. Accepts a direct log group ARN or a
+	// reference to an AwsCloudwatchLogGroup resource. Exactly one destination
+	// must be set per entry.
+	CloudwatchLogGroupArn *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=cloudwatch_log_group_arn,json=cloudwatchLogGroupArn,proto3" json:"cloudwatch_log_group_arn,omitempty"`
+	// Kinesis Data Firehose destination. Accepts a direct delivery-stream ARN
+	// or a reference to an AwsKinesisFirehose resource.
+	FirehoseStreamArn *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=firehose_stream_arn,json=firehoseStreamArn,proto3" json:"firehose_stream_arn,omitempty"`
+	// S3 destination. Accepts a direct bucket ARN or a reference to an
+	// AwsS3Bucket resource.
+	S3BucketArn   *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=s3_bucket_arn,json=s3BucketArn,proto3" json:"s3_bucket_arn,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolLogConfiguration) Reset() {
+	*x = AwsCognitoUserPoolLogConfiguration{}
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolLogConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolLogConfiguration) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolLogConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolLogConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolLogConfiguration) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AwsCognitoUserPoolLogConfiguration) GetEventSource() string {
+	if x != nil {
+		return x.EventSource
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolLogConfiguration) GetLogLevel() string {
+	if x != nil {
+		return x.LogLevel
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolLogConfiguration) GetCloudwatchLogGroupArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.CloudwatchLogGroupArn
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolLogConfiguration) GetFirehoseStreamArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.FirehoseStreamArn
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolLogConfiguration) GetS3BucketArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.S3BucketArn
+	}
+	return nil
+}
+
+// AwsCognitoUserPoolDomainConfig configures the hosted UI domain for the user pool.
+// This enables the Cognito-hosted sign-in/sign-up pages and OAuth2 endpoints.
+// AWS allows one domain per pool; the domain string is the resource's identity.
+type AwsCognitoUserPoolDomainConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Domain prefix (for Cognito-hosted domains) or fully-qualified domain name
+	// (for custom domains). For Cognito-hosted: provide a unique prefix like
+	// "myapp-auth" which creates "myapp-auth.auth.{region}.amazoncognito.com" --
+	// AWS rejects prefixes containing the reserved words "aws", "amazon", or
+	// "cognito". For custom domains: provide the FQDN like "auth.example.com".
+	// ForceNew -- the domain cannot be changed after creation.
+	Domain string `protobuf:"bytes,1,opt,name=domain,proto3" json:"domain,omitempty"`
+	// ACM certificate ARN for custom domains. Required when `domain` contains
+	// a dot (custom domain). The certificate must be in us-east-1 regardless
+	// of the user pool's region (Cognito uses CloudFront for custom domains).
+	// Not applicable for Cognito-hosted prefix domains. Adding or removing the
+	// certificate replaces the domain (switching custom <-> prefix); rotating
+	// one certificate ARN to another updates in place.
+	CertificateArn *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=certificate_arn,json=certificateArn,proto3" json:"certificate_arn,omitempty"`
+	// The sign-in page generation served on this domain:
+	//   - 1: classic hosted UI.
+	//   - 2: managed login (the newer, branding-designer experience; requires a
+	//     branding style to be assigned before sign-in pages render).
+	//
+	// When omitted, AWS defaults new domains to managed login (2).
+	ManagedLoginVersion *int32 `protobuf:"varint,3,opt,name=managed_login_version,json=managedLoginVersion,proto3,oneof" json:"managed_login_version,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
 func (x *AwsCognitoUserPoolDomainConfig) Reset() {
 	*x = AwsCognitoUserPoolDomainConfig{}
-	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -997,7 +1717,7 @@ func (x *AwsCognitoUserPoolDomainConfig) String() string {
 func (*AwsCognitoUserPoolDomainConfig) ProtoMessage() {}
 
 func (x *AwsCognitoUserPoolDomainConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1010,7 +1730,7 @@ func (x *AwsCognitoUserPoolDomainConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCognitoUserPoolDomainConfig.ProtoReflect.Descriptor instead.
 func (*AwsCognitoUserPoolDomainConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *AwsCognitoUserPoolDomainConfig) GetDomain() string {
@@ -1027,47 +1747,87 @@ func (x *AwsCognitoUserPoolDomainConfig) GetCertificateArn() *v1.StringValueOrRe
 	return nil
 }
 
+func (x *AwsCognitoUserPoolDomainConfig) GetManagedLoginVersion() int32 {
+	if x != nil && x.ManagedLoginVersion != nil {
+		return *x.ManagedLoginVersion
+	}
+	return 0
+}
+
 var File_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/aws/awscognitouserpool/v1/spec.proto\x12.dev.planton.provider.aws.awscognitouserpool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x8f\x19\n" +
+	"9dev/planton/provider/aws/awscognitouserpool/v1/spec.proto\x12.dev.planton.provider.aws.awscognitouserpool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9e/\n" +
 	"\x16AwsCognitoUserPoolSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12/\n" +
 	"\x13username_attributes\x18\x02 \x03(\tR\x12usernameAttributes\x12)\n" +
 	"\x10alias_attributes\x18\x03 \x03(\tR\x0faliasAttributes\x126\n" +
-	"\x17username_case_sensitive\x18\x04 \x01(\bR\x15usernameCaseSensitive\x12y\n" +
-	"\x0fpassword_policy\x18\x05 \x01(\v2P.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolPasswordPolicyR\x0epasswordPolicy\x12+\n" +
-	"\x11mfa_configuration\x18\x06 \x01(\tR\x10mfaConfiguration\x12;\n" +
-	"\x1asoftware_token_mfa_enabled\x18\a \x01(\bR\x17softwareTokenMfaEnabled\x128\n" +
-	"\x18auto_verified_attributes\x18\b \x03(\tR\x16autoVerifiedAttributes\x12\x93\x01\n" +
-	"\x1baccount_recovery_mechanisms\x18\t \x03(\v2S.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolRecoveryMechanismR\x19accountRecoveryMechanisms\x12~\n" +
-	"\x13email_configuration\x18\n" +
-	" \x01(\v2M.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolEmailConfigR\x12emailConfiguration\x12>\n" +
-	"\x1callow_admin_create_user_only\x18\v \x01(\bR\x18allowAdminCreateUserOnly\x12/\n" +
-	"\x13deletion_protection\x18\f \x01(\bR\x12deletionProtection\x12~\n" +
-	"\x11custom_attributes\x18\r \x03(\v2Q.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSchemaAttributeR\x10customAttributes\x12s\n" +
-	"\rlambda_config\x18\x0e \x01(\v2N.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfigR\flambdaConfig\x12l\n" +
-	"\aclients\x18\x0f \x03(\v2H.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolClientB\b\xbaH\x05\x92\x01\x02\b\x01R\aclients\x12f\n" +
-	"\x06domain\x18\x10 \x01(\v2N.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolDomainConfigR\x06domain:\xce\x0e\xbaH\xca\x0e\x1a\xc8\x01\n" +
+	"\x17username_case_sensitive\x18\x04 \x01(\bR\x15usernameCaseSensitive\x12/\n" +
+	"\x13deletion_protection\x18\x05 \x01(\bR\x12deletionProtection\x12$\n" +
+	"\x0euser_pool_tier\x18\x06 \x01(\tR\fuserPoolTier\x12y\n" +
+	"\x0fpassword_policy\x18\a \x01(\v2P.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolPasswordPolicyR\x0epasswordPolicy\x12;\n" +
+	"\x1aallowed_first_auth_factors\x18\b \x03(\tR\x17allowedFirstAuthFactors\x12+\n" +
+	"\x11mfa_configuration\x18\t \x01(\tR\x10mfaConfiguration\x12;\n" +
+	"\x1asoftware_token_mfa_enabled\x18\n" +
+	" \x01(\bR\x17softwareTokenMfaEnabled\x12m\n" +
+	"\temail_mfa\x18\v \x01(\v2P.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolEmailMfaConfigR\bemailMfa\x12m\n" +
+	"\tweb_authn\x18\f \x01(\v2P.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolWebAuthnConfigR\bwebAuthn\x12x\n" +
+	"\x11sms_configuration\x18\r \x01(\v2K.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSmsConfigR\x10smsConfiguration\x12<\n" +
+	"\x1asms_authentication_message\x18\x0e \x01(\tR\x18smsAuthenticationMessage\x128\n" +
+	"\x18auto_verified_attributes\x18\x0f \x03(\tR\x16autoVerifiedAttributes\x12`\n" +
+	"-attributes_require_verification_before_update\x18\x10 \x03(\tR)attributesRequireVerificationBeforeUpdate\x12\x93\x01\n" +
+	"\x1baccount_recovery_mechanisms\x18\x11 \x03(\v2S.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolRecoveryMechanismR\x19accountRecoveryMechanisms\x12~\n" +
+	"\x13email_configuration\x18\x12 \x01(\v2M.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolEmailConfigR\x12emailConfiguration\x12\xa1\x01\n" +
+	"\x1dverification_message_template\x18\x13 \x01(\v2].dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolVerificationMessageTemplateR\x1bverificationMessageTemplate\x12>\n" +
+	"\x1callow_admin_create_user_only\x18\x14 \x01(\bR\x18allowAdminCreateUserOnly\x12\x8f\x01\n" +
+	"\x17invite_message_template\x18\x15 \x01(\v2W.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolInviteMessageTemplateR\x15inviteMessageTemplate\x12\x81\x01\n" +
+	"\x14device_configuration\x18\x16 \x01(\v2N.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolDeviceConfigR\x13deviceConfiguration\x12~\n" +
+	"\x11custom_attributes\x18\x17 \x03(\v2Q.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSchemaAttributeR\x10customAttributes\x12s\n" +
+	"\rlambda_config\x18\x18 \x01(\v2N.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfigR\flambdaConfig\x12s\n" +
+	"\x11user_pool_add_ons\x18\x19 \x01(\v2H.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolAddOnsR\x0euserPoolAddOns\x12\x81\x01\n" +
+	"\x12log_configurations\x18\x1a \x03(\v2R.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLogConfigurationR\x11logConfigurations\x12f\n" +
+	"\x06domain\x18\x1b \x01(\v2N.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolDomainConfigR\x06domain:\xbd\x1b\xbaH\xb9\x1b\x1a\xc8\x01\n" +
 	"\x1cusername_or_alias_attributes\x12]username_attributes and alias_attributes are mutually exclusive; set one or neither, not both\x1aIthis.username_attributes.size() == 0 || this.alias_attributes.size() == 0\x1a\xa1\x01\n" +
 	"\x19username_attributes_valid\x12Cusername_attributes must contain only 'email' and/or 'phone_number'\x1a?this.username_attributes.all(a, a in ['email', 'phone_number'])\x1a\xc5\x01\n" +
-	"\x16alias_attributes_valid\x12Walias_attributes must contain only 'email', 'phone_number', and/or 'preferred_username'\x1aRthis.alias_attributes.all(a, a in ['email', 'phone_number', 'preferred_username'])\x1a\xb0\x01\n" +
-	"\x1eauto_verified_attributes_valid\x12Hauto_verified_attributes must contain only 'email' and/or 'phone_number'\x1aDthis.auto_verified_attributes.all(a, a in ['email', 'phone_number'])\x1a\xad\x01\n" +
+	"\x16alias_attributes_valid\x12Walias_attributes must contain only 'email', 'phone_number', and/or 'preferred_username'\x1aRthis.alias_attributes.all(a, a in ['email', 'phone_number', 'preferred_username'])\x1a\xab\x01\n" +
+	"\x14user_pool_tier_valid\x12?user_pool_tier must be 'LITE', 'ESSENTIALS', or 'PLUS' when set\x1aRthis.user_pool_tier == '' || this.user_pool_tier in ['LITE', 'ESSENTIALS', 'PLUS']\x1a\xe7\x01\n" +
+	" allowed_first_auth_factors_valid\x12callowed_first_auth_factors must contain only 'PASSWORD', 'EMAIL_OTP', 'SMS_OTP', and/or 'WEB_AUTHN'\x1a^this.allowed_first_auth_factors.all(f, f in ['PASSWORD', 'EMAIL_OTP', 'SMS_OTP', 'WEB_AUTHN'])\x1a\xb0\x01\n" +
+	"\x1eauto_verified_attributes_valid\x12Hauto_verified_attributes must contain only 'email' and/or 'phone_number'\x1aDthis.auto_verified_attributes.all(a, a in ['email', 'phone_number'])\x1a\xe1\x01\n" +
+	"%attributes_require_verification_valid\x12]attributes_require_verification_before_update must contain only 'email' and/or 'phone_number'\x1aYthis.attributes_require_verification_before_update.all(a, a in ['email', 'phone_number'])\x1a\xad\x01\n" +
 	"\x17mfa_configuration_valid\x12=mfa_configuration must be 'OFF', 'OPTIONAL', or 'ON' when set\x1aSthis.mfa_configuration == '' || this.mfa_configuration in ['OFF', 'OPTIONAL', 'ON']\x1a\xc3\x01\n" +
-	"\x1fsoftware_token_mfa_requires_mfa\x12Nsoftware_token_mfa_enabled requires mfa_configuration to be 'OPTIONAL' or 'ON'\x1aP!this.software_token_mfa_enabled || this.mfa_configuration in ['OPTIONAL', 'ON']\x1ak\n" +
-	"\x13client_names_unique\x12.client names must be unique across all clients\x1a$this.clients.map(c, c.name).unique()\x1a\xf0\x01\n" +
+	"\x1fsoftware_token_mfa_requires_mfa\x12Nsoftware_token_mfa_enabled requires mfa_configuration to be 'OPTIONAL' or 'ON'\x1aP!this.software_token_mfa_enabled || this.mfa_configuration in ['OPTIONAL', 'ON']\x1a\x9d\x01\n" +
+	"\x16email_mfa_requires_mfa\x12=email_mfa requires mfa_configuration to be 'OPTIONAL' or 'ON'\x1aD!has(this.email_mfa) || this.mfa_configuration in ['OPTIONAL', 'ON']\x1a\xe6\x01\n" +
+	"\"sms_otp_requires_sms_configuration\x12eallowing 'SMS_OTP' as a first auth factor requires sms_configuration so Cognito can deliver the codes\x1aY!this.allowed_first_auth_factors.exists(f, f == 'SMS_OTP') || has(this.sms_configuration)\x1a\xe6\x01\n" +
+	"&sms_authentication_message_placeholder\x12_sms_authentication_message must contain the '{####}' placeholder where Cognito injects the code\x1a[this.sms_authentication_message == '' || this.sms_authentication_message.contains('{####}')\x1a\xf0\x01\n" +
 	"\x1baccount_recovery_name_valid\x12caccount_recovery_mechanisms name must be 'verified_email', 'verified_phone_number', or 'admin_only'\x1althis.account_recovery_mechanisms.all(m, m.name in ['verified_email', 'verified_phone_number', 'admin_only'])\x1a\xa3\x01\n" +
-	"\x1faccount_recovery_priority_range\x123account_recovery_mechanisms priority must be 1 or 2\x1aKthis.account_recovery_mechanisms.all(m, m.priority >= 1 && m.priority <= 2)\x1a\xe1\x01\n" +
-	"\"custom_domain_requires_certificate\x12Ca custom domain (containing '.') requires certificate_arn to be set\x1av!has(this.domain) || this.domain.domain == '' || !this.domain.domain.contains('.') || has(this.domain.certificate_arn)\"\xd5\x02\n" +
+	"\x1faccount_recovery_priority_range\x123account_recovery_mechanisms priority must be 1 or 2\x1aKthis.account_recovery_mechanisms.all(m, m.priority >= 1 && m.priority <= 2)\x1a\xe4\x01\n" +
+	"%account_recovery_admin_only_exclusive\x12F'admin_only' cannot be combined with other account recovery mechanisms\x1as!this.account_recovery_mechanisms.exists(m, m.name == 'admin_only') || this.account_recovery_mechanisms.size() == 1\x1a\xe1\x01\n" +
+	"\"custom_domain_requires_certificate\x12Ca custom domain (containing '.') requires certificate_arn to be set\x1av!has(this.domain) || this.domain.domain == '' || !this.domain.domain.contains('.') || has(this.domain.certificate_arn)\x1a\x84\x02\n" +
+	"\x1fprefix_domain_no_reserved_words\x12^a Cognito-hosted prefix domain cannot contain the reserved words 'aws', 'amazon', or 'cognito'\x1a\x80\x01!has(this.domain) || this.domain.domain.contains('.') || !['aws', 'amazon', 'cognito'].exists(w, this.domain.domain.contains(w))\"\x94\x03\n" +
 	" AwsCognitoUserPoolPasswordPolicy\x120\n" +
 	"\x0eminimum_length\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18c(\x06R\rminimumLength\x12+\n" +
 	"\x11require_lowercase\x18\x02 \x01(\bR\x10requireLowercase\x12+\n" +
 	"\x11require_uppercase\x18\x03 \x01(\bR\x10requireUppercase\x12'\n" +
 	"\x0frequire_numbers\x18\x04 \x01(\bR\x0erequireNumbers\x12'\n" +
-	"\x0frequire_symbols\x18\x05 \x01(\bR\x0erequireSymbols\x12S\n" +
-	" temporary_password_validity_days\x18\x06 \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xed\x02(\x00R\x1dtemporaryPasswordValidityDays\"e\n" +
+	"\x0frequire_symbols\x18\x05 \x01(\bR\x0erequireSymbols\x12=\n" +
+	"\x15password_history_size\x18\x06 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x18(\x00R\x13passwordHistorySize\x12S\n" +
+	" temporary_password_validity_days\x18\a \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xed\x02(\x00R\x1dtemporaryPasswordValidityDays\"\x98\x02\n" +
+	" AwsCognitoUserPoolEmailMfaConfig\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12\"\n" +
+	"\asubject\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x8c\x01R\asubject:\xb5\x01\xbaH\xb1\x01\x1a\xae\x01\n" +
+	"\x1demail_mfa_message_placeholder\x12Vemail_mfa message must contain the '{####}' placeholder where Cognito injects the code\x1a5this.message == '' || this.message.contains('{####}')\"\xc3\x02\n" +
+	" AwsCognitoUserPoolWebAuthnConfig\x12(\n" +
+	"\x10relying_party_id\x18\x01 \x01(\tR\x0erelyingPartyId\x12+\n" +
+	"\x11user_verification\x18\x02 \x01(\tR\x10userVerification:\xc7\x01\xbaH\xc3\x01\x1a\xc0\x01\n" +
+	"!web_authn_user_verification_valid\x12Fweb_authn user_verification must be 'required' or 'preferred' when set\x1aSthis.user_verification == '' || this.user_verification in ['required', 'preferred']\"\xe9\x01\n" +
+	"\x1bAwsCognitoUserPoolSmsConfig\x12\x80\x01\n" +
+	"\x0esns_caller_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\fsnsCallerArn\x12(\n" +
+	"\vexternal_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
+	"externalId\x12\x1d\n" +
+	"\n" +
+	"sns_region\x18\x03 \x01(\tR\tsnsRegion\"e\n" +
 	"#AwsCognitoUserPoolRecoveryMechanism\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\"\n" +
 	"\bpriority\x18\x02 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\bpriority\"\xb7\x05\n" +
@@ -1079,57 +1839,89 @@ const file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDesc = "
 	"\x16reply_to_email_address\x18\x04 \x01(\tR\x13replyToEmailAddress\x12+\n" +
 	"\x11configuration_set\x18\x05 \x01(\tR\x10configurationSet:\xfe\x02\xbaH\xfa\x02\x1a\xca\x01\n" +
 	"\x1bemail_sending_account_valid\x12Gemail_sending_account must be 'COGNITO_DEFAULT' or 'DEVELOPER' when set\x1abthis.email_sending_account == '' || this.email_sending_account in ['COGNITO_DEFAULT', 'DEVELOPER']\x1a\xaa\x01\n" +
-	"#developer_email_requires_source_arn\x12@source_arn is required when email_sending_account is 'DEVELOPER'\x1aAthis.email_sending_account != 'DEVELOPER' || has(this.source_arn)\"\x94\x04\n" +
+	"#developer_email_requires_source_arn\x12@source_arn is required when email_sending_account is 'DEVELOPER'\x1aAthis.email_sending_account != 'DEVELOPER' || has(this.source_arn)\"\xf0\t\n" +
+	"-AwsCognitoUserPoolVerificationMessageTemplate\x120\n" +
+	"\x14default_email_option\x18\x01 \x01(\tR\x12defaultEmailOption\x12#\n" +
+	"\remail_message\x18\x02 \x01(\tR\femailMessage\x12-\n" +
+	"\remail_subject\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x8c\x01R\femailSubject\x121\n" +
+	"\x15email_message_by_link\x18\x04 \x01(\tR\x12emailMessageByLink\x12;\n" +
+	"\x15email_subject_by_link\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x8c\x01R\x12emailSubjectByLink\x12)\n" +
+	"\vsms_message\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\x8c\x01R\n" +
+	"smsMessage:\x9d\a\xbaH\x99\a\x1a\xda\x01\n" +
+	"\x1adefault_email_option_valid\x12Pdefault_email_option must be 'CONFIRM_WITH_CODE' or 'CONFIRM_WITH_LINK' when set\x1ajthis.default_email_option == '' || this.default_email_option in ['CONFIRM_WITH_CODE', 'CONFIRM_WITH_LINK']\x1a\xcc\x01\n" +
+	"&verification_email_message_placeholder\x12_email_message must contain the '{####}' placeholder where Cognito injects the verification code\x1aAthis.email_message == '' || this.email_message.contains('{####}')\x1a\xa3\x02\n" +
+	"#verification_email_link_placeholder\x12|email_message_by_link must contain a '{##...##}' placeholder pair wrapping the link text (e.g. 'Click {##here##} to verify')\x1a~this.email_message_by_link == '' || (this.email_message_by_link.contains('{##') && this.email_message_by_link.contains('##}'))\x1a\xc4\x01\n" +
+	"$verification_sms_message_placeholder\x12]sms_message must contain the '{####}' placeholder where Cognito injects the verification code\x1a=this.sms_message == '' || this.sms_message.contains('{####}')\"\xe3\x04\n" +
+	"'AwsCognitoUserPoolInviteMessageTemplate\x12#\n" +
+	"\remail_message\x18\x01 \x01(\tR\femailMessage\x12-\n" +
+	"\remail_subject\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x8c\x01R\femailSubject\x12)\n" +
+	"\vsms_message\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x8c\x01R\n" +
+	"smsMessage:\xb8\x03\xbaH\xb4\x03\x1a\xdc\x01\n" +
+	"\x19invite_email_placeholders\x12Minvite email_message must contain both '{username}' and '{####}' placeholders\x1apthis.email_message == '' || (this.email_message.contains('{username}') && this.email_message.contains('{####}'))\x1a\xd2\x01\n" +
+	"\x17invite_sms_placeholders\x12Kinvite sms_message must contain both '{username}' and '{####}' placeholders\x1ajthis.sms_message == '' || (this.sms_message.contains('{username}') && this.sms_message.contains('{####}'))\"\xb9\x01\n" +
+	"\x1eAwsCognitoUserPoolDeviceConfig\x12F\n" +
+	" challenge_required_on_new_device\x18\x01 \x01(\bR\x1cchallengeRequiredOnNewDevice\x12O\n" +
+	"%device_only_remembered_on_user_prompt\x18\x02 \x01(\bR deviceOnlyRememberedOnUserPrompt\"\xce\x04\n" +
 	"!AwsCognitoUserPoolSchemaAttribute\x12\x1d\n" +
 	"\x04name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\x14R\x04name\x126\n" +
 	"\x13attribute_data_type\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11attributeDataType\x12\x18\n" +
 	"\amutable\x18\x03 \x01(\bR\amutable\x12\x1a\n" +
-	"\brequired\x18\x04 \x01(\bR\brequired\x12*\n" +
-	"\x11string_min_length\x18\x05 \x01(\tR\x0fstringMinLength\x12*\n" +
-	"\x11string_max_length\x18\x06 \x01(\tR\x0fstringMaxLength\x12(\n" +
-	"\x10number_min_value\x18\a \x01(\tR\x0enumberMinValue\x12(\n" +
-	"\x10number_max_value\x18\b \x01(\tR\x0enumberMaxValue:\xb5\x01\xbaH\xb1\x01\x1a\xae\x01\n" +
-	"\x19attribute_data_type_valid\x12Hattribute_data_type must be 'String', 'Number', 'DateTime', or 'Boolean'\x1aGthis.attribute_data_type in ['String', 'Number', 'DateTime', 'Boolean']\"\xf7\v\n" +
+	"\brequired\x18\x04 \x01(\bR\brequired\x128\n" +
+	"\x18developer_only_attribute\x18\x05 \x01(\bR\x16developerOnlyAttribute\x12*\n" +
+	"\x11string_min_length\x18\x06 \x01(\tR\x0fstringMinLength\x12*\n" +
+	"\x11string_max_length\x18\a \x01(\tR\x0fstringMaxLength\x12(\n" +
+	"\x10number_min_value\x18\b \x01(\tR\x0enumberMinValue\x12(\n" +
+	"\x10number_max_value\x18\t \x01(\tR\x0enumberMaxValue:\xb5\x01\xbaH\xb1\x01\x1a\xae\x01\n" +
+	"\x19attribute_data_type_valid\x12Hattribute_data_type must be 'String', 'Number', 'DateTime', or 'Boolean'\x1aGthis.attribute_data_type in ['String', 'Number', 'DateTime', 'Boolean']\"\xe7\x13\n" +
 	"\x1eAwsCognitoUserPoolLambdaConfig\x12x\n" +
 	"\vpre_sign_up\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\tpreSignUp\x12\x87\x01\n" +
 	"\x12pre_authentication\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x11preAuthentication\x12\x89\x01\n" +
 	"\x13post_authentication\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x12postAuthentication\x12\x85\x01\n" +
 	"\x11post_confirmation\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x10postConfirmation\x12\xfc\x01\n" +
-	"\x14pre_token_generation\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x95\x01\xaa\xa6\x1dmForeign-key reference to an AwsLambda trigger function (heuristic matched the word token), not a token value.\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x12preTokenGeneration\x12\x7f\n" +
-	"\x0ecustom_message\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\rcustomMessage\x12\x7f\n" +
-	"\x0euser_migration\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\ruserMigration\x12\x8c\x01\n" +
-	"\x15define_auth_challenge\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x13defineAuthChallenge\x12\x8c\x01\n" +
-	"\x15create_auth_challenge\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x13createAuthChallenge\x12\x9d\x01\n" +
-	"\x1everify_auth_challenge_response\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x1bverifyAuthChallengeResponse\"\xfb\v\n" +
-	"\x18AwsCognitoUserPoolClient\x12\x1e\n" +
-	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\x04name\x12'\n" +
-	"\x0fgenerate_secret\x18\x02 \x01(\bR\x0egenerateSecret\x12M\n" +
-	"$allowed_oauth_flows_user_pool_client\x18\x03 \x01(\bR\x1fallowedOauthFlowsUserPoolClient\x12.\n" +
-	"\x13allowed_oauth_flows\x18\x04 \x03(\tR\x11allowedOauthFlows\x120\n" +
-	"\x14allowed_oauth_scopes\x18\x05 \x03(\tR\x12allowedOauthScopes\x12#\n" +
-	"\rcallback_urls\x18\x06 \x03(\tR\fcallbackUrls\x12\x1f\n" +
-	"\vlogout_urls\x18\a \x03(\tR\n" +
-	"logoutUrls\x120\n" +
-	"\x14default_redirect_uri\x18\b \x01(\tR\x12defaultRedirectUri\x12@\n" +
-	"\x1csupported_identity_providers\x18\t \x03(\tR\x1asupportedIdentityProviders\x12.\n" +
-	"\x13explicit_auth_flows\x18\n" +
-	" \x03(\tR\x11explicitAuthFlows\x12M\n" +
-	"\x1daccess_token_validity_minutes\x18\v \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xa0\v(\x00R\x1aaccessTokenValidityMinutes\x12E\n" +
-	"\x19id_token_validity_minutes\x18\f \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xa0\v(\x00R\x16idTokenValidityMinutes\x12I\n" +
-	"\x1brefresh_token_validity_days\x18\r \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xc2\x1c(\x00R\x18refreshTokenValidityDays\x126\n" +
-	"\x17enable_token_revocation\x18\x0e \x01(\bR\x15enableTokenRevocation\x12A\n" +
-	"\x1dprevent_user_existence_errors\x18\x0f \x01(\tR\x1apreventUserExistenceErrors:\x9e\x05\xbaH\x9a\x05\x1a\xc0\x01\n" +
-	"\x19allowed_oauth_flows_valid\x12Qallowed_oauth_flows must contain only 'code', 'implicit', or 'client_credentials'\x1aPthis.allowed_oauth_flows.all(f, f in ['code', 'implicit', 'client_credentials'])\x1a\xfd\x01\n" +
-	"\x19explicit_auth_flows_valid\x121explicit_auth_flows must contain valid flow types\x1a\xac\x01this.explicit_auth_flows.all(f, f in ['ALLOW_USER_SRP_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH', 'ALLOW_USER_PASSWORD_AUTH', 'ALLOW_ADMIN_USER_PASSWORD_AUTH', 'ALLOW_CUSTOM_AUTH'])\x1a\xd4\x01\n" +
-	"#prevent_user_existence_errors_valid\x12Dprevent_user_existence_errors must be 'ENABLED' or 'LEGACY' when set\x1agthis.prevent_user_existence_errors == '' || this.prevent_user_existence_errors in ['ENABLED', 'LEGACY']\"\xc0\x01\n" +
+	"\x14pre_token_generation\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x95\x01\xaa\xa6\x1dmForeign-key reference to an AwsLambda trigger function (heuristic matched the word token), not a token value.\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x12preTokenGeneration\x12\x99\x01\n" +
+	"\x1bpre_token_generation_config\x18\x06 \x01(\v2Z.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolPreTokenGenerationConfigR\x18preTokenGenerationConfig\x12\x7f\n" +
+	"\x0ecustom_message\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\rcustomMessage\x12\x7f\n" +
+	"\x0euser_migration\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\ruserMigration\x12\x8c\x01\n" +
+	"\x15define_auth_challenge\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x13defineAuthChallenge\x12\x8c\x01\n" +
+	"\x15create_auth_challenge\x18\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x13createAuthChallenge\x12\x9d\x01\n" +
+	"\x1everify_auth_challenge_response\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x1bverifyAuthChallengeResponse\x12\x84\x01\n" +
+	"\x13custom_email_sender\x18\f \x01(\v2T.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolCustomSenderConfigR\x11customEmailSender\x12\x80\x01\n" +
+	"\x11custom_sms_sender\x18\r \x01(\v2T.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolCustomSenderConfigR\x0fcustomSmsSender\x12q\n" +
+	"\n" +
+	"kms_key_id\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId:\xd4\x03\xbaH\xd0\x03\x1a\xd4\x01\n" +
+	"\x1epre_token_generation_exclusive\x12gset either pre_token_generation (V1_0 event) or pre_token_generation_config (versioned event), not both\x1aI!has(this.pre_token_generation) || !has(this.pre_token_generation_config)\x1a\xf6\x01\n" +
+	"\x1ecustom_sender_requires_kms_key\x12zkms_key_id is required when custom_email_sender or custom_sms_sender is set -- Cognito encrypts the delivered code with it\x1aX(!has(this.custom_email_sender) && !has(this.custom_sms_sender)) || has(this.kms_key_id)\"\xeb\x02\n" +
+	"*AwsCognitoUserPoolPreTokenGenerationConfig\x12}\n" +
+	"\n" +
+	"lambda_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\tlambdaArn\x12-\n" +
+	"\x0elambda_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rlambdaVersion:\x8e\x01\xbaH\x8a\x01\x1a\x87\x01\n" +
+	"\"pre_token_generation_version_valid\x120lambda_version must be 'V1_0', 'V2_0', or 'V3_0'\x1a/this.lambda_version in ['V1_0', 'V2_0', 'V3_0']\"\xb8\x02\n" +
+	"$AwsCognitoUserPoolCustomSenderConfig\x12}\n" +
+	"\n" +
+	"lambda_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\tlambdaArn\x12-\n" +
+	"\x0elambda_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rlambdaVersion:b\xbaH_\x1a]\n" +
+	"\x1bcustom_sender_version_valid\x12\x1dlambda_version must be 'V1_0'\x1a\x1fthis.lambda_version in ['V1_0']\"\x9b\x05\n" +
+	"\x18AwsCognitoUserPoolAddOns\x12<\n" +
+	"\x16advanced_security_mode\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x14advancedSecurityMode\x12(\n" +
+	"\x10custom_auth_mode\x18\x02 \x01(\tR\x0ecustomAuthMode:\x96\x04\xbaH\x92\x04\x1a\x99\x01\n" +
+	"\x1cadvanced_security_mode_valid\x12<advanced_security_mode must be 'OFF', 'AUDIT', or 'ENFORCED'\x1a;this.advanced_security_mode in ['OFF', 'AUDIT', 'ENFORCED']\x1a\xa0\x01\n" +
+	"\x16custom_auth_mode_valid\x127custom_auth_mode must be 'AUDIT' or 'ENFORCED' when set\x1aMthis.custom_auth_mode == '' || this.custom_auth_mode in ['AUDIT', 'ENFORCED']\x1a\xd0\x01\n" +
+	"+custom_auth_mode_requires_advanced_security\x12Lcustom_auth_mode requires advanced_security_mode to be 'AUDIT' or 'ENFORCED'\x1aSthis.custom_auth_mode == '' || this.advanced_security_mode in ['AUDIT', 'ENFORCED']\"\xa5\b\n" +
+	"\"AwsCognitoUserPoolLogConfiguration\x12)\n" +
+	"\fevent_source\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\veventSource\x12#\n" +
+	"\tlog_level\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blogLevel\x12\x92\x01\n" +
+	"\x18cloudwatch_log_group_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xb6\x02\x92\xd4a\x1cstatus.outputs.log_group_arnR\x15cloudwatchLogGroupArn\x12\x8f\x01\n" +
+	"\x13firehose_stream_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\x85\x02\x92\xd4a\"status.outputs.delivery_stream_arnR\x11firehoseStreamArn\x12z\n" +
+	"\rs3_bucket_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xd5\x01\x92\xd4a\x19status.outputs.bucket_arnR\vs3BucketArn:\x8b\x04\xbaH\x87\x04\x1a\x92\x01\n" +
+	"\x16log_event_source_valid\x12;event_source must be 'userNotification' or 'userAuthEvents'\x1a;this.event_source in ['userNotification', 'userAuthEvents']\x1a[\n" +
+	"\x0flog_level_valid\x12#log_level must be 'ERROR' or 'INFO'\x1a#this.log_level in ['ERROR', 'INFO']\x1a\x92\x02\n" +
+	"\x1blog_destination_exactly_one\x12rset exactly one destination per log configuration: cloudwatch_log_group_arn, firehose_stream_arn, or s3_bucket_arn\x1a\x7f(has(this.cloudwatch_log_group_arn) ? 1 : 0) + (has(this.firehose_stream_arn) ? 1 : 0) + (has(this.s3_bucket_arn) ? 1 : 0) == 1\"\x9e\x02\n" +
 	"\x1eAwsCognitoUserPoolDomainConfig\x12\x1f\n" +
 	"\x06domain\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06domain\x12}\n" +
-	"\x0fcertificate_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x0ecertificateArnB\x85\x03\n" +
+	"\x0fcertificate_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x0ecertificateArn\x12B\n" +
+	"\x15managed_login_version\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x02(\x01H\x00R\x13managedLoginVersion\x88\x01\x01B\x18\n" +
+	"\x16_managed_login_versionB\x85\x03\n" +
 	"2com.dev.planton.provider.aws.awscognitouserpool.v1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitouserpool/v1;awscognitouserpoolv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Aws.Awscognitouserpool.V1\xca\x02.Dev\\Planton\\Provider\\Aws\\Awscognitouserpool\\V1\xe2\x02:Dev\\Planton\\Provider\\Aws\\Awscognitouserpool\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Aws::Awscognitouserpool::V1b\x06proto3"
 
 var (
@@ -1144,43 +1936,69 @@ func file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescGZIP(
 	return file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_goTypes = []any{
-	(*AwsCognitoUserPoolSpec)(nil),              // 0: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec
-	(*AwsCognitoUserPoolPasswordPolicy)(nil),    // 1: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolPasswordPolicy
-	(*AwsCognitoUserPoolRecoveryMechanism)(nil), // 2: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolRecoveryMechanism
-	(*AwsCognitoUserPoolEmailConfig)(nil),       // 3: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolEmailConfig
-	(*AwsCognitoUserPoolSchemaAttribute)(nil),   // 4: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSchemaAttribute
-	(*AwsCognitoUserPoolLambdaConfig)(nil),      // 5: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig
-	(*AwsCognitoUserPoolClient)(nil),            // 6: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolClient
-	(*AwsCognitoUserPoolDomainConfig)(nil),      // 7: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolDomainConfig
-	(*v1.StringValueOrRef)(nil),                 // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsCognitoUserPoolSpec)(nil),                        // 0: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec
+	(*AwsCognitoUserPoolPasswordPolicy)(nil),              // 1: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolPasswordPolicy
+	(*AwsCognitoUserPoolEmailMfaConfig)(nil),              // 2: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolEmailMfaConfig
+	(*AwsCognitoUserPoolWebAuthnConfig)(nil),              // 3: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolWebAuthnConfig
+	(*AwsCognitoUserPoolSmsConfig)(nil),                   // 4: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSmsConfig
+	(*AwsCognitoUserPoolRecoveryMechanism)(nil),           // 5: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolRecoveryMechanism
+	(*AwsCognitoUserPoolEmailConfig)(nil),                 // 6: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolEmailConfig
+	(*AwsCognitoUserPoolVerificationMessageTemplate)(nil), // 7: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolVerificationMessageTemplate
+	(*AwsCognitoUserPoolInviteMessageTemplate)(nil),       // 8: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolInviteMessageTemplate
+	(*AwsCognitoUserPoolDeviceConfig)(nil),                // 9: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolDeviceConfig
+	(*AwsCognitoUserPoolSchemaAttribute)(nil),             // 10: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSchemaAttribute
+	(*AwsCognitoUserPoolLambdaConfig)(nil),                // 11: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig
+	(*AwsCognitoUserPoolPreTokenGenerationConfig)(nil),    // 12: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolPreTokenGenerationConfig
+	(*AwsCognitoUserPoolCustomSenderConfig)(nil),          // 13: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolCustomSenderConfig
+	(*AwsCognitoUserPoolAddOns)(nil),                      // 14: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolAddOns
+	(*AwsCognitoUserPoolLogConfiguration)(nil),            // 15: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLogConfiguration
+	(*AwsCognitoUserPoolDomainConfig)(nil),                // 16: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolDomainConfig
+	(*v1.StringValueOrRef)(nil),                           // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.password_policy:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolPasswordPolicy
-	2,  // 1: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.account_recovery_mechanisms:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolRecoveryMechanism
-	3,  // 2: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.email_configuration:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolEmailConfig
-	4,  // 3: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.custom_attributes:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSchemaAttribute
-	5,  // 4: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.lambda_config:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig
-	6,  // 5: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.clients:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolClient
-	7,  // 6: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.domain:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolDomainConfig
-	8,  // 7: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolEmailConfig.source_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 8: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.pre_sign_up:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 9: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.pre_authentication:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 10: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.post_authentication:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 11: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.post_confirmation:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 12: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.pre_token_generation:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 13: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.custom_message:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 14: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.user_migration:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 15: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.define_auth_challenge:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 16: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.create_auth_challenge:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 17: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.verify_auth_challenge_response:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 18: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolDomainConfig.certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	2,  // 1: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.email_mfa:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolEmailMfaConfig
+	3,  // 2: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.web_authn:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolWebAuthnConfig
+	4,  // 3: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.sms_configuration:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSmsConfig
+	5,  // 4: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.account_recovery_mechanisms:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolRecoveryMechanism
+	6,  // 5: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.email_configuration:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolEmailConfig
+	7,  // 6: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.verification_message_template:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolVerificationMessageTemplate
+	8,  // 7: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.invite_message_template:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolInviteMessageTemplate
+	9,  // 8: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.device_configuration:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolDeviceConfig
+	10, // 9: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.custom_attributes:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSchemaAttribute
+	11, // 10: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.lambda_config:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig
+	14, // 11: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.user_pool_add_ons:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolAddOns
+	15, // 12: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.log_configurations:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLogConfiguration
+	16, // 13: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSpec.domain:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolDomainConfig
+	17, // 14: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolSmsConfig.sns_caller_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 15: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolEmailConfig.source_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 16: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.pre_sign_up:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 17: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.pre_authentication:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 18: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.post_authentication:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 19: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.post_confirmation:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 20: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.pre_token_generation:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 21: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.pre_token_generation_config:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolPreTokenGenerationConfig
+	17, // 22: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.custom_message:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 23: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.user_migration:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 24: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.define_auth_challenge:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 25: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.create_auth_challenge:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 26: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.verify_auth_challenge_response:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 27: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.custom_email_sender:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolCustomSenderConfig
+	13, // 28: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.custom_sms_sender:type_name -> dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolCustomSenderConfig
+	17, // 29: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLambdaConfig.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 30: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolPreTokenGenerationConfig.lambda_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 31: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolCustomSenderConfig.lambda_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 32: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLogConfiguration.cloudwatch_log_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 33: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLogConfiguration.firehose_stream_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 34: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolLogConfiguration.s3_bucket_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 35: dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolDomainConfig.certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	36, // [36:36] is the sub-list for method output_type
+	36, // [36:36] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_init() }
@@ -1188,13 +2006,14 @@ func file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_init() {
 	if File_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

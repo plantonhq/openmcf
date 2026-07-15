@@ -1,8 +1,13 @@
 terraform {
+  required_version = ">= 1.0"
   required_providers {
     aws = {
+      # Family floor on the v6 line. Everything this module uses (publish +
+      # versioning outputs, encryption_configuration, logging plan-time
+      # validation) predates 6.0, so the floor is the family convention, not
+      # a feature gate.
       source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      version = ">= 6.0.0"
     }
   }
 }

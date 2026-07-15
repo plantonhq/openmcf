@@ -21,26 +21,42 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsEc2InstanceStackOutputs captures the key output values after provisioning an EC2 instance.
-// These outputs include identifiers and network details which can be used to reference the instance in other resources or external systems.
+// AwsEc2InstanceStackOutputs captures the observable outputs of a
+// provisioned EC2 instance -- the identifiers and addresses downstream
+// resources and operators reference.
 type AwsEc2InstanceStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Unique identifier of the EC2 instance (instance ID, e.g., "i-0123456789abcdef0").
+	// The instance ID (e.g. "i-0123456789abcdef0"). The primary handle:
+	// what load-balancer target groups register (an AwsLbTargetGroup
+	// instance target references this output), what the CLI and APIs
+	// address.
 	InstanceId string `protobuf:"bytes,1,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
-	// Primary private IPv4 address assigned to the instance.
-	PrivateIp string `protobuf:"bytes,2,opt,name=private_ip,json=privateIp,proto3" json:"private_ip,omitempty"`
-	// Internal DNS hostname for the instance within the VPC.
-	PrivateDnsName string `protobuf:"bytes,3,opt,name=private_dns_name,json=privateDnsName,proto3" json:"private_dns_name,omitempty"`
-	// Availability zone where the instance is running (e.g., "us-west-2a").
+	// The ARN of the instance, for IAM policies and EventBridge rules
+	// scoped to this instance.
+	Arn string `protobuf:"bytes,2,opt,name=arn,proto3" json:"arn,omitempty"`
+	// The instance lifecycle state as of the last deploy ("running",
+	// "stopped", ...).
+	InstanceState string `protobuf:"bytes,3,opt,name=instance_state,json=instanceState,proto3" json:"instance_state,omitempty"`
+	// The availability zone the instance runs in (e.g. "us-west-2a").
 	AvailabilityZone string `protobuf:"bytes,4,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
-	// ARN of the IAM instance profile attached to the instance (if any).
-	InstanceProfileArn string `protobuf:"bytes,5,opt,name=instance_profile_arn,json=instanceProfileArn,proto3" json:"instance_profile_arn,omitempty"`
-	// Base‑64‑encoded PEM‑formatted private key when the module generates an SSH key pair.
-	SshPrivateKey string `protobuf:"bytes,6,opt,name=ssh_private_key,json=sshPrivateKey,proto3" json:"ssh_private_key,omitempty"`
-	// OpenSSH‑formatted public key corresponding to the generated private key.
-	SshPublicKey  string `protobuf:"bytes,7,opt,name=ssh_public_key,json=sshPublicKey,proto3" json:"ssh_public_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The primary private IPv4 address.
+	PrivateIp string `protobuf:"bytes,5,opt,name=private_ip,json=privateIp,proto3" json:"private_ip,omitempty"`
+	// The private DNS hostname within the VPC (e.g.
+	// "ip-10-0-1-5.us-west-2.compute.internal").
+	PrivateDns string `protobuf:"bytes,6,opt,name=private_dns,json=privateDns,proto3" json:"private_dns,omitempty"`
+	// The public IPv4 address, when one is associated. Empty for
+	// private-only instances. Note this address changes across
+	// stop/start cycles -- compose an AwsElasticIp for a stable public
+	// address.
+	PublicIp string `protobuf:"bytes,7,opt,name=public_ip,json=publicIp,proto3" json:"public_ip,omitempty"`
+	// The public DNS hostname, when a public address is associated. Empty
+	// for private-only instances.
+	PublicDns string `protobuf:"bytes,8,opt,name=public_dns,json=publicDns,proto3" json:"public_dns,omitempty"`
+	// The ID of the primary network interface (eth0) -- the attachment
+	// point for Elastic IP associations and flow-log scoping.
+	PrimaryNetworkInterfaceId string `protobuf:"bytes,9,opt,name=primary_network_interface_id,json=primaryNetworkInterfaceId,proto3" json:"primary_network_interface_id,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *AwsEc2InstanceStackOutputs) Reset() {
@@ -80,16 +96,16 @@ func (x *AwsEc2InstanceStackOutputs) GetInstanceId() string {
 	return ""
 }
 
-func (x *AwsEc2InstanceStackOutputs) GetPrivateIp() string {
+func (x *AwsEc2InstanceStackOutputs) GetArn() string {
 	if x != nil {
-		return x.PrivateIp
+		return x.Arn
 	}
 	return ""
 }
 
-func (x *AwsEc2InstanceStackOutputs) GetPrivateDnsName() string {
+func (x *AwsEc2InstanceStackOutputs) GetInstanceState() string {
 	if x != nil {
-		return x.PrivateDnsName
+		return x.InstanceState
 	}
 	return ""
 }
@@ -101,23 +117,37 @@ func (x *AwsEc2InstanceStackOutputs) GetAvailabilityZone() string {
 	return ""
 }
 
-func (x *AwsEc2InstanceStackOutputs) GetInstanceProfileArn() string {
+func (x *AwsEc2InstanceStackOutputs) GetPrivateIp() string {
 	if x != nil {
-		return x.InstanceProfileArn
+		return x.PrivateIp
 	}
 	return ""
 }
 
-func (x *AwsEc2InstanceStackOutputs) GetSshPrivateKey() string {
+func (x *AwsEc2InstanceStackOutputs) GetPrivateDns() string {
 	if x != nil {
-		return x.SshPrivateKey
+		return x.PrivateDns
 	}
 	return ""
 }
 
-func (x *AwsEc2InstanceStackOutputs) GetSshPublicKey() string {
+func (x *AwsEc2InstanceStackOutputs) GetPublicIp() string {
 	if x != nil {
-		return x.SshPublicKey
+		return x.PublicIp
+	}
+	return ""
+}
+
+func (x *AwsEc2InstanceStackOutputs) GetPublicDns() string {
+	if x != nil {
+		return x.PublicDns
+	}
+	return ""
+}
+
+func (x *AwsEc2InstanceStackOutputs) GetPrimaryNetworkInterfaceId() string {
+	if x != nil {
+		return x.PrimaryNetworkInterfaceId
 	}
 	return ""
 }
@@ -126,17 +156,21 @@ var File_dev_planton_provider_aws_awsec2instance_v1_stack_outputs_proto protoref
 
 const file_dev_planton_provider_aws_awsec2instance_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/aws/awsec2instance/v1/stack_outputs.proto\x12*dev.planton.provider.aws.awsec2instance.v1\"\xb3\x02\n" +
+	">dev/planton/provider/aws/awsec2instance/v1/stack_outputs.proto\x12*dev.planton.provider.aws.awsec2instance.v1\"\xe0\x02\n" +
 	"\x1aAwsEc2InstanceStackOutputs\x12\x1f\n" +
 	"\vinstance_id\x18\x01 \x01(\tR\n" +
-	"instanceId\x12\x1d\n" +
+	"instanceId\x12\x10\n" +
+	"\x03arn\x18\x02 \x01(\tR\x03arn\x12%\n" +
+	"\x0einstance_state\x18\x03 \x01(\tR\rinstanceState\x12+\n" +
+	"\x11availability_zone\x18\x04 \x01(\tR\x10availabilityZone\x12\x1d\n" +
 	"\n" +
-	"private_ip\x18\x02 \x01(\tR\tprivateIp\x12(\n" +
-	"\x10private_dns_name\x18\x03 \x01(\tR\x0eprivateDnsName\x12+\n" +
-	"\x11availability_zone\x18\x04 \x01(\tR\x10availabilityZone\x120\n" +
-	"\x14instance_profile_arn\x18\x05 \x01(\tR\x12instanceProfileArn\x12&\n" +
-	"\x0fssh_private_key\x18\x06 \x01(\tR\rsshPrivateKey\x12$\n" +
-	"\x0essh_public_key\x18\a \x01(\tR\fsshPublicKeyB\xf1\x02\n" +
+	"private_ip\x18\x05 \x01(\tR\tprivateIp\x12\x1f\n" +
+	"\vprivate_dns\x18\x06 \x01(\tR\n" +
+	"privateDns\x12\x1b\n" +
+	"\tpublic_ip\x18\a \x01(\tR\bpublicIp\x12\x1d\n" +
+	"\n" +
+	"public_dns\x18\b \x01(\tR\tpublicDns\x12?\n" +
+	"\x1cprimary_network_interface_id\x18\t \x01(\tR\x19primaryNetworkInterfaceIdB\xf1\x02\n" +
 	".com.dev.planton.provider.aws.awsec2instance.v1B\x11StackOutputsProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsec2instance/v1;awsec2instancev1\xa2\x02\x05DPPAA\xaa\x02*Dev.Planton.Provider.Aws.Awsec2instance.V1\xca\x02*Dev\\Planton\\Provider\\Aws\\Awsec2instance\\V1\xe2\x026Dev\\Planton\\Provider\\Aws\\Awsec2instance\\V1\\GPBMetadata\xea\x02/Dev::Planton::Provider::Aws::Awsec2instance::V1b\x06proto3"
 
 var (

@@ -31,7 +31,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSecurityGroupRule
 metadata:
   name: allow-ssh-ingress
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -87,7 +87,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSecurityGroupRule
 metadata:
   name: allow-ssh
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +112,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSecurityGroupRule
 metadata:
   name: allow-https-from-private
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSecurityGroupRule
 metadata:
   name: app-to-db-tcp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -170,7 +170,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSecurityGroupRule
 metadata:
   name: allow-all-egress
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

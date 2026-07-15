@@ -24,7 +24,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayContainerRegistry
 metadata:
   name: my-registry
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -73,7 +73,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayContainerRegistry
 metadata:
   name: dev-images
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayContainerRegistry
 metadata:
   name: oss-images
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +112,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayContainerRegistry
 metadata:
   name: prod-services
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

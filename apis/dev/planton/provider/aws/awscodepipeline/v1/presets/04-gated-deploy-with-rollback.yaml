@@ -1,0 +1,75 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsCodePipeline
+metadata:
+  name: my-gated-deploy
+spec:
+  region: us-east-1
+  pipelineType: V2
+  executionMode: QUEUED
+  roleArn:
+    value: "<codepipeline-service-role-arn>"
+  artifactStores:
+    - location:
+        value: "<pipeline-artifacts-bucket-name>"
+  stages:
+    - name: Source
+      actions:
+        - name: GitHubSource
+          category: Source
+          owner: AWS
+          provider: CodeStarSourceConnection
+          version: "1"
+          configuration:
+            ConnectionArn: "<codeconnections-connection-arn>"
+            FullRepositoryId: "<github-org>/<github-repo>"
+            BranchName: main
+          outputArtifacts:
+            - SourceOutput
+    - name: Build
+      actions:
+        - name: BuildAndTest
+          category: Build
+          owner: AWS
+          provider: CodeBuild
+          version: "1"
+          configuration:
+            ProjectName: "<codebuild-project-name>"
+          inputArtifacts:
+            - SourceOutput
+          outputArtifacts:
+            - BuildOutput
+      onFailure:
+        result: RETRY
+        retryConfiguration:
+          retryMode: FAILED_ACTIONS
+    - name: DeployProduction
+      beforeEntry:
+        rules:
+          - name: BusinessHoursOnly
+            ruleTypeId:
+              provider: DeploymentWindow
+            configuration:
+              Cron: "* 9-17 ? * MON-FRI *"
+              TimeZone: "<iana-timezone>"
+      actions:
+        - name: ECSDeploy
+          category: Deploy
+          owner: AWS
+          provider: ECS
+          version: "1"
+          configuration:
+            ClusterName: "<ecs-cluster-name>"
+            ServiceName: "<ecs-service-name>"
+            FileName: imagedefinitions.json
+          inputArtifacts:
+            - BuildOutput
+      onSuccess:
+        rules:
+          - name: VerifyNoErrorAlarm
+            ruleTypeId:
+              provider: CloudWatchAlarm
+            configuration:
+              AlarmName: "<post-deploy-error-alarm-name>"
+              WaitTime: "300"
+      onFailure:
+        result: ROLLBACK

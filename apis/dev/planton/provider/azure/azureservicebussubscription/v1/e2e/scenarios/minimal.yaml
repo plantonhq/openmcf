@@ -18,7 +18,7 @@ metadata:
     # Scenario-local namespace + topic + work queue, in deploy order.
     # Path-form fixtures live outside e2e/scenarios/, which the
     # discoverer treats as test cases.
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azureservicebussubscription/v1/e2e/fixture-namespace.yaml, apis/dev/planton/provider/azure/azureservicebussubscription/v1/e2e/fixture-topic.yaml, apis/dev/planton/provider/azure/azureservicebussubscription/v1/e2e/fixture-queue.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azureservicebussubscription/v1/e2e/fixture-namespace.yaml, apis/dev/planton/provider/azure/azureservicebussubscription/v1/e2e/fixture-topic.yaml, apis/dev/planton/provider/azure/azureservicebussubscription/v1/e2e/fixture-queue.yaml"
   tags:
     - planton-e2e
 spec:

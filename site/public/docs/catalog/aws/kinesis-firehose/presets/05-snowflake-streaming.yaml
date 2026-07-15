@@ -1,0 +1,37 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsKinesisFirehose
+metadata:
+  name: snowflake-streaming-firehose
+  org: my-org
+  env: prod
+  id: snowflake-streaming-firehose-prod
+spec:
+  region: us-east-1
+  # Direct PUT source — applications send data via PutRecord/PutRecordBatch
+  snowflake:
+    accountUrl: https://myaccount.snowflakecomputing.com
+    database: ANALYTICS
+    schema: PUBLIC
+    table: EVENTS
+    roleArn:
+      value: arn:aws:iam::123456789012:role/firehose-snowflake-role
+    # Credentials come from Secrets Manager — the key-pair material never
+    # appears in this manifest or in IaC state. Secret shape:
+    #   {"user": "FIREHOSE_USER", "private_key": "...", "key_passphrase": "..."}
+    secretsManager:
+      secretArn:
+        value: arn:aws:secretsmanager:us-east-1:123456789012:secret:snowflake-firehose-keypair-AbCdEf
+    # A dedicated Snowflake role with insert-only privileges on the target
+    # table — the least-privilege ingestion posture.
+    snowflakeRole: FIREHOSE_INGEST
+    # Each top-level JSON key maps to a same-named table column.
+    dataLoadingOption: JSON_MAPPING
+    # Snowpipe Streaming defaults (0s / 1 MiB) give near-real-time inserts;
+    # raise the interval to trade latency for fewer, larger inserts.
+    s3BackupMode: FailedDataOnly
+    s3Config:
+      bucketArn:
+        value: arn:aws:s3:::my-firehose-backup-bucket
+      roleArn:
+        value: arn:aws:iam::123456789012:role/firehose-s3-backup-role
+      prefix: snowflake-failed/

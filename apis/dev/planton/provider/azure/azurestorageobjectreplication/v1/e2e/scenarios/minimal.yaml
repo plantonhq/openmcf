@@ -21,7 +21,7 @@ metadata:
     # registry prerequisites: storage-account names are globally unique
     # and sequential subtests that destroy and recreate the same name
     # hang on recreate.
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azurestorageobjectreplication/v1/e2e/source-account.yaml,apis/dev/planton/provider/azure/azurestorageobjectreplication/v1/e2e/destination-account.yaml,apis/dev/planton/provider/azure/azurestorageobjectreplication/v1/e2e/source-container.yaml,apis/dev/planton/provider/azure/azurestorageobjectreplication/v1/e2e/destination-container.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azurestorageobjectreplication/v1/e2e/source-account.yaml,apis/dev/planton/provider/azure/azurestorageobjectreplication/v1/e2e/destination-account.yaml,apis/dev/planton/provider/azure/azurestorageobjectreplication/v1/e2e/source-container.yaml,apis/dev/planton/provider/azure/azurestorageobjectreplication/v1/e2e/destination-container.yaml"
   tags:
     - planton-e2e
 spec:

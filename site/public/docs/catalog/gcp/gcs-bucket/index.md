@@ -40,7 +40,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGcsBucket
 metadata:
   name: my-app-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -119,7 +119,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGcsBucket
 metadata:
   name: app-backups
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -148,7 +148,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGcsBucket
 metadata:
   name: marketing-site
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -185,7 +185,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGcsBucket
 metadata:
   name: prod-data-lake
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -248,7 +248,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGcsBucket
 metadata:
   name: shared-assets
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

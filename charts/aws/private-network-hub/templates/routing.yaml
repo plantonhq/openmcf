@@ -1,0 +1,79 @@
+# The routing domains — where the hub's posture actually lives. Each spoke's
+# attachment ASSOCIATES with its own table (its outbound routing view;
+# AWS allows exactly one association per attachment), and what PROPAGATES
+# into that table decides what the spoke can reach:
+#
+#   segmented (default):     nothing propagates across domains, and a
+#                            blackhole for the peer's CIDR makes the
+#                            isolation hold even if a broad static route
+#                            (a future 10.0.0.0/8 toward an inspection or
+#                            egress VPC) is added later — blackholes win on
+#                            longest-prefix match.
+#   interconnected (toggle): each domain propagates the other's attachment,
+#                            giving plain any-to-any reachability; the
+#                            guardrails would contradict the intent and do
+#                            not render.
+#
+# Anything attached to BOTH domains later (shared services, inspection,
+# VPN) is reachable from every spoke in either posture — that is the point
+# of per-domain tables.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsTransitGatewayRouteTable
+metadata:
+  name: "{{ values.hub_name }}-prod-domain"
+spec:
+  region: "{{ values.aws_region }}"
+  transitGatewayId:
+    valueFrom:
+      kind: AwsTransitGateway
+      name: "{{ values.hub_name }}"
+      fieldPath: status.outputs.transit_gateway_id
+  # The production attachment routes BY this table.
+  associations:
+    - valueFrom:
+        kind: AwsTransitGatewayVpcAttachment
+        name: "{{ values.hub_name }}-prod-attachment"
+        fieldPath: status.outputs.attachment_id
+{% if values.spokes_interconnected_enabled | bool %}
+  # Interconnected: production learns the non-production VPC's routes.
+  propagations:
+    - valueFrom:
+        kind: AwsTransitGatewayVpcAttachment
+        name: "{{ values.hub_name }}-nonprod-attachment"
+        fieldPath: status.outputs.attachment_id
+{% else %}
+  # Segmented: drop anything addressed to the non-production spoke, no
+  # matter what broader routes this domain acquires later.
+  routes:
+    - destinationCidrBlock: "{{ values.nonprod_vpc_cidr }}"
+      blackhole: true
+{% endif %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsTransitGatewayRouteTable
+metadata:
+  name: "{{ values.hub_name }}-nonprod-domain"
+spec:
+  region: "{{ values.aws_region }}"
+  transitGatewayId:
+    valueFrom:
+      kind: AwsTransitGateway
+      name: "{{ values.hub_name }}"
+      fieldPath: status.outputs.transit_gateway_id
+  associations:
+    - valueFrom:
+        kind: AwsTransitGatewayVpcAttachment
+        name: "{{ values.hub_name }}-nonprod-attachment"
+        fieldPath: status.outputs.attachment_id
+{% if values.spokes_interconnected_enabled | bool %}
+  propagations:
+    - valueFrom:
+        kind: AwsTransitGatewayVpcAttachment
+        name: "{{ values.hub_name }}-prod-attachment"
+        fieldPath: status.outputs.attachment_id
+{% else %}
+  routes:
+    - destinationCidrBlock: "{{ values.prod_vpc_cidr }}"
+      blackhole: true
+{% endif %}

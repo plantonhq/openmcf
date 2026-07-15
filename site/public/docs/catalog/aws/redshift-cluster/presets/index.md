@@ -11,7 +11,7 @@ presets:
   - slug: "01-single-node-dev"
     rank: "01"
     title: "Single-Node Development Cluster"
-    excerpt: "This preset creates a single-node Redshift cluster on the dc2.large instance type for development and testing. The single-node topology combines the leader and compute roles on one node, keeping..."
+    excerpt: "This preset creates a single-node Redshift cluster on the ra3.large node type for development and testing. The single-node topology combines the leader and compute roles on one node, keeping costs..."
   - slug: "02-multi-node-production"
     rank: "02"
     title: "Multi-Node Production Data Warehouse"

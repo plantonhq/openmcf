@@ -35,7 +35,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciApiGateway
 metadata:
   name: my-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -166,7 +166,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciApiGateway
 metadata:
   name: api-proxy
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -206,7 +206,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciApiGateway
 metadata:
   name: serverless-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -281,7 +281,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciApiGateway
 metadata:
   name: internal-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

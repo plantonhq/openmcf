@@ -10,4 +10,16 @@ spec:
   file_system_id:
     value: fs-0123456789abcdef0
   name: svm_test
-  root_volume_security_style: UNIX
+  root_volume_security_style: MIXED
+  svm_admin_password: VsAdmin2024!
+  # Full AD block so the offline plan proof exercises the SMB join arm.
+  active_directory_configuration:
+    netbios_name: SVMTEST
+    domain_name: corp.example.com
+    dns_ips:
+      - 10.0.0.10
+      - 10.0.1.10
+    username: svc_fsx_join
+    password: ADJoinP@ssw0rd!
+    file_system_administrators_group: FSx Admins
+    organizational_unit_distinguished_name: OU=FSx,DC=corp,DC=example,DC=com

@@ -11,22 +11,36 @@ func httpApi(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*apig
 	spec := locals.Spec
 
 	args := &apigatewayv2.ApiArgs{
+		// The cloud name is metadata.name -- the same basis the Terraform
+		// module uses, so both engines create the same physical identity.
 		Name:         pulumi.String(locals.ApiName),
 		ProtocolType: pulumi.String("HTTP"),
 		Tags:         pulumi.ToStringMap(locals.AwsTags),
 	}
 
-	// Description
 	if spec.Description != "" {
 		args.Description = pulumi.StringPtr(spec.Description)
 	}
 
-	// Disable default execute-api endpoint
+	// Informational version label surfaced in the console and OpenAPI exports.
+	if spec.ApiVersion != "" {
+		args.Version = pulumi.StringPtr(spec.ApiVersion)
+	}
+
+	// When a custom domain (AwsHttpApiDomain) fronts this API, disabling the
+	// default endpoint stops callers from bypassing the domain's TLS policy /
+	// mTLS / WAF via https://{api-id}.execute-api...
 	if spec.DisableExecuteApiEndpoint {
 		args.DisableExecuteApiEndpoint = pulumi.BoolPtr(true)
 	}
 
-	// CORS configuration
+	// ipv4 or dualstack; AWS defaults new APIs to dualstack when unset.
+	if spec.IpAddressType != "" {
+		args.IpAddressType = pulumi.StringPtr(spec.IpAddressType)
+	}
+
+	// CORS is enforced by API Gateway itself for HTTP APIs -- configuring it
+	// here means the backend never needs CORS logic.
 	if spec.CorsConfiguration != nil {
 		cors := spec.CorsConfiguration
 		corsArgs := &apigatewayv2.ApiCorsConfigurationArgs{
@@ -50,7 +64,6 @@ func httpApi(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*apig
 		args.CorsConfiguration = corsArgs
 	}
 
-	// Create the API
 	createdApi, err := apigatewayv2.NewApi(ctx, locals.ApiName, args, pulumi.Provider(provider))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create HTTP API")

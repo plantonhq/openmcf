@@ -30,7 +30,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudCertificate
 metadata:
   name: my-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -83,7 +83,7 @@ metadata:
   name: web-platform-cert
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: web-platform
@@ -107,7 +107,7 @@ metadata:
   name: wildcard-cert
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: web-platform
@@ -138,7 +138,7 @@ metadata:
   name: api-cert
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: api-platform
@@ -158,7 +158,7 @@ metadata:
   name: api-lb
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: api-platform

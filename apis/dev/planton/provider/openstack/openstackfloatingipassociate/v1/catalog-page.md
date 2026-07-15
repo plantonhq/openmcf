@@ -23,10 +23,18 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackFloatingIpAssociate
 metadata:
   name: my-fip-associate
-  labels:
-    planton.dev/provisioner: pulumi
+  annotations:
+    planton.dev/stack.jobId: prod.OpenstackFloatingIpAssociate.region2-fip-associate
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackFloatingIpAssociate.multi-ip-fip-associate
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1/iac/pulumi/module
+    planton.dev/stack.jobId: staging.OpenstackFloatingIpAssociate.app-fip-associate
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1/iac/pulumi/module
+    planton.dev/stack.jobId: dev.OpenstackFloatingIpAssociate.web-fip-associate
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackFloatingIpAssociate.my-fip-associate
     planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1/iac/pulumi/module
+    planton.dev/provisioner: pulumi
 spec:
   floatingIp:
     value: "203.0.113.42"
@@ -69,10 +77,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackFloatingIpAssociate
 metadata:
   name: web-fip-associate
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: dev.OpenstackFloatingIpAssociate.web-fip-associate
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1/iac/pulumi/module
 spec:
   floatingIp:
     value: "203.0.113.42"
@@ -89,10 +95,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackFloatingIpAssociate
 metadata:
   name: app-fip-associate
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: staging.OpenstackFloatingIpAssociate.app-fip-associate
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1/iac/pulumi/module
 spec:
   floatingIp:
     valueFrom:
@@ -111,10 +115,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackFloatingIpAssociate
 metadata:
   name: multi-ip-fip-associate
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackFloatingIpAssociate.multi-ip-fip-associate
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1/iac/pulumi/module
 spec:
   floatingIp:
     valueFrom:
@@ -134,10 +136,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackFloatingIpAssociate
 metadata:
   name: region2-fip-associate
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackFloatingIpAssociate.region2-fip-associate
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1/iac/pulumi/module
 spec:
   floatingIp:
     value: "198.51.100.10"

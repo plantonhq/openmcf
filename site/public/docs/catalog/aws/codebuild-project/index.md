@@ -8,15 +8,15 @@ componentName: "awscodebuildproject"
 
 # AWS CodeBuild Project
 
-Deploys an AWS CodeBuild project with configurable source providers, build environments, artifact outputs, and an optional webhook for automatic build triggers. Supports GitHub, Bitbucket, GitLab, CodeCommit, S3, and CodePipeline source types.
+Deploys an AWS CodeBuild project with configurable source providers (primary plus up to 12 secondary sources), build environments (containers, Lambda compute, reserved fleets, persistent Docker servers), artifact outputs (primary plus up to 12 secondary), batch builds, EFS mounts, public visibility, a resource-based access policy, and an optional webhook for automatic build triggers.
 
 ## What Gets Created
 
 When you deploy an AwsCodeBuildProject resource, Planton provisions:
 
-- **CodeBuild Project** — an `aws_codebuild_project` resource with the specified source, environment, artifacts, and logging configuration
-- **Webhook** — created only when `webhook` is configured, registers a webhook with the source provider for automatic build triggers on push and pull request events
-- **VPC Configuration** — created only when `vpcConfig` is configured, places the build environment inside a VPC for access to private resources
+- **CodeBuild Project** — an `aws_codebuild_project` resource with the specified sources, environment, artifacts, cache, logging, VPC/EFS placement, batch configuration, and visibility
+- **Webhook** — created only when `webhook` is configured; registers a webhook with the source provider (or, with `manualCreation`, mints the payload URL + HMAC secret for hand-wiring)
+- **Resource Policy** — created only when `resourcePolicy` is configured; attaches a resource-based IAM policy to the project for cross-account access
 
 ## Prerequisites
 
@@ -36,7 +36,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodeBuildProject
 metadata:
   name: my-build
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -73,8 +73,8 @@ This creates a CodeBuild project that pulls from a GitHub repository, runs build
 | `region` | `string` | AWS region where the project will be created (e.g., `us-west-2`). | Required |
 | `source.type` | `string` | Source provider: `GITHUB`, `BITBUCKET`, `CODECOMMIT`, `CODEPIPELINE`, `GITHUB_ENTERPRISE`, `GITLAB`, `GITLAB_SELF_MANAGED`, `NO_SOURCE`, `S3` | Must be one of the listed values |
 | `source.location` | `string` | Repository URL or S3 path | Required unless type is `CODEPIPELINE` or `NO_SOURCE` |
-| `environment.type` | `string` | Container type: `LINUX_CONTAINER`, `LINUX_GPU_CONTAINER`, `ARM_CONTAINER`, `WINDOWS_SERVER_2019_CONTAINER`, `WINDOWS_SERVER_2022_CONTAINER`, `LINUX_LAMBDA_CONTAINER`, `ARM_LAMBDA_CONTAINER` | Must be one of the listed values |
-| `environment.computeType` | `string` | Compute capacity: `BUILD_GENERAL1_SMALL` through `BUILD_GENERAL1_2XLARGE`, or `BUILD_LAMBDA_1GB` through `BUILD_LAMBDA_10GB` | Must be one of the listed values |
+| `environment.type` | `string` | Container type: `LINUX_CONTAINER`, `LINUX_GPU_CONTAINER`, `ARM_CONTAINER`, `WINDOWS_CONTAINER`, `WINDOWS_SERVER_2019_CONTAINER`, `WINDOWS_SERVER_2022_CONTAINER`, `LINUX_LAMBDA_CONTAINER`, `ARM_LAMBDA_CONTAINER`, `LINUX_EC2`, `ARM_EC2`, `WINDOWS_EC2`, `MAC_ARM` | Must be one of the listed values |
+| `environment.computeType` | `string` | Compute capacity: `BUILD_GENERAL1_SMALL` through `BUILD_GENERAL1_2XLARGE`, `BUILD_LAMBDA_1GB` through `BUILD_LAMBDA_10GB`, or the fleet-driven `ATTRIBUTE_BASED_COMPUTE` / `CUSTOM_INSTANCE_TYPE` | Must be one of the listed values |
 | `environment.image` | `string` | Docker image for the build environment (e.g., `aws/codebuild/amazonlinux2-x86_64-standard:5.0`) | Required, non-empty |
 | `artifacts.type` | `string` | Artifact output type: `NO_ARTIFACTS`, `S3`, `CODEPIPELINE` | Must be one of the listed values. Must be `CODEPIPELINE` when source is `CODEPIPELINE` |
 | `serviceRole` | `StringValueOrRef` | IAM role ARN for CodeBuild. Can reference an AwsIamRole resource via `valueFrom`. | Required |
@@ -89,34 +89,60 @@ This creates a CodeBuild project that pulls from a GitHub repository, runs build
 | `queuedTimeout` | `int` | `480` | Queue timeout in minutes (5-480) |
 | `concurrentBuildLimit` | `int` | Unlimited | Maximum concurrent builds (minimum 1) |
 | `sourceVersion` | `string` | — | Default branch, tag, or commit to build |
+| `autoRetryLimit` | `int` | `0` | Additional automatic retries after a failed build (max 10) |
+| `badgeEnabled` | `bool` | `false` | Publish a build badge (repository sources only; exported as `badge_url`) |
+| `projectVisibility` | `string` | `PRIVATE` | `PRIVATE` or `PUBLIC_READ` (world-readable build results) |
+| `resourceAccessRole` | `StringValueOrRef` | — | Role CodeBuild uses to read public logs/artifacts. Required with `PUBLIC_READ`. |
+| `resourcePolicy` | `object` | — | Resource-based IAM policy document for cross-account access |
+| `secondarySources` | `list` | `[]` | Up to 12 extra sources, each with a required `sourceIdentifier` (checked out at `$CODEBUILD_SRC_DIR_<identifier>`) |
+| `secondarySourceVersions` | `list` | `[]` | Per-secondary-source branch/tag/commit pins (`sourceIdentifier` + `sourceVersion`) |
+| `secondaryArtifacts` | `list` | `[]` | Up to 12 extra outputs, each with a required `artifactIdentifier` |
 | `source.buildspec` | `string` | `buildspec.yml` | Build specification file path or inline YAML. Required when type is `NO_SOURCE`. |
 | `source.gitCloneDepth` | `int` | Full clone | Git clone depth (0 = full clone) |
+| `source.gitSubmodulesConfig.fetchSubmodules` | `bool` | — | Fetch Git submodules (BITBUCKET/CODECOMMIT/GITHUB/GITHUB_ENTERPRISE only) |
+| `source.insecureSsl` | `bool` | `false` | Skip TLS verification (self-hosted providers with private CAs only) |
 | `source.reportBuildStatus` | `bool` | `false` | Report build status back to the source provider |
-| `source.fetchSubmodules` | `bool` | `false` | Fetch Git submodules during source download |
-| `environment.privilegedMode` | `bool` | `false` | Enable Docker daemon access inside the build container |
+| `source.buildStatusConfig` | `object` | — | Custom commit-status `context` and `targetUrl` |
+| `source.auth` | `object` | — | Per-source authorization: `type` (`CODECONNECTIONS`, `SECRETS_MANAGER`, `OAUTH`) + `resource` ARN |
+| `environment.certificate` | `string` | — | S3 path to a trusted certificate bundle (must end `.pem` or `.zip`) |
+| `environment.privilegedMode` | `bool` | `false` | Enable Docker daemon access inside the build container (not for Lambda types) |
 | `environment.imagePullCredentialsType` | `string` | `CODEBUILD` | Image pull credentials: `CODEBUILD` or `SERVICE_ROLE` |
 | `environment.environmentVariables` | `list` | `[]` | Build environment variables with `name`, `value`, and optional `type` (`PLAINTEXT`, `PARAMETER_STORE`, `SECRETS_MANAGER`) |
-| `environment.registryCredential` | `object` | — | Private registry credentials (`credential` ARN, `credentialProvider`: `SECRETS_MANAGER`) |
+| `environment.registryCredential` | `object` | — | Private registry credentials (`credential` ARN, `credentialProvider`: `SECRETS_MANAGER`); requires `SERVICE_ROLE` pulls |
+| `environment.dockerServer` | `object` | — | Persistent dedicated Docker server (`computeType` + optional `securityGroupIds`); layer state survives across builds |
+| `environment.fleetArn` | `string` | — | Reserved-capacity fleet the project joins (required for `MAC_ARM` / EC2 types) |
 | `artifacts.location` | `StringValueOrRef` | — | S3 bucket name. Required when type is `S3`. Can reference AwsS3Bucket via `valueFrom`. |
 | `artifacts.name` | `string` | — | Artifact output name |
 | `artifacts.path` | `string` | — | S3 prefix path for artifacts |
 | `artifacts.packaging` | `string` | `NONE` | Packaging type: `NONE` or `ZIP` |
 | `artifacts.namespaceType` | `string` | `NONE` | Namespace: `NONE` or `BUILD_ID` |
 | `artifacts.encryptionDisabled` | `bool` | `false` | Disable artifact encryption |
+| `artifacts.overrideArtifactName` | `bool` | `false` | Let the buildspec override the artifact name per build |
+| `artifacts.bucketOwnerAccess` | `string` | `NONE` | `NONE`, `READ_ONLY`, or `FULL` (cross-account artifact buckets) |
 | `cache.type` | `string` | `NO_CACHE` | Cache type: `NO_CACHE`, `S3`, or `LOCAL` |
 | `cache.location` | `StringValueOrRef` | — | S3 cache location. Required when type is `S3`. Can reference AwsS3Bucket via `valueFrom`. |
 | `cache.modes` | `string[]` | `[]` | Local cache modes: `LOCAL_SOURCE_CACHE`, `LOCAL_DOCKER_LAYER_CACHE`, `LOCAL_CUSTOM_CACHE` |
+| `cache.cacheNamespace` | `string` | — | Scopes S3 cache keys so projects/branches can share one cache bucket |
 | `logsConfig.cloudwatchLogs.status` | `string` | `ENABLED` | CloudWatch logging: `ENABLED` or `DISABLED` |
 | `logsConfig.cloudwatchLogs.groupName` | `StringValueOrRef` | Auto-generated | Log group name. Can reference AwsCloudwatchLogGroup via `valueFrom`. |
 | `logsConfig.cloudwatchLogs.streamName` | `string` | Auto-generated | Log stream name prefix |
 | `logsConfig.s3Logs.status` | `string` | `DISABLED` | S3 logging: `ENABLED` or `DISABLED` |
 | `logsConfig.s3Logs.location` | `StringValueOrRef` | — | S3 bucket and prefix for logs. Can reference AwsS3Bucket via `valueFrom`. |
 | `logsConfig.s3Logs.encryptionDisabled` | `bool` | `false` | Disable log file encryption |
+| `logsConfig.s3Logs.bucketOwnerAccess` | `string` | `NONE` | Bucket-owner access for centralized cross-account log buckets |
 | `vpcConfig.vpcId` | `StringValueOrRef` | — | VPC ID. Can reference AwsVpc via `valueFrom`. Required if vpcConfig is set. |
-| `vpcConfig.subnetIds` | `StringValueOrRef[]` | — | VPC subnets (max 16). Can reference AwsVpc via `valueFrom`. Required if vpcConfig is set. |
+| `vpcConfig.subnetIds` | `StringValueOrRef[]` | — | VPC subnets (max 16). Can reference AwsSubnet via `valueFrom`. Required if vpcConfig is set. |
 | `vpcConfig.securityGroupIds` | `StringValueOrRef[]` | — | Security groups (max 5). Can reference AwsSecurityGroup via `valueFrom`. Required if vpcConfig is set. |
-| `webhook.buildType` | `string` | `BUILD` | Webhook build type: `BUILD` or `BUILD_BATCH` |
-| `webhook.filterGroups` | `list` | `[]` | Filter groups (OR'd). Each group contains filters (AND'd) with `type`, `pattern`, and optional `excludeMatchedPattern`. |
+| `fileSystemLocations` | `list` | `[]` | EFS mounts: `identifier`, `location` (`<fs-dns>:/<path>`), `mountPoint`, optional `mountOptions` (requires `vpcConfig`) |
+| `buildBatchConfig.serviceRole` | `StringValueOrRef` | — | Role for launching batch child builds. Required if buildBatchConfig is set. |
+| `buildBatchConfig.combineArtifacts` | `bool` | `false` | Merge child-build artifacts into one location |
+| `buildBatchConfig.timeoutInMins` | `int` | — | Whole-batch timeout (5-2160) |
+| `buildBatchConfig.restrictions` | `object` | — | `computeTypesAllowed` + `maximumBuildsAllowed` (1-100) bounds for child builds |
+| `webhook.buildType` | `string` | `BUILD` | Webhook build type: `BUILD`, `BUILD_BATCH`, or `RUNNER_BUILDKITE_BUILD` |
+| `webhook.manualCreation` | `bool` | `false` | Mint payload URL + secret without registering; wire the repository webhook by hand |
+| `webhook.filterGroups` | `list` | `[]` | Filter groups (OR'd). Each group contains filters (AND'd) with `type` (`EVENT`, `BASE_REF`, `HEAD_REF`, `ACTOR_ACCOUNT_ID`, `FILE_PATH`, `COMMIT_MESSAGE`, `WORKFLOW_NAME`, `TAG_NAME`, `RELEASE_NAME`, `REPOSITORY_NAME`, `ORGANIZATION_NAME`), `pattern`, and optional `excludeMatchedPattern`. |
+| `webhook.scopeConfiguration` | `object` | — | Organization/group-wide webhook: `name`, `scope` (`GITHUB_ORGANIZATION`, `GITHUB_GLOBAL`, `GITLAB_GROUP`), optional `domain` |
+| `webhook.pullRequestBuildPolicy` | `object` | — | Comment-approval gate: `requiresCommentApproval` (`DISABLED`, `FORK_PULL_REQUESTS`, `ALL_PULL_REQUESTS`) + optional `approverRoles` |
 
 ## Examples
 
@@ -129,7 +155,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodeBuildProject
 metadata:
   name: app-ci
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -166,7 +192,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodeBuildProject
 metadata:
   name: docker-builder
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -216,7 +242,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodeBuildProject
 metadata:
   name: pipeline-build
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -253,7 +279,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodeBuildProject
 metadata:
   name: connected-build
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -308,10 +334,13 @@ After deployment, the following outputs are available in `status.outputs`:
 | Output | Type | Description |
 |--------|------|-------------|
 | `project_arn` | `string` | ARN of the CodeBuild project, used for IAM policies and cross-resource references |
-| `project_name` | `string` | Name of the CodeBuild project |
+| `project_name` | `string` | Name of the CodeBuild project (what CodePipeline Build actions reference) |
 | `service_role_arn` | `string` | IAM service role ARN used by the project |
+| `badge_url` | `string` | Build badge URL (empty when `badgeEnabled` is false) |
+| `public_project_alias` | `string` | Public alias in the public build results URL (empty for private projects) |
 | `webhook_url` | `string` | Webhook URL from the source provider (empty when no webhook is configured) |
-| `webhook_payload_url` | `string` | URL that receives webhook payloads (empty when no webhook is configured) |
+| `webhook_payload_url` | `string` | URL that receives webhook payloads — with `manualCreation`, register it on the repository by hand (empty when no webhook is configured) |
+| `webhook_secret` | `string` | Webhook HMAC signing secret, only minted at creation — sensitive, treat as a credential (empty when no webhook is configured) |
 
 ## Related Components
 

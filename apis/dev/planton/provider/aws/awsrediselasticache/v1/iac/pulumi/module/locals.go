@@ -11,22 +11,30 @@ import (
 
 // Locals holds pre-computed values derived from the stack input.
 type Locals struct {
-	Target  *awsrediselasticachev1.AwsRedisElasticache
-	Spec    *awsrediselasticachev1.AwsRedisElasticacheSpec
+	AwsRedisElasticache *awsrediselasticachev1.AwsRedisElasticache
+
+	// ReplicationGroupId is metadata.name -- create-only in AWS, and the
+	// basis both engines share so a manifest deploys identically on either.
+	ReplicationGroupId string
+
 	AwsTags map[string]string
 }
 
-func initializeLocals(ctx *pulumi.Context, in *awsrediselasticachev1.AwsRedisElasticacheStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, stackInput *awsrediselasticachev1.AwsRedisElasticacheStackInput) *Locals {
 	locals := &Locals{}
-	locals.Target = in.Target
-	locals.Spec = in.Target.Spec
+	locals.AwsRedisElasticache = stackInput.Target
 
+	metadata := stackInput.Target.Metadata
+	locals.ReplicationGroupId = metadata.Name
+
+	// Resource-identity tags match the Terraform module key-for-key.
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
-		awstagkeys.Organization: locals.Target.Metadata.Org,
-		awstagkeys.Environment:  locals.Target.Metadata.Env,
+		awstagkeys.Organization: metadata.Org,
+		awstagkeys.Environment:  metadata.Env,
 		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsRedisElasticache.String(),
-		awstagkeys.ResourceId:   locals.Target.Metadata.Id,
+		awstagkeys.ResourceId:   metadata.Id,
 	}
 
 	return locals

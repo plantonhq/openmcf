@@ -1,6 +1,6 @@
 # AzureWebApplicationFirewallPolicy install profile used as a fixture by
 # scenarios that prove WAF-policy attachment (declared via the
-# planton.dev/e2e-extra-prerequisites annotation -- a gateway's
+# planton.dev/e2e-prerequisites annotation -- a gateway's
 # firewall_policy_id is an OPTIONAL reference, so this is never a registry
 # prerequisite). The harness deploys this document (via the policy's Pulumi
 # module) after the fixture resource group and captures its outputs --

@@ -21,9 +21,11 @@ spec:
     valueFrom:
       name: planton-oss-e2e-fd-og-prereq
   originName: e2e-primary-smoke
-  hostName: example.com
+  hostName:
+    value: example.com
   certificateNameCheckEnabled: true
-  originHostHeader: example.com
+  originHostHeader:
+    value: example.com
   httpPort: 8080
   httpsPort: 8443
   priority: 2

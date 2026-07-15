@@ -51,54 +51,29 @@ planton pulumi preview \
   --module-dir .
 ```
 
-# AWS AWS S3 Bucket Pulumi Module
+# AWS S3 Bucket Pulumi Module
 
 ## Introduction
 
-The AWS AWS S3 Bucket Pulumi Module provides a standardized and efficient way to define and deploy Amazon S3 buckets on AWS using a Kubernetes-like API resource model. By leveraging our unified APIs, developers can specify their S3 bucket configurations in simple YAML files, which the module then uses to create and manage AWS S3 resources through Pulumi. This approach abstracts the complexity of AWS interactions and streamlines the deployment process, enabling consistent infrastructure management across multi-cloud environments.
+This Pulumi module (Go) deploys an Amazon S3 bucket from an `AwsS3Bucket` API resource definition. It provisions the bucket root resource plus one satellite resource per configured spec block, mirroring how AWS itself models bucket behavior — and implements the exact same contract as the Terraform module, with identical stack outputs.
 
-## Key Features
+## What It Creates
 
-- **Kubernetes-Like API Resource Model**: Utilizes a familiar structure with `apiVersion`, `kind`, `metadata`, `spec`, and `status`, making it intuitive for developers accustomed to Kubernetes to define AWS S3 resources.
+- **Bucket root** — named from `metadata.name`, with identity tags and `force_destroy` handling
+- **Security posture (always created)** — the public-access block (all four guards on unless the spec relaxes them) and ownership controls (`BucketOwnerEnforced` unless overridden), plus the optional canned ACL and bucket policy
+- **Data protection** — versioning, default server-side encryption (SSE-S3 / SSE-KMS / DSSE-KMS with optional bucket key), Object Lock default retention, and the full replication configuration (rule filters, delete-marker replication, RTC + metrics, replica KMS keys, cross-account ownership translation)
+- **Data management** — lifecycle configuration (filters with the single-vs-`and` document shaping, transitions, expiration, noncurrent-version handling, multipart cleanup), per-name Intelligent-Tiering archive configurations, transfer acceleration, requester pays
+- **Integration surfaces** — website or redirect-all hosting with routing rules, server access logging with partitioned key formats, CORS, and event notifications (EventBridge and/or Lambda/SQS/SNS targets)
 
-- **Unified API Structure**: Ensures consistency across different resources and cloud providers by adhering to a standardized API resource model.
+The module code is organized by concern (`bucket.go`, `lifecycle.go`, `replication.go`, `website.go`, `settings.go`) so each satellite's provider quirks are documented where they are handled.
 
-- **Pulumi Integration**: Employs Pulumi for infrastructure provisioning, enabling the use of real programming languages and providing robust state management and automation capabilities.
+## Module Structure
 
-- **Customizable AWS S3 Bucket Configuration**: Supports detailed specification of S3 bucket attributes, including public access settings and region configuration.
-
-- **Public Access Control**: Allows the bucket to be configured as public or private by setting the `isPublic` field in the `spec`, providing control over bucket accessibility.
-
-- **Region Specification**: Enables deployment of the S3 bucket in any valid AWS region by specifying the `region` field, offering flexibility in geographical placement.
-
-- **Credential Management**: Securely handles AWS credentials via the `provider_config` in the stack input, creating an explicit Pulumi AWS provider with the supplied access key, secret key, region, and optional session token.
-
-- **Status Reporting**: Captures and stores outputs such as the bucket ID in `status.outputs`. This facilitates easy reference and integration with other systems or automation tools.
-
-## Architecture
-
-The module operates by accepting an AWS AWS S3 Bucket API resource definition as input. It interprets the resource definition and uses Pulumi to interact with AWS, creating the specified S3 bucket. The main components involved are:
-
-- **API Resource Definition**: A YAML file that includes all necessary information to define an S3 bucket, following the standard API structure. Developers specify the bucket's desired state in this file, including the public access setting and AWS region.
-
-- **Pulumi Module**: Written in Go, the module reads the API resource and uses Pulumi's AWS SDK to provision S3 resources based on the provided specifications. It abstracts the complexity of resource creation, update, and deletion.
-
-- **AWS Provider Initialization**: The module creates an explicit AWS provider within Pulumi using the credentials from `provider_config` in the stack input (AccessKeyId, SecretAccessKey, Region, SessionToken). This ensures that all AWS resource operations are authenticated, authorized, and targeted at the correct region.
-
-- **Resource Creation**: Provisions the S3 bucket as defined in the `spec`, applying configurations such as public access settings and regional placement.
-
-- **Public Access Configuration**: Controls the bucket's public accessibility by setting the appropriate policies and permissions based on the `isPublic` field.
-
-- **Status Outputs**: Outputs from the Pulumi deployment, such as the bucket ID, are captured and stored in `status.outputs`. This information is crucial for accessing the bucket and integrating with other systems.
+- **`main.go` (module root)** — loads the stack input and delegates to `module.Resources`
+- **`module/main.go`** — orchestrates the bucket and its satellites, exports stack outputs (website outputs are exported as empty strings when hosting is not configured so the output contract stays shape-stable across engines)
+- **`module/locals.go`** — identity tags and normalized views of the spec
+- **AWS Provider** — built via the shared provider builder from the stack input's `provider_config`, resolving static keys, keyless web identity, or the ambient credential chain
 
 ## Usage
 
-Refer to the example section for usage instructions.
-
-## Limitations
-
-- **Advanced Bucket Configurations**: Certain advanced features of S3 buckets, such as versioning, lifecycle policies, encryption settings, or replication configurations, may not be supported in the current version of the module. Future updates may include additional capabilities based on user needs.
-
-## Contributing
-
-We welcome contributions to enhance the functionality of this module. Please submit pull requests or open issues to help improve the module and its documentation.
+See the CLI usage section above; a working manifest lives at [`../hack/manifest.yaml`](../hack/manifest.yaml) and remixable starting points in [`../../presets/`](../../presets/).

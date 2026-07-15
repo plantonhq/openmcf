@@ -1,0 +1,622 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsecstaskdefinition.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// AwsEcsTaskDefinitionSpec defines an ECS task definition: the immutable,
+// versioned blueprint that describes the containers a task runs -- images,
+// ports, environment, secrets, health checks, sizing, volumes, and the IAM
+// identities the task assumes.
+//
+// A task definition is the composition anchor of ECS compute, the same way a
+// launch template anchors EC2 fleets. It has its own lifecycle and is
+// referenced from the places that RUN it: an ECS service (steady-state
+// workloads), EventBridge scheduled tasks, and one-off RunTask calls. That is
+// why it is a first-class resource rather than a detail of the service that
+// happens to run it.
+//
+// Task definitions are revisioned and revisions are immutable in AWS: every
+// change to this spec registers a NEW revision of the family rather than
+// mutating the old one. The family name comes from metadata.name. Because the
+// task_definition_arn stack output carries the revision, a service that
+// references it by output picks up each new revision on its next deployment
+// -- "change the image tag, the service rolls" falls out of the composition.
+//
+// Task and container sizing interact: on Fargate, task-level cpu and memory
+// are REQUIRED and constrain the valid combinations (e.g. 256 CPU pairs with
+// 512-2048 MiB); on EC2, task-level sizing is optional and per-container
+// cpu/memory govern bin-packing onto instances.
+message AwsEcsTaskDefinitionSpec {
+  // The AWS region the task definition is registered in. A task definition
+  // is a regional object: a service can only run revisions registered in
+  // its own region.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The containers the task runs. Most tasks run one application container;
+  // add sidecars (a log router, an OpenTelemetry collector, a proxy) as
+  // additional entries and order their startup with depends_on. At least
+  // one container must be essential -- when an essential container exits,
+  // the whole task stops.
+  repeated AwsEcsTaskDefinitionContainer containers = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Launch types the task definition validates against: "FARGATE",
+  // "EC2", and/or "EXTERNAL" (ECS Anywhere). AWS registers the definition
+  // for those environments and rejects incompatible settings at
+  // registration time instead of at run time. When empty, both modules
+  // register for ["FARGATE"] -- the serverless launch type that needs no
+  // instance management.
+  repeated string requires_compatibilities = 3 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "FARGATE",
+          "EC2",
+          "EXTERNAL"
+        ]
+      }
+    }
+  }];
+
+  // Total CPU for the task, in CPU units (1024 = 1 vCPU). REQUIRED for
+  // Fargate, where it selects the task size: 256, 512, 1024, 2048, 4096,
+  // 8192, or 16384. Optional on EC2 (containers bin-pack by their own cpu).
+  // Example: 512.
+  int32 cpu = 4;
+
+  // Total memory for the task, in MiB. REQUIRED for Fargate and constrained
+  // by cpu (e.g. 256 CPU pairs with 512-2048 MiB, 1024 CPU with 2048-8192
+  // MiB). Optional on EC2, where it caps the sum of container memory.
+  // Example: 1024.
+  int32 memory = 5;
+
+  // Docker networking mode: "awsvpc" (each task gets its own ENI and
+  // private IP -- required for Fargate and the modern default everywhere),
+  // "bridge" (EC2 docker0 bridge), "host" (EC2 host network stack), or
+  // "none". Default: "awsvpc".
+  string network_mode = 6 [(dev.planton.shared.options.default) = "awsvpc"];
+
+  // The IAM role the ECS AGENT assumes to set the task up: pull private
+  // images from ECR, fetch secrets for the secrets/repository_credentials
+  // fields, and create/write CloudWatch log streams. Reference an
+  // AwsIamRole's role_arn output or pass a literal role ARN. AWS REQUIRES
+  // it at registration time for Fargate tasks that use the awslogs driver
+  // -- which the default logging wiring does -- and in practice whenever
+  // the task uses ECR images or secrets.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The IAM role the APPLICATION code assumes at runtime -- the task's
+  // identity for every AWS API call the workload itself makes (S3, SQS,
+  // DynamoDB, ...). Distinct from execution_role by design: the agent's
+  // setup permissions and the app's runtime permissions should never be
+  // one role. Omit when the app calls no AWS APIs.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef task_role = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // CPU architecture and OS the task runs on. Set cpu_architecture to
+  // "ARM64" to run on Graviton (Fargate ARM pricing is ~20% below x86 for
+  // the same vCPU/memory) -- the images must be built for arm64.
+  AwsEcsTaskDefinitionRuntimePlatform runtime_platform = 9;
+
+  // Ephemeral scratch storage shared by the task's containers, in GiB
+  // (21-200). Fargate default: 20 GiB at no charge; set this only when the
+  // workload needs more (image processing, builds, large temp files).
+  int32 ephemeral_storage_gib = 10;
+
+  // Named volumes containers mount via mount_points. Fargate supports EFS
+  // volumes (durable, shared across tasks) and the implicit ephemeral
+  // storage; host-path volumes are EC2-only.
+  repeated AwsEcsTaskDefinitionVolume volumes = 11;
+
+  // Default CloudWatch logging for every container that does not declare
+  // its own log_configuration. Enabled by default: the modules create ONE
+  // log group named "/ecs/<family>" (30-day retention unless overridden)
+  // and each container logs under its own name as the stream prefix --
+  // so a task's containers land in one predictable place with zero
+  // configuration.
+  AwsEcsTaskDefinitionLogging logging = 12;
+
+  // Keep old revisions registered when this resource is destroyed, instead
+  // of deregistering every revision of the family. Useful when other
+  // consumers (a scheduled task, a manual RunTask) may still reference
+  // older revisions.
+  bool skip_destroy = 13;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  // Fargate mandates awsvpc networking; registration fails otherwise. An
+  // empty requires_compatibilities means FARGATE (the module default), so
+  // the rule applies then too.
+  option (buf.validate.message).cel = {
+    id: "fargate_requires_awsvpc"
+    message: "Fargate task definitions must use the 'awsvpc' network mode -- leave network_mode unset (it defaults to awsvpc) or set it to 'awsvpc'"
+    expression: "(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || this.network_mode == '' || this.network_mode == 'awsvpc'"
+  };
+
+  // Fargate requires task-level sizing at registration time; empty
+  // requires_compatibilities means FARGATE (the module default).
+  option (buf.validate.message).cel = {
+    id: "fargate_requires_task_sizing"
+    message: "Fargate task definitions must set task-level cpu and memory (e.g. cpu: 256, memory: 512)"
+    expression: "(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || (this.cpu > 0 && this.memory > 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "network_mode_valid"
+    message: "network_mode must be one of: awsvpc, bridge, host, none"
+    expression: "this.network_mode == '' || this.network_mode in ['awsvpc', 'bridge', 'host', 'none']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "ephemeral_storage_range"
+    message: "ephemeral_storage_gib must be between 21 and 200 when set (Fargate includes 20 GiB by default)"
+    expression: "this.ephemeral_storage_gib == 0 || (this.ephemeral_storage_gib >= 21 && this.ephemeral_storage_gib <= 200)"
+  };
+
+  // AWS requires at least one essential container per task definition.
+  option (buf.validate.message).cel = {
+    id: "at_least_one_essential_container"
+    message: "at least one container must be essential (essential defaults to true when unset) -- when every essential container exits, the task stops"
+    expression: "this.containers.exists(c, !has(c.essential) || c.essential)"
+  };
+
+  // AWS rejects RegisterTaskDefinition for a Fargate task that uses the
+  // awslogs driver without an execution role -- and the default logging
+  // wiring uses awslogs for every container without its own log
+  // configuration. Caught here so it fails at validate time, not at the
+  // provider.
+  option (buf.validate.message).cel = {
+    id: "fargate_awslogs_requires_execution_role"
+    message: "Fargate tasks using the awslogs driver (which the default logging wiring does) need an execution_role that can write logs -- reference an AwsIamRole carrying AmazonECSTaskExecutionRolePolicy, or disable logging"
+    expression: "(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || has(this.execution_role) || !(((!has(this.logging) || !this.logging.disabled) && this.containers.exists(c, !has(c.log_configuration))) || this.containers.exists(c, has(c.log_configuration) && c.log_configuration.log_driver == 'awslogs'))"
+  };
+}
+
+// AwsEcsTaskDefinitionContainer describes one container of the task: its
+// image, resources, networking ports, environment, health, and startup
+// ordering. Field names follow the ECS container definition API.
+message AwsEcsTaskDefinitionContainer {
+  // The container's name, unique within the task definition. Referenced by
+  // an ECS service's load_balancers.container_name, by sibling containers'
+  // depends_on, and used as the CloudWatch log stream prefix under the
+  // shared task log group.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The container image, as a full reference: "<repository>:<tag>" or
+  // "<repository>@<digest>". Private ECR images require execution_role to
+  // carry pull permissions; other private registries use
+  // repository_credentials.
+  // Example: "123456789012.dkr.ecr.us-west-2.amazonaws.com/api:1.4.2".
+  string image = 2 [(buf.validate.field).required = true];
+
+  // Whether this container is essential. When an essential container
+  // exits, ECS stops the whole task; non-essential sidecars can exit or
+  // fail without killing the application container. AWS default: true.
+  // Optional so an explicit "this sidecar is not essential" (false) is
+  // distinguishable from unset.
+  optional bool essential = 3;
+
+  // CPU units reserved for this container (1024 = 1 vCPU). On Fargate this
+  // subdivides the task-level cpu between containers (optional -- unset
+  // containers share what is left); on EC2 it drives bin-packing.
+  int32 cpu = 4;
+
+  // Hard memory limit for this container, in MiB -- the container is
+  // killed when it exceeds it. On Fargate the task-level memory already
+  // caps the task; set per-container limits to fence sidecars off from
+  // the application's share.
+  int32 memory = 5;
+
+  // Soft memory reservation, in MiB: the scheduler reserves this much but
+  // lets the container burst up to memory (or the task limit). Set
+  // reservation at the expected footprint and the limit at the tolerable
+  // ceiling.
+  int32 memory_reservation = 6;
+
+  // Ports the container exposes. On awsvpc networking the container port
+  // IS the host port (each task has its own ENI). Name a port to make it
+  // referenceable from Service Connect.
+  repeated AwsEcsTaskDefinitionPortMapping port_mappings = 7;
+
+  // Entry point override (Docker ENTRYPOINT). Leave empty to use the
+  // image's own.
+  repeated string entry_point = 8;
+
+  // Command override (Docker CMD) -- or the arguments to entry_point.
+  // Leave empty to use the image's own.
+  repeated string command = 9;
+
+  // Working directory override for the command.
+  string working_directory = 10;
+
+  // Plain-text environment variables (name -> value). For anything
+  // sensitive use secrets instead -- environment values are visible in the
+  // task definition to anyone who can describe it.
+  map<string, string> environment = 11;
+
+  // Secret environment variables (name -> the ARN of an AWS Secrets
+  // Manager secret or SSM Parameter Store parameter). The ECS agent
+  // resolves each reference at task start using execution_role, so the
+  // value never appears in the task definition. Append ":<json-key>::" to
+  // a Secrets Manager ARN to inject one key of a JSON secret.
+  map<string, string> secrets = 12 [(dev.planton.shared.options.sensitive_exempt_reason) = "values are Secrets Manager / SSM Parameter Store ARNs resolved by the ECS agent at task start, never secret material"];
+
+  // Environment files loaded from S3 (each entry an S3 object ARN of a
+  // .env file). Applied before environment/secrets; later sources win.
+  // execution_role must be able to read the objects.
+  repeated string environment_files = 13 [(buf.validate.field).repeated = {unique: true}];
+
+  // Container-level health check ECS runs INSIDE the container (distinct
+  // from any load-balancer target health check). Sibling containers can
+  // gate their startup on it via depends_on condition "HEALTHY", and the
+  // task reports unhealthy when it fails.
+  AwsEcsTaskDefinitionHealthCheck health_check = 14;
+
+  // Startup ordering against sibling containers: wait for a dependency to
+  // START, become HEALTHY (requires its health_check), COMPLETE, or exit
+  // with SUCCESS before this container starts. Shutdown runs in reverse.
+  repeated AwsEcsTaskDefinitionContainerDependency depends_on = 15;
+
+  // Mounts of the task's named volumes into this container's filesystem.
+  repeated AwsEcsTaskDefinitionMountPoint mount_points = 16;
+
+  // Per-container log configuration override. When set, this container
+  // logs with exactly this driver/options instead of the task-level
+  // logging default -- the escape hatch for shipping to Splunk, Fluentd,
+  // or a FireLens router.
+  AwsEcsTaskDefinitionLogConfiguration log_configuration = 17;
+
+  // Marks this container as a FireLens log router (fluentbit or fluentd).
+  // Sibling containers then use log_configuration with driver
+  // "awsfirelens" to route their logs through it.
+  AwsEcsTaskDefinitionFirelens firelens_configuration = 18;
+
+  // Credentials for pulling the image from a private NON-ECR registry:
+  // the ARN of an AWS Secrets Manager secret holding {"username","password"}
+  // -- a reference the ECS agent resolves at task start, never the
+  // credential itself. ECR images need no credentials; grant
+  // execution_role pull access instead.
+  string repository_credentials_secret_arn = 19;
+
+  // Run the container process as this user ("uid", "uid:gid", or a
+  // username present in the image). Fargate: uid-based values only.
+  string user = 20;
+
+  // Mount the container's root filesystem read-only -- writable paths must
+  // come from volumes. A strong hardening default for stateless services.
+  bool readonly_root_filesystem = 21;
+
+  // Give the container elevated privileges on the host (EC2 launch type
+  // only; not supported on Fargate). Reserved for host-integration agents.
+  bool privileged = 22;
+
+  // Run an init process (PID 1) inside the container to reap zombie
+  // processes -- maps to Docker's --init. Recommended for images whose
+  // entrypoint spawns child processes.
+  bool init_process_enabled = 23;
+
+  // Number of GPUs reserved for this container (EC2 GPU instance types
+  // only; Fargate does not offer GPUs).
+  int32 gpu_count = 24;
+
+  // Resource limits (ulimits) for the container, e.g. raise "nofile" for
+  // high-connection proxies. Fargate supports only "nofile" overrides
+  // (default soft 1024 / hard 65535 there).
+  repeated AwsEcsTaskDefinitionUlimit ulimits = 25;
+
+  // Docker labels applied to the container (key -> value) -- consumed by
+  // on-host tooling and some log routers.
+  map<string, string> docker_labels = 26;
+
+  // Seconds ECS waits for this container's depends_on conditions before
+  // giving up on starting it.
+  int32 start_timeout_seconds = 27;
+
+  // Seconds ECS waits after SIGTERM before SIGKILL at shutdown. Default
+  // 30; raise it for workloads that need a longer graceful drain (capped
+  // at 120 on Fargate).
+  int32 stop_timeout_seconds = 28 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 120
+  }];
+
+  // Restart the container in place when it exits, without replacing the
+  // whole task -- faster recovery for a crashing sidecar than a full task
+  // cycle.
+  AwsEcsTaskDefinitionRestartPolicy restart_policy = 29;
+
+  option (buf.validate.message).cel = {
+    id: "memory_reservation_below_limit"
+    message: "memory_reservation (the soft reservation) must not exceed memory (the hard limit)"
+    expression: "this.memory == 0 || this.memory_reservation == 0 || this.memory_reservation <= this.memory"
+  };
+}
+
+// AwsEcsTaskDefinitionPortMapping exposes one container port. With awsvpc
+// networking (Fargate and the modern EC2 default) the container port is
+// reachable on the task ENI directly -- there is no separate host port.
+message AwsEcsTaskDefinitionPortMapping {
+  // The port the application listens on inside the container.
+  // Example: 8080.
+  int32 container_port = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 65535
+  }];
+
+  // Layer-4 protocol: "tcp" (default) or "udp".
+  string protocol = 2;
+
+  // A name for this port, referenced by Service Connect
+  // (service_connect.services[].port_name) and by sibling tooling. Name
+  // the port whenever the service participates in Service Connect.
+  string name = 3;
+
+  // The application protocol ECS uses for Service Connect telemetry and
+  // routing: "http", "http2", or "grpc". Only meaningful on named ports.
+  string app_protocol = 4;
+
+  option (buf.validate.message).cel = {
+    id: "protocol_valid"
+    message: "protocol must be 'tcp' or 'udp' when set"
+    expression: "this.protocol == '' || this.protocol in ['tcp', 'udp']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "app_protocol_valid"
+    message: "app_protocol must be 'http', 'http2', or 'grpc' when set"
+    expression: "this.app_protocol == '' || this.app_protocol in ['http', 'http2', 'grpc']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "app_protocol_requires_name"
+    message: "app_protocol only applies to named ports -- set name as well"
+    expression: "this.app_protocol == '' || this.name != ''"
+  };
+}
+
+// AwsEcsTaskDefinitionHealthCheck is the ECS-run, in-container health probe.
+message AwsEcsTaskDefinitionHealthCheck {
+  // The probe command, in Docker exec form. The first element is "CMD"
+  // (exec directly) or "CMD-SHELL" (run through the shell).
+  // Example: ["CMD-SHELL", "curl -f http://localhost:8080/healthz || exit 1"].
+  repeated string command = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Seconds between probes. AWS default: 30.
+  int32 interval_seconds = 2;
+
+  // Seconds before an unanswered probe counts as a failure. AWS default: 5.
+  int32 timeout_seconds = 3;
+
+  // Consecutive failures before the container is marked unhealthy. AWS
+  // default: 3.
+  int32 retries = 4;
+
+  // Grace period after container start during which failures do not count
+  // -- give slow-booting apps room before probes matter. AWS default: 0.
+  int32 start_period_seconds = 5;
+}
+
+// AwsEcsTaskDefinitionContainerDependency gates one container's startup on a
+// sibling container's state.
+message AwsEcsTaskDefinitionContainerDependency {
+  // The name of the sibling container this one waits for.
+  string container_name = 1 [(buf.validate.field).required = true];
+
+  // The state to wait for: "START" (the dependency has started),
+  // "HEALTHY" (its health_check passes -- the dependency must define one),
+  // "COMPLETE" (it exited, any code), or "SUCCESS" (it exited 0).
+  string condition = 2 [(buf.validate.field).string = {
+    in: [
+      "START",
+      "HEALTHY",
+      "COMPLETE",
+      "SUCCESS"
+    ]
+  }];
+}
+
+// AwsEcsTaskDefinitionMountPoint mounts one of the task's named volumes into
+// the container.
+message AwsEcsTaskDefinitionMountPoint {
+  // The name of a volume declared in spec.volumes.
+  string source_volume = 1 [(buf.validate.field).required = true];
+
+  // The path inside the container where the volume mounts.
+  // Example: "/var/data".
+  string container_path = 2 [(buf.validate.field).required = true];
+
+  // Mount read-only.
+  bool read_only = 3;
+}
+
+// AwsEcsTaskDefinitionVolume declares one named volume tasks can mount.
+// Exactly one backing must be set: an EFS file system (durable, shared,
+// Fargate-supported) or a host path (EC2 only -- data lives and dies with
+// the instance).
+message AwsEcsTaskDefinitionVolume {
+  // The volume's name, referenced by containers' mount_points.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // Back the volume with an EFS file system.
+  AwsEcsTaskDefinitionEfsVolume efs = 2;
+
+  // Back the volume with a path on the container instance (EC2 launch
+  // type only). Example: "/mnt/data".
+  string host_path = 3;
+
+  option (buf.validate.message).cel = {
+    id: "efs_xor_host_path"
+    message: "a volume is backed by either efs or host_path, not both"
+    expression: "!has(this.efs) || this.host_path == ''"
+  };
+}
+
+// AwsEcsTaskDefinitionEfsVolume backs a task volume with EFS. Transit
+// encryption is enabled by the modules whenever an access point or IAM
+// authorization is used (AWS requires it), and defaults on otherwise too --
+// there is no good reason to mount EFS unencrypted in transit.
+message AwsEcsTaskDefinitionEfsVolume {
+  // The EFS file system backing the volume. Reference an AwsElasticFileSystem
+  // resource or pass a literal file system ID (e.g. "fs-0123456789abcdef0").
+  dev.planton.shared.foreignkey.v1.StringValueOrRef file_system_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsElasticFileSystem,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.file_system_id"
+  ];
+
+  // The path within the file system to mount as the volume root. Ignored
+  // when access_point_id is set (the access point defines the root).
+  // Default: "/".
+  string root_directory = 2;
+
+  // Mount through this EFS access point -- the recommended pattern:
+  // the access point pins the POSIX identity and root path, so tasks
+  // cannot wander the file system. Reference an AwsEfsAccessPoint resource
+  // or pass a literal access point ID (e.g. "fsap-0123456789abcdef0").
+  dev.planton.shared.foreignkey.v1.StringValueOrRef access_point_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEfsAccessPoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.access_point_id"
+  ];
+
+  // Authorize the mount with the task's IAM role (execution/task role
+  // must carry elasticfilesystem:ClientMount/ClientWrite). Requires
+  // transit encryption, which the modules enable automatically.
+  bool iam_authorization = 4;
+}
+
+// AwsEcsTaskDefinitionRuntimePlatform selects the CPU architecture and OS
+// family of the runtime environment.
+message AwsEcsTaskDefinitionRuntimePlatform {
+  // "X86_64" (default) or "ARM64" (Graviton -- cheaper per vCPU, images
+  // must be multi-arch or arm64-built).
+  string cpu_architecture = 1;
+
+  // OS family; "LINUX" (default) for almost everything. Windows families
+  // ("WINDOWS_SERVER_2019_CORE", "WINDOWS_SERVER_2019_FULL",
+  // "WINDOWS_SERVER_2022_CORE", "WINDOWS_SERVER_2022_FULL") are supported
+  // on Fargate for Windows containers.
+  string operating_system_family = 2;
+
+  option (buf.validate.message).cel = {
+    id: "cpu_architecture_valid"
+    message: "cpu_architecture must be 'X86_64' or 'ARM64' when set"
+    expression: "this.cpu_architecture == '' || this.cpu_architecture in ['X86_64', 'ARM64']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "os_family_valid"
+    message: "operating_system_family must be LINUX or a supported WINDOWS_SERVER_* family when set"
+    expression: "this.operating_system_family == '' || this.operating_system_family in ['LINUX', 'WINDOWS_SERVER_2019_CORE', 'WINDOWS_SERVER_2019_FULL', 'WINDOWS_SERVER_2022_CORE', 'WINDOWS_SERVER_2022_FULL']"
+  };
+}
+
+// AwsEcsTaskDefinitionLogging is the task-level CloudWatch logging default:
+// one shared log group, one stream prefix per container. Containers that set
+// their own log_configuration are left alone.
+message AwsEcsTaskDefinitionLogging {
+  // Disable the default log wiring entirely. Containers without their own
+  // log_configuration then produce no logs -- almost never what you want.
+  bool disabled = 1;
+
+  // Use an existing CloudWatch log group instead of creating one.
+  // Reference an AwsCloudwatchLogGroup's log_group_name output or pass a
+  // literal group name. When unset, the modules create a group named
+  // "/ecs/<family>" and manage its lifecycle with the task definition.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef log_group = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_name"
+  ];
+
+  // Retention, in days, for the auto-created log group. Ignored when
+  // log_group references an existing group (that group owns its own
+  // retention).
+  optional int32 retention_days = 3 [(dev.planton.shared.options.default) = "30"];
+}
+
+// AwsEcsTaskDefinitionLogConfiguration is a container's explicit log driver
+// configuration -- the escape hatch past the task-level default.
+message AwsEcsTaskDefinitionLogConfiguration {
+  // The log driver: "awslogs" (CloudWatch), "awsfirelens" (route through a
+  // FireLens sibling container), "splunk", "fluentd", "gelf", "syslog",
+  // "journald", or "json-file" (EC2 only).
+  string log_driver = 1 [(buf.validate.field).required = true];
+
+  // Driver-specific options (e.g. awslogs-group / awslogs-region /
+  // awslogs-stream-prefix for awslogs; Name/host/port for awsfirelens
+  // outputs).
+  map<string, string> options = 2;
+
+  // Driver options whose values come from Secrets Manager / SSM (name ->
+  // ARN) -- e.g. a Splunk HEC token. Resolved by the agent at task start
+  // via execution_role.
+  map<string, string> secret_options = 3 [(dev.planton.shared.options.sensitive_exempt_reason) = "values are Secrets Manager / SSM Parameter Store ARNs resolved by the ECS agent at task start, never secret material"];
+
+  option (buf.validate.message).cel = {
+    id: "log_driver_valid"
+    message: "log_driver must be one of: awslogs, awsfirelens, splunk, fluentd, gelf, syslog, journald, json-file"
+    expression: "this.log_driver in ['awslogs', 'awsfirelens', 'splunk', 'fluentd', 'gelf', 'syslog', 'journald', 'json-file']"
+  };
+}
+
+// AwsEcsTaskDefinitionFirelens marks a container as the task's FireLens log
+// router.
+message AwsEcsTaskDefinitionFirelens {
+  // The router type: "fluentbit" (the AWS-recommended lightweight router)
+  // or "fluentd".
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "fluentbit",
+      "fluentd"
+    ]
+  }];
+
+  // Router options -- e.g. enable-ecs-log-metadata: "true", or
+  // config-file-type/config-file-value for a custom parsing config.
+  map<string, string> options = 2;
+}
+
+// AwsEcsTaskDefinitionUlimit overrides one resource limit for the container.
+message AwsEcsTaskDefinitionUlimit {
+  // The limit name: "nofile" (open files -- the common override), "core",
+  // "cpu", "data", "fsize", "locks", "memlock", "msgqueue", "nice",
+  // "nproc", "rss", "rtprio", "rttime", "sigpending", or "stack".
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The soft limit, enforced but raisable by the process up to hard_limit.
+  int32 soft_limit = 2;
+
+  // The hard ceiling.
+  int32 hard_limit = 3;
+}
+
+// AwsEcsTaskDefinitionRestartPolicy restarts an exited container in place
+// instead of cycling the whole task.
+message AwsEcsTaskDefinitionRestartPolicy {
+  // Enable in-place restarts for this container.
+  bool enabled = 1;
+
+  // Exit codes that should NOT trigger a restart (e.g. 0 for a batch
+  // sidecar that finished cleanly).
+  repeated int32 ignored_exit_codes = 2;
+
+  // Minimum seconds the container must run before a restart attempt is
+  // made (60-1800). AWS default: 300.
+  int32 restart_attempt_period_seconds = 3;
+
+  option (buf.validate.message).cel = {
+    id: "restart_period_range"
+    message: "restart_attempt_period_seconds must be between 60 and 1800 when set"
+    expression: "this.restart_attempt_period_seconds == 0 || (this.restart_attempt_period_seconds >= 60 && this.restart_attempt_period_seconds <= 1800)"
+  };
+}

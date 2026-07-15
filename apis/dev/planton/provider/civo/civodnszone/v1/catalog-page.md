@@ -24,7 +24,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoDnsZone
 metadata:
   name: my-dns-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -88,7 +88,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoDnsZone
 metadata:
   name: example-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -123,7 +123,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoDnsZone
 metadata:
   name: verified-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -152,7 +152,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoDnsZone
 metadata:
   name: ref-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

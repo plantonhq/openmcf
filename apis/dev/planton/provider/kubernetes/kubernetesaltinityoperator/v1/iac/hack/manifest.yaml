@@ -3,9 +3,6 @@ kind: KubernetesAltinityOperator
 metadata:
   name: kubernetes-altinity-operator-test
 spec:
-  targetCluster:
-    clusterKind: GcpGkeCluster
-    clusterName: local-kind-cluster
   namespace:
     value: kubernetes-altinity-operator
   container:

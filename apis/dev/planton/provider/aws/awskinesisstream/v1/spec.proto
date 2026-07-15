@@ -4,6 +4,7 @@ package dev.planton.provider.aws.awskinesisstream.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "google/protobuf/struct.proto";
 
 // AwsKinesisStreamSpec defines the desired configuration for an Amazon Kinesis Data Stream.
 //
@@ -143,6 +144,34 @@ message AwsKinesisStreamSpec {
   bool enforce_consumer_deletion = 8;
 
   // ---------------------------------------------------------------------------
+  // Warm throughput
+  // ---------------------------------------------------------------------------
+
+  // Pre-provisioned warm write throughput in MiB/s for ON_DEMAND streams.
+  // On-demand streams normally scale up in response to observed traffic;
+  // warm throughput keeps capacity for a known burst level ready in advance,
+  // so a sudden spike (a product launch, a scheduled batch) is absorbed
+  // without ProvisionedThroughputExceeded throttling while scaling catches
+  // up. Billed per MiB/s-hour on top of on-demand data charges.
+  //
+  // Mutually exclusive with shard_count (warm throughput is meaningless on
+  // PROVISIONED streams, where capacity IS the shard count). Leave at 0 to
+  // let on-demand scaling manage capacity reactively.
+  int32 warm_throughput_mib_ps = 9;
+
+  // ---------------------------------------------------------------------------
+  // Resource policy
+  // ---------------------------------------------------------------------------
+
+  // Resource-based access policy for the stream, as a standard IAM policy
+  // document. The primary use is cross-account access: granting another
+  // account's principals PutRecord/GetRecords on this stream without role
+  // assumption. AWS models this as a separate resource-policy API keyed by
+  // the stream ARN; it is folded here because the policy has no identity of
+  // its own and follows the stream's lifecycle.
+  google.protobuf.Struct resource_policy = 10;
+
+  // ---------------------------------------------------------------------------
   // CEL validations
   // ---------------------------------------------------------------------------
 
@@ -184,7 +213,16 @@ message AwsKinesisStreamSpec {
   // Each shard-level metric must be a valid AWS metric name.
   option (buf.validate.message).cel = {
     id: "shard_level_metrics_valid"
-    message: "each shard_level_metrics value must be one of: IncomingBytes, IncomingRecords, OutgoingBytes, OutgoingRecords, WriteProvisionedThroughputExceeded, ReadProvisionedThroughputExceeded, IteratorAgeMilliseconds"
-    expression: "this.shard_level_metrics.all(m, m in ['IncomingBytes', 'IncomingRecords', 'OutgoingBytes', 'OutgoingRecords', 'WriteProvisionedThroughputExceeded', 'ReadProvisionedThroughputExceeded', 'IteratorAgeMilliseconds'])"
+    message: "each shard_level_metrics value must be one of: IncomingBytes, IncomingRecords, OutgoingBytes, OutgoingRecords, WriteProvisionedThroughputExceeded, ReadProvisionedThroughputExceeded, IteratorAgeMilliseconds, ALL"
+    expression: "this.shard_level_metrics.all(m, m in ['IncomingBytes', 'IncomingRecords', 'OutgoingBytes', 'OutgoingRecords', 'WriteProvisionedThroughputExceeded', 'ReadProvisionedThroughputExceeded', 'IteratorAgeMilliseconds', 'ALL'])"
+  };
+
+  // Warm throughput conflicts with an explicit shard count (the provider's
+  // own rule): pre-provisioned warm capacity only applies to ON_DEMAND
+  // streams, and shard_count only applies to PROVISIONED streams.
+  option (buf.validate.message).cel = {
+    id: "warm_throughput_conflicts_with_shard_count"
+    message: "warm_throughput_mib_ps cannot be set together with shard_count (warm throughput applies to ON_DEMAND streams only)"
+    expression: "this.warm_throughput_mib_ps == 0 || this.shard_count == 0"
   };
 }

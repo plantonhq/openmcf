@@ -18,7 +18,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPostgres
 metadata:
   name: my-database
-  labels:
+  annotations:
     planton.dev/provisioner: tofu    # pulumi, tofu, or terraform
 spec:
   # ...

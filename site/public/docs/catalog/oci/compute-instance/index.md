@@ -34,7 +34,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciComputeInstance
 metadata:
   name: my-instance
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -190,7 +190,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciComputeInstance
 metadata:
   name: web-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -220,7 +220,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciComputeInstance
 metadata:
   name: app-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -271,7 +271,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciComputeInstance
 metadata:
   name: batch-worker
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -304,7 +304,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciComputeInstance
 metadata:
   name: secure-vm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

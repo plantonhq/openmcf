@@ -79,7 +79,14 @@ type AwsAlbSpec struct {
 	// What happens to requests when an attached WAF is unreachable: when true,
 	// requests pass through ("fail open"); when false (AWS default), they are
 	// rejected ("fail closed"). A deliberate availability-versus-security call.
+	// Only meaningful when web_acl_arn attaches a WAF to this ALB.
 	WafFailOpenEnabled bool `protobuf:"varint,10,opt,name=waf_fail_open_enabled,json=wafFailOpenEnabled,proto3" json:"waf_fail_open_enabled,omitempty"`
+	// The REGIONAL-scope WAFv2 web ACL protecting this ALB, by ARN — the
+	// modules create the web-ACL association alongside the load balancer.
+	// An ALB has at most one web ACL; leave unset for no WAF. The web ACL
+	// must live in the same region as the ALB. Can reference an
+	// AwsWafWebAcl resource.
+	WebAclArn *v1.StringValueOrRef `protobuf:"bytes,22,opt,name=web_acl_arn,json=webAclArn,proto3" json:"web_acl_arn,omitempty"`
 	// Allows Amazon Application Recovery Controller to shift this ALB's
 	// traffic away from an impaired Availability Zone.
 	ZonalShiftEnabled bool `protobuf:"varint,11,opt,name=zonal_shift_enabled,json=zonalShiftEnabled,proto3" json:"zonal_shift_enabled,omitempty"`
@@ -226,6 +233,13 @@ func (x *AwsAlbSpec) GetWafFailOpenEnabled() bool {
 		return x.WafFailOpenEnabled
 	}
 	return false
+}
+
+func (x *AwsAlbSpec) GetWebAclArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.WebAclArn
+	}
+	return nil
 }
 
 func (x *AwsAlbSpec) GetZonalShiftEnabled() bool {
@@ -434,7 +448,7 @@ var File_dev_planton_provider_aws_awsalb_v1_spec_proto protoreflect.FileDescript
 
 const file_dev_planton_provider_aws_awsalb_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-dev/planton/provider/aws/awsalb/v1/spec.proto\x12\"dev.planton.provider.aws.awsalb.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd3\x13\n" +
+	"-dev/planton/provider/aws/awsalb/v1/spec.proto\x12\"dev.planton.provider.aws.awsalb.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcc\x14\n" +
 	"\n" +
 	"AwsAlbSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12z\n" +
@@ -447,7 +461,8 @@ const file_dev_planton_provider_aws_awsalb_v1_spec_proto_rawDesc = "" +
 	"\x19client_keep_alive_seconds\x18\b \x01(\x05R\x16clientKeepAliveSeconds\x12(\n" +
 	"\rhttp2_enabled\x18\t \x01(\bH\x00R\fhttp2Enabled\x88\x01\x01\x121\n" +
 	"\x15waf_fail_open_enabled\x18\n" +
-	" \x01(\bR\x12wafFailOpenEnabled\x12.\n" +
+	" \x01(\bR\x12wafFailOpenEnabled\x12w\n" +
+	"\vweb_acl_arn\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xad\x02\x92\xd4a\x1astatus.outputs.web_acl_arnR\twebAclArn\x12.\n" +
 	"\x13zonal_shift_enabled\x18\v \x01(\bR\x11zonalShiftEnabled\x12;\n" +
 	"\x1adrop_invalid_header_fields\x18\f \x01(\bR\x17dropInvalidHeaderFields\x120\n" +
 	"\x14preserve_host_header\x18\r \x01(\bR\x12preserveHostHeader\x125\n" +
@@ -497,17 +512,18 @@ var file_dev_planton_provider_aws_awsalb_v1_spec_proto_goTypes = []any{
 var file_dev_planton_provider_aws_awsalb_v1_spec_proto_depIdxs = []int32{
 	3, // 0: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3, // 1: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.access_logs:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery
-	1, // 3: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.connection_logs:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery
-	1, // 4: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.health_check_logs:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery
-	2, // 5: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.dns:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbDns
-	3, // 6: dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 7: dev.planton.provider.aws.awsalb.v1.AwsAlbDns.route53_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	3, // 2: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.web_acl_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 3: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.access_logs:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery
+	1, // 4: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.connection_logs:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery
+	1, // 5: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.health_check_logs:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery
+	2, // 6: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.dns:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbDns
+	3, // 7: dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 8: dev.planton.provider.aws.awsalb.v1.AwsAlbDns.route53_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsalb_v1_spec_proto_init() }

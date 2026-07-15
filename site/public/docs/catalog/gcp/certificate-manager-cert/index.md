@@ -36,7 +36,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCertManagerCert
 metadata:
   name: my-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -85,7 +85,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCertManagerCert
 metadata:
   name: api-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -106,7 +106,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCertManagerCert
 metadata:
   name: wildcard-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCertManagerCert
 metadata:
   name: lb-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -155,7 +155,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCertManagerCert
 metadata:
   name: ref-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

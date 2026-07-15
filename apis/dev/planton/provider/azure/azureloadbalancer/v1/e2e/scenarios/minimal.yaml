@@ -23,7 +23,7 @@ metadata:
     e2e-component: azureloadbalancer
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "AzurePublicIp"
+    planton.dev/e2e-prerequisites: "AzurePublicIp"
   tags:
     - planton-e2e
 spec:

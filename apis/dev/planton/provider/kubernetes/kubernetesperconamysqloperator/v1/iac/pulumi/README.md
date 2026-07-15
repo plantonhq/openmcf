@@ -63,7 +63,6 @@ Refer to the examples section for detailed usage instructions.
 ### KubernetesPerconaMysqlOperatorSpec
 Defines the desired state of the operator deployment.
 
-- **target_cluster**: Target Kubernetes cluster configuration with credential reference
 - **namespace**: Optional namespace (defaults to "percona-mysql-operator")
 - **container**: Container resource specifications for the operator pod
 

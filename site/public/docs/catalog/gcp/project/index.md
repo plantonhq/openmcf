@@ -37,7 +37,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpProject
 metadata:
   name: my-project
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,7 +90,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpProject
 metadata:
   name: sandbox
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -111,7 +111,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpProject
 metadata:
   name: staging-project
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -139,7 +139,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpProject
 metadata:
   name: prod-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

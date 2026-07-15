@@ -33,7 +33,15 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackServerGroup
 metadata:
   name: my-server-group
-  labels:
+  annotations:
+    planton.dev/stack.jobId: prod.OpenstackServerGroup.regional-anti-affinity
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1/iac/pulumi/module
+    planton.dev/stack.jobId: staging.OpenstackServerGroup.worker-soft-spread
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackServerGroup.app-cache-affinity
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackServerGroup.db-anti-affinity
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1/iac/pulumi/module
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -84,13 +92,11 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackServerGroup
 metadata:
   name: db-anti-affinity
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.OpenstackServerGroup.db-anti-affinity
-    planton.dev/stack.jobId: prod.OpenstackServerGroup.db-anti-affinity
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1/iac/pulumi/module
 spec:
   policy: anti-affinity
 ```
@@ -104,13 +110,11 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackServerGroup
 metadata:
   name: app-cache-affinity
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.OpenstackServerGroup.app-cache-affinity
-    planton.dev/stack.jobId: prod.OpenstackServerGroup.app-cache-affinity
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1/iac/pulumi/module
 spec:
   policy: affinity
 ```
@@ -124,13 +128,11 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackServerGroup
 metadata:
   name: worker-soft-spread
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: staging.OpenstackServerGroup.worker-soft-spread
-    planton.dev/stack.jobId: staging.OpenstackServerGroup.worker-soft-spread
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1/iac/pulumi/module
 spec:
   policy: soft-anti-affinity
 ```
@@ -144,13 +146,11 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackServerGroup
 metadata:
   name: regional-anti-affinity
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.OpenstackServerGroup.regional-anti-affinity
-    planton.dev/stack.jobId: prod.OpenstackServerGroup.regional-anti-affinity
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1/iac/pulumi/module
 spec:
   policy: anti-affinity
   region: RegionTwo

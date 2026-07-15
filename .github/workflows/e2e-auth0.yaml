@@ -46,13 +46,10 @@ jobs:
   # ============================================================================
   build-check:
     runs-on: ubuntu-latest
+    container: ghcr.io/plantonhq/planton/ci-toolchain:latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
 
       - name: Compile Auth0 E2E tests
         run: go test -tags=e2e -c -o /dev/null ./e2e/auth0/...
@@ -67,6 +64,7 @@ jobs:
     needs: build-check
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    container: ghcr.io/plantonhq/planton/ci-toolchain:latest
     timeout-minutes: 20
     env:
       AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
@@ -74,23 +72,6 @@ jobs:
       AUTH0_CLIENT_SECRET: ${{ secrets.AUTH0_CLIENT_SECRET }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Install gotestsum
-        run: go install gotest.tools/gotestsum@latest
-
-      - name: Install Pulumi
-        run: curl -fsSL https://get.pulumi.com | sh && echo "$HOME/.pulumi/bin" >> "$GITHUB_PATH"
-
-      - name: Install OpenTofu
-        run: |
-          curl -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
-          chmod +x install-opentofu.sh
-          ./install-opentofu.sh --install-method standalone --skip-verify
-          rm install-opentofu.sh
 
       - name: Run Auth0 E2E tests
         run: |

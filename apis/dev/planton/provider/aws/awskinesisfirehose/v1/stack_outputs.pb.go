@@ -35,8 +35,17 @@ type AwsKinesisFirehoseStackOutputs struct {
 	// (PutRecord, PutRecordBatch) and for human-readable identification.
 	// The name is unique within an AWS account and region.
 	DeliveryStreamName string `protobuf:"bytes,2,opt,name=delivery_stream_name,json=deliveryStreamName,proto3" json:"delivery_stream_name,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Identifier of the destination configuration within the delivery stream.
+	// AWS assigns it at creation (e.g., "destinationId-000000000001"); the
+	// UpdateDestination API requires it when modifying destination settings
+	// out of band.
+	DestinationId string `protobuf:"bytes,3,opt,name=destination_id,json=destinationId,proto3" json:"destination_id,omitempty"`
+	// Version of the delivery stream configuration. AWS increments it on
+	// every configuration update; the UpdateDestination API requires the
+	// current version as an optimistic-concurrency token.
+	VersionId     string `protobuf:"bytes,4,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsKinesisFirehoseStackOutputs) Reset() {
@@ -83,14 +92,31 @@ func (x *AwsKinesisFirehoseStackOutputs) GetDeliveryStreamName() string {
 	return ""
 }
 
+func (x *AwsKinesisFirehoseStackOutputs) GetDestinationId() string {
+	if x != nil {
+		return x.DestinationId
+	}
+	return ""
+}
+
+func (x *AwsKinesisFirehoseStackOutputs) GetVersionId() string {
+	if x != nil {
+		return x.VersionId
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awskinesisfirehose_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awskinesisfirehose_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/aws/awskinesisfirehose/v1/stack_outputs.proto\x12.dev.planton.provider.aws.awskinesisfirehose.v1\"\x82\x01\n" +
+	"Bdev/planton/provider/aws/awskinesisfirehose/v1/stack_outputs.proto\x12.dev.planton.provider.aws.awskinesisfirehose.v1\"\xc8\x01\n" +
 	"\x1eAwsKinesisFirehoseStackOutputs\x12.\n" +
 	"\x13delivery_stream_arn\x18\x01 \x01(\tR\x11deliveryStreamArn\x120\n" +
-	"\x14delivery_stream_name\x18\x02 \x01(\tR\x12deliveryStreamNameB\x8d\x03\n" +
+	"\x14delivery_stream_name\x18\x02 \x01(\tR\x12deliveryStreamName\x12%\n" +
+	"\x0edestination_id\x18\x03 \x01(\tR\rdestinationId\x12\x1d\n" +
+	"\n" +
+	"version_id\x18\x04 \x01(\tR\tversionIdB\x8d\x03\n" +
 	"2com.dev.planton.provider.aws.awskinesisfirehose.v1B\x11StackOutputsProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awskinesisfirehose/v1;awskinesisfirehosev1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Aws.Awskinesisfirehose.V1\xca\x02.Dev\\Planton\\Provider\\Aws\\Awskinesisfirehose\\V1\xe2\x02:Dev\\Planton\\Provider\\Aws\\Awskinesisfirehose\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Aws::Awskinesisfirehose::V1b\x06proto3"
 
 var (

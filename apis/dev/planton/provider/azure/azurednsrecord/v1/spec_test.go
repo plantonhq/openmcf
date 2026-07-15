@@ -96,7 +96,15 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Validation Tests", func() {
 			ginkgo.It("should accept a CNAME record with a literal target", func() {
 				input := validResource()
 				input.Spec.A = nil
-				input.Spec.Cname = &AzureDnsCnameRecord{Value: "myapp.azurefd.net"}
+				input.Spec.Cname = &AzureDnsCnameRecord{Value: literal("myapp.azurefd.net")}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a CNAME record whose target is a reference", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Cname = &AzureDnsCnameRecord{Value: ref("frontdoor-endpoint")}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -165,7 +173,22 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Validation Tests", func() {
 				for i := range longValue {
 					longValue[i] = 'a'
 				}
-				input.Spec.Txt = []string{"v=DMARC1; p=reject;", string(longValue)}
+				input.Spec.Txt = []*foreignkeyv1.StringValueOrRef{
+					literal("v=DMARC1; p=reject;"),
+					literal(string(longValue)),
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a TXT record mixing literal and referenced values", func() {
+				input := validResource()
+				input.Spec.A = nil
+				input.Spec.Name = "_dnsauth"
+				input.Spec.Txt = []*foreignkeyv1.StringValueOrRef{
+					ref("frontdoor-custom-domain"),
+					literal("v=spf1 -all"),
+				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -209,7 +232,7 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Validation Tests", func() {
 
 			ginkgo.It("should return a validation error when two payloads are set", func() {
 				input := validResource()
-				input.Spec.Cname = &AzureDnsCnameRecord{Value: "target.example.com"}
+				input.Spec.Cname = &AzureDnsCnameRecord{Value: literal("target.example.com")}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
@@ -250,7 +273,7 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Validation Tests", func() {
 				input := validResource()
 				input.Spec.A = nil
 				input.Spec.Cname = &AzureDnsCnameRecord{
-					Value:            "target.example.com",
+					Value:            literal("target.example.com"),
 					TargetResourceId: ref("cdn-endpoint"),
 				}
 				err := protovalidate.Validate(input)
@@ -331,17 +354,6 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Validation Tests", func() {
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error for a TXT value over 4096 characters", func() {
-				input := validResource()
-				input.Spec.A = nil
-				tooLong := make([]byte, 4097)
-				for i := range tooLong {
-					tooLong[i] = 'a'
-				}
-				input.Spec.Txt = []string{string(tooLong)}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
 
 			ginkgo.It("should return a validation error for an invalid record name", func() {
 				input := validResource()

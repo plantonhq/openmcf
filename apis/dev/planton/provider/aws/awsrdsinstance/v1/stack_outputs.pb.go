@@ -21,23 +21,35 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsRdsInstanceStackOutputs captures observable identifiers for a single RDS DB instance.
+// AwsRdsInstanceStackOutputs captures the observable identifiers and
+// connection endpoint of the RDS DB instance after deployment.
 type AwsRdsInstanceStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// DB instance identifier (RDS resource ID)
-	RdsInstanceId string `protobuf:"bytes,1,opt,name=rds_instance_id,json=rdsInstanceId,proto3" json:"rds_instance_id,omitempty"`
-	// DB instance ARN
-	RdsInstanceArn string `protobuf:"bytes,2,opt,name=rds_instance_arn,json=rdsInstanceArn,proto3" json:"rds_instance_arn,omitempty"`
-	// The instance endpoint hostname
-	RdsInstanceEndpoint string `protobuf:"bytes,3,opt,name=rds_instance_endpoint,json=rdsInstanceEndpoint,proto3" json:"rds_instance_endpoint,omitempty"`
-	// The port on which the instance accepts connections
-	RdsInstancePort int32 `protobuf:"varint,4,opt,name=rds_instance_port,json=rdsInstancePort,proto3" json:"rds_instance_port,omitempty"`
-	// The associated DB subnet group name
-	RdsSubnetGroup string `protobuf:"bytes,5,opt,name=rds_subnet_group,json=rdsSubnetGroup,proto3" json:"rds_subnet_group,omitempty"`
-	// A security group ID associated with the instance (if created/managed)
-	RdsSecurityGroup string `protobuf:"bytes,6,opt,name=rds_security_group,json=rdsSecurityGroup,proto3" json:"rds_security_group,omitempty"`
-	// The parameter group associated with the instance
-	RdsParameterGroup string `protobuf:"bytes,7,opt,name=rds_parameter_group,json=rdsParameterGroup,proto3" json:"rds_parameter_group,omitempty"`
+	// The instance identifier (e.g. "orders-db").
+	InstanceIdentifier string `protobuf:"bytes,1,opt,name=instance_identifier,json=instanceIdentifier,proto3" json:"instance_identifier,omitempty"`
+	// The Amazon Resource Name of the instance.
+	Arn string `protobuf:"bytes,2,opt,name=arn,proto3" json:"arn,omitempty"`
+	// The immutable DB instance resource ID (db-...). Survives identifier
+	// renames -- the durable handle for point-in-time restores, IAM auth
+	// policies, and CloudWatch dimensions.
+	ResourceId string `protobuf:"bytes,3,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	// The connection endpoint in "address:port" form.
+	Endpoint string `protobuf:"bytes,4,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// The DNS address of the instance (endpoint without the port).
+	Address string `protobuf:"bytes,5,opt,name=address,proto3" json:"address,omitempty"`
+	// The port the instance accepts connections on.
+	Port int32 `protobuf:"varint,6,opt,name=port,proto3" json:"port,omitempty"`
+	// The Route53 hosted zone ID of the endpoint, for DNS alias records.
+	HostedZoneId string `protobuf:"bytes,7,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
+	// The resolved engine version actually running (meaningful when the
+	// spec leaves engine_version to the AWS default).
+	EngineVersionActual string `protobuf:"bytes,8,opt,name=engine_version_actual,json=engineVersionActual,proto3" json:"engine_version_actual,omitempty"`
+	// The ARN of the AWS-managed master-user secret in Secrets Manager.
+	// Populated only when manage_master_user_password is true -- the
+	// handle applications use to fetch credentials at runtime.
+	MasterUserSecretArn string `protobuf:"bytes,9,opt,name=master_user_secret_arn,json=masterUserSecretArn,proto3" json:"master_user_secret_arn,omitempty"`
+	// The name of the DB subnet group the instance runs in.
+	DbSubnetGroupName string `protobuf:"bytes,10,opt,name=db_subnet_group_name,json=dbSubnetGroupName,proto3" json:"db_subnet_group_name,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -72,51 +84,72 @@ func (*AwsRdsInstanceStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsrdsinstance_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AwsRdsInstanceStackOutputs) GetRdsInstanceId() string {
+func (x *AwsRdsInstanceStackOutputs) GetInstanceIdentifier() string {
 	if x != nil {
-		return x.RdsInstanceId
+		return x.InstanceIdentifier
 	}
 	return ""
 }
 
-func (x *AwsRdsInstanceStackOutputs) GetRdsInstanceArn() string {
+func (x *AwsRdsInstanceStackOutputs) GetArn() string {
 	if x != nil {
-		return x.RdsInstanceArn
+		return x.Arn
 	}
 	return ""
 }
 
-func (x *AwsRdsInstanceStackOutputs) GetRdsInstanceEndpoint() string {
+func (x *AwsRdsInstanceStackOutputs) GetResourceId() string {
 	if x != nil {
-		return x.RdsInstanceEndpoint
+		return x.ResourceId
 	}
 	return ""
 }
 
-func (x *AwsRdsInstanceStackOutputs) GetRdsInstancePort() int32 {
+func (x *AwsRdsInstanceStackOutputs) GetEndpoint() string {
 	if x != nil {
-		return x.RdsInstancePort
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceStackOutputs) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceStackOutputs) GetPort() int32 {
+	if x != nil {
+		return x.Port
 	}
 	return 0
 }
 
-func (x *AwsRdsInstanceStackOutputs) GetRdsSubnetGroup() string {
+func (x *AwsRdsInstanceStackOutputs) GetHostedZoneId() string {
 	if x != nil {
-		return x.RdsSubnetGroup
+		return x.HostedZoneId
 	}
 	return ""
 }
 
-func (x *AwsRdsInstanceStackOutputs) GetRdsSecurityGroup() string {
+func (x *AwsRdsInstanceStackOutputs) GetEngineVersionActual() string {
 	if x != nil {
-		return x.RdsSecurityGroup
+		return x.EngineVersionActual
 	}
 	return ""
 }
 
-func (x *AwsRdsInstanceStackOutputs) GetRdsParameterGroup() string {
+func (x *AwsRdsInstanceStackOutputs) GetMasterUserSecretArn() string {
 	if x != nil {
-		return x.RdsParameterGroup
+		return x.MasterUserSecretArn
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceStackOutputs) GetDbSubnetGroupName() string {
+	if x != nil {
+		return x.DbSubnetGroupName
 	}
 	return ""
 }
@@ -125,15 +158,20 @@ var File_dev_planton_provider_aws_awsrdsinstance_v1_stack_outputs_proto protoref
 
 const file_dev_planton_provider_aws_awsrdsinstance_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/aws/awsrdsinstance/v1/stack_outputs.proto\x12*dev.planton.provider.aws.awsrdsinstance.v1\"\xd6\x02\n" +
-	"\x1aAwsRdsInstanceStackOutputs\x12&\n" +
-	"\x0frds_instance_id\x18\x01 \x01(\tR\rrdsInstanceId\x12(\n" +
-	"\x10rds_instance_arn\x18\x02 \x01(\tR\x0erdsInstanceArn\x122\n" +
-	"\x15rds_instance_endpoint\x18\x03 \x01(\tR\x13rdsInstanceEndpoint\x12*\n" +
-	"\x11rds_instance_port\x18\x04 \x01(\x05R\x0frdsInstancePort\x12(\n" +
-	"\x10rds_subnet_group\x18\x05 \x01(\tR\x0erdsSubnetGroup\x12,\n" +
-	"\x12rds_security_group\x18\x06 \x01(\tR\x10rdsSecurityGroup\x12.\n" +
-	"\x13rds_parameter_group\x18\a \x01(\tR\x11rdsParameterGroupB\xf1\x02\n" +
+	">dev/planton/provider/aws/awsrdsinstance/v1/stack_outputs.proto\x12*dev.planton.provider.aws.awsrdsinstance.v1\"\x8a\x03\n" +
+	"\x1aAwsRdsInstanceStackOutputs\x12/\n" +
+	"\x13instance_identifier\x18\x01 \x01(\tR\x12instanceIdentifier\x12\x10\n" +
+	"\x03arn\x18\x02 \x01(\tR\x03arn\x12\x1f\n" +
+	"\vresource_id\x18\x03 \x01(\tR\n" +
+	"resourceId\x12\x1a\n" +
+	"\bendpoint\x18\x04 \x01(\tR\bendpoint\x12\x18\n" +
+	"\aaddress\x18\x05 \x01(\tR\aaddress\x12\x12\n" +
+	"\x04port\x18\x06 \x01(\x05R\x04port\x12$\n" +
+	"\x0ehosted_zone_id\x18\a \x01(\tR\fhostedZoneId\x122\n" +
+	"\x15engine_version_actual\x18\b \x01(\tR\x13engineVersionActual\x123\n" +
+	"\x16master_user_secret_arn\x18\t \x01(\tR\x13masterUserSecretArn\x12/\n" +
+	"\x14db_subnet_group_name\x18\n" +
+	" \x01(\tR\x11dbSubnetGroupNameB\xf1\x02\n" +
 	".com.dev.planton.provider.aws.awsrdsinstance.v1B\x11StackOutputsProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrdsinstance/v1;awsrdsinstancev1\xa2\x02\x05DPPAA\xaa\x02*Dev.Planton.Provider.Aws.Awsrdsinstance.V1\xca\x02*Dev\\Planton\\Provider\\Aws\\Awsrdsinstance\\V1\xe2\x026Dev\\Planton\\Provider\\Aws\\Awsrdsinstance\\V1\\GPBMetadata\xea\x02/Dev::Planton::Provider::Aws::Awsrdsinstance::V1b\x06proto3"
 
 var (

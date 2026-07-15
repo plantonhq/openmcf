@@ -27,7 +27,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanFunction
 metadata:
   name: my-function
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -88,7 +88,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanFunction
 metadata:
   name: api-handler
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanFunction
 metadata:
   name: nightly-cleanup
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -153,7 +153,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanFunction
 metadata:
   name: webhook-processor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

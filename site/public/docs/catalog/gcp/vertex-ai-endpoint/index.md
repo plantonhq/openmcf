@@ -34,7 +34,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiEndpoint
 metadata:
   name: my-endpoint
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -87,7 +87,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiEndpoint
 metadata:
   name: dev-recommendations
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -109,7 +109,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiEndpoint
 metadata:
   name: prod-scoring
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -135,7 +135,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiEndpoint
 metadata:
   name: psc-inference
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -162,7 +162,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiEndpoint
 metadata:
   name: composed-endpoint
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform

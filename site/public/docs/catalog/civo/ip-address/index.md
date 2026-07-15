@@ -32,7 +32,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoIpAddress
 metadata:
   name: my-ip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -74,7 +74,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoIpAddress
 metadata:
   name: basic-ip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoIpAddress
 metadata:
   name: api-gateway-ip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -111,7 +111,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoIpAddress
 metadata:
   name: prod-lb-ip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

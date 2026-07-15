@@ -1,0 +1,54 @@
+# The CI deployment role -- the suite's global-service member. Scanning
+# AWS::IAM::Role lists EVERY role in the account (service-linked roles,
+# unrelated projects), so this member is what proves universe-only scoring
+# on a tier where noise is the norm.
+#
+# metadata.name IS the role name: the awsiamrole import recipe derives the
+# import id from_metadata_name, so the scorer enforces name-derived
+# identity here exactly as it does for S3 buckets.
+#
+# Exam-fairness (probed live 2026-07-11): every field set below is carried
+# by the role's Cloud Control model -- AssumeRolePolicyDocument,
+# Description, Path, MaxSessionDuration, ManagedPolicyArns, and inline
+# Policies (returned as decoded JSON documents; the documents here are
+# authored in that same shape). The managed policy attaches by LITERAL
+# arn: an AwsIamPolicy member would carry zero scan-visible claims
+# (aws_iam_policy has no catalog entry), so a value_from edge here would
+# point at an unmatchable instance.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: hub-ci-deployer
+  id: hub-ci-deployer
+  org: planton-oss
+  env: ops
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: CI deployment role for the hub account
+  path: /ci/
+  maxSessionDuration: 7200
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: codebuild.amazonaws.com
+        Action: sts:AssumeRole
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/ReadOnlyAccess
+  inlinePolicies:
+    deploy-artifacts-access:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+          Resource: arn:aws:s3:::hub-deploy-artifacts/*

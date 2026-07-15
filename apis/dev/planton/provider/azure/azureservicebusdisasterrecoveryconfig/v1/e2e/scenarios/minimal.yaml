@@ -16,7 +16,7 @@ metadata:
   annotations:
     planton.dev/e2e: "true"
     # Primary then partner, in deploy order.
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azureservicebusdisasterrecoveryconfig/v1/e2e/fixture-namespace-primary.yaml, apis/dev/planton/provider/azure/azureservicebusdisasterrecoveryconfig/v1/e2e/fixture-namespace-partner.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azureservicebusdisasterrecoveryconfig/v1/e2e/fixture-namespace-primary.yaml, apis/dev/planton/provider/azure/azureservicebusdisasterrecoveryconfig/v1/e2e/fixture-namespace-partner.yaml"
   tags:
     - planton-e2e
 spec:

@@ -1,122 +1,30 @@
 # AwsDynamodb
 
-The **AwsDynamodb** resource provides a standardized way to provision and manage AWS DynamoDB tables through Planton. It simplifies DynamoDB table configuration while supporting essential features like flexible billing modes, indexes, streams, TTL, and encryption.
+An Amazon DynamoDB table: key schema and indexes, capacity in any of AWS's three shapes (on-demand, provisioned, pre-warmed), streams, Global Tables v2 multi-region replication, encryption, recovery, and the table-scoped governance surface (resource policy, Kinesis change-data destination, CloudWatch contributor insights).
 
-## Spec Fields (80/20)
+The table name comes from `metadata.name` (create-time immutable in AWS). A table is a true leaf -- nothing has to exist before it -- and everything it composes with attaches by reference: the KMS key that encrypts it (`AwsKmsKey`), the Kinesis stream that receives its change data (`AwsKinesisStream`), and the S3 bucket an import seeds it from (`AwsS3Bucket`).
 
-### Essential Fields (80% Use Case)
+## Spec highlights
 
-- **billing_mode**: Billing mode for the table. Options are:
-  - `BILLING_MODE_PAY_PER_REQUEST`: On-demand billing (recommended for variable or unpredictable workloads)
-  - `BILLING_MODE_PROVISIONED`: Specify read and write capacity units (RCUs/WCUs) for predictable workloads
-- **attribute_definitions**: List of attribute definitions including name and type (S=String, N=Number, B=Binary). Only attributes used in keys or indexes need to be defined here.
-- **key_schema**: Primary key schema for the table. Must include exactly one HASH key (partition key) and optionally one RANGE key (sort key).
+- **Capacity, three-shaped**: `PAY_PER_REQUEST` (the recommended default -- zero capacity planning, optional `onDemandThroughput` spend ceiling), `PROVISIONED` (reserved units on the table and each GSI, for reserved-capacity pricing), and `warmThroughput` (pre-warmed instant capacity for launch events; increase-only).
+- **Indexes**: global secondary indexes with per-index capacity, warm throughput, and multi-attribute keys (1-4 HASH + 0-4 RANGE elements); local secondary indexes stated honestly as create-time-only.
+- **Global Tables v2**: folded `replicas` (per-region KMS key, PITR, deletion protection, tag propagation) with `consistencyMode` up to Multi-Region Strong Consistency -- exactly two STRONG replicas, or one STRONG replica plus a `globalTableWitness` region. Validation pins the topology AWS accepts before anything deploys.
+- **Create sources**: restore from point-in-time (same-account by name, cross-account/region by ARN), restore from a backup ARN, or seed from S3 (`importTable` -- CSV, DynamoDB JSON, or Ion; billed as a one-time import).
+- **Folded table-scoped satellites**: a resource-based IAM `resourcePolicy`, the `kinesisStreamingDestination` (one per table, by AWS's own rule), and `contributorInsights` on the table and opted-in GSIs -- each materializes as its own provider resource in both engines, so edits are in-place.
+- **Recovery and safety**: point-in-time recovery with a tunable 1-35 day window, deletion protection, table class, and TTL.
 
-### Advanced Fields (20% Use Case)
+## Stack outputs
 
-- **provisioned_throughput**: Required when `billing_mode` is PROVISIONED. Specifies read capacity units (RCUs) and write capacity units (WCUs).
-- **global_secondary_indexes**: List of global secondary indexes (GSIs) with their own key schemas, projections, and optional provisioned throughput.
-- **local_secondary_indexes**: List of local secondary indexes (LSIs) that share the same partition key as the table but use a different sort key.
-- **ttl**: Time-to-live configuration for automatic item expiration. Includes `enabled` flag and `attribute_name` storing epoch time in seconds.
-- **stream_enabled**: Boolean to enable DynamoDB Streams for change data capture.
-- **stream_view_type**: Type of data to include in stream records when streams are enabled:
-  - `STREAM_VIEW_TYPE_KEYS_ONLY`: Only key attributes
-  - `STREAM_VIEW_TYPE_NEW_IMAGE`: Entire item after modification
-  - `STREAM_VIEW_TYPE_OLD_IMAGE`: Entire item before modification
-  - `STREAM_VIEW_TYPE_NEW_AND_OLD_IMAGES`: Both before and after states
-- **point_in_time_recovery_enabled**: Enable continuous backups for point-in-time recovery (PITR).
-- **server_side_encryption**: Server-side encryption settings with optional customer-managed KMS key ARN.
-- **table_class**: Storage class - `TABLE_CLASS_STANDARD` or `TABLE_CLASS_STANDARD_INFREQUENT_ACCESS` (for cost optimization on infrequently accessed data).
-- **deletion_protection_enabled**: Prevent accidental deletion of the table.
-- **contributor_insights_enabled**: Enable CloudWatch Contributor Insights for monitoring access patterns.
+`table_name`, `table_arn`, `table_id`, `stream_arn`, `stream_label` -- the name and ARN are the join keys IAM policies and application configuration consume; the stream ARN is what Lambda event-source mappings attach to.
 
-## Stack Outputs
+## How it works
 
-After provisioning, the AwsDynamodb resource provides the following outputs:
-
-- **table_name**: The name of the DynamoDB table.
-- **table_arn**: The Amazon Resource Name (ARN) of the table.
-- **table_id**: Provider-assigned unique identifier for the table.
-- **stream_arn**: ARN of the DynamoDB Stream (when streams are enabled).
-- **stream_label**: Label of the stream (when streams are enabled).
-
-## How It Works
-
-When you define an AwsDynamodb resource, Planton:
-
-1. **Creates Table**: Provisions a DynamoDB table with the specified key schema and attribute definitions.
-2. **Configures Billing**: Sets up either on-demand or provisioned billing based on your specification.
-3. **Adds Indexes**: Creates global and/or local secondary indexes for efficient querying on non-primary-key attributes.
-4. **Enables Features**: Activates optional features like TTL, streams, PITR, and encryption as specified.
-5. **Applies Protection**: Configures deletion protection and table class for cost and safety optimization.
-
-The resource uses Pulumi or Terraform under the hood (depending on your stack configuration) to provision all necessary AWS resources.
-
-## Use Cases
-
-### Simple Key-Value Store
-Use on-demand billing with a single partition key for simple key-value storage with unpredictable access patterns.
-
-### Time-Series Data with TTL
-Configure a composite key (partition + sort key) with TTL enabled to automatically expire old time-series data.
-
-### Event Sourcing with Streams
-Enable DynamoDB Streams with NEW_AND_OLD_IMAGES to capture all changes for event sourcing, replication, or triggering Lambda functions.
-
-### Multi-Access Pattern with GSIs
-Create global secondary indexes to support multiple query patterns on the same data without table scans.
-
-### Cost Optimization
-Use PAY_PER_REQUEST billing for variable workloads or STANDARD_INFREQUENT_ACCESS table class for infrequently accessed data.
-
-## Important Notes
-
-### Billing Modes
-- **PAY_PER_REQUEST** (on-demand): Best for new applications, variable traffic, or when you can't predict capacity needs. No capacity planning required.
-- **PROVISIONED**: Best for predictable workloads. Lower cost when you can accurately forecast usage, but risk throttling if exceeded.
-
-### Key Schema Design
-- **Partition Key (HASH)**: Must have high cardinality for even data distribution across partitions.
-- **Sort Key (RANGE)**: Optional, enables range queries and allows multiple items with same partition key.
-- **Attribute Definitions**: Only define attributes used in keys or indexes, not all table attributes.
-
-### Index Considerations
-- **GSIs**: Can have different partition and sort keys than the table. Support eventual consistency. Can be added/removed after table creation.
-- **LSIs**: Must share the same partition key as the table. Support strong consistency. Must be defined at table creation time (cannot add later).
-- **Projection**: Controls which attributes are copied to the index:
-  - `ALL`: All attributes (highest storage cost)
-  - `KEYS_ONLY`: Only key attributes (lowest cost)
-  - `INCLUDE`: Specific non-key attributes
-
-### Streams and TTL
-- **Streams**: Capture item-level changes for up to 24 hours. Commonly used with Lambda for processing changes, replication, or analytics.
-- **TTL**: Automatic deletion of expired items within 48 hours. No additional cost. TTL attribute must be a number representing epoch time in seconds.
-
-### Capacity Planning for Provisioned Mode
-- 1 RCU = 1 strongly consistent read/sec for items up to 4KB (or 2 eventually consistent reads/sec)
-- 1 WCU = 1 write/sec for items up to 1KB
-- GSIs consume their own capacity units
-- Enable auto-scaling for provisioned mode to handle traffic spikes
-
-## Validation Rules
-
-The API enforces several validations:
-
-1. **Billing Mode Required**: Must be set to either PROVISIONED or PAY_PER_REQUEST.
-2. **Key Schema**: Must have exactly one HASH key and at most one RANGE key.
-3. **Provisioned Throughput**: Required when billing mode is PROVISIONED (with RCUs and WCUs > 0).
-4. **Stream View Type**: Must be set when streams are enabled, must be unspecified when disabled.
-5. **TTL Attribute**: Must be set when TTL is enabled, must be empty when disabled.
-6. **GSI Keys**: Each GSI must have exactly one HASH key and at most one RANGE key.
-7. **LSI Keys**: Each LSI must have exactly one HASH key and exactly one RANGE key.
-8. **Projection**: When projection type is INCLUDE, non_key_attributes must be specified.
+Both the Terraform/OpenTofu and Pulumi modules implement the same contract: one `aws_dynamodb_table` keyed by `metadata.name`, plus one provider resource per configured satellite (resource policy, Kinesis destination, contributor insights per table/index). Spec values are the exact AWS API strings, so manifests read like AWS documentation and values pass through the engines untranslated.
 
 ## References
 
-- [DynamoDB Core Components](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html)
-- [DynamoDB Billing Modes](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html)
-- [DynamoDB Streams](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html)
-- [DynamoDB TTL](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/TTL.html)
-- [Global Secondary Indexes](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.html)
-- [Local Secondary Indexes](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LSI.html)
-- [DynamoDB Best Practices](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/best-practices.html)
+- [DynamoDB Developer Guide](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html)
+- [Read/write capacity modes](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html)
+- [Global Tables](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html)
+- [Warm throughput](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/warm-throughput.html)
+- [Importing from S3](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/S3DataImport.HowItWorks.html)

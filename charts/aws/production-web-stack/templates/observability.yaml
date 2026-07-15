@@ -1,0 +1,144 @@
+# The pager wire: an SNS topic, an email subscription, and the alarm set.
+# Every alarm's dimensions are the stack's own rendered names — stable
+# from the first deploy. Load-balancer alarms (5xx rate, target latency)
+# deliberately do NOT live here: their CloudWatch dimensions are the
+# ALB/target-group arn_suffix values, which only exist after deployment —
+# the README shows how to add them from the outputs as a day-2 step
+# instead of shipping alarms that silently watch nothing.
+{% if values.alarms_enabled | bool %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSnsTopic
+metadata:
+  name: "{{ values.stack_name }}-alerts"
+spec:
+  region: "{{ values.aws_region }}"
+  displayName: "{{ values.stack_name }} alerts"
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSnsSubscription
+metadata:
+  name: "{{ values.stack_name }}-alerts-email"
+spec:
+  region: "{{ values.aws_region }}"
+  topicArn:
+    valueFrom:
+      kind: AwsSnsTopic
+      name: "{{ values.stack_name }}-alerts"
+      fieldPath: status.outputs.topic_arn
+  protocol: email
+  # Email subscriptions require a one-time confirmation click — AWS sends
+  # it on creation, and no alert is delivered until it is confirmed.
+  endpoint:
+    value: "{{ values.alert_email }}"
+---
+# Sustained service CPU pressure: either the autoscaler is at max_tasks or
+# per-task sizing is too small — both are human decisions.
+apiVersion: aws.planton.dev/v1
+kind: AwsCloudwatchAlarm
+metadata:
+  name: "{{ values.stack_name }}-service-cpu-high"
+spec:
+  region: "{{ values.aws_region }}"
+  namespace: AWS/ECS
+  metricName: CPUUtilization
+  dimensions:
+    ClusterName: "{{ values.stack_name }}-cluster"
+    ServiceName: "{{ values.stack_name }}-web"
+  statistic: Average
+  period: 300
+  comparisonOperator: GreaterThanThreshold
+  threshold: 80
+  # 2-of-3 five-minute periods: rides out a deploy spike, catches anything
+  # sustained.
+  evaluationPeriods: 3
+  datapointsToAlarm: 2
+  treatMissingData: notBreaching
+  alarmDescription: "{{ values.stack_name }}: service CPU above 80% - scale ceiling or task sizing needs a decision"
+  alarmActions:
+    - valueFrom:
+        kind: AwsSnsTopic
+        name: "{{ values.stack_name }}-alerts"
+        fieldPath: status.outputs.topic_arn
+---
+# Memory has no autoscaling policy on this service (scaling follows
+# traffic) — sustained growth here is the leak-or-undersized signal, and
+# tasks that cross 100% are OOM-killed.
+apiVersion: aws.planton.dev/v1
+kind: AwsCloudwatchAlarm
+metadata:
+  name: "{{ values.stack_name }}-service-memory-high"
+spec:
+  region: "{{ values.aws_region }}"
+  namespace: AWS/ECS
+  metricName: MemoryUtilization
+  dimensions:
+    ClusterName: "{{ values.stack_name }}-cluster"
+    ServiceName: "{{ values.stack_name }}-web"
+  statistic: Average
+  period: 300
+  comparisonOperator: GreaterThanThreshold
+  threshold: 80
+  evaluationPeriods: 3
+  datapointsToAlarm: 2
+  treatMissingData: notBreaching
+  alarmDescription: "{{ values.stack_name }}: service memory above 80% - possible leak or undersized tasks"
+  alarmActions:
+    - valueFrom:
+        kind: AwsSnsTopic
+        name: "{{ values.stack_name }}-alerts"
+        fieldPath: status.outputs.topic_arn
+---
+# Database CPU: sustained pressure precedes latency and connection pileups.
+apiVersion: aws.planton.dev/v1
+kind: AwsCloudwatchAlarm
+metadata:
+  name: "{{ values.stack_name }}-db-cpu-high"
+spec:
+  region: "{{ values.aws_region }}"
+  namespace: AWS/RDS
+  metricName: CPUUtilization
+  dimensions:
+    # The cluster identifier is the resource's own name — render-stable.
+    DBClusterIdentifier: "{{ values.stack_name }}-db"
+  statistic: Average
+  period: 300
+  comparisonOperator: GreaterThanThreshold
+  threshold: 80
+  evaluationPeriods: 3
+  datapointsToAlarm: 2
+  treatMissingData: notBreaching
+  alarmDescription: "{{ values.stack_name }}: database CPU above 80% - check Performance Insights for the offending queries"
+  alarmActions:
+    - valueFrom:
+        kind: AwsSnsTopic
+        name: "{{ values.stack_name }}-alerts"
+        fieldPath: status.outputs.topic_arn
+---
+# Serverless v2 capacity: ACUUtilization near 100 means the cluster is
+# pinned at db_max_capacity — the ceiling, not the database, is the
+# bottleneck.
+apiVersion: aws.planton.dev/v1
+kind: AwsCloudwatchAlarm
+metadata:
+  name: "{{ values.stack_name }}-db-capacity-high"
+spec:
+  region: "{{ values.aws_region }}"
+  namespace: AWS/RDS
+  metricName: ACUUtilization
+  dimensions:
+    DBClusterIdentifier: "{{ values.stack_name }}-db"
+  statistic: Average
+  period: 300
+  comparisonOperator: GreaterThanThreshold
+  threshold: 90
+  evaluationPeriods: 3
+  datapointsToAlarm: 2
+  treatMissingData: notBreaching
+  alarmDescription: "{{ values.stack_name }}: Aurora capacity above 90% of max ACUs - raise db_max_capacity or tune the workload"
+  alarmActions:
+    - valueFrom:
+        kind: AwsSnsTopic
+        name: "{{ values.stack_name }}-alerts"
+        fieldPath: status.outputs.topic_arn
+{% endif %}

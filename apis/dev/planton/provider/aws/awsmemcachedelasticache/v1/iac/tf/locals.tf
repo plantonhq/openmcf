@@ -1,22 +1,51 @@
 locals {
-  # Stable resource ID from metadata
-  resource_id = coalesce(try(var.metadata.id, null), var.metadata.name)
+  # The cluster identifier is metadata.name — create-only in AWS, and the
+  # basis both engines share so a manifest deploys identically on either.
+  cluster_identifier = var.metadata.name
 
-  tags = merge({
-    "Name" = local.resource_id
-  }, try(var.metadata.labels, {}))
+  # Resource-identity tags match the Pulumi module key-for-key.
+  aws_tags = {
+    "Name"                     = var.metadata.name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsMemcachedElasticache"
+    "planton.ai/resource-id"   = var.metadata.id
+  }
 
-  # Engine
-  engine_version = try(var.spec.engine_version, null)
+  # A subnet group is managed here only when the spec brings raw subnets;
+  # an existing group name short-circuits it. The group itself is pure
+  # glue (a named list of subnets), which is why it stays inside this
+  # module instead of being its own node.
+  manage_subnet_group = var.spec.subnet_group_name == "" && length(var.spec.subnet_ids) > 0
+
+  # A parameter group is managed here only for inline parameters.
+  # Bringing an existing group name and inline parameters are mutually
+  # exclusive (CEL-enforced).
+  manage_parameter_group = length(coalesce(try(var.spec.parameters, []), [])) > 0 && try(var.spec.parameter_group_family, "") != ""
+
+  # Engine — empty pins nothing: AWS picks the engine's current default
+  # version, so an unpinned manifest never goes stale.
+  engine_version = var.spec.engine_version != "" ? var.spec.engine_version : null
 
   # Nodes
   num_cache_nodes = coalesce(try(var.spec.num_cache_nodes, null), 1)
-  az_mode         = try(var.spec.az_mode, null)
+  az_mode         = try(var.spec.az_mode, null) != "" ? var.spec.az_mode : null
 
-  # Networking
-  subnet_ids  = [for s in coalesce(try(var.spec.subnet_ids, []), []) : s.value]
-  has_subnets = length(local.subnet_ids) > 0
-  sg_ids      = [for s in coalesce(try(var.spec.security_group_ids, []), []) : s.value]
+  # Networking — references arrive pre-flattened to plain strings (the
+  # generator contract lowers StringValueOrRef to string).
+  subnet_ids   = coalesce(try(var.spec.subnet_ids, []), [])
+  sg_ids       = coalesce(try(var.spec.security_group_ids, []), [])
+  network_type = try(var.spec.network_type, null) != "" ? var.spec.network_type : null
+  ip_discovery = try(var.spec.ip_discovery, null) != "" ? var.spec.ip_discovery : null
+
+  # The subnet group the cluster actually uses: the managed group, an
+  # explicitly referenced existing group, or null for the VPC default.
+  effective_subnet_group_name = (
+    local.manage_subnet_group ? aws_elasticache_subnet_group.this[0].name :
+    var.spec.subnet_group_name != "" ? var.spec.subnet_group_name :
+    null
+  )
 
   # Encryption
   transit_encryption_enabled = coalesce(try(var.spec.transit_encryption_enabled, null), false)
@@ -24,15 +53,22 @@ locals {
   # Parameters
   parameter_group_family = try(var.spec.parameter_group_family, "")
   parameters             = coalesce(try(var.spec.parameters, []), [])
-  has_parameters         = length(local.parameters) > 0 && local.parameter_group_family != ""
+
+  # The parameter group the cluster actually uses: the managed group, an
+  # explicitly referenced existing group, or null for the engine default.
+  effective_parameter_group_name = (
+    local.manage_parameter_group ? aws_elasticache_parameter_group.this[0].name :
+    var.spec.parameter_group_name != "" ? var.spec.parameter_group_name :
+    null
+  )
 
   # Maintenance
-  maintenance_window         = try(var.spec.maintenance_window, null)
+  maintenance_window         = try(var.spec.maintenance_window, null) != "" ? var.spec.maintenance_window : null
   apply_immediately          = coalesce(try(var.spec.apply_immediately, null), false)
   auto_minor_version_upgrade = coalesce(try(var.spec.auto_minor_version_upgrade, null), false)
 
   # Notifications
-  notification_topic_arn = try(var.spec.notification_topic_arn.value, null)
+  notification_topic_arn = try(var.spec.notification_topic_arn, "") != "" ? var.spec.notification_topic_arn : null
 
   # Node placement
   preferred_availability_zones = coalesce(try(var.spec.preferred_availability_zones, []), [])

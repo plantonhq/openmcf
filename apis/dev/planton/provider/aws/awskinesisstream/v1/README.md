@@ -57,9 +57,11 @@ Best for **variable or unpredictable workloads**. You pay per GB of data written
 | `shard_count` | int32 | Conditional | — | Number of shards (required for PROVISIONED, forbidden for ON_DEMAND) |
 | `retention_period_hours` | int32 | No | 24 | Data retention: 24–8760 hours (1 day to 365 days) |
 | `kms_key_id` | StringValueOrRef | No | — | KMS key for encryption. Presence enables KMS encryption |
-| `max_record_size_in_kib` | int32 | No | 1024 | Max record size: 1024–10240 KiB (1–10 MiB) |
-| `shard_level_metrics` | repeated string | No | [] | Enhanced CloudWatch metrics per shard |
+| `max_record_size_in_kib` | int32 | No | 1024 | Max record size: 1024–10240 KiB (1–10 MiB). Needs the `kinesis:UpdateMaxRecordSize` IAM permission when set |
+| `warm_throughput_mib_ps` | int32 | No | — | Pre-provisioned warm write throughput for ON_DEMAND streams (mutually exclusive with `shard_count`). Billed per MiB/s-hour; needs `kinesis:UpdateStreamWarmThroughput` |
+| `shard_level_metrics` | repeated string | No | [] | Enhanced CloudWatch metrics per shard (individual metric names or `ALL`) |
 | `enforce_consumer_deletion` | bool | No | false | Auto-deregister consumers on stream deletion |
+| `resource_policy` | Struct | No | — | Resource-based access policy — cross-account producer/consumer grants without role assumption |
 
 ## Stack Outputs
 
@@ -68,13 +70,11 @@ Best for **variable or unpredictable workloads**. You pay per GB of data written
 | `stream_arn` | ARN of the Kinesis stream (used by Firehose, Lambda, IAM policies) |
 | `stream_name` | Name of the Kinesis stream (used for API calls) |
 
-## Deliberate v1 Omissions
+## Deliberate Omissions
 
 | Feature | Reason |
 |---------|--------|
-| Resource-based policy | Separate TF resource (`aws_kinesis_resource_policy`), <20% usage. Most streams use IAM. |
-| Stream consumers (enhanced fan-out) | Independent lifecycle, ForceNew on name+stream_arn. Separate component recommended. |
-| Warm throughput | Not available in pinned provider versions (AWS Native SDK only). |
+| Stream consumers (enhanced fan-out) | Independent lifecycle, many-per-stream, ForceNew on name+stream_arn — modeled as the first-class `AwsKinesisStreamConsumer` component. |
 
 ## Related Resources
 

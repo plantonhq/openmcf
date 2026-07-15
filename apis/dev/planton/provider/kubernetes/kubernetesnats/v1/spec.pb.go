@@ -403,8 +403,6 @@ func (ConsumerReplayPolicyEnum_Value) EnumDescriptor() ([]byte, []int) {
 // NatsKubernetes spec holds the 80-20 configuration for a nats cluster on kubernetes.
 type KubernetesNatsSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -465,13 +463,6 @@ func (x *KubernetesNatsSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesNatsSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesNatsSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesNatsSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesNatsSpec) GetNamespace() *v1.StringValueOrRef {
@@ -1418,9 +1409,8 @@ var File_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto protorefle
 
 const file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/kubernetes/kubernetesnats/v1/spec.proto\x121dev.planton.provider.kubernetes.kubernetesnats.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xb3\b\n" +
-	"\x12KubernetesNatsSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"<dev/planton/provider/kubernetes/kubernetesnats/v1/spec.proto\x121dev.planton.provider.kubernetes.kubernetesnats.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xd0\a\n" +
+	"\x12KubernetesNatsSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\xa9\x01\n" +
 	"\x10server_container\x18\x04 \x01(\v2P.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainerB,ʬ\x80\x02'\b\x01\x12\x1d\n" +
@@ -1556,57 +1546,55 @@ func file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZ
 var file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
 var file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_goTypes = []any{
-	(KubernetesNatsAuthScheme)(0),                // 0: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuthScheme
-	(StreamStorageEnum_Value)(0),                 // 1: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamStorageEnum.Value
-	(StreamRetentionEnum_Value)(0),               // 2: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamRetentionEnum.Value
-	(StreamDiscardEnum_Value)(0),                 // 3: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamDiscardEnum.Value
-	(ConsumerDeliverPolicyEnum_Value)(0),         // 4: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerDeliverPolicyEnum.Value
-	(ConsumerAckPolicyEnum_Value)(0),             // 5: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerAckPolicyEnum.Value
-	(ConsumerReplayPolicyEnum_Value)(0),          // 6: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerReplayPolicyEnum.Value
-	(*KubernetesNatsSpec)(nil),                   // 7: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec
-	(*KubernetesNatsServerContainer)(nil),        // 8: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer
-	(*KubernetesNatsNoAuthUser)(nil),             // 9: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNoAuthUser
-	(*KubernetesNatsAuth)(nil),                   // 10: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth
-	(*KubernetesNatsIngress)(nil),                // 11: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsIngress
-	(*KubernetesNatsNackController)(nil),         // 12: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNackController
-	(*StreamStorageEnum)(nil),                    // 13: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamStorageEnum
-	(*StreamRetentionEnum)(nil),                  // 14: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamRetentionEnum
-	(*StreamDiscardEnum)(nil),                    // 15: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamDiscardEnum
-	(*ConsumerDeliverPolicyEnum)(nil),            // 16: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerDeliverPolicyEnum
-	(*ConsumerAckPolicyEnum)(nil),                // 17: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerAckPolicyEnum
-	(*ConsumerReplayPolicyEnum)(nil),             // 18: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerReplayPolicyEnum
-	(*KubernetesNatsStream)(nil),                 // 19: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream
-	(*KubernetesNatsConsumer)(nil),               // 20: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer
-	(*kubernetes.KubernetesClusterSelector)(nil), // 21: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 22: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),        // 23: dev.planton.provider.kubernetes.ContainerResources
-	(*descriptorpb.FieldOptions)(nil),            // 24: google.protobuf.FieldOptions
+	(KubernetesNatsAuthScheme)(0),         // 0: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuthScheme
+	(StreamStorageEnum_Value)(0),          // 1: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamStorageEnum.Value
+	(StreamRetentionEnum_Value)(0),        // 2: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamRetentionEnum.Value
+	(StreamDiscardEnum_Value)(0),          // 3: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamDiscardEnum.Value
+	(ConsumerDeliverPolicyEnum_Value)(0),  // 4: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerDeliverPolicyEnum.Value
+	(ConsumerAckPolicyEnum_Value)(0),      // 5: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerAckPolicyEnum.Value
+	(ConsumerReplayPolicyEnum_Value)(0),   // 6: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerReplayPolicyEnum.Value
+	(*KubernetesNatsSpec)(nil),            // 7: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec
+	(*KubernetesNatsServerContainer)(nil), // 8: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer
+	(*KubernetesNatsNoAuthUser)(nil),      // 9: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNoAuthUser
+	(*KubernetesNatsAuth)(nil),            // 10: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth
+	(*KubernetesNatsIngress)(nil),         // 11: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsIngress
+	(*KubernetesNatsNackController)(nil),  // 12: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNackController
+	(*StreamStorageEnum)(nil),             // 13: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamStorageEnum
+	(*StreamRetentionEnum)(nil),           // 14: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamRetentionEnum
+	(*StreamDiscardEnum)(nil),             // 15: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamDiscardEnum
+	(*ConsumerDeliverPolicyEnum)(nil),     // 16: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerDeliverPolicyEnum
+	(*ConsumerAckPolicyEnum)(nil),         // 17: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerAckPolicyEnum
+	(*ConsumerReplayPolicyEnum)(nil),      // 18: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerReplayPolicyEnum
+	(*KubernetesNatsStream)(nil),          // 19: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream
+	(*KubernetesNatsConsumer)(nil),        // 20: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer
+	(*v1.StringValueOrRef)(nil),           // 21: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil), // 22: dev.planton.provider.kubernetes.ContainerResources
+	(*descriptorpb.FieldOptions)(nil),     // 23: google.protobuf.FieldOptions
 }
 var file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_depIdxs = []int32{
-	21, // 0: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	22, // 1: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 2: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.server_container:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer
-	10, // 3: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.auth:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth
-	11, // 4: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsIngress
-	12, // 5: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.nack_controller:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNackController
-	19, // 6: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.streams:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream
-	23, // 7: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	0,  // 8: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth.scheme:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuthScheme
-	9,  // 9: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth.no_auth_user:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNoAuthUser
-	1,  // 10: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream.storage:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.StreamStorageEnum.Value
-	2,  // 11: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream.retention:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.StreamRetentionEnum.Value
-	3,  // 12: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream.discard:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.StreamDiscardEnum.Value
-	20, // 13: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream.consumers:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer
-	4,  // 14: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer.deliver_policy:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerDeliverPolicyEnum.Value
-	5,  // 15: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer.ack_policy:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerAckPolicyEnum.Value
-	6,  // 16: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer.replay_policy:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerReplayPolicyEnum.Value
-	24, // 17: dev.planton.provider.kubernetes.kubernetesnats.v1.default_server_container:extendee -> google.protobuf.FieldOptions
-	8,  // 18: dev.planton.provider.kubernetes.kubernetesnats.v1.default_server_container:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	18, // [18:19] is the sub-list for extension type_name
-	17, // [17:18] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	21, // 0: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 1: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.server_container:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer
+	10, // 2: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.auth:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth
+	11, // 3: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsIngress
+	12, // 4: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.nack_controller:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNackController
+	19, // 5: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.streams:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream
+	22, // 6: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	0,  // 7: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth.scheme:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuthScheme
+	9,  // 8: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth.no_auth_user:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNoAuthUser
+	1,  // 9: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream.storage:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.StreamStorageEnum.Value
+	2,  // 10: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream.retention:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.StreamRetentionEnum.Value
+	3,  // 11: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream.discard:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.StreamDiscardEnum.Value
+	20, // 12: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream.consumers:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer
+	4,  // 13: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer.deliver_policy:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerDeliverPolicyEnum.Value
+	5,  // 14: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer.ack_policy:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerAckPolicyEnum.Value
+	6,  // 15: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer.replay_policy:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerReplayPolicyEnum.Value
+	23, // 16: dev.planton.provider.kubernetes.kubernetesnats.v1.default_server_container:extendee -> google.protobuf.FieldOptions
+	8,  // 17: dev.planton.provider.kubernetes.kubernetesnats.v1.default_server_container:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	17, // [17:18] is the sub-list for extension type_name
+	16, // [16:17] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_init() }

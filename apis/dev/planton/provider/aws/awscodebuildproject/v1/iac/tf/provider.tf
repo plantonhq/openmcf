@@ -1,8 +1,13 @@
 terraform {
+  required_version = ">= 1.0"
+
   required_providers {
     aws = {
+      # Floor 6.16.0: the project's auto_retry_limit lands there (the
+      # webhook's pull_request_build_policy 6.13.0, the environment's
+      # docker_server 6.2.0, and everything else are below the floor).
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      version = ">= 6.16.0"
     }
   }
 }

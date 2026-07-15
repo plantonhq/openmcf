@@ -25,7 +25,7 @@ const (
 
 // TestCloudResourceKubernetes is permanent test infrastructure for
 // Kubernetes-specific proto processing tests. It mirrors the shape of real
-// Kubernetes cloud resources (namespace, resources, env, target_cluster)
+// Kubernetes cloud resources (namespace, resources, env)
 // without coupling tests to any production resource kind.
 // For generic testing, use TestCloudResourceGeneric.
 type TestCloudResourceKubernetes struct {

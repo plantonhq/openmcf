@@ -18,7 +18,7 @@ metadata:
     e2e-component: azureapplicationgateway
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-extra-prerequisites: "AzurePublicIp,AzureWebApplicationFirewallPolicy"
+    planton.dev/e2e-prerequisites: "AzurePublicIp,AzureWebApplicationFirewallPolicy"
   tags:
     - planton-e2e
 spec:

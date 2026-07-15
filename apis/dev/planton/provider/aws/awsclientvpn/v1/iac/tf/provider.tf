@@ -1,8 +1,13 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      source = "hashicorp/aws"
+      # Floor, not a cap: endpoint_ip_address_type / traffic_ip_address_type
+      # (and client_cidr_block becoming optional for IPv6 traffic) land in
+      # v6.11.0 -- an older floor would silently reject the dual-stack
+      # surface. (client_route_enforcement_options and
+      # disconnect_on_session_timeout predate it.)
+      version = ">= 6.11.0"
     }
   }
 }

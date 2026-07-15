@@ -1,0 +1,40 @@
+# -- Planton umbrella chart values.
+#
+# One `helm install` deploys the Planton operator AND a PlantonPlatform
+# resource with proven defaults: the built-in front door (console + API +
+# sign-in over one kubectl port-forward), the bundled identity server, and
+# the in-cluster runner. No value below is required.
+#
+# See README.md for full documentation and the per-cloud values files
+# (values.eks.yaml, values.gke.yaml, ...) for publishing at your own URL.
+
+# Values for the bundled planton-operator subchart. Any key from that chart's
+# own values.yaml works here (image, resources, serviceAccount, ...).
+planton-operator:
+  # -- Install the operator as part of this release. Set false when this
+  # cluster already runs the planton-operator chart -- one operator per
+  # cluster (the operator refuses to start beside another one). With the
+  # operator disabled on a cluster that never had one, the PlantonPlatform
+  # resource cannot be applied (its CRD ships with the operator chart).
+  enabled: true
+
+platform:
+  # -- Name of the PlantonPlatform resource (also the prefix of every
+  # component object the operator creates, e.g. "<name>-gateway").
+  name: planton
+
+  # -- The PlantonPlatform spec, passed through verbatim. EVERY field of the
+  # CRD is expressible here -- the chart curates nothing, so a new operator
+  # capability never needs a chart release to become reachable. Field
+  # reference: https://github.com/plantonhq/planton/tree/main/helm/planton-operator#the-plantonplatform-resource
+  # spec.version defaults to this chart's appVersion when omitted.
+  spec: {}
+    # version: v0.0.36-selfhosted-preview
+    # ingress:
+    #   enabled: true
+    #   hostname: planton.example.com
+    #   tls:
+    #     issuer: {name: letsencrypt, kind: ClusterIssuer}
+    # runner:
+    #   serviceAccountAnnotations:
+    #     eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/planton-runner

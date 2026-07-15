@@ -4,13 +4,16 @@ metadata:
   org: example-org
   env: prod
   name: datalake-fsx
-  id: datalake-fsx-id
+  id: awsfxl-datalake-fsx-prod
 spec:
   region: <aws-region>
   deployment_type: PERSISTENT_1
   storage_capacity_gib: 6000
   storage_type: HDD
   per_unit_storage_throughput: 12
+  # HDD file systems must state their read-cache decision. READ provisions an
+  # SSD cache (20% of storage) so hot data gets SSD-like latency.
+  drive_cache_type: READ
   data_compression_type: LZ4
   subnet_id:
     value: "<subnet-id>"

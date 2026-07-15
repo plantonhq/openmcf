@@ -30,7 +30,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFirestoreDatabase
 metadata:
   name: my-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -83,7 +83,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFirestoreDatabase
 metadata:
   name: default-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -105,7 +105,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFirestoreDatabase
 metadata:
   name: orders-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -129,7 +129,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFirestoreDatabase
 metadata:
   name: secure-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -156,7 +156,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFirestoreDatabase
 metadata:
   name: composed-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

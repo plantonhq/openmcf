@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "tofuannotationkeys",
+    srcs = ["keys.go"],
+    importpath = "github.com/plantonhq/planton/pkg/iac/tofu/tofuannotationkeys",
+    visibility = ["//visibility:public"],
+)

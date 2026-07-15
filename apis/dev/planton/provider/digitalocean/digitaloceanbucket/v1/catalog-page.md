@@ -23,7 +23,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanBucket
 metadata:
   name: my-assets
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -69,7 +69,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanBucket
 metadata:
   name: team-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -91,7 +91,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanBucket
 metadata:
   name: static-assets
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -115,7 +115,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanBucket
 metadata:
   name: db-backups
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

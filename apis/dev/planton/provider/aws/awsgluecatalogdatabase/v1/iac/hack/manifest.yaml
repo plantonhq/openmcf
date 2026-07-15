@@ -1,0 +1,22 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsGlueCatalogDatabase
+metadata:
+  name: test_glue_db
+  org: test-org
+  env: dev
+  id: test-glue-db-dev
+spec:
+  region: us-west-2
+  description: Test Glue Data Catalog database exercising the regular-database surface
+  locationUri: s3://test-data-lake/databases/test/
+  parameters:
+    classification: parquet
+    team: data-platform
+  createTableDefaultPermissions:
+    - permissions:
+        - SELECT
+        - ALTER
+      principal: arn:aws:iam::123456789012:role/data-lake-admin
+    - permissions:
+        - ALL
+      principal: IAM_ALLOWED_PRINCIPALS

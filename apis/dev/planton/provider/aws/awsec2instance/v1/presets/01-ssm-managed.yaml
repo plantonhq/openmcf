@@ -4,15 +4,19 @@ metadata:
   name: my-ssm-instance
 spec:
   region: <aws-region>
-  instanceName: <instance-name>
-  amiId: <ami-id>
-  instanceType: t3.small
+  ami: ami-0123456789abcdef0  # replace with a current AMI for your region (e.g. AL2023 arm64)
+  instanceType: t4g.small
   subnetId:
     value: "<private-subnet-id>"
   securityGroupIds:
     - value: "<security-group-id>"
-  connectionMethod: SSM  # default from spec; no SSH key needed
-  iamInstanceProfileArn:
-    value: "<ssm-instance-profile-arn>"
-  rootVolumeSizeGb: 30  # default from spec
-  disableApiTermination: true  # Recommended for production
+  instanceProfile:
+    value: "<instance-profile-name>"  # profile NAME whose role carries AmazonSSMManagedInstanceCore
+  metadataOptions:
+    httpTokens: required  # IMDSv2 only -- blocks credential-stealing SSRF
+    httpPutResponseHopLimit: 2  # containers on the instance can still reach metadata
+  rootBlockDevice:
+    volumeSizeGb: 30
+    volumeType: gp3
+    encrypted: true
+  disableApiTermination: true  # guard the pet against fat-fingered deletion

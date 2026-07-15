@@ -36,7 +36,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanAppPlatformService
 metadata:
   name: my-web-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -100,7 +100,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanAppPlatformService
 metadata:
   name: node-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -130,7 +130,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanAppPlatformService
 metadata:
   name: queue-processor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -163,7 +163,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanAppPlatformService
 metadata:
   name: prod-frontend
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

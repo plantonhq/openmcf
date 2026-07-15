@@ -1,6 +1,3 @@
 name: aws-app-runner-service
-runtime:
-  name: go
-  options:
-    binary: main
-description: Pulumi module for AWS App Runner Service
+runtime: go
+description: Deploy an AWS App Runner service using Planton

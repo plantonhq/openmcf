@@ -1,6 +1,6 @@
 # AzureFrontDoorRuleSet install profile used as an extra fixture by the
 # route's rule-set-attach scenario (declared via the
-# planton.dev/e2e-extra-prerequisites annotation -- attaching a rule set
+# planton.dev/e2e-prerequisites annotation -- attaching a rule set
 # is an OPTIONAL route seam, so it is never a registry prerequisite).
 # The fixture set is deliberately EMPTY: attaching is what the consumer
 # proves; the rules' own depth is proven by this kind's minimal

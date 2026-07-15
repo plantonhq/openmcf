@@ -1,0 +1,19 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsRdsInstance
+metadata:
+  name: my-postgresql-replica
+spec:
+  region: us-west-2
+  subnetIds:
+    - value: subnet-replace-with-private-az1
+    - value: subnet-replace-with-private-az2
+  securityGroupIds:
+    - value: sg-replace-with-database-sg
+  # A read replica inherits engine, engine version, storage, and
+  # credentials from its source -- none of those appear here. Promote to
+  # a standalone instance by removing replicateSourceDb.
+  replicateSourceDb: my-postgresql-instance
+  instanceClass: db.m6g.large
+  publiclyAccessible: false
+  skipFinalSnapshot: true # replicas hold no unique data; the source keeps the backups
+  performanceInsightsEnabled: true # free at the default 7-day retention

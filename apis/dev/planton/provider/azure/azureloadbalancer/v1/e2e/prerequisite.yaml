@@ -1,6 +1,6 @@
 # AzureLoadBalancer install profile used as a fixture by scenarios that
 # prove member-side association seams (declared via the
-# planton.dev/e2e-extra-prerequisites annotation -- a NIC's pool
+# planton.dev/e2e-prerequisites annotation -- a NIC's pool
 # membership and NAT-rule references are OPTIONAL, so the load balancer
 # is never a registry prerequisite). The harness deploys this document
 # after the fixture chain and captures its outputs -- the name-keyed

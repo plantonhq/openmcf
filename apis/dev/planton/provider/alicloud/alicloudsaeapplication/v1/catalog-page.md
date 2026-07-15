@@ -25,7 +25,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudSaeApplication
 metadata:
   name: my-sae-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -123,7 +123,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudSaeApplication
 metadata:
   name: hello-sae
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
 spec:
   region: cn-hangzhou
@@ -144,7 +144,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudSaeApplication
 metadata:
   name: order-service
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
   org: acme-corp
   env: production
@@ -194,7 +194,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudSaeApplication
 metadata:
   name: payment-gateway
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
   org: fintech-corp
   env: production

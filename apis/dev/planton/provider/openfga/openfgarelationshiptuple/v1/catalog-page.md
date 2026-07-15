@@ -25,7 +25,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaRelationshipTuple
 metadata:
   name: anne-views-budget
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   storeId:
@@ -78,7 +78,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaRelationshipTuple
 metadata:
   name: anne-views-budget
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   storeId:
@@ -103,7 +103,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaRelationshipTuple
 metadata:
   name: anne-member-engineering
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   storeId:
@@ -126,7 +126,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaRelationshipTuple
 metadata:
   name: engineering-edits-reports
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   storeId:
@@ -152,7 +152,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaRelationshipTuple
 metadata:
   name: bob-edits-roadmap-conditional
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   storeId:

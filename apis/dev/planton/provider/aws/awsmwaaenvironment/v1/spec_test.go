@@ -37,7 +37,7 @@ func validMinimalSpec() *AwsMwaaEnvironment {
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-aaa"}},
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-bbb"}},
 			},
-			AssociateSecurityGroupIds: []*foreignkeyv1.StringValueOrRef{
+			SecurityGroupIds: []*foreignkeyv1.StringValueOrRef{
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-mwaa-123"}},
 			},
 		},
@@ -208,27 +208,12 @@ var _ = ginkgo.Describe("AwsMwaaEnvironmentSpec Validation Tests", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept an environment with managed security group (vpc_id + security_group_ids)", func() {
+		ginkgo.It("should accept an environment with multiple attached security groups", func() {
 			input := validMinimalSpec()
-			input.Spec.VpcId = &foreignkeyv1.StringValueOrRef{
-				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "vpc-abc123"},
-			}
 			input.Spec.SecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
-				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-source-123"}},
+				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-mwaa-123"}},
+				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-shared-456"}},
 			}
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept an environment with managed security group + allowed_cidr_blocks", func() {
-			input := validMinimalSpec()
-			input.Spec.VpcId = &foreignkeyv1.StringValueOrRef{
-				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "vpc-abc123"},
-			}
-			input.Spec.SecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
-				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-source-123"}},
-			}
-			input.Spec.AllowedCidrBlocks = []string{"10.0.0.0/16", "172.16.0.0/12"}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
@@ -295,13 +280,9 @@ var _ = ginkgo.Describe("AwsMwaaEnvironmentSpec Validation Tests", func() {
 			}
 			input.Spec.WeeklyMaintenanceWindowStart = "SUN:00:00"
 			input.Spec.WorkerReplacementStrategy = "GRACEFUL"
-			input.Spec.VpcId = &foreignkeyv1.StringValueOrRef{
-				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "vpc-prod-123"},
-			}
 			input.Spec.SecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
-				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-prod-source"}},
+				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-prod-mwaa"}},
 			}
-			input.Spec.AllowedCidrBlocks = []string{"10.0.0.0/8"}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
@@ -341,6 +322,13 @@ var _ = ginkgo.Describe("AwsMwaaEnvironmentSpec Validation Tests", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
+
+			ginkgo.It("should fail when security_group_ids is empty", func() {
+				input := validMinimalSpec()
+				input.Spec.SecurityGroupIds = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
 		})
 
 		ginkgo.Context("CEL validations", func() {
@@ -370,14 +358,6 @@ var _ = ginkgo.Describe("AwsMwaaEnvironmentSpec Validation Tests", func() {
 				gomega.Expect(err.Error()).To(gomega.ContainSubstring("max_webservers must be >= min_webservers"))
 			})
 
-			ginkgo.It("should fail when no security coverage is provided", func() {
-				input := validMinimalSpec()
-				input.Spec.VpcId = nil
-				input.Spec.AssociateSecurityGroupIds = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-				gomega.Expect(err.Error()).To(gomega.ContainSubstring("at least one of vpc_id"))
-			})
 		})
 
 		ginkgo.Context("invalid enum values", func() {
@@ -428,18 +408,6 @@ var _ = ginkgo.Describe("AwsMwaaEnvironmentSpec Validation Tests", func() {
 						LogLevel: "TRACE",
 					},
 				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("CIDR validation", func() {
-			ginkgo.It("should fail for invalid CIDR block format", func() {
-				input := validMinimalSpec()
-				input.Spec.VpcId = &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "vpc-abc123"},
-				}
-				input.Spec.AllowedCidrBlocks = []string{"not-a-cidr"}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

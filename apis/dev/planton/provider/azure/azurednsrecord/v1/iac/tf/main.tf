@@ -42,6 +42,9 @@ resource "azurerm_dns_aaaa_record" "main" {
 }
 
 # Canonical-name record -- one target hostname or an Azure-resource alias.
+# value is a StringValueOrRef in the spec; the tfvars converter flattens it
+# to the resolved literal (e.g. a Front Door endpoint's host_name), so the
+# module reads a plain string.
 resource "azurerm_dns_cname_record" "main" {
   count = var.spec.cname != null ? 1 : 0
 
@@ -121,6 +124,9 @@ resource "azurerm_dns_caa_record" "main" {
 # Text record set -- SPF, DKIM, DMARC, domain verification. Values up to
 # 4096 characters are legal: the provider transparently splits each into
 # the 254-character strings DNS requires and reassembles them on read.
+# Each value is a StringValueOrRef in the spec; the tfvars converter
+# flattens the list to resolved literals (e.g. a Front Door custom
+# domain's validation_token), so the module reads plain strings.
 resource "azurerm_dns_txt_record" "main" {
   count = length(var.spec.txt) > 0 ? 1 : 0
 

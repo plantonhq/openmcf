@@ -3,8 +3,6 @@ kind: KubernetesPerconaMongoOperator
 metadata:
   name: percona-operator-test
 spec:
-  targetCluster:
-    credentialId: local-kind-cluster
   namespace: percona-operator
   container:
     resources:

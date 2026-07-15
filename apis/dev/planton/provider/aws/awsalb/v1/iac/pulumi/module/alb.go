@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/lb"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/wafv2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -113,10 +114,28 @@ func alb(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lb.LoadB
 		return nil, errors.Wrap(err, "unable to create AWS ALB")
 	}
 
+	// Optional WAFv2 protection: an ALB has at most one web ACL, and the
+	// binding is a setting of the PROTECTED resource, so the association
+	// lives here (the web ACL itself never knows its consumers). Both fields
+	// are ForceNew on the association -- re-pointing the ALB at a different
+	// ACL replaces only this glue resource, never the load balancer.
+	if spec.GetWebAclArn().GetValue() != "" {
+		_, err := wafv2.NewWebAclAssociation(ctx, albName+"-waf", &wafv2.WebAclAssociationArgs{
+			ResourceArn: createdLoadBalancer.Arn,
+			WebAclArn:   pulumi.String(spec.GetWebAclArn().GetValue()),
+		}, pulumi.Provider(provider))
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to associate WAF web ACL with ALB")
+		}
+	}
+
 	ctx.Export(OpAlbArn, createdLoadBalancer.Arn)
 	ctx.Export(OpAlbName, createdLoadBalancer.Name)
 	ctx.Export(OpAlbDnsName, createdLoadBalancer.DnsName)
 	ctx.Export(OpAlbHostedZoneId, createdLoadBalancer.ZoneId)
+	// The CloudWatch LoadBalancer dimension -- request-count autoscaling
+	// policies compose it with a target group's arn_suffix.
+	ctx.Export(OpAlbArnSuffix, createdLoadBalancer.ArnSuffix)
 
 	return createdLoadBalancer, nil
 }

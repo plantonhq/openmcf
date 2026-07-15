@@ -187,13 +187,38 @@ var _ = ginkgo.Describe("AwsCodePipelineSpec validations", func() {
 			})
 		})
 
-		ginkgo.Context("with action run_order and timeout", func() {
+		ginkgo.Context("with action run_order", func() {
 			ginkgo.It("should not return a validation error", func() {
 				spec := minimalV2Spec()
 				spec.Stages[1].Actions[0].RunOrder = 1
-				spec.Stages[1].Actions[0].TimeoutInMinutes = 60
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a timeout on a Manual Approval action", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].Actions = append(spec.Stages[1].Actions, &AwsCodePipelineAction{
+					Name:             "ApproveRelease",
+					Category:         "Approval",
+					Owner:            "AWS",
+					Provider:         "Manual",
+					Version:          "1",
+					RunOrder:         2,
+					TimeoutInMinutes: 2880,
+				})
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a timeout on a Build action", func() {
+			ginkgo.It("should return a validation error (AWS supports the override only on Approval actions)", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].Actions[0].TimeoutInMinutes = 60
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 		})
 
@@ -219,7 +244,7 @@ var _ = ginkgo.Describe("AwsCodePipelineSpec validations", func() {
 									Branches: &AwsCodePipelineGitFilter{
 										Includes: []string{"main"},
 									},
-									Events: []string{"OPEN", "UPDATE"},
+									Events: []string{"OPEN", "UPDATED"},
 								},
 							},
 						},
@@ -662,6 +687,260 @@ var _ = ginkgo.Describe("AwsCodePipelineSpec validations", func() {
 				spec.ExecutionMode = stringPtr("SUPERSEDED")
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+	})
+
+	// =========================================================================
+	// Stage conditions (V2 entry gates, success checks, failure handling)
+	// =========================================================================
+
+	ginkgo.Describe("Stage conditions", func() {
+
+		deploymentWindowRule := func() *AwsCodePipelineRule {
+			return &AwsCodePipelineRule{
+				Name:       "BusinessHoursOnly",
+				RuleTypeId: &AwsCodePipelineRuleTypeId{Provider: "DeploymentWindow"},
+				Configuration: map[string]string{
+					"Cron":     "* 9-17 ? * MON-FRI *",
+					"TimeZone": "America/Los_Angeles",
+				},
+			}
+		}
+
+		ginkgo.Context("with a before_entry deployment window gate", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].BeforeEntry = &AwsCodePipelineStageCondition{
+					Rules: []*AwsCodePipelineRule{deploymentWindowRule()},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with an on_success CloudWatch alarm check", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].OnSuccess = &AwsCodePipelineStageCondition{
+					Rules: []*AwsCodePipelineRule{
+						{
+							Name:       "VerifyNoAlarm",
+							RuleTypeId: &AwsCodePipelineRuleTypeId{Provider: "CloudWatchAlarm"},
+							Configuration: map[string]string{
+								"AlarmName": "deploy-errors",
+								"WaitTime":  "300",
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with an on_failure automatic rollback", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].OnFailure = &AwsCodePipelineFailureHandling{
+					Result: "ROLLBACK",
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with an on_failure retry and retry configuration", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].OnFailure = &AwsCodePipelineFailureHandling{
+					Result:             "RETRY",
+					RetryConfiguration: &AwsCodePipelineRetryConfiguration{RetryMode: "FAILED_ACTIONS"},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a retry configuration but a non-RETRY result", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].OnFailure = &AwsCodePipelineFailureHandling{
+					Result:             "ROLLBACK",
+					RetryConfiguration: &AwsCodePipelineRetryConfiguration{RetryMode: "ALL_ACTIONS"},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a stage condition on a V1 pipeline", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV1Spec()
+				spec.Stages[1].BeforeEntry = &AwsCodePipelineStageCondition{
+					Rules: []*AwsCodePipelineRule{deploymentWindowRule()},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a condition that has no rules", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].BeforeEntry = &AwsCodePipelineStageCondition{}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with more than five rules in a condition", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				var rules []*AwsCodePipelineRule
+				for i := 0; i < 6; i++ {
+					rules = append(rules, deploymentWindowRule())
+				}
+				spec.Stages[1].BeforeEntry = &AwsCodePipelineStageCondition{Rules: rules}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with an invalid rule_type_id category", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				rule := deploymentWindowRule()
+				rule.RuleTypeId.Category = stringPtr("Action")
+				spec.Stages[1].BeforeEntry = &AwsCodePipelineStageCondition{
+					Rules: []*AwsCodePipelineRule{rule},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a Commands rule carrying shell commands", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].OnSuccess = &AwsCodePipelineStageCondition{
+					Rules: []*AwsCodePipelineRule{
+						{
+							Name:             "SmokeTest",
+							RuleTypeId:       &AwsCodePipelineRuleTypeId{Provider: "Commands"},
+							Commands:         []string{"curl -sf https://example.com/health"},
+							InputArtifacts:   []string{"BuildOutput"},
+							TimeoutInMinutes: 10,
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with an out-of-range rule timeout", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				rule := deploymentWindowRule()
+				rule.TimeoutInMinutes = 3
+				spec.Stages[1].OnSuccess = &AwsCodePipelineStageCondition{
+					Rules: []*AwsCodePipelineRule{rule},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+	})
+
+	// =========================================================================
+	// Trigger contract honesty
+	// =========================================================================
+
+	ginkgo.Describe("Trigger contract", func() {
+
+		ginkgo.Context("with an invalid pull-request event", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Triggers = []*AwsCodePipelineTrigger{
+					{
+						ProviderType: "CodeStarSourceConnection",
+						GitConfiguration: &AwsCodePipelineGitConfiguration{
+							SourceActionName: "SourceAction",
+							PullRequest: []*AwsCodePipelineGitPullRequest{
+								{Events: []string{"UPDATE"}},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a git configuration carrying no filters", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Triggers = []*AwsCodePipelineTrigger{
+					{
+						ProviderType: "CodeStarSourceConnection",
+						GitConfiguration: &AwsCodePipelineGitConfiguration{
+							SourceActionName: "SourceAction",
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with an empty git filter block", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Triggers = []*AwsCodePipelineTrigger{
+					{
+						ProviderType: "CodeStarSourceConnection",
+						GitConfiguration: &AwsCodePipelineGitConfiguration{
+							SourceActionName: "SourceAction",
+							Push: []*AwsCodePipelineGitPush{
+								{Branches: &AwsCodePipelineGitFilter{}},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+	})
+
+	// =========================================================================
+	// Artifact store region shape
+	// =========================================================================
+
+	ginkgo.Describe("Artifact store region shape", func() {
+
+		ginkgo.Context("with multiple stores each carrying a region", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.ArtifactStores = []*AwsCodePipelineArtifactStore{
+					{Location: svRef("artifacts-usw2"), Region: "us-west-2"},
+					{Location: svRef("artifacts-use1"), Region: "us-east-1"},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with multiple stores where one is missing a region", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.ArtifactStores = []*AwsCodePipelineArtifactStore{
+					{Location: svRef("artifacts-usw2"), Region: "us-west-2"},
+					{Location: svRef("artifacts-use1")},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 		})
 	})

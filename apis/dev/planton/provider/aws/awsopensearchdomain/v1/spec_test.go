@@ -148,8 +148,114 @@ var _ = ginkgo.Describe("AwsOpenSearchDomainSpec validations", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts auto-tune enabled", func() {
-		spec.AutoTuneEnabled = true
+	ginkgo.It("accepts auto-tune with a maintenance schedule", func() {
+		spec.AutoTuneOptions = &AwsOpenSearchDomainAutoTuneOptions{
+			DesiredState: "ENABLED",
+			MaintenanceSchedules: []*AwsOpenSearchDomainAutoTuneMaintenanceSchedule{
+				{
+					StartAt:                     "2026-08-01T03:00:00Z",
+					DurationHours:               2,
+					CronExpressionForRecurrence: "cron(0 3 ? * SUN *)",
+				},
+			},
+			RollbackOnDisable: "DEFAULT_ROLLBACK",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts auto-tune scheduled in the off-peak window", func() {
+		spec.AutoTuneOptions = &AwsOpenSearchDomainAutoTuneOptions{
+			DesiredState:     "ENABLED",
+			UseOffPeakWindow: true,
+		}
+		spec.OffPeakWindowOptions = &AwsOpenSearchDomainOffPeakWindowOptions{
+			Enabled:           true,
+			WindowStartHour:   proto.Int32(23),
+			WindowStartMinute: proto.Int32(30),
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts an automated snapshot start hour", func() {
+		spec.AutomatedSnapshotStartHour = proto.Int32(0)
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a coordinator node pool", func() {
+		spec.ClusterConfig.NodeOptions = []*AwsOpenSearchDomainNodeOption{
+			{
+				NodeType:     "coordinator",
+				Enabled:      true,
+				InstanceType: "m7g.large.search",
+				Count:        2,
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts Cognito authentication for Dashboards", func() {
+		spec.CognitoOptions = &AwsOpenSearchDomainCognitoOptions{
+			Enabled:        true,
+			UserPoolId:     strRef("us-west-2_Ab1Cd2EfG"),
+			IdentityPoolId: "us-west-2:11111111-2222-3333-4444-555555555555",
+			RoleArn:        strRef("arn:aws:iam::123456789012:role/cognito-access"),
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts FGAC with JWT bearer authentication", func() {
+		spec.AdvancedSecurityOptions = &AwsOpenSearchDomainAdvancedSecurityOptions{
+			Enabled:       true,
+			MasterUserArn: strRef("arn:aws:iam::123456789012:role/admin"),
+			JwtOptions: &AwsOpenSearchDomainJwtOptions{
+				Enabled:    true,
+				JwksUrl:    "https://idp.example.com/.well-known/jwks.json",
+				RolesKey:   "roles",
+				SubjectKey: "sub",
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts FGAC with anonymous auth", func() {
+		spec.AdvancedSecurityOptions = &AwsOpenSearchDomainAdvancedSecurityOptions{
+			Enabled:              true,
+			AnonymousAuthEnabled: true,
+			MasterUserArn:        strRef("arn:aws:iam::123456789012:role/admin"),
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts AI/ML options", func() {
+		spec.AimlOptions = &AwsOpenSearchDomainAimlOptions{
+			NaturalLanguageQueryGenerationDesiredState: "ENABLED",
+			S3VectorsEngineEnabled:                     true,
+			ServerlessVectorAccelerationEnabled:        true,
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts IAM Identity Center integration", func() {
+		spec.IdentityCenterOptions = &AwsOpenSearchDomainIdentityCenterOptions{
+			EnabledApiAccess:          true,
+			IdentityCenterInstanceArn: "arn:aws:sso:::instance/ssoins-1234567890abcdef",
+			RolesKey:                  "GroupName",
+			SubjectKey:                "UserName",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a capacity-optimized deployment strategy", func() {
+		spec.DeploymentStrategy = "CapacityOptimized"
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
@@ -417,6 +523,127 @@ var _ = ginkgo.Describe("AwsOpenSearchDomainSpec validations", func() {
 
 	ginkgo.It("fails when ip_address_type is invalid", func() {
 		spec.IpAddressType = "ipv6"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Failure: FGAC extensions (anonymous auth, JWT)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when anonymous_auth_enabled without FGAC enabled", func() {
+		spec.AdvancedSecurityOptions = &AwsOpenSearchDomainAdvancedSecurityOptions{
+			AnonymousAuthEnabled: true,
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when jwt_options set without FGAC enabled", func() {
+		spec.AdvancedSecurityOptions = &AwsOpenSearchDomainAdvancedSecurityOptions{
+			JwtOptions: &AwsOpenSearchDomainJwtOptions{Enabled: true, JwksUrl: "https://idp.example.com/jwks"},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when JWT is enabled without a validation source", func() {
+		spec.AdvancedSecurityOptions = &AwsOpenSearchDomainAdvancedSecurityOptions{
+			Enabled:       true,
+			MasterUserArn: strRef("arn:aws:iam::123456789012:role/admin"),
+			JwtOptions:    &AwsOpenSearchDomainJwtOptions{Enabled: true},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Failure: Cognito CEL
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when Cognito is enabled without its integration inputs", func() {
+		spec.CognitoOptions = &AwsOpenSearchDomainCognitoOptions{
+			Enabled:    true,
+			UserPoolId: strRef("us-west-2_Ab1Cd2EfG"),
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Failure: Auto-Tune CEL
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails for an invalid auto-tune desired_state", func() {
+		spec.AutoTuneOptions = &AwsOpenSearchDomainAutoTuneOptions{
+			DesiredState: "ON",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when maintenance schedules and off-peak window are combined", func() {
+		spec.AutoTuneOptions = &AwsOpenSearchDomainAutoTuneOptions{
+			DesiredState:     "ENABLED",
+			UseOffPeakWindow: true,
+			MaintenanceSchedules: []*AwsOpenSearchDomainAutoTuneMaintenanceSchedule{
+				{
+					StartAt:                     "2026-08-01T03:00:00Z",
+					DurationHours:               2,
+					CronExpressionForRecurrence: "cron(0 3 ? * SUN *)",
+				},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Failure: node pools, snapshots, off-peak window, Identity Center,
+	// deployment strategy
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails for an unsupported node pool type", func() {
+		spec.ClusterConfig.NodeOptions = []*AwsOpenSearchDomainNodeOption{
+			{NodeType: "ingest", Count: 2},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when automated_snapshot_start_hour is out of range", func() {
+		spec.AutomatedSnapshotStartHour = proto.Int32(24)
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when off_peak_window start hour is out of range", func() {
+		spec.OffPeakWindowOptions = &AwsOpenSearchDomainOffPeakWindowOptions{
+			Enabled:         true,
+			WindowStartHour: proto.Int32(24),
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when Identity Center API access is enabled without an instance ARN", func() {
+		spec.IdentityCenterOptions = &AwsOpenSearchDomainIdentityCenterOptions{
+			EnabledApiAccess: true,
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails for an invalid deployment_strategy", func() {
+		spec.DeploymentStrategy = "BlueGreen"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails for an invalid aiml desired state", func() {
+		spec.AimlOptions = &AwsOpenSearchDomainAimlOptions{
+			NaturalLanguageQueryGenerationDesiredState: "ON",
+		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})

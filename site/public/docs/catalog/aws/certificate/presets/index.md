@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Wildcard Domain DNS-Validated Certificate"
     excerpt: "This preset provisions a wildcard ACM certificate that covers all subdomains of a domain, plus the apex domain itself as a Subject Alternative Name (SAN). A single wildcard certificate can secure..."
+  - slug: "03-external-dns"
+    rank: "03"
+    title: "DNS-Validated Certificate with External DNS"
+    excerpt: "This preset requests an ACM certificate for a domain whose DNS lives outside Route53 (Cloudflare, a registrar's DNS, an on-prem zone). The deployment creates the certificate and finishes without..."
 ---
 
 # Certificate Presets

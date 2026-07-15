@@ -25,7 +25,6 @@ func Resources(ctx *pulumi.Context, stackInput *awsfsxontapfilesystemv1.AwsFsxOn
 
 	ctx.Export(OpFileSystemId, createdFs.ID())
 	ctx.Export(OpFileSystemArn, createdFs.Arn)
-	ctx.Export(OpDnsName, createdFs.DnsName)
 	ctx.Export(OpNetworkInterfaceIds, createdFs.NetworkInterfaceIds)
 	ctx.Export(OpVpcId, createdFs.VpcId)
 	ctx.Export(OpOwnerId, createdFs.OwnerId)

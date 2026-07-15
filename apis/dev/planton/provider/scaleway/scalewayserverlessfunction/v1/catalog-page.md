@@ -25,7 +25,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayServerlessFunction
 metadata:
   name: my-function
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -89,7 +89,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayServerlessFunction
 metadata:
   name: webhook-handler
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -118,7 +118,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayServerlessFunction
 metadata:
   name: order-processor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -160,7 +160,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayServerlessFunction
 metadata:
   name: nightly-jobs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

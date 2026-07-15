@@ -1,0 +1,34 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awskinesisfirehose
+spec:
+  # A Firehose delivery stream under live E2E: the harness installs both
+  # registry prerequisites -- the shared S3 bucket fixture and the IAM
+  # role profile (whose firehose-delivery document trusts
+  # firehose.amazonaws.com and is scoped to that bucket) -- then runs
+  # deploy -> DescribeDeliveryStream verify -> destroy ->
+  # verify-destroyed on both provisioners, once per scenario. Two
+  # scenarios run live: the dominant Direct PUT -> extended_s3 shape
+  # (SSE with the AWS-owned CMK, GZIP, !{...} prefix expressions, and the
+  # dynamic-partitioning pipeline -- de-aggregation + JQ metadata
+  # extraction + JSON-lines delimiter, the S3-only processor arms) and a
+  # Splunk destination against a placeholder HEC endpoint (AWS activates
+  # the stream without probing the endpoint) carrying the CloudWatch-Logs
+  # pipeline (decompression + message extraction) and Splunk's
+  # tightest-of-any-destination buffering caps. No records are ever put.
+  #
+  # Deliberately not in the live lane, each proven by CEL spec tests and
+  # the offline plan/preview gate: the Kinesis stream source (only swaps
+  # the ingestion edge); the MSK source (requires a provisioned MSK
+  # cluster, whose own live lane is deferred); the OpenSearch, OpenSearch
+  # Serverless, HTTP endpoint, Redshift, and Snowflake destinations
+  # (each needs live external infrastructure or an external SaaS
+  # account); and the Iceberg destination (its Glue catalog ARN embeds
+  # the AWS account ID, which a committed manifest cannot carry).
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

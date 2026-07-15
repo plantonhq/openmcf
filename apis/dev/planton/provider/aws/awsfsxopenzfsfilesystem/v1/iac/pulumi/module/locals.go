@@ -18,7 +18,12 @@ func initializeLocals(ctx *pulumi.Context, stackInput *awsfsxopenzfsfilesystemv1
 	locals := &Locals{}
 	locals.AwsFsxOpenzfsFileSystem = stackInput.Target
 
+	// Resource-identity tags follow the catalog convention. The Name tag is
+	// the resource's metadata.name — FSx has no name argument, so the console
+	// name is this tag; the Terraform module pins the same basis, keeping the
+	// two engines' physical identity converged.
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsFsxOpenzfsFileSystem.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.AwsFsxOpenzfsFileSystem.Metadata.Org,
 		awstagkeys.Environment:  locals.AwsFsxOpenzfsFileSystem.Metadata.Env,

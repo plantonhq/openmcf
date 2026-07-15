@@ -5,6 +5,12 @@
 > load balancer, certificates, registry — into a single, parameterized blueprint
 > you deploy with your own values.
 
+> Not to be confused with the repository's [`helm/`](../helm) directory — those
+> are **Helm charts** that deploy Planton itself onto your Kubernetes cluster.
+> The charts here are Planton's own blueprint format for deploying
+> infrastructure *through* Planton. Looking to self-host Planton? Start at
+> [`helm/`](../helm).
+
 ## What you get
 
 A curated catalog of production-ready infrastructure blueprints across AWS, GCP,
@@ -77,13 +83,16 @@ components in this repo.
 
 ## Validating charts
 
-- `make validate-offline` (from `charts/`) renders every chart with its
-  default values and validates each rendered manifest against this repo's
-  proto contracts — plus every `valueFrom` reference and output field — with
-  no backend required. Scope to one chart with
-  `make validate-offline chart=<provider>/<chart>`.
+- `planton chart validate <chart-dir>` (built from this tree) renders every
+  template with its default values — flipping each bool toggle once so
+  conditional manifests are exercised in both branches — and validates each
+  rendered manifest against the schemas compiled into the binary: the kind
+  must exist, every field must exist on the spec, the spec must pass its
+  validation rules, and every `valueFrom` reference must resolve. No backend
+  required; `make build` from `charts/` runs it across the whole catalog.
 - `planton chart build` (Platform CLI) is the authoritative proof against a
   running control plane.
 
 Authoring guidance for these charts lives in [`_rules/charts/`](../_rules/charts) —
-start with `author-planton-infra-charts.mdc`.
+start with `forge-planton-infra-chart.mdc`, the authoring bar every chart in this
+catalog is held to.

@@ -1,0 +1,42 @@
+# The production application security group: an uncovered kind (no
+# baseline mapper) whose vpc_id is a value_from edge into the production
+# VPC -- with two look-alike VPCs on the account, wiring it to the right
+# one requires containment judgment. Rules stay minimal and reconstructable
+# from the group's scanned model. revoke_rules_on_delete is deliberately
+# NOT set: it is a declared config-only attribute no scan can see.
+apiVersion: aws.planton.dev/v1
+kind: AwsSecurityGroup
+metadata:
+  name: orders-prod-app-sg
+  id: orders-prod-app-sg
+  org: planton-oss
+  env: prod
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssecuritygroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: orders-prod-vpc
+      fieldPath: status.outputs.vpc_id
+  description: Allows inbound HTTPS to the orders application tier
+  ingress:
+    - protocol: tcp
+      fromPort: 443
+      toPort: 443
+      ipv4Cidrs:
+        - 0.0.0.0/0
+      description: Public HTTPS
+  egress:
+    - protocol: "-1"
+      fromPort: 0
+      toPort: 0
+      ipv4Cidrs:
+        - 0.0.0.0/0
+      description: Allow all outbound

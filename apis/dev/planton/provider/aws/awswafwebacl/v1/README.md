@@ -4,7 +4,9 @@ An AWS WAFv2 Web Access Control List (Web ACL) that protects web applications fr
 
 ## What It Does
 
-Creates a WAFv2 Web ACL with an ordered set of rules that inspect incoming web requests and take actions (allow, block, count, CAPTCHA, challenge) based on matching conditions. Rules are evaluated by priority (lowest first); when a rule matches, its action is taken and evaluation stops.
+Creates a WAFv2 Web ACL with an ordered set of rules that inspect incoming web requests and take actions (allow, block, count, CAPTCHA, challenge) based on matching conditions. Rules are evaluated by priority (lowest first); when a rule matches, its action is taken and evaluation stops (count/CAPTCHA-passed requests continue to later rules).
+
+The full WAFv2 statement language is modeled as a typed, recursive tree — managed rule groups (with ATP/ACFP/Bot Control/anti-DDoS configs), rate limiting (including custom aggregation keys), IP set / regex pattern set / rule group references, geo/byte/SQLi/XSS/size/regex/label/ASN matching, and AND/OR/NOT composition. A raw-JSON `customStatement` escape hatch remains for anything AWS ships before this spec models it.
 
 ## When to Use
 
@@ -12,73 +14,53 @@ Use this component when you need to:
 
 - Protect ALBs, API Gateways, CloudFront distributions, or App Runner services from web attacks
 - Block SQL injection, cross-site scripting, and other OWASP Top 10 threats using AWS Managed Rules
-- Rate-limit requests to prevent DDoS and brute-force attacks
-- Block or allow traffic from specific countries
-- Filter requests by IP allowlists or blocklists
+- Rate-limit requests with custom aggregation keys (header, cookie, query, IP, forwarded IP)
+- Block or allow traffic from specific countries, ASNs, or IP sets
+- Match request components against shared regex pattern sets
 
 ## Scope
 
-- **REGIONAL** — protects ALB, API Gateway REST/HTTP, AppSync, Cognito User Pools, App Runner. Created in the same region as the protected resource.
-- **CLOUDFRONT** — protects CloudFront distributions. Must be created in **us-east-1**.
+- **REGIONAL** — protects ALB, API Gateway REST/HTTP, AppSync, Cognito User Pools, App Runner, Verified Access. Created in the same region as the protected resource. Associate from [AwsAlb](../awsalb/v1/README.md) via `web_acl_arn`.
+- **CLOUDFRONT** — protects CloudFront distributions. Must be created in **us-east-1**. Associate from [AwsCloudFront](../awscloudfront/v1/README.md) via `web_acl_arn`.
 
 ## What is NOT Bundled
 
-- **Associations** — The Web ACL ARN is the primary output. Protected resources (ALB, API Gateway, etc.) reference it via StringValueOrRef. CloudFront associations are configured on the CloudFront distribution itself.
-- **IP Sets** — WAFv2 IP Sets are separate resources. Reference them by ARN in `ipSetReference` rules.
-- **Regex Pattern Sets** — Separate WAFv2 resources. Use `customStatement` for regex-based rules.
+- **Associations** — The Web ACL ARN is the primary output. Protected resources reference it via `StringValueOrRef`; the web ACL never points at the resources it protects.
+- **IP Sets** — First-class [AwsWafIpSet](../awswafipset/v1/README.md) resources. Reference by ARN in `ip_set_reference` statements.
+- **Regex Pattern Sets** — First-class [AwsWafRegexPatternSet](../awswafregexpatternset/v1/README.md) resources. Reference by ARN in `regex_pattern_set_reference` statements.
+- **Rule groups** — Customer-managed rule groups are separate AWS resources; reference by ARN in `rule_group_reference` statements.
 
-## Statement Types
+## Statement Tree
 
-This component models the four most common WAF rule types as first-class proto messages:
+Each rule carries exactly one root `statement`. Statements compose recursively:
 
-| Statement | Description | Action Type |
-|-----------|-------------|-------------|
-| `managedRuleGroup` | AWS Managed Rules or marketplace rule groups | `overrideAction` |
-| `rateBased` | Rate limiting by IP, forwarded IP, or constant | `action` |
-| `geoMatch` | Geographic blocking/allowing by country code | `action` |
-| `ipSetReference` | IP allowlist/blocklist via WAFv2 IP Set ARN | `action` |
+| Category | Statement kinds |
+|----------|-----------------|
+| **AWS-managed** | `managed_rule_group` (with optional scope-down, rule action overrides, managed configs for ATP/ACFP/Bot Control/anti-DDoS) |
+| **Rate limiting** | `rate_based` (IP, forwarded IP, constant, or custom aggregation keys) |
+| **Reusable sets** | `ip_set_reference`, `regex_pattern_set_reference` |
+| **References** | `rule_group_reference` |
+| **Match primitives** | `geo_match`, `byte_match`, `sqli_match`, `xss_match`, `size_constraint`, `regex_match`, `label_match`, `asn_match`, IP/subnet, JA3/JA4 fingerprint |
+| **Composition** | `and`, `or`, `not` (nested statements) |
 
-For all other statement types (SQL injection, XSS, byte match, regex, AND/OR/NOT compound, size constraint, label match, rule group reference), use the `customStatement` escape hatch with the raw AWS WAFv2 JSON structure.
+Managed rule groups use `override_action` (count/none); custom match rules use `action` (allow/block/count/captcha/challenge).
+
+## Top-Level Configuration
+
+Beyond rules, the spec models:
+
+- **CAPTCHA/challenge immunity** — `captcha_config`, `challenge_config` for token replay windows
+- **Association config** — per-resource body inspection size limits (ALB, AppSync, Cognito, Verified Access)
+- **Data protection** — field-level masking for logged or inspected data
+- **Logging** — single bundled logging configuration with redacted fields
+- **Custom response bodies** — reusable templates for block actions
 
 ## Prerequisites
 
 - AWS credentials with `wafv2:*` permissions
 - For CLOUDFRONT scope: provider configured for us-east-1
-- For IP set rules: existing WAFv2 IP Sets created separately
+- For set-reference rules: [AwsWafIpSet](../awswafipset/v1/README.md) and/or [AwsWafRegexPatternSet](../awswafregexpatternset/v1/README.md) in matching scope
 - For logging: a destination resource named starting with `aws-waf-logs-`
-
-## Spec Fields
-
-### Top Level
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `scope` | string | Yes | `REGIONAL` or `CLOUDFRONT` |
-| `defaultAction` | message | Yes | Action when no rule matches (allow or block) |
-| `description` | string | No | Human-readable description (max 256 chars) |
-| `rules` | repeated | No | Ordered rule set |
-| `visibilityConfig` | message | No | CloudWatch metrics (defaults: enabled, metric=name) |
-| `customResponseBodies` | repeated | No | Reusable response body templates |
-| `tokenDomains` | repeated string | No | Domains for CAPTCHA/Challenge tokens |
-| `logging` | message | No | Logging destination and redacted fields |
-
-### Rule Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | string | Rule name (1-128 chars, unique) |
-| `priority` | int32 | Evaluation order (lower = first) |
-| `action` | string | For custom rules: allow/block/count/captcha/challenge |
-| `overrideAction` | string | For managed groups: count/none |
-| `managedRuleGroup` | message | AWS Managed Rule Group statement |
-| `rateBased` | message | Rate limiting statement |
-| `geoMatch` | message | Geographic match statement |
-| `ipSetReference` | message | IP set reference statement |
-| `customStatement` | Struct | Escape hatch for any WAFv2 statement |
-| `customResponse` | message | Custom block response |
-| `customRequestHeaders` | repeated | Headers to add on allow/count |
-| `ruleLabels` | repeated string | Labels for downstream rules |
-| `visibilityConfig` | message | Rule-level CloudWatch metrics |
 
 ## Stack Outputs
 
@@ -87,20 +69,15 @@ For all other statement types (SQL injection, XSS, byte match, regex, AND/OR/NOT
 | `web_acl_arn` | Web ACL ARN for associations |
 | `web_acl_id` | Web ACL unique ID |
 | `web_acl_name` | Web ACL name |
-| `capacity` | WCUs consumed (max 5,000) |
+| `capacity` | WCUs consumed (max 5,000 per ACL) |
+| `application_integration_url` | JavaScript integration endpoint for CAPTCHA/challenge clients |
 
 ## Capacity (WCU) Limits
 
 Each rule consumes Web ACL Capacity Units. The total must not exceed 5,000 WCUs per Web ACL. Managed rule groups consume varying amounts (e.g., AWSManagedRulesCommonRuleSet: 700 WCUs). Monitor the `capacity` output to plan rule additions.
 
-## Deliberately Omitted (v1)
+## Nesting Depth
 
-| Feature | Reason | Adoption |
-|---------|--------|----------|
-| CAPTCHA/Challenge config | Niche; use defaults | <15% |
-| Association config | Body inspection limits; rare | <10% |
-| Data protection config | Field-level masking; very new | <5% |
-| Custom keys (rate-based) | Complex nested structure | <10% |
-| ASN match | Very new statement type | <5% |
-| JA3/JA4 fingerprint | Niche TLS fingerprinting | <5% |
-| Log filter conditions | Complex filter structure | <15% |
+The Terraform module unrolls the statement tree to three levels of AND/OR/NOT nesting. Deeper trees fail the plan with an explicit precondition — extend the module or flatten with `customStatement` if you need more.
+
+See [docs/README.md](docs/README.md) for the full field reference and [catalog-page.md](catalog-page.md) for deployment examples.

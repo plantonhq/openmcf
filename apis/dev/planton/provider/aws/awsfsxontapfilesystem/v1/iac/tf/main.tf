@@ -1,49 +1,83 @@
 # ---------------------------------------------------------------------------
-# AWS FSx for ONTAP File System
+# AWS FSx for NetApp ONTAP file system
 # ---------------------------------------------------------------------------
-# Enterprise NAS/SAN file system built on NetApp ONTAP. Supports multi-protocol
-# access (NFS, SMB, iSCSI), scale-out HA pairs, SnapMirror replication, and
-# features like instant snapshots, cloning, compression, and deduplication.
-# ForceNew attributes: deployment_type, subnet_ids, security_group_ids,
-# kms_key_id, storage_type, preferred_subnet_id, endpoint_ip_address_range.
+# One aws_fsx_ontap_file_system resource carries the whole spec. ForceNew
+# attributes (replace the file system when changed): deployment_type,
+# storage_type, subnet_ids, preferred_subnet_id, security_group_ids,
+# kms_key_id, and endpoint_ip_address_range. On the first generation the
+# scaling knobs are also destructive: increasing
+# throughput_capacity_per_ha_pair on SINGLE_AZ_1/MULTI_AZ_1, or ha_pairs on
+# SINGLE_AZ_1, replaces the file system (the provider models this as a
+# conditional ForceNew). Storage capacity, IOPS, passwords, route tables, and
+# the maintenance/backup windows update in place.
+#
+# Note there are NO backup-skip or tag-copy arguments here: ONTAP backups are
+# volume-scoped — those decisions live on aws_fsx_ontap_volume.
 # ---------------------------------------------------------------------------
 
 resource "aws_fsx_ontap_file_system" "this" {
-  # Core
-  deployment_type                 = var.deployment_type
-  storage_capacity                 = var.storage_capacity_gib
-  storage_type                     = var.storage_type
-  throughput_capacity_per_ha_pair  = var.throughput_capacity_per_ha_pair
-  ha_pairs                         = var.ha_pairs
+  # Core shape. deployment_type is always sent — the spec default
+  # (SINGLE_AZ_2) is materialized before the module runs.
+  deployment_type = var.spec.deployment_type
 
-  # Networking (ForceNew)
-  subnet_ids                = var.subnet_ids
-  security_group_ids        = length(var.security_group_ids) > 0 ? var.security_group_ids : null
-  preferred_subnet_id       = local.preferred_subnet_id
+  # ONTAP file systems are SSD-only (the spec enforces it); sent explicitly
+  # so the plan states the storage class rather than relying on provider
+  # defaulting.
+  storage_type = var.spec.storage_type
+
+  # Capacity scales with HA pairs (1024–524288 GiB per pair; the spec's CEL
+  # rules carry the formula). Grows in place, never shrinks.
+  storage_capacity = var.spec.storage_capacity_gib
+
+  # Throughput is sized through exactly one arm (spec-enforced XOR):
+  # whole-file-system throughput_capacity (the first-generation sizing) or
+  # per-HA-pair throughput_capacity_per_ha_pair (required for scale-out and
+  # the second generation's tiers). The unset arm passes null and the
+  # provider omits it — sending both is an AWS error.
+  throughput_capacity             = var.spec.throughput_capacity
+  throughput_capacity_per_ha_pair = var.spec.throughput_capacity_per_ha_pair
+
+  # Scale-out: >1 only on SINGLE_AZ_2 (spec-enforced). AWS requires the
+  # per-HA-pair throughput arm to be re-sent whenever HA pairs change; both
+  # values flowing from the spec keeps that invariant automatically.
+  ha_pairs = var.spec.ha_pairs
+
+  # Networking (ForceNew). Single-AZ: one subnet; multi-AZ: two subnets with
+  # the active file server in preferred_subnet_id. The provider requires
+  # preferred_subnet_id for every deployment type, so single-AZ derives it
+  # from the only subnet (see locals).
+  subnet_ids          = var.spec.subnet_ids
+  preferred_subnet_id = local.preferred_subnet_id
+  security_group_ids  = local.security_group_ids
+
+  # Multi-AZ floating endpoint range + the route tables AWS manages for
+  # failover. Both omitted for single-AZ (and CEL-rejected in the spec).
   endpoint_ip_address_range = local.endpoint_ip_address_range
-  route_table_ids           = length(var.route_table_ids) > 0 ? var.route_table_ids : null
+  route_table_ids           = local.route_table_ids
 
-  # Encryption
+  # Encryption at rest: null falls back to the AWS-managed FSx key.
   kms_key_id = local.kms_key_id
 
-  # ONTAP administration
+  # ONTAP CLI / REST API access for the fsxadmin user. Updatable in place.
   fsx_admin_password = local.fsx_admin_password
 
-  # Disk IOPS configuration
+  # SSD IOPS: AUTOMATIC (3 IOPS/GiB) unless USER_PROVISIONED sets an exact
+  # figure. Updatable in place.
   dynamic "disk_iops_configuration" {
-    for_each = local.has_disk_iops_configuration ? [1] : []
+    for_each = var.spec.disk_iops_configuration != null ? [var.spec.disk_iops_configuration] : []
     content {
-      mode = var.disk_iops_mode
-      iops = var.disk_iops > 0 ? var.disk_iops : null
+      mode = disk_iops_configuration.value.mode
+      iops = disk_iops_configuration.value.iops > 0 ? disk_iops_configuration.value.iops : null
     }
   }
 
-  # Backup (copy_tags_to_backups and skip_final_backup not supported by aws_fsx_ontap_file_system)
-  automatic_backup_retention_days   = local.automatic_backup_retention_days
+  # Automatic backups. Zero is a real value ("no automatic backups") — the
+  # resolved default flows through as-is.
+  automatic_backup_retention_days   = var.spec.automatic_backup_retention_days
   daily_automatic_backup_start_time = local.daily_automatic_backup_start_time
 
-  # Maintenance
+  # Maintenance window ("d:HH:MM", UTC).
   weekly_maintenance_start_time = local.weekly_maintenance_start_time
 
-  tags = local.tags
+  tags = local.aws_tags
 }

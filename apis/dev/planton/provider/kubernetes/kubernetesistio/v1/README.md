@@ -110,8 +110,6 @@ kind: KubernetesIstio
 metadata:
   name: main-istio
 spec:
-  target_cluster:
-    cluster_name: my-gke-cluster
   namespace:
     value: istio-system
   create_namespace: true
@@ -135,8 +133,6 @@ kind: KubernetesIstio
 metadata:
   name: prod-istio
 spec:
-  target_cluster:
-    cluster_name: prod-gke-cluster
   namespace:
     value: istio-system
   create_namespace: true
@@ -160,8 +156,6 @@ kind: KubernetesIstio
 metadata:
   name: dev-istio
 spec:
-  target_cluster:
-    cluster_name: dev-gke-cluster
   namespace:
     value: istio-system
   create_namespace: true

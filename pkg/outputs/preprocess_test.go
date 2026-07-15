@@ -15,11 +15,10 @@ func TestPreprocessKeys_DotBeforeBracket(t *testing.T) {
 	assertKey(t, got, "subnets[1].cidr", "10.0.0.0/24")
 }
 
-func TestPreprocessKeys_PreservesHyphens(t *testing.T) {
-	// Hyphen-to-underscore normalization happens per FIELD segment at
-	// descriptor-lookup time in populateMessage, never on the whole key:
-	// segments after a map field are map KEYS (user data, e.g. a backend
-	// pool named "ssh-admin") that must survive verbatim.
+func TestPreprocessKeys_HyphensPreserved(t *testing.T) {
+	// Hyphens survive preprocessing: map KEYS are data ("subnet-0abc") and a
+	// whole-key rewrite would corrupt them. Hyphenated FIELD names are
+	// normalized per segment at lookup time instead (see populate.go).
 	input := map[string]string{
 		"load-balancer-arn":      "arn:aws:elasticloadbalancing:...",
 		"nat_rule_ids.ssh-admin": "/subscriptions/s/.../inboundNatRules/ssh-admin",

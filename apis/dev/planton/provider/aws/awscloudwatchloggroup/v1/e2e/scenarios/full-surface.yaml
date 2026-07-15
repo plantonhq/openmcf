@@ -1,0 +1,68 @@
+# Full-surface AwsCloudwatchLogGroup scenario: retention + a counting metric
+# filter (default_value arm — dimensions are CEL-exclusive with it) + a field
+# index policy + a data protection policy (audit + mask, no findings
+# destination) + a subscription filter streaming into the composed Kinesis
+# fixture through the CloudWatch-Logs delivery role. The stream and role are
+# OPTIONAL references, so they compose via the e2e-prerequisites annotation
+# while the kind's registry stays honest (a plain log group is a leaf).
+apiVersion: aws.planton.dev/v1
+kind: AwsCloudwatchLogGroup
+metadata:
+  name: planton-oss-e2e-awscloudwatchloggroup-full
+  id: planton-oss-e2e-awscloudwatchloggroup-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudwatchloggroup
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsKinesisStream,AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  retentionInDays: 30
+  metricFilters:
+    - name: error-count
+      pattern: "ERROR"
+      transformation:
+        metricName: ErrorCount
+        metricNamespace: PlantonE2E/Errors
+        metricValue: "1"
+        defaultValue: 0
+        unit: Count
+  subscriptionFilters:
+    - name: to-kinesis
+      destinationArn:
+        valueFrom:
+          kind: AwsKinesisStream
+          name: planton-oss-e2e-awskinesisstream-prereq
+          fieldPath: status.outputs.stream_arn
+      roleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: planton-oss-e2e-cwl-delivery-role
+          fieldPath: status.outputs.role_arn
+      filterPattern: ""
+      distribution: ByLogStream
+  dataProtectionPolicy:
+    Name: planton-e2e-data-protection
+    Version: "2021-06-01"
+    Statement:
+      - Sid: audit
+        DataIdentifier:
+          - arn:aws:dataprotection::aws:data-identifier/EmailAddress
+        Operation:
+          Audit:
+            FindingsDestination: {}
+      - Sid: redact
+        DataIdentifier:
+          - arn:aws:dataprotection::aws:data-identifier/EmailAddress
+        Operation:
+          Deidentify:
+            MaskConfig: {}
+  fieldIndexPolicy:
+    Fields:
+      - requestId
+      - userId

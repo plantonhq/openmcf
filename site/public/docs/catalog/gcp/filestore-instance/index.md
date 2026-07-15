@@ -35,7 +35,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFilestoreInstance
 metadata:
   name: my-nfs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -107,7 +107,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFilestoreInstance
 metadata:
   name: prod-nfs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -144,7 +144,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFilestoreInstance
 metadata:
   name: perf-nfs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -182,7 +182,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFilestoreInstance
 metadata:
   name: secure-nfs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -220,7 +220,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFilestoreInstance
 metadata:
   name: archive-nfs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -248,7 +248,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFilestoreInstance
 metadata:
   name: shared-nfs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

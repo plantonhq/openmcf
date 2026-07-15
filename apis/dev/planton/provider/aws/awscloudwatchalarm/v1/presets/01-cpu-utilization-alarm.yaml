@@ -3,6 +3,7 @@ kind: AwsCloudwatchAlarm
 metadata:
   name: cpu-high-alarm
 spec:
+  region: <aws-region>
   comparisonOperator: GreaterThanThreshold
   evaluationPeriods: 3
   datapointsToAlarm: 2

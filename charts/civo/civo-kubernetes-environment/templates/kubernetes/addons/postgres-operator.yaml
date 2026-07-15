@@ -9,9 +9,9 @@ metadata:
       name: "{{ values.env }}-{{ values.cluster_name }}"
       type: runs_on
 spec:
-  targetCluster:
-    clusterKind: CivoKubernetesCluster
-    clusterName: "{{ values.env }}-{{ values.cluster_name }}"
+  namespace:
+    value: postgres-operator
+  createNamespace: true
   container:
     resources:
       limits:

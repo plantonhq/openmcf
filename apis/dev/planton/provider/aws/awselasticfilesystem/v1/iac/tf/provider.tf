@@ -1,8 +1,11 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      source = "hashicorp/aws"
+      # Floor, not a ceiling: mount-target ip_address_type/ipv6_address
+      # (dual-stack) landed in v6.12.0. Sibling AWS modules share the v6 line
+      # so behavior never varies per kind.
+      version = ">= 6.12.0"
     }
   }
 }

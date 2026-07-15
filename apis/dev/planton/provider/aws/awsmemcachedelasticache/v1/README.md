@@ -29,8 +29,8 @@ Provision a fully managed, distributed Memcached cluster on AWS ElastiCache. Mem
 ## What Gets Created
 
 - **ElastiCache Cluster** — Memcached cluster with 1–40 nodes
-- **Subnet Group** (conditional) — created when `subnetIds` are provided
-- **Parameter Group** (conditional) — created when custom `parameters` are provided with a `parameterGroupFamily`
+- **Subnet Group** (conditional) — created when `subnetIds` are provided, or use `subnetGroupName` for bring-your-own
+- **Parameter Group** (conditional) — created when custom `parameters` are provided with a `parameterGroupFamily`, or use `parameterGroupName` for bring-your-own
 
 ## Prerequisites
 
@@ -45,10 +45,11 @@ kind: AwsMemcachedElasticache
 metadata:
   name: my-cache
 spec:
-  engineVersion: "1.6.22"
   nodeType: cache.t3.micro
   numCacheNodes: 1
 ```
+
+`engineVersion` is optional — omit it to use the AWS default.
 
 ## Configuration Reference
 
@@ -56,8 +57,13 @@ spec:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `engineVersion` | string | Memcached engine version (e.g., `1.6.22`, `1.6.17`, `1.5.16`) |
 | `nodeType` | string | ElastiCache node type (e.g., `cache.t3.micro`, `cache.r7g.large`) |
+
+### Engine
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `engineVersion` | string | AWS default | Memcached engine version (e.g., `1.6.22`, `1.6.17`). Leave empty for AWS default. Transit encryption requires `1.6.12`+. |
 
 ### Node Configuration
 
@@ -78,15 +84,19 @@ spec:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `subnetIds` | list (StringValueOrRef) | Subnet IDs for the ElastiCache subnet group |
+| `subnetIds` | list (StringValueOrRef) | Subnet IDs for the ElastiCache subnet group. Mutually exclusive with `subnetGroupName`. |
+| `subnetGroupName` | string | Existing ElastiCache subnet group (bring-your-own). ForceNew. |
 | `securityGroupIds` | list (StringValueOrRef) | VPC security group IDs for access control |
+| `networkType` | string | IP addressing: `ipv4`, `ipv6`, `dual_stack`. ForceNew. |
+| `ipDiscovery` | string | DNS discovery address family: `ipv4` or `ipv6`. Meaningful with dual-stack. |
 
 ### Parameters
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `parameterGroupFamily` | string | Parameter group family (e.g., `memcached1.6`). Required when `parameters` is set |
-| `parameters` | list | Custom parameter name/value pairs |
+| `parameters` | list | Custom parameter name/value pairs. Mutually exclusive with `parameterGroupName`. |
+| `parameterGroupName` | string | Existing parameter group (bring-your-own) |
 
 ### Maintenance
 

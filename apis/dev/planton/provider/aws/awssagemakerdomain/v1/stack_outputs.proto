@@ -33,4 +33,9 @@ message AwsSagemakerDomainStackOutputs {
   // created for this domain. Only populated when auth_mode is "SSO".
   // Useful for SSO configuration and access management.
   string single_sign_on_application_arn = 6;
+
+  // single_sign_on_managed_application_instance_id is the IAM Identity Center managed
+  // application instance ID for this domain. Only populated when auth_mode is "SSO".
+  // Used when assigning Identity Center users and groups to the domain programmatically.
+  string single_sign_on_managed_application_instance_id = 7;
 }

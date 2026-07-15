@@ -11,17 +11,24 @@ import (
 
 // Locals holds pre-computed values derived from the stack input.
 type Locals struct {
-	Target  *awsopensearchdomainv1.AwsOpenSearchDomain
-	Spec    *awsopensearchdomainv1.AwsOpenSearchDomainSpec
-	AwsTags map[string]string
+	Target *awsopensearchdomainv1.AwsOpenSearchDomain
+	Spec   *awsopensearchdomainv1.AwsOpenSearchDomainSpec
+	// DomainName is metadata.name -- create-only in AWS, constrained to
+	// ^[a-z][0-9a-z\-]{2,27}$ (3-28 chars), and the basis both engines share so
+	// a manifest deploys identically on either.
+	DomainName string
+	AwsTags    map[string]string
 }
 
 func initializeLocals(ctx *pulumi.Context, in *awsopensearchdomainv1.AwsOpenSearchDomainStackInput) *Locals {
 	locals := &Locals{}
 	locals.Target = in.Target
 	locals.Spec = in.Target.Spec
+	locals.DomainName = in.Target.Metadata.Name
 
+	// Resource-identity tags match the Terraform module key-for-key.
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.Target.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.Target.Metadata.Org,
 		awstagkeys.Environment:  locals.Target.Metadata.Env,

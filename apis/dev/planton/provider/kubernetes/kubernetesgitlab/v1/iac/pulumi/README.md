@@ -45,8 +45,6 @@ Set `create_namespace: true` in your API resource to have the module create the 
 
 ```yaml
 spec:
-  target_cluster:
-    cluster_name: my-gke-cluster
   namespace:
     value: gitlab-prod
   create_namespace: true
@@ -63,8 +61,6 @@ Set `create_namespace: false` to deploy into an existing namespace:
 
 ```yaml
 spec:
-  target_cluster:
-    cluster_name: my-gke-cluster
   namespace:
     value: shared-services
   create_namespace: false

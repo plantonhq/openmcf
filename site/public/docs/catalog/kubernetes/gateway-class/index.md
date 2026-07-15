@@ -56,8 +56,6 @@ planton apply -f gateway-class.yaml
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind (e.g. `GcpGkeCluster`, `AwsEksCluster`). |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `parametersRef.group` | `string` | `""` | API group of the controller-specific parameters resource. |
 | `parametersRef.kind` | `string` | `""` | Kind of the parameters resource (e.g. `ConfigMap`, `EnvoyProxy`). |
 | `parametersRef.name` | `string` | — | Name of the parameters resource (required when `parametersRef` is set). |

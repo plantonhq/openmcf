@@ -131,10 +131,13 @@ type AzureFrontDoorOriginSpec struct {
 	// **ForceNew**: changing the name replaces the origin.
 	OriginName string `protobuf:"bytes,2,opt,name=origin_name,json=originName,proto3" json:"origin_name,omitempty"`
 	// The address Front Door connects to for content: a DNS hostname, an
-	// IPv4, or an IPv6 address. Examples: "myapp.azurewebsites.net" (App
-	// Service), "myaccount.blob.core.windows.net" (Blob Storage),
-	// "api.example.com" (anything reachable).
-	HostName string `protobuf:"bytes,3,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
+	// IPv4, or an IPv6 address. A reference or a literal: reference the
+	// backend's hostname output when the backend is part of the same
+	// deployment (an AzureLinuxWebApp's default_hostname, an
+	// AzureStorageAccount's primary_web_host), pass a literal for anything
+	// reachable outside it ("api.example.com"). No kind dominates origin
+	// backends, so references declare their kind explicitly.
+	HostName *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
 	// Whether Front Door validates that the origin's TLS certificate
 	// matches the host name it connects with. Default true -- keep it on;
 	// disabling it accepts ANY valid certificate from the origin, opening
@@ -147,8 +150,9 @@ type AzureFrontDoorOriginSpec struct {
 	// Storage static sites) route BY Host header, so for them the default
 	// is exactly right; override only when the backend expects the
 	// client-facing domain instead (and then make sure it can serve it).
-	// A hostname, IPv4, or IPv6 address.
-	OriginHostHeader *string `protobuf:"bytes,5,opt,name=origin_host_header,json=originHostHeader,proto3,oneof" json:"origin_host_header,omitempty"`
+	// A hostname, IPv4, or IPv6 address -- as a reference to another
+	// resource's hostname output or a literal.
+	OriginHostHeader *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=origin_host_header,json=originHostHeader,proto3" json:"origin_host_header,omitempty"`
 	// The port Front Door uses when connecting to the origin over HTTP,
 	// 1-65535. Default 80.
 	HttpPort *int32 `protobuf:"varint,6,opt,name=http_port,json=httpPort,proto3,oneof" json:"http_port,omitempty"`
@@ -224,11 +228,11 @@ func (x *AzureFrontDoorOriginSpec) GetOriginName() string {
 	return ""
 }
 
-func (x *AzureFrontDoorOriginSpec) GetHostName() string {
+func (x *AzureFrontDoorOriginSpec) GetHostName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.HostName
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureFrontDoorOriginSpec) GetCertificateNameCheckEnabled() bool {
@@ -238,11 +242,11 @@ func (x *AzureFrontDoorOriginSpec) GetCertificateNameCheckEnabled() bool {
 	return false
 }
 
-func (x *AzureFrontDoorOriginSpec) GetOriginHostHeader() string {
-	if x != nil && x.OriginHostHeader != nil {
-		return *x.OriginHostHeader
+func (x *AzureFrontDoorOriginSpec) GetOriginHostHeader() *v1.StringValueOrRef {
+	if x != nil {
+		return x.OriginHostHeader
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureFrontDoorOriginSpec) GetHttpPort() int32 {
@@ -379,28 +383,25 @@ var File_dev_planton_provider_azure_azurefrontdoororigin_v1_spec_proto protorefl
 
 const file_dev_planton_provider_azure_azurefrontdoororigin_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/azure/azurefrontdoororigin/v1/spec.proto\x122dev.planton.provider.azure.azurefrontdoororigin.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe9\n" +
-	"\n" +
+	"=dev/planton/provider/azure/azurefrontdoororigin/v1/spec.proto\x122dev.planton.provider.azure.azurefrontdoororigin.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa8\v\n" +
 	"\x18AzureFrontDoorOriginSpec\x12\x89\x01\n" +
 	"\x0forigin_group_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x03\x92\xd4a\x1estatus.outputs.origin_group_idR\roriginGroupId\x12\x88\x02\n" +
 	"\vorigin_name\x18\x02 \x01(\tB\xe6\x01\xbaH\xe2\x01\xba\x01\xd5\x01\n" +
 	"\x1dfront_door_origin_name_format\x12xorigin_name must be 2-90 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,88}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18ZR\n" +
-	"originName\x12'\n" +
-	"\thost_name\x18\x03 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\bhostName\x12R\n" +
-	"\x1ecertificate_name_check_enabled\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x1bcertificateNameCheckEnabled\x88\x01\x01\x12:\n" +
-	"\x12origin_host_header\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x10\x01H\x01R\x10originHostHeader\x88\x01\x01\x123\n" +
-	"\thttp_port\x18\x06 \x01(\x05B\x11\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x0280H\x02R\bhttpPort\x88\x01\x01\x126\n" +
+	"originName\x12W\n" +
+	"\thost_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\bhostName\x12R\n" +
+	"\x1ecertificate_name_check_enabled\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x1bcertificateNameCheckEnabled\x88\x01\x01\x12`\n" +
+	"\x12origin_host_header\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x10originHostHeader\x123\n" +
+	"\thttp_port\x18\x06 \x01(\x05B\x11\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x0280H\x01R\bhttpPort\x88\x01\x01\x126\n" +
 	"\n" +
-	"https_port\x18\a \x01(\x05B\x12\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x03443H\x03R\thttpsPort\x88\x01\x01\x12/\n" +
-	"\bpriority\x18\b \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x05(\x01\x8a\xa6\x1d\x011H\x04R\bpriority\x88\x01\x01\x12.\n" +
-	"\x06weight\x18\t \x01(\x05B\x11\xbaH\a\x1a\x05\x18\xe8\a(\x01\x8a\xa6\x1d\x03500H\x05R\x06weight\x88\x01\x01\x12'\n" +
+	"https_port\x18\a \x01(\x05B\x12\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x03443H\x02R\thttpsPort\x88\x01\x01\x12/\n" +
+	"\bpriority\x18\b \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x05(\x01\x8a\xa6\x1d\x011H\x03R\bpriority\x88\x01\x01\x12.\n" +
+	"\x06weight\x18\t \x01(\x05B\x11\xbaH\a\x1a\x05\x18\xe8\a(\x01\x8a\xa6\x1d\x03500H\x04R\x06weight\x88\x01\x01\x12'\n" +
 	"\aenabled\x18\n" +
-	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x06R\aenabled\x88\x01\x01\x12v\n" +
+	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x05R\aenabled\x88\x01\x01\x12v\n" +
 	"\fprivate_link\x18\v \x01(\v2S.dev.planton.provider.azure.azurefrontdoororigin.v1.AzureFrontDoorOriginPrivateLinkR\vprivateLink:\x92\x02\xbaH\x8e\x02\x1a\x8b\x02\n" +
 	"2front_door_origin_private_link_requires_cert_check\x12hprivate_link requires certificate_name_check_enabled to be true (Azure rejects the combination at apply)\x1ak!has(this.private_link) || !has(this.certificate_name_check_enabled) || this.certificate_name_check_enabledB!\n" +
-	"\x1f_certificate_name_check_enabledB\x15\n" +
-	"\x13_origin_host_headerB\f\n" +
+	"\x1f_certificate_name_check_enabledB\f\n" +
 	"\n" +
 	"_http_portB\r\n" +
 	"\v_https_portB\v\n" +
@@ -451,13 +452,15 @@ var file_dev_planton_provider_azure_azurefrontdoororigin_v1_spec_proto_goTypes =
 }
 var file_dev_planton_provider_azure_azurefrontdoororigin_v1_spec_proto_depIdxs = []int32{
 	3, // 0: dev.planton.provider.azure.azurefrontdoororigin.v1.AzureFrontDoorOriginSpec.origin_group_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 1: dev.planton.provider.azure.azurefrontdoororigin.v1.AzureFrontDoorOriginSpec.private_link:type_name -> dev.planton.provider.azure.azurefrontdoororigin.v1.AzureFrontDoorOriginPrivateLink
-	0, // 2: dev.planton.provider.azure.azurefrontdoororigin.v1.AzureFrontDoorOriginPrivateLink.target_type:type_name -> dev.planton.provider.azure.azurefrontdoororigin.v1.AzureFrontDoorOriginPrivateLinkTargetType
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 1: dev.planton.provider.azure.azurefrontdoororigin.v1.AzureFrontDoorOriginSpec.host_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 2: dev.planton.provider.azure.azurefrontdoororigin.v1.AzureFrontDoorOriginSpec.origin_host_header:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 3: dev.planton.provider.azure.azurefrontdoororigin.v1.AzureFrontDoorOriginSpec.private_link:type_name -> dev.planton.provider.azure.azurefrontdoororigin.v1.AzureFrontDoorOriginPrivateLink
+	0, // 4: dev.planton.provider.azure.azurefrontdoororigin.v1.AzureFrontDoorOriginPrivateLink.target_type:type_name -> dev.planton.provider.azure.azurefrontdoororigin.v1.AzureFrontDoorOriginPrivateLinkTargetType
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurefrontdoororigin_v1_spec_proto_init() }

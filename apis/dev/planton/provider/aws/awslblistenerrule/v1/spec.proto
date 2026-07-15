@@ -459,13 +459,23 @@ message AwsLbListenerRuleActionAuthenticateCognito {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.user_pool_arn"
   ];
 
-  // The app client ID within the user pool.
-  string user_pool_client_id = 2 [(buf.validate.field).required = true];
+  // The app client ID within the user pool. Accepts a direct client ID or a
+  // reference to an AwsCognitoUserPoolClient resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_pool_client_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCognitoUserPoolClient,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.client_id"
+  ];
 
   // The user pool's hosted-UI domain: the prefix of a Cognito domain (e.g.
   // "my-app" for my-app.auth.us-west-2.amazoncognito.com) or a full custom
-  // domain.
-  string user_pool_domain = 3 [(buf.validate.field).required = true];
+  // domain. Accepts a direct domain string or a reference to the pool's
+  // user_pool_domain output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_pool_domain = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCognitoUserPool,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.user_pool_domain"
+  ];
 
   // Extra query parameters appended to the authorization-endpoint request.
   map<string, string> authentication_request_extra_params = 4;

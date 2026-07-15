@@ -1,8 +1,10 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0"
+      source = "hashicorp/aws"
+      # Floor, not a cap: everything this module uses (inline rules, prefix
+      # lists, revoke_rules_on_delete) is stable across the v6 line.
+      version = ">= 6.0.0"
     }
   }
 }

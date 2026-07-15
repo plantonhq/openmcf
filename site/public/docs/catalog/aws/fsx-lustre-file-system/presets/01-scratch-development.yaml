@@ -4,7 +4,7 @@ metadata:
   org: example-org
   env: dev
   name: dev-scratch-fsx
-  id: dev-scratch-fsx-id
+  id: awsfxl-dev-scratch-fsx-dev
 spec:
   region: <aws-region>
   deployment_type: SCRATCH_2

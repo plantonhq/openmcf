@@ -1,0 +1,35 @@
+# Fargate ECS cluster scenario: the serverless posture most environments
+# start on -- enhanced Container Insights, exec sessions audited to the
+# task's own log configuration, and the cost-optimization default
+# strategy (one guaranteed On-Demand task, scaled capacity ~80% Spot).
+# A true leaf: nothing must exist first, the cluster itself is free, and
+# the lane runs in minutes. Full metadata is supplied for tagging/orphan
+# cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsEcsCluster
+metadata:
+  name: planton-oss-e2e-ecs-fargate-smoke
+  id: planton-oss-e2e-ecs-fargate-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsecscluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  containerInsights: enhanced
+  capacityProviders:
+    - FARGATE
+    - FARGATE_SPOT
+  defaultCapacityProviderStrategy:
+    - capacityProvider: FARGATE
+      base: 1
+      weight: 1
+    - capacityProvider: FARGATE_SPOT
+      weight: 4
+  executeCommandConfiguration:
+    logging: DEFAULT

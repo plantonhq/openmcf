@@ -1,6 +1,6 @@
 ---
-title: "Aurora Serverless v2"
-description: "This preset creates an Aurora PostgreSQL cluster with Serverless v2 auto-scaling, where compute capacity automatically adjusts between 0.5 and 16 ACUs based on workload demand. The Data API (HTTP..."
+title: "Aurora Serverless v2 (Scale-to-Zero)"
+description: "This preset creates an Aurora PostgreSQL Serverless v2 cluster: one `db.serverless` instance that scales between 0 and 16 ACUs with demand, automatic pause after five idle minutes (compute cost drops..."
 type: "preset"
 rank: "03"
 presetSlug: "03-aurora-serverless-v2"
@@ -11,36 +11,34 @@ icon: "package"
 order: 3
 ---
 
-# Aurora Serverless v2
+# Aurora Serverless v2 (Scale-to-Zero)
 
-This preset creates an Aurora PostgreSQL cluster with Serverless v2 auto-scaling, where compute capacity automatically adjusts between 0.5 and 16 ACUs based on workload demand. The Data API (HTTP endpoint) is enabled for serverless access patterns. Ideal for applications with variable, unpredictable, or spiky traffic.
+This preset creates an Aurora PostgreSQL Serverless v2 cluster: one `db.serverless` instance that scales between 0 and 16 ACUs with demand, automatic pause after five idle minutes (compute cost drops to zero; storage still billed), an AWS-managed master password, and the Data API for connection-less SQL access.
 
 ## When to Use
 
-- Applications with variable or unpredictable traffic (scales to near-zero during idle periods)
-- Development and staging environments where cost should track actual usage
-- Serverless application architectures using Lambda or Step Functions with the Data API
-- Workloads that need Aurora's reliability but don't want to manage instance sizes
+- Development and staging environments where cost should track actual usage -- an idle cluster costs storage only
+- Applications with variable, unpredictable, or spiky traffic
+- Serverless architectures calling the database from Lambda or Step Functions through the Data API
+- Workloads that want Aurora's reliability without capacity planning
 
 ## Key Configuration Choices
 
-- **Serverless v2 scaling** (`serverlessV2Scaling`) -- Auto-scales between 0.5 and 16 ACUs; 1 ACU = ~2 GiB RAM
-- **Minimum 0.5 ACU** (`minCapacity: 0.5`) -- Near-zero baseline for cost optimization during idle periods
-- **Maximum 16 ACU** (`maxCapacity: 16`) -- Handles significant traffic spikes; adjust based on your peak load
-- **Data API enabled** (`enableHttpEndpoint: true`) -- HTTP-based SQL access without persistent connections; ideal for Lambda
-- **Same production defaults** as other Aurora presets: encrypted storage, deletion protection, managed password
+- **Scale-to-zero** (`minCapacity: 0`) -- the instance pauses after `secondsUntilAutoPause` (AWS default: 300s) of idleness and resumes on the next connection in roughly fifteen seconds. Latency-sensitive production should raise `minCapacity` to 0.5 or more so the cluster never pauses.
+- **Serverless v2 is provisioned mode** -- the scaling block plus a `db.serverless` instance, NOT `engineMode: serverless` (that selects the legacy Serverless v1 offering).
+- **Data API** (`enableHttpEndpoint: true`) -- SQL over HTTPS with IAM auth; no connection pools to manage from Lambda.
+- **Managed master password** -- AWS generates, stores, and rotates the credential in Secrets Manager.
+- **Capacity ceiling** (`maxCapacity: 16`) -- the hard spend/performance bound per instance; raise it for heavier peaks.
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<private-subnet-id-az1>` | Private subnet in the first Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<private-subnet-id-az2>` | Private subnet in the second Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<security-group-id>` | Security group allowing database port from application tier | AWS EC2 console or `AwsSecurityGroup` status outputs |
-| `<database-name>` | Name of the initial database to create | Your application configuration |
-| `<final-snapshot-name>` | Identifier for the final snapshot | Your naming convention |
+| `subnet-replace-with-private-az1` | Private subnet in the first Availability Zone | `AwsSubnet` status outputs or the AWS VPC console |
+| `subnet-replace-with-private-az2` | Private subnet in the second Availability Zone | `AwsSubnet` status outputs or the AWS VPC console |
+| `sg-replace-with-database-sg` | Security group allowing the database port from the application tier | `AwsSecurityGroup` status outputs or the AWS EC2 console |
 
 ## Related Presets
 
-- **01-aurora-postgresql** -- Use instead for provisioned Aurora with predictable capacity
-- **02-aurora-mysql** -- Use instead for MySQL-compatible provisioned workloads
+- **01-aurora-postgresql** -- Use instead for steady production capacity with a writer/reader pair
+- **02-aurora-mysql** -- The provisioned MySQL-compatible variant

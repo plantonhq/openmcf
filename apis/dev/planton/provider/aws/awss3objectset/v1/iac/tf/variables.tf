@@ -1,60 +1,44 @@
 variable "metadata" {
-  description = "metadata"
+  description = "Cloud resource metadata"
   type = object({
-    # name of the resource
     name = string
-    # id of the resource
-    id = string
-    # id of the organization to which the api-resource belongs to
-    org = string
-    # environment to which the resource belongs to
-    env = string
-    # labels for the resource
-    labels = map(string)
-    # annotations for the resource
-    annotations = map(string)
-    # tags for the resource
-    tags = list(string)
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "spec"
+  description = "AwsS3ObjectSet specification"
   type = object({
-    # The target S3 bucket name (resolved from foreign key)
-    bucket = string
-
-    # The AWS region where the S3 bucket is located.
     region = string
-
-    # Tags applied to all objects in the set
-    tags = optional(map(string), {})
-
-    # List of S3 objects to upload
+    bucket = string
     objects = list(object({
-      # The S3 object key (path within the bucket)
       key = string
-
-      # Inline UTF-8 text content (mutually exclusive with content_base64)
-      content = optional(string, null)
-
-      # Base64-encoded binary content (mutually exclusive with content)
-      content_base64 = optional(string, null)
-
-      # MIME content type (e.g., "application/json", "text/html")
-      content_type = optional(string, null)
-
-      # Cache-Control header value
-      cache_control = optional(string, null)
-
-      # Content-Encoding header value (e.g., "gzip")
-      content_encoding = optional(string, null)
-
-      # Per-object tags (merged with set-level tags)
+      content = optional(string, "")
+      content_base64 = optional(string, "")
+      content_type = optional(string)
+      cache_control = optional(string, "")
+      content_encoding = optional(string, "")
+      content_disposition = optional(string, "")
+      content_language = optional(string, "")
+      metadata = optional(map(string), {})
+      website_redirect = optional(string, "")
+      storage_class = optional(string, "")
+      server_side_encryption = optional(string, "")
+      kms_key = optional(string, "")
+      bucket_key_enabled = optional(bool)
+      checksum_algorithm = optional(string, "")
+      object_lock_mode = optional(string, "")
+      object_lock_retain_until_date = optional(string, "")
+      object_lock_legal_hold_status = optional(string, "")
+      acl = optional(string, "")
+      force_destroy = optional(bool, false)
       tags = optional(map(string), {})
-
-      # Canned ACL for the object
-      acl = optional(string, null)
     }))
+    tags = optional(map(string), {})
   })
 }

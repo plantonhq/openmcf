@@ -1,3 +1,9 @@
+# Full-surface offline-plan manifest. This exercises every optional block the
+# module renders -- V2 triggers with push + pull-request filters, pipeline
+# variables, per-action timeouts/regions/roles, KMS-encrypted artifact store,
+# and all three stage-condition arms (entry gate, success check, failure
+# rollback) -- so the `tofu plan` / `pulumi preview` proofs cover the whole
+# contract.
 apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
@@ -5,7 +11,7 @@ metadata:
   id: test-pipeline
   org: test-org
   env: dev
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: test
     pulumi.planton.dev/project: test
@@ -13,12 +19,45 @@ metadata:
 spec:
   region: us-west-2
   pipelineType: V2
-  executionMode: SUPERSEDED
+  executionMode: QUEUED
   roleArn:
     value: arn:aws:iam::123456789012:role/codepipeline-role
   artifactStores:
     - location:
         value: my-artifact-bucket
+      encryptionKeyId:
+        value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+  variables:
+    - name: DeployEnvironment
+      defaultValue: staging
+      description: "Target environment consumed by deploy actions as #{variables.DeployEnvironment}"
+  triggers:
+    - providerType: CodeStarSourceConnection
+      gitConfiguration:
+        sourceActionName: SourceAction
+        push:
+          - branches:
+              includes:
+                - main
+                - release/*
+              excludes:
+                - release/*-hotfix
+            filePaths:
+              includes:
+                - src/**
+            tags:
+              includes:
+                - v*
+        pullRequest:
+          - events:
+              - OPEN
+              - UPDATED
+            branches:
+              includes:
+                - main
+            filePaths:
+              includes:
+                - src/**
   stages:
     - name: Source
       actions:
@@ -27,22 +66,72 @@ spec:
           owner: AWS
           provider: CodeStarSourceConnection
           version: "1"
+          namespace: SourceVars
           outputArtifacts:
             - SourceOutput
           configuration:
-            ConnectionArn: arn:aws:codestar-connections:us-east-1:123456789012:connection/abc
+            ConnectionArn: arn:aws:codeconnections:us-west-2:123456789012:connection/aaaa1111-22bb-33cc-44dd-5555eeee6666
             FullRepositoryId: my-org/my-repo
             BranchName: main
+            DetectChanges: "false"
     - name: Build
+      beforeEntry:
+        rules:
+          - name: BusinessHoursOnly
+            ruleTypeId:
+              provider: DeploymentWindow
+            configuration:
+              Cron: "* 9-17 ? * MON-FRI *"
+              TimeZone: America/Los_Angeles
       actions:
         - name: BuildAction
           category: Build
           owner: AWS
           provider: CodeBuild
           version: "1"
+          runOrder: 1
           inputArtifacts:
             - SourceOutput
           outputArtifacts:
             - BuildOutput
           configuration:
             ProjectName: my-build-project
+      onSuccess:
+        rules:
+          - name: VerifyNoAlarm
+            ruleTypeId:
+              provider: CloudWatchAlarm
+            configuration:
+              AlarmName: build-error-rate
+              WaitTime: "300"
+            region: us-west-2
+    - name: Deploy
+      actions:
+        # A Manual Approval gate exercises the action-timeout override --
+        # the ONLY action type AWS allows it on.
+        - name: ApproveDeploy
+          category: Approval
+          owner: AWS
+          provider: Manual
+          version: "1"
+          runOrder: 1
+          timeoutInMinutes: 2880
+          configuration:
+            CustomData: Approve to release to production
+        - name: DeployAction
+          category: Deploy
+          owner: AWS
+          provider: ECS
+          version: "1"
+          runOrder: 2
+          region: us-west-2
+          roleArn:
+            value: arn:aws:iam::123456789012:role/codepipeline-deploy-role
+          inputArtifacts:
+            - BuildOutput
+          configuration:
+            ClusterName: my-cluster
+            ServiceName: my-service
+            FileName: imagedefinitions.json
+      onFailure:
+        result: ROLLBACK

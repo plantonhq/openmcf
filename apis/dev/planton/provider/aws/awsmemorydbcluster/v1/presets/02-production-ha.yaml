@@ -4,13 +4,17 @@ metadata:
   name: my-memorydb-ha
 spec:
   region: <aws-region>
-  engine: redis
-  engineVersion: "7.1"
+  engine: valkey
   description: Production HA MemoryDB cluster
   nodeType: db.r7g.large
   numShards: 2
   numReplicasPerShard: 2
-  aclName: <acl-name>
+  # Per-application authentication through a composed ACL (AwsMemorydbAcl).
+  aclName:
+    valueFrom:
+      kind: AwsMemorydbAcl
+      name: <acl-resource-name>
+      fieldPath: status.outputs.acl_name
   tlsEnabled: true
   subnetIds:
     - value: <private-subnet-id-az1>
@@ -20,7 +24,7 @@ spec:
   snapshotRetentionLimit: 7
   snapshotWindow: "03:00-04:00"
   maintenanceWindow: "sun:05:00-sun:06:00"
-  parameterGroupFamily: memorydb_redis7
+  parameterGroupFamily: memorydb_valkey7
   parameters:
     - name: activedefrag
       value: "yes"

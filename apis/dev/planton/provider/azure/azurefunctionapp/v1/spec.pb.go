@@ -2378,10 +2378,15 @@ type AzureFunctionAppIpRestrictionHeaders struct {
 	// X-Forwarded-Host header values to match.
 	// Up to 8 entries.
 	XForwardedHost []string `protobuf:"bytes,2,rep,name=x_forwarded_host,json=xForwardedHost,proto3" json:"x_forwarded_host,omitempty"`
-	// X-Azure-FDID (Front Door ID) header values to match.
-	// Up to 8 entries. Used to ensure traffic comes from your specific
-	// Front Door instance.
-	XAzureFdid []string `protobuf:"bytes,3,rep,name=x_azure_fdid,json=xAzureFdid,proto3" json:"x_azure_fdid,omitempty"`
+	// X-Azure-FDID (Front Door ID) header values to match, up to 8
+	// entries. Locks the app to specific Front Door instances: pair an
+	// ALLOW rule on the AzureFrontDoor.Backend service tag with this
+	// filter so only YOUR profile's traffic reaches the origin -- without
+	// it, anyone who discovers the app's default hostname bypasses the
+	// edge (and its WAF) entirely. Each entry references an
+	// AzureFrontDoorProfile's resource_guid output or carries the GUID as
+	// a literal.
+	XAzureFdid []*v1.StringValueOrRef `protobuf:"bytes,3,rep,name=x_azure_fdid,json=xAzureFdid,proto3" json:"x_azure_fdid,omitempty"`
 	// X-FD-HealthProbe header values to match.
 	// The only supported value is "1" (allow Front Door health probes).
 	XFdHealthProbe []string `protobuf:"bytes,4,rep,name=x_fd_health_probe,json=xFdHealthProbe,proto3" json:"x_fd_health_probe,omitempty"`
@@ -2433,7 +2438,7 @@ func (x *AzureFunctionAppIpRestrictionHeaders) GetXForwardedHost() []string {
 	return nil
 }
 
-func (x *AzureFunctionAppIpRestrictionHeaders) GetXAzureFdid() []string {
+func (x *AzureFunctionAppIpRestrictionHeaders) GetXAzureFdid() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.XAzureFdid
 	}
@@ -4115,11 +4120,11 @@ const file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDesc = "
 	"\x19virtual_network_subnet_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x16virtualNetworkSubnetId\x12 \n" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12n\n" +
 	"\aheaders\x18\b \x01(\v2T.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionHeadersR\aheadersB\v\n" +
-	"\t_priority\"\xed\x01\n" +
+	"\t_priority\"\xc7\x02\n" +
 	"$AzureFunctionAppIpRestrictionHeaders\x120\n" +
 	"\x0fx_forwarded_for\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\rxForwardedFor\x122\n" +
-	"\x10x_forwarded_host\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\x0exForwardedHost\x12*\n" +
-	"\fx_azure_fdid\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\n" +
+	"\x10x_forwarded_host\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\x0exForwardedHost\x12\x83\x01\n" +
+	"\fx_azure_fdid\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x05\x92\x01\x02\x10\b\x88\xd4a\xe0\x03\x92\xd4a\x1cstatus.outputs.resource_guidR\n" +
 	"xAzureFdid\x123\n" +
 	"\x11x_fd_health_probe\x18\x04 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x01R\x0exFdHealthProbe\"\xfb\x02\n" +
 	"\x1cAzureFunctionAppCorsSettings\x121\n" +
@@ -4471,30 +4476,31 @@ var file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_depIdxs = []i
 	2,  // 35: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction.action:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionAction
 	41, // 36: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction.virtual_network_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	21, // 37: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction.headers:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionHeaders
-	3,  // 38: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMount.type:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMountType
-	41, // 39: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMount.access_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	41, // 40: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackup.storage_account_url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	26, // 41: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackup.schedule:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupSchedule
-	4,  // 42: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupSchedule.frequency_unit:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupFrequencyUnit
-	10, // 43: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.unauthenticated_action:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppUnauthenticatedAction
-	11, // 44: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.forward_proxy_convention:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppForwardProxyConvention
-	28, // 45: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.login:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Login
-	29, // 46: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.apple_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Apple
-	30, // 47: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.active_directory_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectory
-	31, // 48: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.azure_static_web_app_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2StaticWebApp
-	32, // 49: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.custom_oidc_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2CustomOidc
-	33, // 50: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.facebook_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Facebook
-	34, // 51: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.github_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Github
-	35, // 52: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.google_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Google
-	36, // 53: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.microsoft_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Microsoft
-	37, // 54: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.twitter_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Twitter
-	12, // 55: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Login.cookie_expiration_convention:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppCookieExpirationConvention
-	40, // 56: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectory.login_parameters:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectory.LoginParametersEntry
-	57, // [57:57] is the sub-list for method output_type
-	57, // [57:57] is the sub-list for method input_type
-	57, // [57:57] is the sub-list for extension type_name
-	57, // [57:57] is the sub-list for extension extendee
-	0,  // [0:57] is the sub-list for field type_name
+	41, // 38: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionHeaders.x_azure_fdid:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 39: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMount.type:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMountType
+	41, // 40: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMount.access_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	41, // 41: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackup.storage_account_url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	26, // 42: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackup.schedule:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupSchedule
+	4,  // 43: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupSchedule.frequency_unit:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupFrequencyUnit
+	10, // 44: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.unauthenticated_action:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppUnauthenticatedAction
+	11, // 45: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.forward_proxy_convention:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppForwardProxyConvention
+	28, // 46: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.login:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Login
+	29, // 47: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.apple_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Apple
+	30, // 48: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.active_directory_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectory
+	31, // 49: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.azure_static_web_app_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2StaticWebApp
+	32, // 50: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.custom_oidc_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2CustomOidc
+	33, // 51: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.facebook_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Facebook
+	34, // 52: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.github_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Github
+	35, // 53: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.google_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Google
+	36, // 54: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.microsoft_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Microsoft
+	37, // 55: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.twitter_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Twitter
+	12, // 56: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Login.cookie_expiration_convention:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppCookieExpirationConvention
+	40, // 57: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectory.login_parameters:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectory.LoginParametersEntry
+	58, // [58:58] is the sub-list for method output_type
+	58, // [58:58] is the sub-list for method input_type
+	58, // [58:58] is the sub-list for extension type_name
+	58, // [58:58] is the sub-list for extension extendee
+	0,  // [0:58] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_init() }

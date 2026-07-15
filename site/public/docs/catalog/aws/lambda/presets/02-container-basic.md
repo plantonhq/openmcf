@@ -1,6 +1,6 @@
 ---
 title: "Container-Based Lambda Function"
-description: "This preset creates a Lambda function deployed from a container image in ECR. The runtime and handler are defined by the image's CMD/ENTRYPOINT, not by Lambda configuration. This is ideal for..."
+description: "This preset creates a Lambda function from a container image in ECR. The function name comes from `metadata.name`. Runtime and entrypoint are defined by the image — leave `runtime` and `handler`..."
 type: "preset"
 rank: "02"
 presetSlug: "02-container-basic"
@@ -13,31 +13,32 @@ order: 2
 
 # Container-Based Lambda Function
 
-This preset creates a Lambda function deployed from a container image in ECR. The runtime and handler are defined by the image's CMD/ENTRYPOINT, not by Lambda configuration. This is ideal for functions with large dependencies, custom runtimes, or existing Docker-based build pipelines.
+This preset creates a Lambda function from a container image in ECR. The function name comes from `metadata.name`. Runtime and entrypoint are defined by the image — leave `runtime` and `handler` empty.
 
 ## When to Use
 
-- Functions with dependencies exceeding the 250 MB zip limit (ML models, large SDKs, native binaries)
-- Custom runtimes not available as Lambda managed runtimes (Rust, C++, custom interpreters)
-- Teams with existing Docker build pipelines who want to reuse their container workflow
-- Functions that need a consistent local development experience using Docker
+- Dependencies exceeding the 250 MB zip limit (ML models, large SDKs, native binaries)
+- Custom OS packages or runtimes not available as managed Lambda runtimes
+- Teams with existing Docker build pipelines who want the same image locally and in Lambda
+- Images up to 10 GB (vs 250 MB for zip deployments)
 
 ## Key Configuration Choices
 
-- **Container image code** (`codeSourceType: CODE_SOURCE_TYPE_IMAGE`) -- Runtime and handler are defined in the Docker image, not in Lambda config
-- **512 MB memory** (`memoryMb: 512`) -- Container images typically need more memory; increase for ML or data processing workloads
-- **60-second timeout** (`timeoutSeconds: 60`) -- Longer default since container functions often handle heavier workloads
-- **No runtime/handler** -- These are defined in the container image's CMD/ENTRYPOINT and are ignored by Lambda
-- **No VPC** -- Function runs in Lambda's managed network; add `subnets` and `securityGroups` if VPC access is needed
+- **Container image** (`image_uri`) — ECR URI; runtime and handler come from the image CMD/ENTRYPOINT (override with `image_config` if needed)
+- **512 MB memory** (`memory_size_mb: 512`) — container functions often need more headroom than zip deployments
+- **60-second timeout** (`timeout_seconds: 60`) — longer default for heavier container workloads
+- **ARM64** (`architecture: arm64`) — Graviton is typically ~20% cheaper; switch to `x86_64` if required
+- **Composed execution role** (`role_arn.valueFrom`) — references an `AwsIamRole` with `AWSLambdaBasicExecutionRole`
+- **No runtime/handler** — required empty for container deployments (CEL-enforced)
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<function-name>` | Lambda function name (must be unique per account/region) | Your function naming convention |
-| `<lambda-execution-role-arn>` | IAM role ARN with `AWSLambdaBasicExecutionRole` policy | AWS IAM console or `AwsIamRole` status outputs |
-| `<ecr-image-uri>` | ECR image URI (e.g., `123456789012.dkr.ecr.us-east-1.amazonaws.com/my-function:latest`) | AWS ECR console or `AwsEcrRepo` status outputs |
+| `<aws-region>` | AWS region for the function and ECR repository | Your deployment region |
+| `<execution-role-name>` | Name of the `AwsIamRole` resource for execution | `AwsIamRole` metadata.name |
+| `<ecr-image-uri>` | ECR image URI (e.g. `123456789012.dkr.ecr.us-west-2.amazonaws.com/my-function:latest`) | ECR console or your image pipeline |
 
 ## Related Presets
 
-- **01-zip-basic** -- Use instead for lightweight functions deployed from S3 zip archives
+- **01-zip-basic** — use instead for lightweight zip-based functions with managed runtimes

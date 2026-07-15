@@ -91,7 +91,7 @@ registry prerequisite list would force every downstream kind's fixture chain to
 deploy it forever. When a scenario needs to live-prove an optional edge (a
 subnet attaching a route table, a NAT gateway associating a public IP, a
 network peering to a second network), it declares the extra fixtures itself via
-the `planton.dev/e2e-extra-prerequisites` annotation on the scenario manifest:
+the `planton.dev/e2e-prerequisites` annotation on the scenario manifest:
 
 ```yaml
 metadata:
@@ -99,18 +99,24 @@ metadata:
     # Kind names install through the kind's standard install profile;
     # repo-relative manifest paths deploy an EXTRA INSTANCE of their declared
     # kind (for scenarios needing more instances than the profiles provide).
-    planton.dev/e2e-extra-prerequisites: "AzureRouteTable, AzureNetworkSecurityGroup"
+    planton.dev/e2e-prerequisites: "AzureRouteTable, AzureNetworkSecurityGroup"
 ```
 
-Entries deploy in listed order after the registry prerequisites, each preceded
-by any of its own transitive registry prerequisites not already deployed
-(shared parents are deduplicated -- one resource group serves the whole chain).
-Kind-name entries already present in the registry chain are skipped; path
-entries always deploy, because they exist precisely to add another instance.
-All fixtures join the same transitive `value_from` reference resolution the
-registry chain uses, and teardown runs in reverse across the merged chain.
-Every kind that appears in the annotation needs a verifier and an install
-profile, exactly like a registry prerequisite.
+Kind-name entries join the registry prerequisite graph and deploy in
+topological order, expanded through their own prerequisite edges and
+deduplicated against the chain (one resource group serves everything);
+entries the chain already deploys are skipped. Manifest-path entries deploy
+in listed order after the kind-driven chain, each preceded by any of its own
+transitive prerequisites not already deployed -- and always deploy, because
+they exist precisely to add another instance; a path entry never substitutes
+for the kind's install profile. The resolver also honors the same annotation
+(kind names only) on each prerequisite's OWN install manifest, ordering the
+fixtures an install profile's `value_from` references compose BEFORE the
+declaring kind -- recursively and cycle-checked. All fixtures join the same
+transitive `value_from` reference resolution the registry chain uses, and
+teardown runs in reverse across the merged chain. Every kind that appears in
+the annotation needs a verifier and an install profile, exactly like a
+registry prerequisite.
 
 A dependency whose `pulumi up` FAILS is still tracked for teardown: a failed
 update may have created any number of resources before erroring, and skipping
@@ -699,7 +705,7 @@ owns two responsibilities beyond wiring verifiers:
   enough that the recreate hangs indefinitely (a `Microsoft.Sql/servers` create
   stuck 20+ minutes with no write in the activity log). Give each scenario its
   own uniquely named parent instead: declare the parent through the
-  `e2e-extra-prerequisites` annotation with a scenario-local manifest (kept
+  `e2e-prerequisites` annotation with a scenario-local manifest (kept
   OUTSIDE `e2e/scenarios/`, which the discoverer treats as test cases), and
   drop the registry prerequisite if it would force the shared fixture chain in
   anyway. Registry prerequisites are for parents a kind cannot exist without

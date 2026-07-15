@@ -1,217 +1,101 @@
 variable "metadata" {
-  description = "metadata for all resource objects on planton"
+  description = "Cloud resource metadata"
   type = object({
-
-    # name of the resource
     name = string
-
-    # id of the resource
-    id = string
-
-    # id of the organization to which the api-resource belongs to
-    org = string
-
-    # environment to which the resource belongs to
-    env = string
-
-    # labels for the resource
-    labels = object({
-
-      # Description for key
-      key = string
-
-      # Description for value
-      value = string
-    })
-
-    # annotations for the resource
-    annotations = object({
-
-      # Description for key
-      key = string
-
-      # Description for value
-      value = string
-    })
-
-    # tags for the resource
-    tags = list(string)
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "Specification for Deployment Component"
+  description = "AwsLambda specification"
   type = object({
-
-    # The AWS region where the resource will be created.
     region = string
-
-    # Description for function_name
-    function_name = string
-
-    # Description for description
-    description = string
-
-    # Description for role_arn
-    role_arn = object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    })
-
-    # Description for runtime
-    runtime = string
-
-    # Description for handler
-    handler = string
-
-    # Description for memory_mb
-    memory_mb = number
-
-    # Description for timeout_seconds
-    timeout_seconds = number
-
-    # Description for reserved_concurrency
-    reserved_concurrency = number
-
-    # Description for environment
-    environment = object({
-
-      # Description for key
-      key = string
-
-      # Description for value
-      value = string
-    })
-
-    # Description for subnets
-    subnets = list(object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    }))
-
-    # Description for security_groups
-    security_groups = list(object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    }))
-
-    # Description for architecture
-    architecture = string
-
-    # Description for layer_arns
-    layer_arns = list(object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    }))
-
-    # Description for kms_key_arn
-    kms_key_arn = object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    })
-
-    # Description for code_source_type
-    code_source_type = string
-
-    # Description for s3
-    s3 = object({
-
-      # Description for bucket
+    description = optional(string, "")
+    role_arn = string
+    s3 = optional(object({
       bucket = string
-
-      # Description for key
       key = string
-
-      # Description for object_version
-      object_version = string
-    })
-
-    # Description for image_uri
-    image_uri = string
+      object_version = optional(string, "")
+    }))
+    image_uri = optional(string, "")
+    source_code_hash = optional(string, "")
+    source_kms_key_arn = optional(string, "")
+    runtime = optional(string, "")
+    handler = optional(string, "")
+    architecture = optional(string, "")
+    memory_size_mb = optional(number, 0)
+    timeout_seconds = optional(number, 0)
+    ephemeral_storage_mb = optional(number, 0)
+    environment = optional(map(string), {})
+    kms_key_arn = optional(string, "")
+    subnet_ids = optional(list(string), [])
+    security_group_ids = optional(list(string), [])
+    ipv6_allowed_for_dual_stack = optional(bool, false)
+    dead_letter_target_arn = optional(string, "")
+    tracing_mode = optional(string, "")
+    file_system_config = optional(object({
+      access_point_arn = string
+      local_mount_path = string
+    }))
+    image_config = optional(object({
+      entry_point = optional(list(string), [])
+      command = optional(list(string), [])
+      working_directory = optional(string, "")
+    }))
+    layer_arns = optional(list(string), [])
+    publish = optional(bool, false)
+    reserved_concurrent_executions = optional(number)
+    snap_start = optional(bool, false)
+    logging_config = optional(object({
+      log_format = optional(string, "")
+      application_log_level = optional(string, "")
+      system_log_level = optional(string, "")
+      log_group = optional(string, "")
+    }))
+    code_signing_config_arn = optional(string, "")
+    aliases = optional(list(object({
+      name = string
+      description = optional(string, "")
+      function_version = string
+      routing_additional_version_weights = optional(map(number), {})
+      provisioned_concurrent_executions = optional(number)
+    })), [])
+    function_url = optional(object({
+      authorization_type = string
+      invoke_mode = optional(string, "")
+      cors = optional(object({
+        allow_credentials = optional(bool, false)
+        allow_origins = optional(list(string), [])
+        allow_methods = optional(list(string), [])
+        allow_headers = optional(list(string), [])
+        expose_headers = optional(list(string), [])
+        max_age_seconds = optional(number, 0)
+      }))
+    }))
+    invoke_permissions = optional(list(object({
+      statement_id = string
+      principal = string
+      action = optional(string, "")
+      source_arn = optional(string, "")
+      source_account = optional(string, "")
+      principal_org_id = optional(string, "")
+      function_url_auth_type = optional(string, "")
+    })), [])
+    async_invoke_config = optional(object({
+      maximum_retry_attempts = optional(number)
+      maximum_event_age_seconds = optional(number, 0)
+      on_success_destination_arn = optional(string, "")
+      on_failure_destination_arn = optional(string, "")
+    }))
+    recursive_loop = optional(string, "")
+    runtime_management = optional(object({
+      update_runtime_on = string
+      runtime_version_arn = optional(string, "")
+    }))
   })
 }

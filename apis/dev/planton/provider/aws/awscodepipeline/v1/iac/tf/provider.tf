@@ -1,8 +1,14 @@
 terraform {
+  required_version = ">= 1.0"
+
   required_providers {
     aws = {
+      # Floor 6.0.0: the whole V2 surface this module renders (pipeline_type,
+      # execution_mode, triggers with file-path filters, per-action
+      # timeout_in_minutes, and stage conditions with rules) landed on the
+      # 5.x line (<= 5.93.0), so any 6.x release carries it.
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      version = ">= 6.0.0"
     }
   }
 }

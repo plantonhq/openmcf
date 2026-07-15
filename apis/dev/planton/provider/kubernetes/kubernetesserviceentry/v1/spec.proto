@@ -4,7 +4,6 @@ package dev.planton.provider.kubernetes.kubernetesserviceentry.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/istio_api.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // KubernetesServiceEntrySpec defines an Istio ServiceEntry: a namespaced resource that
@@ -16,7 +15,7 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // 100% fidelity with the upstream istio.io/api ServiceEntry
 // (networking/v1alpha3/service_entry.proto, served as networking.istio.io/v1), pinned to
 // the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after the
-// Planton namespaced envelope (target_cluster, namespace); there is no nested
+// Planton namespaced envelope (namespace); there is no nested
 // `service_entry` sub-message.
 //
 // Attachment model (upstream): `endpoints` (static addresses) and `workload_selector`
@@ -58,11 +57,6 @@ message KubernetesServiceEntrySpec {
     message: "port name cannot be duplicated across ports"
     expression: "this.ports.all(p1, this.ports.exists_one(p2, p1.name == p2.name))"
   };
-
-  // Target Kubernetes cluster where this ServiceEntry is created. The Istio CRDs
-  // (KubernetesIstioBaseCrds) must already be present on the cluster; the registry entry
-  // is only honored where istiod (the Istio control plane) is running.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
 
   // Namespace in which the ServiceEntry is created. By default the service is visible to
   // the whole mesh; `export_to` narrows the visibility scope.

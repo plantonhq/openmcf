@@ -9,7 +9,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 )
 
 func TestKubernetesGatewayClass(t *testing.T) {
@@ -28,10 +27,6 @@ var _ = ginkgo.Describe("KubernetesGatewayClass Validation Tests", func() {
 				Name: "test-gateway-class",
 			},
 			Spec: &KubernetesGatewayClassSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				ControllerName: "istio.io/gateway-controller",
 			},
 		}

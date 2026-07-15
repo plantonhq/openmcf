@@ -1,0 +1,81 @@
+# The policy layer: a configuration set carrying the sender's delivery
+# posture — TLS enforcement, suppression, reputation metrics, and event
+# publishing — defined once and inherited by every message the identity
+# sends. Applications can also name it explicitly on individual sends.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSesConfigurationSet
+metadata:
+  name: "{{ values.sender_name }}-config"
+spec:
+  region: "{{ values.aws_region }}"
+  deliveryOptions:
+{% if values.tls_required | bool %}
+    # Fail the send rather than fall back to plaintext — transactional
+    # mail carries resets and receipts, and virtually every real mail
+    # receiver has negotiated TLS for a decade.
+    tlsPolicy: REQUIRE
+{% else %}
+    # Attempt TLS but fall back to plaintext for receivers that cannot
+    # negotiate it — the SMTP default, accepted here deliberately via
+    # the tls_required toggle.
+    tlsPolicy: OPTIONAL
+{% endif %}
+  # Publish this set's bounce/complaint RATES to CloudWatch. Free, and
+  # the prerequisite for the reputation alarms — reputation is what SES
+  # suspends accounts over, so a production sender always watches it.
+  reputationMetricsEnabled: true
+  # Honor the account-level suppression list for both reasons: an
+  # address that hard-bounced or complained is never mailed again under
+  # this set. Re-sending to known-bad addresses is the fastest way to
+  # burn a sender score.
+  suppressedReasons:
+    - BOUNCE
+    - COMPLAINT
+{% if values.feedback_notifications_enabled | bool %}
+  # The feedback loop: every bounce and complaint, as a structured JSON
+  # event, onto the topic below. This is a MACHINE channel for the
+  # application (prune the address, stop the campaign) — the human
+  # pager wire is the separate alerts topic in observability.yaml.
+  eventDestinations:
+    - name: feedback
+      matchingEventTypes:
+        - BOUNCE
+        - COMPLAINT
+      snsTopic:
+        valueFrom:
+          kind: AwsSnsTopic
+          name: "{{ values.sender_name }}-feedback"
+          fieldPath: status.outputs.topic_arn
+{% endif %}
+{% if values.feedback_notifications_enabled | bool %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSnsTopic
+metadata:
+  name: "{{ values.sender_name }}-feedback"
+spec:
+  region: "{{ values.aws_region }}"
+  displayName: "{{ values.sender_name }} bounce and complaint events"
+  # SES publishes through the topic's resource policy — without this
+  # grant the event destination exists but every event is silently
+  # dropped. A topic policy is plain JSON (it cannot carry references),
+  # so both ARNs are composed at render time from names this chart
+  # controls: the grant names exactly this chart's configuration set as
+  # the only allowed source, and the account condition closes the
+  # confused-deputy hole.
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowSesPublish
+        Effect: Allow
+        Principal:
+          Service: ses.amazonaws.com
+        Action: sns:Publish
+        Resource: arn:aws:sns:{{ values.aws_region }}:{{ values.aws_account_id }}:{{ values.sender_name }}-feedback
+        Condition:
+          StringEquals:
+            aws:SourceAccount: "{{ values.aws_account_id }}"
+          ArnLike:
+            aws:SourceArn: arn:aws:ses:{{ values.aws_region }}:{{ values.aws_account_id }}:configuration-set/{{ values.sender_name }}-config
+{% endif %}

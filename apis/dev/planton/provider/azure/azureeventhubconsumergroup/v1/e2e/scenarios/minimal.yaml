@@ -16,7 +16,7 @@ metadata:
     planton.dev/e2e: "true"
     # Scenario-local parents instead of registry prerequisites (the
     # globally-unique-name discipline). Deploy order: namespace, hub.
-    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azureeventhubconsumergroup/v1/e2e/fixture-namespace.yaml,apis/dev/planton/provider/azure/azureeventhubconsumergroup/v1/e2e/fixture-hub.yaml"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azureeventhubconsumergroup/v1/e2e/fixture-namespace.yaml,apis/dev/planton/provider/azure/azureeventhubconsumergroup/v1/e2e/fixture-hub.yaml"
   tags:
     - planton-e2e
 spec:

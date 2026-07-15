@@ -79,15 +79,12 @@ MSK clusters are deployed entirely within a customer VPC:
 
 ### Security Groups
 
-The Planton component supports three security group patterns:
-
-1. **Managed security group from source SGs (`securityGroupIds`):** Creates an SG with ingress rules allowing TCP from each source SG on Kafka ports (9092-9098) and ZooKeeper ports (2181-2182). Requires `vpcId`.
-
-2. **Managed security group from CIDRs (`allowedCidrBlocks`):** Creates an SG with ingress rules allowing TCP from each CIDR on the same ports. Requires `vpcId`.
-
-3. **Direct attachment (`associateSecurityGroupIds`):** Existing SGs attached directly to broker ENIs. No managed SG creation.
-
-All three can be combined. The managed SG (if created) is included alongside any `associateSecurityGroupIds`.
+Network ingress is composed, never embedded: the cluster attaches the
+referenced `securityGroupIds` (at least one is required) directly to the
+broker ENIs. The ingress rules that open the Kafka ports (9092-9098) and
+ZooKeeper ports (2181-2182) live on those first-class `AwsSecurityGroup`
+nodes, where they can be shared, audited, and evolved independently of the
+cluster — the module never creates a shadow security group of its own.
 
 **Important:** The security group list in `broker_node_group_info` is **ForceNew** in the AWS provider. Adding or removing security groups after cluster creation forces cluster replacement.
 
