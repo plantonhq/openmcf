@@ -7,7 +7,6 @@ go_library(
         "main.go",
         "outputs.go",
         "transit_gateway.go",
-        "vpc_attachment.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awstransitgateway/v1/iac/pulumi/module",
     visibility = ["//visibility:public"],

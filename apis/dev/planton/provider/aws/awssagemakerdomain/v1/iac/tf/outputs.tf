@@ -27,3 +27,8 @@ output "single_sign_on_application_arn" {
   description = "ARN of the SSO application created by the domain"
   value       = aws_sagemaker_domain.this.single_sign_on_application_arn
 }
+
+output "single_sign_on_managed_application_instance_id" {
+  description = "IAM Identity Center managed application instance ID (SSO auth mode only)"
+  value       = aws_sagemaker_domain.this.single_sign_on_managed_application_instance_id
+}

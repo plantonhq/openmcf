@@ -1,0 +1,31 @@
+# Dial-rich AwsTransitGateway scenario: a dependency-free leaf lane that
+# exercises the non-default surface -- a custom Amazon-side ASN, explicit
+# tri-state dials (an explicit false alongside explicit trues, proving the
+# optional-bool contract end to end), cross-VPC security group referencing,
+# and a TGW Connect CIDR block. Full metadata is supplied for tagging/orphan
+# cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsTransitGateway
+metadata:
+  name: planton-oss-e2e-awstgw-full
+  id: planton-oss-e2e-awstgw-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awstransitgateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E full-dial transit gateway
+  amazonSideAsn: 64620
+  defaultRouteTableAssociation: true
+  defaultRouteTablePropagation: false
+  dnsSupport: true
+  vpnEcmpSupport: false
+  securityGroupReferencingSupport: true
+  transitGatewayCidrBlocks:
+    - 10.255.0.0/24

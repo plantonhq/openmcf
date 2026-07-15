@@ -75,13 +75,6 @@ func TestAwsS3Bucket_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awss3bucket", "terraform")
 }
 
-// --- AWS ECR Repository (true leaf; repository + lifecycle policy in one fast lane) ---
-
-func TestAwsEcrRepo_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "awsecrrepo", "pulumi") }
-func TestAwsEcrRepo_Terraform(t *testing.T) {
-	runAllScenariosForComponent(t, "awsecrrepo", "terraform")
-}
-
 // --- AWS VPC (thin root of the networking graph) ---
 
 func TestAwsVpc_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "awsvpc", "pulumi") }
@@ -308,13 +301,49 @@ func TestAwsKinesisStreamConsumer_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awskinesisstreamconsumer", "terraform")
 }
 
-// --- AWS Kinesis Firehose (Direct PUT -> extended_s3; S3 bucket + IAM role prerequisite chain) ---
+// --- AWS Kinesis Firehose (Direct PUT -> extended_s3 + Splunk-with-processors; S3 bucket + IAM role prerequisite chain) ---
 
 func TestAwsKinesisFirehose_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "awskinesisfirehose", "pulumi")
 }
 func TestAwsKinesisFirehose_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awskinesisfirehose", "terraform")
+}
+
+// --- AWS ECR repository (true leaf; folded lifecycle rules + repository policy) ---
+
+func TestAwsEcrRepo_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecrrepo", "pulumi")
+}
+func TestAwsEcrRepo_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecrrepo", "terraform")
+}
+
+// --- AWS Route 53 hosted zone (public leaf + private-VPC composed arm) ---
+
+func TestAwsRoute53Zone_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53zone", "pulumi")
+}
+func TestAwsRoute53Zone_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53zone", "terraform")
+}
+
+// --- AWS Route 53 DNS record (AwsRoute53Zone prerequisite chain) ---
+
+func TestAwsRoute53DnsRecord_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53dnsrecord", "pulumi")
+}
+func TestAwsRoute53DnsRecord_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53dnsrecord", "terraform")
+}
+
+// --- AWS Route 53 health check (true leaf; disabled probe, zero external traffic) ---
+
+func TestAwsRoute53HealthCheck_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53healthcheck", "pulumi")
+}
+func TestAwsRoute53HealthCheck_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53healthcheck", "terraform")
 }
 
 // --- AWS ElastiCache RBAC (account-level; no VPC prerequisite) ---
@@ -578,6 +607,395 @@ func TestAwsEventBridgeRule_Pulumi(t *testing.T) {
 }
 func TestAwsEventBridgeRule_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awseventbridgerule", "terraform")
+}
+
+// --- AWS CloudWatch observability family ---
+
+func TestAwsCloudwatchLogGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchloggroup", "pulumi")
+}
+func TestAwsCloudwatchLogGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchloggroup", "terraform")
+}
+
+func TestAwsCloudwatchAlarm_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchalarm", "pulumi")
+}
+func TestAwsCloudwatchAlarm_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchalarm", "terraform")
+}
+
+func TestAwsCloudwatchCompositeAlarm_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchcompositealarm", "pulumi")
+}
+func TestAwsCloudwatchCompositeAlarm_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchcompositealarm", "terraform")
+}
+
+// --- AWS serverless front door (Step Functions + HTTP API family) ---
+
+func TestAwsStepFunction_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsstepfunction", "pulumi")
+}
+func TestAwsStepFunction_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsstepfunction", "terraform")
+}
+
+func TestAwsHttpApiGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awshttpapigateway", "pulumi")
+}
+func TestAwsHttpApiGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awshttpapigateway", "terraform")
+}
+
+func TestAwsHttpApiVpcLink_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awshttpapivpclink", "pulumi")
+}
+func TestAwsHttpApiVpcLink_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awshttpapivpclink", "terraform")
+}
+
+func TestAwsHttpApiDomain_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awshttpapidomain", "pulumi")
+}
+func TestAwsHttpApiDomain_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awshttpapidomain", "terraform")
+}
+
+// --- AWS Cognito family (pool root + pool-scoped client/IdP/resource server) ---
+
+func TestAwsCognitoUserPool_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitouserpool", "pulumi")
+}
+func TestAwsCognitoUserPool_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitouserpool", "terraform")
+}
+
+func TestAwsCognitoUserPoolClient_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitouserpoolclient", "pulumi")
+}
+func TestAwsCognitoUserPoolClient_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitouserpoolclient", "terraform")
+}
+
+func TestAwsCognitoIdentityProvider_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitoidentityprovider", "pulumi")
+}
+func TestAwsCognitoIdentityProvider_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitoidentityprovider", "terraform")
+}
+
+func TestAwsCognitoResourceServer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitoresourceserver", "pulumi")
+}
+func TestAwsCognitoResourceServer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitoresourceserver", "terraform")
+}
+
+// --- AWS EFS family (file system root + file-system-scoped access point) ---
+
+func TestAwsElasticFileSystem_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awselasticfilesystem", "pulumi")
+}
+func TestAwsElasticFileSystem_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awselasticfilesystem", "terraform")
+}
+
+func TestAwsEfsAccessPoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsefsaccesspoint", "pulumi")
+}
+func TestAwsEfsAccessPoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsefsaccesspoint", "terraform")
+}
+
+// --- AWS WAF family (leaf sets + the web ACL composing them by reference) ---
+
+func TestAwsWafIpSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awswafipset", "pulumi")
+}
+func TestAwsWafIpSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awswafipset", "terraform")
+}
+
+func TestAwsWafRegexPatternSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awswafregexpatternset", "pulumi")
+}
+func TestAwsWafRegexPatternSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awswafregexpatternset", "terraform")
+}
+
+func TestAwsWafWebAcl_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awswafwebacl", "pulumi")
+}
+func TestAwsWafWebAcl_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awswafwebacl", "terraform")
+}
+
+func TestAwsBatchComputeEnvironment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchcomputeenvironment", "pulumi")
+}
+func TestAwsBatchComputeEnvironment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchcomputeenvironment", "terraform")
+}
+
+func TestAwsBatchJobQueue_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchjobqueue", "pulumi")
+}
+func TestAwsBatchJobQueue_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchjobqueue", "terraform")
+}
+
+func TestAwsBatchSchedulingPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchschedulingpolicy", "pulumi")
+}
+func TestAwsBatchSchedulingPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchschedulingpolicy", "terraform")
+}
+
+func TestAwsBatchJobDefinition_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchjobdefinition", "pulumi")
+}
+func TestAwsBatchJobDefinition_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchjobdefinition", "terraform")
+}
+
+func TestAwsSesConfigurationSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssesconfigurationset", "pulumi")
+}
+func TestAwsSesConfigurationSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssesconfigurationset", "terraform")
+}
+
+func TestAwsSesEmailIdentity_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssesemailidentity", "pulumi")
+}
+func TestAwsSesEmailIdentity_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssesemailidentity", "terraform")
+}
+
+func TestAwsAppRunnerService_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnerservice", "pulumi")
+}
+
+func TestAwsAppRunnerService_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnerservice", "terraform")
+}
+
+func TestAwsAppRunnerAutoScalingConfiguration_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnerautoscalingconfiguration", "pulumi")
+}
+
+func TestAwsAppRunnerAutoScalingConfiguration_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnerautoscalingconfiguration", "terraform")
+}
+
+func TestAwsAppRunnerVpcConnector_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnervpcconnector", "pulumi")
+}
+
+func TestAwsAppRunnerVpcConnector_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnervpcconnector", "terraform")
+}
+
+func TestAwsAppRunnerObservabilityConfiguration_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnerobservabilityconfiguration", "pulumi")
+}
+
+func TestAwsAppRunnerObservabilityConfiguration_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnerobservabilityconfiguration", "terraform")
+}
+
+// --- AWS Transit Gateway family (hub, VPC attachment, route table) ---
+
+func TestAwsTransitGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awstransitgateway", "pulumi")
+}
+
+func TestAwsTransitGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awstransitgateway", "terraform")
+}
+
+func TestAwsTransitGatewayVpcAttachment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awstransitgatewayvpcattachment", "pulumi")
+}
+
+func TestAwsTransitGatewayVpcAttachment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awstransitgatewayvpcattachment", "terraform")
+}
+
+func TestAwsTransitGatewayRouteTable_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awstransitgatewayroutetable", "pulumi")
+}
+
+func TestAwsTransitGatewayRouteTable_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awstransitgatewayroutetable", "terraform")
+}
+
+// --- AWS analytics pair (Athena workgroup, Glue Data Catalog database) ---
+
+func TestAwsAthenaWorkgroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsathenaworkgroup", "pulumi")
+}
+
+func TestAwsAthenaWorkgroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsathenaworkgroup", "terraform")
+}
+
+func TestAwsGlueCatalogDatabase_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsgluecatalogdatabase", "pulumi")
+}
+
+func TestAwsGlueCatalogDatabase_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsgluecatalogdatabase", "terraform")
+}
+
+// --- AWS CI/CD pair (CodeBuild project, CodePipeline) ---
+
+func TestAwsCodeBuildProject_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscodebuildproject", "pulumi")
+}
+
+func TestAwsCodeBuildProject_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscodebuildproject", "terraform")
+}
+
+func TestAwsCodePipeline_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscodepipeline", "pulumi")
+}
+
+func TestAwsCodePipeline_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscodepipeline", "terraform")
+}
+
+// --- AWS MemoryDB family (user, ACL, cluster) ---
+
+func TestAwsMemorydbUser_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemorydbuser", "pulumi")
+}
+
+func TestAwsMemorydbUser_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemorydbuser", "terraform")
+}
+
+func TestAwsMemorydbAcl_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemorydbacl", "pulumi")
+}
+
+func TestAwsMemorydbAcl_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemorydbacl", "terraform")
+}
+
+func TestAwsMemorydbCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemorydbcluster", "pulumi")
+}
+
+func TestAwsMemorydbCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemorydbcluster", "terraform")
+}
+
+// --- AWS Client VPN ---
+
+func TestAwsClientVpn_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsclientvpn", "pulumi")
+}
+
+func TestAwsClientVpn_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsclientvpn", "terraform")
+}
+
+// AwsGlobalAccelerator: a dependency-free minimal lane plus an Elastic
+// IP-composed lane (the EIP fixture resolves into the polymorphic endpoint
+// reference).
+func TestAwsGlobalAccelerator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsglobalaccelerator", "pulumi")
+}
+func TestAwsGlobalAccelerator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsglobalaccelerator", "terraform")
+}
+
+// --- AWS FSx family (Lustre, OpenZFS, Windows, data repository association) ---
+
+func TestAwsFsxLustreFileSystem_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxlustrefilesystem", "pulumi")
+}
+
+func TestAwsFsxLustreFileSystem_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxlustrefilesystem", "terraform")
+}
+
+func TestAwsFsxOpenzfsFileSystem_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxopenzfsfilesystem", "pulumi")
+}
+
+func TestAwsFsxOpenzfsFileSystem_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxopenzfsfilesystem", "terraform")
+}
+
+func TestAwsFsxWindowsFileSystem_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxwindowsfilesystem", "pulumi")
+}
+
+func TestAwsFsxWindowsFileSystem_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxwindowsfilesystem", "terraform")
+}
+
+func TestAwsFsxDataRepositoryAssociation_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxdatarepositoryassociation", "pulumi")
+}
+
+func TestAwsFsxDataRepositoryAssociation_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxdatarepositoryassociation", "terraform")
+}
+
+// --- AWS FSx for NetApp ONTAP (file system → SVM → volume) ---
+
+func TestAwsFsxOntapFileSystem_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxontapfilesystem", "pulumi")
+}
+
+func TestAwsFsxOntapFileSystem_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxontapfilesystem", "terraform")
+}
+
+func TestAwsFsxOntapStorageVirtualMachine_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxontapstoragevirtualmachine", "pulumi")
+}
+
+func TestAwsFsxOntapStorageVirtualMachine_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxontapstoragevirtualmachine", "terraform")
+}
+
+func TestAwsFsxOntapVolume_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxontapvolume", "pulumi")
+}
+
+func TestAwsFsxOntapVolume_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxontapvolume", "terraform")
+}
+
+// AwsS3ObjectSet: a minimal single-object lane plus a full-surface lane
+// (metadata/header breadth, checksum, SSE-S3 override, STANDARD_IA, website
+// redirect, force_destroy versioned purge), both riding the shared versioned
+// S3 bucket fixture.
+func TestAwsS3ObjectSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3objectset", "pulumi")
+}
+
+func TestAwsS3ObjectSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3objectset", "terraform")
+}
+
+// AwsSagemakerDomain: a required-only minimal lane plus a full-surface lane
+// (tag propagation, CloudTrail attribution, Docker, all four IAM-compatible
+// app baselines with idle shutdown, S3 sharing, both inheritance planes,
+// POSIX identity, Studio UI hiding, role-free Canvas governance), both with
+// homeEfsRetentionPolicy Delete for zero-orphan teardown.
+func TestAwsSagemakerDomain_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerdomain", "pulumi")
+}
+
+func TestAwsSagemakerDomain_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerdomain", "terraform")
 }
 
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.

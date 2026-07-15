@@ -24,24 +24,56 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsS3ObjectSetSpec defines the specification for uploading one or more objects to an AWS S3 bucket.
-// This component manages a collection of S3 objects in a single target bucket, supporting inline text content
-// or base64-encoded binary content. It is designed for configuration files, static assets, seed data,
-// and any scenario where objects need to be declaratively managed alongside infrastructure.
+// AwsS3ObjectSetSpec defines a set of S3 objects declaratively managed in a
+// single target bucket — configuration files, static website assets, seed
+// data, Lambda deployment artifacts, and any other content that should be
+// created, updated, and destroyed alongside the infrastructure that consumes
+// it.
+//
+// Each entry in `objects` is one `aws_s3_object`-equivalent upload: the object
+// key, its content (inline UTF-8 text or base64-encoded binary), and the full
+// per-object HTTP/storage surface (content headers, user metadata, storage
+// class, encryption override, checksum, Object Lock retention, canned ACL,
+// tags).
+//
+// Division of responsibility with AwsS3Bucket — read this before reaching for
+// the per-object security knobs:
+//   - Uniform posture belongs on the BUCKET. Default encryption (SSE algorithm,
+//     KMS key, bucket key), versioning, public-access blocking, and ownership
+//     controls are bucket-level settings on AwsS3Bucket, and S3 applies them to
+//     every uploaded object automatically.
+//   - The per-object `server_side_encryption` / `kms_key` / `bucket_key_enabled`
+//     / `acl` fields here are OVERRIDES for individual objects that must diverge
+//     from the bucket's posture. If every object in the set carries the same
+//     override, the setting is in the wrong place — move it to the bucket.
+//
+// Key behaviors:
+//   - `key` is the object's identity. Changing a key replaces that object
+//     (delete + create); changing only content updates it in place.
+//   - On a versioning-enabled bucket, destroying an object removes ALL of its
+//     versions.
+//   - Object Lock fields require the BUCKET to have been created with Object
+//     Lock enabled; on a regular bucket they fail at apply time — and so does
+//     `force_destroy`, whose only job is bypassing GOVERNANCE-mode retention
+//     during delete.
 type AwsS3ObjectSetSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The AWS region where the resource will be created.
+	// The AWS region where the target bucket lives. Must match the bucket's own
+	// region — S3 PutObject is a regional API.
 	// Example: "us-west-2", "eu-west-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// The target S3 bucket where objects will be uploaded.
-	// Can be a literal bucket name or a reference to an AwsS3Bucket component.
-	// When referencing an AwsS3Bucket, the bucket_id is resolved from status.outputs.bucket_id.
+	// The target S3 bucket for every object in the set.
+	// Can be a literal bucket name or a reference to an AwsS3Bucket component
+	// (resolved from status.outputs.bucket_id). The literal arm also accepts an
+	// access-point ARN or an S3 Express directory-bucket name for buckets
+	// managed outside this catalog.
 	Bucket *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=bucket,proto3" json:"bucket,omitempty"`
-	// The list of S3 objects to upload to the target bucket.
-	// At least one object must be specified.
+	// The objects to upload. At least one. Each object's `key` must be unique
+	// within the set — both engines key the underlying provider resources by it.
 	Objects []*AwsS3Object `protobuf:"bytes,3,rep,name=objects,proto3" json:"objects,omitempty"`
-	// Tags applied to all objects in the set.
-	// Individual object tags are merged with these, with object-level tags taking precedence.
+	// Tags applied to every object in the set.
+	// Individual object tags are merged on top, with object-level tags taking
+	// precedence on key collisions.
 	Tags          map[string]string `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -105,33 +137,148 @@ func (x *AwsS3ObjectSetSpec) GetTags() map[string]string {
 	return nil
 }
 
-// AwsS3Object defines a single S3 object to be uploaded.
+// AwsS3Object defines a single S3 object upload: identity (key), content
+// source, HTTP presentation headers, storage/encryption placement, integrity
+// checksum, Object Lock retention, and access control.
 type AwsS3Object struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The S3 object key (path within the bucket).
+	// The S3 object key — the object's full path within the bucket and its
+	// identity in this set. Changing the key replaces the object.
 	// Examples: "config/app.json", "assets/logo.png", "data/seed.csv"
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// The content source for the object. Exactly one must be specified.
+	// For content that lives in files at deploy time (build artifacts, large
+	// archives), stage it through a pipeline into the bucket instead — this
+	// component is for content that belongs IN the manifest.
 	//
 	// Types that are valid to be assigned to Source:
 	//
 	//	*AwsS3Object_Content
 	//	*AwsS3Object_ContentBase64
 	Source isAwsS3Object_Source `protobuf_oneof:"source"`
-	// The MIME content type of the object (e.g., "application/json", "text/html", "image/png").
+	// The MIME content type stored with the object and returned as the
+	// Content-Type header on every GET. Set it correctly for anything a
+	// browser will fetch (e.g. "text/html", "application/json", "image/png") —
+	// the default is the generic binary type, which browsers download instead
+	// of rendering.
 	// Default: application/octet-stream
 	ContentType *string `protobuf:"bytes,4,opt,name=content_type,json=contentType,proto3,oneof" json:"content_type,omitempty"`
-	// The caching behavior for the object.
-	// Example: "max-age=86400" for 24-hour caching, "no-cache" for no caching.
+	// The Cache-Control header stored with the object, governing CDN and
+	// browser caching. Examples: "max-age=86400" (cache for 24h),
+	// "no-cache" (revalidate every time), "public, max-age=31536000, immutable"
+	// (fingerprinted static assets).
 	CacheControl string `protobuf:"bytes,5,opt,name=cache_control,json=cacheControl,proto3" json:"cache_control,omitempty"`
-	// How the content is encoded (e.g., "gzip", "br").
-	// Set this if the content has been pre-compressed.
+	// The Content-Encoding header stored with the object. Set this when the
+	// content is pre-compressed (e.g. "gzip", "br") so clients decompress it
+	// transparently. The content itself must already be encoded — S3 does not
+	// compress.
 	ContentEncoding string `protobuf:"bytes,6,opt,name=content_encoding,json=contentEncoding,proto3" json:"content_encoding,omitempty"`
-	// Tags specific to this object. Merged with set-level tags (object tags take precedence).
-	Tags map[string]string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// The canned ACL for this object (e.g., "private", "public-read").
-	// If not specified, inherits the bucket's default ACL.
-	Acl           string `protobuf:"bytes,8,opt,name=acl,proto3" json:"acl,omitempty"`
+	// The Content-Disposition header stored with the object, controlling
+	// whether browsers render inline or download. Examples: "inline",
+	// "attachment; filename=\"report.pdf\"".
+	ContentDisposition string `protobuf:"bytes,7,opt,name=content_disposition,json=contentDisposition,proto3" json:"content_disposition,omitempty"`
+	// The Content-Language header stored with the object — the natural
+	// language(s) of the content, e.g. "en-US".
+	ContentLanguage string `protobuf:"bytes,8,opt,name=content_language,json=contentLanguage,proto3" json:"content_language,omitempty"`
+	// User-defined metadata stored with the object and returned as
+	// x-amz-meta-* headers. Keys must be lowercase (the S3 API lowercases them
+	// on storage; requiring lowercase here keeps the manifest identical to
+	// what reads back and avoids phantom drift). Note: metadata is immutable
+	// in S3 — changing it rewrites the object.
+	Metadata map[string]string `protobuf:"bytes,9,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The x-amz-website-redirect-location value: when the bucket is configured
+	// for static website hosting, a GET of this object's key redirects to the
+	// target instead of serving content — either another key in the same site
+	// ("/new-page.html") or an absolute URL ("https://example.com/moved").
+	// Stored but inert on buckets without website hosting.
+	WebsiteRedirect string `protobuf:"bytes,10,opt,name=website_redirect,json=websiteRedirect,proto3" json:"website_redirect,omitempty"`
+	// The storage class for the object, trading retrieval latency/cost against
+	// storage cost. Unset uses STANDARD.
+	//
+	//   - "STANDARD": general purpose; the default.
+	//   - "STANDARD_IA" / "ONEZONE_IA": infrequent access — cheaper storage,
+	//     per-GB retrieval fee, 30-day minimum billing (ONEZONE_IA is single-AZ).
+	//   - "INTELLIGENT_TIERING": automatic tiering by access pattern; the safe
+	//     choice when access patterns are unknown.
+	//   - "GLACIER_IR": archive with millisecond access; 90-day minimum.
+	//   - "GLACIER" / "DEEP_ARCHIVE": archive requiring asynchronous restore
+	//     before reads (minutes-to-hours / hours); 90/180-day minimums. Rarely
+	//     right for declaratively managed objects, which are typically read.
+	//   - "REDUCED_REDUNDANCY": legacy, not recommended.
+	//   - "EXPRESS_ONEZONE": S3 Express — valid only when the bucket is a
+	//     directory bucket (literal bucket arm).
+	//   - "OUTPOSTS" / "SNOW" / "FSX_OPENZFS" / "FSX_ONTAP": valid only when the
+	//     literal bucket arm targets the matching special infrastructure
+	//     (Outposts access point, Snow device, FSx-backed access point).
+	StorageClass string `protobuf:"bytes,11,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
+	// Per-object server-side encryption OVERRIDE. Leave unset to inherit the
+	// bucket's default encryption (the recommended posture — configure it on
+	// AwsS3Bucket). Set only for individual objects that must diverge.
+	//
+	//   - "AES256": SSE-S3 (S3-managed keys).
+	//   - "aws:kms": SSE-KMS with the key in `kms_key` (or the account's
+	//     aws/s3 key when no key is given).
+	//   - "aws:kms:dsse": dual-layer SSE-KMS (two independent encryption layers;
+	//     compliance-driven).
+	//   - "aws:fsx": valid only when the literal bucket arm targets an
+	//     FSx-backed access point.
+	ServerSideEncryption string `protobuf:"bytes,12,opt,name=server_side_encryption,json=serverSideEncryption,proto3" json:"server_side_encryption,omitempty"`
+	// The KMS key for SSE-KMS encryption of this object, as a key ARN.
+	// Can be a literal ARN or a reference to an AwsKmsKey component. Setting a
+	// key implies "aws:kms" encryption when `server_side_encryption` is unset;
+	// combining it with "AES256" is contradictory and rejected. The deploying
+	// principal needs kms:GenerateDataKey on the key.
+	KmsKey *v1.StringValueOrRef `protobuf:"bytes,13,opt,name=kms_key,json=kmsKey,proto3" json:"kms_key,omitempty"`
+	// Whether this object uses an S3 Bucket Key for SSE-KMS, batching KMS
+	// requests to cut KMS costs. Only meaningful with "aws:kms" encryption.
+	// Unset inherits the bucket's default; an explicit false opts this object
+	// out even when the bucket enables bucket keys.
+	BucketKeyEnabled *bool `protobuf:"varint,14,opt,name=bucket_key_enabled,json=bucketKeyEnabled,proto3,oneof" json:"bucket_key_enabled,omitempty"`
+	// The checksum algorithm S3 uses to verify upload integrity and store an
+	// additional object checksum (retrievable via GetObjectAttributes).
+	// "CRC64NVME" is AWS's current full-object recommendation; the SHA variants
+	// suit compliance regimes that mandate them. Unset relies on the default
+	// TLS/MD5 integrity protection only.
+	ChecksumAlgorithm string `protobuf:"bytes,15,opt,name=checksum_algorithm,json=checksumAlgorithm,proto3" json:"checksum_algorithm,omitempty"`
+	// Object Lock retention mode for this object version. Requires the BUCKET
+	// to have Object Lock enabled (an immutable create-time bucket setting)
+	// and must be paired with `object_lock_retain_until_date`.
+	//
+	//   - "GOVERNANCE": privileged principals (s3:BypassGovernanceRetention) can
+	//     override the retention.
+	//   - "COMPLIANCE": nobody — including the root user — can shorten it.
+	//     The object version genuinely cannot be deleted until the date passes;
+	//     destroy will fail until then.
+	ObjectLockMode string `protobuf:"bytes,16,opt,name=object_lock_mode,json=objectLockMode,proto3" json:"object_lock_mode,omitempty"`
+	// The date until which this object version is retained under
+	// `object_lock_mode`, as an RFC 3339 timestamp (e.g.
+	// "2027-01-01T00:00:00Z"). Required with, and only valid with,
+	// `object_lock_mode`.
+	ObjectLockRetainUntilDate string `protobuf:"bytes,17,opt,name=object_lock_retain_until_date,json=objectLockRetainUntilDate,proto3" json:"object_lock_retain_until_date,omitempty"`
+	// Object Lock legal hold for this object version — an indefinite deletion
+	// block independent of retention mode, toggled on ("ON") and off ("OFF")
+	// by principals with s3:PutObjectLegalHold. Requires an Object
+	// Lock-enabled bucket.
+	ObjectLockLegalHoldStatus string `protobuf:"bytes,18,opt,name=object_lock_legal_hold_status,json=objectLockLegalHoldStatus,proto3" json:"object_lock_legal_hold_status,omitempty"`
+	// Canned ACL for this object. Leave unset for every modern bucket:
+	// AwsS3Bucket's default ownership posture (BucketOwnerEnforced) DISABLES
+	// object ACLs, and setting one fails at apply time with
+	// AccessControlListNotSupported. Only buckets whose object_ownership is
+	// relaxed to BucketOwnerPreferred or ObjectWriter accept ACLs — a legacy
+	// pattern; prefer bucket policies for public access.
+	Acl string `protobuf:"bytes,19,opt,name=acl,proto3" json:"acl,omitempty"`
+	// Allow this object to be deleted even while under GOVERNANCE-mode Object
+	// Lock retention or a legal hold, by sending the governance-bypass flag
+	// with the delete (the deploying principal needs
+	// s3:BypassGovernanceRetention). ONLY valid on Object Lock-enabled
+	// buckets — S3 rejects the bypass flag on regular buckets, failing the
+	// destroy. Not needed for ordinary versioned-bucket cleanup: destroying an
+	// object always removes all of its versions. COMPLIANCE-mode retention
+	// cannot be bypassed by anyone.
+	ForceDestroy bool `protobuf:"varint,20,opt,name=force_destroy,json=forceDestroy,proto3" json:"force_destroy,omitempty"`
+	// Tags specific to this object. Merged with set-level tags (object tags
+	// take precedence on key collisions).
+	Tags          map[string]string `protobuf:"bytes,21,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -219,11 +366,88 @@ func (x *AwsS3Object) GetContentEncoding() string {
 	return ""
 }
 
-func (x *AwsS3Object) GetTags() map[string]string {
+func (x *AwsS3Object) GetContentDisposition() string {
 	if x != nil {
-		return x.Tags
+		return x.ContentDisposition
+	}
+	return ""
+}
+
+func (x *AwsS3Object) GetContentLanguage() string {
+	if x != nil {
+		return x.ContentLanguage
+	}
+	return ""
+}
+
+func (x *AwsS3Object) GetMetadata() map[string]string {
+	if x != nil {
+		return x.Metadata
 	}
 	return nil
+}
+
+func (x *AwsS3Object) GetWebsiteRedirect() string {
+	if x != nil {
+		return x.WebsiteRedirect
+	}
+	return ""
+}
+
+func (x *AwsS3Object) GetStorageClass() string {
+	if x != nil {
+		return x.StorageClass
+	}
+	return ""
+}
+
+func (x *AwsS3Object) GetServerSideEncryption() string {
+	if x != nil {
+		return x.ServerSideEncryption
+	}
+	return ""
+}
+
+func (x *AwsS3Object) GetKmsKey() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KmsKey
+	}
+	return nil
+}
+
+func (x *AwsS3Object) GetBucketKeyEnabled() bool {
+	if x != nil && x.BucketKeyEnabled != nil {
+		return *x.BucketKeyEnabled
+	}
+	return false
+}
+
+func (x *AwsS3Object) GetChecksumAlgorithm() string {
+	if x != nil {
+		return x.ChecksumAlgorithm
+	}
+	return ""
+}
+
+func (x *AwsS3Object) GetObjectLockMode() string {
+	if x != nil {
+		return x.ObjectLockMode
+	}
+	return ""
+}
+
+func (x *AwsS3Object) GetObjectLockRetainUntilDate() string {
+	if x != nil {
+		return x.ObjectLockRetainUntilDate
+	}
+	return ""
+}
+
+func (x *AwsS3Object) GetObjectLockLegalHoldStatus() string {
+	if x != nil {
+		return x.ObjectLockLegalHoldStatus
+	}
+	return ""
 }
 
 func (x *AwsS3Object) GetAcl() string {
@@ -233,19 +457,34 @@ func (x *AwsS3Object) GetAcl() string {
 	return ""
 }
 
+func (x *AwsS3Object) GetForceDestroy() bool {
+	if x != nil {
+		return x.ForceDestroy
+	}
+	return false
+}
+
+func (x *AwsS3Object) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 type isAwsS3Object_Source interface {
 	isAwsS3Object_Source()
 }
 
 type AwsS3Object_Content struct {
-	// Inline UTF-8 text content for the object.
-	// Suitable for configuration files, JSON, YAML, HTML, and other text formats.
+	// Inline UTF-8 text content.
+	// Suitable for configuration files, JSON, YAML, HTML, and other text.
 	Content string `protobuf:"bytes,2,opt,name=content,proto3,oneof"`
 }
 
 type AwsS3Object_ContentBase64 struct {
-	// Base64-encoded binary content for the object.
-	// Suitable for images, compiled assets, or any binary data.
+	// Base64-encoded binary content.
+	// Suitable for images, zip archives, or any binary payload small enough
+	// to carry in a manifest.
 	ContentBase64 string `protobuf:"bytes,3,opt,name=content_base64,json=contentBase64,proto3,oneof"`
 }
 
@@ -265,22 +504,50 @@ const file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_rawDesc = "" +
 	"\x04tags\x18\x04 \x03(\v2H.dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x84\x05\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x80\x1c\n" +
 	"\vAwsS3Object\x12\x19\n" +
 	"\x03key\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x03key\x12\x1a\n" +
 	"\acontent\x18\x02 \x01(\tH\x00R\acontent\x12'\n" +
 	"\x0econtent_base64\x18\x03 \x01(\tH\x00R\rcontentBase64\x12D\n" +
 	"\fcontent_type\x18\x04 \x01(\tB\x1c\x8a\xa6\x1d\x18application/octet-streamH\x01R\vcontentType\x88\x01\x01\x12#\n" +
 	"\rcache_control\x18\x05 \x01(\tR\fcacheControl\x12)\n" +
-	"\x10content_encoding\x18\x06 \x01(\tR\x0fcontentEncoding\x12U\n" +
-	"\x04tags\x18\a \x03(\v2A.dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.TagsEntryR\x04tags\x12\x10\n" +
-	"\x03acl\x18\b \x01(\tR\x03acl\x1a7\n" +
+	"\x10content_encoding\x18\x06 \x01(\tR\x0fcontentEncoding\x12/\n" +
+	"\x13content_disposition\x18\a \x01(\tR\x12contentDisposition\x12)\n" +
+	"\x10content_language\x18\b \x01(\tR\x0fcontentLanguage\x12x\n" +
+	"\bmetadata\x18\t \x03(\v2E.dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.MetadataEntryB\x15\xbaH\x12\x9a\x01\x0f\"\rr\v2\t^[^A-Z]*$R\bmetadata\x12)\n" +
+	"\x10website_redirect\x18\n" +
+	" \x01(\tR\x0fwebsiteRedirect\x12\xe5\x03\n" +
+	"\rstorage_class\x18\v \x01(\tB\xbf\x03\xbaH\xbb\x03\xba\x01\xb7\x03\n" +
+	"\x14object.storage_class\x12\xc3\x01storage_class must be one of STANDARD, REDUCED_REDUNDANCY, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER, GLACIER_IR, DEEP_ARCHIVE, EXPRESS_ONEZONE, OUTPOSTS, SNOW, FSX_OPENZFS, FSX_ONTAP\x1a\xd8\x01this == '' || this in ['STANDARD', 'REDUCED_REDUNDANCY', 'STANDARD_IA', 'ONEZONE_IA', 'INTELLIGENT_TIERING', 'GLACIER', 'GLACIER_IR', 'DEEP_ARCHIVE', 'EXPRESS_ONEZONE', 'OUTPOSTS', 'SNOW', 'FSX_OPENZFS', 'FSX_ONTAP']R\fstorageClass\x12\xf4\x01\n" +
+	"\x16server_side_encryption\x18\f \x01(\tB\xbd\x01\xbaH\xb9\x01\xba\x01\xb5\x01\n" +
+	"\x1dobject.server_side_encryption\x12Lserver_side_encryption must be one of AES256, aws:kms, aws:kms:dsse, aws:fsx\x1aFthis == '' || this in ['AES256', 'aws:kms', 'aws:kms:dsse', 'aws:fsx']R\x14serverSideEncryption\x12l\n" +
+	"\akms_key\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x06kmsKey\x121\n" +
+	"\x12bucket_key_enabled\x18\x0e \x01(\bH\x02R\x10bucketKeyEnabled\x88\x01\x01\x12\xe7\x01\n" +
+	"\x12checksum_algorithm\x18\x0f \x01(\tB\xb7\x01\xbaH\xb3\x01\xba\x01\xaf\x01\n" +
+	"\x19object.checksum_algorithm\x12Hchecksum_algorithm must be one of CRC32, CRC32C, CRC64NVME, SHA1, SHA256\x1aHthis == '' || this in ['CRC32', 'CRC32C', 'CRC64NVME', 'SHA1', 'SHA256']R\x11checksumAlgorithm\x12\xb3\x01\n" +
+	"\x10object_lock_mode\x18\x10 \x01(\tB\x88\x01\xbaH\x84\x01\xba\x01\x80\x01\n" +
+	"\x17object.object_lock_mode\x121object_lock_mode must be GOVERNANCE or COMPLIANCE\x1a2this == '' || this in ['GOVERNANCE', 'COMPLIANCE']R\x0eobjectLockMode\x12\xba\x02\n" +
+	"\x1dobject_lock_retain_until_date\x18\x11 \x01(\tB\xf7\x01\xbaH\xf3\x01\xba\x01\xef\x01\n" +
+	"+object.object_lock_retain_until_date.format\x12Vobject_lock_retain_until_date must be an RFC 3339 timestamp, e.g. 2027-01-01T00:00:00Z\x1ahthis == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')R\x19objectLockRetainUntilDate\x12\xc5\x01\n" +
+	"\x1dobject_lock_legal_hold_status\x18\x12 \x01(\tB\x82\x01\xbaH\x7f\xba\x01|\n" +
+	"$object.object_lock_legal_hold_status\x12/object_lock_legal_hold_status must be ON or OFF\x1a#this == '' || this in ['ON', 'OFF']R\x19objectLockLegalHoldStatus\x12\xd6\x02\n" +
+	"\x03acl\x18\x13 \x01(\tB\xc3\x02\xbaH\xbf\x02\xba\x01\xbb\x02\n" +
+	"\n" +
+	"object.acl\x12\x8b\x01acl must be one of private, public-read, public-read-write, authenticated-read, aws-exec-read, bucket-owner-read, bucket-owner-full-control\x1a\x9e\x01this == '' || this in ['private', 'public-read', 'public-read-write', 'authenticated-read', 'aws-exec-read', 'bucket-owner-read', 'bucket-owner-full-control']R\x03acl\x12#\n" +
+	"\rforce_destroy\x18\x14 \x01(\bR\fforceDestroy\x12U\n" +
+	"\x04tags\x18\x15 \x03(\v2A.dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.TagsEntryR\x04tags\x1a;\n" +
+	"\rMetadataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc1\x01\xbaH\xbd\x01\x1a\xba\x01\n" +
-	"\x16object.source.required\x12:Exactly one of content or content_base64 must be specified\x1ad(has(this.content) && this.content != '') || (has(this.content_base64) && this.content_base64 != '')B\b\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xd7\x04\xbaH\xd3\x04\x1a\xba\x01\n" +
+	"\x16object.source.required\x12:Exactly one of content or content_base64 must be specified\x1ad(has(this.content) && this.content != '') || (has(this.content_base64) && this.content_base64 != '')\x1a\xb2\x01\n" +
+	"\x1aobject.object_lock.pairing\x12Gobject_lock_mode and object_lock_retain_until_date must be set together\x1aK(this.object_lock_mode == '') == (this.object_lock_retain_until_date == '')\x1a\xde\x01\n" +
+	"\x1fobject.kms_key.requires_kms_sse\x12Mkms_key requires server_side_encryption to be unset, aws:kms, or aws:kms:dsse\x1al!has(this.kms_key) || this.server_side_encryption == '' || this.server_side_encryption.startsWith('aws:kms')B\b\n" +
 	"\x06sourceB\x0f\n" +
-	"\r_content_typeB\xe9\x02\n" +
+	"\r_content_typeB\x15\n" +
+	"\x13_bucket_key_enabledB\xe9\x02\n" +
 	".com.dev.planton.provider.aws.awss3objectset.v1B\tSpecProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3objectset/v1;awss3objectsetv1\xa2\x02\x05DPPAA\xaa\x02*Dev.Planton.Provider.Aws.Awss3objectset.V1\xca\x02*Dev\\Planton\\Provider\\Aws\\Awss3objectset\\V1\xe2\x026Dev\\Planton\\Provider\\Aws\\Awss3objectset\\V1\\GPBMetadata\xea\x02/Dev::Planton::Provider::Aws::Awss3objectset::V1b\x06proto3"
 
 var (
@@ -295,24 +562,27 @@ func file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_rawDescGZIP() []
 	return file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_goTypes = []any{
 	(*AwsS3ObjectSetSpec)(nil),  // 0: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetSpec
 	(*AwsS3Object)(nil),         // 1: dev.planton.provider.aws.awss3objectset.v1.AwsS3Object
 	nil,                         // 2: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetSpec.TagsEntry
-	nil,                         // 3: dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.TagsEntry
-	(*v1.StringValueOrRef)(nil), // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                         // 3: dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.MetadataEntry
+	nil,                         // 4: dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetSpec.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 0: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetSpec.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 1: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetSpec.objects:type_name -> dev.planton.provider.aws.awss3objectset.v1.AwsS3Object
 	2, // 2: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetSpec.tags:type_name -> dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetSpec.TagsEntry
-	3, // 3: dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.tags:type_name -> dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.TagsEntry
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 3: dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.metadata:type_name -> dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.MetadataEntry
+	5, // 4: dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 5: dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.tags:type_name -> dev.planton.provider.aws.awss3objectset.v1.AwsS3Object.TagsEntry
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_init() }
@@ -330,7 +600,7 @@ func file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

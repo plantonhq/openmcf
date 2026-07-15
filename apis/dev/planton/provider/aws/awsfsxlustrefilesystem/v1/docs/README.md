@@ -150,7 +150,15 @@ PERSISTENT file systems require `per_unit_storage_throughput`:
 - **500 MB/s/TiB:** High-performance tier for ML training and HPC.
 - **1000 MB/s/TiB:** Maximum performance. Use when throughput is the primary bottleneck (distributed training across many GPUs).
 
-**ForceNew:** Per-unit throughput cannot be changed after creation. To change the throughput tier, create a new file system and migrate data.
+Per-unit throughput can be changed in place on PERSISTENT_2 (the file system stays online while throughput scales), unless `efa_enabled` pins it. On PERSISTENT_1 it is a create-time decision.
+
+### INTELLIGENT_TIERING Throughput
+
+The INTELLIGENT_TIERING storage class provisions throughput absolutely instead of per-TiB: `throughput_capacity` in multiples of 4000 MB/s. Reads are served from a provisioned SSD read cache (`data_read_cache_configuration`); the cache is sized by AWS (`PROPORTIONAL_TO_THROUGHPUT_CAPACITY`), pinned by you (`USER_PROVISIONED`, 32–131072 GiB per 4000 MB/s of throughput), or omitted (`NO_CACHE` — every read pays tiered-storage latency).
+
+### EFA and GPUDirect Storage
+
+`efa_enabled` adds Elastic Fabric Adapter and GPUDirect Storage support on PERSISTENT_2 file systems with `metadata_configuration`, giving GPU instances an OS-bypass data path. It is a create-time decision (ForceNew), requires an EFA-enabled security group in `security_group_ids`, and pins `per_unit_storage_throughput` while enabled.
 
 ### Read vs Write Throughput
 
@@ -160,25 +168,26 @@ FSx for Lustre reads from SSD/HDD storage (fast) and writes to both active and r
 
 ## 5. S3 Data Repository Integration
 
-### Legacy Import/Export (SCRATCH only)
+### Legacy Import/Export (not PERSISTENT_2)
 
-The `import_path` and `export_path` fields provide legacy S3 integration for SCRATCH file systems:
+The `import_path`, `export_path`, `auto_import_policy`, and `imported_file_chunk_size` fields provide the legacy, single-link S3 integration for SCRATCH_1, SCRATCH_2, and PERSISTENT_1 file systems:
 
 - **import_path** — S3 URI (e.g., `s3://bucket/prefix/`). At creation, FSx imports S3 object metadata into the Lustre namespace. File data is **lazy-loaded** on first access (Hierarchical Storage Management — HSM).
-- **export_path** — S3 URI for exporting changes. Requires `import_path`. New and modified files are automatically exported to S3.
-- Both fields are **ForceNew**. Changing them requires replacing the file system.
-- Only supported on SCRATCH_1 and SCRATCH_2.
+- **export_path** — S3 URI for exporting changes. Requires `import_path` and the same bucket. Set equal to `import_path` to overwrite objects in place.
+- **auto_import_policy** — how the namespace tracks bucket changes after creation: `NONE` (creation-time listing only), `NEW`, `NEW_CHANGED`, or `NEW_CHANGED_DELETED`.
+- **imported_file_chunk_size** — the stripe size (MiB of data per physical disk) for imported files; 1–512000, AWS default 1024.
+- The whole arm is **ForceNew** and not supported on PERSISTENT_2.
 
-### Data Repository Associations (PERSISTENT)
+### Data Repository Associations
 
-For PERSISTENT file systems, S3 integration uses data repository associations (DRAs), which are **separate resources** not part of this spec:
+`AwsFsxDataRepositoryAssociation` is the modern, first-class S3 link — and the only one available on PERSISTENT_2:
 
-- DRAs link a Lustre directory path to an S3 bucket/prefix.
-- Multiple DRAs can be attached to a single file system (up to 8 per file system, max 25 per account).
-- DRAs support auto-import (S3 → Lustre) and auto-export (Lustre → S3) modes.
-- DRAs can be created, modified, and deleted without replacing the file system.
+- Each association links a Lustre directory path to an S3 bucket/prefix.
+- Multiple associations attach to a single file system (up to 8 per file system, max 25 per account).
+- Associations carry bidirectional auto-import (S3 → Lustre) and auto-export (Lustre → S3) event policies.
+- Associations are created, modified, and deleted without touching the file system.
 
-**Why separate:** DRAs have their own lifecycle (creation, update, deletion) independent of the file system. Managing them as separate resources allows flexible data pipeline configurations without file system replacement.
+**Why a separate resource:** associations have their own lifecycle, are many-per-filesystem, and reference the file system by ID — a first-class composable node rather than an embedded block.
 
 ### HSM (Hierarchical Storage Management)
 
@@ -582,16 +591,18 @@ Enable `data_compression_type: LZ4` to reduce effective storage consumption. Com
 |-------|--------------|
 | **Protocol** | Lustre parallel file system; POSIX-compliant; sub-ms latency. |
 | **Deployment types** | SCRATCH_2 for ephemeral; PERSISTENT_2 for production; PERSISTENT_1 for HDD. |
-| **Storage** | Min 1200 GiB; increments vary by type. Increase OK, decrease never. |
-| **Throughput** | Fixed per-unit (ForceNew). Scale aggregate by adding capacity. |
-| **S3 integration** | Legacy import/export for SCRATCH; DRAs for PERSISTENT. |
+| **Storage classes** | SSD provisioned; HDD provisioned (PERSISTENT_1 + drive cache); INTELLIGENT_TIERING elastic (PERSISTENT_2). |
+| **Storage** | Min 1200 GiB provisioned; increments vary by type. Increase OK, decrease never. |
+| **Throughput** | Per-TiB for provisioned storage (in-place on PERSISTENT_2); absolute multiples of 4000 MB/s for INTELLIGENT_TIERING. |
+| **S3 integration** | Legacy in-spec link (not PERSISTENT_2); `AwsFsxDataRepositoryAssociation` everywhere, exclusively on PERSISTENT_2. |
 | **Encryption** | Always encrypted at rest. Optional customer-managed KMS. |
-| **Backups** | PERSISTENT only. 0–90 day retention. Incremental. |
-| **Metadata IOPS** | PERSISTENT_2 only. AUTOMATIC or USER_PROVISIONED. |
+| **Backups** | PERSISTENT only. 0–90 day retention. Incremental. Restore via `backup_id`. |
+| **Metadata IOPS** | PERSISTENT_2 only. AUTOMATIC or USER_PROVISIONED (grows in place). |
+| **Security** | Root squash (UID:GID + exempt NIDs); EFA/GPUDirect on PERSISTENT_2. |
 | **Networking** | Single-AZ, one subnet, TCP 988 + 1018–1023. |
 | **Mount** | `mount -t lustre <dns_name>@tcp:/<mount_name> /mnt/fsx` |
 
-For API reference and examples, see the parent [README.md](../README.md) and [examples.md](../examples.md).
+For API reference and examples, see the parent [README.md](../README.md).
 
 ---
 
@@ -601,16 +612,24 @@ For API reference and examples, see the parent [README.md](../README.md) and [ex
 |------------|---------|----------|
 | region | (required) | Yes |
 | deployment_type | SCRATCH_2 | Yes |
-| storage_capacity_gib | (required) | No (increase only) |
+| storage_capacity_gib | (required unless backup/INTELLIGENT_TIERING) | No (increase only; SCRATCH_1 growth replaces) |
 | storage_type | SSD | Yes |
-| per_unit_storage_throughput | (required for PERSISTENT) | Yes |
+| per_unit_storage_throughput | (required for provisioned PERSISTENT) | No on PERSISTENT_2 (unless EFA); Yes on PERSISTENT_1 |
+| throughput_capacity | (required for INTELLIGENT_TIERING) | No |
 | data_compression_type | NONE | No |
-| file_system_type_version | (latest) | Yes |
+| file_system_type_version | (latest) | Upgrade in place; downgrade replaces |
+| efa_enabled | false | Yes |
+| drive_cache_type | (required for HDD) | Yes |
+| data_read_cache_configuration | (required for INTELLIGENT_TIERING) | No |
 | subnet_id | (required) | Yes |
 | security_group_ids | (optional) | Yes |
 | kms_key_id | AWS-managed | Yes |
-| import_path | (none) | Yes |
-| export_path | (none) | Yes |
+| backup_id | (none) | Yes |
+| import_path / export_path | (none) | Yes |
+| auto_import_policy | NONE | No |
+| imported_file_chunk_size | 1024 | Yes |
+| root_squash_configuration | (none) | No |
 | copy_tags_to_backups | false | Yes |
 | automatic_backup_retention_days | 0 | No |
 | skip_final_backup | true | No |
+| final_backup_tags | (none) | No |

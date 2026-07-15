@@ -13,3 +13,14 @@ metadata:
 spec:
   region: us-west-2
   retentionInDays: 30
+  metricFilters:
+    - name: error-count
+      pattern: "ERROR"
+      transformation:
+        metricName: ErrorCount
+        metricNamespace: TestApp/Errors
+        metricValue: "1"
+        defaultValue: 0
+  fieldIndexPolicy:
+    Fields:
+      - requestId

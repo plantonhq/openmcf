@@ -1,0 +1,180 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awstransitgatewayroutetable.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// AwsTransitGatewayRouteTableSpec defines the desired configuration for an
+// AWS Transit Gateway route table -- an isolated routing domain inside a
+// Transit Gateway hub.
+//
+// A route table is deliberately its own resource rather than a field on the
+// gateway: a gateway carries many route tables (one per routing domain), and
+// the table is the unit that segmentation policy hangs off. The canonical
+// segmented topology -- production spokes that reach shared services but not
+// each other, an inspection VPC that hair-pins all inter-spoke traffic --
+// is built from exactly this resource plus attachments created with their
+// default-table membership turned off.
+//
+// The table OWNS its routing domain's membership and routes, folded here
+// because none of them exists independently of the table:
+// - associations: which attachments USE this table for their outbound
+//   lookups. An attachment is associated with at most ONE table -- AWS
+//   rejects a second association at apply time, and since documents cannot
+//   see each other, that uniqueness cannot be validated earlier.
+// - propagations: which attachments ADVERTISE their routes into this table
+//   (an attachment can propagate to many tables).
+// - routes: static routes -- a destination CIDR sent to one attachment, or
+//   blackholed to drop traffic (the segmentation kill switch).
+// - prefix_list_references: route a managed prefix list's whole CIDR set
+//   via one attachment (or blackhole it) instead of maintaining per-CIDR
+//   static routes.
+//
+// Membership entries reference AwsTransitGatewayVpcAttachment resources by
+// default, and accept literal attachment IDs for attachments created
+// outside this resource graph -- VPN connections, Direct Connect gateways,
+// and peering attachments all surface as Transit Gateway attachments that a
+// routing domain must be able to include.
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsTransitGatewayRouteTableSpec {
+  // The AWS region where the route table will be created. Must match the
+  // Transit Gateway's region.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The Transit Gateway this route table belongs to. Create-time immutable:
+  // changing it replaces the table (and everything folded in it). Reference
+  // an AwsTransitGateway's transit_gateway_id output or pass a literal ID.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef transit_gateway_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsTransitGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.transit_gateway_id"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Routing domain membership
+  // ---------------------------------------------------------------------------
+
+  // Attachments ASSOCIATED with this table: their outbound traffic is looked
+  // up here. An attachment can be associated with at most ONE route table
+  // across the whole gateway (AWS enforces this at apply time), so an
+  // attachment listed here must have its default_route_table_association
+  // turned off and must not appear in any other table's associations.
+  // Reference AwsTransitGatewayVpcAttachment attachment_id outputs, or pass
+  // literal attachment IDs for VPN / Direct Connect / peering attachments
+  // created outside the resource graph.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef associations = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsTransitGatewayVpcAttachment,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.attachment_id"
+  ];
+
+  // Attachments that PROPAGATE their routes into this table: their CIDRs
+  // (VPC CIDRs for VPC attachments, BGP-learned routes for VPN and Direct
+  // Connect) appear here automatically and track changes. An attachment can
+  // propagate to many tables. Reference AwsTransitGatewayVpcAttachment
+  // attachment_id outputs, or pass literal attachment IDs for attachments
+  // created outside the resource graph.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef propagations = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsTransitGatewayVpcAttachment,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.attachment_id"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Static routes
+  // ---------------------------------------------------------------------------
+
+  // Static routes in this table. Statics win over propagated routes for the
+  // same destination -- use them to steer specific prefixes through an
+  // inspection attachment, provide a default route (0.0.0.0/0) toward an
+  // egress VPC, or blackhole traffic that must never cross the hub.
+  // Destination CIDRs must be unique within the table.
+  repeated AwsTransitGatewayRouteTableRoute routes = 5;
+
+  // Managed prefix list references. Each entry routes the entire CIDR set
+  // of a customer-managed or AWS-managed prefix list via one attachment (or
+  // blackholes it), tracking the list's membership as it changes --
+  // operationally safer than mirroring a team's CIDR inventory as static
+  // routes. Prefix list IDs must be unique within the table.
+  repeated AwsTransitGatewayRouteTablePrefixListReference prefix_list_references = 6;
+
+  // Static route destinations must be unique within the table (AWS rejects
+  // duplicates at apply; both engines key each route by its destination).
+  option (buf.validate.message).cel = {
+    id: "route_destinations_unique"
+    message: "routes must have unique destination_cidr_block values"
+    expression: "this.routes.map(r, r.destination_cidr_block).unique()"
+  };
+
+  // Prefix list IDs must be unique within the table (both engines key each
+  // reference by its prefix list ID).
+  option (buf.validate.message).cel = {
+    id: "prefix_list_ids_unique"
+    message: "prefix_list_references must have unique prefix_list_id values"
+    expression: "this.prefix_list_references.map(p, p.prefix_list_id).unique()"
+  };
+}
+
+// AwsTransitGatewayRouteTableRoute is one static route: a destination CIDR
+// sent to one attachment, or blackholed.
+message AwsTransitGatewayRouteTableRoute {
+  // Destination CIDR block (IPv4 or IPv6), e.g. "10.20.0.0/16" or
+  // "0.0.0.0/0" for a default route. Unique within the table. AWS uses
+  // longest-prefix match across static and propagated routes, with statics
+  // winning ties.
+  string destination_cidr_block = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The attachment traffic to this destination is forwarded through.
+  // Required unless blackhole is true. Reference an
+  // AwsTransitGatewayVpcAttachment's attachment_id output, or pass a
+  // literal attachment ID (VPN / Direct Connect / peering).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef attachment_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsTransitGatewayVpcAttachment,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.attachment_id"
+  ];
+
+  // Drop traffic to this destination instead of forwarding it. Mutually
+  // exclusive with attachment_id. Blackholes are the segmentation kill
+  // switch: a spoke's CIDR blackholed in another domain's table can never
+  // be reached from that domain, regardless of propagations.
+  bool blackhole = 3;
+
+  // Exactly one target: an attachment, or the blackhole.
+  option (buf.validate.message).cel = {
+    id: "route_target_exactly_one"
+    message: "exactly one of attachment_id or blackhole must be set"
+    expression: "this.blackhole ? !has(this.attachment_id) : has(this.attachment_id)"
+  };
+}
+
+// AwsTransitGatewayRouteTablePrefixListReference routes a managed prefix
+// list's entire CIDR set via one attachment, or blackholes it.
+message AwsTransitGatewayRouteTablePrefixListReference {
+  // The managed prefix list ID (e.g. "pl-0123456789abcdef0"). Unique within
+  // the table. Both customer-managed and AWS-managed prefix lists are
+  // accepted; the list's CIDR entries become routes that track membership
+  // changes automatically.
+  string prefix_list_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The attachment traffic to the prefix list's CIDRs is forwarded through.
+  // Required unless blackhole is true. Reference an
+  // AwsTransitGatewayVpcAttachment's attachment_id output, or pass a
+  // literal attachment ID.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef attachment_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsTransitGatewayVpcAttachment,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.attachment_id"
+  ];
+
+  // Drop traffic to the prefix list's CIDRs instead of forwarding it.
+  // Mutually exclusive with attachment_id.
+  bool blackhole = 3;
+
+  // Exactly one target: an attachment, or the blackhole.
+  option (buf.validate.message).cel = {
+    id: "prefix_list_target_exactly_one"
+    message: "exactly one of attachment_id or blackhole must be set"
+    expression: "this.blackhole ? !has(this.attachment_id) : has(this.attachment_id)"
+  };
+}

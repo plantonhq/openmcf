@@ -1,38 +1,33 @@
 variable "metadata" {
-  description = "Resource metadata including name and labels"
+  description = "Cloud resource metadata"
   type = object({
     name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "AWS Route53 DNS Record specification"
+  description = "AwsRoute53DnsRecord specification"
   type = object({
-    # The AWS region where the resource will be created.
     region = string
-    # zone_id as StringValueOrRef - for Terraform we accept the resolved value
-    # The Planton CLI resolves value_from references before passing to Terraform
-    zone_id = object({
-      value = optional(string)
-    })
+    zone_id = string
     name = string
     type = string
-    ttl  = optional(number, 300)
+    ttl = optional(number, 0)
     values = optional(list(string), [])
     alias_target = optional(object({
-      # dns_name as StringValueOrRef - resolved by CLI
-      dns_name = object({
-        value = optional(string)
-      })
-      # zone_id as StringValueOrRef - resolved by CLI
-      zone_id = object({
-        value = optional(string)
-      })
+      dns_name = string
+      zone_id = string
       evaluate_target_health = optional(bool, false)
     }))
     routing_policy = optional(object({
       weighted = optional(object({
-        weight = number
+        weight = optional(number, 0)
       }))
       latency = optional(object({
         region = string
@@ -41,12 +36,27 @@ variable "spec" {
         failover_type = string
       }))
       geolocation = optional(object({
-        continent   = optional(string)
-        country     = optional(string)
-        subdivision = optional(string)
+        continent = optional(string, "")
+        country = optional(string, "")
+        subdivision = optional(string, "")
       }))
+      geoproximity = optional(object({
+        aws_region = optional(string, "")
+        coordinates = optional(object({
+          latitude = string
+          longitude = string
+        }))
+        local_zone_group = optional(string, "")
+        bias = optional(number, 0)
+      }))
+      cidr = optional(object({
+        collection_id = string
+        location_name = string
+      }))
+      multivalue_answer = optional(object({}))
     }))
-    health_check_id = optional(string)
-    set_identifier  = optional(string)
+    health_check_id = optional(string, "")
+    set_identifier = optional(string, "")
+    allow_overwrite = optional(bool, false)
   })
 }

@@ -1,255 +1,187 @@
 # AWS Client VPN
 
-Deploys an AWS Client VPN endpoint attached to a VPC, with subnet associations, certificate-based mutual TLS authentication, and configurable authorization rules. The component provisions a managed OpenVPN server that enables clients to securely connect to private VPC resources.
+Creates an AWS Client VPN endpoint — the managed OpenVPN server for secure
+remote access into AWS networks — with its folded target network
+associations, authorization rules, and routes, so one manifest declares
+who may connect, what they may reach, and how traffic flows.
 
 ## What Gets Created
 
 When you deploy an AwsClientVpn resource, Planton provisions:
 
-- **Client VPN Endpoint** — an `aws:ec2clientvpn:Endpoint` resource configured with mutual TLS authentication, the specified server certificate, client CIDR block, and connection logging settings
-- **Network Associations** — one `aws:ec2clientvpn:NetworkAssociation` per subnet in the `subnets` list, linking the VPN endpoint to each subnet's Availability Zone
-- **Authorization Rules** — one `aws:ec2clientvpn:AuthorizationRule` per entry in `cidrAuthorizationRules`, granting all VPN clients access to the specified network CIDR ranges
+- **Client VPN endpoint** — an `aws_ec2_client_vpn_endpoint` /
+  `ec2clientvpn.Endpoint` carrying authentication, tunnel shape, session,
+  logging, and client-experience settings
+- **Target network associations** — one per entry in `subnetIds`, each
+  attaching the endpoint to that subnet's Availability Zone (associations
+  bill hourly and take several minutes to attach/detach)
+- **Authorization rules** — one per entry in `authorizationRules`; nothing
+  is reachable until a rule authorizes it
+- **Routes** — one per entry in `routes`, beyond the per-VPC route AWS
+  auto-creates for each associated subnet
 
 ## Prerequisites
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **A VPC** with at least one subnet for the VPN endpoint association
-- **An ACM server certificate** for TLS termination (the certificate must be in the same AWS region)
-- **A client certificate** signed by the same CA, distributed to each VPN user
-- **A non-overlapping CIDR block** for client IP assignment (between /12 and /22)
+- **AWS credentials** configured via the Planton provider config (keyless
+  SSO/OIDC).
+- **An ACM server certificate** in the same region (reference an
+  AwsCertManagerCert; an imported self-signed certificate works for
+  private setups).
+- **For certificate authentication** — a client CA chain certificate in
+  ACM (may be the same imported certificate in a self-signed setup).
+- **For federated authentication** — an IAM SAML identity provider.
 
 ## Quick Start
-
-Create a file `client-vpn.yaml`:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsClientVpn
 metadata:
-  name: my-vpn
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsClientVpn.my-vpn
+  name: corp-access
 spec:
-  region: us-east-1
-  vpcId: vpc-0a1b2c3d4e5f00001
-  subnets:
-    - subnet-0a1b2c3d4e5f00001
-  clientCidrBlock: "10.100.0.0/22"
-  serverCertificateArn: arn:aws:acm:us-east-1:123456789012:certificate/abc-12345
+  region: us-west-2
+  authenticationOptions:
+    - type: certificate-authentication
+      rootCertificateChainArn:
+        valueFrom:
+          kind: AwsCertManagerCert
+          name: vpn-ca
+          fieldPath: status.outputs.cert_arn
+  serverCertificateArn:
+    valueFrom:
+      kind: AwsCertManagerCert
+      name: vpn-server
+      fieldPath: status.outputs.cert_arn
+  clientCidrBlock: 10.100.0.0/22
+  splitTunnel: true
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: main-vpc
+      fieldPath: status.outputs.vpc_id
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-a
+        fieldPath: status.outputs.subnet_id
+  authorizationRules:
+    - targetNetworkCidr: 10.0.0.0/16
+      authorizeAllGroups: true
+      description: reach the whole VPC
+  connectionLog:
+    cloudwatchLogGroup:
+      valueFrom:
+        kind: AwsCloudwatchLogGroup
+        name: vpn-logs
+        fieldPath: status.outputs.log_group_name
 ```
-
-Deploy:
-
-```shell
-planton apply -f client-vpn.yaml
-```
-
-This creates a Client VPN endpoint with certificate-based authentication, split-tunnel routing, TCP transport on port 443, and a single subnet association.
 
 ## Configuration Reference
 
 ### Required Fields
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the Client VPN endpoint will be created (e.g., `us-east-1`, `eu-west-1`). | Required; non-empty |
-| `vpcId` | `StringValueOrRef` | Target VPC for the Client VPN endpoint. Can reference an AwsVpc resource via `valueFrom`. | Required |
-| `subnets` | `StringValueOrRef[]` | Subnet IDs to associate as target networks. Each enables access in that subnet's Availability Zone. Can reference AwsVpc resources via `valueFrom`. | Minimum 1 item |
-| `clientCidrBlock` | `string` | IPv4 CIDR for client IP assignment (e.g., `10.100.0.0/22`). Must not overlap with the VPC CIDR. | Valid IPv4 CIDR, between /12 and /22 |
-| `serverCertificateArn` | `StringValueOrRef` | ARN of the ACM certificate for the VPN server. Can reference an AwsCertManagerCert resource via `valueFrom`. | Required |
+| Field | Type | Description |
+|-------|------|-------------|
+| `region` | `string` | AWS region for the endpoint |
+| `authenticationOptions` | `AwsClientVpnAuthenticationOption[]` | 1–2 options; a client passes on ANY. All ForceNew. |
+| `serverCertificateArn` | `StringValueOrRef` | The ACM certificate the VPN server presents — required for every auth type. Updates in place. |
 
-### Optional Fields
+### Authentication Options
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | `string` | `certificate-authentication`, `directory-service-authentication`, or `federated-authentication` |
+| `rootCertificateChainArn` | `StringValueOrRef` | Certificate type: the client CA chain (AwsCertManagerCert) |
+| `activeDirectoryId` | `string` | Directory type: the AWS Directory Service directory ID |
+| `samlProviderArn` | `string` | Federated type: the IAM SAML provider ARN |
+| `selfServiceSamlProviderArn` | `string` | Federated type, optional: a separate SAML app for the self-service portal |
+
+### Tunnel Shape
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `description` | `string` | — | Human-friendly description for the Client VPN endpoint, visible in the AWS Console. |
-| `authenticationType` | `enum` | `certificate` | Authentication method. Valid values: `certificate`, `directory`, `cognito`. Only `certificate` is supported in v1. |
-| `cidrAuthorizationRules` | `string[]` | `[]` | IPv4 CIDRs that VPN clients are authorized to access. One authorization rule is created per entry. Must be unique, valid IPv4 CIDRs. |
-| `disableSplitTunnel` | `bool` | `false` | When `false` (default), only traffic for authorized CIDRs routes through the VPN. When `true`, all client traffic routes through the VPN (full-tunnel). |
-| `vpnPort` | `int32` | `443` | Port for VPN connections. Allowed values: `443` (TCP) or `1194` (UDP). |
-| `transportProtocol` | `enum` | `tcp` | Transport protocol for VPN sessions. Valid values: `udp`, `tcp`. Must match `vpnPort` (TCP with 443, UDP with 1194). |
-| `logGroupName` | `string` | — | CloudWatch Logs group name for connection logging. If blank, logging is disabled. |
-| `securityGroups` | `StringValueOrRef[]` | `[]` | Security group IDs for the VPN endpoint's network associations. If omitted, the VPC default security group applies. Can reference AwsSecurityGroup resources via `valueFrom`. |
-| `dnsServers` | `string[]` | `[]` | Custom DNS server IPs for VPN clients. Maximum 2 entries. If omitted, clients use the VPC's AmazonProvidedDNS. |
+| `clientCidrBlock` | `string` | — | /22–/12 client address pool. Required unless `trafficIpAddressType: ipv6` (where it must be empty). ForceNew. |
+| `splitTunnel` | `bool` | `false` | `true`: only routed traffic enters the VPN. `false` (full tunnel): ALL client traffic — pair with a 0.0.0.0/0 route + rule through a NAT-ed subnet. |
+| `transportProtocol` | `string` | `udp` | `udp` or `tcp`. ForceNew. |
+| `vpnPort` | `int32` | `443` | `443` or `1194` — either works with either protocol. |
+| `endpointIpAddressType` | `string` | `ipv4` | Which stacks clients reach the endpoint over: `ipv4`, `ipv6`, `dual-stack`. ForceNew. |
+| `trafficIpAddressType` | `string` | `ipv4` | Addressing inside the tunnel: `ipv4`, `ipv6`, `dual-stack`. ForceNew. |
 
-## Examples
+### Network Attachment
 
-### Single-Subnet VPN with Authorization
+| Field | Type | Description |
+|-------|------|-------------|
+| `vpcId` | `StringValueOrRef` | The VPC whose security groups apply. Optional — inferred from the first associated subnet. Mutually exclusive with the TGW arm. |
+| `securityGroupIds` | `StringValueOrRef[]` | Max 5. When omitted, the VPC default security group applies. |
+| `subnetIds` | `StringValueOrRef[]` | Folded target network associations (may be empty — a pre-staged endpoint routes no traffic). |
+| `transitGatewayConfiguration` | `object` | Attach to an AwsTransitGateway instead of a VPC (AZ names XOR AZ IDs). ForceNew; excludes `vpcId`/`securityGroupIds`/`subnetIds`. |
 
-A minimal VPN endpoint granting access to an internal network:
+### Access Control
 
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsClientVpn
-metadata:
-  name: dev-vpn
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsClientVpn.dev-vpn
-spec:
-  region: us-east-1
-  vpcId: vpc-dev-001
-  subnets:
-    - subnet-private-az1
-  clientCidrBlock: "10.100.0.0/22"
-  serverCertificateArn: arn:aws:acm:us-east-1:123456789012:certificate/dev-cert
-  cidrAuthorizationRules:
-    - "10.0.0.0/16"
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `authorizationRules[]` | `object` | `targetNetworkCidr` + exactly one of `accessGroupId` (one IdP group) or `authorizeAllGroups`. |
+| `routes[]` | `object` | `destinationCidrBlock` + `targetSubnetId` (must be one of `subnetIds`). |
 
-### Multi-AZ VPN with Logging
+### Sessions and Client Experience
 
-A VPN endpoint spanning two Availability Zones with CloudWatch connection logging enabled:
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `sessionTimeoutHours` | `int32` | `24` | 8, 10, 12, or 24 |
+| `disconnectOnSessionTimeout` | `bool` | `false` | Hard-disconnect at timeout instead of auto-reconnect |
+| `selfServicePortalEnabled` | `bool` | `false` | Federated auth only |
+| `clientConnectOptions` | `object` | — | Posture-check Lambda (name must start with `AWSClientVPN-`) run on every connection |
+| `clientLoginBanner` | `object` | — | Banner text (≤1400 chars) shown on session establishment |
+| `clientRouteEnforcementEnabled` | `bool` | `false` | Block client-side route manipulation |
+| `dnsServers` | `string[]` | device DNS | Up to 2 IPs pushed to clients (set the VPC resolver for private zone resolution) |
+| `connectionLog` | `object` | — | CloudWatch log group (ref) + optional stream; presence enables logging |
+
+## Full-Tunnel Example
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsClientVpn
 metadata:
-  name: team-vpn
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AwsClientVpn.team-vpn
+  name: secure-egress
 spec:
-  region: us-east-1
-  vpcId: vpc-staging-001
-  subnets:
-    - subnet-private-az1
-    - subnet-private-az2
-  clientCidrBlock: "10.200.0.0/22"
-  serverCertificateArn: arn:aws:acm:us-east-1:123456789012:certificate/staging-cert
-  cidrAuthorizationRules:
-    - "10.0.0.0/16"
-    - "172.16.0.0/12"
-  logGroupName: /aws/clientvpn/team-vpn
-  description: "Staging environment VPN for engineering team"
-```
-
-### Full-Tunnel VPN with Custom DNS
-
-Routes all client traffic through the VPN and overrides DNS resolution with custom servers:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsClientVpn
-metadata:
-  name: secure-vpn
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsClientVpn.secure-vpn
-spec:
-  region: us-east-1
-  vpcId: vpc-prod-001
-  subnets:
-    - subnet-private-az1
-    - subnet-private-az2
-  clientCidrBlock: "10.150.0.0/22"
-  serverCertificateArn: arn:aws:acm:us-east-1:123456789012:certificate/prod-cert
-  cidrAuthorizationRules:
-    - "10.0.0.0/8"
-  disableSplitTunnel: true
-  dnsServers:
-    - "10.0.0.2"
-    - "10.0.1.2"
-  logGroupName: /aws/clientvpn/secure-vpn
-  securityGroups:
-    - sg-vpn-endpoint
-```
-
-### UDP Transport on Port 1194
-
-A VPN endpoint using UDP for lower-latency connections on the standard OpenVPN port:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsClientVpn
-metadata:
-  name: low-latency-vpn
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsClientVpn.low-latency-vpn
-spec:
-  region: us-east-1
-  vpcId: vpc-prod-001
-  subnets:
-    - subnet-private-az1
-  clientCidrBlock: "10.250.0.0/22"
-  serverCertificateArn: arn:aws:acm:us-east-1:123456789012:certificate/prod-cert
-  vpnPort: 1194
-  transportProtocol: udp
-  cidrAuthorizationRules:
-    - "10.0.0.0/16"
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding IDs:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsClientVpn
-metadata:
-  name: ref-vpn
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsClientVpn.ref-vpn
-spec:
-  region: us-east-1
-  vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: my-vpc
-      field: status.outputs.vpc_id
-  subnets:
-    - valueFrom:
-        kind: AwsSubnet
-        name: my-private-subnet-a
-        fieldPath: status.outputs.subnet_id
-    - valueFrom:
-        kind: AwsSubnet
-        name: my-private-subnet-b
-        fieldPath: status.outputs.subnet_id
-  clientCidrBlock: "10.100.0.0/22"
+  region: us-west-2
+  authenticationOptions:
+    - type: certificate-authentication
+      rootCertificateChainArn:
+        value: arn:aws:acm:us-west-2:123456789012:certificate/client-ca
   serverCertificateArn:
-    valueFrom:
-      kind: AwsCertManagerCert
-      name: vpn-cert
-      field: status.outputs.cert_arn
-  securityGroups:
-    - valueFrom:
-        kind: AwsSecurityGroup
-        name: vpn-sg
-        field: status.outputs.security_group_id
-  cidrAuthorizationRules:
-    - "10.0.0.0/16"
+    value: arn:aws:acm:us-west-2:123456789012:certificate/server
+  clientCidrBlock: 10.100.0.0/22
+  splitTunnel: false
+  subnetIds:
+    - value: subnet-nat-routed
+  authorizationRules:
+    - targetNetworkCidr: 0.0.0.0/0
+      authorizeAllGroups: true
+  routes:
+    - destinationCidrBlock: 0.0.0.0/0
+      targetSubnetId:
+        value: subnet-nat-routed
+      description: internet egress via the NAT-ed subnet
+  clientRouteEnforcementEnabled: true
 ```
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `client_vpn_endpoint_id` | `string` | AWS-assigned identifier for the Client VPN endpoint (e.g., `cvpn-endpoint-012345abcdeEXAMPLE`) |
-| `security_group_id` | `string` | ID of the security group applied to the endpoint's network associations |
-| `subnet_association_ids` | `map<string, string>` | Map of subnet ID to AWS association ID for each associated subnet |
-| `endpoint_dns_name` | `string` | DNS name clients use to connect to the VPN endpoint |
+| Output | Description |
+|--------|-------------|
+| `client_vpn_endpoint_id` | The `cvpn-endpoint-...` identifier (used to export the client configuration) |
+| `client_vpn_endpoint_arn` | The endpoint ARN for IAM policies |
+| `endpoint_dns_name` | The DNS name clients connect to |
+| `self_service_portal_url` | Portal URL (empty when disabled) |
+| `subnet_association_ids` | Map of subnet ID → association ID |
+| `transit_gateway_attachment_id` | The TGW attachment (empty for VPC-attached endpoints) |
 
 ## Related Components
 
-- [AwsVpc](/docs/catalog/aws/awsvpc) — provides the VPC and subnets for VPN endpoint placement
-- [AwsSecurityGroup](/docs/catalog/aws/awssecuritygroup) — controls traffic between VPN clients and VPC resources
-- [AwsCertManagerCert](/docs/catalog/aws/awscertmanagercert) — provides the ACM server certificate for TLS termination
-- [AwsEc2Instance](/docs/catalog/aws/awsec2instance) — private instances that VPN clients typically connect to
+- [AwsCertManagerCert](/docs/catalog/aws/cert-manager-cert) — server certificate and client CA chain
+- [AwsVpc](/docs/catalog/aws/vpc) / [AwsSubnet](/docs/catalog/aws/subnet) — the networks clients reach
+- [AwsSecurityGroup](/docs/catalog/aws/security-group) — traffic control between clients and VPC resources
+- [AwsCloudwatchLogGroup](/docs/catalog/aws/cloudwatch-log-group) — connection logging
+- [AwsLambda](/docs/catalog/aws/lambda) — the connection posture-check hook
+- [AwsTransitGateway](/docs/catalog/aws/transit-gateway) — hub attachment for multi-network reach

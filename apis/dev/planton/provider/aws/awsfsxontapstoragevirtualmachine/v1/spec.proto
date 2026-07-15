@@ -29,6 +29,9 @@ import "dev/planton/shared/options/options.proto";
 //   the SVM. The file system must be an AwsFsxOntapFileSystem.
 // - `root_volume_security_style` is ForceNew — it sets the default security
 //   style for all volumes created under this SVM.
+// - Everything else updates in place: `svm_admin_password` and the entire
+//   `active_directory_configuration` block (domain join details included) can
+//   be changed after creation without replacing the SVM.
 // - Active Directory is OPTIONAL — only required for SMB access. NFS-only and
 //   iSCSI-only SVMs do not need AD. Unlike Windows FSx (where AD is mandatory),
 //   ONTAP SVMs support self-managed AD only (no AWS Managed Microsoft AD).
@@ -170,39 +173,66 @@ message AwsFsxOntapStorageVirtualMachineActiveDirectoryConfiguration {
 
   // Fully qualified domain name of the Active Directory directory.
   // Example: "corp.example.com"
-  string domain_name = 2 [(buf.validate.field).string.min_len = 1];
+  //
+  // Constraints: 1-255 characters. Can be changed after creation (the SVM
+  // re-joins the new domain).
+  string domain_name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
 
   // IP addresses of the DNS servers for the AD domain. Required. These must be
   // reachable from the file system's subnets (typically in the same VPC CIDR or
   // connected via VPN/peering).
   //
-  // Minimum 1, maximum 3 IP addresses.
+  // Minimum 1, maximum 3 IPv4 addresses.
   repeated string dns_ips = 3 [
     (buf.validate.field).repeated.min_items = 1,
-    (buf.validate.field).repeated.max_items = 3
+    (buf.validate.field).repeated.max_items = 3,
+    (buf.validate.field).repeated.items = {
+      cel: [
+        {
+          id: "dns_ip_format"
+          message: "each dns_ips entry must be an IPv4 address (e.g., '10.0.0.10')"
+          expression: "this.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}$')"
+        }
+      ]
+    }
   ];
 
   // Service account username for AD domain join operations. Required.
   //
   // This account must have permissions to create computer objects in the
   // specified OU (or the default Computers container).
-  string username = 4 [(buf.validate.field).string.min_len = 1];
+  //
+  // Constraints: 1-256 characters.
+  string username = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 256
+  ];
 
   // Service account password for AD domain join operations. Required.
   //
   // This value is sensitive and will not be returned in read operations.
   // For production workloads, consider injecting this value via CI/CD secrets
   // management rather than storing it in the resource manifest.
+  //
+  // Constraints: 1-256 characters.
   string password = 5 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 256,
     (dev.planton.shared.options.sensitive) = true
   ];
 
   // Name of the AD domain group whose members are granted administrative
   // privileges on the SVM for file share management.
   //
+  // Constraints: 1-256 characters.
   // Default: Domain Admins
-  optional string file_system_administrators_group = 6 [(dev.planton.shared.options.default) = "Domain Admins"];
+  optional string file_system_administrators_group = 6 [
+    (dev.planton.shared.options.default) = "Domain Admins",
+    (buf.validate.field).string.max_len = 256
+  ];
 
   // Organizational Unit (OU) distinguished name within the AD directory where
   // the SVM's computer object is created.
@@ -212,7 +242,9 @@ message AwsFsxOntapStorageVirtualMachineActiveDirectoryConfiguration {
   // Only the OU immediately above the computer object can be specified.
   // If not provided, the computer object is created in the default "Computers"
   // container in the AD domain.
-  string organizational_unit_distinguished_name = 7;
+  //
+  // Constraints: up to 2000 characters.
+  string organizational_unit_distinguished_name = 7 [(buf.validate.field).string.max_len = 2000];
 
   // netbios_name length validation (1-15 when provided).
   option (buf.validate.message).cel = {

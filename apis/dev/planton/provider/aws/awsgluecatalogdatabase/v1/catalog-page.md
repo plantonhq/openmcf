@@ -6,12 +6,16 @@ Deploys an AWS Glue Data Catalog database — a metadata namespace that organize
 
 When you deploy an AwsGlueCatalogDatabase resource, Planton provisions:
 
-- **Glue Catalog Database** — an `aws_glue_catalog_database` resource registered in the AWS Glue Data Catalog with the specified name, description, and optional default storage location
+- **Glue Catalog Database** — an `aws_glue_catalog_database` resource registered in the AWS Glue Data Catalog with the specified name, description, default storage location, catalog metadata parameters, and default Lake Formation create-table grants
+- **Resource Link** — created instead when `targetDatabase` is set: a local pointer to a database shared from another account or region via AWS RAM / Lake Formation
+- **Federated Database** — created instead when `federatedDatabase` is set: a projection of an external source (e.g. a Redshift datashare) into the catalog
 
 ## Prerequisites
 
 - **AWS credentials** configured via environment variables or Planton provider config
 - **An S3 bucket** if setting `locationUri` for default table storage (the bucket must exist before deploying)
+- **An AWS RAM / Lake Formation share** only for `targetDatabase` resource links
+- **A Redshift datashare and federation connection** only for `federatedDatabase`
 
 ## Quick Start
 
@@ -53,11 +57,19 @@ This creates a Glue Data Catalog database named `analytics` that Athena workgrou
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `description` | `string` | `""` | Human-readable description of the database (max 2048 characters, enforced by AWS API) |
+| `catalogId` | `string` | account ID | Data Catalog to create the database in; set only for cross-account catalogs |
 | `locationUri` | `string` | `""` | Default S3 URI for tables created in this database (e.g., `s3://bucket/prefix/`). Tables without an explicit location inherit this path |
+| `parameters` | `map` | — | Catalog metadata properties read by engines and governance tooling (not AWS resource tags) |
+| `createTableDefaultPermissions` | `list` | AWS default | Default Lake Formation grants on new tables: entries of `permissions` (`ALL`, `SELECT`, `ALTER`, `DROP`, `DELETE`, `INSERT`, `CREATE_DATABASE`, `CREATE_TABLE`, `DATA_LOCATION_ACCESS`) + `principal`. An empty-permissions entry disables the default `IAM_ALLOWED_PRINCIPALS` grant |
+| `targetDatabase` | `object` | — | Resource link: `catalogId` (sharing account), `databaseName`, optional `region` for cross-region links |
+| `federatedDatabase` | `object` | — | Federation: `identifier` (e.g. datashare ARN), `connectionName` (e.g. `aws:redshift`) |
+
+A database is exactly one shape — regular, resource link, or federated; `targetDatabase` and `federatedDatabase` cannot be combined (enforced at manifest validation).
 
 ### ForceNew Fields
 
-- **Database name** (from `metadata.name`) — Cannot be changed after creation. Must be 1-255 characters: lowercase letters, numbers, and underscores only. No uppercase characters.
+- **Database name** (from `metadata.name`) — Cannot be changed after creation. 1-255 characters; AWS rejects uppercase characters.
+- **`catalogId`** and **`targetDatabase`** — fixed at creation; changing them replaces the database.
 
 ## Examples
 
@@ -121,6 +133,57 @@ spec:
     Tables populated by Glue crawlers on a daily schedule. Accessed by
     Athena workgroups for ad-hoc analytics and Redshift Spectrum for BI.
   locationUri: "s3://acme-prod-data-lake/warehouse/"
+```
+
+### Lake Formation-Governed Database
+
+A database that stops granting the default `IAM_ALLOWED_PRINCIPALS` ALL
+permission on new tables — the hardening step when moving to Lake
+Formation-managed access — and grants a scoped default to the data-lake
+admin role instead.
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsGlueCatalogDatabase
+metadata:
+  name: governed_lake
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: acme
+    pulumi.planton.dev/project: data-platform
+    pulumi.planton.dev/stack.name: prod.AwsGlueCatalogDatabase.governed_lake
+spec:
+  region: us-east-1
+  locationUri: "s3://acme-governed-lake/tables/"
+  createTableDefaultPermissions:
+    - permissions:
+        - SELECT
+        - ALTER
+        - DROP
+      principal: "arn:aws:iam::123456789012:role/data-lake-admin"
+```
+
+### Cross-Account Shared Database Link
+
+A resource link to a database another account shared via AWS RAM /
+Lake Formation. Queries against the link resolve to the target database's
+tables, subject to the share's permissions.
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsGlueCatalogDatabase
+metadata:
+  name: shared_sales_link
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: acme
+    pulumi.planton.dev/project: analytics
+    pulumi.planton.dev/stack.name: prod.AwsGlueCatalogDatabase.shared_sales_link
+spec:
+  region: us-west-2
+  targetDatabase:
+    catalogId: "123456789012"
+    databaseName: sales_curated
 ```
 
 ## Stack Outputs

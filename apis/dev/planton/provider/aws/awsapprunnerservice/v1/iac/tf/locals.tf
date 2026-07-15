@@ -1,32 +1,35 @@
 locals {
+  # The service's cloud name is the resource's metadata.name -- the same
+  # basis the Pulumi module uses. ForceNew: renaming replaces the service.
   service_name = var.metadata.name
 
-  tags = {
-    "planton.org/resource"      = "true"
-    "planton.org/organization"  = var.metadata.org
-    "planton.org/environment"   = var.metadata.env
-    "planton.org/resource-kind" = "AwsAppRunnerService"
-    "planton.org/resource-id"   = var.metadata.id
-    "Name"                      = var.metadata.name
+  # Resource-identity tags match the Pulumi module key-for-key. Identity
+  # tagging is the only tagging surface this module manages; user-defined
+  # custom tags are a platform-wide concern, not per-kind spec surface.
+  aws_tags = {
+    "Name"                     = local.service_name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsAppRunnerService"
+    "planton.ai/resource-id"   = var.metadata.id
   }
 
-  # VPC connector logic
-  create_inline_vpc_connector = length(var.spec.subnet_ids) > 0
-  use_external_vpc_connector  = var.spec.vpc_connector_arn != ""
+  # Egress is VPC-routed exactly when a connector is referenced; there is no
+  # module-created connector -- AwsAppRunnerVpcConnector is its own
+  # composable resource shared across services.
+  egress_type = var.spec.vpc_connector_arn != "" ? "VPC" : "DEFAULT"
 
-  # Egress type: VPC when any connector is in use, DEFAULT otherwise
-  egress_type = local.create_inline_vpc_connector || local.use_external_vpc_connector ? "VPC" : "DEFAULT"
-
-  # Resolved VPC connector ARN (inline-created takes precedence over external)
-  effective_vpc_connector_arn = (
-    local.create_inline_vpc_connector
-    ? aws_apprunner_vpc_connector.this[0].arn
-    : (local.use_external_vpc_connector ? var.spec.vpc_connector_arn : null)
-  )
-
-  # Auth configuration is needed for private ECR images or code source connections
+  # The authentication block is needed for private ECR pulls (access role)
+  # or any code repository (connection). Generator-flattened ref fields are
+  # never null (contract default ""), so plain != "" comparisons are safe.
   needs_auth_config = (
     (var.spec.image_source != null && var.spec.image_source.access_role_arn != "") ||
     var.spec.code_source != null
   )
+
+  # Custom domain associations keyed by domain name so entries add/remove
+  # independently (a keyed set, not an ordered list -- reordering the spec
+  # never touches AWS).
+  custom_domains = { for d in var.spec.custom_domains : d.domain_name => d }
 }

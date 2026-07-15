@@ -24,115 +24,150 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsAppRunnerServiceSpec defines the desired state of an AWS App Runner Service.
+// AwsAppRunnerServiceSpec defines the desired state of an AWS App Runner
+// service.
 //
-// App Runner is a fully managed container application service that lets you deploy
-// web applications and APIs from a container image or source code repository without
-// managing infrastructure. App Runner handles build, deploy, scale, and load balancing
-// automatically. It is the simplest path from container image to HTTPS endpoint on AWS.
+// App Runner is a fully managed container application service: give it a
+// container image or a source repository and it handles build, deploy, TLS,
+// load balancing, and concurrency-based auto scaling. It is the shortest
+// path from container image to HTTPS endpoint on AWS.
 //
-// This component supports two deployment source types (exactly one must be provided):
-//   - Image source: Deploy directly from a container image in ECR or ECR Public.
-//   - Code source: Deploy from a GitHub repository; App Runner builds and runs the code.
+// The service supports two deployment source types (exactly one must be
+// provided):
+//   - image_source: deploy a container image from Amazon ECR (private) or
+//     ECR Public Gallery.
+//   - code_source: deploy from a source repository; App Runner builds and
+//     runs the code through a managed runtime.
 //
-// The component bundles two sub-resources inline for simpler UX:
-//   - VPC Connector: When subnet_ids are provided, a VPC Connector is automatically
-//     created so the service can access resources in your VPC. Alternatively, provide
-//     vpc_connector_arn to reference an existing VPC Connector.
-//   - Auto Scaling Configuration: When auto_scaling is provided, an Auto Scaling
-//     Configuration Version is created automatically.
+// Shared, versioned companion resources compose by reference rather than
+// being embedded here -- each is its own first-class resource shared across
+// any number of services:
+//   - AwsAppRunnerAutoScalingConfiguration (auto_scaling_configuration_arn)
+//     tunes concurrency-based scaling; omitted, AWS applies its account
+//     default configuration.
+//   - AwsAppRunnerVpcConnector (vpc_connector_arn) routes OUTBOUND traffic
+//     into a VPC; omitted, egress goes to the public internet only.
+//   - AwsAppRunnerObservabilityConfiguration
+//     (observability_configuration_arn) enables X-Ray request tracing;
+//     omitted, tracing is off.
 //
-// ForceNew fields (changing these requires replacing the service):
-//   - kms_key_arn (encryption_configuration)
-//   - service_name (derived from metadata, not user-provided)
+// ForceNew honesty (changing these replaces the service):
+//   - kms_key_arn (the stored-source encryption key)
+//   - the service name (derived from metadata.name, not a spec field)
+//
+// Everything else updates in place; source changes roll a new deployment.
 type AwsAppRunnerServiceSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the App Runner service will be created.
 	// Example: "us-west-2", "eu-west-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// Image-based deployment source. Use this to deploy from a container image
+	// Image-based deployment source. Use this to deploy a container image
 	// stored in Amazon ECR (private) or ECR Public Gallery.
 	ImageSource *AwsAppRunnerServiceImageSource `protobuf:"bytes,2,opt,name=image_source,json=imageSource,proto3" json:"image_source,omitempty"`
-	// Code-based deployment source. Use this to deploy from a GitHub repository.
-	// App Runner clones the repo, builds the application using the specified runtime,
+	// Code-based deployment source. Use this to deploy from a source
+	// repository through an App Runner connection; App Runner clones the
+	// repository, builds the application with the selected managed runtime,
 	// and deploys the resulting container.
 	CodeSource *AwsAppRunnerServiceCodeSource `protobuf:"bytes,3,opt,name=code_source,json=codeSource,proto3" json:"code_source,omitempty"`
-	// Port that the application listens on inside the container. App Runner routes
-	// incoming HTTPS traffic on port 443 to this port.
+	// Port the application listens on inside the container. App Runner
+	// terminates TLS on 443 and forwards requests to this port.
 	Port *string `protobuf:"bytes,4,opt,name=port,proto3,oneof" json:"port,omitempty"`
-	// Override the container start command. For image source, this overrides the
-	// image ENTRYPOINT/CMD. For code source with configuration_source="API",
-	// this is the command that starts the application.
+	// Override the container start command. For image_source this overrides
+	// the image ENTRYPOINT/CMD; for code_source with
+	// configuration_source="API" it is the command that starts the built
+	// application.
 	StartCommand string `protobuf:"bytes,5,opt,name=start_command,json=startCommand,proto3" json:"start_command,omitempty"`
 	// Environment variables injected into every instance at runtime. Keys are
-	// variable names, values are plaintext strings. Avoid embedding secrets
-	// here; use environment_secrets for sensitive values.
-	// Keys prefixed with "AWSAPPRUNNER" are reserved by the service.
+	// variable names, values are plaintext strings. Never put secret values
+	// here -- use environment_secrets for anything sensitive. Keys prefixed
+	// with "AWSAPPRUNNER" are reserved by the service.
 	EnvironmentVariables map[string]string `protobuf:"bytes,6,rep,name=environment_variables,json=environmentVariables,proto3" json:"environment_variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Environment secrets injected at runtime. Keys are variable names, values
-	// are full ARNs of AWS Secrets Manager secrets or SSM Parameter Store parameters.
-	// App Runner retrieves the secret value at deploy time and injects it as a
-	// plaintext environment variable. The instance_role_arn must have permission
-	// to read these secrets.
+	// Environment secrets injected at runtime. Keys are variable names;
+	// values are full ARNs of AWS Secrets Manager secrets or SSM Parameter
+	// Store parameters -- App Runner resolves each ARN at deploy time and
+	// injects the resolved value as an environment variable. The
+	// instance_role_arn role must be allowed to read the referenced secrets
+	// (secretsmanager:GetSecretValue / ssm:GetParameters).
 	EnvironmentSecrets map[string]string `protobuf:"bytes,7,rep,name=environment_secrets,json=environmentSecrets,proto3" json:"environment_secrets,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// CPU allocation per instance. Accepts numeric millicore strings or human-readable vCPU format.
+	// CPU allocation per instance. Accepts millicore strings or
+	// human-readable vCPU format.
 	// Numeric: "256", "512", "1024", "2048", "4096"
 	// Human-readable: "0.25 vCPU", "0.5 vCPU", "1 vCPU", "2 vCPU", "4 vCPU"
 	Cpu *string `protobuf:"bytes,8,opt,name=cpu,proto3,oneof" json:"cpu,omitempty"`
-	// Memory allocation per instance. Accepts numeric megabyte strings or human-readable GB format.
-	// Numeric: "512", "1024", "2048", "3072", "4096", "6144", "8192", "10240", "12288"
-	// Human-readable: "0.5 GB", "1 GB", "2 GB", "3 GB", "4 GB", "6 GB", "8 GB", "10 GB", "12 GB"
-	// Note: Not all CPU/memory combinations are valid. See AWS documentation for valid pairings.
+	// Memory allocation per instance. Accepts megabyte strings or
+	// human-readable GB format.
+	// Numeric: "512", "1024", "2048", "3072", "4096", "6144", "8192",
+	// "10240", "12288"
+	// Human-readable: "0.5 GB", "1 GB", "2 GB", "3 GB", "4 GB", "6 GB",
+	// "8 GB", "10 GB", "12 GB"
+	// Not every CPU/memory pairing is valid -- App Runner accepts specific
+	// combinations (e.g. 4 vCPU requires 8-12 GB); the create call rejects
+	// invalid pairs.
 	Memory *string `protobuf:"bytes,9,opt,name=memory,proto3,oneof" json:"memory,omitempty"`
-	// IAM role that service instances assume at runtime to call AWS APIs.
-	// This is the role your application code uses (e.g., to read from S3, write to DynamoDB).
-	// This is NOT the role used to pull images from ECR (that is access_role_arn in image_source).
+	// IAM role that service instances assume at runtime to call AWS APIs --
+	// the role your application code uses (reading S3, writing DynamoDB,
+	// resolving environment_secrets). This is NOT the image-pull role (that
+	// is image_source.access_role_arn).
 	InstanceRoleArn *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=instance_role_arn,json=instanceRoleArn,proto3" json:"instance_role_arn,omitempty"`
-	// Health check configuration. App Runner uses health checks to monitor instance
-	// readiness. If not provided, App Runner uses default TCP health checks on the
-	// configured port.
+	// Health check configuration App Runner uses to monitor instance
+	// readiness; unhealthy instances are replaced automatically. When
+	// omitted, App Runner performs TCP checks on the configured port with
+	// AWS defaults.
 	HealthCheck *AwsAppRunnerServiceHealthCheck `protobuf:"bytes,11,opt,name=health_check,json=healthCheck,proto3" json:"health_check,omitempty"`
-	// Auto scaling configuration controls how App Runner scales the number of
-	// instances based on incoming request concurrency. If not provided, App Runner
-	// uses defaults: 1 min, 25 max, 100 max concurrency per instance.
-	AutoScaling *AwsAppRunnerServiceAutoScaling `protobuf:"bytes,12,opt,name=auto_scaling,json=autoScaling,proto3" json:"auto_scaling,omitempty"`
-	// ARN of an existing VPC Connector for outbound VPC access. Use this when
-	// you want to share a single VPC Connector across multiple App Runner services.
-	// Mutually exclusive with subnet_ids/security_group_ids (which create an inline connector).
+	// ARN of an AwsAppRunnerAutoScalingConfiguration revision that governs
+	// concurrency-based scaling. When omitted, AWS applies the account's
+	// default auto scaling configuration (1 min / 25 max / 100 concurrency
+	// unless the account default was changed). The referenced ARN carries a
+	// revision, so registering a new revision rolls this service on its next
+	// deployment.
+	AutoScalingConfigurationArn *v1.StringValueOrRef `protobuf:"bytes,12,opt,name=auto_scaling_configuration_arn,json=autoScalingConfigurationArn,proto3" json:"auto_scaling_configuration_arn,omitempty"`
+	// ARN of an AwsAppRunnerVpcConnector for outbound VPC access -- lets the
+	// service reach private resources (databases, caches, internal APIs)
+	// inside a VPC. When omitted, egress uses App Runner's default public
+	// path and the service can only reach public endpoints. One connector is
+	// shared by any number of services.
 	VpcConnectorArn *v1.StringValueOrRef `protobuf:"bytes,13,opt,name=vpc_connector_arn,json=vpcConnectorArn,proto3" json:"vpc_connector_arn,omitempty"`
-	// VPC subnet IDs for creating an inline VPC Connector. When provided, the module
-	// automatically creates a VPC Connector so the service can reach resources in
-	// your VPC (databases, caches, internal APIs). Provide subnets in at least two
-	// Availability Zones for high availability. Mutually exclusive with vpc_connector_arn.
-	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,14,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
-	// Security group IDs for the inline VPC Connector. Controls what VPC resources
-	// the service can reach. Only used when subnet_ids is provided (ignored otherwise).
-	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,15,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
-	// Whether the service endpoint is publicly accessible from the internet.
+	// ARN of an AwsAppRunnerObservabilityConfiguration revision. When set,
+	// the service sends request traces to the configured vendor (AWS X-Ray);
+	// when omitted, tracing is off. Presence of the reference IS the enable
+	// switch -- there is no separate toggle to keep in sync.
+	ObservabilityConfigurationArn *v1.StringValueOrRef `protobuf:"bytes,14,opt,name=observability_configuration_arn,json=observabilityConfigurationArn,proto3" json:"observability_configuration_arn,omitempty"`
+	// Whether the service endpoint is publicly reachable from the internet.
 	// When true (default), the service gets a public HTTPS URL. When false,
-	// the service is only reachable via a VPC Ingress Connection (a separate
-	// resource not managed by this component).
-	IsPubliclyAccessible *bool `protobuf:"varint,16,opt,name=is_publicly_accessible,json=isPubliclyAccessible,proto3,oneof" json:"is_publicly_accessible,omitempty"`
+	// the endpoint is reachable only from within VPCs that attach an App
+	// Runner VPC Ingress Connection to this service (a separate AWS resource;
+	// create it against the exported service_arn).
+	IsPubliclyAccessible *bool `protobuf:"varint,15,opt,name=is_publicly_accessible,json=isPubliclyAccessible,proto3,oneof" json:"is_publicly_accessible,omitempty"`
 	// IP address type for the service endpoint.
 	// "IPV4": IPv4-only (default). "DUAL_STACK": IPv4 + IPv6.
-	IpAddressType *string `protobuf:"bytes,17,opt,name=ip_address_type,json=ipAddressType,proto3,oneof" json:"ip_address_type,omitempty"`
-	// Customer-managed KMS key ARN for encrypting the service's stored copy of
-	// the container image and data logs. If omitted, App Runner uses an AWS-managed key.
-	// ForceNew: changing this value requires replacing the service.
-	KmsKeyArn *v1.StringValueOrRef `protobuf:"bytes,18,opt,name=kms_key_arn,json=kmsKeyArn,proto3" json:"kms_key_arn,omitempty"`
-	// Whether to enable observability (AWS X-Ray tracing) for the service.
-	// When true, observability_configuration_arn must also be provided.
-	ObservabilityEnabled bool `protobuf:"varint,19,opt,name=observability_enabled,json=observabilityEnabled,proto3" json:"observability_enabled,omitempty"`
-	// ARN of an App Runner Observability Configuration resource. Required when
-	// observability_enabled is true. Observability configurations are created
-	// separately (via AWS Console or CLI) and can be shared across services.
-	ObservabilityConfigurationArn *v1.StringValueOrRef `protobuf:"bytes,20,opt,name=observability_configuration_arn,json=observabilityConfigurationArn,proto3" json:"observability_configuration_arn,omitempty"`
-	// Whether App Runner automatically triggers a new deployment when the source changes.
-	// For image source: redeploys when a new image is pushed to the same tag.
-	// For code source: redeploys when a new commit is pushed to the configured branch.
-	AutoDeploymentsEnabled *bool `protobuf:"varint,21,opt,name=auto_deployments_enabled,json=autoDeploymentsEnabled,proto3,oneof" json:"auto_deployments_enabled,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	IpAddressType *string `protobuf:"bytes,16,opt,name=ip_address_type,json=ipAddressType,proto3,oneof" json:"ip_address_type,omitempty"`
+	// Customer-managed KMS key ARN App Runner uses to encrypt its stored copy
+	// of the deployment source (image or repository archive) and build logs.
+	// When omitted, App Runner uses an AWS-managed key. ForceNew: changing
+	// this replaces the service.
+	KmsKeyArn *v1.StringValueOrRef `protobuf:"bytes,17,opt,name=kms_key_arn,json=kmsKeyArn,proto3" json:"kms_key_arn,omitempty"`
+	// Whether App Runner automatically starts a deployment when the source
+	// changes (a new image pushed to the tracked tag, or a new commit on the
+	// tracked branch). Disabled by default: deployments then happen only when
+	// this resource is applied or a deployment is started explicitly, which
+	// keeps rollouts deterministic and graph-driven. AWS supports automatic
+	// deployments only for private ECR and code repositories -- ECR Public
+	// images cannot enable this (AWS rejects the create call).
+	AutoDeploymentsEnabled bool `protobuf:"varint,18,opt,name=auto_deployments_enabled,json=autoDeploymentsEnabled,proto3" json:"auto_deployments_enabled,omitempty"`
+	// Custom domains associated with this service, keyed by domain name. App
+	// Runner provisions and renews the TLS certificate for each domain; you
+	// prove ownership by creating the CNAME records exported per domain in
+	// status.outputs.custom_domains (compose them into AwsRoute53DnsRecord
+	// resources), plus a CNAME/alias from the domain to the exported
+	// dns_target. Adding or removing entries updates in place; changing an
+	// entry replaces that one association.
+	CustomDomains []*AwsAppRunnerServiceCustomDomain `protobuf:"bytes,19,rep,name=custom_domains,json=customDomains,proto3" json:"custom_domains,omitempty"`
+	// ARN of a REGIONAL AwsWafWebAcl to associate with this service. All
+	// requests pass WAF inspection before reaching the application. When
+	// omitted, no WAF is attached.
+	WebAclArn     *v1.StringValueOrRef `protobuf:"bytes,20,opt,name=web_acl_arn,json=webAclArn,proto3" json:"web_acl_arn,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsAppRunnerServiceSpec) Reset() {
@@ -242,9 +277,9 @@ func (x *AwsAppRunnerServiceSpec) GetHealthCheck() *AwsAppRunnerServiceHealthChe
 	return nil
 }
 
-func (x *AwsAppRunnerServiceSpec) GetAutoScaling() *AwsAppRunnerServiceAutoScaling {
+func (x *AwsAppRunnerServiceSpec) GetAutoScalingConfigurationArn() *v1.StringValueOrRef {
 	if x != nil {
-		return x.AutoScaling
+		return x.AutoScalingConfigurationArn
 	}
 	return nil
 }
@@ -256,16 +291,9 @@ func (x *AwsAppRunnerServiceSpec) GetVpcConnectorArn() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AwsAppRunnerServiceSpec) GetSubnetIds() []*v1.StringValueOrRef {
+func (x *AwsAppRunnerServiceSpec) GetObservabilityConfigurationArn() *v1.StringValueOrRef {
 	if x != nil {
-		return x.SubnetIds
-	}
-	return nil
-}
-
-func (x *AwsAppRunnerServiceSpec) GetSecurityGroupIds() []*v1.StringValueOrRef {
-	if x != nil {
-		return x.SecurityGroupIds
+		return x.ObservabilityConfigurationArn
 	}
 	return nil
 }
@@ -291,43 +319,47 @@ func (x *AwsAppRunnerServiceSpec) GetKmsKeyArn() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AwsAppRunnerServiceSpec) GetObservabilityEnabled() bool {
+func (x *AwsAppRunnerServiceSpec) GetAutoDeploymentsEnabled() bool {
 	if x != nil {
-		return x.ObservabilityEnabled
+		return x.AutoDeploymentsEnabled
 	}
 	return false
 }
 
-func (x *AwsAppRunnerServiceSpec) GetObservabilityConfigurationArn() *v1.StringValueOrRef {
+func (x *AwsAppRunnerServiceSpec) GetCustomDomains() []*AwsAppRunnerServiceCustomDomain {
 	if x != nil {
-		return x.ObservabilityConfigurationArn
+		return x.CustomDomains
 	}
 	return nil
 }
 
-func (x *AwsAppRunnerServiceSpec) GetAutoDeploymentsEnabled() bool {
-	if x != nil && x.AutoDeploymentsEnabled != nil {
-		return *x.AutoDeploymentsEnabled
+func (x *AwsAppRunnerServiceSpec) GetWebAclArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.WebAclArn
 	}
-	return false
+	return nil
 }
 
-// AwsAppRunnerServiceImageSource configures deployment from a container image
-// stored in Amazon ECR (private registry) or ECR Public Gallery.
+// AwsAppRunnerServiceImageSource configures deployment from a container
+// image stored in Amazon ECR (private registry) or ECR Public Gallery.
 type AwsAppRunnerServiceImageSource struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Full container image identifier including tag or digest.
 	// ECR format: "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/REPO:TAG"
 	// ECR Public format: "public.ecr.aws/ALIAS/REPO:TAG"
+	// This stays a literal string (not a reference) because it carries a
+	// repository-plus-tag coordinate no single upstream output represents.
 	ImageIdentifier string `protobuf:"bytes,1,opt,name=image_identifier,json=imageIdentifier,proto3" json:"image_identifier,omitempty"`
 	// Type of image repository.
-	// "ECR": Private Amazon ECR registry (requires access_role_arn for pull access).
-	// "ECR_PUBLIC": Public ECR Gallery (no authentication required for pulling).
+	// "ECR": private Amazon ECR (requires access_role_arn for pull access).
+	// "ECR_PUBLIC": public ECR Gallery (no pull authentication; automatic
+	// deployments are not supported for public images).
 	ImageRepositoryType string `protobuf:"bytes,2,opt,name=image_repository_type,json=imageRepositoryType,proto3" json:"image_repository_type,omitempty"`
-	// IAM role ARN that grants App Runner permission to pull images from private ECR.
-	// Required when image_repository_type is "ECR". Not needed for "ECR_PUBLIC".
-	// This role must have the ecr:GetDownloadUrlForLayer, ecr:BatchGetImage, and
-	// ecr:GetAuthorizationToken permissions.
+	// IAM role ARN that grants App Runner permission to pull images from
+	// private ECR. Required when image_repository_type is "ECR"; not used for
+	// "ECR_PUBLIC". The role must be assumable by build.apprunner.amazonaws.com
+	// and carry ECR read permissions (the AWS-managed
+	// AWSAppRunnerServicePolicyForECRAccess policy covers it).
 	AccessRoleArn *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=access_role_arn,json=accessRoleArn,proto3" json:"access_role_arn,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -384,39 +416,43 @@ func (x *AwsAppRunnerServiceImageSource) GetAccessRoleArn() *v1.StringValueOrRef
 	return nil
 }
 
-// AwsAppRunnerServiceCodeSource configures deployment from a GitHub code repository.
-// App Runner clones the repository, builds the application using the specified runtime
-// and build command, then deploys the resulting container.
-//
-// Requires an App Runner Connection resource that authorizes GitHub access. Connections
-// are created out-of-band via the AWS Console or AWS CLI and can be shared across services.
+// AwsAppRunnerServiceCodeSource configures deployment from a source code
+// repository. App Runner clones the repository through an App Runner
+// connection, builds the application with the selected managed runtime, and
+// deploys the resulting container.
 type AwsAppRunnerServiceCodeSource struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// GitHub repository URL (e.g., "https://github.com/owner/repo").
+	// Repository URL (e.g. "https://github.com/owner/repo").
 	RepositoryUrl string `protobuf:"bytes,1,opt,name=repository_url,json=repositoryUrl,proto3" json:"repository_url,omitempty"`
-	// Branch name to deploy from (e.g., "main", "production").
+	// Branch to deploy from (e.g. "main", "production"). App Runner tracks
+	// this branch; with auto_deployments_enabled, every push deploys.
 	Branch string `protobuf:"bytes,2,opt,name=branch,proto3" json:"branch,omitempty"`
-	// Subdirectory within the repository containing the application source code.
-	// Defaults to the repository root when not specified. Useful for monorepos
-	// where the App Runner service lives in a subfolder.
+	// Subdirectory within the repository containing the application source.
+	// Defaults to the repository root. Useful for monorepos where the service
+	// lives in a subfolder; with configuration_source="REPOSITORY", the
+	// apprunner.yaml is read from this directory.
 	SourceDirectory string `protobuf:"bytes,3,opt,name=source_directory,json=sourceDirectory,proto3" json:"source_directory,omitempty"`
-	// ARN of an App Runner Connection that provides GitHub access. Connections are
-	// created via the AWS Console or CLI (they require an OAuth handshake) and can
-	// be shared across multiple services.
+	// ARN of an App Runner connection that authorizes repository access
+	// (GitHub or Bitbucket). Connections require a one-time OAuth handshake
+	// completed in the AWS console, so they are created out-of-band and
+	// referenced here by ARN; one connection is shared across services.
 	ConnectionArn *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=connection_arn,json=connectionArn,proto3" json:"connection_arn,omitempty"`
 	// Where App Runner reads the build/runtime configuration from.
-	// "API": Configuration is provided in this spec (runtime, build_command, port, start_command).
-	// "REPOSITORY": Configuration is read from an apprunner.yaml file in the repository root
+	// "API": configuration comes from this spec (runtime, build_command,
 	//
-	//	(or source_directory). In this mode, runtime and build_command in this spec are ignored.
+	//	port, start_command).
+	//
+	// "REPOSITORY": configuration is read from an apprunner.yaml at the
+	//
+	//	repository root (or source_directory); runtime and build_command in
+	//	this spec are ignored.
 	ConfigurationSource string `protobuf:"bytes,5,opt,name=configuration_source,json=configurationSource,proto3" json:"configuration_source,omitempty"`
-	// Runtime identifier for building and running the application. Required when
-	// configuration_source is "API", ignored when "REPOSITORY".
-	// Valid values: "PYTHON_3", "NODEJS_12", "NODEJS_14", "NODEJS_16", "NODEJS_18",
-	// "CORRETTO_8", "CORRETTO_11", "GO_1", "DOTNET_6", "PHP_81", "RUBY_31".
+	// Managed runtime that builds and runs the application. Required when
+	// configuration_source is "API", ignored for "REPOSITORY".
 	Runtime string `protobuf:"bytes,6,opt,name=runtime,proto3" json:"runtime,omitempty"`
-	// Shell command to build/compile the application. Only used when configuration_source
-	// is "API". Example: "npm ci && npm run build" or "pip install -r requirements.txt".
+	// Shell command that builds the application (e.g. "npm ci && npm run
+	// build", "pip install -r requirements.txt"). Only used when
+	// configuration_source is "API".
 	BuildCommand  string `protobuf:"bytes,7,opt,name=build_command,json=buildCommand,proto3" json:"build_command,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -501,28 +537,26 @@ func (x *AwsAppRunnerServiceCodeSource) GetBuildCommand() string {
 	return ""
 }
 
-// AwsAppRunnerServiceHealthCheck configures health monitoring for the service.
-// App Runner periodically probes each instance to determine if it is healthy.
-// Unhealthy instances are replaced automatically.
+// AwsAppRunnerServiceHealthCheck configures how App Runner probes instances
+// for readiness. Unhealthy instances are replaced automatically.
 type AwsAppRunnerServiceHealthCheck struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Protocol used for health checks.
-	// "TCP": Checks that the port is open and accepting connections (default).
-	// "HTTP": Sends an HTTP GET request to the specified path and expects a 200 response.
+	// Health check protocol.
+	// "TCP": checks the port accepts connections (default).
+	// "HTTP": sends GET requests to path and expects a 2xx response.
 	Protocol *string `protobuf:"bytes,1,opt,name=protocol,proto3,oneof" json:"protocol,omitempty"`
-	// URL path for HTTP health checks (e.g., "/health", "/readyz").
-	// Ignored when protocol is "TCP".
+	// URL path for HTTP health checks (e.g. "/health", "/readyz"). Ignored
+	// when protocol is "TCP".
 	Path *string `protobuf:"bytes,2,opt,name=path,proto3,oneof" json:"path,omitempty"`
-	// Time in seconds between consecutive health checks.
-	IntervalSeconds *int32 `protobuf:"varint,3,opt,name=interval_seconds,json=intervalSeconds,proto3,oneof" json:"interval_seconds,omitempty"`
-	// Maximum time in seconds to wait for a health check response before
-	// considering the check failed.
-	TimeoutSeconds *int32 `protobuf:"varint,4,opt,name=timeout_seconds,json=timeoutSeconds,proto3,oneof" json:"timeout_seconds,omitempty"`
-	// Number of consecutive successful health checks required before marking
-	// an instance as healthy.
+	// Seconds between consecutive health checks.
+	Interval *int32 `protobuf:"varint,3,opt,name=interval,proto3,oneof" json:"interval,omitempty"`
+	// Seconds to wait for a health check response before counting the check
+	// as failed.
+	Timeout *int32 `protobuf:"varint,4,opt,name=timeout,proto3,oneof" json:"timeout,omitempty"`
+	// Consecutive successful checks required to mark an instance healthy.
 	HealthyThreshold *int32 `protobuf:"varint,5,opt,name=healthy_threshold,json=healthyThreshold,proto3,oneof" json:"healthy_threshold,omitempty"`
-	// Number of consecutive failed health checks before marking an instance
-	// as unhealthy and triggering replacement.
+	// Consecutive failed checks before an instance is marked unhealthy and
+	// replaced.
 	UnhealthyThreshold *int32 `protobuf:"varint,6,opt,name=unhealthy_threshold,json=unhealthyThreshold,proto3,oneof" json:"unhealthy_threshold,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
@@ -572,16 +606,16 @@ func (x *AwsAppRunnerServiceHealthCheck) GetPath() string {
 	return ""
 }
 
-func (x *AwsAppRunnerServiceHealthCheck) GetIntervalSeconds() int32 {
-	if x != nil && x.IntervalSeconds != nil {
-		return *x.IntervalSeconds
+func (x *AwsAppRunnerServiceHealthCheck) GetInterval() int32 {
+	if x != nil && x.Interval != nil {
+		return *x.Interval
 	}
 	return 0
 }
 
-func (x *AwsAppRunnerServiceHealthCheck) GetTimeoutSeconds() int32 {
-	if x != nil && x.TimeoutSeconds != nil {
-		return *x.TimeoutSeconds
+func (x *AwsAppRunnerServiceHealthCheck) GetTimeout() int32 {
+	if x != nil && x.Timeout != nil {
+		return *x.Timeout
 	}
 	return 0
 }
@@ -600,41 +634,36 @@ func (x *AwsAppRunnerServiceHealthCheck) GetUnhealthyThreshold() int32 {
 	return 0
 }
 
-// AwsAppRunnerServiceAutoScaling configures how App Runner scales the number of
-// running instances in response to incoming traffic. App Runner uses a concurrency-based
-// model: when the number of concurrent requests per instance exceeds max_concurrency,
-// a new instance is launched (up to max_size). When traffic decreases, instances are
-// removed (down to min_size).
-type AwsAppRunnerServiceAutoScaling struct {
+// AwsAppRunnerServiceCustomDomain associates one custom domain (or
+// subdomain) with the service. App Runner manages the TLS certificate;
+// ownership is proven through the certificate-validation CNAME records
+// exported per domain in stack outputs. Keyed by domain_name -- adding or
+// removing entries updates in place.
+type AwsAppRunnerServiceCustomDomain struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Minimum number of instances that App Runner keeps running at all times.
-	// These instances are always warm and ready to serve traffic. Setting this
-	// above 1 reduces cold-start latency at the cost of increased baseline charges.
-	MinSize *int32 `protobuf:"varint,1,opt,name=min_size,json=minSize,proto3,oneof" json:"min_size,omitempty"`
-	// Maximum number of instances that App Runner scales out to during traffic spikes.
-	MaxSize *int32 `protobuf:"varint,2,opt,name=max_size,json=maxSize,proto3,oneof" json:"max_size,omitempty"`
-	// Maximum number of concurrent requests routed to a single instance before
-	// App Runner launches additional instances. Lower values provide more headroom
-	// per instance but cost more (more instances for the same traffic).
-	MaxConcurrency *int32 `protobuf:"varint,3,opt,name=max_concurrency,json=maxConcurrency,proto3,oneof" json:"max_concurrency,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The domain to associate (e.g. "app.example.com" or "example.com").
+	DomainName string `protobuf:"bytes,1,opt,name=domain_name,json=domainName,proto3" json:"domain_name,omitempty"`
+	// Whether to also associate the "www." subdomain of domain_name.
+	// AWS defaults this to true; meaningful mainly for apex domains.
+	EnableWwwSubdomain *bool `protobuf:"varint,2,opt,name=enable_www_subdomain,json=enableWwwSubdomain,proto3,oneof" json:"enable_www_subdomain,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
-func (x *AwsAppRunnerServiceAutoScaling) Reset() {
-	*x = AwsAppRunnerServiceAutoScaling{}
+func (x *AwsAppRunnerServiceCustomDomain) Reset() {
+	*x = AwsAppRunnerServiceCustomDomain{}
 	mi := &file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AwsAppRunnerServiceAutoScaling) String() string {
+func (x *AwsAppRunnerServiceCustomDomain) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AwsAppRunnerServiceAutoScaling) ProtoMessage() {}
+func (*AwsAppRunnerServiceCustomDomain) ProtoMessage() {}
 
-func (x *AwsAppRunnerServiceAutoScaling) ProtoReflect() protoreflect.Message {
+func (x *AwsAppRunnerServiceCustomDomain) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -646,37 +675,30 @@ func (x *AwsAppRunnerServiceAutoScaling) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AwsAppRunnerServiceAutoScaling.ProtoReflect.Descriptor instead.
-func (*AwsAppRunnerServiceAutoScaling) Descriptor() ([]byte, []int) {
+// Deprecated: Use AwsAppRunnerServiceCustomDomain.ProtoReflect.Descriptor instead.
+func (*AwsAppRunnerServiceCustomDomain) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *AwsAppRunnerServiceAutoScaling) GetMinSize() int32 {
-	if x != nil && x.MinSize != nil {
-		return *x.MinSize
+func (x *AwsAppRunnerServiceCustomDomain) GetDomainName() string {
+	if x != nil {
+		return x.DomainName
 	}
-	return 0
+	return ""
 }
 
-func (x *AwsAppRunnerServiceAutoScaling) GetMaxSize() int32 {
-	if x != nil && x.MaxSize != nil {
-		return *x.MaxSize
+func (x *AwsAppRunnerServiceCustomDomain) GetEnableWwwSubdomain() bool {
+	if x != nil && x.EnableWwwSubdomain != nil {
+		return *x.EnableWwwSubdomain
 	}
-	return 0
-}
-
-func (x *AwsAppRunnerServiceAutoScaling) GetMaxConcurrency() int32 {
-	if x != nil && x.MaxConcurrency != nil {
-		return *x.MaxConcurrency
-	}
-	return 0
+	return false
 }
 
 var File_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	":dev/planton/provider/aws/awsapprunnerservice/v1/spec.proto\x12/dev.planton.provider.aws.awsapprunnerservice.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x93\x1b\n" +
+	":dev/planton/provider/aws/awsapprunnerservice/v1/spec.proto\x12/dev.planton.provider.aws.awsapprunnerservice.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xde\x1c\n" +
 	"\x17AwsAppRunnerServiceSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12r\n" +
 	"\fimage_source\x18\x02 \x01(\v2O.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceImageSourceR\vimageSource\x12o\n" +
@@ -684,34 +706,32 @@ const file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_rawDesc = 
 	"codeSource\x12!\n" +
 	"\x04port\x18\x04 \x01(\tB\b\x8a\xa6\x1d\x048080H\x00R\x04port\x88\x01\x01\x12#\n" +
 	"\rstart_command\x18\x05 \x01(\tR\fstartCommand\x12\x97\x01\n" +
-	"\x15environment_variables\x18\x06 \x03(\v2b.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.EnvironmentVariablesEntryR\x14environmentVariables\x12\x91\x01\n" +
-	"\x13environment_secrets\x18\a \x03(\v2`.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.EnvironmentSecretsEntryR\x12environmentSecrets\x12\x1f\n" +
+	"\x15environment_variables\x18\x06 \x03(\v2b.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.EnvironmentVariablesEntryR\x14environmentVariables\x12\x86\x02\n" +
+	"\x13environment_secrets\x18\a \x03(\v2`.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.EnvironmentSecretsEntryBs\xaa\xa6\x1dovalues are Secrets Manager / SSM Parameter Store ARNs (references to secrets), never the secret material itselfR\x12environmentSecrets\x12\x1f\n" +
 	"\x03cpu\x18\b \x01(\tB\b\x8a\xa6\x1d\x041024H\x01R\x03cpu\x88\x01\x01\x12%\n" +
 	"\x06memory\x18\t \x01(\tB\b\x8a\xa6\x1d\x042048H\x02R\x06memory\x88\x01\x01\x12\x80\x01\n" +
 	"\x11instance_role_arn\x18\n" +
 	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x0finstanceRoleArn\x12r\n" +
-	"\fhealth_check\x18\v \x01(\v2O.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceHealthCheckR\vhealthCheck\x12r\n" +
-	"\fauto_scaling\x18\f \x01(\v2O.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceAutoScalingR\vautoScaling\x12^\n" +
-	"\x11vpc_connector_arn\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x0fvpcConnectorArn\x12t\n" +
-	"\n" +
-	"subnet_ids\x18\x0e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x0f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12C\n" +
-	"\x16is_publicly_accessible\x18\x10 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x14isPubliclyAccessible\x88\x01\x01\x125\n" +
-	"\x0fip_address_type\x18\x11 \x01(\tB\b\x8a\xa6\x1d\x04IPV4H\x04R\ripAddressType\x88\x01\x01\x12s\n" +
-	"\vkms_key_arn\x18\x12 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x123\n" +
-	"\x15observability_enabled\x18\x13 \x01(\bR\x14observabilityEnabled\x12z\n" +
-	"\x1fobservability_configuration_arn\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x1dobservabilityConfigurationArn\x12G\n" +
-	"\x18auto_deployments_enabled\x18\x15 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x05R\x16autoDeploymentsEnabled\x88\x01\x01\x1aG\n" +
+	"\fhealth_check\x18\v \x01(\v2O.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceHealthCheckR\vhealthCheck\x12\xa2\x01\n" +
+	"\x1eauto_scaling_configuration_arn\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf0\x02\x92\xd4a status.outputs.configuration_arnR\x1bautoScalingConfigurationArn\x12\x89\x01\n" +
+	"\x11vpc_connector_arn\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf1\x02\x92\xd4a status.outputs.vpc_connector_arnR\x0fvpcConnectorArn\x12\xa5\x01\n" +
+	"\x1fobservability_configuration_arn\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf2\x02\x92\xd4a status.outputs.configuration_arnR\x1dobservabilityConfigurationArn\x12C\n" +
+	"\x16is_publicly_accessible\x18\x0f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x14isPubliclyAccessible\x88\x01\x01\x125\n" +
+	"\x0fip_address_type\x18\x10 \x01(\tB\b\x8a\xa6\x1d\x04IPV4H\x04R\ripAddressType\x88\x01\x01\x12s\n" +
+	"\vkms_key_arn\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x128\n" +
+	"\x18auto_deployments_enabled\x18\x12 \x01(\bR\x16autoDeploymentsEnabled\x12w\n" +
+	"\x0ecustom_domains\x18\x13 \x03(\v2P.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCustomDomainR\rcustomDomains\x12w\n" +
+	"\vweb_acl_arn\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xad\x02\x92\xd4a\x1astatus.outputs.web_acl_arnR\twebAclArn\x1aG\n" +
 	"\x19EnvironmentVariablesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aE\n" +
 	"\x17EnvironmentSecretsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x81\n" +
-	"\xbaH\xfd\t\x1a\xb6\x01\n" +
-	"\x12exactly_one_source\x126exactly one of image_source or code_source must be set\x1ah(has(this.image_source) && !has(this.code_source)) || (!has(this.image_source) && has(this.code_source))\x1a\xab\x01\n" +
-	"\x1bvpc_egress_mutual_exclusion\x12Ovpc_connector_arn and subnet_ids are mutually exclusive; provide one or neither\x1a;!(has(this.vpc_connector_arn) && size(this.subnet_ids) > 0)\x1a\xb9\x01\n" +
-	"\x1dobservability_config_required\x12Nobservability_configuration_arn is required when observability_enabled is true\x1aH!this.observability_enabled || has(this.observability_configuration_arn)\x1a\x95\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc1\n" +
+	"\xbaH\xbd\n" +
+	"\x1a\x8b\x02\n" +
+	"\x12exactly_one_source\x12\x8a\x01provide exactly one deployment source -- either image_source (deploy a container image) or code_source (build from a repository), not both\x1ah(has(this.image_source) && !has(this.code_source)) || (!has(this.image_source) && has(this.code_source))\x1a\xd2\x02\n" +
+	"\x1dno_auto_deploy_for_ecr_public\x12\xb9\x01auto_deployments_enabled is not supported for ECR_PUBLIC images -- AWS can only watch private ECR repositories and code repositories for changes; deploy public images explicitly instead\x1au!(has(this.image_source) && this.image_source.image_repository_type == 'ECR_PUBLIC' && this.auto_deployments_enabled)\x1a\x95\x01\n" +
 	"\x15valid_ip_address_type\x12.ip_address_type must be 'IPV4' or 'DUAL_STACK'\x1aL!has(this.ip_address_type) || this.ip_address_type in ['IPV4', 'DUAL_STACK']\x1a\xe7\x01\n" +
 	"\tvalid_cpu\x12fcpu must be one of: '256','512','1024','2048','4096','0.25 vCPU','0.5 vCPU','1 vCPU','2 vCPU','4 vCPU'\x1ar!has(this.cpu) || this.cpu in ['256','512','1024','2048','4096','0.25 vCPU','0.5 vCPU','1 vCPU','2 vCPU','4 vCPU']\x1a\xd5\x02\n" +
 	"\fvalid_memory\x12\x99\x01memory must be one of: '512','1024','2048','3072','4096','6144','8192','10240','12288','0.5 GB','1 GB','2 GB','3 GB','4 GB','6 GB','8 GB','10 GB','12 GB'\x1a\xa8\x01!has(this.memory) || this.memory in ['512','1024','2048','3072','4096','6144','8192','10240','12288','0.5 GB','1 GB','2 GB','3 GB','4 GB','6 GB','8 GB','10 GB','12 GB']B\a\n" +
@@ -719,14 +739,13 @@ const file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_rawDesc = 
 	"\x04_cpuB\t\n" +
 	"\a_memoryB\x19\n" +
 	"\x17_is_publicly_accessibleB\x12\n" +
-	"\x10_ip_address_typeB\x1b\n" +
-	"\x19_auto_deployments_enabled\"\xc0\x04\n" +
+	"\x10_ip_address_type\"\xa4\x05\n" +
 	"\x1eAwsAppRunnerServiceImageSource\x122\n" +
 	"\x10image_identifier\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0fimageIdentifier\x12;\n" +
 	"\x15image_repository_type\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x13imageRepositoryType\x12|\n" +
-	"\x0faccess_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\raccessRoleArn:\xae\x02\xbaH\xaa\x02\x1a\x87\x01\n" +
-	"\x1bvalid_image_repository_type\x123image_repository_type must be 'ECR' or 'ECR_PUBLIC'\x1a3this.image_repository_type in ['ECR', 'ECR_PUBLIC']\x1a\x9d\x01\n" +
-	"\x18ecr_requires_access_role\x12?access_role_arn is required when image_repository_type is 'ECR'\x1a@this.image_repository_type != 'ECR' || has(this.access_role_arn)\"\x99\x05\n" +
+	"\x0faccess_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\raccessRoleArn:\x92\x03\xbaH\x8e\x03\x1a\xab\x01\n" +
+	"\x1bvalid_image_repository_type\x12Wimage_repository_type must be 'ECR' (private registry) or 'ECR_PUBLIC' (public gallery)\x1a3this.image_repository_type in ['ECR', 'ECR_PUBLIC']\x1a\xdd\x01\n" +
+	"\x18ecr_requires_access_role\x12\x7faccess_role_arn is required when image_repository_type is 'ECR' -- App Runner needs an IAM role to pull from a private registry\x1a@this.image_repository_type != 'ECR' || has(this.access_role_arn)\"\xad\t\n" +
 	"\x1dAwsAppRunnerServiceCodeSource\x12.\n" +
 	"\x0erepository_url\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\rrepositoryUrl\x12\x1f\n" +
 	"\x06branch\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06branch\x12)\n" +
@@ -734,31 +753,31 @@ const file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_rawDesc = 
 	"\x0econnection_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\rconnectionArn\x12:\n" +
 	"\x14configuration_source\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x13configurationSource\x12\x18\n" +
 	"\aruntime\x18\x06 \x01(\tR\aruntime\x12#\n" +
-	"\rbuild_command\x18\a \x01(\tR\fbuildCommand:\x9d\x02\xbaH\x99\x02\x1a\x84\x01\n" +
-	"\x1avalid_configuration_source\x122configuration_source must be 'API' or 'REPOSITORY'\x1a2this.configuration_source in ['API', 'REPOSITORY']\x1a\x8f\x01\n" +
-	"\x1bapi_config_requires_runtime\x126runtime is required when configuration_source is 'API'\x1a8this.configuration_source != 'API' || this.runtime != ''\"\xec\x04\n" +
+	"\rbuild_command\x18\a \x01(\tR\fbuildCommand:\xb1\x06\xbaH\xad\x06\x1a\xd1\x01\n" +
+	"\x1avalid_configuration_source\x12\x7fconfiguration_source must be 'API' (configure the build in this spec) or 'REPOSITORY' (read apprunner.yaml from the repository)\x1a2this.configuration_source in ['API', 'REPOSITORY']\x1a\xc8\x01\n" +
+	"\x1bapi_config_requires_runtime\x12oruntime is required when configuration_source is 'API' -- pick the managed runtime App Runner should build with\x1a8this.configuration_source != 'API' || this.runtime != ''\x1a\x8b\x03\n" +
+	"\rvalid_runtime\x12\xbb\x01runtime must be one of App Runner's managed runtimes: PYTHON_3, PYTHON_311, NODEJS_12, NODEJS_14, NODEJS_16, NODEJS_18, NODEJS_22, CORRETTO_8, CORRETTO_11, GO_1, DOTNET_6, PHP_81, RUBY_31\x1a\xbb\x01this.runtime == '' || this.runtime in ['PYTHON_3','PYTHON_311','NODEJS_12','NODEJS_14','NODEJS_16','NODEJS_18','NODEJS_22','CORRETTO_8','CORRETTO_11','GO_1','DOTNET_6','PHP_81','RUBY_31']\"\xe1\x04\n" +
 	"\x1eAwsAppRunnerServiceHealthCheck\x12(\n" +
 	"\bprotocol\x18\x01 \x01(\tB\a\x8a\xa6\x1d\x03TCPH\x00R\bprotocol\x88\x01\x01\x12\x1e\n" +
-	"\x04path\x18\x02 \x01(\tB\x05\x8a\xa6\x1d\x01/H\x01R\x04path\x88\x01\x01\x12>\n" +
-	"\x10interval_seconds\x18\x03 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x14(\x01\x8a\xa6\x1d\x015H\x02R\x0fintervalSeconds\x88\x01\x01\x12<\n" +
-	"\x0ftimeout_seconds\x18\x04 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x14(\x01\x8a\xa6\x1d\x012H\x03R\x0etimeoutSeconds\x88\x01\x01\x12@\n" +
+	"\x04path\x18\x02 \x01(\tB\x05\x8a\xa6\x1d\x01/H\x01R\x04path\x88\x01\x01\x12/\n" +
+	"\binterval\x18\x03 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x14(\x01\x8a\xa6\x1d\x015H\x02R\binterval\x88\x01\x01\x12-\n" +
+	"\atimeout\x18\x04 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x14(\x01\x8a\xa6\x1d\x012H\x03R\atimeout\x88\x01\x01\x12@\n" +
 	"\x11healthy_threshold\x18\x05 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x14(\x01\x8a\xa6\x1d\x011H\x04R\x10healthyThreshold\x88\x01\x01\x12D\n" +
-	"\x13unhealthy_threshold\x18\x06 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x14(\x01\x8a\xa6\x1d\x015H\x05R\x12unhealthyThreshold\x88\x01\x01:\x8c\x01\xbaH\x88\x01\x1a\x85\x01\n" +
-	"\x1bvalid_health_check_protocol\x12-health check protocol must be 'TCP' or 'HTTP'\x1a7!has(this.protocol) || this.protocol in ['TCP', 'HTTP']B\v\n" +
+	"\x13unhealthy_threshold\x18\x06 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x14(\x01\x8a\xa6\x1d\x015H\x05R\x12unhealthyThreshold\x88\x01\x01:\xaf\x01\xbaH\xab\x01\x1a\xa8\x01\n" +
+	"\x1bvalid_health_check_protocol\x12Phealth check protocol must be 'TCP' (port check) or 'HTTP' (GET request to path)\x1a7!has(this.protocol) || this.protocol in ['TCP', 'HTTP']B\v\n" +
 	"\t_protocolB\a\n" +
-	"\x05_pathB\x13\n" +
-	"\x11_interval_secondsB\x12\n" +
-	"\x10_timeout_secondsB\x14\n" +
+	"\x05_pathB\v\n" +
+	"\t_intervalB\n" +
+	"\n" +
+	"\b_timeoutB\x14\n" +
 	"\x12_healthy_thresholdB\x16\n" +
-	"\x14_unhealthy_threshold\"\x89\x03\n" +
-	"\x1eAwsAppRunnerServiceAutoScaling\x12.\n" +
-	"\bmin_size\x18\x01 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x19(\x01\x8a\xa6\x1d\x011H\x00R\aminSize\x88\x01\x01\x12/\n" +
-	"\bmax_size\x18\x02 \x01(\x05B\x0f\xbaH\x06\x1a\x04\x18\x19(\x01\x8a\xa6\x1d\x0225H\x01R\amaxSize\x88\x01\x01\x12?\n" +
-	"\x0fmax_concurrency\x18\x03 \x01(\x05B\x11\xbaH\a\x1a\x05\x18\xc8\x01(\x01\x8a\xa6\x1d\x03100H\x02R\x0emaxConcurrency\x88\x01\x01:\x96\x01\xbaH\x92\x01\x1a\x8f\x01\n" +
-	"\vmax_gte_min\x122max_size must be greater than or equal to min_size\x1aL!has(this.min_size) || !has(this.max_size) || this.max_size >= this.min_sizeB\v\n" +
-	"\t_min_sizeB\v\n" +
-	"\t_max_sizeB\x12\n" +
-	"\x10_max_concurrencyB\x8c\x03\n" +
+	"\x14_unhealthy_threshold\"\xa8\x01\n" +
+	"\x1fAwsAppRunnerServiceCustomDomain\x12+\n" +
+	"\vdomain_name\x18\x01 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\xff\x01R\n" +
+	"domainName\x12?\n" +
+	"\x14enable_www_subdomain\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x12enableWwwSubdomain\x88\x01\x01B\x17\n" +
+	"\x15_enable_www_subdomainB\x8c\x03\n" +
 	"3com.dev.planton.provider.aws.awsapprunnerservice.v1B\tSpecProtoP\x01Zggithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsapprunnerservice/v1;awsapprunnerservicev1\xa2\x02\x05DPPAA\xaa\x02/Dev.Planton.Provider.Aws.Awsapprunnerservice.V1\xca\x02/Dev\\Planton\\Provider\\Aws\\Awsapprunnerservice\\V1\xe2\x02;Dev\\Planton\\Provider\\Aws\\Awsapprunnerservice\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Aws::Awsapprunnerservice::V1b\x06proto3"
 
 var (
@@ -775,14 +794,14 @@ func file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_rawDescGZIP
 
 var file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_goTypes = []any{
-	(*AwsAppRunnerServiceSpec)(nil),        // 0: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec
-	(*AwsAppRunnerServiceImageSource)(nil), // 1: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceImageSource
-	(*AwsAppRunnerServiceCodeSource)(nil),  // 2: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCodeSource
-	(*AwsAppRunnerServiceHealthCheck)(nil), // 3: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceHealthCheck
-	(*AwsAppRunnerServiceAutoScaling)(nil), // 4: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceAutoScaling
-	nil,                                    // 5: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.EnvironmentVariablesEntry
-	nil,                                    // 6: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.EnvironmentSecretsEntry
-	(*v1.StringValueOrRef)(nil),            // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsAppRunnerServiceSpec)(nil),         // 0: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec
+	(*AwsAppRunnerServiceImageSource)(nil),  // 1: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceImageSource
+	(*AwsAppRunnerServiceCodeSource)(nil),   // 2: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCodeSource
+	(*AwsAppRunnerServiceHealthCheck)(nil),  // 3: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceHealthCheck
+	(*AwsAppRunnerServiceCustomDomain)(nil), // 4: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCustomDomain
+	nil,                                     // 5: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.EnvironmentVariablesEntry
+	nil,                                     // 6: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.EnvironmentSecretsEntry
+	(*v1.StringValueOrRef)(nil),             // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.image_source:type_name -> dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceImageSource
@@ -791,12 +810,12 @@ var file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_depIdxs = []
 	6,  // 3: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.environment_secrets:type_name -> dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.EnvironmentSecretsEntry
 	7,  // 4: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.instance_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3,  // 5: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.health_check:type_name -> dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceHealthCheck
-	4,  // 6: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.auto_scaling:type_name -> dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceAutoScaling
+	7,  // 6: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.auto_scaling_configuration_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	7,  // 7: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.vpc_connector_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 8: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 9: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 10: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 11: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.observability_configuration_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 8: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.observability_configuration_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 9: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 10: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.custom_domains:type_name -> dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCustomDomain
+	7,  // 11: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceSpec.web_acl_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	7,  // 12: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceImageSource.access_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	7,  // 13: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCodeSource.connection_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	14, // [14:14] is the sub-list for method output_type

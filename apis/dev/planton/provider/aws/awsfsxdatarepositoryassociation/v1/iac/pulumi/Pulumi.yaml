@@ -1,0 +1,3 @@
+name: aws-fsx-data-repository-association
+runtime: go
+description: Deploy an Amazon FSx data repository association using Planton

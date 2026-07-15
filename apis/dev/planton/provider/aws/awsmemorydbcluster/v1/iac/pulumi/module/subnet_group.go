@@ -1,22 +1,24 @@
 package module
 
 import (
-	"regexp"
-	"strings"
-
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/memorydb"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// subnetGroup creates a MemoryDB subnet group when subnet_ids are provided.
+// subnetGroup creates the module-managed MemoryDB subnet group when the
+// folded subnet_ids arm is used. The bring-your-own subnet_group_name arm
+// (mutually exclusive by CEL) is handled in cluster.go — this module never
+// creates a group it does not own.
 func subnetGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*memorydb.SubnetGroup, error) {
 	spec := locals.Spec
-	if spec == nil || len(spec.SubnetIds) == 0 {
+	if len(spec.SubnetIds) == 0 {
 		return nil, nil
 	}
 
+	// Subnet refs arrive pre-resolved to plain subnet IDs (the platform
+	// flattens valueFrom references before the module runs).
 	var subnetIds pulumi.StringArray
 	for _, s := range spec.SubnetIds {
 		if s.GetValue() != "" {
@@ -27,11 +29,11 @@ func subnetGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*
 		return nil, nil
 	}
 
-	sanitizedName := sanitizeSubnetGroupName(locals.Target.Metadata.Id)
-
+	// The group carries the cluster's own name: everything the module owns
+	// is discoverable by one identifier, on both engines.
 	sg, err := memorydb.NewSubnetGroup(ctx, "subnet-group", &memorydb.SubnetGroupArgs{
-		Name:        pulumi.String(sanitizedName),
-		Description: pulumi.Sprintf("MemoryDB subnet group for %s", locals.Target.Metadata.Id),
+		Name:        pulumi.String(locals.ClusterName),
+		Description: pulumi.Sprintf("MemoryDB subnet group for %s", locals.ClusterName),
 		SubnetIds:   subnetIds,
 		Tags:        pulumi.ToStringMap(locals.AwsTags),
 	}, pulumi.Provider(provider))
@@ -39,30 +41,7 @@ func subnetGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*
 		return nil, errors.Wrap(err, "create subnet group")
 	}
 
-	ctx.Export(OpSubnetGroupName, sg.Name)
+	// The subnet_group_name output is exported once, in cluster.go, where
+	// all three arms (module-managed / bring-your-own / default) converge.
 	return sg, nil
-}
-
-// sanitizeSubnetGroupName normalises a name for AWS MemoryDB subnet group naming:
-// lowercase alphanumeric and hyphens only, max 255 characters.
-func sanitizeSubnetGroupName(name string) string {
-	name = strings.ToLower(name)
-	name = strings.ReplaceAll(name, " ", "-")
-
-	re := regexp.MustCompile(`[^a-z0-9-]`)
-	name = re.ReplaceAllString(name, "-")
-
-	re = regexp.MustCompile(`-+`)
-	name = re.ReplaceAllString(name, "-")
-
-	name = strings.Trim(name, "-")
-
-	if name == "" {
-		name = "subnet-group"
-	}
-	if len(name) > 255 {
-		name = name[:255]
-		name = strings.Trim(name, "-")
-	}
-	return name
 }

@@ -46,22 +46,24 @@ This component provisions the FSx for Windows file system, its network interface
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `deployment_type` | string | No | `SINGLE_AZ_1`, `SINGLE_AZ_2` (default), or `MULTI_AZ_1`. **ForceNew**. |
-| `storage_capacity_gib` | int32 | **Yes** | Storage in GiB. SSD: 32–65536. HDD: 2000–65536. Can increase but never decrease. |
+| `storage_capacity_gib` | int32 | Conditional | Storage in GiB. SSD: 32–65536. HDD: 2000–65536. Required unless restoring from `backup_id`. Can increase but never decrease. |
 | `storage_type` | string | No | `SSD` (default) or `HDD`. **ForceNew**. HDD only with SINGLE_AZ_2 or MULTI_AZ_1. |
 | `throughput_capacity` | int32 | **Yes** | MB/s. Valid: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4608, 6144, 9216, 12288. Can be changed after creation. |
-| `subnet_ids` | []StringValueOrRef | **Yes** | Subnet IDs. One for SINGLE_AZ, two for MULTI_AZ_1. **ForceNew**. |
-| `preferred_subnet_id` | StringValueOrRef | Conditional | Active file server subnet for MULTI_AZ_1. Must be in `subnet_ids`. **ForceNew**. |
+| `subnet_ids` | []StringValueOrRef | **Yes** | Subnet IDs. Exactly one for SINGLE_AZ, exactly two for MULTI_AZ_1. **ForceNew**. |
+| `preferred_subnet_id` | StringValueOrRef | Conditional | Active file server subnet. Required for MULTI_AZ_1 (invalid otherwise). Must be in `subnet_ids`. **ForceNew**. |
 | `security_group_ids` | []StringValueOrRef | No | Security groups for the ENIs (up to 50). **ForceNew**. |
 | `kms_key_id` | StringValueOrRef | No | Customer-managed KMS key ARN. **ForceNew**. Omit for AWS-managed key. |
+| `backup_id` | string | No | FSx backup to restore from. **ForceNew**. Excludes `storage_capacity_gib`. |
 | `active_directory_id` | StringValueOrRef | Conditional | AWS Managed AD ID. Mutually exclusive with `self_managed_active_directory`. |
 | `self_managed_active_directory` | Object | Conditional | Self-managed AD config. Mutually exclusive with `active_directory_id`. |
-| `aliases` | []string | No | DNS alias names (up to 50). Create CNAME records pointing to the file system's DNS name. |
+| `aliases` | []string | No | DNS alias names (up to 50, each 4–253 chars). Create CNAME records pointing to the file system's DNS name. |
 | `audit_log_configuration` | Object | No | Audit logging for file and share access events. |
-| `disk_iops_configuration` | Object | No | SSD IOPS config. AUTOMATIC (default) or USER_PROVISIONED. |
+| `disk_iops_configuration` | Object | No | SSD IOPS config. AUTOMATIC (default) or USER_PROVISIONED (0–350000). |
 | `automatic_backup_retention_days` | int32 | No | Backup retention 0–90 days. Default: 7. Set 0 to disable. |
 | `daily_automatic_backup_start_time` | string | No | Backup window in `HH:MM` UTC. |
 | `copy_tags_to_backups` | bool | No | Copy tags to backups. **ForceNew**. |
 | `skip_final_backup` | bool | No | Skip final backup on deletion. Default: true. |
+| `final_backup_tags` | map | No | Tags applied to the final backup when one is taken. |
 | `weekly_maintenance_start_time` | string | No | Maintenance window in `d:HH:MM` format (1=Mon, 7=Sun). |
 
 ### Self-Managed Active Directory Fields
@@ -259,13 +261,17 @@ The following fields require **resource replacement** if changed. Plan them upfr
 | `preferred_subnet_id` | Cannot change the preferred subnet for MULTI_AZ. |
 | `security_group_ids` | Cannot change security groups after creation. |
 | `kms_key_id` | Cannot change the KMS key after creation. |
+| `backup_id` | The restore source is a create-time decision. |
+| `active_directory_id` | The AD join is a create-time decision. |
 | `copy_tags_to_backups` | Cannot toggle after creation. |
+
+Storage capacity and throughput capacity change in place (capacity grows, never shrinks); aliases, audit configuration, disk IOPS, backups, and the self-managed AD credentials update in place.
 
 ## Deliberately Omitted (v1)
 
 The following FSx for Windows features are not exposed in this API version:
 
-- **Storage capacity scaling** — increasing capacity is supported by AWS but not yet exposed as a spec update.
+- **Write-only AD password** (`password_wo`/`password_wo_version`) — Terraform-only ephemeral-value plumbing with no Pulumi equivalent; the Secrets Manager join arm is the recommended way to keep credentials out of state.
 - **Shadow copies** — configured via PowerShell on the file system, not via the API.
 - **Data deduplication** — configured via PowerShell on the file system.
 - **File share creation** — managed via PowerShell or Windows administrative tools.

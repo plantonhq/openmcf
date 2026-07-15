@@ -1,0 +1,38 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsathenaworkgroup
+spec:
+  # An Athena workgroup under live E2E: two lanes because AWS's own rule
+  # makes the result-storage arms mutually exclusive -- a workgroup stores
+  # query results either in a customer S3 bucket or in AWS-managed storage,
+  # never both, so one scenario physically cannot prove both arms.
+  #
+  # - s3-results-full-surface: the customer-managed shape composed against
+  #   the shared S3 bucket fixture (scenario-declared prerequisite), with
+  #   cost controls, governance dials, SSE_S3 result encryption, and the
+  #   managed + S3 log-delivery arms.
+  # - managed-results: the AWS-managed storage arm (no bucket anywhere).
+  #
+  # Excluded from live lanes with reasons (proven by spec tests + the
+  # offline plan gate against iac/hack/manifest.yaml):
+  # - identity_center + s3_access_grants: require an IAM Identity Center
+  #   instance the e2e account does not run (the AMP-workspace class).
+  # - customer_content_encryption + cloud_watch_logging with a custom log
+  #   group: Spark-session surfaces; the e2e lanes run SQL workgroups.
+  # - KMS-encrypted results/logs: would add a KMS fixture for an arm whose
+  #   wiring the SSE_S3 lane already proves end to end.
+  #
+  # Verification is GetWorkGroup keyed on workgroup_name (Athena reports a
+  # missing workgroup as InvalidRequestException "... is not found"; deletion
+  # is synchronous). Workgroups are free metadata objects; each lane is the
+  # create/verify/destroy cycle alone.
+  # Live dual-engine run 2026-07-09: managed-results 24s both engines;
+  # s3-results-full-surface ~55s/60s incl. the S3 fixture chain; zero-orphan
+  # sweep clean.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

@@ -10,15 +10,14 @@
 
 ## What It Provides
 
-- Email as the sign-in identifier
+- Email as the sign-in identifier (ForceNew -- chosen deliberately up front)
 - Auto-verified email addresses
 - Password recovery via email
-- Single app client with SRP auth (secure) and refresh token support
 - No MFA, no domain, no custom attributes
 
 ## What You Might Add
 
+- An `AwsCognitoUserPoolClient` resource so an application can authenticate (the pool alone has no app client)
 - `passwordPolicy` for stronger password requirements
 - `mfaConfiguration: OPTIONAL` with `softwareTokenMfaEnabled: true`
 - `domain` for hosted UI login pages
-- Additional clients for mobile or server-side applications

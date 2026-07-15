@@ -1,6 +1,6 @@
 # AWS Route53 DNS Record
 
-Deploys an individual DNS record in an existing AWS Route53 hosted zone, with support for standard record types (A, AAAA, CNAME, MX, TXT, NS, SRV, CAA), alias records pointing to AWS resources, and advanced routing policies (weighted, latency, failover, geolocation).
+Deploys an individual DNS record in an existing AWS Route53 hosted zone, with the full record-type set (A, AAAA, CAA, CNAME, DS, HTTPS, MX, NAPTR, NS, PTR, SOA, SPF, SRV, SSHFP, SVCB, TLSA, TXT), alias records pointing to AWS resources, health-check gating, and all seven routing policies (weighted, latency, failover, geolocation, geoproximity, CIDR, multivalue answer).
 
 ## What Gets Created
 
@@ -12,13 +12,13 @@ Depending on configuration, the record may be:
 
 - A **standard record** with explicit values and TTL (e.g., A record with IP addresses)
 - An **alias record** pointing to an AWS resource (ALB, CloudFront, S3 website, API Gateway) with automatic TTL from the target
-- A **policy-routed record** using weighted, latency-based, failover, or geolocation routing for advanced traffic management
+- A **policy-routed record** using weighted, latency, failover, geolocation, geoproximity, CIDR, or multivalue answer routing
 
 ## Prerequisites
 
 - **AWS credentials** configured via environment variables or Planton provider config
 - **An existing Route53 hosted zone** — provide the zone ID directly or reference an AwsRoute53Zone resource via `valueFrom`
-- **A health check ID** (optional) if using failover routing — health checks must be created separately in Route53
+- **A health check** (optional) for gated answers — reference an AwsRoute53HealthCheck resource via `valueFrom`
 - **The target resource's DNS name and hosted zone ID** if creating alias records — or reference an AwsAlb resource via `valueFrom`
 
 ## Quick Start
@@ -37,7 +37,8 @@ metadata:
     pulumi.planton.dev/stack.name: dev.AwsRoute53DnsRecord.www-example
 spec:
   region: us-east-1
-  zoneId: Z1234567890ABCDEF
+  zoneId:
+    value: Z1234567890ABCDEF
   name: www.example.com
   type: A
   ttl: 300
@@ -62,7 +63,7 @@ This creates an A record for `www.example.com` pointing to `203.0.113.10` with a
 | `region` | `string` | The AWS region where the resource will be created. | Required |
 | `zoneId` | `StringValueOrRef` | The Route53 hosted zone ID where this record is created. Can reference an AwsRoute53Zone resource via `valueFrom` (default kind: `AwsRoute53Zone`, default field: `status.outputs.zone_id`). | Required |
 | `name` | `string` | The fully qualified domain name or subdomain (e.g., `www.example.com`, `*.example.com`). | Required. Pattern: hostname, subdomain, or wildcard. |
-| `type` | `RecordType` | The DNS record type. Valid values: `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `NS`, `CAA`. | Required. Cannot be `record_type_unspecified`. |
+| `type` | `string` | The DNS record type. Valid values: `A`, `AAAA`, `CAA`, `CNAME`, `DS`, `HTTPS`, `MX`, `NAPTR`, `NS`, `PTR`, `SOA`, `SPF`, `SRV`, `SSHFP`, `SVCB`, `TLSA`, `TXT`. | Required. |
 
 At least one of `values` or `aliasTarget` must be specified. They are mutually exclusive.
 
@@ -82,13 +83,17 @@ At least one of `values` or `aliasTarget` must be specified. They are mutually e
 | `routingPolicy.latency` | `object` | — | Latency-based routing. Routes to the lowest-latency endpoint. |
 | `routingPolicy.latency.region` | `string` | — | AWS region where this resource is located (e.g., `us-east-1`). Required for latency routing. |
 | `routingPolicy.failover` | `object` | — | Failover routing. Automatic failover to secondary when primary fails. |
-| `routingPolicy.failover.failoverType` | `FailoverType` | — | Must be `primary` or `secondary`. Required for failover routing. |
+| `routingPolicy.failover.failoverType` | `string` | — | `PRIMARY` or `SECONDARY`. Required for failover routing. |
 | `routingPolicy.geolocation` | `object` | — | Geolocation routing. Routes based on user location. |
 | `routingPolicy.geolocation.continent` | `string` | — | Two-letter continent code (e.g., `NA`, `EU`, `AS`). Use continent or country, not both. |
-| `routingPolicy.geolocation.country` | `string` | — | Two-letter ISO 3166-1 country code (e.g., `US`, `GB`, `DE`). |
+| `routingPolicy.geolocation.country` | `string` | — | Two-letter ISO 3166-1 country code (e.g., `US`, `GB`, `DE`), or `*` for the default member. |
 | `routingPolicy.geolocation.subdivision` | `string` | — | US state code (e.g., `CA`, `NY`). Only valid when country is `US`. |
-| `healthCheckId` | `string` | — | Route53 health check ID for failover routing. Health checks must be created separately. |
-| `setIdentifier` | `string` | — | Unique identifier for routing policies. Required for weighted, latency, failover, and geolocation routing. Must be unique among records with the same name and type. |
+| `routingPolicy.geoproximity` | `object` | — | Geoproximity routing: distance-based with a bias dial. Exactly one of `awsRegion`, `coordinates` (`latitude`/`longitude`), or `localZoneGroup`, plus optional `bias` (−99..99). |
+| `routingPolicy.cidr` | `object` | — | CIDR routing by resolver IP block: `collectionId` + `locationName` (`*` for the default location). |
+| `routingPolicy.multivalueAnswer` | `object` | — | Multivalue answer routing: up to eight healthy members per query. Not valid with alias records. The empty object is the configuration. |
+| `healthCheckId` | `string \| ref` | — | Health check gating this record's answers. Can reference an AwsRoute53HealthCheck resource (default field: `status.outputs.health_check_id`). |
+| `setIdentifier` | `string` | — | Unique identifier within the routing group. Required by every routing policy. Must be unique among records with the same name and type. |
+| `allowOverwrite` | `bool` | `false` | Overwrite an existing record set with the same name and type instead of failing — the adoption path for records created outside the graph. |
 
 ## Examples
 
@@ -107,7 +112,8 @@ metadata:
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: dev.AwsRoute53DnsRecord.api-example
 spec:
-  zoneId: Z1234567890ABCDEF
+  zoneId:
+    value: Z1234567890ABCDEF
   name: api.example.com
   type: A
   ttl: 300
@@ -131,12 +137,15 @@ metadata:
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.AwsRoute53DnsRecord.apex-example
 spec:
-  zoneId: Z1234567890ABCDEF
+  zoneId:
+    value: Z1234567890ABCDEF
   name: example.com
   type: A
   aliasTarget:
-    dnsName: my-alb-123456.us-east-1.elb.amazonaws.com
-    zoneId: Z35SXDOTRQ7X7K
+    dnsName:
+      value: my-alb-123456.us-east-1.elb.amazonaws.com
+    zoneId:
+      value: Z35SXDOTRQ7X7K
     evaluateTargetHealth: true
 ```
 
@@ -187,7 +196,8 @@ metadata:
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.AwsRoute53DnsRecord.api-stable
 spec:
-  zoneId: Z1234567890ABCDEF
+  zoneId:
+    value: Z1234567890ABCDEF
   name: api.example.com
   type: A
   ttl: 60
@@ -213,7 +223,8 @@ metadata:
     pulumi.planton.dev/stack.name: prod.AwsRoute53DnsRecord.api-canary
 spec:
   region: us-east-1
-  zoneId: Z1234567890ABCDEF
+  zoneId:
+    value: Z1234567890ABCDEF
   name: api.example.com
   type: A
   ttl: 60
@@ -243,7 +254,8 @@ metadata:
     pulumi.planton.dev/stack.name: prod.AwsRoute53DnsRecord.app-primary
 spec:
   region: us-east-1
-  zoneId: Z1234567890ABCDEF
+  zoneId:
+    value: Z1234567890ABCDEF
   name: app.example.com
   type: A
   ttl: 60
@@ -251,8 +263,12 @@ spec:
     - "203.0.113.10"
   routingPolicy:
     failover:
-      failoverType: primary
-  healthCheckId: hc-12345-abcde
+      failoverType: PRIMARY
+  healthCheckId:
+    valueFrom:
+      kind: AwsRoute53HealthCheck
+      name: app-primary-check
+      fieldPath: status.outputs.health_check_id
   setIdentifier: primary
 ```
 
@@ -270,7 +286,8 @@ metadata:
     pulumi.planton.dev/stack.name: prod.AwsRoute53DnsRecord.app-secondary
 spec:
   region: us-east-1
-  zoneId: Z1234567890ABCDEF
+  zoneId:
+    value: Z1234567890ABCDEF
   name: app.example.com
   type: A
   ttl: 60
@@ -278,7 +295,7 @@ spec:
     - "203.0.113.20"
   routingPolicy:
     failover:
-      failoverType: secondary
+      failoverType: SECONDARY
   setIdentifier: secondary
 ```
 
@@ -296,7 +313,8 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [AwsRoute53Zone](/docs/catalog/aws/awsroute53zone) — creates the hosted zone where DNS records are placed; also supports inline record creation
+- [AwsRoute53Zone](/docs/catalog/aws/awsroute53zone) — creates the hosted zone where DNS records are placed
+- [AwsRoute53HealthCheck](/docs/catalog/aws/awsroute53healthcheck) — gates this record's answers on endpoint health
 - [AwsAlb](/docs/catalog/aws/awsalb) — provides `load_balancer_dns_name` and `load_balancer_hosted_zone_id` outputs for alias record targets
 - [AwsCloudfront](/docs/catalog/aws/awscloudfront) — provides the distribution DNS name for alias record targets
 - [AwsCertManagerCert](/docs/catalog/aws/awscertmanagercert) — DNS-validated certificates require TXT or CNAME records in the zone

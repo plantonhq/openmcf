@@ -113,8 +113,8 @@ var _ = ginkgo.Describe("AwsEcsTaskDefinitionSpec Validation Tests", func() {
 					{
 						Name: "shared-data",
 						Efs: &AwsEcsTaskDefinitionEfsVolume{
-							FileSystemId:  "fs-0123456789abcdef0",
-							AccessPointId: "fsap-0123456789abcdef0",
+							FileSystemId:  literalRef("fs-0123456789abcdef0"),
+							AccessPointId: literalRef("fsap-0123456789abcdef0"),
 						},
 					},
 				}
@@ -313,7 +313,7 @@ var _ = ginkgo.Describe("AwsEcsTaskDefinitionSpec Validation Tests", func() {
 						Name:     "conflicted",
 						HostPath: "/mnt/data",
 						Efs: &AwsEcsTaskDefinitionEfsVolume{
-							FileSystemId: "fs-0123456789abcdef0",
+							FileSystemId: literalRef("fs-0123456789abcdef0"),
 						},
 					},
 				}

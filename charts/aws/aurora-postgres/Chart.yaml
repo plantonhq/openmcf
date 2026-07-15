@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: AWS Aurora PostgreSQL
+spec:
+  selector:
+    kind: platform
+  description: The PostgreSQL a team points production at — Aurora Serverless v2 (or provisioned) with a managed master password in Secrets Manager, encrypted storage, a locked-down database security group, and honest backup/deletion posture.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/aws/awsrdscluster/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/aws/aurora-postgres
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/aws/aurora-postgres/README.md

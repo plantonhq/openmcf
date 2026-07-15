@@ -198,24 +198,35 @@ By default, ECR repositories are private to the AWS account. Repository policies
 | **Overly-Broad Repository Policy** | Unintended access, potential data exposure | Use least-privilege IAM policies with specific principals |
 | **Ignoring Token Expiration (EKS)** | `ImagePullBackOff` errors every 12 hours | Use IRSA on EKS or deploy `ecr-secret-operator` |
 
-## The 80/20 Configuration Principle
+## The Coverage Line (90/10)
 
-Just as APIs should focus on the 20% of configuration that 80% of users need, ECR deployment should prioritize essential settings with secure defaults.
+The spec models the full repository-scoped surface with secure defaults, and stops
+deliberately at the account boundary.
 
-### The Essential 80%
+### Covered (repository-scoped)
 
-1. **region**: The AWS region where the repository will be created
-2. **repository_name**: The repository name (unique within account and region)
-3. **image_tag_mutability**: Default to `IMMUTABLE` for production stability
-4. **scan_on_push**: Default to `true` for security
-5. **encryption_type**: Default to `AES256` (sufficient for most use cases)
+1. **region** and **repository_name**: The identity pair (the name is a
+   slash-namespaced registry path, create-time immutable)
+2. **image_tag_mutability** + **exclusion filters**: All four modes, including the
+   exclusion-filtered pair that freezes release tags while `latest` stays movable
+3. **scan_on_push**: Default `true` for security
+4. **encryption_type** + **kms_key_id**: AES256 (default), KMS, and dual-layer
+   KMS_DSSE — the whole configuration is create-time
+5. **lifecycle_rules**: The full structured rule model (priority, tag state,
+   prefix/pattern selectors, count-by-age or count-by-number), validated at
+   authoring time
+6. **repository_policy**: The folded resource-based policy for cross-account and
+   service access
 
-### The Advanced 20%
+### Deliberately not modeled (account/registry-scoped — different lifecycle owners)
 
-1. **Lifecycle Policies**: Nearly universal need, but complex configuration (prime target for abstraction)
-2. **Repository Policies**: Required for any cross-account or service integration
-3. **KMS Key ARN**: The "compliance switch" for regulated industries
-4. **Replication**: Rare, advanced use case for multi-region disaster recovery
+1. **Registry policy** and **registry scanning configuration**: Regional
+   account singletons governing the whole registry, not one repository
+2. **Replication configuration**: One per account/region, replicating the registry
+   cross-region/cross-account
+3. **Pull-through cache rules** and **repository creation templates**: Account-level
+   prefix-keyed rules that mint repositories outside any one repository's lifecycle
+4. **ECR Public**: A separate product surface (its own API and constraints)
 
 ### Example: Production Repository Configuration
 

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awstransitgatewayvpcattachment.v1;
+
+// AwsTransitGatewayVpcAttachmentStackOutputs captures observable identifiers
+// from a provisioned Transit Gateway VPC attachment.
+//
+// The attachment ID is the join key of the Transit Gateway routing surface:
+// AwsTransitGatewayRouteTable resources associate it, accept propagations
+// from it, and target it in static routes.
+message AwsTransitGatewayVpcAttachmentStackOutputs {
+  // The Transit Gateway attachment ID (e.g., "tgw-attach-0123456789abcdef0").
+  // Referenced by route table associations, propagations, and static routes.
+  string attachment_id = 1;
+
+  // The Amazon Resource Name (ARN) of the attachment. Used for IAM policies
+  // and resource-level permissions.
+  string attachment_arn = 2;
+
+  // The AWS account ID that owns the attached VPC. Differs from the gateway
+  // owner in cross-account (RAM-shared) topologies.
+  string vpc_owner_id = 3;
+}

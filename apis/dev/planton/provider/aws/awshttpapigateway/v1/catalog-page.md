@@ -1,16 +1,18 @@
 # AWS HTTP API Gateway
 
-Deploys an AWS API Gateway HTTP API (v2) with a bundled stage, routes with inline integrations, and optional JWT or Lambda authorizers. HTTP APIs offer lower latency and cost compared to REST APIs, with native support for Lambda proxy integration, HTTP proxy integration, CORS, and automatic deployments.
+Deploys an AWS API Gateway HTTP API (v2) with a bundled stage, routes with inline integrations, and optional JWT or Lambda authorizers. HTTP APIs offer lower latency and cost compared to REST APIs, with native support for Lambda proxy integration, HTTP proxy integration (public or private through a VPC link), first-class AWS service integrations (SQS, EventBridge, Step Functions, Kinesis, AppConfig), CORS, and automatic deployments.
 
 ## What Gets Created
 
 When you deploy an AwsHttpApiGateway resource, Planton provisions:
 
-- **HTTP API** — an API Gateway v2 HTTP API with configured CORS, description, and endpoint settings
-- **Stage** — a deployment stage (defaults to `$default` with auto-deploy enabled), with optional access logging and throttling
-- **Integrations** — deduplicated backend integrations (Lambda proxy or HTTP proxy) shared across routes with identical configuration
+- **HTTP API** — an API Gateway v2 HTTP API with configured CORS, description, version label, IP address type, and endpoint settings
+- **Stage** — a deployment stage (defaults to `$default` with auto-deploy enabled), with optional access logging, stage-wide and per-route throttling, and detailed metrics
+- **Integrations** — deduplicated backend integrations (Lambda proxy, HTTP proxy, private VPC-link proxy, or AWS service action) shared across routes with identical configuration
 - **Routes** — API routes mapping request patterns (e.g., `GET /users`, `POST /orders/{id}`, `$default`) to their corresponding integrations
 - **Authorizers** — optional JWT or Lambda (REQUEST) authorizers referenced by routes for request authorization
+
+Custom domains are the separate `AwsHttpApiDomain` component; VPC links for private integrations are the separate `AwsHttpApiVpcLink` component.
 
 ## Prerequisites
 
@@ -63,15 +65,17 @@ This creates an HTTP API with a single catch-all route (`$default`) that forward
 | `routes` | `AwsHttpApiGatewayRoute[]` | API routes mapping request patterns to backend integrations | Minimum 1 item |
 | `routes[].routeKey` | `string` | Route key defining the request pattern (e.g., `"GET /users"`, `"POST /orders/{id}"`, `"$default"`) | Non-empty |
 | `routes[].integration` | `object` | Backend integration that processes requests matching this route | Required |
-| `routes[].integration.integrationType` | `string` | Integration type: `"AWS_PROXY"` (Lambda) or `"HTTP_PROXY"` (HTTP endpoint) | Non-empty; must be `"AWS_PROXY"` or `"HTTP_PROXY"` |
-| `routes[].integration.integrationUri` | `StringValueOrRef` | Lambda function ARN for `AWS_PROXY`, upstream HTTP URL for `HTTP_PROXY`. Can reference `AwsLambda` via `valueFrom`. | Required |
+| `routes[].integration.integrationType` | `string` | Integration type: `"AWS_PROXY"` (Lambda or AWS service action) or `"HTTP_PROXY"` (HTTP endpoint) | Non-empty; must be `"AWS_PROXY"` or `"HTTP_PROXY"` |
+| `routes[].integration.integrationUri` | `StringValueOrRef` | Lambda function ARN for `AWS_PROXY`, upstream HTTP URL (or private ALB/NLB listener ARN) for `HTTP_PROXY`. Can reference `AwsLambda` via `valueFrom`. | Required for proxy integrations; must be omitted when `integrationSubtype` is set |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `description` | `string` | — | Human-readable description of the API (max 1024 characters) |
-| `disableExecuteApiEndpoint` | `bool` | `false` | Disable the default execute-api endpoint when using a custom domain |
+| `apiVersion` | `string` | — | Informational version label surfaced in the console and OpenAPI exports (max 64 characters) |
+| `disableExecuteApiEndpoint` | `bool` | `false` | Disable the default execute-api endpoint when an `AwsHttpApiDomain` fronts this API |
+| `ipAddressType` | `string` | — | `"ipv4"` or `"dualstack"` (AWS defaults new APIs to dualstack) |
 | `corsConfiguration.allowOrigins` | `string[]` | `[]` | Origins allowed to make cross-origin requests (e.g., `"https://example.com"`, `"*"`) |
 | `corsConfiguration.allowMethods` | `string[]` | `[]` | HTTP methods allowed for cross-origin requests (e.g., `"GET"`, `"POST"`, `"OPTIONS"`) |
 | `corsConfiguration.allowHeaders` | `string[]` | `[]` | Request headers allowed in cross-origin requests (e.g., `"Content-Type"`, `"Authorization"`) |
@@ -79,22 +83,38 @@ This creates an HTTP API with a single catch-all route (`$default`) that forward
 | `corsConfiguration.maxAgeSeconds` | `int` | `0` | Maximum time in seconds that browsers cache CORS preflight results (0–86400) |
 | `corsConfiguration.allowCredentials` | `bool` | `false` | Whether the API supports credentials (cookies, authorization headers) in cross-origin requests |
 | `stage.name` | `string` | `"$default"` | Stage name. Named stages (e.g., `"prod"`) append the name to the invoke URL path. |
-| `stage.autoDeploy` | `bool` | `true` | Automatic deployment when routes, integrations, or authorizers change |
+| `stage.autoDeploy` | `bool` | `true` | Automatic deployment when routes, integrations, or authorizers change. Defaults to true whenever omitted; set explicitly to `false` to manage deployments externally. |
+| `stage.description` | `string` | — | Human-readable stage description (max 1024 characters) |
 | `stage.accessLog.destinationArn` | `StringValueOrRef` | — | CloudWatch Log Group ARN for access log delivery. Can reference `AwsCloudwatchLogGroup` via `valueFrom`. |
 | `stage.accessLog.format` | `string` | — | Log format template using API Gateway access log variables (e.g., `$context.requestId`) |
 | `stage.defaultThrottle.burstLimit` | `int` | `0` | Maximum concurrent requests (token bucket size) |
 | `stage.defaultThrottle.rateLimit` | `double` | `0` | Steady-state request rate limit in requests per second |
+| `stage.detailedMetricsEnabled` | `bool` | `false` | Emit per-route CloudWatch metrics as the stage default (extra CloudWatch cost) |
+| `stage.routeSettings[].routeKey` | `string` | — | Route to override (must match a defined route key) |
+| `stage.routeSettings[].throttlingBurstLimit` | `int` | `0` | Burst limit override for this route (zero inherits the stage default) |
+| `stage.routeSettings[].throttlingRateLimit` | `double` | `0` | Rate limit override for this route (zero inherits the stage default) |
+| `stage.routeSettings[].detailedMetricsEnabled` | `bool` | `false` | Detailed metrics override for this route |
 | `stage.stageVariables` | `map<string, string>` | `{}` | Stage variables passed to integrations as environment-specific configuration |
-| `routes[].authorizationType` | `string` | `"NONE"` | Authorization type: `"NONE"`, `"JWT"`, or `"AWS_IAM"` |
-| `routes[].authorizerName` | `string` | — | Name of the authorizer to use. Required when `authorizationType` is `"JWT"`. Must match a defined authorizer. |
+| `routes[].authorizationType` | `string` | `"NONE"` | Authorization type: `"NONE"`, `"JWT"`, `"AWS_IAM"`, or `"CUSTOM"` (Lambda authorizer) |
+| `routes[].authorizerName` | `string` | — | Name of the authorizer to bind. Required for `"JWT"` (JWT authorizer) and `"CUSTOM"` (REQUEST authorizer). |
 | `routes[].authorizationScopes` | `string[]` | `[]` | OAuth 2.0 scopes required for JWT authorization |
-| `routes[].integration.payloadFormatVersion` | `string` | `"2.0"` | Payload format version for Lambda integrations: `"2.0"` (recommended) or `"1.0"`. Only applies to `AWS_PROXY`. |
+| `routes[].operationName` | `string` | — | Stable operationId for OpenAPI exports and generated clients (max 64 characters) |
+| `routes[].integration.integrationSubtype` | `string` | — | AWS service action (e.g., `"SQS-SendMessage"`, `"EventBridge-PutEvents"`, `"StepFunctions-StartExecution"`). Requires `AWS_PROXY` and `credentialsArn`; action parameters go in `requestParameters`. |
+| `routes[].integration.payloadFormatVersion` | `string` | `"2.0"` | Payload format version: `"2.0"` (Lambda only, recommended) or `"1.0"`. Service integrations are fixed at `"1.0"` by AWS. |
 | `routes[].integration.integrationMethod` | `string` | — | HTTP method for the integration request. Defaults to the route method for `HTTP_PROXY`. Always `POST` for `AWS_PROXY`. |
 | `routes[].integration.timeoutMilliseconds` | `int` | `30000` | Integration timeout in milliseconds (50–30000). Returns 504 if the backend does not respond in time. |
+| `routes[].integration.connectionType` | `string` | `"INTERNET"` | `"INTERNET"` or `"VPC_LINK"` for private integrations (requires `connectionId` and `HTTP_PROXY`) |
+| `routes[].integration.connectionId` | `StringValueOrRef` | — | The VPC link to route through. Can reference `AwsHttpApiVpcLink` via `valueFrom`. Required with `"VPC_LINK"`. |
+| `routes[].integration.credentialsArn` | `StringValueOrRef` | — | IAM role API Gateway assumes to call the target. Required for service integrations. Can reference `AwsIamRole` via `valueFrom`. |
+| `routes[].integration.requestParameters` | `map<string, string>` | `{}` | Parameter mappings (proxy) or service-action parameters (subtype integrations) |
+| `routes[].integration.responseParameters[].statusCode` | `string` | — | Backend status code the response mappings apply to (e.g., `"500"`) |
+| `routes[].integration.responseParameters[].mappings` | `map<string, string>` | — | Response mapping instructions (e.g., `"overwrite:statuscode"` → `"503"`) |
+| `routes[].integration.tlsServerNameToVerify` | `string` | — | SNI override for private integrations whose internal ALB serves a public-domain certificate |
+| `routes[].integration.description` | `string` | — | Human-readable integration description (max 1024 characters) |
 | `authorizers[].name` | `string` | — | Unique authorizer name (1–128 characters). Routes reference authorizers by this name. |
 | `authorizers[].authorizerType` | `string` | — | Authorizer type: `"JWT"` or `"REQUEST"` |
 | `authorizers[].jwtConfiguration.issuer` | `string` | — | Token issuer URL. Required for JWT authorizers. (e.g., `"https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ABC123"`) |
-| `authorizers[].jwtConfiguration.audiences` | `string[]` | `[]` | Expected JWT audiences (e.g., Cognito app client ID) |
+| `authorizers[].jwtConfiguration.audiences` | `string[]` | — | Expected JWT audiences (e.g., Cognito app client ID). At least one is required for JWT authorizers. |
 | `authorizers[].authorizerUri` | `StringValueOrRef` | — | Lambda function invoke ARN for REQUEST authorizers. Can reference `AwsLambda` via `valueFrom`. |
 | `authorizers[].authorizerCredentialsArn` | `StringValueOrRef` | — | IAM role ARN that API Gateway assumes to invoke the Lambda authorizer. Can reference `AwsIamRole` via `valueFrom`. |
 | `authorizers[].identitySources` | `string[]` | `[]` | Identity sources for token extraction (e.g., `"$request.header.Authorization"`) |
@@ -318,6 +338,9 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [AwsLambda](/docs/catalog/aws/awslambda) — Lambda functions used as backend integrations via AWS_PROXY
-- [AwsIamRole](/docs/catalog/aws/awsiamrole) — IAM roles for Lambda authorizer invocation credentials
+- [AwsHttpApiVpcLink](/docs/catalog/aws/awshttpapivpclink) — VPC links for private integrations to internal ALB/NLB/Cloud Map backends
+- [AwsHttpApiDomain](/docs/catalog/aws/awshttpapidomain) — Custom domains mapping one or more APIs under an owned DNS name
+- [AwsStepFunction](/docs/catalog/aws/awsstepfunction) — State machines started directly via StepFunctions-StartExecution service integrations
+- [AwsSqsQueue](/docs/catalog/aws/awssqsqueue) — Queues fed directly via SQS-SendMessage service integrations
+- [AwsIamRole](/docs/catalog/aws/awsiamrole) — IAM roles for Lambda authorizer invocation and service-integration credentials
 - [AwsCloudwatchLogGroup](/docs/catalog/aws/awscloudwatchloggroup) — CloudWatch Log Groups for API access logging
-- [AwsWebSocketApiGateway](/docs/catalog/aws/awswebsocketapigateway) — WebSocket APIs for real-time bidirectional communication

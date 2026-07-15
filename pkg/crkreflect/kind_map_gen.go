@@ -49,19 +49,28 @@ import (
 	auth0resourceserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/auth0/auth0resourceserver/v1"
 	auth0rolev1 "github.com/plantonhq/planton/apis/dev/planton/provider/auth0/auth0role/v1"
 	awsalbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsalb/v1"
+	awsapprunnerautoscalingconfigurationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsapprunnerautoscalingconfiguration/v1"
+	awsapprunnerobservabilityconfigurationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsapprunnerobservabilityconfiguration/v1"
 	awsapprunnerservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsapprunnerservice/v1"
+	awsapprunnervpcconnectorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsapprunnervpcconnector/v1"
 	awsathenaworkgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsathenaworkgroup/v1"
 	awsautoscalinggroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsautoscalinggroup/v1"
 	awsbatchcomputeenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsbatchcomputeenvironment/v1"
+	awsbatchjobdefinitionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsbatchjobdefinition/v1"
+	awsbatchjobqueuev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsbatchjobqueue/v1"
+	awsbatchschedulingpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsbatchschedulingpolicy/v1"
 	awscertmanagercertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscertmanagercert/v1"
 	awsclientvpnv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsclientvpn/v1"
 	awscloudfrontv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscloudfront/v1"
 	awscloudwatchalarmv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscloudwatchalarm/v1"
+	awscloudwatchcompositealarmv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscloudwatchcompositealarm/v1"
 	awscloudwatchloggroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscloudwatchloggroup/v1"
 	awscodebuildprojectv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscodebuildproject/v1"
 	awscodepipelinev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscodepipeline/v1"
 	awscognitoidentityproviderv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitoidentityprovider/v1"
+	awscognitoresourceserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitoresourceserver/v1"
 	awscognitouserpoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitouserpool/v1"
+	awscognitouserpoolclientv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitouserpoolclient/v1"
 	awsdocumentdbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsdocumentdb/v1"
 	awsdynamodbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsdynamodb/v1"
 	awsec2instancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsec2instance/v1"
@@ -69,6 +78,7 @@ import (
 	awsecsclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecscluster/v1"
 	awsecsservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecsservice/v1"
 	awsecstaskdefinitionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecstaskdefinition/v1"
+	awsefsaccesspointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsefsaccesspoint/v1"
 	awsegressonlyinternetgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsegressonlyinternetgateway/v1"
 	awseksaccessentryv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseksaccessentry/v1"
 	awseksaddonv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseksaddon/v1"
@@ -81,6 +91,7 @@ import (
 	awselasticipv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticip/v1"
 	awseventbridgebusv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseventbridgebus/v1"
 	awseventbridgerulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseventbridgerule/v1"
+	awsfsxdatarepositoryassociationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxdatarepositoryassociation/v1"
 	awsfsxlustrefilesystemv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxlustrefilesystem/v1"
 	awsfsxontapfilesystemv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxontapfilesystem/v1"
 	awsfsxontapstoragevirtualmachinev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxontapstoragevirtualmachine/v1"
@@ -89,7 +100,9 @@ import (
 	awsfsxwindowsfilesystemv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxwindowsfilesystem/v1"
 	awsglobalacceleratorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsglobalaccelerator/v1"
 	awsgluecatalogdatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsgluecatalogdatabase/v1"
+	awshttpapidomainv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapidomain/v1"
 	awshttpapigatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapigateway/v1"
+	awshttpapivpclinkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapivpclink/v1"
 	awsiaminstanceprofilev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiaminstanceprofile/v1"
 	awsiamoidcproviderv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiamoidcprovider/v1"
 	awsiampolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiampolicy/v1"
@@ -107,7 +120,9 @@ import (
 	awslblistenerrulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslblistenerrule/v1"
 	awslbtargetgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslbtargetgroup/v1"
 	awsmemcachedelasticachev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemcachedelasticache/v1"
+	awsmemorydbaclv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemorydbacl/v1"
 	awsmemorydbclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemorydbcluster/v1"
+	awsmemorydbuserv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemorydbuser/v1"
 	awsmskclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmskcluster/v1"
 	awsmskserverlessclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmskserverlesscluster/v1"
 	awsmwaaenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmwaaenvironment/v1"
@@ -123,20 +138,27 @@ import (
 	awsredshiftserverlessnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsredshiftserverlessnamespace/v1"
 	awsredshiftserverlessworkgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsredshiftserverlessworkgroup/v1"
 	awsroute53dnsrecordv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53dnsrecord/v1"
+	awsroute53healthcheckv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53healthcheck/v1"
 	awsroute53zonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53zone/v1"
 	awss3bucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1"
 	awss3objectsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3objectset/v1"
 	awssagemakerdomainv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssagemakerdomain/v1"
 	awssecuritygroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssecuritygroup/v1"
 	awsserverlesselasticachev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsserverlesselasticache/v1"
+	awssesconfigurationsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssesconfigurationset/v1"
+	awssesemailidentityv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssesemailidentity/v1"
 	awssnssubscriptionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssnssubscription/v1"
 	awssnstopicv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssnstopic/v1"
 	awssqsqueuev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssqsqueue/v1"
 	awsstepfunctionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsstepfunction/v1"
 	awssubnetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssubnet/v1"
 	awstransitgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awstransitgateway/v1"
+	awstransitgatewayroutetablev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awstransitgatewayroutetable/v1"
+	awstransitgatewayvpcattachmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awstransitgatewayvpcattachment/v1"
 	awsvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpc/v1"
 	awsvpcendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpcendpoint/v1"
+	awswafipsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awswafipset/v1"
+	awswafregexpatternsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awswafregexpatternset/v1"
 	awswafwebaclv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awswafwebacl/v1"
 	azureaksclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureakscluster/v1"
 	azureaksnodepoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureaksnodepool/v1"
@@ -503,96 +525,118 @@ var ProviderAuth0Map = map[cloudresourcekind.CloudResourceKind]proto.Message{
 }
 
 var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_AwsAlb:                           &awsalbv1.AwsAlb{},
-	cloudresourcekind.CloudResourceKind_AwsAppRunnerService:              &awsapprunnerservicev1.AwsAppRunnerService{},
-	cloudresourcekind.CloudResourceKind_AwsAthenaWorkgroup:               &awsathenaworkgroupv1.AwsAthenaWorkgroup{},
-	cloudresourcekind.CloudResourceKind_AwsAutoScalingGroup:              &awsautoscalinggroupv1.AwsAutoScalingGroup{},
-	cloudresourcekind.CloudResourceKind_AwsBatchComputeEnvironment:       &awsbatchcomputeenvironmentv1.AwsBatchComputeEnvironment{},
-	cloudresourcekind.CloudResourceKind_AwsCertManagerCert:               &awscertmanagercertv1.AwsCertManagerCert{},
-	cloudresourcekind.CloudResourceKind_AwsClientVpn:                     &awsclientvpnv1.AwsClientVpn{},
-	cloudresourcekind.CloudResourceKind_AwsCloudFront:                    &awscloudfrontv1.AwsCloudFront{},
-	cloudresourcekind.CloudResourceKind_AwsCloudwatchAlarm:               &awscloudwatchalarmv1.AwsCloudwatchAlarm{},
-	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogGroup:            &awscloudwatchloggroupv1.AwsCloudwatchLogGroup{},
-	cloudresourcekind.CloudResourceKind_AwsCodeBuildProject:              &awscodebuildprojectv1.AwsCodeBuildProject{},
-	cloudresourcekind.CloudResourceKind_AwsCodePipeline:                  &awscodepipelinev1.AwsCodePipeline{},
-	cloudresourcekind.CloudResourceKind_AwsCognitoIdentityProvider:       &awscognitoidentityproviderv1.AwsCognitoIdentityProvider{},
-	cloudresourcekind.CloudResourceKind_AwsCognitoUserPool:               &awscognitouserpoolv1.AwsCognitoUserPool{},
-	cloudresourcekind.CloudResourceKind_AwsDocumentDb:                    &awsdocumentdbv1.AwsDocumentDb{},
-	cloudresourcekind.CloudResourceKind_AwsDynamodb:                      &awsdynamodbv1.AwsDynamodb{},
-	cloudresourcekind.CloudResourceKind_AwsEc2Instance:                   &awsec2instancev1.AwsEc2Instance{},
-	cloudresourcekind.CloudResourceKind_AwsEcrRepo:                       &awsecrrepov1.AwsEcrRepo{},
-	cloudresourcekind.CloudResourceKind_AwsEcsCluster:                    &awsecsclusterv1.AwsEcsCluster{},
-	cloudresourcekind.CloudResourceKind_AwsEcsService:                    &awsecsservicev1.AwsEcsService{},
-	cloudresourcekind.CloudResourceKind_AwsEcsTaskDefinition:             &awsecstaskdefinitionv1.AwsEcsTaskDefinition{},
-	cloudresourcekind.CloudResourceKind_AwsEgressOnlyInternetGateway:     &awsegressonlyinternetgatewayv1.AwsEgressOnlyInternetGateway{},
-	cloudresourcekind.CloudResourceKind_AwsEksAccessEntry:                &awseksaccessentryv1.AwsEksAccessEntry{},
-	cloudresourcekind.CloudResourceKind_AwsEksAddon:                      &awseksaddonv1.AwsEksAddon{},
-	cloudresourcekind.CloudResourceKind_AwsEksCluster:                    &awseksclusterv1.AwsEksCluster{},
-	cloudresourcekind.CloudResourceKind_AwsEksFargateProfile:             &awseksfargateprofilev1.AwsEksFargateProfile{},
-	cloudresourcekind.CloudResourceKind_AwsEksNodeGroup:                  &awseksnodegroupv1.AwsEksNodeGroup{},
-	cloudresourcekind.CloudResourceKind_AwsElasticFileSystem:             &awselasticfilesystemv1.AwsElasticFileSystem{},
-	cloudresourcekind.CloudResourceKind_AwsElasticIp:                     &awselasticipv1.AwsElasticIp{},
-	cloudresourcekind.CloudResourceKind_AwsElasticacheUser:               &awselasticacheuserv1.AwsElasticacheUser{},
-	cloudresourcekind.CloudResourceKind_AwsElasticacheUserGroup:          &awselasticacheusergroupv1.AwsElasticacheUserGroup{},
-	cloudresourcekind.CloudResourceKind_AwsEventBridgeBus:                &awseventbridgebusv1.AwsEventBridgeBus{},
-	cloudresourcekind.CloudResourceKind_AwsEventBridgeRule:               &awseventbridgerulev1.AwsEventBridgeRule{},
-	cloudresourcekind.CloudResourceKind_AwsFsxLustreFileSystem:           &awsfsxlustrefilesystemv1.AwsFsxLustreFileSystem{},
-	cloudresourcekind.CloudResourceKind_AwsFsxOntapFileSystem:            &awsfsxontapfilesystemv1.AwsFsxOntapFileSystem{},
-	cloudresourcekind.CloudResourceKind_AwsFsxOntapStorageVirtualMachine: &awsfsxontapstoragevirtualmachinev1.AwsFsxOntapStorageVirtualMachine{},
-	cloudresourcekind.CloudResourceKind_AwsFsxOntapVolume:                &awsfsxontapvolumev1.AwsFsxOntapVolume{},
-	cloudresourcekind.CloudResourceKind_AwsFsxOpenzfsFileSystem:          &awsfsxopenzfsfilesystemv1.AwsFsxOpenzfsFileSystem{},
-	cloudresourcekind.CloudResourceKind_AwsFsxWindowsFileSystem:          &awsfsxwindowsfilesystemv1.AwsFsxWindowsFileSystem{},
-	cloudresourcekind.CloudResourceKind_AwsGlobalAccelerator:             &awsglobalacceleratorv1.AwsGlobalAccelerator{},
-	cloudresourcekind.CloudResourceKind_AwsGlueCatalogDatabase:           &awsgluecatalogdatabasev1.AwsGlueCatalogDatabase{},
-	cloudresourcekind.CloudResourceKind_AwsHttpApiGateway:                &awshttpapigatewayv1.AwsHttpApiGateway{},
-	cloudresourcekind.CloudResourceKind_AwsIamInstanceProfile:            &awsiaminstanceprofilev1.AwsIamInstanceProfile{},
-	cloudresourcekind.CloudResourceKind_AwsIamOidcProvider:               &awsiamoidcproviderv1.AwsIamOidcProvider{},
-	cloudresourcekind.CloudResourceKind_AwsIamPolicy:                     &awsiampolicyv1.AwsIamPolicy{},
-	cloudresourcekind.CloudResourceKind_AwsIamRole:                       &awsiamrolev1.AwsIamRole{},
-	cloudresourcekind.CloudResourceKind_AwsIamUser:                       &awsiamuserv1.AwsIamUser{},
-	cloudresourcekind.CloudResourceKind_AwsInternetGateway:               &awsinternetgatewayv1.AwsInternetGateway{},
-	cloudresourcekind.CloudResourceKind_AwsKinesisFirehose:               &awskinesisfirehosev1.AwsKinesisFirehose{},
-	cloudresourcekind.CloudResourceKind_AwsKinesisStream:                 &awskinesisstreamv1.AwsKinesisStream{},
-	cloudresourcekind.CloudResourceKind_AwsKinesisStreamConsumer:         &awskinesisstreamconsumerv1.AwsKinesisStreamConsumer{},
-	cloudresourcekind.CloudResourceKind_AwsKmsKey:                        &awskmskeyv1.AwsKmsKey{},
-	cloudresourcekind.CloudResourceKind_AwsLambda:                        &awslambdav1.AwsLambda{},
-	cloudresourcekind.CloudResourceKind_AwsLambdaEventSourceMapping:      &awslambdaeventsourcemappingv1.AwsLambdaEventSourceMapping{},
-	cloudresourcekind.CloudResourceKind_AwsLaunchTemplate:                &awslaunchtemplatev1.AwsLaunchTemplate{},
-	cloudresourcekind.CloudResourceKind_AwsLbListener:                    &awslblistenerv1.AwsLbListener{},
-	cloudresourcekind.CloudResourceKind_AwsLbListenerRule:                &awslblistenerrulev1.AwsLbListenerRule{},
-	cloudresourcekind.CloudResourceKind_AwsLbTargetGroup:                 &awslbtargetgroupv1.AwsLbTargetGroup{},
-	cloudresourcekind.CloudResourceKind_AwsMemcachedElasticache:          &awsmemcachedelasticachev1.AwsMemcachedElasticache{},
-	cloudresourcekind.CloudResourceKind_AwsMemorydbCluster:               &awsmemorydbclusterv1.AwsMemorydbCluster{},
-	cloudresourcekind.CloudResourceKind_AwsMskCluster:                    &awsmskclusterv1.AwsMskCluster{},
-	cloudresourcekind.CloudResourceKind_AwsMskServerlessCluster:          &awsmskserverlessclusterv1.AwsMskServerlessCluster{},
-	cloudresourcekind.CloudResourceKind_AwsMwaaEnvironment:               &awsmwaaenvironmentv1.AwsMwaaEnvironment{},
-	cloudresourcekind.CloudResourceKind_AwsNatGateway:                    &awsnatgatewayv1.AwsNatGateway{},
-	cloudresourcekind.CloudResourceKind_AwsNeptuneCluster:                &awsneptuneclusterv1.AwsNeptuneCluster{},
-	cloudresourcekind.CloudResourceKind_AwsNlb:                           &awsnlbv1.AwsNlb{},
-	cloudresourcekind.CloudResourceKind_AwsOpenSearchDomain:              &awsopensearchdomainv1.AwsOpenSearchDomain{},
-	cloudresourcekind.CloudResourceKind_AwsPlantonRunner:                 &awsplantonrunnerv1.AwsPlantonRunner{},
-	cloudresourcekind.CloudResourceKind_AwsRdsCluster:                    &awsrdsclusterv1.AwsRdsCluster{},
-	cloudresourcekind.CloudResourceKind_AwsRdsInstance:                   &awsrdsinstancev1.AwsRdsInstance{},
-	cloudresourcekind.CloudResourceKind_AwsRedisElasticache:              &awsrediselasticachev1.AwsRedisElasticache{},
-	cloudresourcekind.CloudResourceKind_AwsRedshiftCluster:               &awsredshiftclusterv1.AwsRedshiftCluster{},
-	cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessNamespace:   &awsredshiftserverlessnamespacev1.AwsRedshiftServerlessNamespace{},
-	cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessWorkgroup:   &awsredshiftserverlessworkgroupv1.AwsRedshiftServerlessWorkgroup{},
-	cloudresourcekind.CloudResourceKind_AwsRoute53DnsRecord:              &awsroute53dnsrecordv1.AwsRoute53DnsRecord{},
-	cloudresourcekind.CloudResourceKind_AwsRoute53Zone:                   &awsroute53zonev1.AwsRoute53Zone{},
-	cloudresourcekind.CloudResourceKind_AwsS3Bucket:                      &awss3bucketv1.AwsS3Bucket{},
-	cloudresourcekind.CloudResourceKind_AwsS3ObjectSet:                   &awss3objectsetv1.AwsS3ObjectSet{},
-	cloudresourcekind.CloudResourceKind_AwsSagemakerDomain:               &awssagemakerdomainv1.AwsSagemakerDomain{},
-	cloudresourcekind.CloudResourceKind_AwsSecurityGroup:                 &awssecuritygroupv1.AwsSecurityGroup{},
-	cloudresourcekind.CloudResourceKind_AwsServerlessElasticache:         &awsserverlesselasticachev1.AwsServerlessElasticache{},
-	cloudresourcekind.CloudResourceKind_AwsSnsSubscription:               &awssnssubscriptionv1.AwsSnsSubscription{},
-	cloudresourcekind.CloudResourceKind_AwsSnsTopic:                      &awssnstopicv1.AwsSnsTopic{},
-	cloudresourcekind.CloudResourceKind_AwsSqsQueue:                      &awssqsqueuev1.AwsSqsQueue{},
-	cloudresourcekind.CloudResourceKind_AwsStepFunction:                  &awsstepfunctionv1.AwsStepFunction{},
-	cloudresourcekind.CloudResourceKind_AwsSubnet:                        &awssubnetv1.AwsSubnet{},
-	cloudresourcekind.CloudResourceKind_AwsTransitGateway:                &awstransitgatewayv1.AwsTransitGateway{},
-	cloudresourcekind.CloudResourceKind_AwsVpc:                           &awsvpcv1.AwsVpc{},
-	cloudresourcekind.CloudResourceKind_AwsVpcEndpoint:                   &awsvpcendpointv1.AwsVpcEndpoint{},
-	cloudresourcekind.CloudResourceKind_AwsWafWebAcl:                     &awswafwebaclv1.AwsWafWebAcl{},
+	cloudresourcekind.CloudResourceKind_AwsAlb:                                 &awsalbv1.AwsAlb{},
+	cloudresourcekind.CloudResourceKind_AwsAppRunnerAutoScalingConfiguration:   &awsapprunnerautoscalingconfigurationv1.AwsAppRunnerAutoScalingConfiguration{},
+	cloudresourcekind.CloudResourceKind_AwsAppRunnerObservabilityConfiguration: &awsapprunnerobservabilityconfigurationv1.AwsAppRunnerObservabilityConfiguration{},
+	cloudresourcekind.CloudResourceKind_AwsAppRunnerService:                    &awsapprunnerservicev1.AwsAppRunnerService{},
+	cloudresourcekind.CloudResourceKind_AwsAppRunnerVpcConnector:               &awsapprunnervpcconnectorv1.AwsAppRunnerVpcConnector{},
+	cloudresourcekind.CloudResourceKind_AwsAthenaWorkgroup:                     &awsathenaworkgroupv1.AwsAthenaWorkgroup{},
+	cloudresourcekind.CloudResourceKind_AwsAutoScalingGroup:                    &awsautoscalinggroupv1.AwsAutoScalingGroup{},
+	cloudresourcekind.CloudResourceKind_AwsBatchComputeEnvironment:             &awsbatchcomputeenvironmentv1.AwsBatchComputeEnvironment{},
+	cloudresourcekind.CloudResourceKind_AwsBatchJobDefinition:                  &awsbatchjobdefinitionv1.AwsBatchJobDefinition{},
+	cloudresourcekind.CloudResourceKind_AwsBatchJobQueue:                       &awsbatchjobqueuev1.AwsBatchJobQueue{},
+	cloudresourcekind.CloudResourceKind_AwsBatchSchedulingPolicy:               &awsbatchschedulingpolicyv1.AwsBatchSchedulingPolicy{},
+	cloudresourcekind.CloudResourceKind_AwsCertManagerCert:                     &awscertmanagercertv1.AwsCertManagerCert{},
+	cloudresourcekind.CloudResourceKind_AwsClientVpn:                           &awsclientvpnv1.AwsClientVpn{},
+	cloudresourcekind.CloudResourceKind_AwsCloudFront:                          &awscloudfrontv1.AwsCloudFront{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchAlarm:                     &awscloudwatchalarmv1.AwsCloudwatchAlarm{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchCompositeAlarm:            &awscloudwatchcompositealarmv1.AwsCloudwatchCompositeAlarm{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogGroup:                  &awscloudwatchloggroupv1.AwsCloudwatchLogGroup{},
+	cloudresourcekind.CloudResourceKind_AwsCodeBuildProject:                    &awscodebuildprojectv1.AwsCodeBuildProject{},
+	cloudresourcekind.CloudResourceKind_AwsCodePipeline:                        &awscodepipelinev1.AwsCodePipeline{},
+	cloudresourcekind.CloudResourceKind_AwsCognitoIdentityProvider:             &awscognitoidentityproviderv1.AwsCognitoIdentityProvider{},
+	cloudresourcekind.CloudResourceKind_AwsCognitoResourceServer:               &awscognitoresourceserverv1.AwsCognitoResourceServer{},
+	cloudresourcekind.CloudResourceKind_AwsCognitoUserPool:                     &awscognitouserpoolv1.AwsCognitoUserPool{},
+	cloudresourcekind.CloudResourceKind_AwsCognitoUserPoolClient:               &awscognitouserpoolclientv1.AwsCognitoUserPoolClient{},
+	cloudresourcekind.CloudResourceKind_AwsDocumentDb:                          &awsdocumentdbv1.AwsDocumentDb{},
+	cloudresourcekind.CloudResourceKind_AwsDynamodb:                            &awsdynamodbv1.AwsDynamodb{},
+	cloudresourcekind.CloudResourceKind_AwsEc2Instance:                         &awsec2instancev1.AwsEc2Instance{},
+	cloudresourcekind.CloudResourceKind_AwsEcrRepo:                             &awsecrrepov1.AwsEcrRepo{},
+	cloudresourcekind.CloudResourceKind_AwsEcsCluster:                          &awsecsclusterv1.AwsEcsCluster{},
+	cloudresourcekind.CloudResourceKind_AwsEcsService:                          &awsecsservicev1.AwsEcsService{},
+	cloudresourcekind.CloudResourceKind_AwsEcsTaskDefinition:                   &awsecstaskdefinitionv1.AwsEcsTaskDefinition{},
+	cloudresourcekind.CloudResourceKind_AwsEfsAccessPoint:                      &awsefsaccesspointv1.AwsEfsAccessPoint{},
+	cloudresourcekind.CloudResourceKind_AwsEgressOnlyInternetGateway:           &awsegressonlyinternetgatewayv1.AwsEgressOnlyInternetGateway{},
+	cloudresourcekind.CloudResourceKind_AwsEksAccessEntry:                      &awseksaccessentryv1.AwsEksAccessEntry{},
+	cloudresourcekind.CloudResourceKind_AwsEksAddon:                            &awseksaddonv1.AwsEksAddon{},
+	cloudresourcekind.CloudResourceKind_AwsEksCluster:                          &awseksclusterv1.AwsEksCluster{},
+	cloudresourcekind.CloudResourceKind_AwsEksFargateProfile:                   &awseksfargateprofilev1.AwsEksFargateProfile{},
+	cloudresourcekind.CloudResourceKind_AwsEksNodeGroup:                        &awseksnodegroupv1.AwsEksNodeGroup{},
+	cloudresourcekind.CloudResourceKind_AwsElasticFileSystem:                   &awselasticfilesystemv1.AwsElasticFileSystem{},
+	cloudresourcekind.CloudResourceKind_AwsElasticIp:                           &awselasticipv1.AwsElasticIp{},
+	cloudresourcekind.CloudResourceKind_AwsElasticacheUser:                     &awselasticacheuserv1.AwsElasticacheUser{},
+	cloudresourcekind.CloudResourceKind_AwsElasticacheUserGroup:                &awselasticacheusergroupv1.AwsElasticacheUserGroup{},
+	cloudresourcekind.CloudResourceKind_AwsEventBridgeBus:                      &awseventbridgebusv1.AwsEventBridgeBus{},
+	cloudresourcekind.CloudResourceKind_AwsEventBridgeRule:                     &awseventbridgerulev1.AwsEventBridgeRule{},
+	cloudresourcekind.CloudResourceKind_AwsFsxDataRepositoryAssociation:        &awsfsxdatarepositoryassociationv1.AwsFsxDataRepositoryAssociation{},
+	cloudresourcekind.CloudResourceKind_AwsFsxLustreFileSystem:                 &awsfsxlustrefilesystemv1.AwsFsxLustreFileSystem{},
+	cloudresourcekind.CloudResourceKind_AwsFsxOntapFileSystem:                  &awsfsxontapfilesystemv1.AwsFsxOntapFileSystem{},
+	cloudresourcekind.CloudResourceKind_AwsFsxOntapStorageVirtualMachine:       &awsfsxontapstoragevirtualmachinev1.AwsFsxOntapStorageVirtualMachine{},
+	cloudresourcekind.CloudResourceKind_AwsFsxOntapVolume:                      &awsfsxontapvolumev1.AwsFsxOntapVolume{},
+	cloudresourcekind.CloudResourceKind_AwsFsxOpenzfsFileSystem:                &awsfsxopenzfsfilesystemv1.AwsFsxOpenzfsFileSystem{},
+	cloudresourcekind.CloudResourceKind_AwsFsxWindowsFileSystem:                &awsfsxwindowsfilesystemv1.AwsFsxWindowsFileSystem{},
+	cloudresourcekind.CloudResourceKind_AwsGlobalAccelerator:                   &awsglobalacceleratorv1.AwsGlobalAccelerator{},
+	cloudresourcekind.CloudResourceKind_AwsGlueCatalogDatabase:                 &awsgluecatalogdatabasev1.AwsGlueCatalogDatabase{},
+	cloudresourcekind.CloudResourceKind_AwsHttpApiDomain:                       &awshttpapidomainv1.AwsHttpApiDomain{},
+	cloudresourcekind.CloudResourceKind_AwsHttpApiGateway:                      &awshttpapigatewayv1.AwsHttpApiGateway{},
+	cloudresourcekind.CloudResourceKind_AwsHttpApiVpcLink:                      &awshttpapivpclinkv1.AwsHttpApiVpcLink{},
+	cloudresourcekind.CloudResourceKind_AwsIamInstanceProfile:                  &awsiaminstanceprofilev1.AwsIamInstanceProfile{},
+	cloudresourcekind.CloudResourceKind_AwsIamOidcProvider:                     &awsiamoidcproviderv1.AwsIamOidcProvider{},
+	cloudresourcekind.CloudResourceKind_AwsIamPolicy:                           &awsiampolicyv1.AwsIamPolicy{},
+	cloudresourcekind.CloudResourceKind_AwsIamRole:                             &awsiamrolev1.AwsIamRole{},
+	cloudresourcekind.CloudResourceKind_AwsIamUser:                             &awsiamuserv1.AwsIamUser{},
+	cloudresourcekind.CloudResourceKind_AwsInternetGateway:                     &awsinternetgatewayv1.AwsInternetGateway{},
+	cloudresourcekind.CloudResourceKind_AwsKinesisFirehose:                     &awskinesisfirehosev1.AwsKinesisFirehose{},
+	cloudresourcekind.CloudResourceKind_AwsKinesisStream:                       &awskinesisstreamv1.AwsKinesisStream{},
+	cloudresourcekind.CloudResourceKind_AwsKinesisStreamConsumer:               &awskinesisstreamconsumerv1.AwsKinesisStreamConsumer{},
+	cloudresourcekind.CloudResourceKind_AwsKmsKey:                              &awskmskeyv1.AwsKmsKey{},
+	cloudresourcekind.CloudResourceKind_AwsLambda:                              &awslambdav1.AwsLambda{},
+	cloudresourcekind.CloudResourceKind_AwsLambdaEventSourceMapping:            &awslambdaeventsourcemappingv1.AwsLambdaEventSourceMapping{},
+	cloudresourcekind.CloudResourceKind_AwsLaunchTemplate:                      &awslaunchtemplatev1.AwsLaunchTemplate{},
+	cloudresourcekind.CloudResourceKind_AwsLbListener:                          &awslblistenerv1.AwsLbListener{},
+	cloudresourcekind.CloudResourceKind_AwsLbListenerRule:                      &awslblistenerrulev1.AwsLbListenerRule{},
+	cloudresourcekind.CloudResourceKind_AwsLbTargetGroup:                       &awslbtargetgroupv1.AwsLbTargetGroup{},
+	cloudresourcekind.CloudResourceKind_AwsMemcachedElasticache:                &awsmemcachedelasticachev1.AwsMemcachedElasticache{},
+	cloudresourcekind.CloudResourceKind_AwsMemorydbAcl:                         &awsmemorydbaclv1.AwsMemorydbAcl{},
+	cloudresourcekind.CloudResourceKind_AwsMemorydbCluster:                     &awsmemorydbclusterv1.AwsMemorydbCluster{},
+	cloudresourcekind.CloudResourceKind_AwsMemorydbUser:                        &awsmemorydbuserv1.AwsMemorydbUser{},
+	cloudresourcekind.CloudResourceKind_AwsMskCluster:                          &awsmskclusterv1.AwsMskCluster{},
+	cloudresourcekind.CloudResourceKind_AwsMskServerlessCluster:                &awsmskserverlessclusterv1.AwsMskServerlessCluster{},
+	cloudresourcekind.CloudResourceKind_AwsMwaaEnvironment:                     &awsmwaaenvironmentv1.AwsMwaaEnvironment{},
+	cloudresourcekind.CloudResourceKind_AwsNatGateway:                          &awsnatgatewayv1.AwsNatGateway{},
+	cloudresourcekind.CloudResourceKind_AwsNeptuneCluster:                      &awsneptuneclusterv1.AwsNeptuneCluster{},
+	cloudresourcekind.CloudResourceKind_AwsNlb:                                 &awsnlbv1.AwsNlb{},
+	cloudresourcekind.CloudResourceKind_AwsOpenSearchDomain:                    &awsopensearchdomainv1.AwsOpenSearchDomain{},
+	cloudresourcekind.CloudResourceKind_AwsPlantonRunner:                       &awsplantonrunnerv1.AwsPlantonRunner{},
+	cloudresourcekind.CloudResourceKind_AwsRdsCluster:                          &awsrdsclusterv1.AwsRdsCluster{},
+	cloudresourcekind.CloudResourceKind_AwsRdsInstance:                         &awsrdsinstancev1.AwsRdsInstance{},
+	cloudresourcekind.CloudResourceKind_AwsRedisElasticache:                    &awsrediselasticachev1.AwsRedisElasticache{},
+	cloudresourcekind.CloudResourceKind_AwsRedshiftCluster:                     &awsredshiftclusterv1.AwsRedshiftCluster{},
+	cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessNamespace:         &awsredshiftserverlessnamespacev1.AwsRedshiftServerlessNamespace{},
+	cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessWorkgroup:         &awsredshiftserverlessworkgroupv1.AwsRedshiftServerlessWorkgroup{},
+	cloudresourcekind.CloudResourceKind_AwsRoute53DnsRecord:                    &awsroute53dnsrecordv1.AwsRoute53DnsRecord{},
+	cloudresourcekind.CloudResourceKind_AwsRoute53HealthCheck:                  &awsroute53healthcheckv1.AwsRoute53HealthCheck{},
+	cloudresourcekind.CloudResourceKind_AwsRoute53Zone:                         &awsroute53zonev1.AwsRoute53Zone{},
+	cloudresourcekind.CloudResourceKind_AwsS3Bucket:                            &awss3bucketv1.AwsS3Bucket{},
+	cloudresourcekind.CloudResourceKind_AwsS3ObjectSet:                         &awss3objectsetv1.AwsS3ObjectSet{},
+	cloudresourcekind.CloudResourceKind_AwsSagemakerDomain:                     &awssagemakerdomainv1.AwsSagemakerDomain{},
+	cloudresourcekind.CloudResourceKind_AwsSecurityGroup:                       &awssecuritygroupv1.AwsSecurityGroup{},
+	cloudresourcekind.CloudResourceKind_AwsServerlessElasticache:               &awsserverlesselasticachev1.AwsServerlessElasticache{},
+	cloudresourcekind.CloudResourceKind_AwsSesConfigurationSet:                 &awssesconfigurationsetv1.AwsSesConfigurationSet{},
+	cloudresourcekind.CloudResourceKind_AwsSesEmailIdentity:                    &awssesemailidentityv1.AwsSesEmailIdentity{},
+	cloudresourcekind.CloudResourceKind_AwsSnsSubscription:                     &awssnssubscriptionv1.AwsSnsSubscription{},
+	cloudresourcekind.CloudResourceKind_AwsSnsTopic:                            &awssnstopicv1.AwsSnsTopic{},
+	cloudresourcekind.CloudResourceKind_AwsSqsQueue:                            &awssqsqueuev1.AwsSqsQueue{},
+	cloudresourcekind.CloudResourceKind_AwsStepFunction:                        &awsstepfunctionv1.AwsStepFunction{},
+	cloudresourcekind.CloudResourceKind_AwsSubnet:                              &awssubnetv1.AwsSubnet{},
+	cloudresourcekind.CloudResourceKind_AwsTransitGateway:                      &awstransitgatewayv1.AwsTransitGateway{},
+	cloudresourcekind.CloudResourceKind_AwsTransitGatewayRouteTable:            &awstransitgatewayroutetablev1.AwsTransitGatewayRouteTable{},
+	cloudresourcekind.CloudResourceKind_AwsTransitGatewayVpcAttachment:         &awstransitgatewayvpcattachmentv1.AwsTransitGatewayVpcAttachment{},
+	cloudresourcekind.CloudResourceKind_AwsVpc:                                 &awsvpcv1.AwsVpc{},
+	cloudresourcekind.CloudResourceKind_AwsVpcEndpoint:                         &awsvpcendpointv1.AwsVpcEndpoint{},
+	cloudresourcekind.CloudResourceKind_AwsWafIpSet:                            &awswafipsetv1.AwsWafIpSet{},
+	cloudresourcekind.CloudResourceKind_AwsWafRegexPatternSet:                  &awswafregexpatternsetv1.AwsWafRegexPatternSet{},
+	cloudresourcekind.CloudResourceKind_AwsWafWebAcl:                           &awswafwebaclv1.AwsWafWebAcl{},
 }
 
 var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{

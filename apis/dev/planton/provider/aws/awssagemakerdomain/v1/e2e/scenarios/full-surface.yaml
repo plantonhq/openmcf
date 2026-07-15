@@ -1,0 +1,144 @@
+# Full-surface AwsSagemakerDomain scenario: every arm that is provable on an
+# IAM-auth domain without external infrastructure. Composes two
+# scenario-declared prerequisites (the domain has no hard dependency on
+# either): the shared S3 bucket fixture for notebook-output sharing and the
+# Canvas workspace, and the shared security-group fixture for the domain- and
+# user-level SG attach arms.
+# Proven live here: tag propagation, per-user CloudTrail attribution, Docker
+# access, JupyterLab (resource spec + idle shutdown + code repository +
+# lifecycle-free defaults), classic Jupyter Server, Code Editor idle
+# shutdown, TensorBoard, sharing to S3, space storage, both inheritance
+# planes (defaultUserSettings + defaultSpaceSettings), POSIX identity,
+# Studio UI hiding, and the role-free Canvas governance arms.
+#
+# Excluded from the live lane with reasons (proven by spec tests + the
+# offline plan/preview gate against iac/hack/manifest.yaml):
+# - SSO auth + trusted identity propagation: need an IAM Identity Center
+#   instance the e2e account does not run (the AMP-workspace class). The
+#   TIP setting cannot even ride an IAM domain with DISABLED -- the live
+#   API rejects its presence outright (encoded as a spec CEL).
+# - RStudio domain/app/RSession arms: need a Posit license through AWS
+#   License Manager.
+# - custom_images / custom_file_system_configs: need pre-registered
+#   SageMaker Images and an EFS file system with mount targets reachable
+#   from the domain subnets -- external fixtures out of proportion for the
+#   lane.
+# - Canvas role-bearing arms (EMR Serverless, Bedrock, Forecast, OAuth
+#   connectors): need service-scoped roles/SaaS credentials; the role-free
+#   governance arms below prove the canvas_app_settings wiring.
+apiVersion: aws.planton.dev/v1
+kind: AwsSagemakerDomain
+metadata:
+  name: planton-oss-e2e-sgmkd-full
+  id: planton-oss-e2e-sgmkd-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakerdomain
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsS3Bucket,AwsSecurityGroup"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  authMode: IAM
+  appNetworkAccessType: PublicInternetOnly
+  tagPropagation: ENABLED
+  executionRoleIdentityConfig: USER_PROFILE_NAME
+  homeEfsRetentionPolicy: Delete
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-b
+        fieldPath: status.outputs.subnet_id
+  domainSecurityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: planton-oss-e2e-awssg-prereq
+        fieldPath: status.outputs.security_group_id
+  dockerSettings:
+    enableDockerAccess: ENABLED
+  defaultUserSettings:
+    executionRoleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: planton-oss-e2e-sagemaker-execution-role
+        fieldPath: status.outputs.role_arn
+    securityGroupIds:
+      - valueFrom:
+          kind: AwsSecurityGroup
+          name: planton-oss-e2e-awssg-prereq
+          fieldPath: status.outputs.security_group_id
+    defaultLandingUri: "studio::"
+    studioWebPortal: ENABLED
+    autoMountHomeEfs: Enabled
+    jupyterLabAppSettings:
+      defaultResourceSpec:
+        instanceType: ml.t3.medium
+      codeRepositories:
+        - repositoryUrl: https://github.com/aws/amazon-sagemaker-examples.git
+      idleSettings:
+        idleTimeoutInMinutes: 120
+        minIdleTimeoutInMinutes: 60
+        maxIdleTimeoutInMinutes: 480
+    jupyterServerAppSettings:
+      defaultResourceSpec:
+        instanceType: system
+    codeEditorAppSettings:
+      defaultResourceSpec:
+        instanceType: ml.t3.medium
+      idleSettings:
+        idleTimeoutInMinutes: 180
+        minIdleTimeoutInMinutes: 60
+        maxIdleTimeoutInMinutes: 480
+    tensorBoardAppSettings:
+      defaultResourceSpec:
+        instanceType: ml.m5.large
+    canvasAppSettings:
+      directDeployStatus: DISABLED
+      kendraSettingsStatus: DISABLED
+      modelRegisterSettings:
+        status: ENABLED
+      workspaceSettings:
+        s3ArtifactPath: s3://planton-oss-e2e-awss3bucket-prereq/canvas-artifacts/
+    sharingSettings:
+      notebookOutputOption: Allowed
+      s3OutputPath: s3://planton-oss-e2e-awss3bucket-prereq/notebook-outputs/
+    spaceStorageSettings:
+      defaultEbsVolumeSizeInGb: 10
+      maximumEbsVolumeSizeInGb: 100
+    customPosixUserConfig:
+      uid: 10000
+      gid: 1001
+    studioWebPortalSettings:
+      hiddenInstanceTypes:
+        - ml.p3.16xlarge
+      hiddenMlTools:
+        - DataWrangler
+  defaultSpaceSettings:
+    executionRoleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: planton-oss-e2e-sagemaker-execution-role
+        fieldPath: status.outputs.role_arn
+    jupyterLabAppSettings:
+      defaultResourceSpec:
+        instanceType: ml.t3.medium
+      idleSettings:
+        idleTimeoutInMinutes: 120
+        minIdleTimeoutInMinutes: 60
+        maxIdleTimeoutInMinutes: 480
+    spaceStorageSettings:
+      defaultEbsVolumeSizeInGb: 10
+      maximumEbsVolumeSizeInGb: 50

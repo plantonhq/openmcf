@@ -368,11 +368,21 @@ message AwsEventBridgeTargetHttpConfig {
 }
 
 // AwsEventBridgeTargetBatchConfig provides AWS Batch parameters for targets
-// pointing to Batch job queues.
+// pointing to Batch job queues. The target's `arn` is the JOB QUEUE
+// (an AwsBatchJobQueue's job_queue_arn output); the job definition each
+// event submits lives here.
 message AwsEventBridgeTargetBatchConfig {
-  // The Batch job definition (name, name:revision, or ARN) each matched
-  // event submits.
-  string job_definition = 1 [(buf.validate.field).required = true];
+  // The Batch job definition each matched event submits. Accepts a
+  // reference to an AwsBatchJobDefinition resource (its revision-carrying
+  // ARN output, so a new revision rolls the rule's submissions) or a
+  // literal value -- a bare name or name:revision literal tracks the
+  // name's latest ACTIVE revision on the Batch side instead of pinning
+  // one.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef job_definition = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBatchJobDefinition,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.job_definition_arn"
+  ];
 
   // Name assigned to the submitted jobs (visible in the Batch console and
   // APIs). Maximum 128 characters.

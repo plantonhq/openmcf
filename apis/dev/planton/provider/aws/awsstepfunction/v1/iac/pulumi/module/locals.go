@@ -22,6 +22,7 @@ func initializeLocals(ctx *pulumi.Context, in *awsstepfunctionv1.AwsStepFunction
 	locals.Spec = in.Target.Spec
 
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.Target.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.Target.Metadata.Org,
 		awstagkeys.Environment:  locals.Target.Metadata.Env,

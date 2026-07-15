@@ -117,12 +117,19 @@ const (
 	// AwsEksCluster is a prerequisite because nodes register with a live
 	// control plane; AwsIamRole and AwsSubnet back the node role and worker
 	// subnet references.
-	CloudResourceKind_AwsEksNodeGroup     CloudResourceKind = 217
-	CloudResourceKind_AwsIamUser          CloudResourceKind = 218
-	CloudResourceKind_AwsKmsKey           CloudResourceKind = 219
-	CloudResourceKind_AwsEc2Instance      CloudResourceKind = 220
-	CloudResourceKind_AwsClientVpn        CloudResourceKind = 221
-	CloudResourceKind_AwsDocumentDb       CloudResourceKind = 222
+	CloudResourceKind_AwsEksNodeGroup CloudResourceKind = 217
+	CloudResourceKind_AwsIamUser      CloudResourceKind = 218
+	CloudResourceKind_AwsKmsKey       CloudResourceKind = 219
+	CloudResourceKind_AwsEc2Instance  CloudResourceKind = 220
+	// Every Client VPN endpoint requires an ACM server certificate at create
+	// time; the imported self-signed fixture satisfies it. Subnets/VPC are
+	// optional composition (a zero-association endpoint is valid) -- composed
+	// scenarios declare them via the e2e-prerequisites annotation.
+	CloudResourceKind_AwsClientVpn  CloudResourceKind = 221
+	CloudResourceKind_AwsDocumentDb CloudResourceKind = 222
+	// AwsRoute53Zone is a prerequisite because every record lives inside a
+	// hosted zone -- the spec's zone_id reference must resolve before the
+	// record can be created.
 	CloudResourceKind_AwsRoute53DnsRecord CloudResourceKind = 223
 	// AwsS3Bucket is a prerequisite because the object set's bucket reference
 	// is required -- objects cannot exist without the bucket that holds them.
@@ -170,7 +177,19 @@ const (
 	// registration time without an execution role the agent can assume.
 	CloudResourceKind_AwsEcsTaskDefinition CloudResourceKind = 239
 	CloudResourceKind_AwsHttpApiGateway    CloudResourceKind = 240
-	CloudResourceKind_AwsStepFunction      CloudResourceKind = 241
+	// AwsIamRole is a prerequisite because a state machine cannot be created
+	// without an execution role it can assume -- the spec's role_arn reference
+	// must resolve before the CreateStateMachine call.
+	CloudResourceKind_AwsStepFunction CloudResourceKind = 241
+	// AwsSubnet is a prerequisite because a VPC link is a set of managed ENIs
+	// provisioned into referenced subnets -- the subnet references must resolve
+	// before the link can be created. Security groups are optional on the link,
+	// so they compose per-scenario rather than as a registry prerequisite.
+	CloudResourceKind_AwsHttpApiVpcLink CloudResourceKind = 356
+	// AwsCertManagerCert is a prerequisite because a custom domain cannot be
+	// created without a TLS certificate in the same region covering the domain
+	// -- the spec's certificate_arn reference must resolve first.
+	CloudResourceKind_AwsHttpApiDomain CloudResourceKind = 357
 	// AwsVpcEndpoint's composed E2E scenarios reference the AwsVpc
 	// prerequisite's outputs (vpc_id + default_route_table_id for gateway
 	// endpoints) and the AwsSubnet pair's subnet_id outputs (interface
@@ -207,21 +226,48 @@ const (
 	// AwsInternetGateway is a prerequisite because a public NAT gateway can only
 	// become available once the VPC it sits in has an internet gateway attached
 	// (AWS rejects the create otherwise) -- so the gateway must be deployed first.
-	CloudResourceKind_AwsNatGateway                    CloudResourceKind = 286
-	CloudResourceKind_AwsEgressOnlyInternetGateway     CloudResourceKind = 287
-	CloudResourceKind_AwsElasticFileSystem             CloudResourceKind = 290
-	CloudResourceKind_AwsFsxLustreFileSystem           CloudResourceKind = 291
-	CloudResourceKind_AwsFsxOpenzfsFileSystem          CloudResourceKind = 292
+	CloudResourceKind_AwsNatGateway                CloudResourceKind = 286
+	CloudResourceKind_AwsEgressOnlyInternetGateway CloudResourceKind = 287
+	// AwsSubnet and AwsSecurityGroup are prerequisites because mount targets
+	// (required, min 1) place the file system's NFS endpoints into subnets and
+	// attach security groups -- both references must resolve before the
+	// CreateMountTarget calls.
+	CloudResourceKind_AwsElasticFileSystem CloudResourceKind = 290
+	// AwsElasticFileSystem is a prerequisite because an access point is created
+	// INTO a file system -- the spec's required file_system_id reference must
+	// resolve before the CreateAccessPoint call.
+	CloudResourceKind_AwsEfsAccessPoint       CloudResourceKind = 360
+	CloudResourceKind_AwsFsxLustreFileSystem  CloudResourceKind = 291
+	CloudResourceKind_AwsFsxOpenzfsFileSystem CloudResourceKind = 292
+	// Every Windows file system must join an Active Directory domain; the
+	// directory itself is external infrastructure (AWS Managed Microsoft AD or
+	// a self-managed domain), so only the network dependency is a declarable
+	// prerequisite.
 	CloudResourceKind_AwsFsxWindowsFileSystem          CloudResourceKind = 293
 	CloudResourceKind_AwsFsxOntapFileSystem            CloudResourceKind = 294
 	CloudResourceKind_AwsFsxOntapStorageVirtualMachine CloudResourceKind = 295
 	CloudResourceKind_AwsFsxOntapVolume                CloudResourceKind = 296
+	CloudResourceKind_AwsFsxDataRepositoryAssociation  CloudResourceKind = 375
 	CloudResourceKind_AwsCognitoUserPool               CloudResourceKind = 300
-	CloudResourceKind_AwsCognitoIdentityProvider       CloudResourceKind = 302
-	CloudResourceKind_AwsWafWebAcl                     CloudResourceKind = 301
-	CloudResourceKind_AwsCloudwatchLogGroup            CloudResourceKind = 310
-	CloudResourceKind_AwsCloudwatchAlarm               CloudResourceKind = 311
-	CloudResourceKind_AwsKinesisStream                 CloudResourceKind = 260
+	// AwsCognitoUserPool is a prerequisite because an identity provider is
+	// created INTO a pool -- the spec's required user_pool_id reference must
+	// resolve before the CreateIdentityProvider call.
+	CloudResourceKind_AwsCognitoIdentityProvider CloudResourceKind = 302
+	// AwsCognitoUserPool is a prerequisite because an app client is created
+	// INTO a pool -- the spec's required user_pool_id reference must resolve
+	// before the CreateUserPoolClient call.
+	CloudResourceKind_AwsCognitoUserPoolClient CloudResourceKind = 358
+	// AwsCognitoUserPool is a prerequisite because a resource server is created
+	// INTO a pool -- the spec's required user_pool_id reference must resolve
+	// before the CreateResourceServer call.
+	CloudResourceKind_AwsCognitoResourceServer    CloudResourceKind = 359
+	CloudResourceKind_AwsWafWebAcl                CloudResourceKind = 301
+	CloudResourceKind_AwsWafIpSet                 CloudResourceKind = 361
+	CloudResourceKind_AwsWafRegexPatternSet       CloudResourceKind = 362
+	CloudResourceKind_AwsCloudwatchLogGroup       CloudResourceKind = 310
+	CloudResourceKind_AwsCloudwatchAlarm          CloudResourceKind = 311
+	CloudResourceKind_AwsCloudwatchCompositeAlarm CloudResourceKind = 355
+	CloudResourceKind_AwsKinesisStream            CloudResourceKind = 260
 	// Every Firehose destination requires an S3 configuration (the primary
 	// target for extended_s3; the failed/all-document backup for the rest)
 	// and an IAM role Firehose assumes to write to it, so both are hard
@@ -234,11 +280,39 @@ const (
 	CloudResourceKind_AwsGlueCatalogDatabase   CloudResourceKind = 264
 	CloudResourceKind_AwsRedshiftCluster       CloudResourceKind = 265
 	// AI/ML
+	// A domain cannot exist without VPC subnets and a SageMaker execution role
+	// (default_user_settings.execution_role_arn is required), so both are hard
+	// deploy prerequisites.
 	CloudResourceKind_AwsSagemakerDomain CloudResourceKind = 270
-	// Containers
-	CloudResourceKind_AwsAppRunnerService CloudResourceKind = 320
-	// Batch Processing
+	// A service can run entirely on companion defaults, so the App Runner
+	// family's kinds are dependency-free leaves except the VPC connector
+	// (which cannot exist without subnets and security groups). A service's
+	// companion references (auto scaling / VPC connector / observability /
+	// WAF) are optional composition -- scenarios declare them via the
+	// e2e-prerequisites annotation.
+	CloudResourceKind_AwsAppRunnerService                    CloudResourceKind = 320
+	CloudResourceKind_AwsAppRunnerAutoScalingConfiguration   CloudResourceKind = 368
+	CloudResourceKind_AwsAppRunnerVpcConnector               CloudResourceKind = 369
+	CloudResourceKind_AwsAppRunnerObservabilityConfiguration CloudResourceKind = 370
+	// AwsTransitGateway is a prerequisite because an attachment cannot exist
+	// without the gateway it attaches to; AwsSubnet because the attachment
+	// provisions an ENI into at least one subnet (the VPC arrives transitively
+	// through the subnet's own prerequisites).
+	CloudResourceKind_AwsTransitGatewayVpcAttachment CloudResourceKind = 371
+	// Only the gateway is a hard prerequisite: a route table can exist empty.
+	// Associations, propagations, and routes referencing attachments are
+	// optional composition -- scenarios declare them via the e2e-prerequisites
+	// annotation.
+	CloudResourceKind_AwsTransitGatewayRouteTable CloudResourceKind = 372
+	// A MANAGED compute environment always launches into VPC subnets, so the
+	// subnet is a hard deploy prerequisite (security groups are required only
+	// for the Fargate types -- scenario-declared, not a registry edge).
 	CloudResourceKind_AwsBatchComputeEnvironment CloudResourceKind = 321
+	// A job queue cannot exist without at least one VALID compute environment
+	// to map onto.
+	CloudResourceKind_AwsBatchJobQueue         CloudResourceKind = 363
+	CloudResourceKind_AwsBatchSchedulingPolicy CloudResourceKind = 364
+	CloudResourceKind_AwsBatchJobDefinition    CloudResourceKind = 365
 	// CI/CD
 	CloudResourceKind_AwsCodeBuildProject CloudResourceKind = 330
 	CloudResourceKind_AwsCodePipeline     CloudResourceKind = 331
@@ -249,8 +323,16 @@ const (
 	CloudResourceKind_AwsMwaaEnvironment CloudResourceKind = 340
 	// Graph Database
 	CloudResourceKind_AwsNeptuneCluster CloudResourceKind = 341
-	// In-Memory Database
+	// A cluster always launches into a subnet group; the subnets are the hard
+	// deploy prerequisite. The ACL it attaches is optional composition (the
+	// built-in "open-access" ACL needs no resource) -- scenarios declare the
+	// ACL/user chain via the e2e-prerequisites annotation.
 	CloudResourceKind_AwsMemorydbCluster CloudResourceKind = 342
+	CloudResourceKind_AwsMemorydbUser    CloudResourceKind = 373
+	// An empty ACL is valid (MemoryDB has no mandatory "default" member), so
+	// the user is optional composition -- the composed scenario declares it via
+	// the e2e-prerequisites annotation, never a registry edge.
+	CloudResourceKind_AwsMemorydbAcl CloudResourceKind = 374
 	// Streaming
 	// AwsSubnet and AwsSecurityGroup are prerequisites because brokers are
 	// placed in referenced subnets and AWS requires at least one attached
@@ -274,7 +356,14 @@ const (
 	// AwsSubnet is a prerequisite because the runner appliance places its
 	// network interfaces into referenced subnets -- the placement reference
 	// must resolve before the appliance can deploy.
-	CloudResourceKind_AwsPlantonRunner CloudResourceKind = 354
+	CloudResourceKind_AwsPlantonRunner      CloudResourceKind = 354
+	CloudResourceKind_AwsRoute53HealthCheck CloudResourceKind = 376
+	// Both SES kinds are dependency-free leaves: an identity's configuration
+	// set is optional composition (scenarios declare it via the
+	// e2e-prerequisites annotation), and a configuration set's event
+	// destinations reference other kinds only optionally.
+	CloudResourceKind_AwsSesConfigurationSet CloudResourceKind = 366
+	CloudResourceKind_AwsSesEmailIdentity    CloudResourceKind = 367
 	// 400–599: Azure resources
 	CloudResourceKind_AzureResourceGroup            CloudResourceKind = 400
 	CloudResourceKind_AzureAksCluster               CloudResourceKind = 401
@@ -675,6 +764,8 @@ var (
 		239:  "AwsEcsTaskDefinition",
 		240:  "AwsHttpApiGateway",
 		241:  "AwsStepFunction",
+		356:  "AwsHttpApiVpcLink",
+		357:  "AwsHttpApiDomain",
 		242:  "AwsVpcEndpoint",
 		243:  "AwsElasticacheUser",
 		244:  "AwsElasticacheUserGroup",
@@ -693,17 +784,24 @@ var (
 		286:  "AwsNatGateway",
 		287:  "AwsEgressOnlyInternetGateway",
 		290:  "AwsElasticFileSystem",
+		360:  "AwsEfsAccessPoint",
 		291:  "AwsFsxLustreFileSystem",
 		292:  "AwsFsxOpenzfsFileSystem",
 		293:  "AwsFsxWindowsFileSystem",
 		294:  "AwsFsxOntapFileSystem",
 		295:  "AwsFsxOntapStorageVirtualMachine",
 		296:  "AwsFsxOntapVolume",
+		375:  "AwsFsxDataRepositoryAssociation",
 		300:  "AwsCognitoUserPool",
 		302:  "AwsCognitoIdentityProvider",
+		358:  "AwsCognitoUserPoolClient",
+		359:  "AwsCognitoResourceServer",
 		301:  "AwsWafWebAcl",
+		361:  "AwsWafIpSet",
+		362:  "AwsWafRegexPatternSet",
 		310:  "AwsCloudwatchLogGroup",
 		311:  "AwsCloudwatchAlarm",
+		355:  "AwsCloudwatchCompositeAlarm",
 		260:  "AwsKinesisStream",
 		261:  "AwsKinesisFirehose",
 		262:  "AwsKinesisStreamConsumer",
@@ -712,17 +810,30 @@ var (
 		265:  "AwsRedshiftCluster",
 		270:  "AwsSagemakerDomain",
 		320:  "AwsAppRunnerService",
+		368:  "AwsAppRunnerAutoScalingConfiguration",
+		369:  "AwsAppRunnerVpcConnector",
+		370:  "AwsAppRunnerObservabilityConfiguration",
+		371:  "AwsTransitGatewayVpcAttachment",
+		372:  "AwsTransitGatewayRouteTable",
 		321:  "AwsBatchComputeEnvironment",
+		363:  "AwsBatchJobQueue",
+		364:  "AwsBatchSchedulingPolicy",
+		365:  "AwsBatchJobDefinition",
 		330:  "AwsCodeBuildProject",
 		331:  "AwsCodePipeline",
 		340:  "AwsMwaaEnvironment",
 		341:  "AwsNeptuneCluster",
 		342:  "AwsMemorydbCluster",
+		373:  "AwsMemorydbUser",
+		374:  "AwsMemorydbAcl",
 		350:  "AwsMskCluster",
 		351:  "AwsMskServerlessCluster",
 		352:  "AwsLambdaEventSourceMapping",
 		353:  "AwsSnsSubscription",
 		354:  "AwsPlantonRunner",
+		376:  "AwsRoute53HealthCheck",
+		366:  "AwsSesConfigurationSet",
+		367:  "AwsSesEmailIdentity",
 		400:  "AzureResourceGroup",
 		401:  "AzureAksCluster",
 		402:  "AzureAksNodePool",
@@ -1106,6 +1217,8 @@ var (
 		"AwsEcsTaskDefinition":                    239,
 		"AwsHttpApiGateway":                       240,
 		"AwsStepFunction":                         241,
+		"AwsHttpApiVpcLink":                       356,
+		"AwsHttpApiDomain":                        357,
 		"AwsVpcEndpoint":                          242,
 		"AwsElasticacheUser":                      243,
 		"AwsElasticacheUserGroup":                 244,
@@ -1124,17 +1237,24 @@ var (
 		"AwsNatGateway":                           286,
 		"AwsEgressOnlyInternetGateway":            287,
 		"AwsElasticFileSystem":                    290,
+		"AwsEfsAccessPoint":                       360,
 		"AwsFsxLustreFileSystem":                  291,
 		"AwsFsxOpenzfsFileSystem":                 292,
 		"AwsFsxWindowsFileSystem":                 293,
 		"AwsFsxOntapFileSystem":                   294,
 		"AwsFsxOntapStorageVirtualMachine":        295,
 		"AwsFsxOntapVolume":                       296,
+		"AwsFsxDataRepositoryAssociation":         375,
 		"AwsCognitoUserPool":                      300,
 		"AwsCognitoIdentityProvider":              302,
+		"AwsCognitoUserPoolClient":                358,
+		"AwsCognitoResourceServer":                359,
 		"AwsWafWebAcl":                            301,
+		"AwsWafIpSet":                             361,
+		"AwsWafRegexPatternSet":                   362,
 		"AwsCloudwatchLogGroup":                   310,
 		"AwsCloudwatchAlarm":                      311,
+		"AwsCloudwatchCompositeAlarm":             355,
 		"AwsKinesisStream":                        260,
 		"AwsKinesisFirehose":                      261,
 		"AwsKinesisStreamConsumer":                262,
@@ -1143,17 +1263,30 @@ var (
 		"AwsRedshiftCluster":                      265,
 		"AwsSagemakerDomain":                      270,
 		"AwsAppRunnerService":                     320,
+		"AwsAppRunnerAutoScalingConfiguration":    368,
+		"AwsAppRunnerVpcConnector":                369,
+		"AwsAppRunnerObservabilityConfiguration":  370,
+		"AwsTransitGatewayVpcAttachment":          371,
+		"AwsTransitGatewayRouteTable":             372,
 		"AwsBatchComputeEnvironment":              321,
+		"AwsBatchJobQueue":                        363,
+		"AwsBatchSchedulingPolicy":                364,
+		"AwsBatchJobDefinition":                   365,
 		"AwsCodeBuildProject":                     330,
 		"AwsCodePipeline":                         331,
 		"AwsMwaaEnvironment":                      340,
 		"AwsNeptuneCluster":                       341,
 		"AwsMemorydbCluster":                      342,
+		"AwsMemorydbUser":                         373,
+		"AwsMemorydbAcl":                          374,
 		"AwsMskCluster":                           350,
 		"AwsMskServerlessCluster":                 351,
 		"AwsLambdaEventSourceMapping":             352,
 		"AwsSnsSubscription":                      353,
 		"AwsPlantonRunner":                        354,
+		"AwsRoute53HealthCheck":                   376,
+		"AwsSesConfigurationSet":                  366,
+		"AwsSesEmailIdentity":                     367,
 		"AzureResourceGroup":                      400,
 		"AzureAksCluster":                         401,
 		"AzureAksNodePool":                        402,
@@ -1740,7 +1873,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xa0\x99\x01\n" +
+	"\x02v1\x10\x01*ܢ\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1774,10 +1907,10 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\n" +
 	"AwsIamUser\x10\xda\x01\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsuser\x12 \n" +
 	"\tAwsKmsKey\x10\xdb\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awskms\x12&\n" +
-	"\x0eAwsEc2Instance\x10\xdc\x01\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aec2inst\x12#\n" +
-	"\fAwsClientVpn\x10\xdd\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsvpn\x12'\n" +
-	"\rAwsDocumentDb\x10\xde\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05docdb:\x02\x9c\x02\x12*\n" +
-	"\x13AwsRoute53DnsRecord\x10\xdf\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06r53rec\x12)\n" +
+	"\x0eAwsEc2Instance\x10\xdc\x01\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aec2inst\x12'\n" +
+	"\fAwsClientVpn\x10\xdd\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsvpn:\x02\xc9\x01\x12'\n" +
+	"\rAwsDocumentDb\x10\xde\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05docdb:\x02\x9c\x02\x12.\n" +
+	"\x13AwsRoute53DnsRecord\x10\xdf\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06r53rec:\x02\xd4\x01\x12)\n" +
 	"\x0eAwsS3ObjectSet\x10\xe0\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06s3objs:\x02\xd5\x01\x12\"\n" +
 	"\vAwsSqsQueue\x10\xe1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssqs\x12\"\n" +
 	"\vAwsSnsTopic\x10\xe2\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssns\x12'\n" +
@@ -1794,8 +1927,11 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x14AwsEksFargateProfile\x10\xed\x01\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\x05eksfp:\x06\xcf\x01\xd0\x01\x9c\x02\x12-\n" +
 	"\x11AwsEksAccessEntry\x10\xee\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\x05eksae:\x04\xcf\x01\xd0\x01\x12.\n" +
 	"\x14AwsEcsTaskDefinition\x10\xef\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05ecstd:\x02\xd0\x01\x12.\n" +
-	"\x11AwsHttpApiGateway\x10\xf0\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawshttpapigw\x12&\n" +
-	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssfn\x12)\n" +
+	"\x11AwsHttpApiGateway\x10\xf0\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawshttpapigw\x12*\n" +
+	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awssfn:\x02\xd0\x01\x121\n" +
+	"\x11AwsHttpApiVpcLink\x10\xe4\x02\x1a\x19\xa2\xf7\x04\x15\b\f\x10\x01\"\vawshttpvpcl:\x02\x9c\x02\x12/\n" +
+	"\x10AwsHttpApiDomain\x10\xe5\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x10\x01\"\n" +
+	"awshttpdom:\x02\xc9\x01\x12)\n" +
 	"\x0eAwsVpcEndpoint\x10\xf2\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x04vpce:\x04\xd8\x01\x9c\x02\x12)\n" +
 	"\x12AwsElasticacheUser\x10\xf3\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06ecuser\x120\n" +
 	"\x17AwsElasticacheUserGroup\x10\xf4\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x04ecug:\x02\xf3\x01\x123\n" +
@@ -1813,38 +1949,59 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\tAwsSubnet\x10\x9c\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05awssn:\x02\xd8\x01\x12-\n" +
 	"\x12AwsInternetGateway\x10\x9d\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsigw:\x02\xd8\x01\x12,\n" +
 	"\rAwsNatGateway\x10\x9e\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x10\x01\"\x06awsnat:\x06\x9c\x02\x99\x02\x9d\x02\x128\n" +
-	"\x1cAwsEgressOnlyInternetGateway\x10\x9f\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\aawseigw:\x02\xd8\x01\x12+\n" +
-	"\x14AwsElasticFileSystem\x10\xa2\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsefs\x12-\n" +
-	"\x16AwsFsxLustreFileSystem\x10\xa3\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxl\x12.\n" +
-	"\x17AwsFsxOpenzfsFileSystem\x10\xa4\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxz\x12.\n" +
-	"\x17AwsFsxWindowsFileSystem\x10\xa5\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxw\x12,\n" +
-	"\x15AwsFsxOntapFileSystem\x10\xa6\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxo\x12:\n" +
-	" AwsFsxOntapStorageVirtualMachine\x10\xa7\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawsfxosvm\x12)\n" +
-	"\x11AwsFsxOntapVolume\x10\xa8\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsfxov\x12)\n" +
-	"\x12AwsCognitoUserPool\x10\xac\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awscog\x124\n" +
-	"\x1aAwsCognitoIdentityProvider\x10\xae\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawscogidp\x12#\n" +
-	"\fAwsWafWebAcl\x10\xad\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awswaf\x12-\n" +
+	"\x1cAwsEgressOnlyInternetGateway\x10\x9f\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\aawseigw:\x02\xd8\x01\x121\n" +
+	"\x14AwsElasticFileSystem\x10\xa2\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\x06awsefs:\x04\x9c\x02\xd7\x01\x12.\n" +
+	"\x11AwsEfsAccessPoint\x10\xe8\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsefsap:\x02\xa2\x02\x121\n" +
+	"\x16AwsFsxLustreFileSystem\x10\xa3\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsfxl:\x02\x9c\x02\x122\n" +
+	"\x17AwsFsxOpenzfsFileSystem\x10\xa4\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsfxz:\x02\x9c\x02\x122\n" +
+	"\x17AwsFsxWindowsFileSystem\x10\xa5\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsfxw:\x02\x9c\x02\x120\n" +
+	"\x15AwsFsxOntapFileSystem\x10\xa6\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsfxo:\x02\x9c\x02\x12>\n" +
+	" AwsFsxOntapStorageVirtualMachine\x10\xa7\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawsfxosvm:\x02\xa6\x02\x12-\n" +
+	"\x11AwsFsxOntapVolume\x10\xa8\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\aawsfxov:\x02\xa7\x02\x12<\n" +
+	"\x1fAwsFsxDataRepositoryAssociation\x10\xf7\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsfxdra:\x02\xa3\x02\x12)\n" +
+	"\x12AwsCognitoUserPool\x10\xac\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awscog\x128\n" +
+	"\x1aAwsCognitoIdentityProvider\x10\xae\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawscogidp:\x02\xac\x02\x129\n" +
+	"\x18AwsCognitoUserPoolClient\x10\xe6\x02\x1a\x1a\xa2\xf7\x04\x16\b\f\x10\x01\"\fawscogclient:\x02\xac\x02\x125\n" +
+	"\x18AwsCognitoResourceServer\x10\xe7\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawscogrs:\x02\xac\x02\x12#\n" +
+	"\fAwsWafWebAcl\x10\xad\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awswaf\x12%\n" +
+	"\vAwsWafIpSet\x10\xe9\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawswafips\x121\n" +
+	"\x15AwsWafRegexPatternSet\x10\xea\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\vawswafregex\x12-\n" +
 	"\x15AwsCloudwatchLogGroup\x10\xb6\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawscwlg\x12)\n" +
-	"\x12AwsCloudwatchAlarm\x10\xb7\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awscwa\x12'\n" +
+	"\x12AwsCloudwatchAlarm\x10\xb7\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awscwa\x127\n" +
+	"\x1bAwsCloudwatchCompositeAlarm\x10\xe3\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\aawscwca:\x02\xb7\x02\x12'\n" +
 	"\x10AwsKinesisStream\x10\x84\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awskin\x12/\n" +
 	"\x12AwsKinesisFirehose\x10\x85\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\x06awskfh:\x04\xd5\x01\xd0\x01\x126\n" +
 	"\x18AwsKinesisStreamConsumer\x10\x86\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawskincon:\x02\x84\x02\x12)\n" +
 	"\x12AwsAthenaWorkgroup\x10\x87\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsath\x12.\n" +
 	"\x16AwsGlueCatalogDatabase\x10\x88\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsglue\x12,\n" +
-	"\x12AwsRedshiftCluster\x10\x89\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05awsrs:\x02\x9c\x02\x12(\n" +
-	"\x12AwsSagemakerDomain\x10\x8e\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05sgmkd\x12)\n" +
-	"\x13AwsAppRunnerService\x10\xc0\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsar\x121\n" +
-	"\x1aAwsBatchComputeEnvironment\x10\xc1\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsbat\x12)\n" +
-	"\x13AwsCodeBuildProject\x10\xca\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awscb\x12%\n" +
-	"\x0fAwsCodePipeline\x10\xcb\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awscp\x120\n" +
+	"\x12AwsRedshiftCluster\x10\x89\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05awsrs:\x02\x9c\x02\x12.\n" +
+	"\x12AwsSagemakerDomain\x10\x8e\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\x05sgmkd:\x04\x9c\x02\xd0\x01\x12)\n" +
+	"\x13AwsAppRunnerService\x10\xc0\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsar\x12=\n" +
+	"$AwsAppRunnerAutoScalingConfiguration\x10\xf0\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsarasc\x126\n" +
+	"\x18AwsAppRunnerVpcConnector\x10\xf1\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\aawsarvc:\x04\x9c\x02\xd7\x01\x12>\n" +
+	"&AwsAppRunnerObservabilityConfiguration\x10\xf2\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsaroc\x12<\n" +
+	"\x1eAwsTransitGatewayVpcAttachment\x10\xf3\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\aawstgwa:\x04\x9a\x02\x9c\x02\x124\n" +
+	"\x1bAwsTransitGatewayRouteTable\x10\xf4\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawstgwrt\x125\n" +
+	"\x1aAwsBatchComputeEnvironment\x10\xc1\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsbat:\x02\x9c\x02\x12-\n" +
+	"\x10AwsBatchJobQueue\x10\xeb\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsbatjq:\x02\xc1\x02\x121\n" +
+	"\x18AwsBatchSchedulingPolicy\x10\xec\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsbatsp\x12.\n" +
+	"\x15AwsBatchJobDefinition\x10\xed\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsbatjd\x12-\n" +
+	"\x13AwsCodeBuildProject\x10\xca\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05awscb:\x02\xd0\x01\x12+\n" +
+	"\x0fAwsCodePipeline\x10\xcb\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\x05awscp:\x04\xd0\x01\xd5\x01\x120\n" +
 	"\x12AwsMwaaEnvironment\x10\xd4\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\aawsmwaa:\x04\x9c\x02\xd7\x01\x12,\n" +
-	"\x11AwsNeptuneCluster\x10\xd5\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsnep:\x02\x9c\x02\x12)\n" +
-	"\x12AwsMemorydbCluster\x10\xd6\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsmdb\x12*\n" +
+	"\x11AwsNeptuneCluster\x10\xd5\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsnep:\x02\x9c\x02\x12-\n" +
+	"\x12AwsMemorydbCluster\x10\xd6\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsmdb:\x02\x9c\x02\x12*\n" +
+	"\x0fAwsMemorydbUser\x10\xf5\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\n" +
+	"awsmdbuser\x12(\n" +
+	"\x0eAwsMemorydbAcl\x10\xf6\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawsmdbacl\x12*\n" +
 	"\rAwsMskCluster\x10\xde\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\x06awsmsk:\x04\x9c\x02\xd7\x01\x124\n" +
 	"\x17AwsMskServerlessCluster\x10\xdf\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsmsksl:\x02\x9c\x02\x129\n" +
 	"\x1bAwsLambdaEventSourceMapping\x10\xe0\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tlambdaesm:\x02\xd1\x01\x120\n" +
 	"\x12AwsSnsSubscription\x10\xe1\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawssnssub:\x02\xe2\x01\x12+\n" +
-	"\x10AwsPlantonRunner\x10\xe2\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsrun:\x02\x9c\x02\x12)\n" +
+	"\x10AwsPlantonRunner\x10\xe2\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsrun:\x02\x9c\x02\x12+\n" +
+	"\x15AwsRoute53HealthCheck\x10\xf8\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05r53hc\x12/\n" +
+	"\x16AwsSesConfigurationSet\x10\xee\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawssescs\x12,\n" +
+	"\x13AwsSesEmailIdentity\x10\xef\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawssesid\x12)\n" +
 	"\x12AzureResourceGroup\x10\x90\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x04azrg0\x01\x12%\n" +
 	"\x0fAzureAksCluster\x10\x91\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x03aks0\x01\x12&\n" +
 	"\x10AzureAksNodePool\x10\x92\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05aksnp\x12*\n" +

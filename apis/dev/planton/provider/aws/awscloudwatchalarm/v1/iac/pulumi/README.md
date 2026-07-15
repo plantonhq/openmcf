@@ -1,6 +1,6 @@
 # AwsCloudwatchAlarm Pulumi Module
 
-Provisions an AWS CloudWatch metric alarm with support for simple metric alarms and metric math expressions, configurable M-of-N evaluation, and multi-action notifications.
+Provisions an AWS CloudWatch metric alarm supporting all three metric definition modes — simple metric, metric math / anomaly detection queries, and PromQL against an Amazon Managed Service for Prometheus workspace — with configurable M-of-N evaluation and multi-action notifications.
 
 ## Resources Created
 

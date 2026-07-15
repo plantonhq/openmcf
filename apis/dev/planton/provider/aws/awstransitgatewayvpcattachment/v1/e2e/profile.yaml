@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awstransitgatewayvpcattachment
+spec:
+  # A Transit Gateway VPC attachment under live E2E: the harness deploys
+  # the registry chain (AwsTransitGateway; AwsSubnet -> AwsVpc) and the
+  # scenario attaches two AZs with appliance mode and pinned-off
+  # default-table membership. Verification is
+  # DescribeTransitGatewayVpcAttachments keyed on the attachment ID,
+  # state-aware (deleting/deleted count as absent).
+  # Live dual-engine run 2026-07-08 (incl. the TGW + VPC -> two-AZ subnet
+  # fixture chain): Pulumi ~8m11s / Terraform 7m45s (deploy 1m59s, destroy
+  # 1m08s); zero-orphan sweep clean.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

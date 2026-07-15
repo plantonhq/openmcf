@@ -32,24 +32,16 @@ func Resources(ctx *pulumi.Context, stackInput *awshttpapigatewayv1.AwsHttpApiGa
 	}
 
 	// -----------------------------------------------------------------------
-	// 2. Create the stage
+	// 2. Create integrations (deduplicated)
 	// -----------------------------------------------------------------------
 
-	if err := stage(ctx, locals, createdApi, provider); err != nil {
-		return errors.Wrap(err, "api stage")
-	}
-
-	// -----------------------------------------------------------------------
-	// 3. Create integrations (deduplicated)
-	// -----------------------------------------------------------------------
-
-	integrationMap, err := integrations(ctx, locals, createdApi, provider)
+	createdIntegrations, err := integrations(ctx, locals, createdApi, provider)
 	if err != nil {
 		return errors.Wrap(err, "api integrations")
 	}
 
 	// -----------------------------------------------------------------------
-	// 4. Create authorizers (if any)
+	// 3. Create authorizers (if any)
 	// -----------------------------------------------------------------------
 
 	authorizerMap, err := authorizers(ctx, locals, createdApi, provider)
@@ -58,11 +50,20 @@ func Resources(ctx *pulumi.Context, stackInput *awshttpapigatewayv1.AwsHttpApiGa
 	}
 
 	// -----------------------------------------------------------------------
-	// 5. Create routes
+	// 4. Create routes
 	// -----------------------------------------------------------------------
 
-	if err := routes(ctx, locals, createdApi, integrationMap, authorizerMap, provider); err != nil {
+	createdRoutes, err := routes(ctx, locals, createdApi, createdIntegrations, authorizerMap, provider)
+	if err != nil {
 		return errors.Wrap(err, "api routes")
+	}
+
+	// -----------------------------------------------------------------------
+	// 5. Create the stage (after routes: per-route settings reference them)
+	// -----------------------------------------------------------------------
+
+	if err := stage(ctx, locals, createdApi, createdRoutes, provider); err != nil {
+		return errors.Wrap(err, "api stage")
 	}
 
 	return nil

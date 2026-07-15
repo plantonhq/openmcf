@@ -3,9 +3,9 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "module",
     srcs = [
-        "client.go",
         "domain.go",
         "locals.go",
+        "log_delivery.go",
         "main.go",
         "outputs.go",
         "user_pool.go",

@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Preset: Production Multi-Action Alarm"
     excerpt: "**Use case:** Production-grade alarm with separate notification channels for ALARM, OK, and INSUFFICIENT_DATA state transitions."
+  - slug: "04-promql-prometheus-alarm"
+    rank: "04"
+    title: "Preset: PromQL Alarm on a Prometheus Workspace"
+    excerpt: "**Use case:** Alarm on metrics that live in Amazon Managed Service for Prometheus, with Prometheus-native semantics."
 ---
 
 # CloudWatch Alarm Presets

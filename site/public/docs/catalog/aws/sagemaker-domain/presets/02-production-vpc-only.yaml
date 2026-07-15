@@ -6,6 +6,14 @@ spec:
   region: us-west-2
   authMode: SSO
   appNetworkAccessType: VpcOnly
+  # Propagate the domain's tags onto apps/spaces/profiles for cost allocation.
+  tagPropagation: ENABLED
+  # Stamp each session's sts:SourceIdentity with the acting user profile so
+  # CloudTrail attributes actions to humans, not just the shared role.
+  executionRoleIdentityConfig: USER_PROFILE_NAME
+  # Forward the Identity Center user identity into downstream analytics
+  # services (Athena, Redshift, Lake Formation). SSO auth mode required.
+  trustedIdentityPropagationStatus: ENABLED
   vpcId:
     value: "<vpc-id>"
   subnetIds:
@@ -27,10 +35,14 @@ spec:
       defaultResourceSpec:
         instanceType: ml.t3.medium
       idleSettings:
-        lifecycleManagement: ENABLED
         idleTimeoutInMinutes: 120
         minIdleTimeoutInMinutes: 60
         maxIdleTimeoutInMinutes: 480
     spaceStorageSettings:
       defaultEbsVolumeSizeInGb: 20
       maximumEbsVolumeSizeInGb: 200
+    # Keep the most expensive GPU tiers out of the app-creation picker.
+    studioWebPortalSettings:
+      hiddenInstanceTypes:
+        - ml.p3.16xlarge
+        - ml.p4d.24xlarge

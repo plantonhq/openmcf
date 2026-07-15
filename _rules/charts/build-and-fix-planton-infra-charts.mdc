@@ -270,8 +270,7 @@ tags). Two conventions matter for cluster-composing charts:
   never a registration slug. Charts with a private-endpoint variant include
   the runner appliance node plus a security group admitting it (443) at the
   cluster's API endpoint, referenced from the cluster's additional
-  security-group ids so ordering and teardown are structural. See
-  `charts/aws/eks-environment` for the reference composition.
+  security-group ids so ordering and teardown are structural.
 
 ## Phase 4: Decision Framework
 

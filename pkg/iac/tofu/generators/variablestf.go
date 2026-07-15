@@ -51,6 +51,9 @@ func ProtoToVariablesTF(msg proto.Message) (string, error) {
 	var buf bytes.Buffer
 	fields := md.Fields()
 
+	// Path-scoped cycle guard for the descriptor walk (see msgDescToTFObject).
+	visited := map[protoreflect.FullName]bool{md.FullName(): true}
+
 	for i := 0; i < fields.Len(); i++ {
 		fd := fields.Get(i)
 		fieldName := string(fd.Name())
@@ -69,7 +72,7 @@ func ProtoToVariablesTF(msg proto.Message) (string, error) {
 			tfType = canonicalMetadataObject()
 			desc = metadataVariableDescription
 		} else {
-			t, err := fieldToTFType(fd, md, rules)
+			t, err := fieldToTFType(fd, md, rules, visited)
 			if err != nil {
 				return "", errors.Wrapf(err, "failed to convert field %q to terraform type", fieldName)
 			}
@@ -102,26 +105,38 @@ func variableDescription(resourceMD protoreflect.MessageDescriptor, fieldName st
 
 // fieldToTFType converts a proto field descriptor to a TFType, consulting type
 // rules for skip/flatten decisions. Returns nil if the field should be skipped.
-func fieldToTFType(fd protoreflect.FieldDescriptor, parentMD protoreflect.MessageDescriptor, rules map[string]TypeRule) (TFType, error) {
+// The visited set is the path-scoped cycle guard threaded through the whole
+// descriptor walk (see msgDescToTFObject).
+func fieldToTFType(fd protoreflect.FieldDescriptor, parentMD protoreflect.MessageDescriptor, rules map[string]TypeRule, visited map[protoreflect.FullName]bool) (TFType, error) {
 	// Handle map fields first (before IsList, since maps are also "repeated" in proto).
 	if fd.IsMap() {
-		return mapFieldToTFType(fd, rules)
+		return mapFieldToTFType(fd, rules, visited)
 	}
 
 	// Handle repeated (list) fields.
 	if fd.IsList() {
-		elemType, err := scalarOrMsgToTFType(fd, parentMD, rules)
+		elemType, err := scalarOrMsgToTFType(fd, parentMD, rules, visited)
 		if err != nil {
 			return nil, err
 		}
 		if elemType == nil {
 			return nil, nil
 		}
+		// Free-form content (a JSON well-known type, or a recursive message
+		// collapsed to `any`) cannot appear ANYWHERE inside a list element
+		// type: Terraform unifies every element of a list(...) to one
+		// concrete type, and an embedded `any` placeholder must resolve to
+		// the same concrete type across all elements -- which arbitrary or
+		// recursive content cannot guarantee ("element types must all match
+		// for conversion to list"). The whole attribute becomes `any`.
+		if containsFreeForm(elemType) {
+			return TFFreeFormList{}, nil
+		}
 		return TFList{Elem: elemType}, nil
 	}
 
 	// Singular field.
-	return scalarOrMsgToTFType(fd, parentMD, rules)
+	return scalarOrMsgToTFType(fd, parentMD, rules, visited)
 }
 
 // mapFieldToTFType converts a proto map<K, V> field to TFMap. The key type is
@@ -132,7 +147,7 @@ func fieldToTFType(fd protoreflect.FieldDescriptor, parentMD protoreflect.Messag
 // google.protobuf.Struct/Value/ListValue>) is the exception: its entries are
 // independently-shaped, so it cannot be a homogeneous map(any). It becomes a
 // TFFreeFormMap (rendered `any`) -- see that type for the rationale.
-func mapFieldToTFType(fd protoreflect.FieldDescriptor, rules map[string]TypeRule) (TFType, error) {
+func mapFieldToTFType(fd protoreflect.FieldDescriptor, rules map[string]TypeRule, visited map[protoreflect.FullName]bool) (TFType, error) {
 	valDesc := fd.MapValue()
 
 	if valDesc.Kind() == protoreflect.MessageKind &&
@@ -140,7 +155,7 @@ func mapFieldToTFType(fd protoreflect.FieldDescriptor, rules map[string]TypeRule
 		return TFFreeFormMap{}, nil
 	}
 
-	valType, err := mapValueToTFType(valDesc, rules)
+	valType, err := mapValueToTFType(valDesc, rules, visited)
 	if err != nil {
 		return nil, err
 	}
@@ -148,11 +163,17 @@ func mapFieldToTFType(fd protoreflect.FieldDescriptor, rules map[string]TypeRule
 		return nil, nil
 	}
 
+	// Same unification constraint as lists: free-form content anywhere in
+	// the value type cannot live inside map(...) -- see containsFreeForm.
+	if containsFreeForm(valType) {
+		return TFFreeFormMap{}, nil
+	}
+
 	return TFMap{Value: valType}, nil
 }
 
 // mapValueToTFType resolves the TFType for a map value descriptor.
-func mapValueToTFType(valDesc protoreflect.FieldDescriptor, rules map[string]TypeRule) (TFType, error) {
+func mapValueToTFType(valDesc protoreflect.FieldDescriptor, rules map[string]TypeRule, visited map[protoreflect.FullName]bool) (TFType, error) {
 	switch valDesc.Kind() {
 	case protoreflect.StringKind:
 		return TFPrimitive("string"), nil
@@ -180,7 +201,11 @@ func mapValueToTFType(valDesc protoreflect.FieldDescriptor, rules map[string]Typ
 		if isWellKnownJSONType(fullName) {
 			return TFPrimitive("any"), nil
 		}
-		return msgDescToTFObject(valDesc.Message(), rules)
+		if visited[protoreflect.FullName(fullName)] {
+			// Descriptor cycle: see the rationale in scalarOrMsgToTFType.
+			return TFPrimitive("any"), nil
+		}
+		return msgDescToTFObject(valDesc.Message(), rules, visited)
 	default:
 		return TFPrimitive("string"), nil
 	}
@@ -188,7 +213,7 @@ func mapValueToTFType(valDesc protoreflect.FieldDescriptor, rules map[string]Typ
 
 // scalarOrMsgToTFType converts a single (non-map, non-list-wrapper) field to
 // a TFType. For message-kind fields, consults type rules.
-func scalarOrMsgToTFType(fd protoreflect.FieldDescriptor, parentMD protoreflect.MessageDescriptor, rules map[string]TypeRule) (TFType, error) {
+func scalarOrMsgToTFType(fd protoreflect.FieldDescriptor, parentMD protoreflect.MessageDescriptor, rules map[string]TypeRule, visited map[protoreflect.FullName]bool) (TFType, error) {
 	switch fd.Kind() {
 	case protoreflect.StringKind:
 		return TFPrimitive("string"), nil
@@ -221,7 +246,20 @@ func scalarOrMsgToTFType(fd protoreflect.FieldDescriptor, parentMD protoreflect.
 			return TFPrimitive("any"), nil
 		}
 
-		return msgDescToTFObject(fd.Message(), rules)
+		if visited[protoreflect.FullName(fullName)] {
+			// Descriptor cycle: the message (directly or transitively) contains
+			// itself -- a legitimate proto shape for naturally recursive
+			// structures (e.g. boolean statement trees). Terraform's type
+			// language cannot express a recursive object constraint, so the
+			// recursive subtree collapses to `any` -- the same treatment as
+			// google.protobuf.Struct. The tfvars renderer is value-driven and
+			// unaffected: values inside the subtree still emit with proto
+			// field names and flattened wrapper types, so modules read the
+			// exact shapes a fully typed contract would carry.
+			return TFPrimitive("any"), nil
+		}
+
+		return msgDescToTFObject(fd.Message(), rules, visited)
 	default:
 		return nil, fmt.Errorf("unsupported field kind: %v", fd.Kind())
 	}
@@ -231,7 +269,17 @@ func scalarOrMsgToTFType(fd protoreflect.FieldDescriptor, parentMD protoreflect.
 // TFObject, respecting type rules and skipping the "version" field inside
 // metadata messages. Each attribute is marked optional unless the proto field is
 // required (see isRequiredField).
-func msgDescToTFObject(md protoreflect.MessageDescriptor, rules map[string]TypeRule) (TFType, error) {
+//
+// The visited set is a path-scoped cycle guard (mark on entry, unmark on exit --
+// the same idiom the refcheck and secret-coverage descriptor walks use): a
+// message may legitimately appear at many sibling paths, but re-entering a type
+// already on the CURRENT path means the descriptor graph is recursive and the
+// walk would never terminate. The message-kind converters break such cycles by
+// collapsing the recursive subtree to `any`.
+func msgDescToTFObject(md protoreflect.MessageDescriptor, rules map[string]TypeRule, visited map[protoreflect.FullName]bool) (TFType, error) {
+	visited[md.FullName()] = true
+	defer delete(visited, md.FullName())
+
 	fields := md.Fields()
 	obj := TFObject{}
 
@@ -245,7 +293,7 @@ func msgDescToTFObject(md protoreflect.MessageDescriptor, rules map[string]TypeR
 			continue
 		}
 
-		valType, err := fieldToTFType(f, md, rules)
+		valType, err := fieldToTFType(f, md, rules, visited)
 		if err != nil {
 			return nil, err
 		}
@@ -262,6 +310,33 @@ func msgDescToTFObject(md protoreflect.MessageDescriptor, rules map[string]TypeR
 	}
 
 	return obj, nil
+}
+
+// containsFreeForm reports whether a type carries free-form (`any`-typed)
+// content anywhere in its structure. Lists and maps must not embed such
+// content in their element/value types (Terraform cannot unify `any` across
+// elements), so their converters collapse to the free-form container types
+// when this returns true.
+func containsFreeForm(t TFType) bool {
+	switch v := t.(type) {
+	case TFPrimitive:
+		return string(v) == "any"
+	case TFFreeFormMap, TFFreeFormList:
+		return true
+	case TFList:
+		return containsFreeForm(v.Elem)
+	case TFMap:
+		return containsFreeForm(v.Value)
+	case TFObject:
+		for _, f := range v.Fields {
+			if containsFreeForm(f.Type) {
+				return true
+			}
+		}
+		return false
+	default:
+		return false
+	}
 }
 
 // isRequiredField reports whether a proto field must always be present in the

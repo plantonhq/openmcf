@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	awsgav1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsglobalaccelerator/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/aws/pulumiawsprovider"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/globalaccelerator"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -41,11 +42,18 @@ func Resources(ctx *pulumi.Context, stackInput *awsgav1.AwsGlobalAcceleratorStac
 	ctx.Export(OpAcceleratorDualStackDns, accel.DualStackDnsName)
 	ctx.Export(OpAcceleratorHostedZoneId, accel.HostedZoneId)
 
-	// Export IP addresses as a string array.
-	ctx.Export(OpAcceleratorIpAddresses, accel.IpSets.ApplyT(func(sets []interface{}) []string {
-		// IpSets is an array; extract ip_addresses from the first set.
-		// The Pulumi SDK types this as []AcceleratorIpSet.
-		return nil
+	// Flatten the static anycast addresses across all IP sets (IPv4, and IPv6
+	// for dual-stack accelerators) — the same flatten the Terraform module
+	// performs, so both engines export an identical list. The ApplyT callback
+	// takes the SDK's concrete []globalaccelerator.AcceleratorIpSet element
+	// type: a mistyped applier compiles but panics at deploy, so keep the
+	// signature aligned with the SDK type.
+	ctx.Export(OpAcceleratorIpAddresses, accel.IpSets.ApplyT(func(sets []globalaccelerator.AcceleratorIpSet) []string {
+		addresses := []string{}
+		for _, ipSet := range sets {
+			addresses = append(addresses, ipSet.IpAddresses...)
+		}
+		return addresses
 	}))
 
 	// Build and export listener ARN map.

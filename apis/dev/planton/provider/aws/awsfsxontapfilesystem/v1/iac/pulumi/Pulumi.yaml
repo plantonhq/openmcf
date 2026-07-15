@@ -1,6 +1,3 @@
 name: aws-fsx-ontap-file-system
-runtime:
-  name: go
-  options:
-    binary: aws-fsx-ontap-file-system
-description: AWS FSx ONTAP File System
+runtime: go
+description: Deploy an Amazon FSx for NetApp ONTAP file system using Planton

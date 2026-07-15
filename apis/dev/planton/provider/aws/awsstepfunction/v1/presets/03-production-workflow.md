@@ -7,6 +7,7 @@ Use this preset for production-grade workflows that require full observability, 
 ## Key Configuration Choices
 
 - **Type**: `STANDARD` — durable, exactly-once execution with full history
+- **Versioning**: `publish: true` — every configuration change publishes an immutable version; the version ARN lands in stack outputs so consumers can pin to a snapshot for safe rollbacks
 - **Logging**: `ALL` with execution data — full visibility into every state transition
 - **Tracing**: Enabled — X-Ray traces for end-to-end request visualization
 - **Encryption**: Customer-managed KMS key — compliance-ready data encryption
@@ -16,13 +17,12 @@ Use this preset for production-grade workflows that require full observability, 
 ## What to Customize
 
 1. **`<workflow-name>`** — Production workflow name (e.g., `order-processor`)
-2. **`<workflow-description>`** — Clear description of the workflow's purpose
-3. **`<iam-role-resource-name>`** — Name of the AwsIamRole resource in your infra chart
-4. **`<lambda-function-arn>`** and **`<lambda-function-arn-2>`** — Lambda functions for each step
-5. **`<error-handler-lambda-arn>`** — Dedicated error handling function
-6. **`<log-group-resource-name>`** — Name of the AwsCloudwatchLogGroup resource
-7. **`<kms-key-resource-name>`** — Name of the AwsKmsKey resource
-8. **Definition** — Replace with your actual multi-step workflow
+2. **`<iam-role-resource-name>`** — Name of the AwsIamRole resource in your infra chart
+3. **`<lambda-function-arn>`** and **`<lambda-function-arn-2>`** — Lambda functions for each step
+4. **`<error-handler-lambda-arn>`** — Dedicated error handling function
+5. **`<log-group-resource-name>`** — Name of the AwsCloudwatchLogGroup resource
+6. **`<kms-key-resource-name>`** — Name of the AwsKmsKey resource
+7. **Definition** — Replace with your actual multi-step workflow
 
 ## Production Checklist
 

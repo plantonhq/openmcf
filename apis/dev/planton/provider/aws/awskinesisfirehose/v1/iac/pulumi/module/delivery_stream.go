@@ -30,6 +30,24 @@ func deliveryStream(ctx *pulumi.Context, locals *Locals, provider *aws.Provider)
 		}
 	}
 
+	// MSK source (whole block ForceNew). Connectivity + role live in the
+	// nested authentication configuration; read_from_timestamp rewinds the
+	// topic to a point in time at creation.
+	if src := spec.MskSource; src != nil {
+		mskArgs := &kinesis.FirehoseDeliveryStreamMskSourceConfigurationArgs{
+			MskClusterArn: pulumi.String(src.MskClusterArn.GetValue()),
+			TopicName:     pulumi.String(src.TopicName),
+			AuthenticationConfiguration: &kinesis.FirehoseDeliveryStreamMskSourceConfigurationAuthenticationConfigurationArgs{
+				Connectivity: pulumi.String(src.Connectivity),
+				RoleArn:      pulumi.String(src.RoleArn.GetValue()),
+			},
+		}
+		if src.ReadFromTimestamp != "" {
+			mskArgs.ReadFromTimestamp = pulumi.StringPtr(src.ReadFromTimestamp)
+		}
+		args.MskSourceConfiguration = mskArgs
+	}
+
 	// ---------------------------------------------------------------------------
 	// Server-side encryption (Direct PUT only)
 	// ---------------------------------------------------------------------------
@@ -68,6 +86,14 @@ func deliveryStream(ctx *pulumi.Context, locals *Locals, provider *aws.Provider)
 		}
 		args.OpensearchConfiguration = osArgs
 
+	case *awskinesisfirehose.AwsKinesisFirehoseSpec_OpensearchServerless:
+		args.Destination = pulumi.String("opensearchserverless")
+		aossArgs, err := buildOpenSearchServerlessArgs(dest.OpensearchServerless, locals)
+		if err != nil {
+			return nil, fmt.Errorf("opensearchserverless destination: %w", err)
+		}
+		args.OpensearchserverlessConfiguration = aossArgs
+
 	case *awskinesisfirehose.AwsKinesisFirehoseSpec_HttpEndpoint:
 		args.Destination = pulumi.String("http_endpoint")
 		httpArgs, err := buildHttpEndpointArgs(dest.HttpEndpoint, locals)
@@ -83,6 +109,30 @@ func deliveryStream(ctx *pulumi.Context, locals *Locals, provider *aws.Provider)
 			return nil, fmt.Errorf("redshift destination: %w", err)
 		}
 		args.RedshiftConfiguration = rsArgs
+
+	case *awskinesisfirehose.AwsKinesisFirehoseSpec_Splunk:
+		args.Destination = pulumi.String("splunk")
+		splunkArgs, err := buildSplunkArgs(dest.Splunk, locals)
+		if err != nil {
+			return nil, fmt.Errorf("splunk destination: %w", err)
+		}
+		args.SplunkConfiguration = splunkArgs
+
+	case *awskinesisfirehose.AwsKinesisFirehoseSpec_Snowflake:
+		args.Destination = pulumi.String("snowflake")
+		sfArgs, err := buildSnowflakeArgs(dest.Snowflake, locals)
+		if err != nil {
+			return nil, fmt.Errorf("snowflake destination: %w", err)
+		}
+		args.SnowflakeConfiguration = sfArgs
+
+	case *awskinesisfirehose.AwsKinesisFirehoseSpec_Iceberg:
+		args.Destination = pulumi.String("iceberg")
+		ibArgs, err := buildIcebergArgs(dest.Iceberg, locals)
+		if err != nil {
+			return nil, fmt.Errorf("iceberg destination: %w", err)
+		}
+		args.IcebergConfiguration = ibArgs
 
 	default:
 		return nil, fmt.Errorf("unsupported destination type: %T", spec.DestinationConfig)

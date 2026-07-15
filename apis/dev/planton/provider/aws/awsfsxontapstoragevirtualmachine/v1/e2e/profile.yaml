@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsfsxontapstoragevirtualmachine
+spec:
+  # An FSx ONTAP Storage Virtual Machine under live E2E: one composed lane
+  # riding the ONTAP file-system prerequisite fixture (which itself rides
+  # the shared subnet + security-group fixtures). The lane proves a UNIX
+  # SVM with an explicit root volume security style and the vsadmin
+  # password (the sensitive arm), verifying the NFS/iSCSI/management
+  # endpoints appear as outputs. Excluded arm recorded here:
+  # active_directory_configuration — joining a domain requires a reachable
+  # self-managed Active Directory, which the test account does not have (no
+  # directory fixture exists); the AD block is proven structurally by the
+  # offline plan/preview proof and the spec tests. Verification is
+  # DescribeStorageVirtualMachines keyed on svm_id, lifecycle-state-aware
+  # (DELETING counts as absent). Expected timings: the SVM itself creates
+  # in ~10-20 minutes; the file-system prerequisite chain adds ~25-40
+  # minutes on a cold install.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision: the SVM lane's prerequisite chain provisions
+    an FSx ONTAP file system, which is long-provisioning and expensive, so
+    the family stops at the offline gate (green tofu plan + pulumi preview
+    per engine). Artifacts are complete and the lanes stay re-runnable.
+  timeout_minutes: 90

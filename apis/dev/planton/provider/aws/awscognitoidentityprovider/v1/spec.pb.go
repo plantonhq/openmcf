@@ -24,77 +24,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsCognitoIdentityProviderType enumerates the supported identity provider
-// types for Amazon Cognito User Pool federation. Values match the AWS API
-// exactly.
-type AwsCognitoIdentityProviderType int32
-
-const (
-	// unspecified is the zero value; set an explicit provider type.
-	AwsCognitoIdentityProviderType_unspecified AwsCognitoIdentityProviderType = 0
-	// Google OAuth 2.0 social identity provider.
-	AwsCognitoIdentityProviderType_Google AwsCognitoIdentityProviderType = 1
-	// Facebook Login social identity provider.
-	AwsCognitoIdentityProviderType_Facebook AwsCognitoIdentityProviderType = 2
-	// Login with Amazon social identity provider.
-	AwsCognitoIdentityProviderType_LoginWithAmazon AwsCognitoIdentityProviderType = 3
-	// Sign in with Apple social identity provider.
-	AwsCognitoIdentityProviderType_SignInWithApple AwsCognitoIdentityProviderType = 4
-	// Generic OpenID Connect identity provider.
-	AwsCognitoIdentityProviderType_OIDC AwsCognitoIdentityProviderType = 5
-	// SAML 2.0 federation identity provider.
-	AwsCognitoIdentityProviderType_SAML AwsCognitoIdentityProviderType = 6
-)
-
-// Enum value maps for AwsCognitoIdentityProviderType.
-var (
-	AwsCognitoIdentityProviderType_name = map[int32]string{
-		0: "unspecified",
-		1: "Google",
-		2: "Facebook",
-		3: "LoginWithAmazon",
-		4: "SignInWithApple",
-		5: "OIDC",
-		6: "SAML",
-	}
-	AwsCognitoIdentityProviderType_value = map[string]int32{
-		"unspecified":     0,
-		"Google":          1,
-		"Facebook":        2,
-		"LoginWithAmazon": 3,
-		"SignInWithApple": 4,
-		"OIDC":            5,
-		"SAML":            6,
-	}
-)
-
-func (x AwsCognitoIdentityProviderType) Enum() *AwsCognitoIdentityProviderType {
-	p := new(AwsCognitoIdentityProviderType)
-	*p = x
-	return p
-}
-
-func (x AwsCognitoIdentityProviderType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (AwsCognitoIdentityProviderType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (AwsCognitoIdentityProviderType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_enumTypes[0]
-}
-
-func (x AwsCognitoIdentityProviderType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use AwsCognitoIdentityProviderType.Descriptor instead.
-func (AwsCognitoIdentityProviderType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
 // AwsCognitoIdpGoogleConfig holds the OAuth 2.0 configuration for a Google
 // identity provider. Cognito auto-discovers authorize_url, token_url, and
 // oidc_issuer from Google's well-known endpoints.
@@ -412,9 +341,13 @@ type AwsCognitoIdpOidcConfig struct {
 	// Override the auto-discovered userinfo endpoint URL.
 	AttributesUrl string `protobuf:"bytes,8,opt,name=attributes_url,json=attributesUrl,proto3" json:"attributes_url,omitempty"`
 	// Override the auto-discovered JWKS endpoint URL.
-	JwksUri       string `protobuf:"bytes,9,opt,name=jwks_uri,json=jwksUri,proto3" json:"jwks_uri,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	JwksUri string `protobuf:"bytes,9,opt,name=jwks_uri,json=jwksUri,proto3" json:"jwks_uri,omitempty"`
+	// When true, Cognito appends the requested attributes as query parameters
+	// to the userinfo (attributes_url) request instead of relying on the
+	// provider returning them by default. Only some providers need this.
+	AttributesUrlAddAttributes bool `protobuf:"varint,10,opt,name=attributes_url_add_attributes,json=attributesUrlAddAttributes,proto3" json:"attributes_url_add_attributes,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *AwsCognitoIdpOidcConfig) Reset() {
@@ -508,6 +441,13 @@ func (x *AwsCognitoIdpOidcConfig) GetJwksUri() string {
 		return x.JwksUri
 	}
 	return ""
+}
+
+func (x *AwsCognitoIdpOidcConfig) GetAttributesUrlAddAttributes() bool {
+	if x != nil {
+		return x.AttributesUrlAddAttributes
+	}
+	return false
 }
 
 // AwsCognitoIdpSamlConfig holds the configuration for a SAML 2.0 federation
@@ -649,12 +589,13 @@ type AwsCognitoIdentityProviderSpec struct {
 	//
 	// 1-32 UTF-8 characters. This field is ForceNew.
 	ProviderName string `protobuf:"bytes,3,opt,name=provider_name,json=providerName,proto3" json:"provider_name,omitempty"`
-	// The type of identity provider. Determines which provider configuration
-	// field to populate (google, facebook, login_with_amazon, sign_in_with_apple,
-	// oidc, or saml).
+	// The type of identity provider, exactly as the AWS API spells it. Valid
+	// values: "Google", "Facebook", "LoginWithAmazon", "SignInWithApple",
+	// "OIDC", "SAML". Determines which provider configuration field to populate
+	// (google, facebook, login_with_amazon, sign_in_with_apple, oidc, or saml).
 	//
 	// This field is ForceNew: changing it requires replacing the identity provider.
-	ProviderType AwsCognitoIdentityProviderType `protobuf:"varint,4,opt,name=provider_type,json=providerType,proto3,enum=dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderType" json:"provider_type,omitempty"`
+	ProviderType string `protobuf:"bytes,4,opt,name=provider_type,json=providerType,proto3" json:"provider_type,omitempty"`
 	// Types that are valid to be assigned to ProviderConfig:
 	//
 	//	*AwsCognitoIdentityProviderSpec_Google
@@ -732,11 +673,11 @@ func (x *AwsCognitoIdentityProviderSpec) GetProviderName() string {
 	return ""
 }
 
-func (x *AwsCognitoIdentityProviderSpec) GetProviderType() AwsCognitoIdentityProviderType {
+func (x *AwsCognitoIdentityProviderSpec) GetProviderType() string {
 	if x != nil {
 		return x.ProviderType
 	}
-	return AwsCognitoIdentityProviderType_unspecified
+	return ""
 }
 
 func (x *AwsCognitoIdentityProviderSpec) GetProviderConfig() isAwsCognitoIdentityProviderSpec_ProviderConfig {
@@ -887,7 +828,7 @@ const file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_raw
 	"\x06key_id\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05keyId\x12,\n" +
 	"\vprivate_key\x18\x04 \x01(\tB\v\xbaH\x04r\x02\x10\x01\xa0\xa6\x1d\x01R\n" +
 	"privateKey\x122\n" +
-	"\x10authorize_scopes\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0fauthorizeScopes\"\xff\x02\n" +
+	"\x10authorize_scopes\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0fauthorizeScopes\"\xc2\x03\n" +
 	"\x17AwsCognitoIdpOidcConfig\x12$\n" +
 	"\tclient_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bclientId\x12(\n" +
 	"\voidc_issuer\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
@@ -898,7 +839,9 @@ const file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_raw
 	"\rauthorize_url\x18\x06 \x01(\tR\fauthorizeUrl\x12\x1b\n" +
 	"\ttoken_url\x18\a \x01(\tR\btokenUrl\x12%\n" +
 	"\x0eattributes_url\x18\b \x01(\tR\rattributesUrl\x12\x19\n" +
-	"\bjwks_uri\x18\t \x01(\tR\ajwksUri\"\x8b\x02\n" +
+	"\bjwks_uri\x18\t \x01(\tR\ajwksUri\x12A\n" +
+	"\x1dattributes_url_add_attributes\x18\n" +
+	" \x01(\bR\x1aattributesUrlAddAttributes\"\x8b\x02\n" +
 	"\x17AwsCognitoIdpSamlConfig\x12#\n" +
 	"\rmetadata_file\x18\x01 \x01(\tR\fmetadataFile\x12!\n" +
 	"\fmetadata_url\x18\x02 \x01(\tR\vmetadataUrl\x12 \n" +
@@ -906,14 +849,13 @@ const file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_raw
 	"idpSignOut\x12\x19\n" +
 	"\bidp_init\x18\x04 \x01(\bR\aidpInit\x12/\n" +
 	"\x13encrypted_responses\x18\x05 \x01(\bR\x12encryptedResponses\x12:\n" +
-	"\x19request_signing_algorithm\x18\x06 \x01(\tR\x17requestSigningAlgorithm\"\xfa\x13\n" +
+	"\x19request_signing_algorithm\x18\x06 \x01(\tR\x17requestSigningAlgorithm\"\xb8\x15\n" +
 	"\x1eAwsCognitoIdentityProviderSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x80\x01\n" +
 	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x1bstatus.outputs.user_pool_idR\n" +
 	"userPoolId\x12.\n" +
-	"\rprovider_name\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18 R\fproviderName\x12\x87\x01\n" +
-	"\rprovider_type\x18\x04 \x01(\x0e2V.dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderTypeB\n" +
-	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\fproviderType\x12k\n" +
+	"\rprovider_name\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18 R\fproviderName\x12+\n" +
+	"\rprovider_type\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fproviderType\x12k\n" +
 	"\x06google\x18\x05 \x01(\v2Q.dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpGoogleConfigH\x00R\x06google\x12q\n" +
 	"\bfacebook\x18\x06 \x01(\v2S.dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpFacebookConfigH\x00R\bfacebook\x12\x88\x01\n" +
 	"\x11login_with_amazon\x18\a \x01(\v2Z.dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpLoginWithAmazonConfigH\x00R\x0floginWithAmazon\x12\x89\x01\n" +
@@ -925,21 +867,13 @@ const file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_raw
 	"\x0fidp_identifiers\x18\f \x03(\tB\b\xbaH\x05\x92\x01\x02\x102R\x0eidpIdentifiers\x1aC\n" +
 	"\x15AttributeMappingEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x8d\t\xbaH\x89\t\x1a\xce\x04\n" +
-	"\x1aprovider_type_config_match\x12\xf5\x01provider_type must match the provider configuration field: Google requires 'google', Facebook requires 'facebook', LoginWithAmazon requires 'loginWithAmazon', SignInWithApple requires 'signInWithApple', OIDC requires 'oidc', SAML requires 'saml'\x1a\xb7\x02(this.provider_type == 1 && has(this.google)) || (this.provider_type == 2 && has(this.facebook)) || (this.provider_type == 3 && has(this.login_with_amazon)) || (this.provider_type == 4 && has(this.sign_in_with_apple)) || (this.provider_type == 5 && has(this.oidc)) || (this.provider_type == 6 && has(this.saml))\x1a\xa1\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa8\v\xbaH\xa4\v\x1a\xde\x01\n" +
+	"\x13provider_type_valid\x12cprovider_type must be 'Google', 'Facebook', 'LoginWithAmazon', 'SignInWithApple', 'OIDC', or 'SAML'\x1abthis.provider_type in ['Google', 'Facebook', 'LoginWithAmazon', 'SignInWithApple', 'OIDC', 'SAML']\x1a\x88\x05\n" +
+	"\x1aprovider_type_config_match\x12\xf5\x01provider_type must match the provider configuration field: Google requires 'google', Facebook requires 'facebook', LoginWithAmazon requires 'loginWithAmazon', SignInWithApple requires 'signInWithApple', OIDC requires 'oidc', SAML requires 'saml'\x1a\xf1\x02(this.provider_type == 'Google' && has(this.google)) || (this.provider_type == 'Facebook' && has(this.facebook)) || (this.provider_type == 'LoginWithAmazon' && has(this.login_with_amazon)) || (this.provider_type == 'SignInWithApple' && has(this.sign_in_with_apple)) || (this.provider_type == 'OIDC' && has(this.oidc)) || (this.provider_type == 'SAML' && has(this.saml))\x1a\xa1\x01\n" +
 	"\x16saml_metadata_required\x125SAML providers must set metadata_file or metadata_url\x1aP!has(this.saml) || this.saml.metadata_file != '' || this.saml.metadata_url != ''\x1a\xb8\x01\n" +
 	"\x17saml_metadata_exclusive\x12KSAML providers must set only one of metadata_file or metadata_url, not both\x1aP!has(this.saml) || this.saml.metadata_file == '' || this.saml.metadata_url == ''\x1a\xd6\x01\n" +
 	"$oidc_attributes_request_method_valid\x126OIDC attributes_request_method must be 'GET' or 'POST'\x1av!has(this.oidc) || this.oidc.attributes_request_method == '' || this.oidc.attributes_request_method in ['GET', 'POST']B\x11\n" +
-	"\x0fprovider_config*\x89\x01\n" +
-	"\x1eAwsCognitoIdentityProviderType\x12\x0f\n" +
-	"\vunspecified\x10\x00\x12\n" +
-	"\n" +
-	"\x06Google\x10\x01\x12\f\n" +
-	"\bFacebook\x10\x02\x12\x13\n" +
-	"\x0fLoginWithAmazon\x10\x03\x12\x13\n" +
-	"\x0fSignInWithApple\x10\x04\x12\b\n" +
-	"\x04OIDC\x10\x05\x12\b\n" +
-	"\x04SAML\x10\x06B\xbd\x03\n" +
+	"\x0fprovider_configB\xbd\x03\n" +
 	":com.dev.planton.provider.aws.awscognitoidentityprovider.v1B\tSpecProtoP\x01Zugithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitoidentityprovider/v1;awscognitoidentityproviderv1\xa2\x02\x05DPPAA\xaa\x026Dev.Planton.Provider.Aws.Awscognitoidentityprovider.V1\xca\x026Dev\\Planton\\Provider\\Aws\\Awscognitoidentityprovider\\V1\xe2\x02BDev\\Planton\\Provider\\Aws\\Awscognitoidentityprovider\\V1\\GPBMetadata\xea\x02;Dev::Planton::Provider::Aws::Awscognitoidentityprovider::V1b\x06proto3"
 
 var (
@@ -954,35 +888,32 @@ func file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_rawD
 	return file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_goTypes = []any{
-	(AwsCognitoIdentityProviderType)(0),        // 0: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderType
-	(*AwsCognitoIdpGoogleConfig)(nil),          // 1: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpGoogleConfig
-	(*AwsCognitoIdpFacebookConfig)(nil),        // 2: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpFacebookConfig
-	(*AwsCognitoIdpLoginWithAmazonConfig)(nil), // 3: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpLoginWithAmazonConfig
-	(*AwsCognitoIdpSignInWithAppleConfig)(nil), // 4: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpSignInWithAppleConfig
-	(*AwsCognitoIdpOidcConfig)(nil),            // 5: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpOidcConfig
-	(*AwsCognitoIdpSamlConfig)(nil),            // 6: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpSamlConfig
-	(*AwsCognitoIdentityProviderSpec)(nil),     // 7: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec
-	nil,                                        // 8: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.AttributeMappingEntry
-	(*v1.StringValueOrRef)(nil),                // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsCognitoIdpGoogleConfig)(nil),          // 0: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpGoogleConfig
+	(*AwsCognitoIdpFacebookConfig)(nil),        // 1: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpFacebookConfig
+	(*AwsCognitoIdpLoginWithAmazonConfig)(nil), // 2: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpLoginWithAmazonConfig
+	(*AwsCognitoIdpSignInWithAppleConfig)(nil), // 3: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpSignInWithAppleConfig
+	(*AwsCognitoIdpOidcConfig)(nil),            // 4: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpOidcConfig
+	(*AwsCognitoIdpSamlConfig)(nil),            // 5: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpSamlConfig
+	(*AwsCognitoIdentityProviderSpec)(nil),     // 6: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec
+	nil,                                        // 7: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.AttributeMappingEntry
+	(*v1.StringValueOrRef)(nil),                // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_depIdxs = []int32{
-	9, // 0: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.user_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0, // 1: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.provider_type:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderType
-	1, // 2: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.google:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpGoogleConfig
-	2, // 3: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.facebook:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpFacebookConfig
-	3, // 4: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.login_with_amazon:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpLoginWithAmazonConfig
-	4, // 5: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.sign_in_with_apple:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpSignInWithAppleConfig
-	5, // 6: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.oidc:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpOidcConfig
-	6, // 7: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.saml:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpSamlConfig
-	8, // 8: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.attribute_mapping:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.AttributeMappingEntry
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	8, // 0: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.user_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0, // 1: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.google:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpGoogleConfig
+	1, // 2: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.facebook:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpFacebookConfig
+	2, // 3: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.login_with_amazon:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpLoginWithAmazonConfig
+	3, // 4: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.sign_in_with_apple:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpSignInWithAppleConfig
+	4, // 5: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.oidc:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpOidcConfig
+	5, // 6: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.saml:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdpSamlConfig
+	7, // 7: dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.attribute_mapping:type_name -> dev.planton.provider.aws.awscognitoidentityprovider.v1.AwsCognitoIdentityProviderSpec.AttributeMappingEntry
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_init() }
@@ -1003,14 +934,13 @@ func file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_init
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      0,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto = out.File

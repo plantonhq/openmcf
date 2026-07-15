@@ -6,19 +6,24 @@
 # role profile's firehose-delivery document trusts firehose.amazonaws.com
 # and is scoped to the fixture bucket, so the references resolve with no
 # scenario-level annotation. The scenario exercises SSE with the AWS-owned
-# CMK (Direct PUT only -- the arm a Kinesis source would forbid), GZIP
-# compression, tightened buffering hints, and Firehose !{...} prefix
-# expressions (a second template-syntax class flowing through both engines'
-# variable plumbing). No records are ever put, so the lane cost is the
-# create/delete cycle alone.
+# CMK (Direct PUT only -- the arm a stream source would forbid), GZIP
+# compression, Firehose !{...} prefix expressions (a second template-syntax
+# class flowing through both engines' variable plumbing), and the flagship
+# dynamic-partitioning pattern: a metadata-extraction processor defines the
+# partition key the prefix references, with the S3-only de-aggregation and
+# JSON-lines delimiter arms riding in the same ordered pipeline (AWS
+# rejects them on every other destination -- CEL-guarded). Dynamic
+# partitioning requires a buffer of at least 64 MiB; no records are ever
+# put, so the lane cost is the create/delete cycle alone.
 #
 # Deliberately not composed here: the Kinesis stream source (it only swaps
 # the ingestion edge and would force a stream+read-role chain onto the
-# lane), Lambda processing, dynamic partitioning, and format conversion --
-# all proven by CEL spec tests and the offline gate. The other three
-# destinations each need live external infrastructure (an OpenSearch
-# domain, an HTTPS receiver, a Redshift cluster) and are covered by spec
-# tests per the approved audit-only scope.
+# lane), Lambda processing (needs a function), and format conversion
+# (needs a Glue table) -- proven by CEL spec tests and the offline gate.
+# The Splunk destination and the CloudWatch-Logs processor arms run live
+# in the companion splunk-processors scenario; the remaining destinations
+# each need live external infrastructure and are proven offline (see the
+# profile).
 apiVersion: aws.planton.dev/v1
 kind: AwsKinesisFirehose
 metadata:
@@ -47,9 +52,22 @@ spec:
         kind: AwsIamRole
         name: planton-oss-e2e-firehose-delivery-role
         fieldPath: status.outputs.role_arn
-    prefix: "firehose/year=!{timestamp:yyyy}/month=!{timestamp:MM}/"
+    prefix: "firehose/type=!{partitionKeyFromQuery:event_type}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/"
     errorOutputPrefix: "firehose-errors/!{firehose:error-output-type}/"
     compressionFormat: GZIP
     buffering:
       intervalInSeconds: 60
-      sizeInMbs: 1
+      sizeInMbs: 64
+    processing:
+      enabled: true
+      processors:
+        - recordDeaggregation:
+            subRecordType: JSON
+        - metadataExtraction:
+            query: '{event_type: .type}'
+            jsonParsingEngine: JQ-1.6
+        - appendDelimiter:
+            delimiter: "\\n"
+    dynamicPartitioning:
+      enabled: true
+      retryDurationInSeconds: 300

@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Preset: ML Team with Custom Images"
     excerpt: "A fully-featured SageMaker Domain for advanced ML teams that need custom Docker images, GPU compute, Docker build capabilities, notebook sharing, and auto-cloned code repositories."
+  - slug: "04-governed-canvas-workspace"
+    rank: "04"
+    title: "Preset: Governed Canvas Workspace"
+    excerpt: "A SageMaker Domain configured for business analysts using Canvas (no-code ML), with governance guardrails: models flow through the model registry instead of being deployed straight to endpoints, and..."
 ---
 
 # SageMaker Domain Presets

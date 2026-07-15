@@ -57,5 +57,6 @@ go_test(
         "@com_github_hashicorp_hcl_v2//hclparse",
         "@org_golang_google_protobuf//encoding/protojson",
         "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/descriptorpb",
     ],
 )

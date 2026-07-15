@@ -188,13 +188,30 @@ For cross-account result storage:
 | Workgroup name length | 1-128 characters |
 | Workgroup name pattern | `[0-9A-Za-z_.-]+` |
 
-## What's Not Included (v1)
+## Result Storage: S3 or AWS-Managed
 
-| Feature | Reason | Adoption |
-|---------|--------|----------|
-| Customer content encryption | PySpark user data stores only | <10% |
-| Identity Center configuration | Enterprise SSO integration | <5% |
-| Managed query results | AWS-managed result storage, newer feature | <10% |
-| Monitoring configuration | 3 logging sub-types, complex schema | <15% |
+A workgroup stores query results in exactly one place — AWS enforces this at
+create time and the spec validates it at manifest time:
 
-These features may be added in v2 based on demand.
+- **Customer-managed S3** (`result_configuration.output_location`): result
+  files are readable by anything with bucket access; you own encryption,
+  lifecycle, and cross-account ACLs.
+- **AWS-managed storage** (`managed_query_results`): no bucket exists
+  anywhere; results are retained 24 hours and retrieved through the Athena
+  APIs (GetQueryResults). Choose this when nothing downstream reads result
+  files directly from S3 — most BI tools and programmatic callers qualify.
+
+## Identity Center and Access Grants
+
+`identity_center` propagates the signed-in workforce identity into query
+execution (per-user CloudTrail audit), and `s3_access_grants` scopes result
+access to that identity — with `create_user_level_prefix`, each user can only
+read their own results. Both are create-time settings on the workgroup and
+require an IAM Identity Center instance in the account.
+
+## Log Delivery
+
+The `monitoring` block delivers query and Spark-session logs to any
+combination of CloudWatch Logs (searchable, alarmable), S3 (cheap archive),
+and Athena-managed storage (zero setup). Each arm is enabled by its presence
+in the spec — an absent arm IS the disabled state, matching AWS's own model.

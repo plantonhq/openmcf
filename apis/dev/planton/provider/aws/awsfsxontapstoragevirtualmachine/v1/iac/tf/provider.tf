@@ -1,8 +1,11 @@
 terraform {
   required_providers {
     aws = {
+      # Family floor: the complete SVM surface used by this module predates
+      # the v6 line, so the floor is the v6 major itself, keeping the FSx
+      # family on one provider line.
       source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      version = ">= 6.0.0"
     }
   }
 }

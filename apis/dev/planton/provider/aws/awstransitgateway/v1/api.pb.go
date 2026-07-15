@@ -24,9 +24,10 @@ const (
 )
 
 // AwsTransitGateway represents a managed AWS Transit Gateway deployed via
-// Planton. This resource provisions a regional networking hub with one or
-// more VPC attachments, enabling hub-and-spoke or full-mesh connectivity
-// between VPCs.
+// Planton. This resource provisions the regional networking hub that VPC
+// attachments, route tables, VPN connections, and Direct Connect gateways
+// compose onto, enabling hub-and-spoke or full-mesh connectivity between
+// VPCs.
 type AwsTransitGateway struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version must be set to "aws.planton.dev/v1".
@@ -36,8 +37,8 @@ type AwsTransitGateway struct {
 	// metadata captures identifying information (name, org, version, etc.)
 	// and must pass standard validations for resource naming.
 	Metadata *shared.CloudResourceMetadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	// spec holds the core configuration defining how the Transit Gateway and
-	// its VPC attachments are provisioned.
+	// spec holds the core configuration defining how the Transit Gateway is
+	// provisioned.
 	Spec *AwsTransitGatewaySpec `protobuf:"bytes,4,opt,name=spec,proto3" json:"spec,omitempty"`
 	// status holds runtime or post-deployment information.
 	Status        *AwsTransitGatewayStatus `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`

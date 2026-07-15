@@ -21,18 +21,24 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsS3ObjectSetStackOutputs captures observable outputs from the S3 object upload operations.
+// AwsS3ObjectSetStackOutputs captures observable outputs from the S3 object
+// upload operations.
 type AwsS3ObjectSetStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The bucket the objects were uploaded to. Carried for downstream
 	// references and for E2E verification (HeadObject per key).
-	BucketId string `protobuf:"bytes,3,opt,name=bucket_id,json=bucketId,proto3" json:"bucket_id,omitempty"`
+	BucketId string `protobuf:"bytes,1,opt,name=bucket_id,json=bucketId,proto3" json:"bucket_id,omitempty"`
+	// Map of object key to its ARN (arn:aws:s3:::bucket/key).
+	// Composes into IAM policy Resource lists that must grant access to
+	// exactly these objects.
+	ObjectArns map[string]string `protobuf:"bytes,2,rep,name=object_arns,json=objectArns,proto3" json:"object_arns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Map of object key to its ETag (content hash).
-	// The ETag changes when the object content changes, useful for cache invalidation.
-	ObjectEtags map[string]string `protobuf:"bytes,1,rep,name=object_etags,json=objectEtags,proto3" json:"object_etags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The ETag changes when the object content changes, useful for cache
+	// invalidation.
+	ObjectEtags map[string]string `protobuf:"bytes,3,rep,name=object_etags,json=objectEtags,proto3" json:"object_etags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Map of object key to its version ID.
 	// Only populated when the target bucket has versioning enabled.
-	ObjectVersionIds map[string]string `protobuf:"bytes,2,rep,name=object_version_ids,json=objectVersionIds,proto3" json:"object_version_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	ObjectVersionIds map[string]string `protobuf:"bytes,4,rep,name=object_version_ids,json=objectVersionIds,proto3" json:"object_version_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -74,6 +80,13 @@ func (x *AwsS3ObjectSetStackOutputs) GetBucketId() string {
 	return ""
 }
 
+func (x *AwsS3ObjectSetStackOutputs) GetObjectArns() map[string]string {
+	if x != nil {
+		return x.ObjectArns
+	}
+	return nil
+}
+
 func (x *AwsS3ObjectSetStackOutputs) GetObjectEtags() map[string]string {
 	if x != nil {
 		return x.ObjectEtags
@@ -92,11 +105,16 @@ var File_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto protoref
 
 const file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/aws/awss3objectset/v1/stack_outputs.proto\x12*dev.planton.provider.aws.awss3objectset.v1\"\xc7\x03\n" +
+	">dev/planton/provider/aws/awss3objectset/v1/stack_outputs.proto\x12*dev.planton.provider.aws.awss3objectset.v1\"\xff\x04\n" +
 	"\x1aAwsS3ObjectSetStackOutputs\x12\x1b\n" +
-	"\tbucket_id\x18\x03 \x01(\tR\bbucketId\x12z\n" +
-	"\fobject_etags\x18\x01 \x03(\v2W.dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectEtagsEntryR\vobjectEtags\x12\x8a\x01\n" +
-	"\x12object_version_ids\x18\x02 \x03(\v2\\.dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectVersionIdsEntryR\x10objectVersionIds\x1a>\n" +
+	"\tbucket_id\x18\x01 \x01(\tR\bbucketId\x12w\n" +
+	"\vobject_arns\x18\x02 \x03(\v2V.dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectArnsEntryR\n" +
+	"objectArns\x12z\n" +
+	"\fobject_etags\x18\x03 \x03(\v2W.dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectEtagsEntryR\vobjectEtags\x12\x8a\x01\n" +
+	"\x12object_version_ids\x18\x04 \x03(\v2\\.dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectVersionIdsEntryR\x10objectVersionIds\x1a=\n" +
+	"\x0fObjectArnsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
 	"\x10ObjectEtagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aC\n" +
@@ -117,20 +135,22 @@ func file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_rawDesc
 	return file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_goTypes = []any{
 	(*AwsS3ObjectSetStackOutputs)(nil), // 0: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs
-	nil,                                // 1: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectEtagsEntry
-	nil,                                // 2: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectVersionIdsEntry
+	nil,                                // 1: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectArnsEntry
+	nil,                                // 2: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectEtagsEntry
+	nil,                                // 3: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectVersionIdsEntry
 }
 var file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.object_etags:type_name -> dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectEtagsEntry
-	2, // 1: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.object_version_ids:type_name -> dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectVersionIdsEntry
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1, // 0: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.object_arns:type_name -> dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectArnsEntry
+	2, // 1: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.object_etags:type_name -> dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectEtagsEntry
+	3, // 2: dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.object_version_ids:type_name -> dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectVersionIdsEntry
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_init() }
@@ -144,7 +164,7 @@ func file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_init() 
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_rawDesc), len(file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

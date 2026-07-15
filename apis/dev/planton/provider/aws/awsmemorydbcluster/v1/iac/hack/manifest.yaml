@@ -5,21 +5,35 @@ metadata:
   id: test-memorydb
   org: test-org
   env: dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test
-    pulumi.planton.dev/project: test
-    pulumi.planton.dev/stack.name: dev.AwsMemorydbCluster.test-memorydb
 spec:
   region: us-west-2
-  engine: redis
-  engineVersion: "7.1"
-  description: Test MemoryDB cluster
-  nodeType: db.t4g.small
-  numShards: 1
-  numReplicasPerShard: 0
-  aclName: open-access
-  tlsEnabled: true
+  engine: valkey
+  engineVersion: "7.2"
+  description: Full-surface MemoryDB hack manifest
+  nodeType: db.r7g.large
+  port: 6379
+  numShards: 2
+  numReplicasPerShard: 1
+  aclName:
+    value: payments-env-acl
   subnetIds:
     - value: subnet-0a1b2c3d4e5f00001
     - value: subnet-0a1b2c3d4e5f00002
+  securityGroupIds:
+    - value: sg-0a1b2c3d4e5f00001
+  networkType: dual_stack
+  ipDiscovery: ipv6
+  tlsEnabled: true
+  kmsKeyArn:
+    value: arn:aws:kms:us-west-2:123456789012:key/abc-123
+  maintenanceWindow: sun:05:00-sun:06:00
+  snapshotRetentionLimit: 7
+  snapshotWindow: 03:00-04:00
+  finalSnapshotName: test-memorydb-final
+  parameterGroupFamily: memorydb_valkey7
+  parameters:
+    - name: activedefrag
+      value: "yes"
+  snsTopicArn:
+    value: arn:aws:sns:us-west-2:123456789012:memorydb-events
+  autoMinorVersionUpgrade: true

@@ -51,10 +51,10 @@ compiled into this binary. The control plane performs the same pipeline authorit
 when a chart is published.`,
 		Example: `
 	# Validate one chart
-	planton chart validate charts/aws/eks-environment
+	planton chart validate charts/aws/eks-platform
 
 	# Validate several charts
-	planton chart validate charts/aws/eks-environment charts/aws/ecs-environment
+	planton chart validate charts/aws/eks-platform charts/aws/fargate-web-service
 
 	# Validate every chart under a directory tree
 	planton chart validate --all charts/`,

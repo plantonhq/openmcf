@@ -15,11 +15,11 @@ presets:
   - slug: "02-oauth-with-hosted-ui"
     rank: "02"
     title: "Preset: OAuth with Hosted UI"
-    excerpt: "**Rank**: 2 (common for web applications)"
-  - slug: "03-production-multi-client"
+    excerpt: "**Rank**: 2"
+  - slug: "03-production-hardened"
     rank: "03"
-    title: "Preset: Production Multi-Client"
-    excerpt: "**Rank**: 3 (production-grade with security hardening)"
+    title: "Preset: Production Hardened"
+    excerpt: "**Rank**: 3"
 ---
 
 # Cognito User Pool Presets

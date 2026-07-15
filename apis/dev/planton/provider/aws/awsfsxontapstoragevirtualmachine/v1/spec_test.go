@@ -230,6 +230,48 @@ var _ = ginkgo.Describe("AwsFsxOntapStorageVirtualMachineSpec validations", func
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
+
+		ginkgo.It("fails when an AD dns_ips entry is not an IPv4 address", func() {
+			spec.ActiveDirectoryConfiguration = &AwsFsxOntapStorageVirtualMachineActiveDirectoryConfiguration{
+				DomainName: "corp.example.com",
+				DnsIps:     []string{"dns.corp.example.com"},
+				Username:   "admin",
+				Password:   "pass123",
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when AD domain_name exceeds 255 characters", func() {
+			longDomain := ""
+			for i := 0; i < 256; i++ {
+				longDomain += "a"
+			}
+			spec.ActiveDirectoryConfiguration = &AwsFsxOntapStorageVirtualMachineActiveDirectoryConfiguration{
+				DomainName: longDomain,
+				DnsIps:     []string{"10.0.0.1"},
+				Username:   "admin",
+				Password:   "pass123",
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when AD organizational unit exceeds 2000 characters", func() {
+			longOu := "OU="
+			for i := 0; i < 2000; i++ {
+				longOu += "x"
+			}
+			spec.ActiveDirectoryConfiguration = &AwsFsxOntapStorageVirtualMachineActiveDirectoryConfiguration{
+				DomainName:                          "corp.example.com",
+				DnsIps:                              []string{"10.0.0.1"},
+				Username:                            "admin",
+				Password:                            "pass123",
+				OrganizationalUnitDistinguishedName: longOu,
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 	})
 
 	// -------------------------------------------------------------------------

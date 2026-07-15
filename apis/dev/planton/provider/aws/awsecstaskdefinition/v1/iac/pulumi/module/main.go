@@ -153,7 +153,10 @@ func Resources(ctx *pulumi.Context, stackInput *awsecstaskdefinitionv1.AwsEcsTas
 			}
 			if volume.Efs != nil {
 				efs := &ecs.TaskDefinitionVolumeEfsVolumeConfigurationArgs{
-					FileSystemId: pulumi.String(volume.Efs.FileSystemId),
+					// References (AwsElasticFileSystem / AwsEfsAccessPoint)
+					// arrive pre-resolved; GetValue() reads literal or
+					// resolved value alike.
+					FileSystemId: pulumi.String(volume.Efs.FileSystemId.GetValue()),
 					// Transit encryption is always on: AWS requires it with
 					// access points or IAM auth, and there is no good reason
 					// to mount EFS unencrypted in transit without them.
@@ -162,10 +165,10 @@ func Resources(ctx *pulumi.Context, stackInput *awsecstaskdefinitionv1.AwsEcsTas
 				if volume.Efs.RootDirectory != "" {
 					efs.RootDirectory = pulumi.StringPtr(volume.Efs.RootDirectory)
 				}
-				if volume.Efs.AccessPointId != "" || volume.Efs.IamAuthorization {
+				if volume.Efs.AccessPointId.GetValue() != "" || volume.Efs.IamAuthorization {
 					authorization := &ecs.TaskDefinitionVolumeEfsVolumeConfigurationAuthorizationConfigArgs{}
-					if volume.Efs.AccessPointId != "" {
-						authorization.AccessPointId = pulumi.StringPtr(volume.Efs.AccessPointId)
+					if volume.Efs.AccessPointId.GetValue() != "" {
+						authorization.AccessPointId = pulumi.StringPtr(volume.Efs.AccessPointId.GetValue())
 					}
 					if volume.Efs.IamAuthorization {
 						authorization.Iam = pulumi.StringPtr("ENABLED")

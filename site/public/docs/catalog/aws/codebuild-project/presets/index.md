@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "CodePipeline Build Stage"
     excerpt: "This preset creates a CodeBuild project designed to run as a build or test stage within an AWS CodePipeline. Source code and build artifacts are managed by the pipeline — CodeBuild receives input..."
+  - slug: "04-fork-pr-gated-oss-ci"
+    rank: "04"
+    title: "Fork-PR-Gated Open-Source CI"
+    excerpt: "This preset creates a public-repository CI project hardened for the open-source contribution model: pull requests from forks wait for an approval comment from a maintainer before CodeBuild runs them,..."
 ---
 
 # CodeBuild Project Presets

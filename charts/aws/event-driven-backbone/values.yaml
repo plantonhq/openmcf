@@ -1,0 +1,116 @@
+params:
+  # ── Placement ───────────────────────────────────────────────────────────
+  - name: aws_region
+    description: >
+      AWS region for every resource in this chart. EventBridge buses,
+      SQS queues, SNS topics, and Lambda functions are all regional —
+      producers publish to this region's bus, and the whole delivery
+      path stays inside it.
+    value: us-east-1
+
+  - name: aws_account_id
+    description: >
+      The 12-digit AWS account id the backbone deploys into. Event
+      delivery permissions live in resource policies (plain JSON that
+      cannot carry references), so the queue and topic policies compose
+      the rule's ARN from this account id at render time — scoping
+      every SendMessage/Publish grant to exactly this chart's rule
+      instead of any EventBridge rule anywhere.
+    value: "123456789012"
+
+  # ── Identity ────────────────────────────────────────────────────────────
+  - name: backbone_name
+    description: >
+      Name prefix for every resource this chart creates (bus, rule,
+      queues, topic, consumer). Several backbones — per team or per
+      domain — can share an environment without collisions. Lowercase
+      letters, digits, and hyphens.
+    value: events
+
+  # ── Routing ─────────────────────────────────────────────────────────────
+  - name: event_source_prefix
+    description: >
+      The rule matches events whose "source" field starts with this
+      prefix — the reverse-DNS namespace convention (com.mycompany
+      matches com.mycompany.orders, com.mycompany.billing, ...). Every
+      service that publishes with a source under this prefix flows
+      through the backbone; add sibling rules on the deployed bus for
+      finer routing later.
+    value: com.mycompany
+
+  # ── Fan-out (one event, many consumers) ─────────────────────────────────
+  - name: sns_fanout_enabled
+    type: bool
+    description: >
+      Add an SNS fan-out plane beside the work queue: the rule also
+      publishes matched events to an SNS topic, and each subscribed
+      queue gets its own full copy. This chart ships the topic plus one
+      subscriber queue as the pattern to copy — add one queue +
+      subscription per additional consumer team. Turn on when more than
+      one consumer needs the same events; a single consumer needs only
+      the work queue.
+    value: false
+
+  # ── Lambda consumer ─────────────────────────────────────────────────────
+  - name: lambda_consumer_enabled
+    type: bool
+    description: >
+      Deploy a Lambda consumer on the work queue: an event source
+      mapping polls the queue and invokes your handler with batches of
+      messages. Off means the work queue simply buffers events for a
+      consumer you run elsewhere (a container service, an existing
+      worker) — the backbone is useful either way.
+    value: false
+
+  - name: consumer_code_bucket
+    description: >
+      S3 bucket holding the consumer function's deployment zip. Must be
+      in aws_region. Only used when lambda_consumer_enabled is true.
+    value: my-lambda-artifacts
+
+  - name: consumer_code_key
+    description: >
+      Object key of the consumer's deployment zip inside
+      consumer_code_bucket. Only used when lambda_consumer_enabled is
+      true.
+    value: events/consumer.zip
+
+  - name: consumer_runtime
+    description: >
+      Lambda runtime for the consumer zip (e.g. python3.12, nodejs20.x).
+      Only used when lambda_consumer_enabled is true.
+    value: python3.12
+
+  - name: consumer_handler
+    description: >
+      The consumer's entry point inside the zip, in the runtime's
+      handler format. Only used when lambda_consumer_enabled is true.
+    value: consumer.handler
+
+  - name: consumer_timeout_seconds
+    type: number
+    description: >
+      Max seconds one consumer invocation may run. Keep it well under
+      the work queue's 300-second visibility timeout — Lambda's polling
+      guidance is visibility of at least 6x the function timeout, so up
+      to 50 stays safe with the queue this chart ships. If a batch
+      needs longer, raise the queue's visibilityTimeoutSeconds in step.
+    value: 30
+
+  # ── Alerting ────────────────────────────────────────────────────────────
+  - name: alarms_enabled
+    type: bool
+    description: >
+      The pager wire: an alarm on dead-letter-queue depth — the one
+      signal that always means events are failing repeatedly and a
+      human must look — notifying an SNS topic with an email
+      subscription. AWS emails a confirmation link on first deploy;
+      click it or no alert ever arrives.
+    value: true
+
+  - name: alert_email
+    description: >
+      Where alarm notifications go. Only used when alarms_enabled is
+      true. Prefer a team list or paging bridge over an individual
+      inbox.
+    value: ops@example.com

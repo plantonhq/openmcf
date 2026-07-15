@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "module",
@@ -21,5 +21,15 @@ go_library(
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws",
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/wafv2",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
+    ],
+)
+
+go_test(
+    name = "module_test",
+    srcs = ["rules_test.go"],
+    embed = [":module"],
+    deps = [
+        "//apis/dev/planton/provider/aws/awswafwebacl/v1:awswafwebacl",
+        "//apis/dev/planton/shared/foreignkey/v1:foreignkey",
     ],
 )

@@ -20,11 +20,22 @@ func buildRedshiftArgs(dest *awskinesisfirehose.AwsKinesisFirehoseRedshiftDestin
 	if dest.CopyOptions != "" {
 		args.CopyOptions = pulumi.StringPtr(dest.CopyOptions)
 	}
+	// Authentication — plaintext pair XOR Secrets Manager (CEL-enforced)
 	if dest.Username != "" {
 		args.Username = pulumi.StringPtr(dest.Username)
 	}
-	if dest.Password != nil {
-		args.Password = pulumi.StringPtr(dest.Password.GetValue())
+	if dest.Password != "" {
+		args.Password = pulumi.StringPtr(dest.Password)
+	}
+	if sm := dest.SecretsManager; sm != nil {
+		smArgs := &kinesis.FirehoseDeliveryStreamRedshiftConfigurationSecretsManagerConfigurationArgs{
+			Enabled:   pulumi.BoolPtr(true),
+			SecretArn: pulumi.StringPtr(sm.SecretArn.GetValue()),
+		}
+		if sm.RoleArn != nil {
+			smArgs.RoleArn = pulumi.StringPtr(sm.RoleArn.GetValue())
+		}
+		args.SecretsManagerConfiguration = smArgs
 	}
 
 	if dest.RetryDurationInSeconds > 0 {
@@ -44,9 +55,9 @@ func buildRedshiftArgs(dest *awskinesisfirehose.AwsKinesisFirehoseRedshiftDestin
 		args.S3BackupConfiguration = buildRedshiftS3BackupConfig(dest.S3Backup)
 	}
 
-	// Processing
-	if dest.Processing != nil && dest.Processing.Enabled {
-		args.ProcessingConfiguration = buildRedshiftProcessingConfig(dest.Processing)
+	// Processing pipeline (normalized typed processors)
+	if proc := buildRedshiftProcessing(dest.Processing); proc != nil {
+		args.ProcessingConfiguration = proc
 	}
 
 	// CloudWatch logging
@@ -115,25 +126,30 @@ func buildRedshiftS3BackupConfig(cfg *awskinesisfirehose.AwsKinesisFirehoseS3Con
 	return args
 }
 
-// buildRedshiftProcessingConfig constructs Lambda processing for Redshift.
-func buildRedshiftProcessingConfig(proc *awskinesisfirehose.AwsKinesisFirehoseLambdaProcessing) *kinesis.FirehoseDeliveryStreamRedshiftConfigurationProcessingConfigurationArgs {
-	if proc == nil || !proc.Enabled {
+// buildRedshiftProcessing adapts the normalized processor pipeline to the
+// Redshift destination's SDK types.
+func buildRedshiftProcessing(processing *awskinesisfirehose.AwsKinesisFirehoseProcessing) *kinesis.FirehoseDeliveryStreamRedshiftConfigurationProcessingConfigurationArgs {
+	normalized := normalizeProcessors(processing)
+	if normalized == nil {
 		return nil
 	}
-	params := kinesis.FirehoseDeliveryStreamRedshiftConfigurationProcessingConfigurationProcessorParameterArray{
-		&kinesis.FirehoseDeliveryStreamRedshiftConfigurationProcessingConfigurationProcessorParameterArgs{
-			ParameterName:  pulumi.String("LambdaArn"),
-			ParameterValue: pulumi.String(proc.LambdaArn.GetValue()),
-		},
+	processors := kinesis.FirehoseDeliveryStreamRedshiftConfigurationProcessingConfigurationProcessorArray{}
+	for _, p := range normalized {
+		params := kinesis.FirehoseDeliveryStreamRedshiftConfigurationProcessingConfigurationProcessorParameterArray{}
+		for _, param := range p.Parameters {
+			params = append(params, &kinesis.FirehoseDeliveryStreamRedshiftConfigurationProcessingConfigurationProcessorParameterArgs{
+				ParameterName:  pulumi.String(param.Name),
+				ParameterValue: pulumi.String(param.Value),
+			})
+		}
+		processors = append(processors, &kinesis.FirehoseDeliveryStreamRedshiftConfigurationProcessingConfigurationProcessorArgs{
+			Type:       pulumi.String(p.Type),
+			Parameters: params,
+		})
 	}
 	return &kinesis.FirehoseDeliveryStreamRedshiftConfigurationProcessingConfigurationArgs{
-		Enabled: pulumi.Bool(true),
-		Processors: kinesis.FirehoseDeliveryStreamRedshiftConfigurationProcessingConfigurationProcessorArray{
-			&kinesis.FirehoseDeliveryStreamRedshiftConfigurationProcessingConfigurationProcessorArgs{
-				Type:       pulumi.String("Lambda"),
-				Parameters: params,
-			},
-		},
+		Enabled:    pulumi.Bool(true),
+		Processors: processors,
 	}
 }
 

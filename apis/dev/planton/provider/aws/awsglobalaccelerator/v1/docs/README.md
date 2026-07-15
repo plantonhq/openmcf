@@ -57,7 +57,7 @@ This hierarchy is why the Planton resource bundles all three levels into a singl
 
 AWS offers two accelerator types:
 
-### Standard Accelerator (covered in v1)
+### Standard Accelerator (what this component models)
 
 Standard accelerators perform **health-based, proximity-based routing**. Global Accelerator determines the optimal endpoint based on:
 1. Geographic proximity of the client to edge locations
@@ -67,13 +67,13 @@ Standard accelerators perform **health-based, proximity-based routing**. Global 
 
 Standard accelerators account for ~95% of Global Accelerator deployments. They're the right choice for any workload that needs global load balancing with automatic failover.
 
-### Custom Routing Accelerator (excluded from v1)
+### Custom Routing Accelerator (deliberately not modeled)
 
 Custom routing accelerators provide **deterministic, port-based routing** to specific EC2 instances. Instead of letting Global Accelerator choose the endpoint, the application controls which specific instance receives each connection by mapping listener port ranges to specific instance-port combinations.
 
 Use case: Multiplayer gaming platforms that need to route a player to a specific game server instance. The game's matchmaking service assigns a player to a specific port on the accelerator, which deterministically maps to a specific EC2 instance.
 
-**Why excluded from v1**: Custom routing accelerators have a fundamentally different API surface (subnet mappings instead of endpoint groups, port range mappings, VPC subnet requirements). They represent approximately 5% of Global Accelerator usage and would double the API surface area. They are better served as a separate `AwsGlobalAcceleratorCustomRouting` resource kind in v2.
+**Why it is not modeled here**: Custom routing accelerators are a distinct AWS resource family with a fundamentally different API surface (subnet-destination endpoint groups with port-mapping destinations, protocol-only listeners without client affinity, VPC subnet requirements). They represent approximately 5% of Global Accelerator usage. When real demand arrives, they deserve their own resource kind rather than arms on this spec.
 
 ## Cost Model
 
@@ -120,7 +120,7 @@ Global Accelerator health checks have specific constraints that differ from ALB 
 
 ### Interval Constraint
 
-AWS only supports **two health check intervals**: 10 seconds or 30 seconds. This is a hard API constraint — any other value is rejected. This is unusual compared to ALB target group health checks (which support 5–300 seconds in 1-second increments).
+AWS only supports **two health check intervals**: 10 seconds or 30 seconds. The service API rejects any other value at create time (even though some tooling schemas validate the looser 10–30 range). This is unusual compared to ALB target group health checks (which support 5–300 seconds in 1-second increments).
 
 ### Protocol Support
 
@@ -220,7 +220,7 @@ This architecture provides static IPs → instant failover → edge caching → 
 
 - **One endpoint group per region per listener**: You cannot have two endpoint groups in the same region within the same listener. To serve more endpoints in a region, add them to the single endpoint group (up to the 10/255 endpoint limit).
 - **Listener port ranges cannot overlap**: Within an accelerator, no two listeners can have overlapping port ranges for the same protocol.
-- **Cross-account endpoints**: Endpoints must be in the same AWS account as the accelerator (cross-account support is not available as of v1 design).
+- **Cross-account endpoints**: An endpoint owned by another AWS account joins through a Global Accelerator cross-account attachment — the endpoint-owning account creates the attachment naming this accelerator's account as a principal, and the endpoint entry supplies the attachment's ARN in `attachmentArn`. Same-account endpoints need no attachment.
 
 ## Planton Design Decisions
 
@@ -242,33 +242,29 @@ Fields like `protocol`, `client_affinity`, and `health_check_protocol` use valid
 2. Serializes naturally in YAML (`protocol: TCP` instead of `protocol: 1`)
 3. Avoids protobuf's zero-value enum behavior (where the default value is the first enum entry, not necessarily the desired default)
 
-## v2 Roadmap
+## Deliberately Deferred Surface
 
-The following features are candidates for future versions of the AwsGlobalAccelerator resource:
+The following AWS surface is intentionally not modeled on this component, with the reason recorded:
 
 ### Custom Routing Accelerators
 
-A separate `AwsGlobalAcceleratorCustomRouting` resource kind for deterministic port-based routing to specific EC2 instances. This requires a fundamentally different spec structure with subnet mappings and port range definitions.
+Deterministic port-based routing to specific VPC subnet destinations is a distinct AWS resource family (its own accelerator, protocol-only listeners, subnet-destination endpoint groups) representing roughly 5% of Global Accelerator usage. When real demand arrives it deserves its own resource kind rather than arms on this spec.
 
-### Cross-Account Endpoint Support
+### Cross-Account Attachments as a Resource
 
-When AWS adds cross-account endpoint support, the spec will need to accept endpoint ARNs from other accounts and handle the necessary cross-account permissions.
+The consuming side of cross-account endpoints IS modeled (`attachmentArn` on an endpoint). The attachment object itself — created in the endpoint-owning account with principals and shareable resources — is a cross-account handshake plane spanning two accounts, and composes by literal ARN with zero rework if it ever becomes its own kind.
 
-### WAF Integration
+### DNS Alias Records
 
-Global Accelerator doesn't natively support AWS WAF (which is Layer 7), but when combined with ALB endpoints, WAF can be attached to the ALBs. A future version could provide a convenience field that automatically attaches a WAF Web ACL to all ALB endpoints.
+Route53 alias records pointing custom domains at the accelerator compose through the exported `accelerator_dns_name` (or `accelerator_dual_stack_dns_name`) and `accelerator_hosted_zone_id` outputs with an `AwsRoute53DnsRecord` resource — first-class graph composition rather than a convenience field folded into this spec.
 
-### Custom DNS Integration
+### WAF on ALB Endpoints
 
-First-class Route53 integration similar to the `AwsAlb` resource's `dns` field. This would automatically create Route53 alias records pointing custom domains to the accelerator's DNS name using the well-known hosted zone ID (`Z2BJ6XQ5FK7U4H`).
+Global Accelerator operates at Layer 4 and does not natively support AWS WAF. Web ACLs attach to the ALB endpoints themselves via each `AwsAlb`'s `web_acl_arn` field — the honest owner of that association.
 
-### Tagging Support
+### Custom User Tags
 
-AWS Global Accelerator supports resource tagging. A future version should expose a `tags` field for cost allocation, access control, and organizational metadata.
-
-### Multi-Protocol Listeners
-
-A convenience pattern for services that need both TCP and UDP on the same ports (e.g., DNS servers on port 53). Currently requires two separate listener entries; a future version could add a `TCP_UDP` protocol option if AWS adds native support.
+Identity tags derive from metadata. User-defined cost-allocation tags are a platform-wide concern across the whole AWS surface, not per-component spec surface.
 
 ## References
 

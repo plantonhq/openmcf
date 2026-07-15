@@ -1,0 +1,60 @@
+# The pager wire: one alarm on dead-letter-queue depth. In an
+# event-driven system this is THE signal — anything in the DLQ has
+# already failed every retry (or could not be delivered at all), and
+# nothing drains it automatically. The dimension is the chart's own
+# rendered queue name, stable from the first deploy. Per-consumer error
+# alarms belong to the consumers; the backbone watches the place where
+# every failure ultimately lands.
+{% if values.alarms_enabled | bool %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSnsTopic
+metadata:
+  name: "{{ values.backbone_name }}-alerts"
+spec:
+  region: "{{ values.aws_region }}"
+  displayName: "{{ values.backbone_name }} alerts"
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSnsSubscription
+metadata:
+  name: "{{ values.backbone_name }}-alerts-email"
+spec:
+  region: "{{ values.aws_region }}"
+  topicArn:
+    valueFrom:
+      kind: AwsSnsTopic
+      name: "{{ values.backbone_name }}-alerts"
+      fieldPath: status.outputs.topic_arn
+  protocol: email
+  # Email subscriptions require a one-time confirmation click — AWS
+  # sends it on creation, and no alert is delivered until it is
+  # confirmed.
+  endpoint:
+    value: "{{ values.alert_email }}"
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsCloudwatchAlarm
+metadata:
+  name: "{{ values.backbone_name }}-dlq-depth"
+spec:
+  region: "{{ values.aws_region }}"
+  namespace: AWS/SQS
+  metricName: ApproximateNumberOfMessagesVisible
+  dimensions:
+    QueueName: "{{ values.backbone_name }}-dlq"
+  # Max over the window: even one dead letter passing through pages —
+  # an average would round a single poisoned event down to silence.
+  statistic: Maximum
+  period: 300
+  comparisonOperator: GreaterThanThreshold
+  threshold: 0
+  evaluationPeriods: 1
+  treatMissingData: notBreaching
+  alarmDescription: "{{ values.backbone_name }}: dead letters present - events are failing repeatedly, inspect the DLQ and redrive after fixing"
+  alarmActions:
+    - valueFrom:
+        kind: AwsSnsTopic
+        name: "{{ values.backbone_name }}-alerts"
+        fieldPath: status.outputs.topic_arn
+{% endif %}

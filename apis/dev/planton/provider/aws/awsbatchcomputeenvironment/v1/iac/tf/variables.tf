@@ -1,91 +1,54 @@
 variable "metadata" {
-  description = "Resource metadata from the manifest"
+  description = "Cloud resource metadata"
   type = object({
     name = string
-    id   = string
-    org  = string
-    env  = string
-    labels = object({
-      key   = string
-      value = string
-    })
-    annotations = object({
-      key   = string
-      value = string
-    })
-    tags = list(string)
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "AwsBatchComputeEnvironmentSpec configuration"
+  description = "AwsBatchComputeEnvironment specification"
   type = object({
-    # The AWS region where the resource will be created.
     region = string
-
-    # Compute environment state: ENABLED or DISABLED
-    state = string
-
-    # Service role ARN (optional)
-    service_role = object({
-      value = string
-    })
-
-    # Compute resources configuration
+    state = optional(string)
+    service_role = optional(string, "")
     compute_resources = object({
-      type                = string
-      max_vcpus           = number
-      min_vcpus           = number
-      desired_vcpus       = number
-      subnet_ids          = list(object({ value = string }))
-      security_group_ids  = list(object({ value = string }))
-      instance_types      = list(string)
-      allocation_strategy = string
-      instance_role       = object({ value = string })
-      ec2_key_pair        = string
-      bid_percentage      = number
-      spot_iam_fleet_role = object({ value = string })
-      # launch_template_id is a StringValueOrRef in the spec; the tfvars
-      # pipeline flattens references to plain strings.
+      type = string
+      max_vcpus = number
+      min_vcpus = optional(number)
+      desired_vcpus = optional(number, 0)
+      subnet_ids = list(string)
+      security_group_ids = optional(list(string), [])
+      instance_types = optional(list(string), [])
+      allocation_strategy = optional(string, "")
+      instance_role = optional(string, "")
+      ec2_key_pair = optional(string, "")
+      bid_percentage = optional(number)
+      spot_iam_fleet_role = optional(string, "")
       launch_template = optional(object({
         launch_template_id = string
-        version            = optional(string, "")
+        version = optional(string, "")
       }))
-      ec2_configurations = list(object({
-        image_type        = string
-        image_id_override = string
-      }))
-      resource_tags = map(string)
+      ec2_configurations = optional(list(object({
+        image_type = optional(string, "")
+        image_id_override = optional(string, "")
+        image_kubernetes_version = optional(string, "")
+      })), [])
+      placement_group = optional(string, "")
+      resource_tags = optional(map(string), {})
     })
-
-    # Update policy
+    eks_configuration = optional(object({
+      eks_cluster_arn = string
+      kubernetes_namespace = string
+    }))
     update_policy = optional(object({
-      terminate_jobs_on_update        = bool
-      job_execution_timeout_minutes   = number
-    }))
-
-    # Job queues
-    job_queues = list(object({
-      name     = string
-      state    = string
-      priority = number
-      job_state_time_limit_actions = list(object({
-        action           = string
-        max_time_seconds = number
-        reason           = string
-        state            = string
-      }))
-    }))
-
-    # Scheduling policy
-    scheduling_policy = optional(object({
-      compute_reservation = number
-      share_decay_seconds = number
-      share_distributions = list(object({
-        share_identifier = string
-        weight_factor    = number
-      }))
+      terminate_jobs_on_update = optional(bool, false)
+      job_execution_timeout_minutes = optional(number)
     }))
   })
 }
-

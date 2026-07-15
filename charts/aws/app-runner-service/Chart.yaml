@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: AWS App Runner Service
+spec:
+  selector:
+    kind: platform
+  description: The simplest production deploy on AWS — a container image running on App Runner with managed TLS, request-based autoscaling, and toggles for private VPC egress, X-Ray tracing, push-to-deploy from private ECR, and a custom domain.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/aws/awsapprunnerservice/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/aws/app-runner-service
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/aws/app-runner-service/README.md

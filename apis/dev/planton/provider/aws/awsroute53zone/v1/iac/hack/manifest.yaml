@@ -1,13 +1,35 @@
+# AWS Route 53 hosted zone — examples
+#
+# The zone's domain name comes from metadata.name. Individual DNS records are
+# separate AwsRoute53DnsRecord resources composing onto the zone's zone_id
+# output.
+#
+# Usage:
+#   planton apply -f manifest.yaml
+
 apiVersion: aws.planton.dev/v1
 kind: AwsRoute53Zone
 metadata:
-  name: awsroute53zone-demo
+  name: example.com
 spec:
   region: us-east-1
-  records:
-    - recordType: A
-      name: example.com
-      values:
-        - 1.2.3.4
-      ttlSeconds: 300
+  comment: production apex zone
 
+---
+# Private split-horizon zone: resolves only inside the associated VPCs.
+
+apiVersion: aws.planton.dev/v1
+kind: AwsRoute53Zone
+metadata:
+  name: internal.example.com
+spec:
+  region: us-west-2
+  isPrivate: true
+  vpcAssociations:
+    - vpcId:
+        value: vpc-0123456789abcdef0
+    # Cross-region VPCs name their region explicitly; same-region VPCs
+    # inherit the zone's region.
+    - vpcId:
+        value: vpc-0fedcba9876543210
+      vpcRegion: eu-west-1

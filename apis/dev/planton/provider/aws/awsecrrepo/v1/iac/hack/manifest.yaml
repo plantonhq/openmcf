@@ -1,6 +1,8 @@
-# Production-Ready AWS ECR Repository Example
-# This manifest demonstrates best practices for a production ECR repository
-# with security, cost control, and compliance features enabled.
+# AWS ECR Repository — full-surface example
+#
+# Demonstrates the complete repository shape: exclusion-filtered tag
+# immutability, KMS encryption, push-time scanning, structured lifecycle
+# rules, and a folded repository policy.
 #
 # Usage:
 #   planton apply -f manifest.yaml
@@ -9,81 +11,65 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEcrRepo
 metadata:
   name: production-ecr-repo
-  # These will be populated by the system:
-  # org: my-organization
-  # env: production
-  # id: ecr-xxxxxxxxxxxxxx
 spec:
   region: us-west-2
-  # Repository name - can be namespaced for organization
-  repository_name: my-company/production-api
 
-  # Image immutability - CRITICAL for production stability
-  # When true, prevents tag overwrites (e.g., can't overwrite "v1.0" tag)
-  # Recommendation: Always true for production
-  image_immutable: true
+  # The immutable registry path (ForceNew). Slash namespaces are first-class.
+  repositoryName: my-company/production-api
 
-  # Image scanning - CRITICAL for security
-  # Automatically scans pushed images for CVE vulnerabilities
-  # Recommendation: Always true (default)
-  scan_on_push: true
+  # Release tags are frozen; floating tags matching the filters stay movable.
+  imageTagMutability: IMMUTABLE_WITH_EXCLUSION
+  imageTagMutabilityExclusionFilters:
+    - latest
+    - dev-*
 
-  # Encryption configuration
-  # Options: "AES256" (AWS-managed) or "KMS" (customer-managed)
-  # Use KMS when compliance requires auditable key management
-  encryption_type: AES256
-  # kms_key_id: arn:aws:kms:us-east-1:123456789012:key/prod-ecr-key
+  # Vulnerability scanning on every push (the spec default).
+  scanOnPush: true
 
-  # Force delete protection - Prevents accidental deletion
-  # When false, cannot delete repository with images
-  # Recommendation: false for production (default)
-  force_delete: false
+  # Customer-managed encryption (create-time; changing it replaces the repo).
+  encryptionType: KMS
+  kmsKeyId:
+    value: arn:aws:kms:us-west-2:123456789012:key/00000000-0000-0000-0000-000000000000
 
-  # Lifecycle policy - CRITICAL for cost control
-  # Without lifecycle policies, storage costs grow indefinitely
-  lifecycle_policy:
-    # Remove untagged images after 1 day (intermediate build layers)
-    # Recommendation: 1-14 days depending on build frequency
-    expire_untagged_after_days: 1
+  # Deletion fails while images exist (production safety default).
+  forceDelete: false
 
-    # Keep only the last 100 images, expire older ones
-    # Recommendation: 30-100 for production depending on deployment cadence
-    max_image_count: 100
+  # Structured lifecycle rules — evaluated by ascending priority; the "any"
+  # rule carries the highest priority (an AWS requirement).
+  lifecycleRules:
+    - rulePriority: 1
+      description: Expire untagged images after 14 days
+      tagStatus: untagged
+      countType: sinceImagePushed
+      countNumber: 14
+    - rulePriority: 2
+      description: Keep only the last 10 PR preview images
+      tagStatus: tagged
+      tagPrefixes:
+        - pr-
+      countType: imageCountMoreThan
+      countNumber: 10
+    - rulePriority: 3
+      description: Keep at most 200 images overall
+      tagStatus: any
+      countType: imageCountMoreThan
+      countNumber: 200
 
----
-
-# Development Environment Example
-# More lenient configuration for development/testing
-
-apiVersion: aws.planton.dev/v1
-kind: AwsEcrRepo
-metadata:
-  name: development-ecr-repo
-spec:
-  region: us-west-2
-  repository_name: my-company/dev-api
-
-  # Allow mutable tags in dev for flexibility
-  image_immutable: false
-
-  # Still scan for security
-  scan_on_push: true
-
-  # AES256 is sufficient for dev
-  encryption_type: AES256
-
-  # Allow force delete in dev for easier cleanup
-  force_delete: true
-
-  # More aggressive cleanup for dev
-  lifecycle_policy:
-    expire_untagged_after_days: 3
-    max_image_count: 20
+  # Folded repository policy: let AWS Lambda pull container images.
+  repositoryPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowLambdaPull
+        Effect: Allow
+        Principal:
+          Service: lambda.amazonaws.com
+        Action:
+          - ecr:BatchGetImage
+          - ecr:GetDownloadUrlForLayer
 
 ---
-
-# Minimal Example
-# Simplest configuration with secure defaults
+# Minimal example — secure defaults (MUTABLE tags, AES256 encryption,
+# scanning on, deletion protected).
 
 apiVersion: aws.planton.dev/v1
 kind: AwsEcrRepo
@@ -91,42 +77,4 @@ metadata:
   name: minimal-ecr-repo
 spec:
   region: us-west-2
-  # Only repository_name is required
-  # All other fields use secure defaults:
-  # - image_immutable: false (can be overridden to true)
-  # - scan_on_push: true (security default)
-  # - encryption_type: AES256 (secure default)
-  # - force_delete: false (safety default)
-  repository_name: my-company/simple-service
-
----
-
-# Compliance Example
-# Configuration for regulated environments (HIPAA, PCI-DSS)
-
-apiVersion: aws.planton.dev/v1
-kind: AwsEcrRepo
-metadata:
-  name: compliance-ecr-repo
-spec:
-  region: us-east-1
-  repository_name: my-company/compliant-service
-
-  # Immutable tags for audit trail
-  image_immutable: true
-
-  # Mandatory scanning
-  scan_on_push: true
-
-  # Customer-managed encryption for key lifecycle control
-  encryption_type: KMS
-  kms_key_id: arn:aws:kms:us-east-1:123456789012:key/compliance-key
-
-  # Prevent accidental deletion
-  force_delete: false
-
-  # Longer retention for compliance
-  lifecycle_policy:
-    expire_untagged_after_days: 30
-    max_image_count: 365  # Keep one year of images
-
+  repositoryName: my-company/simple-service

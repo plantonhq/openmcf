@@ -1,0 +1,59 @@
+# The control plane. Authentication is access-entry-only (API mode) — IAM
+# principals are granted through first-class AwsEksAccessEntry resources
+# (access.yaml), never by editing the legacy aws-auth ConfigMap inside the
+# cluster. Compute is decided by the auto_mode_enabled toggle: Auto Mode
+# here, or the managed node group + add-ons in their own templates.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsEksCluster
+metadata:
+  name: "{{ values.cluster_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+  version: "{{ values.kubernetes_version }}"
+  clusterRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: "{{ values.cluster_name }}-cluster-role"
+      fieldPath: status.outputs.role_arn
+  subnetIds:
+{% for subnet_id in values.subnet_ids %}
+    - value: "{{ subnet_id }}"
+{% endfor %}
+  # Endpoint exposure is two independent switches, both parameterized: the
+  # public door for humans/CI (IAM-authenticated TLS, not open) and the
+  # private door for everything inside the VPC.
+  endpointPublicAccess: {{ values.endpoint_public_access }}
+  endpointPrivateAccess: {{ values.endpoint_private_access }}
+  accessConfig:
+    # API mode makes access entries the ONLY authentication path — one
+    # auditable resource type answers "who can reach this cluster",
+    # instead of IAM entries and a ConfigMap disagreeing with each other.
+    authenticationMode: API
+  # The audit trail of every API-server decision, and the authenticator
+  # log that ties Kubernetes identities back to IAM principals — the two
+  # log types incident reviews actually read. The other three (api,
+  # controllerManager, scheduler) are debugging aids that bill steadily;
+  # enable them when debugging.
+  enabledClusterLogTypes:
+    - audit
+    - authenticator
+{% if values.auto_mode_enabled | bool %}
+  autoMode:
+    # Auto Mode is AWS's all-or-nothing management trio (compute, storage,
+    # load balancing) behind one honest switch. Both built-in pools:
+    # general-purpose for workloads, system for the critical add-on tier.
+    enabled: true
+    nodePools:
+      - general-purpose
+      - system
+    nodeRoleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: "{{ values.cluster_name }}-node-role"
+        fieldPath: status.outputs.role_arn
+  # Auto Mode manages networking/DNS itself — self-managed add-on
+  # bootstrap would fight it (and addons.yaml renders nothing in this
+  # shape for the same reason).
+  bootstrapSelfManagedAddons: false
+{% endif %}

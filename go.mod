@@ -10,32 +10,53 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.24
 	github.com/aws/aws-sdk-go-v2/service/acm v1.30.6
+	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.36.0
+	github.com/aws/aws-sdk-go-v2/service/apprunner v1.41.0
+	github.com/aws/aws-sdk-go-v2/service/athena v1.59.0
 	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.68.1
+	github.com/aws/aws-sdk-go-v2/service/batch v1.67.0
+	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.31.0
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.65.4
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.62.0
+	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.79.0
+	github.com/aws/aws-sdk-go-v2/service/codebuild v1.71.0
+	github.com/aws/aws-sdk-go-v2/service/codepipeline v1.48.0
+	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.64.0
 	github.com/aws/aws-sdk-go-v2/service/docdb v1.49.7
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.59.2
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.307.1
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.59.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.86.2
+	github.com/aws/aws-sdk-go-v2/service/efs v1.43.0
 	github.com/aws/aws-sdk-go-v2/service/eks v1.88.1
 	github.com/aws/aws-sdk-go-v2/service/elasticache v1.54.5
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.55.6
 	github.com/aws/aws-sdk-go-v2/service/eventbridge v1.46.8
 	github.com/aws/aws-sdk-go-v2/service/firehose v1.44.2
+	github.com/aws/aws-sdk-go-v2/service/fsx v1.67.0
+	github.com/aws/aws-sdk-go-v2/service/globalaccelerator v1.37.0
+	github.com/aws/aws-sdk-go-v2/service/glue v1.148.0
 	github.com/aws/aws-sdk-go-v2/service/iam v1.54.7
 	github.com/aws/aws-sdk-go-v2/service/kafka v1.54.2
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.44.4
 	github.com/aws/aws-sdk-go-v2/service/kms v1.53.6
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.94.1
+	github.com/aws/aws-sdk-go-v2/service/memorydb v1.35.0
 	github.com/aws/aws-sdk-go-v2/service/mwaa v1.41.7
 	github.com/aws/aws-sdk-go-v2/service/neptune v1.46.2
 	github.com/aws/aws-sdk-go-v2/service/opensearch v1.73.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.119.5
 	github.com/aws/aws-sdk-go-v2/service/redshift v1.63.5
 	github.com/aws/aws-sdk-go-v2/service/redshiftserverless v1.35.10
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.46.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0
+	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.257.0
+	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.63.0
+	github.com/aws/aws-sdk-go-v2/service/sfn v1.44.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.40.3
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.37.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3
+	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.75.0
 	github.com/aws/smithy-go v1.27.3
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/charmbracelet/bubbletea v1.3.10
@@ -111,8 +132,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.30 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.30 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.31 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.31.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.59.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.22 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.12.7 // indirect

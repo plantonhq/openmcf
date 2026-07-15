@@ -40,42 +40,48 @@ Client (EC2, ECS, VMware)
 ### SINGLE_AZ_1
 
 - **Availability:** Single AZ. No cross-AZ failover.
-- **HA pairs:** 1–12. Adding HA pairs requires replacement.
+- **HA pairs:** Fixed at 1. Capacity caps at 192 TiB.
 - **Subnets:** Exactly one.
+- **Scaling caveat:** Increasing per-pair throughput replaces the file system.
 - **Status:** First generation. Prefer SINGLE_AZ_2 for new deployments.
 
 ### SINGLE_AZ_2
 
-- **Availability:** Single AZ. Latest generation.
-- **HA pairs:** 1–12. Can increase HA pairs **without replacement** (in-place scale-out).
+- **Availability:** Single AZ. Current generation.
+- **HA pairs:** 1–12, and the ONLY deployment type supporting scale-out. HA
+  pairs can be increased **without replacement**.
 - **Subnets:** Exactly one.
-- **Use case:** Most workloads. Recommended default for single-AZ.
+- **Use case:** Most workloads. Recommended default.
 
 ### MULTI_AZ_1
 
 - **Availability:** Multi-AZ with automatic failover across two AZs.
-- **HA pairs:** Fixed at 1 (standby in second AZ).
+- **HA pairs:** Fixed at 1 (standby in second AZ). Capacity caps at 192 TiB.
 - **Subnets:** Exactly two, in different AZs.
-- **Requirements:** `preferred_subnet_id`, `endpoint_ip_address_range`.
+- **Requirements:** `preferred_subnet_id` (endpoint IP range and route tables
+  optional — AWS picks defaults).
+- **Scaling caveat:** Increasing per-pair throughput replaces the file system.
 - **Status:** First generation. Prefer MULTI_AZ_2 for new multi-AZ deployments.
 
 ### MULTI_AZ_2
 
-- **Availability:** Multi-AZ with automatic failover. Latest generation.
+- **Availability:** Multi-AZ with automatic failover. Current generation.
 - **HA pairs:** Fixed at 1.
 - **Subnets:** Exactly two, in different AZs.
-- **Requirements:** `preferred_subnet_id`, `endpoint_ip_address_range`.
+- **Requirements:** `preferred_subnet_id` (endpoint IP range and route tables
+  optional — AWS picks defaults).
 - **Use case:** Mission-critical workloads requiring high availability.
 
 ### Decision Matrix
 
 | Criteria | SINGLE_AZ_1 | SINGLE_AZ_2 | MULTI_AZ_1 | MULTI_AZ_2 |
 |----------|-------------|-------------|-----------|-----------|
-| Generation | First | Latest | First | Latest |
+| Generation | First | Current | First | Current |
 | Cross-AZ failover | No | No | Yes | Yes |
-| HA pairs | 1–12 (replace to add) | 1–12 (in-place add) | 1 | 1 |
+| HA pairs | 1 | 1–12 (in-place add) | 1 | 1 |
+| Max capacity | 192 TiB | 512 TiB × pairs (1 PiB max) | 192 TiB | 512 TiB |
 | Subnets | 1 | 1 | 2 | 2 |
-| Scale-out | Replace to add HA pairs | In-place add HA pairs | N/A | N/A |
+| Per-pair throughput tiers (MB/s) | 128–4096 | 384–6144 (1536+ for scale-out) | 128–4096 | 384–6144 |
 
 ---
 
@@ -85,12 +91,14 @@ Client (EC2, ECS, VMware)
 
 An HA (High Availability) pair is a pair of file servers (nodes) that provide redundancy within a single AZ. Each pair contributes independent throughput and IOPS capacity.
 
-### Scale-Out (Single-AZ Only)
+### Scale-Out (SINGLE_AZ_2 Only)
 
-- **SINGLE_AZ_1 / SINGLE_AZ_2:** 1–12 HA pairs.
+- **SINGLE_AZ_2:** 1–12 HA pairs, added in place. Every other deployment type
+  is fixed at 1 pair.
 - **Total throughput** = `throughput_capacity_per_ha_pair` × `ha_pairs`.
-- **Example:** 4 HA pairs × 512 MB/s = 2048 MB/s aggregate throughput.
-- **SINGLE_AZ_2:** Can increase `ha_pairs` without replacing the file system. SINGLE_AZ_1 requires replacement.
+- **Example:** 4 HA pairs × 1536 MB/s = 6144 MB/s aggregate throughput.
+- **Capacity scales too:** each pair carries 1024 GiB – 512 TiB, up to 1 PiB
+  total at 12 pairs.
 
 ### Multi-AZ Fixed at 1 HA Pair
 
@@ -98,31 +106,39 @@ An HA (High Availability) pair is a pair of file servers (nodes) that provide re
 - The pair spans two AZs: active node in preferred subnet, standby in the other.
 - Failover is automatic; no scale-out via HA pairs.
 
-### Throughput per HA Pair
+### Sizing Throughput (exactly one arm)
 
-Valid values: 128, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144 MB/s.
+Throughput is set through exactly one of two fields:
 
-Higher tiers cost more. Choose based on workload I/O profile. Can be changed after creation for SINGLE_AZ_2 and MULTI_AZ_2.
+- **`throughput_capacity`** — whole-file-system sizing, the first-generation
+  arm. Valid values: 128, 256, 512, 1024, 2048, 4096 MB/s.
+- **`throughput_capacity_per_ha_pair`** — per-pair sizing. Valid values by
+  deployment type:
+  - SINGLE_AZ_1 / MULTI_AZ_1: 128, 256, 512, 1024, 2048, 4096
+  - SINGLE_AZ_2 / MULTI_AZ_2 with 1 HA pair: 384, 768, 1536, 3072, 6144
+  - SINGLE_AZ_2 with multiple HA pairs: 1536, 3072, 6144 per pair
+
+Higher tiers cost more. Choose based on workload I/O profile. Scales in place
+on SINGLE_AZ_2 and MULTI_AZ_2; on the first generation an increase replaces
+the file system.
 
 ---
 
-## 4. Storage Types
+## 4. Storage
 
-### SSD
+### SSD Primary Storage (the only option)
 
 - **Latency:** Sub-millisecond.
-- **Capacity range:** 1024–1,048,576 GiB (1 TiB – 1 PiB).
-- **Use case:** Performance-sensitive workloads (databases, VMware, active data).
+- **Capacity range:** 1024 GiB per HA pair to 512 TiB per pair (192 TiB cap on
+  the first generation; 1 PiB total at 12 SINGLE_AZ_2 pairs).
 - **IOPS:** AUTOMATIC (3 IOPS/GiB) or USER_PROVISIONED (up to 2,400,000).
 
-### HDD with Intelligent Tiering
-
-- **Latency:** Higher (single-digit milliseconds).
-- **Capacity range:** 1024–1,048,576 GiB.
-- **Use case:** Throughput-oriented workloads (data lakes, backups, infrequently accessed data).
-- **Intelligent tiering:** ONTAP automatically caches hot data on SSD.
-
-**ForceNew:** Storage type cannot be changed after creation.
+ONTAP file systems are SSD-only at the file-system level — the HDD and
+Intelligent-Tiering storage classes belong to other FSx types (Windows/Lustre
+and OpenZFS/Lustre respectively), and AWS rejects them for ONTAP at create
+time. ONTAP's cost tiering happens INSIDE the file system instead: every
+volume has a `tiering_policy` that moves cold data to the built-in elastic
+capacity pool, which is why a file-system-level HDD option does not exist.
 
 ### Data Reduction
 
@@ -142,8 +158,14 @@ ONTAP provides built-in compression and deduplication. Typical effective capacit
 
 - **Subnets:** Exactly two subnets in different AZs.
 - **ENIs:** Two (one per AZ).
-- **Endpoint IP address range:** CIDR block within the VPC for floating IPs. Must not overlap with existing subnets. AWS assigns IPs from this range for seamless failover.
-- **Route tables:** Optional. `route_table_ids` specify route tables that need routes to the file system. AWS manages routes for failover.
+- **Endpoint IP address range:** Floating-IP CIDR for the management,
+  intercluster, and SVM data endpoints. Must NOT overlap with any subnet in
+  the VPC — AWS recommends a range outside the VPC CIDR entirely (the
+  198.19.0.0/16 block); clients reach it through the managed route tables.
+  Omit to let AWS pick an unused range.
+- **Route tables:** Optional. `route_table_ids` lists every route table
+  associated with client subnets; AWS creates and repoints routes to the
+  floating IPs on failover. Omitted → the VPC main route table.
 
 ### Security Groups
 
@@ -238,7 +260,7 @@ Set `fsx_admin_password` in the spec (8–50 characters). This enables:
 ## 10. Cost Optimization Tips
 
 1. **Right-size throughput:** Start with the lowest tier that meets your needs. Throughput can be scaled up after creation for SINGLE_AZ_2 and MULTI_AZ_2.
-2. **Use HDD for cold data:** Large archives and infrequently accessed data benefit from HDD's lower cost per GiB.
+2. **Tier cold data per volume:** Set each volume's `tiering_policy` (AUTO or SNAPSHOT_ONLY) to move cold data to the elastic capacity pool — ONTAP's equivalent of an HDD tier, without provisioning it.
 3. **Leverage data reduction:** ONTAP compression and deduplication reduce effective storage cost (2–5× typical).
 4. **Manage backup retention:** Set `automatic_backup_retention_days` to the minimum required by recovery objectives.
 5. **Single-AZ for non-critical workloads:** MULTI_AZ adds cost for the standby server and cross-AZ replication.
@@ -253,12 +275,12 @@ Set `fsx_admin_password` in the spec (8–50 characters). This enables:
 |-------|--------------|
 | **Hierarchy** | File system → SVM → Volume. This component manages file system only. |
 | **Deployment types** | SINGLE_AZ_2 for most; MULTI_AZ_2 for HA. |
-| **HA pairs** | Single-AZ: 1–12 (scale-out). Multi-AZ: fixed at 1. |
-| **Throughput** | Total = per-HA-pair × ha_pairs. Valid tiers: 128–6144 MB/s. |
-| **Storage** | SSD (performance) or HDD (cost). 1024–1,048,576 GiB. |
-| **Networking** | Single-AZ: 1 subnet. Multi-AZ: 2 subnets + endpoint_ip_address_range. |
+| **HA pairs** | SINGLE_AZ_2: 1–12 (in-place scale-out). All others: fixed at 1. |
+| **Throughput** | Exactly one arm: whole-system `throughput_capacity` or per-pair `throughput_capacity_per_ha_pair` (gen2 tiers 384–6144 MB/s). |
+| **Storage** | SSD only, 1024 GiB per pair to 1 PiB total. Cost tiering is per-volume (tiering policies). |
+| **Networking** | Single-AZ: 1 subnet. Multi-AZ: 2 subnets + preferred subnet (+ optional floating-IP range and route tables). |
 | **Endpoints** | Management (CLI/API), intercluster (SnapMirror). Data via SVMs. |
-| **Backups** | FSx backups (0–90 days) and ONTAP snapshots (on volumes). |
+| **Backups** | FSx backups (0–90 days) and ONTAP snapshots; final-backup decisions live on volumes. |
 | **Encryption** | Always on. Optional customer-managed KMS. |
 
-For API reference and examples, see the parent [README.md](../README.md) and [examples.md](../examples.md).
+For API reference and examples, see the parent [README.md](../README.md) and [catalog-page.md](../catalog-page.md).

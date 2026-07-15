@@ -1,0 +1,25 @@
+# Fixture AwsFsxOntapStorageVirtualMachine consumed by the volume
+# scenarios. A minimal UNIX SVM on the ONTAP file-system fixture. Fixed
+# name so name-aware resolution and orphan sweeps stay stable.
+apiVersion: aws.planton.dev/v1
+kind: AwsFsxOntapStorageVirtualMachine
+metadata:
+  name: planton-oss-e2e-awsfxosvm-prereq
+  id: planton-oss-e2e-awsfxosvm-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsfsxontapstoragevirtualmachine
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  fileSystemId:
+    valueFrom:
+      kind: AwsFsxOntapFileSystem
+      name: planton-oss-e2e-awsfxo-prereq
+      fieldPath: status.outputs.file_system_id
+  name: svm_e2e_prereq

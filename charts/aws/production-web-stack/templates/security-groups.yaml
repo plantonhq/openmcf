@@ -1,0 +1,127 @@
+# The stack's network contract, one dedicated group per tier: the world
+# reaches the load balancer, ONLY the load balancer reaches the tasks, and
+# ONLY the tasks reach the database and cache. Reading these four groups
+# top to bottom is reading the stack's entire reachability story.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSecurityGroup
+metadata:
+  name: "{{ values.stack_name }}-alb-sg"
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: "{{ values.stack_name }}-vpc"
+      fieldPath: status.outputs.vpc_id
+  description: "Internet ingress to the {{ values.stack_name }} load balancer"
+  ingress:
+    # 80 stays open in both modes: it serves the HTTP→HTTPS redirect when
+    # the custom domain is on, and the site itself before that.
+    - description: "HTTP from anywhere"
+      protocol: tcp
+      fromPort: 80
+      toPort: 80
+      ipv4Cidrs:
+        - 0.0.0.0/0
+{% if values.custom_domain_enabled | bool %}
+    - description: "HTTPS from anywhere"
+      protocol: tcp
+      fromPort: 443
+      toPort: 443
+      ipv4Cidrs:
+        - 0.0.0.0/0
+{% endif %}
+  egress:
+    - description: "Forward to the service tasks"
+      protocol: tcp
+      fromPort: {{ values.container_port }}
+      toPort: {{ values.container_port }}
+      ipv4Cidrs:
+        - 0.0.0.0/0
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSecurityGroup
+metadata:
+  name: "{{ values.stack_name }}-task-sg"
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: "{{ values.stack_name }}-vpc"
+      fieldPath: status.outputs.vpc_id
+  description: "Task ingress for {{ values.stack_name }} - app port from the load balancer only"
+  ingress:
+    - description: "App port from the load balancer"
+      protocol: tcp
+      fromPort: {{ values.container_port }}
+      toPort: {{ values.container_port }}
+      sourceSecurityGroupIds:
+        - valueFrom:
+            kind: AwsSecurityGroup
+            name: "{{ values.stack_name }}-alb-sg"
+            fieldPath: status.outputs.security_group_id
+  egress:
+    # Tasks need outbound: image pulls through NAT, the database, the
+    # cache, and whatever APIs the app calls.
+    - description: "Outbound for image pulls, data tier, and app dependencies"
+      protocol: "-1"
+      fromPort: 0
+      toPort: 0
+      ipv4Cidrs:
+        - 0.0.0.0/0
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSecurityGroup
+metadata:
+  name: "{{ values.stack_name }}-db-sg"
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: "{{ values.stack_name }}-vpc"
+      fieldPath: status.outputs.vpc_id
+  description: "PostgreSQL access to {{ values.stack_name }} from the service tasks only"
+  ingress:
+    # Source is the task security group — not a CIDR — so only the
+    # application can open a database connection, no matter how the
+    # network grows.
+    - description: "PostgreSQL from the service tasks"
+      protocol: tcp
+      fromPort: 5432
+      toPort: 5432
+      sourceSecurityGroupIds:
+        - valueFrom:
+            kind: AwsSecurityGroup
+            name: "{{ values.stack_name }}-task-sg"
+            fieldPath: status.outputs.security_group_id
+  # No egress rules — deny-all outbound. A database answers queries; it
+  # does not call out.
+{% if values.redis_enabled | bool %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSecurityGroup
+metadata:
+  name: "{{ values.stack_name }}-redis-sg"
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: "{{ values.stack_name }}-vpc"
+      fieldPath: status.outputs.vpc_id
+  description: "Redis access to {{ values.stack_name }} from the service tasks only"
+  ingress:
+    - description: "Redis from the service tasks"
+      protocol: tcp
+      fromPort: 6379
+      toPort: 6379
+      sourceSecurityGroupIds:
+        - valueFrom:
+            kind: AwsSecurityGroup
+            name: "{{ values.stack_name }}-task-sg"
+            fieldPath: status.outputs.security_group_id
+  # Deny-all egress, same reasoning as the database.
+{% endif %}

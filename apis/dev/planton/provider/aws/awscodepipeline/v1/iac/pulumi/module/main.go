@@ -23,6 +23,8 @@ func Resources(ctx *pulumi.Context, stackInput *awscodepipelinev1.AwsCodePipelin
 		return errors.Wrap(err, "codepipeline")
 	}
 
+	// Export outputs -- identical names and semantics to the Terraform
+	// module (the cross-engine output contract).
 	ctx.Export(OpPipelineArn, createdPipeline.Arn)
 	ctx.Export(OpPipelineName, createdPipeline.Name)
 

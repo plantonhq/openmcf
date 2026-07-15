@@ -21,25 +21,39 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsClientVpnStackOutputs captures the output values obtained after provisioning the AWS Client VPN endpoint.
-// These outputs include identifiers needed for connecting to or managing the VPN, and can be referenced by other resources if necessary.
+// AwsClientVpnStackOutputs captures the output values obtained after
+// provisioning the AWS Client VPN endpoint. These outputs include the
+// identifiers needed for connecting to or managing the VPN, and can be
+// referenced by other resources via StringValueOrRef.
 type AwsClientVpnStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The AWS-assigned identifier for the Client VPN endpoint (e.g., "cvpn-endpoint-012345abcdeEXAMPLE").
-	// Use this ID for any AWS CLI or API operations on the Client VPN, and to retrieve or revoke the client configuration file.
+	// The AWS-assigned identifier for the Client VPN endpoint
+	// (e.g. "cvpn-endpoint-012345abcdeEXAMPLE"). Used for AWS CLI/API
+	// operations — including exporting the client configuration file
+	// (`aws ec2 export-client-vpn-client-configuration`).
 	ClientVpnEndpointId string `protobuf:"bytes,1,opt,name=client_vpn_endpoint_id,json=clientVpnEndpointId,proto3" json:"client_vpn_endpoint_id,omitempty"`
-	// The ID of the security group applied to the Client VPN endpoint’s target network associations.
-	// If the spec did not provide any security_group_ids, this will be the ID of the security group that Planton created (or the VPC default).
-	// This security group governs traffic between VPN clients and VPC resources.
-	SecurityGroupId string `protobuf:"bytes,2,opt,name=security_group_id,json=securityGroupId,proto3" json:"security_group_id,omitempty"`
-	// A map of subnet association IDs for each associated target subnet.
-	// Each key in the map is a subnet ID (from the spec’s subnet_ids list), and the value is the corresponding AWS association ID (e.g., "cvpn-assoc-0abcd1234efgh5678") for that subnet’s association with the Client VPN endpoint.
-	// These IDs can be used to reference or manage specific target network associations (for example, if removing an association later).
-	SubnetAssociationIds map[string]string `protobuf:"bytes,3,rep,name=subnet_association_ids,json=subnetAssociationIds,proto3" json:"subnet_association_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// The DNS name clients use to connect to the Client VPN endpoint.
-	EndpointDnsName string `protobuf:"bytes,4,opt,name=endpoint_dns_name,json=endpointDnsName,proto3" json:"endpoint_dns_name,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The Amazon Resource Name of the endpoint. Used in IAM policies and
+	// cross-service permissions.
+	ClientVpnEndpointArn string `protobuf:"bytes,2,opt,name=client_vpn_endpoint_arn,json=clientVpnEndpointArn,proto3" json:"client_vpn_endpoint_arn,omitempty"`
+	// The DNS name clients connect to. Note AWS's quirk: the OpenVPN client
+	// configuration must prepend a random subdomain label to this name
+	// (e.g. "asdf.cvpn-endpoint-....amazonaws.com") — the exported client
+	// configuration handles this automatically.
+	EndpointDnsName string `protobuf:"bytes,3,opt,name=endpoint_dns_name,json=endpointDnsName,proto3" json:"endpoint_dns_name,omitempty"`
+	// The URL of the self-service portal where federated users download
+	// their own client configuration. Empty when the portal is disabled.
+	SelfServicePortalUrl string `protobuf:"bytes,4,opt,name=self_service_portal_url,json=selfServicePortalUrl,proto3" json:"self_service_portal_url,omitempty"`
+	// A map of subnet ID → target network association ID
+	// (e.g. "cvpn-assoc-0abcd1234efgh5678") for each associated subnet in
+	// `spec.subnet_ids`. Useful for referencing or manually managing a
+	// specific association.
+	SubnetAssociationIds map[string]string `protobuf:"bytes,5,rep,name=subnet_association_ids,json=subnetAssociationIds,proto3" json:"subnet_association_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The transit gateway attachment created when the endpoint is associated
+	// with a transit gateway via `spec.transit_gateway_configuration`. Empty
+	// for VPC-attached endpoints.
+	TransitGatewayAttachmentId string `protobuf:"bytes,6,opt,name=transit_gateway_attachment_id,json=transitGatewayAttachmentId,proto3" json:"transit_gateway_attachment_id,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *AwsClientVpnStackOutputs) Reset() {
@@ -79,9 +93,23 @@ func (x *AwsClientVpnStackOutputs) GetClientVpnEndpointId() string {
 	return ""
 }
 
-func (x *AwsClientVpnStackOutputs) GetSecurityGroupId() string {
+func (x *AwsClientVpnStackOutputs) GetClientVpnEndpointArn() string {
 	if x != nil {
-		return x.SecurityGroupId
+		return x.ClientVpnEndpointArn
+	}
+	return ""
+}
+
+func (x *AwsClientVpnStackOutputs) GetEndpointDnsName() string {
+	if x != nil {
+		return x.EndpointDnsName
+	}
+	return ""
+}
+
+func (x *AwsClientVpnStackOutputs) GetSelfServicePortalUrl() string {
+	if x != nil {
+		return x.SelfServicePortalUrl
 	}
 	return ""
 }
@@ -93,9 +121,9 @@ func (x *AwsClientVpnStackOutputs) GetSubnetAssociationIds() map[string]string {
 	return nil
 }
 
-func (x *AwsClientVpnStackOutputs) GetEndpointDnsName() string {
+func (x *AwsClientVpnStackOutputs) GetTransitGatewayAttachmentId() string {
 	if x != nil {
-		return x.EndpointDnsName
+		return x.TransitGatewayAttachmentId
 	}
 	return ""
 }
@@ -104,12 +132,14 @@ var File_dev_planton_provider_aws_awsclientvpn_v1_stack_outputs_proto protorefle
 
 const file_dev_planton_provider_aws_awsclientvpn_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/aws/awsclientvpn/v1/stack_outputs.proto\x12(dev.planton.provider.aws.awsclientvpn.v1\"\x85\x03\n" +
+	"<dev/planton/provider/aws/awsclientvpn/v1/stack_outputs.proto\x12(dev.planton.provider.aws.awsclientvpn.v1\"\x8a\x04\n" +
 	"\x18AwsClientVpnStackOutputs\x123\n" +
-	"\x16client_vpn_endpoint_id\x18\x01 \x01(\tR\x13clientVpnEndpointId\x12*\n" +
-	"\x11security_group_id\x18\x02 \x01(\tR\x0fsecurityGroupId\x12\x92\x01\n" +
-	"\x16subnet_association_ids\x18\x03 \x03(\v2\\.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnStackOutputs.SubnetAssociationIdsEntryR\x14subnetAssociationIds\x12*\n" +
-	"\x11endpoint_dns_name\x18\x04 \x01(\tR\x0fendpointDnsName\x1aG\n" +
+	"\x16client_vpn_endpoint_id\x18\x01 \x01(\tR\x13clientVpnEndpointId\x125\n" +
+	"\x17client_vpn_endpoint_arn\x18\x02 \x01(\tR\x14clientVpnEndpointArn\x12*\n" +
+	"\x11endpoint_dns_name\x18\x03 \x01(\tR\x0fendpointDnsName\x125\n" +
+	"\x17self_service_portal_url\x18\x04 \x01(\tR\x14selfServicePortalUrl\x12\x92\x01\n" +
+	"\x16subnet_association_ids\x18\x05 \x03(\v2\\.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnStackOutputs.SubnetAssociationIdsEntryR\x14subnetAssociationIds\x12A\n" +
+	"\x1dtransit_gateway_attachment_id\x18\x06 \x01(\tR\x1atransitGatewayAttachmentId\x1aG\n" +
 	"\x19SubnetAssociationIdsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xe3\x02\n" +

@@ -216,7 +216,7 @@ s3.NewBucketObject(ctx, "index-html", &s3.BucketObjectArgs{
 
 ### Design Philosophy
 
-`AwsS3ObjectSet` applies the 80/20 principle: expose the 20% of S3 object configuration that covers 80% of use cases, while keeping the API surface clean and approachable.
+`AwsS3ObjectSet` exposes the full per-object surface of the S3 PutObject API — content, presentation headers, user metadata, storage class, encryption overrides, upload checksums, Object Lock retention, and access control — while drawing a deliberate line between object-level and bucket-level responsibility: uniform posture (default encryption, versioning, public-access blocking, ownership) belongs on `AwsS3Bucket`, and the per-object security fields here exist to override it for individual objects, never to replace it.
 
 ### Why "ObjectSet" Instead of "Object"
 
@@ -248,13 +248,21 @@ This pattern mirrors how `KubernetesDeployment` references `KubernetesNamespace`
 |-------|-----------|
 | `bucket` | Required target. Foreign key enables component wiring. |
 | `region` | Required for provider configuration. |
-| `objects[].key` | Required S3 object path. |
+| `objects[].key` | Required S3 object path and the object's identity in the set. |
 | `objects[].content` | Inline text for config files, HTML, JSON, YAML. |
 | `objects[].content_base64` | Binary support for images, compiled assets. |
-| `objects[].content_type` | MIME type affects browser handling and CDN behavior. |
+| `objects[].content_type` | MIME type affects browser handling and CDN behavior. Both engines send the resolved value explicitly so the stored Content-Type always matches the manifest. |
 | `objects[].cache_control` | Critical for static websites and CDN integration. |
 | `objects[].content_encoding` | Pre-compressed content support (gzip/brotli). |
-| `objects[].acl` | Per-object access control for mixed-access patterns. |
+| `objects[].content_disposition` / `content_language` | Complete the stored HTTP presentation headers (inline-vs-download behavior, natural language). |
+| `objects[].metadata` | User-defined `x-amz-meta-*` entries; keys validated lowercase so what reads back always matches the manifest. |
+| `objects[].website_redirect` | Redirect markers for buckets with static website hosting. |
+| `objects[].storage_class` | Latency/cost placement per object, including archive tiers. |
+| `objects[].server_side_encryption` / `kms_key` / `bucket_key_enabled` | Per-object encryption OVERRIDE for objects that must diverge from the bucket's default encryption. The KMS key is a foreign key to `AwsKmsKey`. |
+| `objects[].checksum_algorithm` | Upload-integrity checksums (CRC64NVME recommended; SHA variants for compliance regimes). |
+| `objects[].object_lock_mode` / `object_lock_retain_until_date` / `object_lock_legal_hold_status` | WORM retention and legal holds for objects in Object Lock-enabled buckets. |
+| `objects[].acl` | Per-object canned ACL — legacy; only valid on buckets whose ownership controls permit ACLs. |
+| `objects[].force_destroy` | Bypass GOVERNANCE-mode retention/legal holds on delete (Object Lock-enabled buckets only; ordinary versioned destroys always remove all versions). |
 | `objects[].tags` | Per-object governance with set-level inheritance. |
 | `tags` (set-level) | Common tags applied to all objects. |
 
@@ -263,11 +271,8 @@ This pattern mirrors how `KubernetesDeployment` references `KubernetesNamespace`
 | Excluded Feature | Rationale |
 |-----------------|-----------|
 | `source` (file path) | Planton runs remotely; local file paths don't translate. Inline content and base64 cover all cases. |
-| `server_side_encryption` | Bucket-level encryption (configured in AwsS3Bucket) applies to all objects automatically. |
-| `storage_class` | Per-object storage class overrides are rare; bucket-level lifecycle rules handle transitions. |
-| `website_redirect` | Niche feature; can be added later if needed. |
-| `object_lock` | Governance feature typically set at bucket level, not per-object. |
-| `metadata` (custom) | Rarely used; tags serve the same governance purpose. |
+| `source_hash` / `etag` (as inputs) | Drift-detection knobs for the excluded file-path source; inline content is already fully tracked in state. |
+| `override_provider.default_tags` | Provider-level tag-injection plumbing, not object modeling; Planton's tag merge (identity < set < object) covers the need. |
 
 ## Implementation Landscape
 
@@ -327,10 +332,9 @@ Key implementation details:
 
 ### Security
 
-- Default to `private` ACL (inherits bucket default)
-- Use `public-read` only for intentionally public content
-- Rely on bucket-level encryption (configured in `AwsS3Bucket`) for encryption at rest
-- Never store secrets as S3 objects; use AWS Secrets Manager instead
+- Leave `acl` unset: modern buckets (BucketOwnerEnforced ownership, the AWS default) disable object ACLs entirely, and setting one fails at apply time. Prefer bucket policies for public access; use ACLs only against buckets whose ownership controls were deliberately relaxed.
+- Rely on bucket-level default encryption (configured in `AwsS3Bucket`) for encryption at rest; use the per-object `server_side_encryption`/`kms_key` override only for individual objects that must diverge.
+- Never store secrets as S3 objects; use AWS Secrets Manager instead.
 
 ### Cost Optimization
 
@@ -340,7 +344,7 @@ Key implementation details:
 
 ## Conclusion
 
-`AwsS3ObjectSet` bridges the gap between bucket provisioning and content management in Planton. It provides a clean, declarative interface for managing multiple S3 objects with shared configuration, foreign key integration, and tag inheritance. The component handles the most common use cases -- config files, static assets, and seed data -- while keeping the API surface minimal and approachable.
+`AwsS3ObjectSet` bridges the gap between bucket provisioning and content management in Planton. It provides a clean, declarative interface for managing multiple S3 objects with shared configuration, foreign key integration, and tag inheritance — covering the full per-object surface from presentation headers through storage placement, encryption overrides, upload checksums, and Object Lock retention, while keeping uniform posture where it belongs: on the bucket.
 
 ### When to Use This Component
 

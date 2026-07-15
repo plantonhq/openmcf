@@ -43,8 +43,15 @@ spec:
     - name: "cognito-authorizer"
       authorizer_type: "JWT"
       jwt_configuration:
-        issuer: "<cognito-issuer-url>"
+        issuer:
+          valueFrom:
+            kind: AwsCognitoUserPool
+            name: <user-pool-resource-name>
+            fieldPath: status.outputs.issuer
         audiences:
-          - "<cognito-app-client-id>"
+          - valueFrom:
+              kind: AwsCognitoUserPoolClient
+              name: <app-client-resource-name>
+              fieldPath: status.outputs.client_id
       identity_sources:
         - "$request.header.Authorization"

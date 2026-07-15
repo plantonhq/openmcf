@@ -5,8 +5,8 @@ metadata:
 spec:
   selector:
     kind: platform
-  description: Kafka event streaming platform with MSK, VPC network isolation, S3 for broker log offloading, and CloudWatch monitoring. Production-ready managed Kafka with encryption and multi-AZ deployment.
-  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/provider/aws/awsmskcluster/v1/assets/logo.svg
+  description: Managed Kafka on MSK, serverless-first — IAM-authenticated brokers behind a two-tier security-group contract, with a provisioned-cluster arm for steady high-throughput workloads where broker-hour pricing wins.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/aws/awsmskcluster/v1/logo.svg
   isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/aws/kafka-streaming

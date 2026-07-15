@@ -8,22 +8,24 @@ terraform plan
 terraform apply
 ```
 
+Region and credentials are injected by the runtime as environment variables
+(resolved from the stack input's provider configuration); the module itself
+takes only `metadata` and `spec`.
+
 ## Resources Created
 
 - `aws_fsx_openzfs_file_system.this` — the FSx for OpenZFS file system with inline root volume configuration
 
 ## Inputs
 
-See `variables.tf` for the complete list of input variables, organized by:
+`variables.tf` is generator-owned (regenerated from the proto contract) and
+carries two variables:
 
-- Provider configuration (access_key, secret_key, region, session_token)
-- File system core (deployment_type, storage_capacity_gib, throughput_capacity)
-- Networking (subnet_ids, security_group_ids, preferred_subnet_id, route_table_ids)
-- Encryption (kms_key_id)
-- Disk IOPS (disk_iops_mode, disk_iops)
-- Root volume (compression, NFS exports, quotas, record size)
-- Backup (retention, schedule, tag propagation)
-- Maintenance (weekly window)
+- `metadata` — resource identity (name, id, org, env, labels)
+- `spec` — the typed `AwsFsxOpenzfsFileSystemSpec`: deployment/storage shape
+  (incl. INTELLIGENT_TIERING with its read cache), networking, encryption,
+  restore, disk IOPS, root volume (compression, NFS exports, quotas), backup
+  and deletion behavior, and the maintenance window
 
 ## Outputs
 

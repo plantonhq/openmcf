@@ -1,11 +1,12 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchLogGroup
 metadata:
-  name: ${name}
+  name: my-secure-logs
 spec:
+  region: <aws-region>
   retentionInDays: 90
   kmsKeyId:
     valueFrom:
       kind: AwsKmsKey
-      name: ${kms_key_name}
+      name: <kms-key-name>  # key policy must allow logs.<region>.amazonaws.com
       fieldPath: status.outputs.key_arn

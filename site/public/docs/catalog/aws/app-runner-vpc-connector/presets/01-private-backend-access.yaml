@@ -1,0 +1,23 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsAppRunnerVpcConnector
+metadata:
+  org: example-org
+  env: prod
+  name: private-backend-access
+  id: private-backend-access-id
+spec:
+  region: <aws-region>
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-subnet-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-subnet-b
+        fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: apprunner-egress
+        fieldPath: status.outputs.security_group_id

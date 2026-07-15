@@ -1,0 +1,41 @@
+# The content bucket. It is never public: every S3 "static website" feature
+# (website hosting endpoints, public-read ACLs) is deliberately absent because
+# CloudFront with Origin Access Control replaces all of it — the CDN signs its
+# origin requests with SigV4 and the bucket policy admits nothing else. All
+# four public-access guards stay at their locked defaults, and object
+# ownership stays BucketOwnerEnforced (ACLs disabled) — both are the kind's
+# secure defaults, which is why they do not appear below.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsS3Bucket
+metadata:
+  # The bucket's name IS the resource name (S3 names are global — the default
+  # value carries an org prefix for that reason).
+  name: "{{ values.bucket_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+
+  # The one grant the bucket makes: CloudFront's service principal may read
+  # objects, and only on behalf of a distribution in THIS account (the
+  # SourceArn condition is what stops a stranger's distribution from being
+  # pointed at your bucket — the confused-deputy hole in naive OAC setups).
+  # The distribution's exact ARN does not exist until it is created, so the
+  # condition is account-scoped here; the README shows how to pin it to the
+  # exact distribution ARN as a day-2 tightening.
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowCloudFrontServicePrincipalReadOnly
+        Effect: Allow
+        Principal:
+          Service: cloudfront.amazonaws.com
+        Action: s3:GetObject
+        Resource: "arn:aws:s3:::{{ values.bucket_name }}/*"
+        Condition:
+          ArnLike:
+            AWS:SourceArn: "arn:aws:cloudfront::{{ values.aws_account_id }}:distribution/*"
+
+  # Versioning is left off on purpose: site content is a build artifact your
+  # CI can always re-produce, so the undo button that matters lives in your
+  # repo, not in S3 versions. Set versioningStatus: Enabled if you also
+  # upload content that exists nowhere else.

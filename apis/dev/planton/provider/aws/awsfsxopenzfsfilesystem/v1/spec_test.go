@@ -28,16 +28,32 @@ func int32Ptr(i int32) *int32 {
 	return &i
 }
 
+// multiAzBase returns a valid MULTI_AZ_1 baseline: two subnets, a preferred
+// subnet, and a gen-2 throughput value.
+func multiAzBase() *AwsFsxOpenzfsFileSystemSpec {
+	return &AwsFsxOpenzfsFileSystemSpec{
+		Region:         "us-west-2",
+		DeploymentType: stringPtr("MULTI_AZ_1"),
+		SubnetIds: []*foreignkeyv1.StringValueOrRef{
+			strRef("subnet-az1"),
+			strRef("subnet-az2"),
+		},
+		PreferredSubnetId:  strRef("subnet-az1"),
+		StorageCapacityGib: int32Ptr(256),
+		ThroughputCapacity: 160,
+	}
+}
+
 var _ = ginkgo.Describe("AwsFsxOpenzfsFileSystemSpec validations", func() {
 	var spec *AwsFsxOpenzfsFileSystemSpec
 
 	ginkgo.BeforeEach(func() {
-		// Minimal valid spec: subnet_ids (at least 1), storage_capacity_gib >= 64,
-		// throughput_capacity > 0.
+		// Minimal valid spec: one subnet (SINGLE_AZ_2 default), provisioned SSD
+		// capacity, gen-2 throughput.
 		spec = &AwsFsxOpenzfsFileSystemSpec{
 			Region:             "us-west-2",
 			SubnetIds:          []*foreignkeyv1.StringValueOrRef{strRef("subnet-abc123")},
-			StorageCapacityGib: 256,
+			StorageCapacityGib: int32Ptr(256),
 			ThroughputCapacity: 160,
 		}
 	})
@@ -51,106 +67,55 @@ var _ = ginkgo.Describe("AwsFsxOpenzfsFileSystemSpec validations", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts SINGLE_AZ_1 deployment type", func() {
+	ginkgo.It("accepts SINGLE_AZ_1 with a gen-1 throughput value", func() {
 		spec.DeploymentType = stringPtr("SINGLE_AZ_1")
 		spec.ThroughputCapacity = 64
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts SINGLE_AZ_2 deployment type", func() {
-		spec.DeploymentType = stringPtr("SINGLE_AZ_2")
-		spec.ThroughputCapacity = 160
+	ginkgo.It("accepts the HA deployment variants", func() {
+		spec.DeploymentType = stringPtr("SINGLE_AZ_HA_2")
 		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+
+		spec.DeploymentType = stringPtr("SINGLE_AZ_HA_1")
+		spec.ThroughputCapacity = 64
+		err = protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts MULTI_AZ_1 deployment type with two subnets", func() {
-		spec.DeploymentType = stringPtr("MULTI_AZ_1")
-		spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
-			strRef("subnet-abc123"),
-			strRef("subnet-def456"),
-		}
-		spec.PreferredSubnetId = strRef("subnet-abc123")
-		spec.ThroughputCapacity = 160
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts MULTI_AZ_1 with route_table_ids", func() {
-		spec.DeploymentType = stringPtr("MULTI_AZ_1")
-		spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
-			strRef("subnet-abc123"),
-			strRef("subnet-def456"),
-		}
-		spec.PreferredSubnetId = strRef("subnet-abc123")
+	ginkgo.It("accepts a full MULTI_AZ_1 shape", func() {
+		spec = multiAzBase()
+		spec.EndpointIpAddressRange = "10.0.255.0/24"
 		spec.RouteTableIds = []*foreignkeyv1.StringValueOrRef{strRef("rtb-abc123")}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts MULTI_AZ_1 with endpoint_ip_address_range", func() {
-		spec.DeploymentType = stringPtr("MULTI_AZ_1")
-		spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
-			strRef("subnet-abc123"),
-			strRef("subnet-def456"),
+	ginkgo.It("accepts INTELLIGENT_TIERING on MULTI_AZ_1 with a read cache", func() {
+		spec = multiAzBase()
+		spec.StorageType = stringPtr("INTELLIGENT_TIERING")
+		spec.StorageCapacityGib = nil
+		spec.ReadCacheConfiguration = &AwsFsxOpenzfsFileSystemReadCacheConfiguration{
+			SizingMode: "PROPORTIONAL_TO_THROUGHPUT_CAPACITY",
 		}
-		spec.PreferredSubnetId = strRef("subnet-abc123")
-		spec.EndpointIpAddressRange = "198.19.255.0/24"
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts a full production SINGLE_AZ_2 configuration", func() {
-		spec.DeploymentType = stringPtr("SINGLE_AZ_2")
-		spec.StorageCapacityGib = 1024
-		spec.ThroughputCapacity = 640
-		spec.SecurityGroupIds = []*foreignkeyv1.StringValueOrRef{strRef("sg-abc123")}
-		spec.KmsKeyId = strRef("arn:aws:kms:us-east-1:123456789012:key/test-key")
-		spec.DiskIopsConfiguration = &AwsFsxOpenzfsFileSystemDiskIopsConfiguration{
-			Mode: stringPtr("AUTOMATIC"),
-		}
-		spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-			DataCompressionType: stringPtr("ZSTD"),
-			RecordSizeKib:       int32Ptr(128),
-			NfsExports: &AwsFsxOpenzfsFileSystemNfsExports{
-				ClientConfigurations: []*AwsFsxOpenzfsFileSystemNfsClientConfiguration{
-					{Clients: "*", Options: []string{"rw", "crossmnt", "no_root_squash"}},
-				},
-			},
-		}
-		spec.AutomaticBackupRetentionDays = int32Ptr(7)
-		spec.DailyAutomaticBackupStartTime = "05:00"
-		spec.CopyTagsToBackups = true
-		spec.CopyTagsToVolumes = true
-		spec.WeeklyMaintenanceStartTime = "1:05:00"
+	ginkgo.It("accepts a backup restore without storage capacity", func() {
+		spec.StorageCapacityGib = nil
+		spec.BackupId = "backup-0123456789abcdef0"
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts a full production MULTI_AZ_1 configuration", func() {
-		spec.DeploymentType = stringPtr("MULTI_AZ_1")
-		spec.StorageCapacityGib = 2048
-		spec.ThroughputCapacity = 1280
-		spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
-			strRef("subnet-abc123"),
-			strRef("subnet-def456"),
-		}
-		spec.PreferredSubnetId = strRef("subnet-abc123")
-		spec.EndpointIpAddressRange = "198.19.255.0/24"
-		spec.RouteTableIds = []*foreignkeyv1.StringValueOrRef{
-			strRef("rtb-abc123"),
-			strRef("rtb-def456"),
-		}
-		spec.SecurityGroupIds = []*foreignkeyv1.StringValueOrRef{strRef("sg-abc123")}
-		spec.KmsKeyId = strRef("arn:aws:kms:us-east-1:123456789012:key/test-key")
-		spec.DiskIopsConfiguration = &AwsFsxOpenzfsFileSystemDiskIopsConfiguration{
-			Mode: stringPtr("USER_PROVISIONED"),
-			Iops: 100000,
-		}
+	ginkgo.It("accepts a full root volume configuration", func() {
 		spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
 			DataCompressionType: stringPtr("ZSTD"),
-			RecordSizeKib:       int32Ptr(128),
+			RecordSizeKib:       int32Ptr(1024),
+			ReadOnly:            false,
 			CopyTagsToSnapshots: true,
 			NfsExports: &AwsFsxOpenzfsFileSystemNfsExports{
 				ClientConfigurations: []*AwsFsxOpenzfsFileSystemNfsClientConfiguration{
@@ -159,111 +124,26 @@ var _ = ginkgo.Describe("AwsFsxOpenzfsFileSystemSpec validations", func() {
 			},
 			UserAndGroupQuotas: []*AwsFsxOpenzfsFileSystemUserAndGroupQuota{
 				{Id: 1000, StorageCapacityQuotaGib: 100, Type: "USER"},
-				{Id: 1001, StorageCapacityQuotaGib: 200, Type: "GROUP"},
-			},
-		}
-		spec.AutomaticBackupRetentionDays = int32Ptr(14)
-		spec.DailyAutomaticBackupStartTime = "03:00"
-		spec.CopyTagsToBackups = true
-		spec.CopyTagsToVolumes = true
-		spec.WeeklyMaintenanceStartTime = "7:02:00"
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// -------------------------------------------------------------------------
-	// Root volume configuration happy paths
-	// -------------------------------------------------------------------------
-
-	ginkgo.It("accepts ZSTD compression on root volume", func() {
-		spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-			DataCompressionType: stringPtr("ZSTD"),
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts LZ4 compression on root volume", func() {
-		spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-			DataCompressionType: stringPtr("LZ4"),
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts NONE compression on root volume", func() {
-		spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-			DataCompressionType: stringPtr("NONE"),
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts record_size_kib = 4", func() {
-		spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-			RecordSizeKib: int32Ptr(4),
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts record_size_kib = 1024", func() {
-		spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-			RecordSizeKib: int32Ptr(1024),
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts NFS exports with multiple client configurations", func() {
-		spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-			NfsExports: &AwsFsxOpenzfsFileSystemNfsExports{
-				ClientConfigurations: []*AwsFsxOpenzfsFileSystemNfsClientConfiguration{
-					{Clients: "*", Options: []string{"rw", "no_root_squash"}},
-					{Clients: "10.0.0.0/8", Options: []string{"ro", "root_squash"}},
-				},
+				{Id: 2000, StorageCapacityQuotaGib: 500, Type: "GROUP"},
 			},
 		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts user and group quotas", func() {
-		spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-			UserAndGroupQuotas: []*AwsFsxOpenzfsFileSystemUserAndGroupQuota{
-				{Id: 0, StorageCapacityQuotaGib: 50, Type: "USER"},
-				{Id: 1000, StorageCapacityQuotaGib: 100, Type: "GROUP"},
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts read-only root volume", func() {
-		spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-			ReadOnly: true,
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// -------------------------------------------------------------------------
-	// Disk IOPS configuration happy paths
-	// -------------------------------------------------------------------------
-
-	ginkgo.It("accepts AUTOMATIC IOPS mode", func() {
-		spec.DiskIopsConfiguration = &AwsFsxOpenzfsFileSystemDiskIopsConfiguration{
-			Mode: stringPtr("AUTOMATIC"),
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts USER_PROVISIONED IOPS mode with iops", func() {
+	ginkgo.It("accepts user-provisioned disk IOPS", func() {
 		spec.DiskIopsConfiguration = &AwsFsxOpenzfsFileSystemDiskIopsConfiguration{
 			Mode: stringPtr("USER_PROVISIONED"),
-			Iops: 50000,
+			Iops: int32Ptr(50000),
 		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts delete options and final backup tags", func() {
+		spec.DeleteOptions = []string{"DELETE_CHILD_VOLUMES_AND_SNAPSHOTS"}
+		spec.SkipFinalBackup = boolPtr(false)
+		spec.FinalBackupTags = map[string]string{"retention": "audit"}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
@@ -280,146 +160,245 @@ var _ = ginkgo.Describe("AwsFsxOpenzfsFileSystemSpec validations", func() {
 		})
 
 		ginkgo.It("fails when storage_capacity_gib is below minimum", func() {
-			spec.StorageCapacityGib = 32
+			spec.StorageCapacityGib = int32Ptr(32)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when storage_capacity_gib is zero", func() {
-			spec.StorageCapacityGib = 0
+		ginkgo.It("fails when storage_capacity_gib exceeds the maximum", func() {
+			spec.StorageCapacityGib = int32Ptr(524289)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when throughput_capacity is zero", func() {
-			spec.ThroughputCapacity = 0
+		ginkgo.It("fails when automatic_backup_retention_days exceeds 90", func() {
+			spec.AutomaticBackupRetentionDays = int32Ptr(91)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when throughput_capacity is negative", func() {
-			spec.ThroughputCapacity = -1
+		ginkgo.It("fails when daily_automatic_backup_start_time is malformed", func() {
+			spec.DailyAutomaticBackupStartTime = "5am"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when weekly_maintenance_start_time is malformed", func() {
+			spec.WeeklyMaintenanceStartTime = "8:05:00"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when more than 50 security groups are supplied", func() {
+			for i := 0; i < 51; i++ {
+				spec.SecurityGroupIds = append(spec.SecurityGroupIds, strRef("sg-x"))
+			}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 	})
 
 	// -------------------------------------------------------------------------
-	// CEL: deployment_type_valid
+	// CEL: deployment/storage types
 	// -------------------------------------------------------------------------
 
-	ginkgo.Context("deployment_type_valid", func() {
+	ginkgo.Context("type enums", func() {
 		ginkgo.It("fails when deployment_type is invalid", func() {
-			spec.DeploymentType = stringPtr("INVALID_TYPE")
+			spec.DeploymentType = stringPtr("MULTI_AZ_2")
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when deployment_type is lowercase", func() {
-			spec.DeploymentType = stringPtr("single_az_2")
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("fails for Lustre deployment type SCRATCH_2", func() {
-			spec.DeploymentType = stringPtr("SCRATCH_2")
+		ginkgo.It("fails when storage_type is invalid", func() {
+			spec.StorageType = stringPtr("HDD")
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 	})
 
 	// -------------------------------------------------------------------------
-	// CEL: preferred_subnet_requires_multi_az
+	// CEL: throughput value sets
 	// -------------------------------------------------------------------------
 
-	ginkgo.Context("preferred_subnet_requires_multi_az", func() {
-		ginkgo.It("fails when preferred_subnet_id is set on SINGLE_AZ_2", func() {
-			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
-			spec.PreferredSubnetId = strRef("subnet-abc123")
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("fails when preferred_subnet_id is set on SINGLE_AZ_1", func() {
-			spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+	ginkgo.Context("throughput_capacity value sets", func() {
+		ginkgo.It("fails when a gen-1 value rides the default SINGLE_AZ_2", func() {
 			spec.ThroughputCapacity = 64
-			spec.PreferredSubnetId = strRef("subnet-abc123")
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("accepts nil preferred_subnet_id on SINGLE_AZ_2", func() {
-			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
+		ginkgo.It("fails when a gen-2 value rides SINGLE_AZ_1", func() {
+			spec.DeploymentType = stringPtr("SINGLE_AZ_1")
+			spec.ThroughputCapacity = 160
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when an arbitrary value rides MULTI_AZ_1", func() {
+			spec = multiAzBase()
+			spec.ThroughputCapacity = 200
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: INTELLIGENT_TIERING contract
+	// -------------------------------------------------------------------------
+
+	ginkgo.Context("INTELLIGENT_TIERING contract", func() {
+		ginkgo.It("fails on a single-AZ deployment", func() {
+			spec.StorageType = stringPtr("INTELLIGENT_TIERING")
+			spec.StorageCapacityGib = nil
+			spec.ReadCacheConfiguration = &AwsFsxOpenzfsFileSystemReadCacheConfiguration{
+				SizingMode: "NO_CACHE",
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails without a read cache decision", func() {
+			spec = multiAzBase()
+			spec.StorageType = stringPtr("INTELLIGENT_TIERING")
+			spec.StorageCapacityGib = nil
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when provisioned capacity rides intelligent tiering", func() {
+			spec = multiAzBase()
+			spec.StorageType = stringPtr("INTELLIGENT_TIERING")
+			spec.ReadCacheConfiguration = &AwsFsxOpenzfsFileSystemReadCacheConfiguration{
+				SizingMode: "PROPORTIONAL_TO_THROUGHPUT_CAPACITY",
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when a read cache rides SSD storage", func() {
+			spec.ReadCacheConfiguration = &AwsFsxOpenzfsFileSystemReadCacheConfiguration{
+				SizingMode: "NO_CACHE",
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when the read cache size rides a non-user-provisioned mode", func() {
+			spec = multiAzBase()
+			spec.StorageType = stringPtr("INTELLIGENT_TIERING")
+			spec.StorageCapacityGib = nil
+			spec.ReadCacheConfiguration = &AwsFsxOpenzfsFileSystemReadCacheConfiguration{
+				SizingMode: "NO_CACHE",
+				SizeGib:    int32Ptr(64),
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: storage capacity presence
+	// -------------------------------------------------------------------------
+
+	ginkgo.Context("storage capacity presence", func() {
+		ginkgo.It("fails when SSD capacity is omitted without a backup", func() {
+			spec.StorageCapacityGib = nil
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when a backup restore also provisions capacity", func() {
+			spec.BackupId = "backup-0123456789abcdef0"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: MULTI_AZ_1 networking contract
+	// -------------------------------------------------------------------------
+
+	ginkgo.Context("MULTI_AZ_1 networking contract", func() {
+		ginkgo.It("fails when MULTI_AZ_1 omits preferred_subnet_id", func() {
+			spec = multiAzBase()
 			spec.PreferredSubnetId = nil
 			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
-	})
 
-	// -------------------------------------------------------------------------
-	// CEL: endpoint_ip_range_requires_multi_az
-	// -------------------------------------------------------------------------
-
-	ginkgo.Context("endpoint_ip_range_requires_multi_az", func() {
-		ginkgo.It("fails when endpoint_ip_address_range is set on SINGLE_AZ_2", func() {
-			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
-			spec.EndpointIpAddressRange = "198.19.255.0/24"
+		ginkgo.It("fails when preferred_subnet_id rides a single-AZ deployment", func() {
+			spec.PreferredSubnetId = strRef("subnet-abc123")
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("accepts empty endpoint_ip_address_range on SINGLE_AZ_2", func() {
-			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
-			spec.EndpointIpAddressRange = ""
+		ginkgo.It("fails when MULTI_AZ_1 has only one subnet", func() {
+			spec = multiAzBase()
+			spec.SubnetIds = spec.SubnetIds[:1]
 			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
-	})
 
-	// -------------------------------------------------------------------------
-	// CEL: route_tables_require_multi_az
-	// -------------------------------------------------------------------------
+		ginkgo.It("fails when a single-AZ deployment has two subnets", func() {
+			spec.SubnetIds = append(spec.SubnetIds, strRef("subnet-def456"))
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 
-	ginkgo.Context("route_tables_require_multi_az", func() {
-		ginkgo.It("fails when route_table_ids is set on SINGLE_AZ_2", func() {
-			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
+		ginkgo.It("fails when endpoint_ip_address_range rides a single-AZ deployment", func() {
+			spec.EndpointIpAddressRange = "10.0.255.0/24"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when route_table_ids ride a single-AZ deployment", func() {
 			spec.RouteTableIds = []*foreignkeyv1.StringValueOrRef{strRef("rtb-abc123")}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
+	})
 
-		ginkgo.It("fails when route_table_ids is set on SINGLE_AZ_1", func() {
+	// -------------------------------------------------------------------------
+	// CEL: delete options
+	// -------------------------------------------------------------------------
+
+	ginkgo.Context("delete_options", func() {
+		ginkgo.It("fails on an unknown delete option", func() {
+			spec.DeleteOptions = []string{"DELETE_EVERYTHING"}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: disk IOPS
+	// -------------------------------------------------------------------------
+
+	ginkgo.Context("disk IOPS", func() {
+		ginkgo.It("fails when iops rides AUTOMATIC mode", func() {
+			spec.DiskIopsConfiguration = &AwsFsxOpenzfsFileSystemDiskIopsConfiguration{
+				Mode: stringPtr("AUTOMATIC"),
+				Iops: int32Ptr(50000),
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when iops exceeds the SINGLE_AZ_1 ceiling", func() {
 			spec.DeploymentType = stringPtr("SINGLE_AZ_1")
 			spec.ThroughputCapacity = 64
-			spec.RouteTableIds = []*foreignkeyv1.StringValueOrRef{strRef("rtb-abc123")}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("accepts empty route_table_ids on SINGLE_AZ_2", func() {
-			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
-			spec.RouteTableIds = nil
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-	})
-
-	// -------------------------------------------------------------------------
-	// CEL: iops_mode_valid (nested message)
-	// -------------------------------------------------------------------------
-
-	ginkgo.Context("iops_mode_valid", func() {
-		ginkgo.It("fails when IOPS mode is invalid", func() {
 			spec.DiskIopsConfiguration = &AwsFsxOpenzfsFileSystemDiskIopsConfiguration{
-				Mode: stringPtr("MANUAL"),
+				Mode: stringPtr("USER_PROVISIONED"),
+				Iops: int32Ptr(160001),
 			}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when IOPS mode is lowercase", func() {
+		ginkgo.It("fails when iops exceeds the SINGLE_AZ_2 ceiling", func() {
 			spec.DiskIopsConfiguration = &AwsFsxOpenzfsFileSystemDiskIopsConfiguration{
-				Mode: stringPtr("automatic"),
+				Mode: stringPtr("USER_PROVISIONED"),
+				Iops: int32Ptr(400001),
 			}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
@@ -427,43 +406,11 @@ var _ = ginkgo.Describe("AwsFsxOpenzfsFileSystemSpec validations", func() {
 	})
 
 	// -------------------------------------------------------------------------
-	// CEL: iops_requires_user_provisioned (nested message)
+	// CEL: root volume nested rules
 	// -------------------------------------------------------------------------
 
-	ginkgo.Context("iops_requires_user_provisioned", func() {
-		ginkgo.It("fails when iops is set with AUTOMATIC mode", func() {
-			spec.DiskIopsConfiguration = &AwsFsxOpenzfsFileSystemDiskIopsConfiguration{
-				Mode: stringPtr("AUTOMATIC"),
-				Iops: 50000,
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("fails when iops is set without explicit mode", func() {
-			spec.DiskIopsConfiguration = &AwsFsxOpenzfsFileSystemDiskIopsConfiguration{
-				Iops: 50000,
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("accepts zero iops with AUTOMATIC mode", func() {
-			spec.DiskIopsConfiguration = &AwsFsxOpenzfsFileSystemDiskIopsConfiguration{
-				Mode: stringPtr("AUTOMATIC"),
-				Iops: 0,
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-	})
-
-	// -------------------------------------------------------------------------
-	// CEL: data_compression_type_valid (root volume)
-	// -------------------------------------------------------------------------
-
-	ginkgo.Context("data_compression_type_valid", func() {
-		ginkgo.It("fails when compression type is invalid", func() {
+	ginkgo.Context("root volume nested rules", func() {
+		ginkgo.It("fails when data_compression_type is invalid", func() {
 			spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
 				DataCompressionType: stringPtr("GZIP"),
 			}
@@ -471,21 +418,7 @@ var _ = ginkgo.Describe("AwsFsxOpenzfsFileSystemSpec validations", func() {
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when compression type is lowercase", func() {
-			spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-				DataCompressionType: stringPtr("zstd"),
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-	})
-
-	// -------------------------------------------------------------------------
-	// CEL: record_size_kib_valid (root volume)
-	// -------------------------------------------------------------------------
-
-	ginkgo.Context("record_size_kib_valid", func() {
-		ginkgo.It("fails when record_size_kib is not a valid value", func() {
+		ginkgo.It("fails when record_size_kib is invalid", func() {
 			spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
 				RecordSizeKib: int32Ptr(100),
 			}
@@ -493,99 +426,19 @@ var _ = ginkgo.Describe("AwsFsxOpenzfsFileSystemSpec validations", func() {
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when record_size_kib is 2", func() {
+		ginkgo.It("fails when nfs_exports has no client configurations", func() {
 			spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-				RecordSizeKib: int32Ptr(2),
+				NfsExports: &AwsFsxOpenzfsFileSystemNfsExports{},
 			}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when record_size_kib is 2048", func() {
-			spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-				RecordSizeKib: int32Ptr(2048),
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("accepts all valid record_size_kib values", func() {
-			for _, size := range []int32{4, 8, 16, 32, 64, 128, 256, 512, 1024} {
-				spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-					RecordSizeKib: int32Ptr(size),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil(), "record_size_kib %d should be valid", size)
-			}
-		})
-	})
-
-	// -------------------------------------------------------------------------
-	// CEL: quota_type_valid (nested message)
-	// -------------------------------------------------------------------------
-
-	ginkgo.Context("quota_type_valid", func() {
-		ginkgo.It("fails when quota type is invalid", func() {
-			spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-				UserAndGroupQuotas: []*AwsFsxOpenzfsFileSystemUserAndGroupQuota{
-					{Id: 1000, StorageCapacityQuotaGib: 100, Type: "INVALID"},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("fails when quota type is lowercase", func() {
-			spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-				UserAndGroupQuotas: []*AwsFsxOpenzfsFileSystemUserAndGroupQuota{
-					{Id: 1000, StorageCapacityQuotaGib: 100, Type: "user"},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("fails when quota type is empty", func() {
-			spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-				UserAndGroupQuotas: []*AwsFsxOpenzfsFileSystemUserAndGroupQuota{
-					{Id: 1000, StorageCapacityQuotaGib: 100, Type: ""},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("accepts USER quota type", func() {
-			spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-				UserAndGroupQuotas: []*AwsFsxOpenzfsFileSystemUserAndGroupQuota{
-					{Id: 1000, StorageCapacityQuotaGib: 100, Type: "USER"},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("accepts GROUP quota type", func() {
-			spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-				UserAndGroupQuotas: []*AwsFsxOpenzfsFileSystemUserAndGroupQuota{
-					{Id: 100, StorageCapacityQuotaGib: 500, Type: "GROUP"},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-	})
-
-	// -------------------------------------------------------------------------
-	// NFS client configuration validations
-	// -------------------------------------------------------------------------
-
-	ginkgo.Context("NFS client configuration", func() {
-		ginkgo.It("fails when clients is empty", func() {
+		ginkgo.It("fails when an NFS client configuration has no options", func() {
 			spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
 				NfsExports: &AwsFsxOpenzfsFileSystemNfsExports{
 					ClientConfigurations: []*AwsFsxOpenzfsFileSystemNfsClientConfiguration{
-						{Clients: "", Options: []string{"rw"}},
+						{Clients: "*"},
 					},
 				},
 			}
@@ -593,12 +446,10 @@ var _ = ginkgo.Describe("AwsFsxOpenzfsFileSystemSpec validations", func() {
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when options is empty", func() {
+		ginkgo.It("fails when a quota has an invalid type", func() {
 			spec.RootVolumeConfiguration = &AwsFsxOpenzfsFileSystemRootVolumeConfiguration{
-				NfsExports: &AwsFsxOpenzfsFileSystemNfsExports{
-					ClientConfigurations: []*AwsFsxOpenzfsFileSystemNfsClientConfiguration{
-						{Clients: "*", Options: []string{}},
-					},
+				UserAndGroupQuotas: []*AwsFsxOpenzfsFileSystemUserAndGroupQuota{
+					{Id: 1000, StorageCapacityQuotaGib: 100, Type: "ROLE"},
 				},
 			}
 			err := protovalidate.Validate(spec)
@@ -606,3 +457,7 @@ var _ = ginkgo.Describe("AwsFsxOpenzfsFileSystemSpec validations", func() {
 		})
 	})
 })
+
+func boolPtr(b bool) *bool {
+	return &b
+}

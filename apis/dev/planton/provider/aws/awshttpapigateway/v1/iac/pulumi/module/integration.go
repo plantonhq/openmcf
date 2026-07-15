@@ -9,58 +9,112 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// integrations creates deduplicated API Gateway integrations. Routes that share the
-// same integration_type, integration_uri, and payload_format_version point to a single
-// underlying Integration resource. Returns a map of integration dedup key to the
-// created Integration resource.
+// integrations creates the deduplicated API Gateway integrations (see
+// dedupIntegrations in locals.go for the whole-object dedup rule) and returns
+// them indexed in first-appearance order, matching the route-to-integration
+// index that dedupIntegrations computes.
 func integrations(
 	ctx *pulumi.Context,
 	locals *Locals,
 	createdApi *apigatewayv2.Api,
 	provider *aws.Provider,
-) (map[string]*apigatewayv2.Integration, error) {
-	result := make(map[string]*apigatewayv2.Integration)
-	counter := 0
+) ([]*apigatewayv2.Integration, error) {
+	distinct, _ := dedupIntegrations(locals.Spec.Routes)
+	result := make([]*apigatewayv2.Integration, 0, len(distinct))
 
-	for _, route := range locals.Spec.Routes {
-		key := integrationKey(route.Integration)
-		if _, exists := result[key]; exists {
-			continue // Already created an integration for this backend
-		}
-
-		counter++
-		resourceName := fmt.Sprintf("%s-integration-%d", locals.ApiName, counter)
-		integration := route.Integration
-
-		// Default payload format version to 2.0 for HTTP APIs.
-		payloadVersion := "2.0"
-		if integration.PayloadFormatVersion != "" {
-			payloadVersion = integration.PayloadFormatVersion
-		}
+	for i, integration := range distinct {
+		resourceName := fmt.Sprintf("%s-integration-%d", locals.ApiName, i+1)
 
 		args := &apigatewayv2.IntegrationArgs{
-			ApiId:                createdApi.ID(),
-			IntegrationType:      pulumi.String(integration.IntegrationType),
-			IntegrationUri:       pulumi.String(integration.IntegrationUri.GetValue()),
-			PayloadFormatVersion: pulumi.StringPtr(payloadVersion),
+			ApiId:           createdApi.ID(),
+			IntegrationType: pulumi.String(integration.IntegrationType),
 		}
 
-		// Integration method (defaults to POST for Lambda, route method for HTTP).
+		// Proxy integrations carry their target here; AWS service
+		// integrations (integration_subtype) express the target in
+		// request_parameters and AWS rejects a URI alongside a subtype --
+		// the spec CEL enforces the split.
+		if integration.IntegrationUri.GetValue() != "" {
+			args.IntegrationUri = pulumi.StringPtr(integration.IntegrationUri.GetValue())
+		}
+		if integration.IntegrationSubtype != "" {
+			args.IntegrationSubtype = pulumi.StringPtr(integration.IntegrationSubtype)
+		}
+
+		// Only AWS_PROXY (Lambda) and AWS service subtypes carry a payload
+		// format. HTTP_PROXY rejects PayloadFormatVersion entirely.
+		switch {
+		case integration.IntegrationSubtype != "":
+			args.PayloadFormatVersion = pulumi.StringPtr("1.0")
+		case integration.IntegrationType == "AWS_PROXY":
+			payloadVersion := "2.0"
+			if integration.PayloadFormatVersion != "" {
+				payloadVersion = integration.PayloadFormatVersion
+			}
+			args.PayloadFormatVersion = pulumi.StringPtr(payloadVersion)
+		}
+
+		// Lambda integrations are always invoked with POST regardless of
+		// this value.
 		if integration.IntegrationMethod != "" {
 			args.IntegrationMethod = pulumi.StringPtr(integration.IntegrationMethod)
 		}
 
-		// Timeout
 		if integration.TimeoutMilliseconds > 0 {
 			args.TimeoutMilliseconds = pulumi.IntPtr(int(integration.TimeoutMilliseconds))
 		}
 
-		created, err := apigatewayv2.NewIntegration(ctx, resourceName, args, pulumi.Provider(provider))
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to create integration %d", counter)
+		// Private integrations reach through a VPC link; the spec CELs
+		// guarantee VPC_LINK <=> connection_id and HTTP_PROXY-only.
+		if integration.ConnectionType != "" {
+			args.ConnectionType = pulumi.StringPtr(integration.ConnectionType)
+		}
+		if integration.ConnectionId.GetValue() != "" {
+			args.ConnectionId = pulumi.StringPtr(integration.ConnectionId.GetValue())
 		}
 
-		result[key] = created
+		// The role API Gateway assumes to call an AWS service action
+		// (required for subtype integrations by spec CEL); Lambda proxies
+		// normally rely on the function's resource policy instead.
+		if integration.CredentialsArn.GetValue() != "" {
+			args.CredentialsArn = pulumi.StringPtr(integration.CredentialsArn.GetValue())
+		}
+
+		// Parameter mappings (proxy) or service-action parameters (subtype).
+		if len(integration.RequestParameters) > 0 {
+			args.RequestParameters = pulumi.ToStringMap(integration.RequestParameters)
+		}
+
+		// Response transforms keyed by backend status code.
+		if len(integration.ResponseParameters) > 0 {
+			respParams := make(apigatewayv2.IntegrationResponseParameterArray, 0, len(integration.ResponseParameters))
+			for _, rp := range integration.ResponseParameters {
+				respParams = append(respParams, &apigatewayv2.IntegrationResponseParameterArgs{
+					StatusCode: pulumi.String(rp.StatusCode),
+					Mappings:   pulumi.ToStringMap(rp.Mappings),
+				})
+			}
+			args.ResponseParameters = respParams
+		}
+
+		// SNI override for private integrations whose internal ALB serves a
+		// public-domain certificate.
+		if integration.TlsServerNameToVerify != "" {
+			args.TlsConfig = &apigatewayv2.IntegrationTlsConfigArgs{
+				ServerNameToVerify: pulumi.StringPtr(integration.TlsServerNameToVerify),
+			}
+		}
+
+		if integration.Description != "" {
+			args.Description = pulumi.StringPtr(integration.Description)
+		}
+
+		created, err := apigatewayv2.NewIntegration(ctx, resourceName, args, pulumi.Provider(provider))
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to create integration %d", i+1)
+		}
+
+		result = append(result, created)
 	}
 
 	return result, nil

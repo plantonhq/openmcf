@@ -24,169 +24,156 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// The authentication method for clients. Supported values:
-// - `certificate`: Mutual TLS authentication using client certificates (default).
-// - `directory_service`: Active Directory username/password authentication.
-// - `cognito`: Federated authentication using AWS Cognito (SAML-based).
-// By default, **certificate-based** authentication is used, which requires clients to present a certificate signed by a trusted CA.
-type AwsClientVpnAuthenticationType int32
-
-const (
-	AwsClientVpnAuthenticationType_certificate AwsClientVpnAuthenticationType = 0
-	AwsClientVpnAuthenticationType_directory   AwsClientVpnAuthenticationType = 2
-	AwsClientVpnAuthenticationType_cognito     AwsClientVpnAuthenticationType = 3
-)
-
-// Enum value maps for AwsClientVpnAuthenticationType.
-var (
-	AwsClientVpnAuthenticationType_name = map[int32]string{
-		0: "certificate",
-		2: "directory",
-		3: "cognito",
-	}
-	AwsClientVpnAuthenticationType_value = map[string]int32{
-		"certificate": 0,
-		"directory":   2,
-		"cognito":     3,
-	}
-)
-
-func (x AwsClientVpnAuthenticationType) Enum() *AwsClientVpnAuthenticationType {
-	p := new(AwsClientVpnAuthenticationType)
-	*p = x
-	return p
-}
-
-func (x AwsClientVpnAuthenticationType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (AwsClientVpnAuthenticationType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (AwsClientVpnAuthenticationType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_enumTypes[0]
-}
-
-func (x AwsClientVpnAuthenticationType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use AwsClientVpnAuthenticationType.Descriptor instead.
-func (AwsClientVpnAuthenticationType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-// The transport protocol for VPN sessions. Can be `tcp` or `udp`.
-// By default, TCP is used (often chosen for reliability and to avoid UDP being blocked), though UDP may offer lower latency for VPN traffic.
-type AwsClientVpnTransportProtocol int32
-
-const (
-	AwsClientVpnTransportProtocol_aws_client_vpn_transport_protocol_unspecified AwsClientVpnTransportProtocol = 0
-	AwsClientVpnTransportProtocol_udp                                           AwsClientVpnTransportProtocol = 1
-	AwsClientVpnTransportProtocol_tcp                                           AwsClientVpnTransportProtocol = 2
-)
-
-// Enum value maps for AwsClientVpnTransportProtocol.
-var (
-	AwsClientVpnTransportProtocol_name = map[int32]string{
-		0: "aws_client_vpn_transport_protocol_unspecified",
-		1: "udp",
-		2: "tcp",
-	}
-	AwsClientVpnTransportProtocol_value = map[string]int32{
-		"aws_client_vpn_transport_protocol_unspecified": 0,
-		"udp": 1,
-		"tcp": 2,
-	}
-)
-
-func (x AwsClientVpnTransportProtocol) Enum() *AwsClientVpnTransportProtocol {
-	p := new(AwsClientVpnTransportProtocol)
-	*p = x
-	return p
-}
-
-func (x AwsClientVpnTransportProtocol) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (AwsClientVpnTransportProtocol) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_enumTypes[1].Descriptor()
-}
-
-func (AwsClientVpnTransportProtocol) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_enumTypes[1]
-}
-
-func (x AwsClientVpnTransportProtocol) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use AwsClientVpnTransportProtocol.Descriptor instead.
-func (AwsClientVpnTransportProtocol) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-// AwsClientVpnSpec defines the configuration for an AWS Client VPN endpoint,
-// which enables secure OpenVPN access for clients into an AWS VPC. Developers can use
-// a Client VPN endpoint to connect from their laptops or remote networks to resources
-// within a private VPC (for example, to access an EC2-hosted database). This specification
-// covers the common settings needed for deploying a Client VPN, focusing on the 80% use case
-// (certificate-based authentication for mutual TLS, single VPC, basic logging and networking options).
+// AwsClientVpnSpec defines the desired configuration for an AWS Client VPN
+// endpoint — the managed OpenVPN server remote users and machines connect to
+// for secure access into AWS networks.
+//
+// The endpoint itself is just the front door. Access flows through three
+// endpoint-scoped satellites, all folded here because none has identity
+// outside its endpoint:
+//
+//   - `subnet_ids` (target network associations): each associated subnet
+//     attaches the endpoint to a VPC and gives clients a path into that
+//     subnet's Availability Zone. Associations are what you pay for hourly and
+//     what take minutes to attach/detach; an endpoint with zero associations
+//     is valid (a pre-staged front door) but routes no traffic.
+//   - `authorization_rules`: network-ACL-style grants deciding WHICH clients
+//     (everyone, or one identity-provider group) may reach WHICH destination
+//     CIDR. No rule, no traffic — even with an association in place.
+//   - `routes`: entries in the endpoint's route table beyond the
+//     auto-created route for each associated subnet's VPC — e.g. 0.0.0.0/0
+//     through a NAT-ed subnet for full-tunnel internet egress, or an on-prem
+//     CIDR through a subnet that reaches a transit gateway.
+//
+// Authentication is decided at create time (all authentication options are
+// create-time immutable): mutual-TLS client certificates,
+// Active Directory user/password, or SAML federation (which also unlocks
+// the self-service portal where users download their own client
+// configuration). Up to two options may be combined (e.g. certificate +
+// federated) — a client passes if it satisfies any one of them.
+//
+// Create-time-immutable (ForceNew) fields — changing any of these replaces
+// the endpoint: `authentication_options`, `client_cidr_block`,
+// `transport_protocol`, `endpoint_ip_address_type`,
+// `traffic_ip_address_type`, and `transit_gateway_configuration`.
+// Everything else updates in place.
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
 type AwsClientVpnSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the Client VPN endpoint will be created.
 	// Example: "us-west-2", "eu-west-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// (Optional) A human-friendly description for the Client VPN endpoint. This is stored for clarity and is typically visible in the AWS Console as the description of the endpoint.
+	// Human-friendly description shown in the AWS console.
 	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	// The target AWS VPC in which to create the Client VPN endpoint. This should reference
-	// an existing AwsVpc resource. The Client VPN will be attached to this VPC's network.
-	// **Must** be a VPC in the same AWS region as the provided credentials.
-	VpcId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
-	// The list of subnet IDs in the above VPC to associate as target networks for the Client VPN.
-	// Each subnet association enables VPN clients to access resources in that subnet’s Availability Zone.
-	// At least one subnet ID is required (the first association will activate the endpoint). All subnets must belong to the given VPC.
-	Subnets []*v1.StringValueOrRef `protobuf:"bytes,4,rep,name=subnets,proto3" json:"subnets,omitempty"`
-	// The IPv4 address range, in CIDR notation, from which to assign client IP addresses. For example, "10.0.0.0/22".
-	// This client CIDR block must not overlap with the VPC’s CIDR or any routes in the VPC.
-	// It defines the pool of IPs that VPN clients will receive. Note: The CIDR block size must be between /22 (inclusive) and /12 (inclusive).
+	// How clients prove who they are before a tunnel is established. One or
+	// two options (a client passes if it satisfies ANY one); all ForceNew —
+	// changing authentication replaces the endpoint. See
+	// AwsClientVpnAuthenticationOption for the three types.
+	AuthenticationOptions []*AwsClientVpnAuthenticationOption `protobuf:"bytes,3,rep,name=authentication_options,json=authenticationOptions,proto3" json:"authentication_options,omitempty"`
+	// The ACM certificate the VPN server presents to connecting clients — the
+	// TLS identity of the endpoint itself, required for every authentication
+	// type. Must live in ACM in the same region. Updates in place (rotating
+	// the server certificate never replaces the endpoint).
+	ServerCertificateArn *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=server_certificate_arn,json=serverCertificateArn,proto3" json:"server_certificate_arn,omitempty"`
+	// The IPv4 range, in CIDR notation, from which connecting clients are
+	// assigned addresses. Block size between /22 and /12; must not overlap
+	// the VPC CIDR or any manually added route, and cannot change after
+	// creation. Required — except when `traffic_ip_address_type` is "ipv6",
+	// where AWS derives client addressing and the field must be empty.
+	// Example: "10.100.0.0/22".
 	ClientCidrBlock string `protobuf:"bytes,5,opt,name=client_cidr_block,json=clientCidrBlock,proto3" json:"client_cidr_block,omitempty"`
-	// The authentication method for clients connecting to this VPN endpoint.
-	// defaults to `certificate` (mutual TLS authentication using client certificates).
-	AuthenticationType AwsClientVpnAuthenticationType `protobuf:"varint,6,opt,name=authentication_type,json=authenticationType,proto3,enum=dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthenticationType" json:"authentication_type,omitempty"`
-	// The ARN of the ACM server certificate to use for the Client VPN endpoint. This TLS certificate is presented by the VPN server to clients upon connection.
-	// The certificate must be present in AWS Certificate Manager in the same region. This field is **required** for establishing the VPN (mutual TLS requires a server cert, and user-based auth still needs a server certificate for encryption).
-	ServerCertificateArn *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=server_certificate_arn,json=serverCertificateArn,proto3" json:"server_certificate_arn,omitempty"`
-	// A list of IPv4 network CIDR ranges that VPN clients are authorized to access through this endpoint.
-	// Typically, these correspond to private subnet ranges within the VPC (e.g., "10.0.0.0/16") or other networks.
-	// For each CIDR here, an authorization rule will be created to allow clients to access that network.
-	// If omitted, no default authorization rule is set (clients would not have access to any network until one is added).
-	CidrAuthorizationRules []string `protobuf:"bytes,8,rep,name=cidr_authorization_rules,json=cidrAuthorizationRules,proto3" json:"cidr_authorization_rules,omitempty"`
-	// Enables or disables split-tunnel routing for the VPN. When `false`, only traffic destined for the above authorized CIDRs (internal networks) will go through the VPN, while all other Internet traffic stays local to the client.
-	// When `true` (full-tunnel), all client traffic is routed through the VPN. Default is `false` (split-tunnel enabled) to limit VPN to internal traffic.
-	DisableSplitTunnel bool `protobuf:"varint,9,opt,name=disable_split_tunnel,json=disableSplitTunnel,proto3" json:"disable_split_tunnel,omitempty"`
-	// The port number on which the Client VPN endpoint will accept connections. The default (443) is commonly used for OpenVPN over TLS.
-	// Using port 443 allows VPN traffic to more easily traverse corporate firewalls.
-	// If a different port (e.g., 1194) is needed, it can be specified here.
-	VpnPort *int32 `protobuf:"varint,10,opt,name=vpn_port,json=vpnPort,proto3,oneof" json:"vpn_port,omitempty"`
-	// The transport protocol for VPN connections. Can be `tcp` or `udp`.
-	TransportProtocol AwsClientVpnTransportProtocol `protobuf:"varint,11,opt,name=transport_protocol,json=transportProtocol,proto3,enum=dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnTransportProtocol" json:"transport_protocol,omitempty"`
-	// The CloudWatch Logs group name for VPN connection logs. If specified, connection logging is enabled for this Client VPN endpoint.
-	// The VPN service will send connection events to the given log group (a log stream is created automatically if not provided).
-	// If left blank, connection logging is disabled.
-	LogGroupName string `protobuf:"bytes,12,opt,name=log_group_name,json=logGroupName,proto3" json:"log_group_name,omitempty"`
-	// (Optional) One or more security group IDs to apply to the Client VPN endpoint's network associations.
-	// These security groups control traffic between VPN clients and VPC resources.
-	// If not provided, the VPC’s default security group will be applied to the Client VPN endpoint.
-	// If provided, ensure the security group rules allow the intended traffic (for example, allowing inbound traffic from clients to target services).
-	// By default, Planton may create a dedicated security group for the endpoint if none are specified.
-	SecurityGroups []*v1.StringValueOrRef `protobuf:"bytes,13,rep,name=security_groups,json=securityGroups,proto3" json:"security_groups,omitempty"`
-	// (Optional) Custom DNS server IP addresses for VPN clients. Up to two IP addresses can be specified.
-	// If set, connected clients will use these DNS servers for name resolution while connected. If not set, clients default to the VPC’s DNS (AmazonProvidedDNS) for name resolution.
-	DnsServers    []string `protobuf:"bytes,14,rep,name=dns_servers,json=dnsServers,proto3" json:"dns_servers,omitempty"`
+	// Split-tunnel routing. When true, only traffic destined for the
+	// endpoint's route table goes through the VPN and everything else stays
+	// local to the client — the usual posture for corp-access VPNs. When
+	// false (AWS's default, full tunnel), ALL client traffic enters the VPN;
+	// pair that with a 0.0.0.0/0 route + authorization rule through a NAT-ed
+	// subnet or clients lose internet access. Updates in place.
+	SplitTunnel bool `protobuf:"varint,6,opt,name=split_tunnel,json=splitTunnel,proto3" json:"split_tunnel,omitempty"`
+	// Transport protocol for VPN sessions. Values: "udp" (AWS default —
+	// lower latency, the standard OpenVPN choice), "tcp" (traverses
+	// firewalls that block UDP). ForceNew.
+	TransportProtocol string `protobuf:"bytes,7,opt,name=transport_protocol,json=transportProtocol,proto3" json:"transport_protocol,omitempty"`
+	// Port the endpoint listens on. Values: 443 (default; blends with HTTPS
+	// at the firewall) or 1194 (the traditional OpenVPN port). Either port
+	// works with either transport protocol. Updates in place.
+	VpnPort *int32 `protobuf:"varint,8,opt,name=vpn_port,json=vpnPort,proto3,oneof" json:"vpn_port,omitempty"`
+	// IP address type of the ENDPOINT itself — which stacks clients can reach
+	// it over. Values: "ipv4" (default), "ipv6", "dual-stack". ForceNew.
+	EndpointIpAddressType string `protobuf:"bytes,9,opt,name=endpoint_ip_address_type,json=endpointIpAddressType,proto3" json:"endpoint_ip_address_type,omitempty"`
+	// IP address type of the traffic INSIDE the tunnel. Values: "ipv4"
+	// (default), "ipv6", "dual-stack". With "ipv6", `client_cidr_block` must
+	// be empty (AWS assigns client addressing). ForceNew.
+	TrafficIpAddressType string `protobuf:"bytes,10,opt,name=traffic_ip_address_type,json=trafficIpAddressType,proto3" json:"traffic_ip_address_type,omitempty"`
+	// The VPC whose security groups apply to this endpoint. Optional — when
+	// omitted, AWS infers the VPC from the first associated subnet and
+	// applies that VPC's default security group. Mutually exclusive with
+	// `transit_gateway_configuration`. Updates in place.
+	VpcId *v1.StringValueOrRef `protobuf:"bytes,11,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
+	// Security groups applied to the endpoint's network interfaces (max 5),
+	// governing traffic between VPN clients and VPC resources. When omitted,
+	// the VPC's default security group applies. Mutually exclusive with
+	// `transit_gateway_configuration`. Updates in place.
+	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,12,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
+	// Subnets to associate as target networks (folded
+	// network associations, one per subnet). Each association attaches the
+	// endpoint to that subnet's AZ; associate subnets in two AZs for
+	// resilience (each association bills hourly). All subnets must belong to
+	// one VPC. May be empty — a zero-association endpoint is valid but routes
+	// no traffic until a subnet is associated. Associations add/remove in
+	// place, but each attach/detach takes AWS several minutes. Mutually
+	// exclusive with `transit_gateway_configuration`.
+	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,13,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
+	// Associate the endpoint with a transit gateway instead of a VPC — VPN
+	// clients then reach every network the transit gateway routes to, without
+	// per-subnet associations. Mutually exclusive with `vpc_id`,
+	// `security_group_ids`, and `subnet_ids`. ForceNew.
+	TransitGatewayConfiguration *AwsClientVpnTransitGatewayConfiguration `protobuf:"bytes,14,opt,name=transit_gateway_configuration,json=transitGatewayConfiguration,proto3" json:"transit_gateway_configuration,omitempty"`
+	// Authorization rules — which clients may reach which destination CIDRs.
+	// Without at least one rule, connected clients can reach NOTHING (the
+	// endpoint authorizes no traffic by default). Rules add/remove in place.
+	AuthorizationRules []*AwsClientVpnAuthorizationRule `protobuf:"bytes,15,rep,name=authorization_rules,json=authorizationRules,proto3" json:"authorization_rules,omitempty"`
+	// Additional routes in the endpoint's route table, beyond the route AWS
+	// auto-creates for each associated subnet's VPC CIDR. The classic uses:
+	// "0.0.0.0/0" through a NAT-ed subnet for full-tunnel internet egress, or
+	// an on-premises CIDR through a subnet that reaches a VPN/transit
+	// gateway. Each route's target subnet must be one of the associated
+	// `subnet_ids`. Routes add/remove in place.
+	Routes []*AwsClientVpnRoute `protobuf:"bytes,16,rep,name=routes,proto3" json:"routes,omitempty"`
+	// Maximum VPN session duration in hours, after which clients must
+	// re-authenticate. Values: 8, 10, 12, 24 (default 24). Updates in place.
+	SessionTimeoutHours *int32 `protobuf:"varint,17,opt,name=session_timeout_hours,json=sessionTimeoutHours,proto3,oneof" json:"session_timeout_hours,omitempty"`
+	// When true, sessions are hard-disconnected at the session timeout and
+	// the user is prompted to reconnect; when false (AWS default), the client
+	// attempts to reconnect automatically. Updates in place.
+	DisconnectOnSessionTimeout bool `protobuf:"varint,18,opt,name=disconnect_on_session_timeout,json=disconnectOnSessionTimeout,proto3" json:"disconnect_on_session_timeout,omitempty"`
+	// Enable the self-service portal, where users download their own client
+	// configuration and reset their certificates. Only supported with a
+	// federated (SAML) authentication option. Updates in place.
+	SelfServicePortalEnabled bool `protobuf:"varint,19,opt,name=self_service_portal_enabled,json=selfServicePortalEnabled,proto3" json:"self_service_portal_enabled,omitempty"`
+	// Run a Lambda function on every new connection — allow/deny posture
+	// checks beyond authentication (device compliance, source IP policy,
+	// time-of-day rules). Presence enables the hook. Updates in place.
+	ClientConnectOptions *AwsClientVpnClientConnectOptions `protobuf:"bytes,20,opt,name=client_connect_options,json=clientConnectOptions,proto3" json:"client_connect_options,omitempty"`
+	// Text banner displayed on AWS-provided clients when a session is
+	// established (legal notices, acceptable-use reminders). Presence enables
+	// the banner. Updates in place.
+	ClientLoginBanner *AwsClientVpnLoginBanner `protobuf:"bytes,21,opt,name=client_login_banner,json=clientLoginBanner,proto3" json:"client_login_banner,omitempty"`
+	// Enforce administrator-defined routes on connected devices, blocking
+	// client-side route manipulation from bypassing the tunnel (a
+	// security-posture hardening dial for managed fleets). Updates in place.
+	ClientRouteEnforcementEnabled bool `protobuf:"varint,22,opt,name=client_route_enforcement_enabled,json=clientRouteEnforcementEnabled,proto3" json:"client_route_enforcement_enabled,omitempty"`
+	// Custom DNS server IPs pushed to connected clients (max 2). When empty,
+	// clients keep their device DNS — set this to the VPC resolver (the VPC
+	// CIDR base + 2, e.g. "10.0.0.2") so clients resolve private hosted
+	// zones. Updates in place.
+	DnsServers []string `protobuf:"bytes,23,rep,name=dns_servers,json=dnsServers,proto3" json:"dns_servers,omitempty"`
+	// Stream connection events (connect, disconnect, authentication failures)
+	// to CloudWatch Logs. Presence enables logging — strongly recommended in
+	// production; without it there is no record of who connected. Updates in
+	// place.
+	ConnectionLog *AwsClientVpnConnectionLog `protobuf:"bytes,24,opt,name=connection_log,json=connectionLog,proto3" json:"connection_log,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -235,16 +222,16 @@ func (x *AwsClientVpnSpec) GetDescription() string {
 	return ""
 }
 
-func (x *AwsClientVpnSpec) GetVpcId() *v1.StringValueOrRef {
+func (x *AwsClientVpnSpec) GetAuthenticationOptions() []*AwsClientVpnAuthenticationOption {
 	if x != nil {
-		return x.VpcId
+		return x.AuthenticationOptions
 	}
 	return nil
 }
 
-func (x *AwsClientVpnSpec) GetSubnets() []*v1.StringValueOrRef {
+func (x *AwsClientVpnSpec) GetServerCertificateArn() *v1.StringValueOrRef {
 	if x != nil {
-		return x.Subnets
+		return x.ServerCertificateArn
 	}
 	return nil
 }
@@ -256,32 +243,18 @@ func (x *AwsClientVpnSpec) GetClientCidrBlock() string {
 	return ""
 }
 
-func (x *AwsClientVpnSpec) GetAuthenticationType() AwsClientVpnAuthenticationType {
+func (x *AwsClientVpnSpec) GetSplitTunnel() bool {
 	if x != nil {
-		return x.AuthenticationType
-	}
-	return AwsClientVpnAuthenticationType_certificate
-}
-
-func (x *AwsClientVpnSpec) GetServerCertificateArn() *v1.StringValueOrRef {
-	if x != nil {
-		return x.ServerCertificateArn
-	}
-	return nil
-}
-
-func (x *AwsClientVpnSpec) GetCidrAuthorizationRules() []string {
-	if x != nil {
-		return x.CidrAuthorizationRules
-	}
-	return nil
-}
-
-func (x *AwsClientVpnSpec) GetDisableSplitTunnel() bool {
-	if x != nil {
-		return x.DisableSplitTunnel
+		return x.SplitTunnel
 	}
 	return false
+}
+
+func (x *AwsClientVpnSpec) GetTransportProtocol() string {
+	if x != nil {
+		return x.TransportProtocol
+	}
+	return ""
 }
 
 func (x *AwsClientVpnSpec) GetVpnPort() int32 {
@@ -291,25 +264,102 @@ func (x *AwsClientVpnSpec) GetVpnPort() int32 {
 	return 0
 }
 
-func (x *AwsClientVpnSpec) GetTransportProtocol() AwsClientVpnTransportProtocol {
+func (x *AwsClientVpnSpec) GetEndpointIpAddressType() string {
 	if x != nil {
-		return x.TransportProtocol
-	}
-	return AwsClientVpnTransportProtocol_aws_client_vpn_transport_protocol_unspecified
-}
-
-func (x *AwsClientVpnSpec) GetLogGroupName() string {
-	if x != nil {
-		return x.LogGroupName
+		return x.EndpointIpAddressType
 	}
 	return ""
 }
 
-func (x *AwsClientVpnSpec) GetSecurityGroups() []*v1.StringValueOrRef {
+func (x *AwsClientVpnSpec) GetTrafficIpAddressType() string {
 	if x != nil {
-		return x.SecurityGroups
+		return x.TrafficIpAddressType
+	}
+	return ""
+}
+
+func (x *AwsClientVpnSpec) GetVpcId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.VpcId
 	}
 	return nil
+}
+
+func (x *AwsClientVpnSpec) GetSecurityGroupIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.SecurityGroupIds
+	}
+	return nil
+}
+
+func (x *AwsClientVpnSpec) GetSubnetIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.SubnetIds
+	}
+	return nil
+}
+
+func (x *AwsClientVpnSpec) GetTransitGatewayConfiguration() *AwsClientVpnTransitGatewayConfiguration {
+	if x != nil {
+		return x.TransitGatewayConfiguration
+	}
+	return nil
+}
+
+func (x *AwsClientVpnSpec) GetAuthorizationRules() []*AwsClientVpnAuthorizationRule {
+	if x != nil {
+		return x.AuthorizationRules
+	}
+	return nil
+}
+
+func (x *AwsClientVpnSpec) GetRoutes() []*AwsClientVpnRoute {
+	if x != nil {
+		return x.Routes
+	}
+	return nil
+}
+
+func (x *AwsClientVpnSpec) GetSessionTimeoutHours() int32 {
+	if x != nil && x.SessionTimeoutHours != nil {
+		return *x.SessionTimeoutHours
+	}
+	return 0
+}
+
+func (x *AwsClientVpnSpec) GetDisconnectOnSessionTimeout() bool {
+	if x != nil {
+		return x.DisconnectOnSessionTimeout
+	}
+	return false
+}
+
+func (x *AwsClientVpnSpec) GetSelfServicePortalEnabled() bool {
+	if x != nil {
+		return x.SelfServicePortalEnabled
+	}
+	return false
+}
+
+func (x *AwsClientVpnSpec) GetClientConnectOptions() *AwsClientVpnClientConnectOptions {
+	if x != nil {
+		return x.ClientConnectOptions
+	}
+	return nil
+}
+
+func (x *AwsClientVpnSpec) GetClientLoginBanner() *AwsClientVpnLoginBanner {
+	if x != nil {
+		return x.ClientLoginBanner
+	}
+	return nil
+}
+
+func (x *AwsClientVpnSpec) GetClientRouteEnforcementEnabled() bool {
+	if x != nil {
+		return x.ClientRouteEnforcementEnabled
+	}
+	return false
 }
 
 func (x *AwsClientVpnSpec) GetDnsServers() []string {
@@ -319,43 +369,588 @@ func (x *AwsClientVpnSpec) GetDnsServers() []string {
 	return nil
 }
 
+func (x *AwsClientVpnSpec) GetConnectionLog() *AwsClientVpnConnectionLog {
+	if x != nil {
+		return x.ConnectionLog
+	}
+	return nil
+}
+
+// AwsClientVpnAuthenticationOption selects one way clients authenticate.
+// The type discriminates which arm is in effect; each arm has its own
+// required identity source. All fields are create-time immutable.
+type AwsClientVpnAuthenticationOption struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Authentication type. Values:
+	//
+	//   - "certificate-authentication": mutual TLS — the client presents a
+	//     certificate issued from the chain in `root_certificate_chain_arn`.
+	//     Zero external identity infrastructure; certificate distribution and
+	//     revocation are on you.
+	//
+	//   - "directory-service-authentication": user/password against an AWS
+	//     Directory Service directory (`active_directory_id`) — Managed
+	//     Microsoft AD or AD Connector to on-prem AD.
+	//
+	//   - "federated-authentication": SAML 2.0 single sign-on through an IAM
+	//     SAML provider (`saml_provider_arn`) — Okta, Entra ID, and friends;
+	//     the only type that supports the self-service portal.
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// For "certificate-authentication": the ACM certificate whose CHAIN
+	// client certificates must descend from — the client CA, distinct in
+	// role from the endpoint's server certificate (for a self-signed setup
+	// the same imported certificate may serve both roles, but never assume
+	// it). Reference an imported CA certificate in ACM.
+	RootCertificateChainArn *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=root_certificate_chain_arn,json=rootCertificateChainArn,proto3" json:"root_certificate_chain_arn,omitempty"`
+	// For "directory-service-authentication": the AWS Directory Service
+	// directory ID (e.g. "d-1234567890"). Directories have no Planton kind —
+	// pass the literal ID.
+	ActiveDirectoryId string `protobuf:"bytes,3,opt,name=active_directory_id,json=activeDirectoryId,proto3" json:"active_directory_id,omitempty"`
+	// For "federated-authentication": the ARN of the IAM SAML identity
+	// provider that brokers sign-on (e.g.
+	// "arn:aws:iam::123456789012:saml-provider/okta"). IAM SAML providers
+	// have no Planton kind — pass the literal ARN.
+	SamlProviderArn string `protobuf:"bytes,4,opt,name=saml_provider_arn,json=samlProviderArn,proto3" json:"saml_provider_arn,omitempty"`
+	// For "federated-authentication", optional: a second IAM SAML provider
+	// used only by the self-service portal (when the portal needs a
+	// different SAML app than the VPN itself).
+	SelfServiceSamlProviderArn string `protobuf:"bytes,5,opt,name=self_service_saml_provider_arn,json=selfServiceSamlProviderArn,proto3" json:"self_service_saml_provider_arn,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
+}
+
+func (x *AwsClientVpnAuthenticationOption) Reset() {
+	*x = AwsClientVpnAuthenticationOption{}
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsClientVpnAuthenticationOption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsClientVpnAuthenticationOption) ProtoMessage() {}
+
+func (x *AwsClientVpnAuthenticationOption) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsClientVpnAuthenticationOption.ProtoReflect.Descriptor instead.
+func (*AwsClientVpnAuthenticationOption) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsClientVpnAuthenticationOption) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *AwsClientVpnAuthenticationOption) GetRootCertificateChainArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.RootCertificateChainArn
+	}
+	return nil
+}
+
+func (x *AwsClientVpnAuthenticationOption) GetActiveDirectoryId() string {
+	if x != nil {
+		return x.ActiveDirectoryId
+	}
+	return ""
+}
+
+func (x *AwsClientVpnAuthenticationOption) GetSamlProviderArn() string {
+	if x != nil {
+		return x.SamlProviderArn
+	}
+	return ""
+}
+
+func (x *AwsClientVpnAuthenticationOption) GetSelfServiceSamlProviderArn() string {
+	if x != nil {
+		return x.SelfServiceSamlProviderArn
+	}
+	return ""
+}
+
+// AwsClientVpnAuthorizationRule grants a set of clients access to one
+// destination CIDR. Rules are the endpoint's network ACL: nothing is
+// reachable until a rule authorizes it. Every field is create-time
+// immutable on the rule (changing one replaces that rule in place — the
+// endpoint itself is untouched).
+type AwsClientVpnAuthorizationRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The destination network being authorized, in CIDR notation — a VPC
+	// CIDR, one subnet, an on-prem range, or "0.0.0.0/0" for internet access
+	// (full-tunnel setups).
+	TargetNetworkCidr string `protobuf:"bytes,1,opt,name=target_network_cidr,json=targetNetworkCidr,proto3" json:"target_network_cidr,omitempty"`
+	// Grant access only to one identity-provider group: an Active Directory
+	// group SID (directory authentication) or a SAML group attribute value
+	// (federated authentication). Exactly one of this and
+	// `authorize_all_groups` must be set. Certificate-only endpoints have no
+	// group concept — use `authorize_all_groups`.
+	AccessGroupId string `protobuf:"bytes,2,opt,name=access_group_id,json=accessGroupId,proto3" json:"access_group_id,omitempty"`
+	// Grant access to every authenticated client. Exactly one of this and
+	// `access_group_id` must be set.
+	AuthorizeAllGroups bool `protobuf:"varint,3,opt,name=authorize_all_groups,json=authorizeAllGroups,proto3" json:"authorize_all_groups,omitempty"`
+	// Description shown in the AWS console.
+	Description   string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsClientVpnAuthorizationRule) Reset() {
+	*x = AwsClientVpnAuthorizationRule{}
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsClientVpnAuthorizationRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsClientVpnAuthorizationRule) ProtoMessage() {}
+
+func (x *AwsClientVpnAuthorizationRule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsClientVpnAuthorizationRule.ProtoReflect.Descriptor instead.
+func (*AwsClientVpnAuthorizationRule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsClientVpnAuthorizationRule) GetTargetNetworkCidr() string {
+	if x != nil {
+		return x.TargetNetworkCidr
+	}
+	return ""
+}
+
+func (x *AwsClientVpnAuthorizationRule) GetAccessGroupId() string {
+	if x != nil {
+		return x.AccessGroupId
+	}
+	return ""
+}
+
+func (x *AwsClientVpnAuthorizationRule) GetAuthorizeAllGroups() bool {
+	if x != nil {
+		return x.AuthorizeAllGroups
+	}
+	return false
+}
+
+func (x *AwsClientVpnAuthorizationRule) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+// AwsClientVpnRoute is one entry in the endpoint's route table: destination
+// CIDR → target subnet. AWS auto-creates routes for each associated
+// subnet's VPC CIDR; model here only the additions (internet egress,
+// on-prem networks, peered VPCs). A route's traffic still needs a matching
+// authorization rule. Every field is create-time immutable on the route
+// (changing one replaces that route in place).
+type AwsClientVpnRoute struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Destination network, in CIDR notation. "0.0.0.0/0" routes all client
+	// internet traffic through the VPN (full tunnel) — the target subnet
+	// then needs a NAT path or clients lose internet access.
+	DestinationCidrBlock string `protobuf:"bytes,1,opt,name=destination_cidr_block,json=destinationCidrBlock,proto3" json:"destination_cidr_block,omitempty"`
+	// The associated subnet traffic to this destination egresses through.
+	// Must be one of the endpoint's `subnet_ids` — AWS rejects a route whose
+	// subnet is not (yet) associated.
+	TargetSubnetId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=target_subnet_id,json=targetSubnetId,proto3" json:"target_subnet_id,omitempty"`
+	// Description shown in the AWS console.
+	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsClientVpnRoute) Reset() {
+	*x = AwsClientVpnRoute{}
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsClientVpnRoute) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsClientVpnRoute) ProtoMessage() {}
+
+func (x *AwsClientVpnRoute) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsClientVpnRoute.ProtoReflect.Descriptor instead.
+func (*AwsClientVpnRoute) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsClientVpnRoute) GetDestinationCidrBlock() string {
+	if x != nil {
+		return x.DestinationCidrBlock
+	}
+	return ""
+}
+
+func (x *AwsClientVpnRoute) GetTargetSubnetId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.TargetSubnetId
+	}
+	return nil
+}
+
+func (x *AwsClientVpnRoute) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+// AwsClientVpnClientConnectOptions runs a Lambda function on every new
+// connection for allow/deny posture decisions beyond authentication.
+type AwsClientVpnClientConnectOptions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Lambda function AWS invokes for each connection attempt. AWS
+	// requires the function name to start with "AWSClientVPN-". The function
+	// receives connection metadata (user, device, source IP) and returns an
+	// allow/deny decision, optionally with an error message shown to the
+	// user.
+	LambdaFunctionArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=lambda_function_arn,json=lambdaFunctionArn,proto3" json:"lambda_function_arn,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AwsClientVpnClientConnectOptions) Reset() {
+	*x = AwsClientVpnClientConnectOptions{}
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsClientVpnClientConnectOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsClientVpnClientConnectOptions) ProtoMessage() {}
+
+func (x *AwsClientVpnClientConnectOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsClientVpnClientConnectOptions.ProtoReflect.Descriptor instead.
+func (*AwsClientVpnClientConnectOptions) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsClientVpnClientConnectOptions) GetLambdaFunctionArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.LambdaFunctionArn
+	}
+	return nil
+}
+
+// AwsClientVpnLoginBanner shows a text banner on AWS-provided clients when
+// a VPN session is established.
+type AwsClientVpnLoginBanner struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Banner text, up to 1400 UTF-8 characters — legal notices,
+	// acceptable-use reminders, support contacts.
+	BannerText    string `protobuf:"bytes,1,opt,name=banner_text,json=bannerText,proto3" json:"banner_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsClientVpnLoginBanner) Reset() {
+	*x = AwsClientVpnLoginBanner{}
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsClientVpnLoginBanner) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsClientVpnLoginBanner) ProtoMessage() {}
+
+func (x *AwsClientVpnLoginBanner) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsClientVpnLoginBanner.ProtoReflect.Descriptor instead.
+func (*AwsClientVpnLoginBanner) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AwsClientVpnLoginBanner) GetBannerText() string {
+	if x != nil {
+		return x.BannerText
+	}
+	return ""
+}
+
+// AwsClientVpnConnectionLog streams connection events to CloudWatch Logs.
+type AwsClientVpnConnectionLog struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The CloudWatch log group connection events are written to.
+	CloudwatchLogGroup *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=cloudwatch_log_group,json=cloudwatchLogGroup,proto3" json:"cloudwatch_log_group,omitempty"`
+	// Optional log stream within the group. When empty, AWS creates one.
+	CloudwatchLogStream string `protobuf:"bytes,2,opt,name=cloudwatch_log_stream,json=cloudwatchLogStream,proto3" json:"cloudwatch_log_stream,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AwsClientVpnConnectionLog) Reset() {
+	*x = AwsClientVpnConnectionLog{}
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsClientVpnConnectionLog) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsClientVpnConnectionLog) ProtoMessage() {}
+
+func (x *AwsClientVpnConnectionLog) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsClientVpnConnectionLog.ProtoReflect.Descriptor instead.
+func (*AwsClientVpnConnectionLog) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AwsClientVpnConnectionLog) GetCloudwatchLogGroup() *v1.StringValueOrRef {
+	if x != nil {
+		return x.CloudwatchLogGroup
+	}
+	return nil
+}
+
+func (x *AwsClientVpnConnectionLog) GetCloudwatchLogStream() string {
+	if x != nil {
+		return x.CloudwatchLogStream
+	}
+	return ""
+}
+
+// AwsClientVpnTransitGatewayConfiguration attaches the endpoint to a
+// transit gateway instead of a VPC — clients reach every network the
+// gateway routes to. All fields are create-time immutable.
+type AwsClientVpnTransitGatewayConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The transit gateway to attach to.
+	TransitGatewayId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=transit_gateway_id,json=transitGatewayId,proto3" json:"transit_gateway_id,omitempty"`
+	// Availability Zone NAMES the attachment spans (e.g. "us-west-2a").
+	// Mutually exclusive with availability_zone_ids. Leave both empty for
+	// AWS's default AZ selection.
+	AvailabilityZones []string `protobuf:"bytes,2,rep,name=availability_zones,json=availabilityZones,proto3" json:"availability_zones,omitempty"`
+	// Availability Zone IDs the attachment spans (e.g. "usw2-az1") — the
+	// account-independent form. Mutually exclusive with availability_zones.
+	AvailabilityZoneIds []string `protobuf:"bytes,3,rep,name=availability_zone_ids,json=availabilityZoneIds,proto3" json:"availability_zone_ids,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AwsClientVpnTransitGatewayConfiguration) Reset() {
+	*x = AwsClientVpnTransitGatewayConfiguration{}
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsClientVpnTransitGatewayConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsClientVpnTransitGatewayConfiguration) ProtoMessage() {}
+
+func (x *AwsClientVpnTransitGatewayConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsClientVpnTransitGatewayConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsClientVpnTransitGatewayConfiguration) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AwsClientVpnTransitGatewayConfiguration) GetTransitGatewayId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.TransitGatewayId
+	}
+	return nil
+}
+
+func (x *AwsClientVpnTransitGatewayConfiguration) GetAvailabilityZones() []string {
+	if x != nil {
+		return x.AvailabilityZones
+	}
+	return nil
+}
+
+func (x *AwsClientVpnTransitGatewayConfiguration) GetAvailabilityZoneIds() []string {
+	if x != nil {
+		return x.AvailabilityZoneIds
+	}
+	return nil
+}
+
 var File_dev_planton_provider_aws_awsclientvpn_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3dev/planton/provider/aws/awsclientvpn/v1/spec.proto\x12(dev.planton.provider.aws.awsclientvpn.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb6\x10\n" +
+	"3dev/planton/provider/aws/awsclientvpn/v1/spec.proto\x12(dev.planton.provider.aws.awsclientvpn.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xdd\x1c\n" +
 	"\x10AwsClientVpnSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescription\x12o\n" +
-	"\x06vpc_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12z\n" +
-	"\asubnets\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\asubnets\x12m\n" +
-	"\x11client_cidr_block\x18\x05 \x01(\tBA\xbaH>\xc8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x0fclientCidrBlock\x12\x83\x01\n" +
-	"\x13authentication_type\x18\x06 \x01(\x0e2H.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthenticationTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x12authenticationType\x12\x90\x01\n" +
-	"\x16server_certificate_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x14serverCertificateArn\x12B\n" +
-	"\x18cidr_authorization_rules\x18\b \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x16cidrAuthorizationRules\x120\n" +
-	"\x14disable_split_tunnel\x18\t \x01(\bR\x12disableSplitTunnel\x12'\n" +
-	"\bvpn_port\x18\n" +
-	" \x01(\x05B\a\x8a\xa6\x1d\x03443H\x00R\avpnPort\x88\x01\x01\x12\x87\x01\n" +
-	"\x12transport_protocol\x18\v \x01(\x0e2G.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnTransportProtocolB\x0f\xbaH\x05\x82\x01\x02\x10\x01\x92\xa6\x1d\x03tcpR\x11transportProtocol\x12$\n" +
-	"\x0elog_group_name\x18\f \x01(\tR\flogGroupName\x12\x86\x01\n" +
-	"\x0fsecurity_groups\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12+\n" +
-	"\vdns_servers\x18\x0e \x03(\tB\n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x90\x01\n" +
+	"\x16authentication_options\x18\x03 \x03(\v2J.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthenticationOptionB\r\xbaH\n" +
+	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x02R\x15authenticationOptions\x12\x90\x01\n" +
+	"\x16server_certificate_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x14serverCertificateArn\x12m\n" +
+	"\x11client_cidr_block\x18\x05 \x01(\tBA\xbaH>\xd8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x0fclientCidrBlock\x12!\n" +
+	"\fsplit_tunnel\x18\x06 \x01(\bR\vsplitTunnel\x12H\n" +
+	"\x12transport_protocol\x18\a \x01(\tB\x19\xbaH\x0f\xd8\x01\x01r\n" +
+	"R\x03udpR\x03tcp\x8a\xa6\x1d\x03udpR\x11transportProtocol\x122\n" +
+	"\bvpn_port\x18\b \x01(\x05B\x12\xbaH\b\x1a\x060\xbb\x030\xaa\t\x8a\xa6\x1d\x03443H\x00R\avpnPort\x88\x01\x01\x12Y\n" +
+	"\x18endpoint_ip_address_type\x18\t \x01(\tB \xbaH\x1d\xd8\x01\x01r\x18R\x04ipv4R\x04ipv6R\n" +
+	"dual-stackR\x15endpointIpAddressType\x12W\n" +
+	"\x17traffic_ip_address_type\x18\n" +
+	" \x01(\tB \xbaH\x1d\xd8\x01\x01r\x18R\x04ipv4R\x04ipv6R\n" +
+	"dual-stackR\x14trafficIpAddressType\x12i\n" +
+	"\x06vpc_id\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12t\n" +
+	"\n" +
+	"subnet_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x95\x01\n" +
+	"\x1dtransit_gateway_configuration\x18\x0e \x01(\v2Q.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnTransitGatewayConfigurationR\x1btransitGatewayConfiguration\x12x\n" +
+	"\x13authorization_rules\x18\x0f \x03(\v2G.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthorizationRuleR\x12authorizationRules\x12S\n" +
+	"\x06routes\x18\x10 \x03(\v2;.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnRouteR\x06routes\x12L\n" +
+	"\x15session_timeout_hours\x18\x11 \x01(\x05B\x13\xbaH\n" +
+	"\x1a\b0\b0\n" +
+	"0\f0\x18\x8a\xa6\x1d\x0224H\x01R\x13sessionTimeoutHours\x88\x01\x01\x12A\n" +
+	"\x1ddisconnect_on_session_timeout\x18\x12 \x01(\bR\x1adisconnectOnSessionTimeout\x12=\n" +
+	"\x1bself_service_portal_enabled\x18\x13 \x01(\bR\x18selfServicePortalEnabled\x12\x80\x01\n" +
+	"\x16client_connect_options\x18\x14 \x01(\v2J.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnClientConnectOptionsR\x14clientConnectOptions\x12q\n" +
+	"\x13client_login_banner\x18\x15 \x01(\v2A.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnLoginBannerR\x11clientLoginBanner\x12G\n" +
+	" client_route_enforcement_enabled\x18\x16 \x01(\bR\x1dclientRouteEnforcementEnabled\x12+\n" +
+	"\vdns_servers\x18\x17 \x03(\tB\n" +
 	"\xbaH\a\x92\x01\x04\x10\x02\x18\x01R\n" +
-	"dnsServers:\xd7\x06\xbaH\xd3\x06\x1ay\n" +
-	"\x10vpn_port_allowed\x121vpn_port must be 443 (TCP) or 1194 (UDP) when set\x1a2this.vpn_port == 0 || this.vpn_port in [443, 1194]\x1a\x94\x02\n" +
-	"\x15protocol_port_pairing\x12Qwhen both are set, transport_protocol must match vpn_port (TCP↔443, UDP↔1194)\x1a\xa7\x01this.vpn_port == 0 || this.transport_protocol == 0 || (this.transport_protocol == 2 && this.vpn_port == 443) || (this.transport_protocol == 1 && this.vpn_port == 1194)\x1ai\n" +
-	"\x0eauth_supported\x128only certificate-based authentication is supported in v1\x1a\x1dthis.authentication_type == 0\x1a\xc4\x01\n" +
-	"\x16cidr_auth_rules_format\x12=each cidr_authorization_rules entry must be a valid IPv4 CIDR\x1akthis.cidr_authorization_rules.all(c, c.matches(\"^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$\"))\x1a\x8c\x01\n" +
+	"dnsServers\x12j\n" +
+	"\x0econnection_log\x18\x18 \x01(\v2C.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnConnectionLogR\rconnectionLog:\xee\n" +
+	"\xbaH\xea\n" +
+	"\x1a\x9a\x02\n" +
+	"(client_cidr_required_unless_ipv6_traffic\x12\x87\x01client_cidr_block is required — except when traffic_ip_address_type is 'ipv6', where it must be empty (AWS assigns client addressing)\x1adthis.traffic_ip_address_type == 'ipv6' ? this.client_cidr_block == '' : this.client_cidr_block != ''\x1a\xd9\x01\n" +
+	"\x10tgw_excludes_vpc\x12\x84\x01transit_gateway_configuration and vpc_id are mutually exclusive — the endpoint attaches to a transit gateway or to a VPC, not both\x1a>!(has(this.transit_gateway_configuration) && has(this.vpc_id))\x1a\xf7\x01\n" +
+	"\x1ctgw_excludes_security_groups\x12\x85\x01security_group_ids cannot be set together with transit_gateway_configuration — security groups belong to the VPC attachment surface\x1aO!has(this.transit_gateway_configuration) || this.security_group_ids.size() == 0\x1a\xef\x01\n" +
+	" tgw_excludes_subnet_associations\x12\x81\x01subnet_ids cannot be set together with transit_gateway_configuration — subnet associations belong to the VPC attachment surface\x1aG!has(this.transit_gateway_configuration) || this.subnet_ids.size() == 0\x1a\xf3\x01\n" +
+	"&self_service_portal_requires_federated\x12Wthe self-service portal is only available with a federated (SAML) authentication option\x1ap!this.self_service_portal_enabled || this.authentication_options.exists(a, a.type == 'federated-authentication')\x1a\x8c\x01\n" +
 	"\x12dns_servers_format\x120dns_servers must be valid IPv4 addresses (max 2)\x1aDthis.dns_servers.all(s, s.matches(\"^([0-9]{1,3}\\\\.){3}[0-9]{1,3}$\"))B\v\n" +
-	"\t_vpn_port*M\n" +
-	"\x1eAwsClientVpnAuthenticationType\x12\x0f\n" +
-	"\vcertificate\x10\x00\x12\r\n" +
-	"\tdirectory\x10\x02\x12\v\n" +
-	"\acognito\x10\x03*d\n" +
-	"\x1dAwsClientVpnTransportProtocol\x121\n" +
-	"-aws_client_vpn_transport_protocol_unspecified\x10\x00\x12\a\n" +
-	"\x03udp\x10\x01\x12\a\n" +
-	"\x03tcp\x10\x02B\xdb\x02\n" +
+	"\t_vpn_portB\x18\n" +
+	"\x16_session_timeout_hours\"\xcb\x0e\n" +
+	" AwsClientVpnAuthenticationOption\x12\x1a\n" +
+	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\x91\x01\n" +
+	"\x1aroot_certificate_chain_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x17rootCertificateChainArn\x12.\n" +
+	"\x13active_directory_id\x18\x03 \x01(\tR\x11activeDirectoryId\x12*\n" +
+	"\x11saml_provider_arn\x18\x04 \x01(\tR\x0fsamlProviderArn\x12B\n" +
+	"\x1eself_service_saml_provider_arn\x18\x05 \x01(\tR\x1aselfServiceSamlProviderArn:\xd6\v\xbaH\xd2\v\x1a\x82\x02\n" +
+	"\x16auth_type_valid_values\x12{authentication type must be 'certificate-authentication', 'directory-service-authentication', or 'federated-authentication'\x1akthis.type in ['certificate-authentication', 'directory-service-authentication', 'federated-authentication']\x1a\xef\x01\n" +
+	"\x1fcertificate_requires_root_chain\x12ycertificate-authentication requires root_certificate_chain_arn — the client CA chain certificates are validated against\x1aQthis.type != 'certificate-authentication' || has(this.root_certificate_chain_arn)\x1a\xb3\x01\n" +
+	"\x1fdirectory_requires_directory_id\x12=directory-service-authentication requires active_directory_id\x1aQthis.type != 'directory-service-authentication' || this.active_directory_id != ''\x1a\xa0\x01\n" +
+	" federated_requires_saml_provider\x123federated-authentication requires saml_provider_arn\x1aGthis.type != 'federated-authentication' || this.saml_provider_arn != ''\x1a\xc2\x01\n" +
+	"\x1froot_chain_only_for_certificate\x12Kroot_certificate_chain_arn is only accepted with certificate-authentication\x1aRthis.type == 'certificate-authentication' || !has(this.root_certificate_chain_arn)\x1a\xc0\x01\n" +
+	"\x1fdirectory_id_only_for_directory\x12Jactive_directory_id is only accepted with directory-service-authentication\x1aQthis.type == 'directory-service-authentication' || this.active_directory_id == ''\x1a\xf7\x01\n" +
+	"\x17saml_only_for_federated\x12dsaml_provider_arn and self_service_saml_provider_arn are only accepted with federated-authentication\x1avthis.type == 'federated-authentication' || (this.saml_provider_arn == '' && this.self_service_saml_provider_arn == '')\"\xdd\x03\n" +
+	"\x1dAwsClientVpnAuthorizationRule\x12q\n" +
+	"\x13target_network_cidr\x18\x01 \x01(\tBA\xbaH>\xc8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x11targetNetworkCidr\x12&\n" +
+	"\x0faccess_group_id\x18\x02 \x01(\tR\raccessGroupId\x120\n" +
+	"\x14authorize_all_groups\x18\x03 \x01(\bR\x12authorizeAllGroups\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription:\xcc\x01\xbaH\xc8\x01\x1a\xc5\x01\n" +
+	"\x13exactly_one_grantee\x12sset exactly one of access_group_id (grant one IdP group) or authorize_all_groups (grant every authenticated client)\x1a9(this.access_group_id != '') != this.authorize_all_groups\"\xb6\x02\n" +
+	"\x11AwsClientVpnRoute\x12w\n" +
+	"\x16destination_cidr_block\x18\x01 \x01(\tBA\xbaH>\xc8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x14destinationCidrBlock\x12\x85\x01\n" +
+	"\x10target_subnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\x0etargetSubnetId\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\"\xb3\x01\n" +
+	" AwsClientVpnClientConnectOptions\x12\x8e\x01\n" +
+	"\x13lambda_function_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x11lambdaFunctionArn\"G\n" +
+	"\x17AwsClientVpnLoginBanner\x12,\n" +
+	"\vbanner_text\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xf8\n" +
+	"R\n" +
+	"bannerText\"\xe4\x01\n" +
+	"\x19AwsClientVpnConnectionLog\x12\x92\x01\n" +
+	"\x14cloudwatch_log_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xb6\x02\x92\xd4a\x1dstatus.outputs.log_group_nameR\x12cloudwatchLogGroup\x122\n" +
+	"\x15cloudwatch_log_stream\x18\x02 \x01(\tR\x13cloudwatchLogStream\"\x8c\x04\n" +
+	"'AwsClientVpnTransitGatewayConfiguration\x12\x92\x01\n" +
+	"\x12transit_gateway_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x9a\x02\x92\xd4a!status.outputs.transit_gateway_idR\x10transitGatewayId\x127\n" +
+	"\x12availability_zones\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x11availabilityZones\x12<\n" +
+	"\x15availability_zone_ids\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x13availabilityZoneIds:\xd4\x01\xbaH\xd0\x01\x1a\xcd\x01\n" +
+	"\vone_az_form\x12navailability_zones (names) and availability_zone_ids (IDs) are mutually exclusive — pick one addressing form\x1aN!(this.availability_zones.size() > 0 && this.availability_zone_ids.size() > 0)B\xdb\x02\n" +
 	",com.dev.planton.provider.aws.awsclientvpn.v1B\tSpecProtoP\x01ZYgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsclientvpn/v1;awsclientvpnv1\xa2\x02\x05DPPAA\xaa\x02(Dev.Planton.Provider.Aws.Awsclientvpn.V1\xca\x02(Dev\\Planton\\Provider\\Aws\\Awsclientvpn\\V1\xe2\x024Dev\\Planton\\Provider\\Aws\\Awsclientvpn\\V1\\GPBMetadata\xea\x02-Dev::Planton::Provider::Aws::Awsclientvpn::V1b\x06proto3"
 
 var (
@@ -370,26 +965,40 @@ func file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDescGZIP() []by
 	return file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_goTypes = []any{
-	(AwsClientVpnAuthenticationType)(0), // 0: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthenticationType
-	(AwsClientVpnTransportProtocol)(0),  // 1: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnTransportProtocol
-	(*AwsClientVpnSpec)(nil),            // 2: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec
-	(*v1.StringValueOrRef)(nil),         // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsClientVpnSpec)(nil),                        // 0: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec
+	(*AwsClientVpnAuthenticationOption)(nil),        // 1: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthenticationOption
+	(*AwsClientVpnAuthorizationRule)(nil),           // 2: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthorizationRule
+	(*AwsClientVpnRoute)(nil),                       // 3: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnRoute
+	(*AwsClientVpnClientConnectOptions)(nil),        // 4: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnClientConnectOptions
+	(*AwsClientVpnLoginBanner)(nil),                 // 5: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnLoginBanner
+	(*AwsClientVpnConnectionLog)(nil),               // 6: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnConnectionLog
+	(*AwsClientVpnTransitGatewayConfiguration)(nil), // 7: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnTransitGatewayConfiguration
+	(*v1.StringValueOrRef)(nil),                     // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0, // 2: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.authentication_type:type_name -> dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthenticationType
-	3, // 3: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.server_certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 4: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.transport_protocol:type_name -> dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnTransportProtocol
-	3, // 5: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	1,  // 0: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.authentication_options:type_name -> dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthenticationOption
+	8,  // 1: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.server_certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 2: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 3: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 4: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 5: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.transit_gateway_configuration:type_name -> dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnTransitGatewayConfiguration
+	2,  // 6: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.authorization_rules:type_name -> dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthorizationRule
+	3,  // 7: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.routes:type_name -> dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnRoute
+	4,  // 8: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.client_connect_options:type_name -> dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnClientConnectOptions
+	5,  // 9: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.client_login_banner:type_name -> dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnLoginBanner
+	6,  // 10: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnSpec.connection_log:type_name -> dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnConnectionLog
+	8,  // 11: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthenticationOption.root_certificate_chain_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 12: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnRoute.target_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 13: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnClientConnectOptions.lambda_function_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 14: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnConnectionLog.cloudwatch_log_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 15: dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnTransitGatewayConfiguration.transit_gateway_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // [16:16] is the sub-list for method output_type
+	16, // [16:16] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_init() }
@@ -403,14 +1012,13 @@ func file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   1,
+			NumEnums:      0,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_aws_awsclientvpn_v1_spec_proto = out.File

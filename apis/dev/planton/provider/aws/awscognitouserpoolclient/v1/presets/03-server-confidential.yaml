@@ -1,0 +1,41 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsCognitoUserPoolClient
+metadata:
+  name: ${name}
+  org: ${org}
+  env: ${env}
+  id: ${id}
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/stack.name: ${env}.AwsCognitoUserPoolClient.${name}
+spec:
+  region: <aws-region>
+  userPoolId:
+    valueFrom:
+      kind: AwsCognitoUserPool
+      name: <user-pool-name>
+      fieldPath: status.outputs.user_pool_id
+  generateSecret: true
+  allowedOauthFlowsUserPoolClient: true
+  allowedOauthFlows:
+    - code
+  allowedOauthScopes:
+    - openid
+    - email
+    - profile
+  callbackUrls:
+    - https://app.example.com/auth/callback
+  logoutUrls:
+    - https://app.example.com/auth/logout
+  supportedIdentityProviders:
+    - value: COGNITO
+  # ALLOW_REFRESH_TOKEN_AUTH is deliberately absent: with rotation ENABLED,
+  # AWS rejects the explicit refresh flow on the same client.
+  explicitAuthFlows:
+    - ALLOW_USER_SRP_AUTH
+  refreshTokenRotation:
+    feature: ENABLED
+    retryGracePeriodSeconds: 30
+  enableTokenRevocation: true
+  enablePropagateAdditionalUserContextData: true
+  preventUserExistenceErrors: ENABLED

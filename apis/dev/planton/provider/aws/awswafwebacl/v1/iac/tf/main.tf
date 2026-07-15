@@ -1,169 +1,204 @@
-# ──────────────────────────────────────────────────────────────────────────────
-# WAFv2 Web ACL
-# ──────────────────────────────────────────────────────────────────────────────
-
 resource "aws_wafv2_web_acl" "this" {
-  name        = var.metadata.name
-  scope       = local.scope
-  description = try(var.spec.description, null)
+  # The ACL's AWS name is the Planton resource name -- the stable identity
+  # operators see. Name and scope are create-time immutable (ForceNew).
+  name  = var.metadata.name
+  scope = var.spec.scope
 
+  description = var.spec.description != "" ? var.spec.description : null
+
+  # Baseline posture when no rule matches: exactly one of allow/block, with
+  # the action's own customization (custom block response, custom allow
+  # request headers) -- the spec's CEL couples each to its action type.
   default_action {
     dynamic "allow" {
-      for_each = local.default_action_type == "allow" ? [1] : []
-      content {}
+      for_each = var.spec.default_action.type == "allow" ? [var.spec.default_action] : []
+      content {
+        dynamic "custom_request_handling" {
+          for_each = length(allow.value.custom_request_headers) > 0 ? [1] : []
+          content {
+            dynamic "insert_header" {
+              for_each = allow.value.custom_request_headers
+              content {
+                name  = insert_header.value.name
+                value = insert_header.value.value
+              }
+            }
+          }
+        }
+      }
     }
+
     dynamic "block" {
-      for_each = local.default_action_type == "block" ? [1] : []
-      content {}
+      for_each = var.spec.default_action.type == "block" ? [var.spec.default_action] : []
+      content {
+        dynamic "custom_response" {
+          for_each = block.value.custom_response != null ? [block.value.custom_response] : []
+          content {
+            response_code            = custom_response.value.response_code
+            custom_response_body_key = custom_response.value.custom_response_body_key != "" ? custom_response.value.custom_response_body_key : null
+
+            dynamic "response_header" {
+              for_each = custom_response.value.response_headers
+              content {
+                name  = response_header.value.name
+                value = response_header.value.value
+              }
+            }
+          }
+        }
+      }
     }
   }
 
-  # Rules are passed as JSON for uniform handling of typed and custom statements.
-  rule_json = length(local.rules) > 0 ? jsonencode([
-    for rule in local.rules : {
-      Name     = rule.name
-      Priority = rule.priority
+  # ACL-level visibility defaults: metrics on, sampling on, metric name =
+  # resource name (identical defaults in the Pulumi module).
+  visibility_config {
+    cloudwatch_metrics_enabled = var.spec.visibility_config != null ? var.spec.visibility_config.cloudwatch_metrics_enabled : true
+    sampled_requests_enabled   = var.spec.visibility_config != null ? var.spec.visibility_config.sampled_requests_enabled : true
+    metric_name                = var.spec.visibility_config != null && try(var.spec.visibility_config.metric_name, "") != "" ? var.spec.visibility_config.metric_name : var.metadata.name
+  }
 
-      Statement = try(rule.managed_rule_group, null) != null ? {
-        ManagedRuleGroupStatement = merge(
-          {
-            Name       = rule.managed_rule_group.name
-            VendorName = rule.managed_rule_group.vendor_name
-          },
-          try(rule.managed_rule_group.version, "") != "" ? { Version = rule.managed_rule_group.version } : {},
-          length(try(rule.managed_rule_group.rule_action_overrides, [])) > 0 ? {
-            RuleActionOverrides = [
-              for o in rule.managed_rule_group.rule_action_overrides : {
-                Name        = o.name
-                ActionToUse = { for k, v in { (title(o.action)) = {} } : k => v }
-              }
-            ]
-          } : {},
-          try(rule.managed_rule_group.scope_down_statement, null) != null ? {
-            ScopeDownStatement = rule.managed_rule_group.scope_down_statement
-          } : {}
-        )
-      } : try(rule.rate_based, null) != null ? {
-        RateBasedStatement = merge(
-          {
-            Limit            = rule.rate_based.limit
-            AggregateKeyType = coalesce(try(rule.rate_based.aggregate_key_type, null), "IP")
-          },
-          try(rule.rate_based.evaluation_window_sec, 0) > 0 ? {
-            EvaluationWindowSec = rule.rate_based.evaluation_window_sec
-          } : {},
-          try(rule.rate_based.forwarded_ip_config, null) != null ? {
-            ForwardedIPConfig = {
-              HeaderName       = rule.rate_based.forwarded_ip_config.header_name
-              FallbackBehavior = rule.rate_based.forwarded_ip_config.fallback_behavior
-            }
-          } : {},
-          try(rule.rate_based.scope_down_statement, null) != null ? {
-            ScopeDownStatement = rule.rate_based.scope_down_statement
-          } : {}
-        )
-      } : try(rule.geo_match, null) != null ? {
-        GeoMatchStatement = merge(
-          { CountryCodes = rule.geo_match.country_codes },
-          try(rule.geo_match.forwarded_ip_config, null) != null ? {
-            ForwardedIPConfig = {
-              HeaderName       = rule.geo_match.forwarded_ip_config.header_name
-              FallbackBehavior = rule.geo_match.forwarded_ip_config.fallback_behavior
-            }
-          } : {}
-        )
-      } : try(rule.ip_set_reference, null) != null ? {
-        IPSetReferenceStatement = merge(
-          { ARN = rule.ip_set_reference.arn },
-          try(rule.ip_set_reference.forwarded_ip_config, null) != null ? {
-            IPSetForwardedIPConfig = {
-              HeaderName       = rule.ip_set_reference.forwarded_ip_config.header_name
-              FallbackBehavior = rule.ip_set_reference.forwarded_ip_config.fallback_behavior
-              Position         = coalesce(try(rule.ip_set_reference.forwarded_ip_config.position, null), "FIRST")
-            }
-          } : {}
-        )
-      } : try(rule.custom_statement, null) != null ? rule.custom_statement : {}
-
-      Action = try(rule.action, "") != "" ? {
-        for k, v in { (title(rule.action)) = merge(
-          {},
-          rule.action == "block" && try(rule.custom_response, null) != null ? {
-            CustomResponse = merge(
-              { ResponseCode = rule.custom_response.response_code },
-              try(rule.custom_response.custom_response_body_key, "") != "" ? {
-                CustomResponseBodyKey = rule.custom_response.custom_response_body_key
-              } : {}
-            )
-          } : {}
-        ) } : k => v
-      } : null
-
-      OverrideAction = try(rule.override_action, "") != "" ? (
-        rule.override_action == "count" ? { Count = {} } : { None = {} }
-      ) : null
-
-      VisibilityConfig = {
-        CloudWatchMetricsEnabled = try(rule.visibility_config.cloudwatch_metrics_enabled, true)
-        SampledRequestsEnabled   = try(rule.visibility_config.sampled_requests_enabled, true)
-        MetricName               = try(rule.visibility_config.metric_name, rule.name)
-      }
-    }
-  ]) : null
-
-  # Custom response bodies.
+  # Reusable branded error bodies, referenced from block actions by key.
   dynamic "custom_response_body" {
-    for_each = local.custom_response_bodies
+    for_each = var.spec.custom_response_bodies
     content {
-      key          = custom_response_body.key
+      key          = custom_response_body.value.key
       content      = custom_response_body.value.content
       content_type = custom_response_body.value.content_type
     }
   }
 
-  # Token domains.
-  token_domains = try(var.spec.token_domains, null)
+  token_domains = length(var.spec.token_domains) > 0 ? var.spec.token_domains : null
 
-  visibility_config {
-    cloudwatch_metrics_enabled = local.acl_metrics_enabled
-    sampled_requests_enabled   = local.acl_sampled_enabled
-    metric_name                = local.acl_metric_name
-  }
-
-  tags = local.tags
-}
-
-# ──────────────────────────────────────────────────────────────────────────────
-# WAFv2 Web ACL Logging Configuration (optional)
-# ──────────────────────────────────────────────────────────────────────────────
-
-resource "aws_wafv2_web_acl_logging_configuration" "this" {
-  count = local.logging_enabled ? 1 : 0
-
-  resource_arn            = aws_wafv2_web_acl.this.arn
-  log_destination_configs = [var.spec.logging.destination_arn]
-
-  # Redacted fields: single headers.
-  dynamic "redacted_fields" {
-    for_each = try(var.spec.logging.redacted_header_names, [])
+  # Web-ACL-wide immunity windows for CAPTCHA solves and silent-challenge
+  # responses (rules can override per rule inside the rule JSON).
+  dynamic "captcha_config" {
+    for_each = var.spec.captcha_config != null ? [var.spec.captcha_config] : []
     content {
-      single_header {
-        name = lower(redacted_fields.value)
+      immunity_time_property {
+        immunity_time = captcha_config.value.immunity_time_sec
       }
     }
   }
 
-  # Redacted fields: URI path.
+  dynamic "challenge_config" {
+    for_each = var.spec.challenge_config != null ? [var.spec.challenge_config] : []
+    content {
+      immunity_time_property {
+        immunity_time = challenge_config.value.immunity_time_sec
+      }
+    }
+  }
+
+  # Per-resource-type request-body inspection limits (default 16 KB).
+  dynamic "association_config" {
+    for_each = var.spec.association_config != null ? [var.spec.association_config] : []
+    content {
+      request_body {
+        dynamic "cloudfront" {
+          for_each = association_config.value.cloudfront_request_body_limit != "" ? [1] : []
+          content {
+            default_size_inspection_limit = association_config.value.cloudfront_request_body_limit
+          }
+        }
+        dynamic "api_gateway" {
+          for_each = association_config.value.api_gateway_request_body_limit != "" ? [1] : []
+          content {
+            default_size_inspection_limit = association_config.value.api_gateway_request_body_limit
+          }
+        }
+        dynamic "cognito_user_pool" {
+          for_each = association_config.value.cognito_user_pool_request_body_limit != "" ? [1] : []
+          content {
+            default_size_inspection_limit = association_config.value.cognito_user_pool_request_body_limit
+          }
+        }
+        dynamic "app_runner_service" {
+          for_each = association_config.value.app_runner_service_request_body_limit != "" ? [1] : []
+          content {
+            default_size_inspection_limit = association_config.value.app_runner_service_request_body_limit
+          }
+        }
+        dynamic "verified_access_instance" {
+          for_each = association_config.value.verified_access_instance_request_body_limit != "" ? [1] : []
+          content {
+            default_size_inspection_limit = association_config.value.verified_access_instance_request_body_limit
+          }
+        }
+      }
+    }
+  }
+
+  # Field-level masking in ALL WAF outputs (logs, sampled requests, rule
+  # match details) -- stronger than the logging block's redaction, which
+  # only affects the log destination.
+  dynamic "data_protection_config" {
+    for_each = var.spec.data_protection_config != null ? [var.spec.data_protection_config] : []
+    content {
+      dynamic "data_protection" {
+        for_each = data_protection_config.value.data_protections
+        content {
+          action = data_protection.value.action
+          field {
+            field_type = data_protection.value.field_type
+            field_keys = length(data_protection.value.field_keys) > 0 ? data_protection.value.field_keys : null
+          }
+          exclude_rule_match_details = data_protection.value.exclude_rule_match_details
+          exclude_rate_based_details = data_protection.value.exclude_rate_based_details
+        }
+      }
+    }
+  }
+
+  # Rules as AWS API JSON -- the single rule surface both engines share; see
+  # locals.tf for the statement-tree serialization and the depth model.
+  rule_json = length(var.spec.rules) > 0 ? jsonencode(local.rules_waf) : null
+
+  tags = local.aws_tags
+
+  lifecycle {
+    # The statement serialization unrolls three nesting levels below a
+    # rule's root (the same depth the provider's own structured schema
+    # supports). A deeper tree must fail the plan loudly -- silently
+    # dropping a nested statement would deploy a WEAKER firewall than the
+    # manifest declares.
+    precondition {
+      condition     = length(local.depth_overflow_nodes) == 0
+      error_message = "A rule statement is nested more than three levels deep (via and/or/not or scope-down statements). Restructure the rule, or express the deep subtree with the custom_statement escape hatch (raw AWS WAF JSON), which supports any depth."
+    }
+  }
+}
+
+# WAF request logging is a separate PUT-style AWS resource keyed by the web
+# ACL's ARN (at most one per ACL), so it shares this module rather than being
+# its own component. The destination's name must start with "aws-waf-logs-"
+# (AWS-enforced).
+resource "aws_wafv2_web_acl_logging_configuration" "this" {
+  count = var.spec.logging != null ? 1 : 0
+
+  resource_arn = aws_wafv2_web_acl.this.arn
+  # The generator flattens StringValueOrRef to its resolved string (the
+  # orchestrator resolves any value_from before the module runs).
+  log_destination_configs = [var.spec.logging.destination_arn]
+
   dynamic "redacted_fields" {
-    for_each = try(var.spec.logging.redact_uri_path, false) ? [1] : []
+    for_each = var.spec.logging.redacted_header_names
+    content {
+      single_header {
+        name = redacted_fields.value
+      }
+    }
+  }
+
+  dynamic "redacted_fields" {
+    for_each = var.spec.logging.redact_uri_path ? [1] : []
     content {
       uri_path {}
     }
   }
 
-  # Redacted fields: query string.
   dynamic "redacted_fields" {
-    for_each = try(var.spec.logging.redact_query_string, false) ? [1] : []
+    for_each = var.spec.logging.redact_query_string ? [1] : []
     content {
       query_string {}
     }

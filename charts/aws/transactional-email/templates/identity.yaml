@@ -1,0 +1,37 @@
+# The trust anchor: the verified DOMAIN identity mail is sent from. A
+# domain identity (not a single address) is the production shape — it
+# signs with DKIM, covers every address at the domain, and unlocks the
+# custom MAIL FROM domain that makes SPF align for DMARC.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSesEmailIdentity
+metadata:
+  name: "{{ values.sender_name }}-identity"
+spec:
+  region: "{{ values.aws_region }}"
+  emailIdentity: "{{ values.email_domain }}"
+  # Every message from this identity inherits the configuration set's
+  # posture (TLS, suppression, reputation metrics, feedback events) —
+  # applications send without knowing any of it exists.
+  configurationSet:
+    valueFrom:
+      kind: AwsSesConfigurationSet
+      name: "{{ values.sender_name }}-config"
+      fieldPath: status.outputs.configuration_set_name
+  # Easy DKIM with a 2048-bit key, stated explicitly rather than left to
+  # the AWS default: AWS generates and rotates the signing keys, and the
+  # identity's dkim_tokens output carries the three CNAME names to
+  # publish (a post-deploy step — the token values only exist once the
+  # identity is created; the README walks it).
+  dkimSigning:
+    nextSigningKeyLength: RSA_2048_BIT
+{% if values.mail_from_enabled | bool %}
+  # The custom envelope sender. Without it SES bounces through its own
+  # amazonses.com domain and strict DMARC judges your mail on Amazon's
+  # SPF, not yours. USE_DEFAULT_VALUE keeps mail flowing while the MX
+  # record propagates; flip to REJECT_MESSAGE once the MAIL FROM domain
+  # verifies (day-2 in the README) so nothing ever leaves unaligned.
+  mailFrom:
+    mailFromDomain: "{{ values.mail_from_subdomain }}.{{ values.email_domain }}"
+    behaviorOnMxFailure: USE_DEFAULT_VALUE
+{% endif %}

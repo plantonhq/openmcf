@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsfsxdatarepositoryassociation
+spec:
+  # A data repository association under live E2E: one composed lane. The
+  # registry prerequisite deploys the PERSISTENT_2 Lustre fixture (which
+  # transitively brings the subnet + security-group fixtures), the scenario
+  # additionally declares the shared S3 bucket fixture via the
+  # e2e-prerequisites annotation, and the association links the two with
+  # full bidirectional sync policies and a batch metadata import. The
+  # association itself creates in ~1-2 minutes; the lane's cost is the
+  # Lustre fixture underneath it (~10-15 minutes, the family's deferral
+  # driver). Verification is DescribeDataRepositoryAssociations keyed on
+  # association_id, lifecycle-state-aware (DELETING counts as absent).
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision: the lane rides a full FSx Lustre file
+    system fixture, which is long-provisioning and expensive — the FSx
+    family stops at the offline gate (green tofu plan + pulumi preview per
+    engine). Artifacts are complete and the lane stays re-runnable.
+  timeout_minutes: 60

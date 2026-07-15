@@ -30,24 +30,30 @@ const (
 // capacity automatically as files are added or removed, with no provisioning or
 // capacity planning required.
 //
-// This component bundles the file system with its mount targets, optional access
-// points, backup policy, and resource policy. Mount targets are created
-// automatically from the provided subnet IDs — one per subnet (and thus per AZ).
+// This component bundles the file system with its mount targets, backup policy,
+// resource policy, replication-overwrite protection, and cross-region/cross-AZ
+// replication. Mount targets are declared per subnet (one per Availability Zone)
+// and can pin static IPv4/IPv6 addresses. Access points are a separate,
+// first-class resource: see the AwsEfsAccessPoint kind, which references this
+// file system and is itself referenced by Lambda and ECS task definitions.
 //
 // EFS is the foundation for shared persistent storage across:
 // - EKS pods via the EFS CSI driver (PersistentVolume backed by file_system_id)
 // - ECS tasks via EFS volumes in task definitions
-// - Lambda functions via access point ARNs
+// - Lambda functions via AwsEfsAccessPoint ARNs
 // - EC2 instances via direct NFS mount at the dns_name
 //
 // Key design notes:
-//   - `encrypted`, `performance_mode`, and `availability_zone_name` are ForceNew
-//     — changing them requires replacing the file system. Plan these upfront.
-//   - `subnet_ids` is required because an EFS without mount targets cannot be
-//     mounted. One mount target per AZ is allowed; providing two subnets in the
-//     same AZ causes an AWS API error at deploy time.
+//   - `encrypted`, `kms_key_id`, `performance_mode`, and `availability_zone_name`
+//     are ForceNew — changing them requires replacing the file system. Plan these
+//     upfront.
+//   - Mount targets are required (min 1) because an EFS without mount targets
+//     cannot be mounted. AWS allows at most one mount target per Availability
+//     Zone; declaring two mount targets in subnets of the same AZ fails at deploy
+//     time with an API error.
 //   - Security groups must allow NFS traffic (TCP port 2049) from the clients.
-//   - Credentials, region, and deployment workflow live outside this spec in stack inputs.
+//   - Credentials, region, and deployment workflow live outside this spec in
+//     stack inputs.
 type AwsElasticFileSystemSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the resource will be created.
@@ -62,25 +68,32 @@ type AwsElasticFileSystemSpec struct {
 	// changed after creation. Requires `encrypted` to be true.
 	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
 	// File system performance mode. ForceNew — cannot be changed after creation.
+	// Empty keeps the AWS default ("generalPurpose").
 	//
 	//   - "generalPurpose" (default): lowest latency, suitable for most workloads.
 	//     Recommended for all new file systems, especially with "elastic" throughput.
 	//   - "maxIO": higher aggregate throughput for highly parallelized workloads
 	//     (thousands of EC2 instances). Slightly higher per-operation latency.
-	//     Note: AWS recommends generalPurpose + elastic throughput as a replacement.
+	//     AWS recommends generalPurpose + elastic throughput as a replacement, and
+	//     maxIO cannot be combined with elastic throughput or One Zone storage.
 	PerformanceMode string `protobuf:"bytes,4,opt,name=performance_mode,json=performanceMode,proto3" json:"performance_mode,omitempty"`
 	// Throughput mode controlling how EFS delivers read/write bandwidth.
+	// Empty keeps the AWS default ("bursting").
 	//
 	//   - "bursting" (default): throughput scales with file system size. 50 MiB/s
 	//     per TiB of Standard storage, with bursts up to 100 MiB/s.
 	//   - "provisioned": fixed throughput independent of storage size. Set
 	//     `provisioned_throughput_in_mibps` to specify the exact value.
 	//   - "elastic": automatically scales throughput up/down based on workload.
-	//     Recommended for unpredictable or spiky access patterns. Requires
-	//     generalPurpose performance mode.
+	//     Recommended for unpredictable or spiky access patterns. Requires the
+	//     generalPurpose performance mode (AWS rejects elastic + maxIO).
+	//
+	// Throughput mode is mutable, but AWS enforces a 24-hour cooldown between
+	// throughput-mode changes (and between decreases of provisioned throughput).
 	ThroughputMode string `protobuf:"bytes,5,opt,name=throughput_mode,json=throughputMode,proto3" json:"throughput_mode,omitempty"`
 	// Provisioned throughput in MiB/s. Only applicable when `throughput_mode` is
-	// "provisioned". Range: 1.0–3414.0 for generalPurpose; 1.0–1024.0 for maxIO.
+	// "provisioned". AWS accepts 1.0–3414.0 for generalPurpose and 1.0–1024.0 for
+	// maxIO (server-side limits; higher values require a quota increase).
 	ProvisionedThroughputInMibps float64 `protobuf:"fixed64,6,opt,name=provisioned_throughput_in_mibps,json=provisionedThroughputInMibps,proto3" json:"provisioned_throughput_in_mibps,omitempty"`
 	// AWS Availability Zone name for One Zone storage classes (e.g., "us-east-1a").
 	// ForceNew — cannot be changed after creation. One Zone storage is ~47% cheaper
@@ -112,24 +125,30 @@ type AwsElasticFileSystemSpec struct {
 	// Enable automatic daily backups via AWS Backup. AWS recommends enabling
 	// backups for all production file systems. Mutable — can be toggled at any time.
 	BackupEnabled bool `protobuf:"varint,11,opt,name=backup_enabled,json=backupEnabled,proto3" json:"backup_enabled,omitempty"`
-	// Subnet IDs to create mount targets in. Required (min 1). One mount target is
-	// created per subnet. AWS allows at most one mount target per Availability Zone
-	// — providing two subnets in the same AZ will cause an API error at deploy time.
+	// Controls whether this file system can be used as the DESTINATION of an EFS
+	// replication configuration. Empty keeps the AWS default ("ENABLED").
 	//
-	// For regional (multi-AZ) file systems, provide one subnet per AZ for maximum
-	// availability. For One Zone file systems, provide exactly one subnet in the
-	// AZ specified by `availability_zone_name`.
-	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,12,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
-	// Security groups to apply to all mount targets. These must allow inbound NFS
+	//   - "ENABLED" (default): the file system is protected — it cannot be
+	//     overwritten by a replication from another file system.
+	//   - "DISABLED": the file system may be targeted as a replication destination.
+	//     AWS also requires protection to be DISABLED before a replication
+	//     destination file system can be modified or deleted after replication
+	//     stops — set this when adopting an existing file system as a replica.
+	ReplicationOverwriteProtection string `protobuf:"bytes,12,opt,name=replication_overwrite_protection,json=replicationOverwriteProtection,proto3" json:"replication_overwrite_protection,omitempty"`
+	// Mount targets expose the file system as an NFS endpoint inside a VPC.
+	// Required (min 1) — an EFS without mount targets cannot be mounted. Declare
+	// one mount target per Availability Zone (AWS allows at most one per AZ;
+	// two subnets in the same AZ fail at deploy time).
+	//
+	// For regional (multi-AZ) file systems, declare one mount target per AZ for
+	// maximum availability and to avoid cross-AZ data charges. For One Zone file
+	// systems, declare exactly one mount target in a subnet belonging to
+	// `availability_zone_name`.
+	MountTargets []*AwsElasticFileSystemMountTarget `protobuf:"bytes,13,rep,name=mount_targets,json=mountTargets,proto3" json:"mount_targets,omitempty"`
+	// Security groups applied to ALL mount targets. These must allow inbound NFS
 	// traffic (TCP port 2049) from the clients that will mount the file system.
-	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,13,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
-	// Access points provide application-specific entry points into the file system,
-	// each with its own POSIX user/group identity and root directory. Commonly used
-	// with ECS tasks and Lambda functions to enforce least-privilege file access.
-	//
-	// Each access point must have a unique `name` which serves as the map key in
-	// the `access_point_ids` and `access_point_arns` stack outputs.
-	AccessPoints []*AwsElasticFileSystemAccessPoint `protobuf:"bytes,14,rep,name=access_points,json=accessPoints,proto3" json:"access_points,omitempty"`
+	// When omitted, AWS attaches the VPC's default security group.
+	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,14,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
 	// IAM resource policy for the file system. Common uses:
 	// - Enforce encryption in transit (deny unencrypted NFS connections)
 	// - Restrict access to specific IAM principals or VPCs
@@ -137,7 +156,18 @@ type AwsElasticFileSystemSpec struct {
 	//
 	// Provide as a JSON object structure. Serialized to JSON by IaC modules.
 	// Consistent with SQS policy, SNS policy, and EventBridge event_pattern.
-	Policy        *structpb.Struct `protobuf:"bytes,15,opt,name=policy,proto3" json:"policy,omitempty"`
+	Policy *structpb.Struct `protobuf:"bytes,15,opt,name=policy,proto3" json:"policy,omitempty"`
+	// Skip AWS's policy-lockout safety check when putting the resource policy.
+	// By default AWS rejects a policy that would lock the requesting principal
+	// out of future PutFileSystemPolicy calls. Only set this when intentionally
+	// deploying such a policy — a locked-out policy can only be fixed by the
+	// account root. Requires `policy` to be set.
+	BypassPolicyLockoutSafetyCheck bool `protobuf:"varint,16,opt,name=bypass_policy_lockout_safety_check,json=bypassPolicyLockoutSafetyCheck,proto3" json:"bypass_policy_lockout_safety_check,omitempty"`
+	// Replicate this file system to another region or Availability Zone for
+	// disaster recovery. EFS replication is one-per-file-system and create-time
+	// immutable: changing the destination replaces the replication configuration
+	// (the destination file system itself is never deleted by that replacement).
+	Replication   *AwsElasticFileSystemReplication `protobuf:"bytes,17,opt,name=replication,proto3" json:"replication,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -249,9 +279,16 @@ func (x *AwsElasticFileSystemSpec) GetBackupEnabled() bool {
 	return false
 }
 
-func (x *AwsElasticFileSystemSpec) GetSubnetIds() []*v1.StringValueOrRef {
+func (x *AwsElasticFileSystemSpec) GetReplicationOverwriteProtection() string {
 	if x != nil {
-		return x.SubnetIds
+		return x.ReplicationOverwriteProtection
+	}
+	return ""
+}
+
+func (x *AwsElasticFileSystemSpec) GetMountTargets() []*AwsElasticFileSystemMountTarget {
+	if x != nil {
+		return x.MountTargets
 	}
 	return nil
 }
@@ -263,13 +300,6 @@ func (x *AwsElasticFileSystemSpec) GetSecurityGroupIds() []*v1.StringValueOrRef 
 	return nil
 }
 
-func (x *AwsElasticFileSystemSpec) GetAccessPoints() []*AwsElasticFileSystemAccessPoint {
-	if x != nil {
-		return x.AccessPoints
-	}
-	return nil
-}
-
 func (x *AwsElasticFileSystemSpec) GetPolicy() *structpb.Struct {
 	if x != nil {
 		return x.Policy
@@ -277,44 +307,61 @@ func (x *AwsElasticFileSystemSpec) GetPolicy() *structpb.Struct {
 	return nil
 }
 
-// AwsElasticFileSystemAccessPoint defines an EFS access point — an application-
-// specific entry point into the file system that enforces a POSIX user/group
-// identity and optionally restricts the visible root directory.
-//
-// Access points are the recommended way to give ECS tasks and Lambda functions
-// file system access, as they enforce least-privilege without requiring the
-// application to manage POSIX permissions.
-type AwsElasticFileSystemAccessPoint struct {
+func (x *AwsElasticFileSystemSpec) GetBypassPolicyLockoutSafetyCheck() bool {
+	if x != nil {
+		return x.BypassPolicyLockoutSafetyCheck
+	}
+	return false
+}
+
+func (x *AwsElasticFileSystemSpec) GetReplication() *AwsElasticFileSystemReplication {
+	if x != nil {
+		return x.Replication
+	}
+	return nil
+}
+
+// AwsElasticFileSystemMountTarget declares one NFS endpoint for the file
+// system inside a VPC subnet. AWS allows at most one mount target per
+// Availability Zone, so declare one per AZ (per subnet) — clients in an AZ
+// mount through that AZ's target to avoid cross-AZ data charges.
+type AwsElasticFileSystemMountTarget struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Unique name for this access point within the file system. Used as the map key
-	// in `access_point_ids` and `access_point_arns` stack outputs.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// POSIX user and group identity enforced for all file operations through this
-	// access point. When set, the NFS client's identity is overridden — regardless
-	// of what UID/GID the client claims, all operations use these values.
-	PosixUser *AwsElasticFileSystemAccessPointPosixUser `protobuf:"bytes,2,opt,name=posix_user,json=posixUser,proto3" json:"posix_user,omitempty"`
-	// Root directory exposed as "/" when mounting through this access point. If the
-	// directory does not exist, provide `creation_info` to have EFS create it
-	// automatically with the specified ownership and permissions.
-	RootDirectory *AwsElasticFileSystemAccessPointRootDirectory `protobuf:"bytes,3,opt,name=root_directory,json=rootDirectory,proto3" json:"root_directory,omitempty"`
+	// The subnet to place this mount target in. The subnet's Availability Zone
+	// determines which AZ's clients this target serves.
+	SubnetId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
+	// Static IPv4 address for the mount target, from the subnet's IPv4 CIDR.
+	// ForceNew. When omitted, AWS assigns an address automatically. Useful for
+	// static NFS mount configurations that cannot resolve the EFS DNS names.
+	IpAddress string `protobuf:"bytes,2,opt,name=ip_address,json=ipAddress,proto3" json:"ip_address,omitempty"`
+	// Address family for the mount target. Empty keeps the AWS default
+	// ("IPV4_ONLY"). ForceNew.
+	//
+	// - "IPV4_ONLY" (default): IPv4 address only.
+	// - "IPV6_ONLY": IPv6 address only — requires an IPv6-enabled subnet.
+	// - "DUAL_STACK": both IPv4 and IPv6 addresses.
+	IpAddressType string `protobuf:"bytes,3,opt,name=ip_address_type,json=ipAddressType,proto3" json:"ip_address_type,omitempty"`
+	// Static IPv6 address for the mount target, from the subnet's IPv6 CIDR.
+	// ForceNew. Only valid when `ip_address_type` is "IPV6_ONLY" or "DUAL_STACK".
+	Ipv6Address   string `protobuf:"bytes,4,opt,name=ipv6_address,json=ipv6Address,proto3" json:"ipv6_address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AwsElasticFileSystemAccessPoint) Reset() {
-	*x = AwsElasticFileSystemAccessPoint{}
+func (x *AwsElasticFileSystemMountTarget) Reset() {
+	*x = AwsElasticFileSystemMountTarget{}
 	mi := &file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AwsElasticFileSystemAccessPoint) String() string {
+func (x *AwsElasticFileSystemMountTarget) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AwsElasticFileSystemAccessPoint) ProtoMessage() {}
+func (*AwsElasticFileSystemMountTarget) ProtoMessage() {}
 
-func (x *AwsElasticFileSystemAccessPoint) ProtoReflect() protoreflect.Message {
+func (x *AwsElasticFileSystemMountTarget) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -326,63 +373,86 @@ func (x *AwsElasticFileSystemAccessPoint) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AwsElasticFileSystemAccessPoint.ProtoReflect.Descriptor instead.
-func (*AwsElasticFileSystemAccessPoint) Descriptor() ([]byte, []int) {
+// Deprecated: Use AwsElasticFileSystemMountTarget.ProtoReflect.Descriptor instead.
+func (*AwsElasticFileSystemMountTarget) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AwsElasticFileSystemAccessPoint) GetName() string {
+func (x *AwsElasticFileSystemMountTarget) GetSubnetId() *v1.StringValueOrRef {
 	if x != nil {
-		return x.Name
+		return x.SubnetId
+	}
+	return nil
+}
+
+func (x *AwsElasticFileSystemMountTarget) GetIpAddress() string {
+	if x != nil {
+		return x.IpAddress
 	}
 	return ""
 }
 
-func (x *AwsElasticFileSystemAccessPoint) GetPosixUser() *AwsElasticFileSystemAccessPointPosixUser {
+func (x *AwsElasticFileSystemMountTarget) GetIpAddressType() string {
 	if x != nil {
-		return x.PosixUser
+		return x.IpAddressType
 	}
-	return nil
+	return ""
 }
 
-func (x *AwsElasticFileSystemAccessPoint) GetRootDirectory() *AwsElasticFileSystemAccessPointRootDirectory {
+func (x *AwsElasticFileSystemMountTarget) GetIpv6Address() string {
 	if x != nil {
-		return x.RootDirectory
+		return x.Ipv6Address
 	}
-	return nil
+	return ""
 }
 
-// AwsElasticFileSystemAccessPointPosixUser defines the POSIX identity enforced
-// for all file operations through an access point.
-type AwsElasticFileSystemAccessPointPosixUser struct {
+// AwsElasticFileSystemReplication replicates the file system to a destination
+// region and/or Availability Zone for disaster recovery. EFS keeps the replica
+// in sync automatically; the replica is read-only while replication is active.
+//
+// The entire configuration is create-time immutable (changing any field
+// replaces the replication configuration). Deleting the replication stops
+// syncing but leaves the destination file system in place — to then modify or
+// delete the destination, its own `replication_overwrite_protection` must be
+// "DISABLED".
+type AwsElasticFileSystemReplication struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// POSIX user ID. All file system operations through this access point use
-	// this UID as the file owner.
-	Uid int32 `protobuf:"varint,1,opt,name=uid,proto3" json:"uid,omitempty"`
-	// POSIX primary group ID. All file system operations through this access point
-	// use this GID as the file group.
-	Gid int32 `protobuf:"varint,2,opt,name=gid,proto3" json:"gid,omitempty"`
-	// Secondary POSIX group IDs. These supplement the primary GID for group
-	// permission checks.
-	SecondaryGids []int32 `protobuf:"varint,3,rep,packed,name=secondary_gids,json=secondaryGids,proto3" json:"secondary_gids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Destination region for the replica (e.g., "us-east-2"). At least one of
+	// `destination_region` or `destination_availability_zone_name` is required.
+	// Same-region replication (with a different AZ) is valid.
+	DestinationRegion string `protobuf:"bytes,1,opt,name=destination_region,json=destinationRegion,proto3" json:"destination_region,omitempty"`
+	// Destination Availability Zone name (e.g., "us-east-2a"). Creates the
+	// replica as a One Zone file system in that AZ — the cheaper DR shape. At
+	// least one of `destination_region` or `destination_availability_zone_name`
+	// is required.
+	DestinationAvailabilityZoneName string `protobuf:"bytes,2,opt,name=destination_availability_zone_name,json=destinationAvailabilityZoneName,proto3" json:"destination_availability_zone_name,omitempty"`
+	// KMS key for the replica's encryption at rest. When omitted, AWS uses the
+	// AWS-managed key `aws/elasticfilesystem` in the destination region.
+	// Replicas are always encrypted regardless of the source's encryption state.
+	DestinationKmsKeyId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=destination_kms_key_id,json=destinationKmsKeyId,proto3" json:"destination_kms_key_id,omitempty"`
+	// Replicate into an EXISTING file system instead of having AWS create the
+	// replica. The referenced file system must have
+	// `replication_overwrite_protection` set to "DISABLED". When omitted, AWS
+	// creates a fresh destination file system.
+	DestinationFileSystemId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=destination_file_system_id,json=destinationFileSystemId,proto3" json:"destination_file_system_id,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
-func (x *AwsElasticFileSystemAccessPointPosixUser) Reset() {
-	*x = AwsElasticFileSystemAccessPointPosixUser{}
+func (x *AwsElasticFileSystemReplication) Reset() {
+	*x = AwsElasticFileSystemReplication{}
 	mi := &file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AwsElasticFileSystemAccessPointPosixUser) String() string {
+func (x *AwsElasticFileSystemReplication) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AwsElasticFileSystemAccessPointPosixUser) ProtoMessage() {}
+func (*AwsElasticFileSystemReplication) ProtoMessage() {}
 
-func (x *AwsElasticFileSystemAccessPointPosixUser) ProtoReflect() protoreflect.Message {
+func (x *AwsElasticFileSystemReplication) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -394,166 +464,44 @@ func (x *AwsElasticFileSystemAccessPointPosixUser) ProtoReflect() protoreflect.M
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AwsElasticFileSystemAccessPointPosixUser.ProtoReflect.Descriptor instead.
-func (*AwsElasticFileSystemAccessPointPosixUser) Descriptor() ([]byte, []int) {
+// Deprecated: Use AwsElasticFileSystemReplication.ProtoReflect.Descriptor instead.
+func (*AwsElasticFileSystemReplication) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *AwsElasticFileSystemAccessPointPosixUser) GetUid() int32 {
+func (x *AwsElasticFileSystemReplication) GetDestinationRegion() string {
 	if x != nil {
-		return x.Uid
-	}
-	return 0
-}
-
-func (x *AwsElasticFileSystemAccessPointPosixUser) GetGid() int32 {
-	if x != nil {
-		return x.Gid
-	}
-	return 0
-}
-
-func (x *AwsElasticFileSystemAccessPointPosixUser) GetSecondaryGids() []int32 {
-	if x != nil {
-		return x.SecondaryGids
-	}
-	return nil
-}
-
-// AwsElasticFileSystemAccessPointRootDirectory configures the directory on the
-// EFS file system that is exposed as the root when mounting through an access
-// point.
-type AwsElasticFileSystemAccessPointRootDirectory struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Path on the EFS file system to expose as the root directory. Must be an
-	// absolute path (starts with "/"). Up to 4 subdirectories deep.
-	// Default: "/" (entire file system).
-	//
-	// If this path does not exist and `creation_info` is provided, EFS creates
-	// the directory with the specified POSIX ownership and permissions.
-	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
-	// POSIX ownership and permissions to apply when creating the root directory.
-	// Required when the path does not already exist on the file system.
-	CreationInfo  *AwsElasticFileSystemAccessPointCreationInfo `protobuf:"bytes,2,opt,name=creation_info,json=creationInfo,proto3" json:"creation_info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AwsElasticFileSystemAccessPointRootDirectory) Reset() {
-	*x = AwsElasticFileSystemAccessPointRootDirectory{}
-	mi := &file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AwsElasticFileSystemAccessPointRootDirectory) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AwsElasticFileSystemAccessPointRootDirectory) ProtoMessage() {}
-
-func (x *AwsElasticFileSystemAccessPointRootDirectory) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AwsElasticFileSystemAccessPointRootDirectory.ProtoReflect.Descriptor instead.
-func (*AwsElasticFileSystemAccessPointRootDirectory) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *AwsElasticFileSystemAccessPointRootDirectory) GetPath() string {
-	if x != nil {
-		return x.Path
+		return x.DestinationRegion
 	}
 	return ""
 }
 
-func (x *AwsElasticFileSystemAccessPointRootDirectory) GetCreationInfo() *AwsElasticFileSystemAccessPointCreationInfo {
+func (x *AwsElasticFileSystemReplication) GetDestinationAvailabilityZoneName() string {
 	if x != nil {
-		return x.CreationInfo
+		return x.DestinationAvailabilityZoneName
+	}
+	return ""
+}
+
+func (x *AwsElasticFileSystemReplication) GetDestinationKmsKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.DestinationKmsKeyId
 	}
 	return nil
 }
 
-// AwsElasticFileSystemAccessPointCreationInfo specifies the POSIX ownership and
-// permissions applied when EFS automatically creates the access point's root
-// directory.
-type AwsElasticFileSystemAccessPointCreationInfo struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// POSIX user ID for the directory owner.
-	OwnerUid int32 `protobuf:"varint,1,opt,name=owner_uid,json=ownerUid,proto3" json:"owner_uid,omitempty"`
-	// POSIX group ID for the directory owner.
-	OwnerGid int32 `protobuf:"varint,2,opt,name=owner_gid,json=ownerGid,proto3" json:"owner_gid,omitempty"`
-	// POSIX permissions for the directory, in octal notation (e.g., "0755", "0750").
-	Permissions   string `protobuf:"bytes,3,opt,name=permissions,proto3" json:"permissions,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AwsElasticFileSystemAccessPointCreationInfo) Reset() {
-	*x = AwsElasticFileSystemAccessPointCreationInfo{}
-	mi := &file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AwsElasticFileSystemAccessPointCreationInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AwsElasticFileSystemAccessPointCreationInfo) ProtoMessage() {}
-
-func (x *AwsElasticFileSystemAccessPointCreationInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_msgTypes[4]
+func (x *AwsElasticFileSystemReplication) GetDestinationFileSystemId() *v1.StringValueOrRef {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+		return x.DestinationFileSystemId
 	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AwsElasticFileSystemAccessPointCreationInfo.ProtoReflect.Descriptor instead.
-func (*AwsElasticFileSystemAccessPointCreationInfo) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *AwsElasticFileSystemAccessPointCreationInfo) GetOwnerUid() int32 {
-	if x != nil {
-		return x.OwnerUid
-	}
-	return 0
-}
-
-func (x *AwsElasticFileSystemAccessPointCreationInfo) GetOwnerGid() int32 {
-	if x != nil {
-		return x.OwnerGid
-	}
-	return 0
-}
-
-func (x *AwsElasticFileSystemAccessPointCreationInfo) GetPermissions() string {
-	if x != nil {
-		return x.Permissions
-	}
-	return ""
+	return nil
 }
 
 var File_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	";dev/planton/provider/aws/awselasticfilesystem/v1/spec.proto\x120dev.planton.provider.aws.awselasticfilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xe5\x19\n" +
+	";dev/planton/provider/aws/awselasticfilesystem/v1/spec.proto\x120dev.planton.provider.aws.awselasticfilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xf7\x1f\n" +
 	"\x18AwsElasticFileSystemSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12&\n" +
 	"\tencrypted\x18\x02 \x01(\bB\b\x92\xa6\x1d\x04trueR\tencrypted\x12q\n" +
@@ -567,37 +515,40 @@ const file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDesc =
 	"\x15transition_to_archive\x18\t \x01(\tR\x13transitionToArchive\x12L\n" +
 	"#transition_to_primary_storage_class\x18\n" +
 	" \x01(\tR\x1ftransitionToPrimaryStorageClass\x12%\n" +
-	"\x0ebackup_enabled\x18\v \x01(\bR\rbackupEnabled\x12\x7f\n" +
-	"\n" +
-	"subnet_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12v\n" +
-	"\raccess_points\x18\x0e \x03(\v2Q.dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPointR\faccessPoints\x12/\n" +
-	"\x06policy\x18\x0f \x01(\v2\x17.google.protobuf.StructR\x06policy:\xb0\x11\xbaH\xac\x11\x1a\xac\x01\n" +
+	"\x0ebackup_enabled\x18\v \x01(\bR\rbackupEnabled\x12H\n" +
+	" replication_overwrite_protection\x18\f \x01(\tR\x1ereplicationOverwriteProtection\x12\x83\x01\n" +
+	"\rmount_targets\x18\r \x03(\v2Q.dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemMountTargetB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\fmountTargets\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\x0e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12/\n" +
+	"\x06policy\x18\x0f \x01(\v2\x17.google.protobuf.StructR\x06policy\x12J\n" +
+	"\"bypass_policy_lockout_safety_check\x18\x10 \x01(\bR\x1ebypassPolicyLockoutSafetyCheck\x12s\n" +
+	"\vreplication\x18\x11 \x01(\v2Q.dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemReplicationR\vreplication:\xaa\x16\xbaH\xa6\x16\x1a\xac\x01\n" +
 	"\x16performance_mode_valid\x12=performance_mode must be 'generalPurpose' or 'maxIO' when set\x1aSthis.performance_mode == '' || this.performance_mode in ['generalPurpose', 'maxIO']\x1a\xbf\x01\n" +
-	"\x15throughput_mode_valid\x12Hthroughput_mode must be 'bursting', 'provisioned', or 'elastic' when set\x1a\\this.throughput_mode == '' || this.throughput_mode in ['bursting', 'provisioned', 'elastic']\x1a\xd3\x01\n" +
+	"\x15throughput_mode_valid\x12Hthroughput_mode must be 'bursting', 'provisioned', or 'elastic' when set\x1a\\this.throughput_mode == '' || this.throughput_mode in ['bursting', 'provisioned', 'elastic']\x1a\xc8\x01\n" +
+	" elastic_requires_general_purpose\x12]elastic throughput requires the generalPurpose performance mode (AWS rejects elastic + maxIO)\x1aEthis.throughput_mode != 'elastic' || this.performance_mode != 'maxIO'\x1a\xd3\x01\n" +
 	"$provisioned_throughput_requires_mode\x12Uprovisioned_throughput_in_mibps can only be set when throughput_mode is 'provisioned'\x1aTthis.provisioned_throughput_in_mibps == 0.0 || this.throughput_mode == 'provisioned'\x1a\xd9\x01\n" +
 	"$provisioned_mode_requires_throughput\x12\\provisioned_throughput_in_mibps must be greater than 0 when throughput_mode is 'provisioned'\x1aSthis.throughput_mode != 'provisioned' || this.provisioned_throughput_in_mibps > 0.0\x1a\xa5\x01\n" +
 	"\x16kms_requires_encrypted\x12bkms_key_id requires encrypted to be true (cannot use a custom KMS key without enabling encryption)\x1a'!has(this.kms_key_id) || this.encrypted\x1a\xc3\x01\n" +
 	"\x13archive_requires_ia\x12ktransition_to_archive requires transition_to_ia to be set (files must transition through IA before Archive)\x1a?this.transition_to_archive == '' || this.transition_to_ia != ''\x1a\x95\x03\n" +
 	"\x16transition_to_ia_valid\x12\xa6\x01transition_to_ia must be one of: AFTER_1_DAY, AFTER_7_DAYS, AFTER_14_DAYS, AFTER_30_DAYS, AFTER_60_DAYS, AFTER_90_DAYS, AFTER_180_DAYS, AFTER_270_DAYS, AFTER_365_DAYS\x1a\xd1\x01this.transition_to_ia == '' || this.transition_to_ia in ['AFTER_1_DAY', 'AFTER_7_DAYS', 'AFTER_14_DAYS', 'AFTER_30_DAYS', 'AFTER_60_DAYS', 'AFTER_90_DAYS', 'AFTER_180_DAYS', 'AFTER_270_DAYS', 'AFTER_365_DAYS']\x1a\xa9\x03\n" +
 	"\x1btransition_to_archive_valid\x12\xab\x01transition_to_archive must be one of: AFTER_1_DAY, AFTER_7_DAYS, AFTER_14_DAYS, AFTER_30_DAYS, AFTER_60_DAYS, AFTER_90_DAYS, AFTER_180_DAYS, AFTER_270_DAYS, AFTER_365_DAYS\x1a\xdb\x01this.transition_to_archive == '' || this.transition_to_archive in ['AFTER_1_DAY', 'AFTER_7_DAYS', 'AFTER_14_DAYS', 'AFTER_30_DAYS', 'AFTER_60_DAYS', 'AFTER_90_DAYS', 'AFTER_180_DAYS', 'AFTER_270_DAYS', 'AFTER_365_DAYS']\x1a\xd4\x01\n" +
-	"\x1btransition_to_primary_valid\x12Etransition_to_primary_storage_class must be 'AFTER_1_ACCESS' when set\x1anthis.transition_to_primary_storage_class == '' || this.transition_to_primary_storage_class == 'AFTER_1_ACCESS'\"\xc0\x02\n" +
-	"\x1fAwsElasticFileSystemAccessPoint\x12\x1a\n" +
-	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12y\n" +
+	"\x1btransition_to_primary_valid\x12Etransition_to_primary_storage_class must be 'AFTER_1_ACCESS' when set\x1anthis.transition_to_primary_storage_class == '' || this.transition_to_primary_storage_class == 'AFTER_1_ACCESS'\x1a\xe4\x01\n" +
+	"&replication_overwrite_protection_valid\x12Ireplication_overwrite_protection must be 'ENABLED' or 'DISABLED' when set\x1aothis.replication_overwrite_protection == '' || this.replication_overwrite_protection in ['ENABLED', 'DISABLED']\x1a\xc5\x01\n" +
+	"\x16bypass_requires_policy\x12mbypass_policy_lockout_safety_check requires policy to be set (there is no policy put to bypass the check for)\x1a<!this.bypass_policy_lockout_safety_check || has(this.policy)\"\xd4\x06\n" +
+	"\x1fAwsElasticFileSystemMountTarget\x12x\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x1d\n" +
 	"\n" +
-	"posix_user\x18\x02 \x01(\v2Z.dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPointPosixUserR\tposixUser\x12\x85\x01\n" +
-	"\x0eroot_directory\x18\x03 \x01(\v2^.dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPointRootDirectoryR\rrootDirectory\"\x85\x01\n" +
-	"(AwsElasticFileSystemAccessPointPosixUser\x12\x18\n" +
-	"\x03uid\x18\x01 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\x03uid\x12\x18\n" +
-	"\x03gid\x18\x02 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\x03gid\x12%\n" +
-	"\x0esecondary_gids\x18\x03 \x03(\x05R\rsecondaryGids\"\xcf\x01\n" +
-	",AwsElasticFileSystemAccessPointRootDirectory\x12\x1a\n" +
-	"\x04path\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04path\x12\x82\x01\n" +
-	"\rcreation_info\x18\x02 \x01(\v2].dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPointCreationInfoR\fcreationInfo\"\xb0\x01\n" +
-	"+AwsElasticFileSystemAccessPointCreationInfo\x12#\n" +
-	"\towner_uid\x18\x01 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\bownerUid\x12#\n" +
-	"\towner_gid\x18\x02 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\bownerGid\x127\n" +
-	"\vpermissions\x18\x03 \x01(\tB\x15\xbaH\x12\xc8\x01\x01r\r2\v^0[0-7]{3}$R\vpermissionsB\x93\x03\n" +
+	"ip_address\x18\x02 \x01(\tR\tipAddress\x12&\n" +
+	"\x0fip_address_type\x18\x03 \x01(\tR\ripAddressType\x12!\n" +
+	"\fipv6_address\x18\x04 \x01(\tR\vipv6Address:\xcc\x04\xbaH\xc8\x04\x1a\xc3\x01\n" +
+	"\x15ip_address_type_valid\x12Jip_address_type must be 'IPV4_ONLY', 'IPV6_ONLY', or 'DUAL_STACK' when set\x1a^this.ip_address_type == '' || this.ip_address_type in ['IPV4_ONLY', 'IPV6_ONLY', 'DUAL_STACK']\x1a\xc2\x01\n" +
+	"\x1dipv4_address_not_on_ipv6_only\x12cip_address cannot be set when ip_address_type is 'IPV6_ONLY' (the mount target has no IPv4 address)\x1a<this.ip_address == '' || this.ip_address_type != 'IPV6_ONLY'\x1a\xba\x01\n" +
+	"\x1fipv6_address_requires_ipv6_type\x12Gipv6_address requires ip_address_type to be 'IPV6_ONLY' or 'DUAL_STACK'\x1aNthis.ipv6_address == '' || this.ip_address_type in ['IPV6_ONLY', 'DUAL_STACK']\"\x94\x05\n" +
+	"\x1fAwsElasticFileSystemReplication\x12-\n" +
+	"\x12destination_region\x18\x01 \x01(\tR\x11destinationRegion\x12K\n" +
+	"\"destination_availability_zone_name\x18\x02 \x01(\tR\x1fdestinationAvailabilityZoneName\x12\x88\x01\n" +
+	"\x16destination_kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x13destinationKmsKeyId\x12\x97\x01\n" +
+	"\x1adestination_file_system_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_idR\x17destinationFileSystemId:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +
+	" replication_destination_required\x12Tat least one of destination_region or destination_availability_zone_name is required\x1aNthis.destination_region != '' || this.destination_availability_zone_name != ''B\x93\x03\n" +
 	"4com.dev.planton.provider.aws.awselasticfilesystem.v1B\tSpecProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticfilesystem/v1;awselasticfilesystemv1\xa2\x02\x05DPPAA\xaa\x020Dev.Planton.Provider.Aws.Awselasticfilesystem.V1\xca\x020Dev\\Planton\\Provider\\Aws\\Awselasticfilesystem\\V1\xe2\x02<Dev\\Planton\\Provider\\Aws\\Awselasticfilesystem\\V1\\GPBMetadata\xea\x025Dev::Planton::Provider::Aws::Awselasticfilesystem::V1b\x06proto3"
 
 var (
@@ -612,25 +563,23 @@ func file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDescGZI
 	return file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_goTypes = []any{
-	(*AwsElasticFileSystemSpec)(nil),                     // 0: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemSpec
-	(*AwsElasticFileSystemAccessPoint)(nil),              // 1: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPoint
-	(*AwsElasticFileSystemAccessPointPosixUser)(nil),     // 2: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPointPosixUser
-	(*AwsElasticFileSystemAccessPointRootDirectory)(nil), // 3: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPointRootDirectory
-	(*AwsElasticFileSystemAccessPointCreationInfo)(nil),  // 4: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPointCreationInfo
-	(*v1.StringValueOrRef)(nil),                          // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*structpb.Struct)(nil),                              // 6: google.protobuf.Struct
+	(*AwsElasticFileSystemSpec)(nil),        // 0: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemSpec
+	(*AwsElasticFileSystemMountTarget)(nil), // 1: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemMountTarget
+	(*AwsElasticFileSystemReplication)(nil), // 2: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemReplication
+	(*v1.StringValueOrRef)(nil),             // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*structpb.Struct)(nil),                 // 4: google.protobuf.Struct
 }
 var file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_depIdxs = []int32{
-	5, // 0: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // 1: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // 2: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 3: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemSpec.access_points:type_name -> dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPoint
-	6, // 4: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemSpec.policy:type_name -> google.protobuf.Struct
-	2, // 5: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPoint.posix_user:type_name -> dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPointPosixUser
-	3, // 6: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPoint.root_directory:type_name -> dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPointRootDirectory
-	4, // 7: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPointRootDirectory.creation_info:type_name -> dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemAccessPointCreationInfo
+	3, // 0: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemSpec.mount_targets:type_name -> dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemMountTarget
+	3, // 2: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 3: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemSpec.policy:type_name -> google.protobuf.Struct
+	2, // 4: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemSpec.replication:type_name -> dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemReplication
+	3, // 5: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemMountTarget.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 6: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemReplication.destination_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 7: dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemReplication.destination_file_system_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	8, // [8:8] is the sub-list for method output_type
 	8, // [8:8] is the sub-list for method input_type
 	8, // [8:8] is the sub-list for extension type_name
@@ -649,7 +598,7 @@ func file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

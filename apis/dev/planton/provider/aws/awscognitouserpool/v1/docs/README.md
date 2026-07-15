@@ -2,125 +2,86 @@
 
 ## Overview
 
-Amazon Cognito User Pools is a fully managed user directory that provides sign-up, sign-in, and token-based authentication for web and mobile applications. It implements the OAuth 2.0 and OpenID Connect (OIDC) standards, enabling applications to authenticate users and receive JWTs (JSON Web Tokens) without managing any identity infrastructure.
+Amazon Cognito user pools are a fully managed user directory that provides sign-up, sign-in, and token-based authentication for web and mobile applications. A pool implements OAuth 2.0 and OpenID Connect: applications authenticate users against it and receive JWTs without running any identity infrastructure.
 
-This component bundles three tightly coupled resources into a single declarative unit: the user pool (directory), app clients (application configurations), and an optional domain (hosted UI endpoints).
+The pool is the ROOT of a family of resources. Everything that is pool-scoped configuration lives on this kind; everything with its own AWS lifecycle is its own kind that references the pool:
 
-## Architecture
+- **App clients** (`AwsCognitoUserPoolClient`) -- many per pool. Each is one application's OAuth contract, and its client ID is what JWT authorizers validate as the token audience.
+- **Identity providers** (`AwsCognitoIdentityProvider`) -- many per pool, federating Google/Facebook/Amazon/Apple/OIDC/SAML sign-in.
+- **Resource servers** (`AwsCognitoResourceServer`) -- many per pool, minting the custom OAuth scopes machine-to-machine clients request.
 
-### Identity Model
+The hosted-UI **domain** is the deliberate exception: AWS allows one domain per pool and the domain string is its identity, so it folds into the pool's spec and lifecycle.
 
-Cognito offers two mutually exclusive identity models, and the choice is **permanent** (ForceNew):
+## Identity Model
 
-**Username Attributes** (`username_attributes`): The specified attribute(s) become the username. With `["email"]`, users sign in with their email address, and Cognito auto-generates an internal UUID as the "sub" claim. This is the most common model for consumer-facing applications.
+Cognito offers two mutually exclusive identity models, and the choice is **permanent** -- changing it replaces the pool and every user in it:
 
-**Alias Attributes** (`alias_attributes`): Users have a separate, explicit username (typically auto-generated or user-chosen), and the alias attributes serve as alternative sign-in identifiers. With `["email", "preferred_username"]`, users can sign in with either their email, preferred username, or their unique username. This model is common for gaming, social, or enterprise applications where usernames are meaningful.
+- **Username attributes** (`username_attributes`): the chosen attribute IS the username. `["email"]` is the common consumer-app model; Cognito generates the immutable `sub` claim internally.
+- **Alias attributes** (`alias_attributes`): users have a real username, and the aliases are alternative sign-in identifiers -- common for gaming and enterprise apps where usernames matter.
+- **Neither**: users pick a unique username at sign-up.
 
-**Neither**: If both are omitted, users must provide a unique username at sign-up. This is the least common model but useful when usernames are managed externally.
+## Sign-In Policy: the Passwordless Dial
 
-### Authentication Flows
+`allowed_first_auth_factors` selects what users may present as their FIRST factor: `PASSWORD`, `EMAIL_OTP`, `SMS_OTP`, `WEB_AUTHN` (passkeys). Leaving it empty keeps classic password-first behavior; setting it enables the choice-based sign-in flow (clients opt in with the `ALLOW_USER_AUTH` auth flow). Passkeys bind to the WebAuthn relying-party ID -- pin `web_authn.relying_party_id` to the domain your applications serve BEFORE users register passkeys, because changing it invalidates existing registrations.
 
-Cognito supports several authentication flows controlled by `explicit_auth_flows` on the app client:
+## Feature Tiers
 
-- **USER_SRP_AUTH**: Secure Remote Password protocol. The password never leaves the client. Recommended for all applications.
-- **REFRESH_TOKEN_AUTH**: Refresh token exchange. Always recommended to enable session continuity.
-- **USER_PASSWORD_AUTH**: Direct username/password transmission. Less secure; only for server-side applications behind TLS.
-- **ADMIN_USER_PASSWORD_AUTH**: Admin-initiated authentication. For server-side applications that authenticate users on behalf of themselves.
-- **CUSTOM_AUTH**: Custom authentication flow using Lambda triggers (define/create/verify challenge). For biometrics, passwordless, or multi-step flows.
+`user_pool_tier` selects the AWS feature plan and billing: `LITE` (core sign-in), `ESSENTIALS` (the AWS default -- passwordless factors, managed login, password history), and `PLUS` (threat protection). Downgrades are allowed but AWS rejects them while a higher-tier feature is still configured.
 
-### Token Model
+## MFA Architecture
 
-Cognito issues three JWTs per successful authentication:
+`mfa_configuration` sets enforcement (`OFF`/`OPTIONAL`/`ON`); the factor set is configured independently:
 
-- **ID Token**: Contains user identity claims (email, name, custom attributes). Used by applications to identify the user. Default TTL: 1 hour.
-- **Access Token**: Contains OAuth scopes and group memberships. Used for API authorization. Default TTL: 1 hour.
-- **Refresh Token**: Used to obtain new ID/access tokens without re-authentication. Default TTL: 30 days. Cannot exceed 10 years.
+- **TOTP** (`software_token_mfa_enabled`) -- authenticator apps; no delivery dependency.
+- **Email OTP** (`email_mfa`) -- requires SES `DEVELOPER` email (codes exceed the built-in sender's guarantees).
+- **SMS OTP** -- requires `sms_configuration` (below).
+- **Passkeys** participate as a first factor rather than a second.
 
-### MFA Architecture
+## Delivery Channels
 
-Cognito supports three MFA enforcement levels:
+**Email** has two modes: `COGNITO_DEFAULT` (built-in, ~50 emails/day -- development only) and `DEVELOPER` (your verified SES identity -- production). **SMS** always routes through SNS by role assumption: `sms_configuration.sns_caller_arn` references the IAM role, `external_id` is the confused-deputy guard the role's trust policy must match, and every SMS-dependent feature (phone auto-verification, SMS OTP, SMS MFA) needs it.
 
-- **OFF**: No MFA. Users authenticate with password only.
-- **OPTIONAL**: Users can opt in to MFA during sign-in. Once enrolled, MFA is required on subsequent sign-ins.
-- **ON**: All users must enroll in MFA. Authentication fails without a valid MFA code.
+For full control, `custom_email_sender` / `custom_sms_sender` hand delivery to your own Lambda; Cognito encrypts the code payload with `lambda_config.kms_key_id`, which is why the key is required with either sender.
 
-This component supports TOTP (Time-based One-Time Password) via authenticator apps. SMS-based MFA is excluded from v1 as it requires a separate IAM role and SNS configuration.
+## Custom Attributes are Append-Only
 
-### Email Delivery
+The pool schema accepts up to 50 custom attributes (auto-prefixed `custom:`). AWS has no API to modify or remove an attribute once added -- removing one from the spec errors rather than recreating the pool, and the `mutable`/`required`/`developer_only_attribute` flags are fixed at the moment of addition. Model attribute changes as NEW attributes.
 
-Cognito sends emails for verification codes, password resets, and invitation messages. Two modes:
+## Lambda Triggers
 
-- **COGNITO_DEFAULT**: Cognito's built-in email service. Limited to 50 emails/day in sandbox mode. No setup required. Suitable for development and low-volume applications.
-- **DEVELOPER**: Routes emails through your SES verified identity. No daily limit (subject to SES limits). Required for production applications.
+Cognito invokes Lambda at every lifecycle point: sign-up validation, pre/post authentication, post-confirmation provisioning, message customization, on-the-fly user migration, and the three-step custom-challenge flow. Claim customization has two spellings: the legacy `pre_token_generation` (V1_0 event, identity token only) and `pre_token_generation_config` with an explicit `lambda_version` -- `V2_0`/`V3_0` deliver the richer event that also customizes ACCESS tokens. Exactly one may be set. Every trigger function must grant `cognito-idp.amazonaws.com` invoke permission.
 
-### Custom Attributes
+## Threat Protection and Log Delivery
 
-Cognito supports up to 50 custom attributes per pool, automatically prefixed with `custom:`. Key constraints:
+`user_pool_add_ons.advanced_security_mode` turns on risk-based protection (`AUDIT` gathers signals; `ENFORCED` acts on them) -- both require the PLUS tier. `custom_auth_mode` extends coverage to Lambda-driven custom auth flows, which standard mode does not inspect. `log_configurations` routes two event sources to destinations you own: `userNotification` (message-delivery errors, ERROR level) and `userAuthEvents` (detailed auth telemetry from threat protection, INFO level) -- each entry targets exactly one CloudWatch log group, Firehose stream, or S3 bucket by reference.
 
-- **Data types**: String, Number, DateTime, Boolean
-- **Immutable flags**: The `mutable` and `required` settings cannot be changed after the attribute is added (ForceNew at the attribute level, not the pool level)
-- **Schema is append-only**: You can add new attributes but cannot remove or rename existing ones
+## Domain and Hosted UI
 
-### Lambda Triggers
+The folded domain serves the hosted sign-in pages and the standard OAuth2 endpoints (`/oauth2/authorize`, `/oauth2/token`, `/oauth2/userInfo`):
 
-Cognito invokes Lambda functions at 10 lifecycle points, enabling deep customization:
+- **Prefix domain**: `{prefix}.auth.{region}.amazoncognito.com` -- free, resolves in about a minute.
+- **Custom domain**: your FQDN, fronted by CloudFront, requiring an ACM certificate in **us-east-1** regardless of the pool's region. The pool exports the CloudFront distribution domain and its fixed alias zone ID so a Route53 alias record composes directly from outputs. Adding or removing the certificate switches the domain type and replaces the domain; rotating one certificate ARN to another updates in place.
+- `managed_login_version` selects the page generation: 1 is the classic hosted UI; 2 is managed login (the AWS default for new domains), which requires a branding style to be assigned in the console before pages render.
 
-- **Pre Sign-Up**: Validate/auto-confirm users, block sign-ups
-- **Pre/Post Authentication**: Custom validation, logging, analytics
-- **Post Confirmation**: Welcome emails, provisioning, downstream system sync
-- **Pre Token Generation**: Add/remove/modify JWT claims (e.g., inject tenant_id)
-- **Custom Message**: Customize verification and invitation email/SMS content
-- **User Migration**: Import users on-the-fly from an external identity store
-- **Custom Auth Challenge**: Define/create/verify custom authentication challenges
+## The Three Join Keys
 
-### Domain and Hosted UI
+Downstream composition hangs off three outputs with distinct shapes -- they are deliberately separate:
 
-The domain configuration enables Cognito's hosted sign-in UI and standard OAuth 2.0 endpoints (`/oauth2/authorize`, `/oauth2/token`, `/oauth2/userInfo`). Two types:
+- **`issuer`** -- the full `https://` OIDC issuer URL. JWT authorizers (API Gateway, ALB) validate the token's `iss` claim against exactly this string.
+- **`user_pool_domain`** -- the RAW domain (prefix or FQDN, no scheme). ALB `authenticate_cognito` actions take exactly this shape.
+- **`hosted_ui_url`** -- the full `https://` URL applications link users to.
 
-- **Cognito Prefix Domain**: `{prefix}.auth.{region}.amazoncognito.com`. Free, no DNS setup. Good for development and internal tools.
-- **Custom Domain**: Your own domain (e.g., `auth.example.com`). Requires an ACM certificate in **us-east-1** (Cognito uses CloudFront). Outputs the CloudFront distribution ARN for creating a Route53 alias record.
-
-## App Client Design
-
-App clients are the bridge between applications and the user pool. Each client represents a distinct application with its own:
-
-- **Secret**: Server-side apps use a client secret for the Authorization Code grant. SPAs and mobile apps must not have a secret (`generate_secret: false`).
-- **OAuth flows**: Authorization Code (`code`) for most apps, Client Credentials for M2M, Implicit is deprecated.
-- **Scopes**: Standard OIDC scopes (`openid`, `email`, `profile`) plus custom scopes from resource servers.
-- **Token TTLs**: Each client can have different access/ID/refresh token lifetimes.
-
-## Infra Chart Composability
-
-This component produces outputs that enable downstream resource wiring:
-
-**As a JWT issuer for API Gateway**:
-```
-spec.authorizers[].jwtConfiguration.issuer -> status.outputs.user_pool_endpoint
-spec.authorizers[].jwtConfiguration.audiences -> status.outputs.client_ids.{name}
-```
-
-**As environment variables for ECS/EKS deployments**:
-```
-COGNITO_USER_POOL_ID -> status.outputs.user_pool_id
-COGNITO_CLIENT_ID -> status.outputs.client_ids.{name}
-COGNITO_DOMAIN -> status.outputs.user_pool_domain
-```
+(`user_pool_endpoint` remains the scheme-less host/path AWS reports, for SDK configuration.)
 
 ## Cost Model
 
-Cognito pricing is based on Monthly Active Users (MAUs):
+Cognito bills on Monthly Active Users, by tier (LITE/ESSENTIALS/PLUS have different free allowances and per-MAU rates). Threat protection is part of the PLUS tier. A pool with no users costs nothing meaningful; custom domains add no Cognito cost (the ACM certificate is free).
 
-- **Free tier**: 50,000 MAUs (LITE tier) or 10,000 MAUs (ESSENTIALS tier)
-- **Beyond free tier**: ~$0.0055/MAU (varies by tier and volume)
-- **Advanced security features**: Additional cost per MAU
-- **Custom domain**: No additional Cognito cost (ACM certificates are free)
+## Security Defaults Worth Setting
 
-## Security Best Practices
-
-1. Always enable `transit_encryption` (TLS) for token endpoints
-2. Use SRP auth (`ALLOW_USER_SRP_AUTH`) -- passwords never leave the client
-3. Enable token revocation for production clients
-4. Set `preventUserExistenceErrors: ENABLED` to prevent user enumeration
-5. Use `DEVELOPER` email mode for production (SES) to avoid 50/day sandbox limit
-6. Enable deletion protection for production pools
-7. MFA `OPTIONAL` at minimum for production; `ON` for sensitive applications
+1. `ALLOW_USER_SRP_AUTH` on clients -- the password never leaves the device.
+2. `prevent_user_existence_errors: ENABLED` on clients -- blocks user enumeration.
+3. `deletion_protection: true` for production -- a deleted pool takes every user with it, unrecoverably.
+4. `DEVELOPER` email mode for anything beyond development.
+5. `attributes_require_verification_before_update: ["email"]` -- an unverified typo in an email update cannot lock the user out of recovery.
+6. MFA `OPTIONAL` at minimum; `ON` for sensitive applications.

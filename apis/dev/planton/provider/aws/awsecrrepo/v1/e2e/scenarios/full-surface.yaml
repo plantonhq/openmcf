@@ -1,17 +1,18 @@
-# Full-surface AwsEcrRepo scenario: one repository exercising both module
-# resources in a single fast lane -- the repository itself (immutable tags,
-# scan-on-push, AES256 encryption, force_delete so destroy never wedges on
-# leftover images) and the lifecycle policy with BOTH rule shapes (the
-# single allowed untagged-by-age rule plus the any-keep-last-N rule).
-# force_delete is also the catalog-declared config-only attribute, so the
-# import round-trip lane exercises its tolerance path exactly like
-# aws_s3_bucket.force_destroy. Full metadata is supplied for tagging/orphan
-# cleanup.
+# Full-surface AwsEcrRepo scenario: a slash-namespaced repository with
+# exclusion-filtered immutability ("latest" and "dev-*" stay movable while
+# every other tag freezes), scan-on-push, all three structured
+# lifecycle-rule shapes (the folded lifecycle policy materializes as its own
+# provider resource), and the folded repository policy granting the Lambda
+# service principal pull access (a service-principal grant needs no
+# account-specific ARN, so the policy is fixture-portable). forceDelete is
+# true so teardown never wedges on a leftover image, and AES256 keeps the
+# lane prerequisite-free (KMS encryption is proven by spec tests + the
+# offline gate — the encryption block wiring is identical).
 apiVersion: aws.planton.dev/v1
 kind: AwsEcrRepo
 metadata:
-  name: planton-oss-e2e-ecr-full
-  id: planton-oss-e2e-ecr-full
+  name: planton-oss-e2e-awsecrrepo-full
+  id: planton-oss-e2e-awsecrrepo-full
   org: planton-oss
   env: e2e
   labels:
@@ -23,11 +24,39 @@ metadata:
     - planton-e2e
 spec:
   region: us-west-2
-  repositoryName: planton-oss-e2e-ecr-full
-  imageImmutable: true
+  repositoryName: planton-oss-e2e/full-surface
+  imageTagMutability: IMMUTABLE_WITH_EXCLUSION
+  imageTagMutabilityExclusionFilters:
+    - latest
+    - dev-*
   encryptionType: AES256
-  forceDelete: true
   scanOnPush: true
-  lifecyclePolicy:
-    expireUntaggedAfterDays: 7
-    maxImageCount: 50
+  forceDelete: true
+  lifecycleRules:
+    - rulePriority: 1
+      description: Expire untagged images after 7 days
+      tagStatus: untagged
+      countType: sinceImagePushed
+      countNumber: 7
+    - rulePriority: 2
+      description: Keep only the last 5 PR preview images
+      tagStatus: tagged
+      tagPrefixes:
+        - pr-
+      countType: imageCountMoreThan
+      countNumber: 5
+    - rulePriority: 3
+      description: Keep at most 50 images overall
+      tagStatus: any
+      countType: imageCountMoreThan
+      countNumber: 50
+  repositoryPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowLambdaPull
+        Effect: Allow
+        Principal:
+          Service: lambda.amazonaws.com
+        Action:
+          - ecr:BatchGetImage
+          - ecr:GetDownloadUrlForLayer

@@ -8,5 +8,4 @@ const (
 	OpOwnerId                        = "owner_id"
 	OpAssociationDefaultRouteTableId = "association_default_route_table_id"
 	OpPropagationDefaultRouteTableId = "propagation_default_route_table_id"
-	OpVpcAttachmentIds               = "vpc_attachment_ids"
 )

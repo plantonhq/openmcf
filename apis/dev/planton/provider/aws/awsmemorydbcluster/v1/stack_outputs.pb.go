@@ -35,18 +35,20 @@ type AwsMemorydbClusterStackOutputs struct {
 	// The Amazon Resource Name of the MemoryDB cluster. Used in IAM policies
 	// and cross-service permissions.
 	ClusterArn string `protobuf:"bytes,3,opt,name=cluster_arn,json=clusterArn,proto3" json:"cluster_arn,omitempty"`
-	// The name of the MemoryDB cluster. Matches metadata.id.
+	// The name of the MemoryDB cluster. Matches metadata.name.
 	ClusterName string `protobuf:"bytes,4,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
 	// The actual engine patch version running on the cluster (e.g., "7.1.0.20").
 	// May differ from the requested engine_version due to automatic patching.
 	EnginePatchVersion string `protobuf:"bytes,5,opt,name=engine_patch_version,json=enginePatchVersion,proto3" json:"engine_patch_version,omitempty"`
-	// The name of the MemoryDB subnet group associated with this cluster.
-	// Only populated when subnet_ids were provided and a subnet group was
-	// created by the module.
+	// The name of the subnet group the cluster is placed in — the
+	// module-managed group (when subnet_ids were provided), the referenced
+	// existing group (when subnet_group_name was set), or empty when the
+	// cluster fell back to the account's default group.
 	SubnetGroupName string `protobuf:"bytes,6,opt,name=subnet_group_name,json=subnetGroupName,proto3" json:"subnet_group_name,omitempty"`
-	// The name of the custom parameter group associated with this cluster.
-	// Only populated when parameters were provided and a parameter group
-	// was created by the module.
+	// The name of the parameter group attached to the cluster — the
+	// module-managed group (when parameters were provided), the referenced
+	// existing group (when parameter_group_name was set), or empty when the
+	// cluster runs on the family default.
 	ParameterGroupName string `protobuf:"bytes,7,opt,name=parameter_group_name,json=parameterGroupName,proto3" json:"parameter_group_name,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache

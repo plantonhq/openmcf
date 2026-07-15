@@ -17,9 +17,31 @@ func alarm(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*AlarmR
 	spec := locals.AwsCloudwatchAlarm.Spec
 
 	args := &cloudwatch.MetricAlarmArgs{
-		ComparisonOperator: pulumi.String(spec.ComparisonOperator),
-		EvaluationPeriods:  pulumi.Int(int(spec.EvaluationPeriods)),
-		Tags:               pulumi.ToStringMap(locals.AwsTags),
+		// The alarm's cloud name is the resource's metadata.name — the same
+		// basis the Terraform module uses. Setting it explicitly (instead of
+		// relying on Pulumi auto-naming, which appends a random suffix) keeps
+		// the physical name identical across both IaC engines. The name is also
+		// the alarm's identity for composite alarm rules, so it must be stable.
+		Name: pulumi.String(locals.AwsCloudwatchAlarm.Metadata.Name),
+		Tags: pulumi.ToStringMap(locals.AwsTags),
+	}
+
+	// PromQL alarms carry their alerting contract in the query itself, so the
+	// threshold-evaluation arguments below only apply to the other two modes.
+	// The spec CELs guarantee comparison_operator/evaluation_periods are set
+	// exactly when the alarm is NOT a PromQL alarm.
+	if spec.EvaluationCriteria == nil {
+		args.ComparisonOperator = pulumi.String(spec.ComparisonOperator)
+		args.EvaluationPeriods = pulumi.IntPtr(int(spec.EvaluationPeriods))
+
+		// Threshold vs. anomaly detection: mutually exclusive.
+		// When threshold_metric_id is set, the anomaly detection band acts as the
+		// dynamic threshold. Otherwise, use the static threshold value.
+		if spec.ThresholdMetricId != "" {
+			args.ThresholdMetricId = pulumi.StringPtr(spec.ThresholdMetricId)
+		} else {
+			args.Threshold = pulumi.Float64Ptr(spec.Threshold)
+		}
 	}
 
 	// Datapoints-to-alarm: M-of-N evaluation. Only set when explicitly provided
@@ -28,30 +50,16 @@ func alarm(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*AlarmR
 		args.DatapointsToAlarm = pulumi.IntPtr(int(spec.DatapointsToAlarm))
 	}
 
-	// Threshold vs. anomaly detection: mutually exclusive.
-	// When threshold_metric_id is set, the anomaly detection band acts as the
-	// dynamic threshold. Otherwise, use the static threshold value.
-	if spec.ThresholdMetricId != "" {
-		args.ThresholdMetricId = pulumi.StringPtr(spec.ThresholdMetricId)
-	} else {
-		args.Threshold = pulumi.Float64Ptr(spec.Threshold)
-	}
-
 	// Treat missing data: controls alarm behavior when data points are absent.
 	if spec.TreatMissingData != "" {
 		args.TreatMissingData = pulumi.StringPtr(spec.TreatMissingData)
 	}
 
-	// Actions enabled: proto3 default is false, but CloudWatch default is true.
-	// We default to true (enabled) unless the user explicitly set it to false
-	// by checking the proto field. Since proto3 bools default to false and we
-	// cannot distinguish "not set" from "set to false", we always pass the value.
-	// The spec comment says "defaults to true in the IaC module when not set".
-	if spec.ActionsEnabled {
-		args.ActionsEnabled = pulumi.BoolPtr(true)
-	} else {
-		// Proto3 default: field is false. We default to true for CloudWatch.
-		args.ActionsEnabled = pulumi.BoolPtr(true)
+	// Actions enabled is a presence-aware optional: unset means "let AWS
+	// default to true", while an explicit false is a real user choice
+	// (suppressing actions during maintenance) that must reach the provider.
+	if spec.ActionsEnabled != nil {
+		args.ActionsEnabled = pulumi.BoolPtr(spec.GetActionsEnabled())
 	}
 
 	// Alarm description.
@@ -133,6 +141,31 @@ func alarm(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*AlarmR
 			queries = append(queries, query)
 		}
 		args.MetricQueries = queries
+	}
+
+	// ---------------------------------------------------------------------------
+	// PromQL mode (evaluation_criteria)
+	// ---------------------------------------------------------------------------
+	if spec.EvaluationCriteria != nil {
+		promql := spec.EvaluationCriteria.PromqlCriteria
+		promqlArgs := &cloudwatch.MetricAlarmEvaluationCriteriaPromqlCriteriaArgs{
+			Query: pulumi.String(promql.Query),
+		}
+		// pending/recovery periods are presence-aware: unset lets AWS apply its
+		// default firing behavior, while an explicit 0 means "transition
+		// immediately" — the two must not collapse into each other.
+		if promql.PendingPeriod != nil {
+			promqlArgs.PendingPeriod = pulumi.IntPtr(int(promql.GetPendingPeriod()))
+		}
+		if promql.RecoveryPeriod != nil {
+			promqlArgs.RecoveryPeriod = pulumi.IntPtr(int(promql.GetRecoveryPeriod()))
+		}
+		args.EvaluationCriteria = &cloudwatch.MetricAlarmEvaluationCriteriaArgs{
+			PromqlCriteria: promqlArgs,
+		}
+		if spec.EvaluationInterval > 0 {
+			args.EvaluationInterval = pulumi.IntPtr(int(spec.EvaluationInterval))
+		}
 	}
 
 	// ---------------------------------------------------------------------------

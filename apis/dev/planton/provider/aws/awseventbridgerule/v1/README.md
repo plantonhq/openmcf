@@ -37,7 +37,7 @@ The **AwsEventBridgeRule** resource provides a standardized way to provision and
 - **targets[].sqs_target.message_group_id**: Message group ID for FIFO SQS queue targets. Without it, EventBridge cannot deliver to a FIFO queue at all.
 - **targets[].kinesis_target.partition_key_path**: JSONPath extracting the partition key from the event (shard routing). When unset, EventBridge uses the event ID.
 - **targets[].http_target**: Path wildcards, query string parameters, and header parameters for EventBridge API destination targets.
-- **targets[].batch_target**: Batch job submission parameters — `job_definition` and `job_name` (required), optional `array_size` (2-10000) and `job_attempts` (1-10).
+- **targets[].batch_target**: Batch job submission parameters — `job_definition` (a reference to an AwsBatchJobDefinition's revision-carrying ARN output, or a literal name/name:revision) and `job_name` (required), optional `array_size` (2-10000) and `job_attempts` (1-10). The target `arn` is the job QUEUE (an AwsBatchJobQueue's `job_queue_arn` output).
 - **targets[].ecs_target**: ECS RunTask parameters — the target `arn` is the CLUSTER, and this block carries `task_definition_arn` (required, accepts an AwsEcsTaskDefinition reference), task count, launch type or capacity provider strategy, awsvpc network configuration, placement strategies/constraints, and tagging behavior. The target's `role_arn` is required — EventBridge assumes it to call `ecs:RunTask`.
 
 ## Stack Outputs

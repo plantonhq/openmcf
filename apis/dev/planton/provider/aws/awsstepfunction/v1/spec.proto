@@ -24,6 +24,11 @@ import "google/protobuf/struct.proto";
 // - The `definition` field accepts ASL as native YAML. The IaC modules serialize
 //   it to JSON before passing it to the AWS API. ASL key casing (StartAt, States,
 //   Type, etc.) is preserved through serialization.
+// - The state machine name is taken from metadata.name. AWS restricts names to
+//   1-80 characters matching [0-9A-Za-z_-] (no spaces or dots).
+// - There is deliberately no description field: the CreateStateMachine API has
+//   no description input (the AWS console derives one from the definition's
+//   Comment field), so a spec field would be silently dropped.
 // - Credentials, region, and deployment workflow live outside this spec in stack inputs.
 message AwsStepFunctionSpec {
   // The AWS region where the resource will be created.
@@ -61,9 +66,15 @@ message AwsStepFunctionSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
   ];
 
-  // Free-form description visible in the AWS Console. Useful for documenting
-  // the workflow's purpose and behavior.
-  string description = 5;
+  // Publish a version of the state machine on every create and on every
+  // configuration update. Published versions are immutable snapshots
+  // (definition + role + logging/tracing/encryption at publish time) addressed
+  // by the version ARN exported in stack outputs. Versions are the foundation
+  // for alias-based traffic shifting and safe rollbacks: point consumers at a
+  // version ARN (or an alias routing between two versions) instead of the
+  // mutable state machine ARN. When false (the default), executions always run
+  // the latest saved revision.
+  bool publish = 5;
 
   // ---------------------------------------------------------------------------
   // Observability

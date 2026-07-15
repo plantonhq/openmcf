@@ -1,0 +1,88 @@
+# The ingestion plane: a Direct-PUT Firehose delivery stream that lands JSON
+# events into the lake, and the least-privilege role it delivers with.
+# Direct PUT is the zero-infrastructure arm — producers call
+# PutRecord/PutRecordBatch and Firehose owns batching, compression, and
+# retries; there are no shards to size and no consumers to run.
+{% if values.ingestion_enabled | bool %}
+---
+# The delivery role. Firehose assumes this role for every write, so the
+# policy is scoped to exactly the lake bucket — the stream cannot be
+# repointed at another team's bucket without also changing this policy.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: "{{ values.lake_bucket_name }}-firehose"
+spec:
+  region: "{{ values.aws_region }}"
+  description: "Firehose delivery role for the {{ values.lake_bucket_name }} lake"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: firehose.amazonaws.com
+        Action: sts:AssumeRole
+  inlinePolicies:
+    # The exact action set Firehose documents for S3 delivery — nothing
+    # more. A policy is plain JSON and cannot carry references, so the
+    # bucket ARNs are composed from the chart-controlled bucket name at
+    # render time.
+    lake-delivery:
+      Version: "2012-10-17"
+      Statement:
+        - Sid: DeliverToLake
+          Effect: Allow
+          Action:
+            - s3:AbortMultipartUpload
+            - s3:GetBucketLocation
+            - s3:GetObject
+            - s3:ListBucket
+            - s3:ListBucketMultipartUploads
+            - s3:PutObject
+          Resource:
+            - "arn:aws:s3:::{{ values.lake_bucket_name }}"
+            - "arn:aws:s3:::{{ values.lake_bucket_name }}/*"
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsKinesisFirehose
+metadata:
+  name: "{{ values.lake_bucket_name }}-ingest"
+spec:
+  region: "{{ values.aws_region }}"
+  # No source block = Direct PUT (the spec's implicit default source).
+  extendedS3:
+    bucketArn:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: "{{ values.lake_bucket_name }}"
+        fieldPath: status.outputs.bucket_arn
+    roleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: "{{ values.lake_bucket_name }}-firehose"
+        fieldPath: status.outputs.role_arn
+
+    # Hive-style date partitions from Firehose's built-in timestamp
+    # namespace — no processing pipeline required. Athena prunes these
+    # partitions natively (partition projection or MSCK), which is the
+    # single biggest lever on query cost for event data.
+    prefix: "data/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
+
+    # Failed records land beside the data, split by failure type, so a bad
+    # batch is diagnosable without grepping the whole lake.
+    errorOutputPrefix: "errors/!{firehose:error-output-type}/dt=!{timestamp:yyyy-MM-dd}/"
+
+    # GZIP roughly quarters JSON storage AND scan cost — Athena bills on
+    # compressed bytes read. The extension keeps landed objects
+    # self-describing for humans and tools alike.
+    compressionFormat: GZIP
+    fileExtension: ".json.gz"
+
+    # Fewer, larger objects query dramatically better than many small ones:
+    # buffer up to 5 minutes or 64 MiB, whichever fills first. Latency-
+    # sensitive pipelines can lower the interval at the cost of more
+    # (smaller) objects per day.
+    buffering:
+      intervalInSeconds: 300
+      sizeInMbs: 64
+{% endif %}

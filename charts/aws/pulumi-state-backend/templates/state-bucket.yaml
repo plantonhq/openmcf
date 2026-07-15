@@ -1,0 +1,60 @@
+# The S3 bucket behind a self-managed (DIY) Pulumi backend. Pulumi stores
+# everything here — stack checkpoints, deployment history, and its own lock
+# objects — so unlike a Terraform backend no companion lock table is needed:
+# the Pulumi engine locks natively inside the bucket.
+#
+# Stack SECRETS are encrypted client-side by Pulumi (with the passphrase or
+# KMS secrets provider you choose at `pulumi stack init`) before they ever
+# reach S3; the bucket's own encryption below protects everything else in the
+# checkpoint at rest.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsS3Bucket
+metadata:
+  # The bucket's name IS the resource name. S3 names are global across all AWS
+  # accounts, which is why the default value carries an org prefix.
+  name: "{{ values.bucket_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+
+  # Versioning is the backend's undo button: every checkpoint write keeps the
+  # prior object as a noncurrent version, so an interrupted `pulumi up` or a
+  # corrupted checkpoint is recoverable by restoring a version. Pulumi's own
+  # self-managed-backend guidance recommends versioned object storage.
+  versioningStatus: Enabled
+
+  # SSE-S3 (AES256) encrypts every checkpoint at rest with zero key management
+  # and zero cost. For a customer-managed key, deploy an AwsKmsKey and switch
+  # sseAlgorithm to aws:kms with kmsKeyId referencing it — the spec models
+  # that arm directly.
+  encryption:
+    sseAlgorithm: AES256
+
+  # All four public-access guards on: checkpoints carry every resource
+  # attribute of your infrastructure, and these account-independent guards
+  # make a future misconfigured bucket policy or ACL inert instead of an
+  # incident.
+  publicAccessBlock:
+    blockPublicAcls: true
+    blockPublicPolicy: true
+    ignorePublicAcls: true
+    restrictPublicBuckets: true
+
+  lifecycleRules:
+    # Pulumi writes a new checkpoint on every operation, and versioning keeps
+    # them all. This rule keeps the 30 most recent noncurrent versions
+    # indefinitely (a deep undo history) and expires anything older than 90
+    # days beyond those — bounding cost while keeping every version a team
+    # would realistically restore. Pulumi's own history/ objects are current
+    # versions and are not touched by this rule.
+    - id: bound-noncurrent-versions
+      status: Enabled
+      noncurrentVersionExpiration:
+        noncurrentDays: 90
+        newerNoncurrentVersions: 30
+    # Interrupted multipart uploads (a killed CI job mid-checkpoint-write)
+    # leave invisible billable parts behind; a week is long enough to resume
+    # any legitimate upload.
+    - id: abort-stale-multipart-uploads
+      status: Enabled
+      abortIncompleteMultipartUploadDays: 7

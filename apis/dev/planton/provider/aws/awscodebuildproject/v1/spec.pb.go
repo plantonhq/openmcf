@@ -12,6 +12,7 @@ import (
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -32,55 +33,112 @@ const (
 // CodeBuild project — the build configuration unit — and optionally a webhook
 // for automatic build triggers from source providers.
 //
-// Bundling rationale: a webhook is 1:1 with a project and useless in isolation.
-// Source-triggered projects are incomplete without a webhook, while
-// CodePipeline-triggered and manual projects omit it. Source credentials,
-// report groups, and fleets have independent lifecycles and are excluded.
+// Bundling rationale: a webhook is 1:1 with a project and useless in
+// isolation — source-triggered projects are incomplete without one, while
+// CodePipeline-triggered and manual projects omit it. A resource policy is a
+// single project-keyed document, so it folds. Source credentials (an
+// account/region-wide Git credential store), report groups, and reserved
+// capacity fleets have independent lifecycles shared across projects and are
+// deliberately excluded; the project joins a fleet through
+// environment.fleet_arn.
 type AwsCodeBuildProjectSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the resource will be created.
 	// Example: "us-west-2", "eu-west-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// source defines where the build input comes from and how to fetch it.
+	// source defines where the primary build input comes from and how to
+	// fetch it. Its source_identifier must stay empty — identifiers exist only
+	// to name secondary sources.
 	Source *AwsCodeBuildSource `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
+	// secondary_sources add up to 12 extra inputs alongside the primary
+	// source (e.g., a shared build-tooling repository next to the application
+	// repository). Each entry MUST set source_identifier; the buildspec
+	// addresses the checkout via $CODEBUILD_SRC_DIR_<source_identifier>.
+	SecondarySources []*AwsCodeBuildSource `protobuf:"bytes,3,rep,name=secondary_sources,json=secondarySources,proto3" json:"secondary_sources,omitempty"`
+	// secondary_source_versions pin a branch, tag, or commit per secondary
+	// source (by its source_identifier). Secondary sources without an entry
+	// build from their default branch.
+	SecondarySourceVersions []*AwsCodeBuildSecondarySourceVersion `protobuf:"bytes,4,rep,name=secondary_source_versions,json=secondarySourceVersions,proto3" json:"secondary_source_versions,omitempty"`
 	// environment defines the build container: image, compute, and variables.
-	Environment *AwsCodeBuildEnvironment `protobuf:"bytes,3,opt,name=environment,proto3" json:"environment,omitempty"`
-	// artifacts defines where the build output goes.
-	Artifacts *AwsCodeBuildArtifacts `protobuf:"bytes,4,opt,name=artifacts,proto3" json:"artifacts,omitempty"`
+	Environment *AwsCodeBuildEnvironment `protobuf:"bytes,5,opt,name=environment,proto3" json:"environment,omitempty"`
+	// artifacts defines where the primary build output goes. Its
+	// artifact_identifier is optional on the primary output.
+	Artifacts *AwsCodeBuildArtifacts `protobuf:"bytes,6,opt,name=artifacts,proto3" json:"artifacts,omitempty"`
+	// secondary_artifacts add up to 12 extra output locations (e.g., publish
+	// a container context to one bucket and test reports to another). Each
+	// entry MUST set artifact_identifier, matching the identifier used in the
+	// buildspec's secondary-artifacts section.
+	SecondaryArtifacts []*AwsCodeBuildArtifacts `protobuf:"bytes,7,rep,name=secondary_artifacts,json=secondaryArtifacts,proto3" json:"secondary_artifacts,omitempty"`
 	// service_role is the IAM role ARN that grants CodeBuild permission to
 	// access source code, write artifacts, publish logs, and interact with
 	// other AWS services during the build.
-	ServiceRole *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=service_role,json=serviceRole,proto3" json:"service_role,omitempty"`
+	ServiceRole *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=service_role,json=serviceRole,proto3" json:"service_role,omitempty"`
 	// description is a human-readable description of the project (max 255 chars).
-	Description string `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
+	Description string `protobuf:"bytes,9,opt,name=description,proto3" json:"description,omitempty"`
 	// encryption_key is the ARN of a KMS key used to encrypt build artifacts.
 	// If omitted, CodeBuild uses the AWS-managed key for S3.
-	EncryptionKey *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=encryption_key,json=encryptionKey,proto3" json:"encryption_key,omitempty"`
+	EncryptionKey *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=encryption_key,json=encryptionKey,proto3" json:"encryption_key,omitempty"`
 	// build_timeout is the maximum duration of a single build, in minutes.
-	// Range: 5-2160 (36 hours). Default: 60.
-	BuildTimeout *int32 `protobuf:"varint,8,opt,name=build_timeout,json=buildTimeout,proto3,oneof" json:"build_timeout,omitempty"`
+	// Range: 5-2160 (36 hours). Default: 60. Not supported for Lambda compute
+	// environment types (LINUX_LAMBDA_CONTAINER, ARM_LAMBDA_CONTAINER), where
+	// AWS caps every build at the Lambda maximum instead.
+	BuildTimeout *int32 `protobuf:"varint,11,opt,name=build_timeout,json=buildTimeout,proto3,oneof" json:"build_timeout,omitempty"`
 	// queued_timeout is the maximum time a build can wait in the queue before
-	// timing out, in minutes. Range: 5-480 (8 hours). Default: 480.
-	QueuedTimeout *int32 `protobuf:"varint,9,opt,name=queued_timeout,json=queuedTimeout,proto3,oneof" json:"queued_timeout,omitempty"`
+	// timing out, in minutes. Range: 5-480 (8 hours). Default: 480. Not
+	// supported for Lambda compute environment types.
+	QueuedTimeout *int32 `protobuf:"varint,12,opt,name=queued_timeout,json=queuedTimeout,proto3,oneof" json:"queued_timeout,omitempty"`
 	// concurrent_build_limit caps the number of concurrent builds. Useful for
 	// cost control. Minimum 1. Omit to allow unlimited concurrency.
-	ConcurrentBuildLimit int32 `protobuf:"varint,10,opt,name=concurrent_build_limit,json=concurrentBuildLimit,proto3" json:"concurrent_build_limit,omitempty"`
+	ConcurrentBuildLimit int32 `protobuf:"varint,13,opt,name=concurrent_build_limit,json=concurrentBuildLimit,proto3" json:"concurrent_build_limit,omitempty"`
+	// auto_retry_limit is the number of ADDITIONAL automatic retries after a
+	// failed build (e.g., 2 means up to three attempts total). AWS allows up
+	// to 10. Omit (or 0) to disable automatic retry.
+	AutoRetryLimit int32 `protobuf:"varint,14,opt,name=auto_retry_limit,json=autoRetryLimit,proto3" json:"auto_retry_limit,omitempty"`
+	// badge_enabled publishes a dynamic build badge for the project. The badge
+	// URL is exported as the badge_url stack output and can be embedded in a
+	// repository README. Not supported for CODEPIPELINE or S3 sources.
+	BadgeEnabled bool `protobuf:"varint,15,opt,name=badge_enabled,json=badgeEnabled,proto3" json:"badge_enabled,omitempty"`
 	// source_version is the default branch, tag, or commit ID to build.
 	// For GitHub: branch name, tag, or full commit SHA.
 	// For S3: object version ID.
-	SourceVersion string `protobuf:"bytes,11,opt,name=source_version,json=sourceVersion,proto3" json:"source_version,omitempty"`
+	SourceVersion string `protobuf:"bytes,16,opt,name=source_version,json=sourceVersion,proto3" json:"source_version,omitempty"`
 	// cache configures build caching to speed up subsequent builds.
-	Cache *AwsCodeBuildCache `protobuf:"bytes,12,opt,name=cache,proto3" json:"cache,omitempty"`
+	Cache *AwsCodeBuildCache `protobuf:"bytes,17,opt,name=cache,proto3" json:"cache,omitempty"`
 	// logs_config controls where build logs are sent.
-	LogsConfig *AwsCodeBuildLogsConfig `protobuf:"bytes,13,opt,name=logs_config,json=logsConfig,proto3" json:"logs_config,omitempty"`
+	LogsConfig *AwsCodeBuildLogsConfig `protobuf:"bytes,18,opt,name=logs_config,json=logsConfig,proto3" json:"logs_config,omitempty"`
 	// vpc_config places the build in a VPC, giving it access to private
 	// resources such as RDS databases, ElastiCache clusters, or internal APIs.
-	VpcConfig *AwsCodeBuildVpcConfig `protobuf:"bytes,14,opt,name=vpc_config,json=vpcConfig,proto3" json:"vpc_config,omitempty"`
+	VpcConfig *AwsCodeBuildVpcConfig `protobuf:"bytes,19,opt,name=vpc_config,json=vpcConfig,proto3" json:"vpc_config,omitempty"`
+	// file_system_locations mount Amazon EFS file systems into the build
+	// container — useful for large shared caches (e.g., a Gradle or Bazel
+	// cache) that outlive individual builds. Requires vpc_config placing the
+	// build in subnets that can reach the file system's mount targets.
+	FileSystemLocations []*AwsCodeBuildFileSystemLocation `protobuf:"bytes,20,rep,name=file_system_locations,json=fileSystemLocations,proto3" json:"file_system_locations,omitempty"`
+	// build_batch_config enables batch builds — a single StartBuildBatch call
+	// fans out into multiple coordinated builds defined by the buildspec's
+	// batch section (build graphs, build lists, matrix builds).
+	BuildBatchConfig *AwsCodeBuildBatchConfig `protobuf:"bytes,21,opt,name=build_batch_config,json=buildBatchConfig,proto3" json:"build_batch_config,omitempty"`
+	// project_visibility controls whether the project's builds are publicly
+	// readable.
+	//
+	//	PRIVATE:     Only principals in the account can view builds (default)
+	//	PUBLIC_READ: Build results, logs, and artifacts are world-readable —
+	//	             used by open-source projects publishing CI results
+	ProjectVisibility *string `protobuf:"bytes,22,opt,name=project_visibility,json=projectVisibility,proto3,oneof" json:"project_visibility,omitempty"`
+	// resource_access_role is the IAM role CodeBuild uses to read the CloudWatch
+	// logs and S3 artifacts it exposes for public builds. Required when
+	// project_visibility is PUBLIC_READ.
+	ResourceAccessRole *v1.StringValueOrRef `protobuf:"bytes,23,opt,name=resource_access_role,json=resourceAccessRole,proto3" json:"resource_access_role,omitempty"`
+	// resource_policy is a resource-based IAM policy document attached to the
+	// project — the mechanism for cross-account access (e.g., letting a
+	// central CI account start builds in this account). Provide the policy as
+	// a structured JSON document.
+	ResourcePolicy *structpb.Struct `protobuf:"bytes,24,opt,name=resource_policy,json=resourcePolicy,proto3" json:"resource_policy,omitempty"`
 	// webhook configures automatic build triggers from the source provider.
 	// Only valid when source type supports webhooks: GITHUB, BITBUCKET,
 	// GITHUB_ENTERPRISE, GITLAB, GITLAB_SELF_MANAGED, CODECOMMIT.
 	// Omit for CodePipeline-triggered or manual-only projects.
-	Webhook       *AwsCodeBuildWebhook `protobuf:"bytes,15,opt,name=webhook,proto3" json:"webhook,omitempty"`
+	Webhook       *AwsCodeBuildWebhook `protobuf:"bytes,25,opt,name=webhook,proto3" json:"webhook,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -129,6 +187,20 @@ func (x *AwsCodeBuildProjectSpec) GetSource() *AwsCodeBuildSource {
 	return nil
 }
 
+func (x *AwsCodeBuildProjectSpec) GetSecondarySources() []*AwsCodeBuildSource {
+	if x != nil {
+		return x.SecondarySources
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildProjectSpec) GetSecondarySourceVersions() []*AwsCodeBuildSecondarySourceVersion {
+	if x != nil {
+		return x.SecondarySourceVersions
+	}
+	return nil
+}
+
 func (x *AwsCodeBuildProjectSpec) GetEnvironment() *AwsCodeBuildEnvironment {
 	if x != nil {
 		return x.Environment
@@ -139,6 +211,13 @@ func (x *AwsCodeBuildProjectSpec) GetEnvironment() *AwsCodeBuildEnvironment {
 func (x *AwsCodeBuildProjectSpec) GetArtifacts() *AwsCodeBuildArtifacts {
 	if x != nil {
 		return x.Artifacts
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildProjectSpec) GetSecondaryArtifacts() []*AwsCodeBuildArtifacts {
+	if x != nil {
+		return x.SecondaryArtifacts
 	}
 	return nil
 }
@@ -185,6 +264,20 @@ func (x *AwsCodeBuildProjectSpec) GetConcurrentBuildLimit() int32 {
 	return 0
 }
 
+func (x *AwsCodeBuildProjectSpec) GetAutoRetryLimit() int32 {
+	if x != nil {
+		return x.AutoRetryLimit
+	}
+	return 0
+}
+
+func (x *AwsCodeBuildProjectSpec) GetBadgeEnabled() bool {
+	if x != nil {
+		return x.BadgeEnabled
+	}
+	return false
+}
+
 func (x *AwsCodeBuildProjectSpec) GetSourceVersion() string {
 	if x != nil {
 		return x.SourceVersion
@@ -213,6 +306,41 @@ func (x *AwsCodeBuildProjectSpec) GetVpcConfig() *AwsCodeBuildVpcConfig {
 	return nil
 }
 
+func (x *AwsCodeBuildProjectSpec) GetFileSystemLocations() []*AwsCodeBuildFileSystemLocation {
+	if x != nil {
+		return x.FileSystemLocations
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildProjectSpec) GetBuildBatchConfig() *AwsCodeBuildBatchConfig {
+	if x != nil {
+		return x.BuildBatchConfig
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildProjectSpec) GetProjectVisibility() string {
+	if x != nil && x.ProjectVisibility != nil {
+		return *x.ProjectVisibility
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildProjectSpec) GetResourceAccessRole() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ResourceAccessRole
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildProjectSpec) GetResourcePolicy() *structpb.Struct {
+	if x != nil {
+		return x.ResourcePolicy
+	}
+	return nil
+}
+
 func (x *AwsCodeBuildProjectSpec) GetWebhook() *AwsCodeBuildWebhook {
 	if x != nil {
 		return x.Webhook
@@ -220,12 +348,15 @@ func (x *AwsCodeBuildProjectSpec) GetWebhook() *AwsCodeBuildWebhook {
 	return nil
 }
 
-// AwsCodeBuildSource defines the source code location and retrieval settings.
+// AwsCodeBuildSource defines a source code location and retrieval settings.
+// The same shape describes the primary source (spec.source) and secondary
+// sources (spec.secondary_sources); only secondary sources carry a
+// source_identifier.
 type AwsCodeBuildSource struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// type is the source provider.
 	//
-	//	GITHUB:                GitHub.com repository (via CodeStar Connections)
+	//	GITHUB:                GitHub.com repository
 	//	BITBUCKET:             Bitbucket Cloud repository
 	//	CODECOMMIT:            AWS CodeCommit repository
 	//	CODEPIPELINE:          Source provided by CodePipeline (no location needed)
@@ -252,15 +383,38 @@ type AwsCodeBuildSource struct {
 	// git_clone_depth limits the Git clone depth. 0 means full clone.
 	// Only applicable for Git-based source types.
 	GitCloneDepth int32 `protobuf:"varint,4,opt,name=git_clone_depth,json=gitCloneDepth,proto3" json:"git_clone_depth,omitempty"`
+	// git_submodules_config controls Git submodule fetching during the source
+	// download phase. Presence of the block opts into explicit submodule
+	// handling. Only supported for BITBUCKET, CODECOMMIT, GITHUB, and
+	// GITHUB_ENTERPRISE sources.
+	GitSubmodulesConfig *AwsCodeBuildGitSubmodulesConfig `protobuf:"bytes,5,opt,name=git_submodules_config,json=gitSubmodulesConfig,proto3" json:"git_submodules_config,omitempty"`
+	// insecure_ssl skips TLS certificate verification when fetching source —
+	// only for GitHub Enterprise / self-managed GitLab instances with
+	// self-signed certificates. Never enable against public providers.
+	InsecureSsl bool `protobuf:"varint,6,opt,name=insecure_ssl,json=insecureSsl,proto3" json:"insecure_ssl,omitempty"`
 	// report_build_status reports build start and finish status back to the
 	// source provider (e.g., GitHub commit status checks).
-	// Only applicable for GITHUB, BITBUCKET, GITHUB_ENTERPRISE, GITLAB, GITLAB_SELF_MANAGED.
-	ReportBuildStatus bool `protobuf:"varint,5,opt,name=report_build_status,json=reportBuildStatus,proto3" json:"report_build_status,omitempty"`
-	// fetch_submodules controls whether Git submodules are fetched during the
-	// source download phase. Only applicable for Git-based source types.
-	FetchSubmodules bool `protobuf:"varint,6,opt,name=fetch_submodules,json=fetchSubmodules,proto3" json:"fetch_submodules,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Only applicable for GITHUB, BITBUCKET, GITHUB_ENTERPRISE, GITLAB,
+	// GITLAB_SELF_MANAGED.
+	ReportBuildStatus bool `protobuf:"varint,7,opt,name=report_build_status,json=reportBuildStatus,proto3" json:"report_build_status,omitempty"`
+	// build_status_config customizes how the commit status is reported —
+	// the status-check context label and the URL it links to. Only applicable
+	// to the same source types as report_build_status.
+	BuildStatusConfig *AwsCodeBuildBuildStatusConfig `protobuf:"bytes,8,opt,name=build_status_config,json=buildStatusConfig,proto3" json:"build_status_config,omitempty"`
+	// auth pins how CodeBuild authenticates to this source, overriding the
+	// account-level source credential. The modern path is CODECONNECTIONS: a
+	// CodeConnections (formerly CodeStar Connections) connection ARN that
+	// grants repository access without long-lived tokens. SECRETS_MANAGER
+	// points at a secret holding a provider token; OAUTH uses the legacy
+	// account-level OAuth grant.
+	Auth *AwsCodeBuildSourceAuth `protobuf:"bytes,9,opt,name=auth,proto3" json:"auth,omitempty"`
+	// source_identifier names this source inside the project. REQUIRED for
+	// secondary sources (the buildspec addresses the checkout as
+	// $CODEBUILD_SRC_DIR_<source_identifier>); must stay EMPTY on the primary
+	// source. Alphanumeric and underscore.
+	SourceIdentifier string `protobuf:"bytes,10,opt,name=source_identifier,json=sourceIdentifier,proto3" json:"source_identifier,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AwsCodeBuildSource) Reset() {
@@ -321,6 +475,20 @@ func (x *AwsCodeBuildSource) GetGitCloneDepth() int32 {
 	return 0
 }
 
+func (x *AwsCodeBuildSource) GetGitSubmodulesConfig() *AwsCodeBuildGitSubmodulesConfig {
+	if x != nil {
+		return x.GitSubmodulesConfig
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildSource) GetInsecureSsl() bool {
+	if x != nil {
+		return x.InsecureSsl
+	}
+	return false
+}
+
 func (x *AwsCodeBuildSource) GetReportBuildStatus() bool {
 	if x != nil {
 		return x.ReportBuildStatus
@@ -328,11 +496,252 @@ func (x *AwsCodeBuildSource) GetReportBuildStatus() bool {
 	return false
 }
 
-func (x *AwsCodeBuildSource) GetFetchSubmodules() bool {
+func (x *AwsCodeBuildSource) GetBuildStatusConfig() *AwsCodeBuildBuildStatusConfig {
+	if x != nil {
+		return x.BuildStatusConfig
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildSource) GetAuth() *AwsCodeBuildSourceAuth {
+	if x != nil {
+		return x.Auth
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildSource) GetSourceIdentifier() string {
+	if x != nil {
+		return x.SourceIdentifier
+	}
+	return ""
+}
+
+// AwsCodeBuildGitSubmodulesConfig controls Git submodule handling.
+type AwsCodeBuildGitSubmodulesConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// fetch_submodules fetches all Git submodules during the source download
+	// phase when true.
+	FetchSubmodules bool `protobuf:"varint,1,opt,name=fetch_submodules,json=fetchSubmodules,proto3" json:"fetch_submodules,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AwsCodeBuildGitSubmodulesConfig) Reset() {
+	*x = AwsCodeBuildGitSubmodulesConfig{}
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCodeBuildGitSubmodulesConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCodeBuildGitSubmodulesConfig) ProtoMessage() {}
+
+func (x *AwsCodeBuildGitSubmodulesConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCodeBuildGitSubmodulesConfig.ProtoReflect.Descriptor instead.
+func (*AwsCodeBuildGitSubmodulesConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsCodeBuildGitSubmodulesConfig) GetFetchSubmodules() bool {
 	if x != nil {
 		return x.FetchSubmodules
 	}
 	return false
+}
+
+// AwsCodeBuildBuildStatusConfig customizes commit-status reporting back to
+// the source provider.
+type AwsCodeBuildBuildStatusConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// context is the status-check label shown by the provider (e.g., the
+	// GitHub status context). Defaults to the CodeBuild project identity when
+	// omitted.
+	Context string `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// target_url is the URL the reported status links to. Defaults to the
+	// CodeBuild console page for the build when omitted.
+	TargetUrl     string `protobuf:"bytes,2,opt,name=target_url,json=targetUrl,proto3" json:"target_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCodeBuildBuildStatusConfig) Reset() {
+	*x = AwsCodeBuildBuildStatusConfig{}
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCodeBuildBuildStatusConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCodeBuildBuildStatusConfig) ProtoMessage() {}
+
+func (x *AwsCodeBuildBuildStatusConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCodeBuildBuildStatusConfig.ProtoReflect.Descriptor instead.
+func (*AwsCodeBuildBuildStatusConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsCodeBuildBuildStatusConfig) GetContext() string {
+	if x != nil {
+		return x.Context
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildBuildStatusConfig) GetTargetUrl() string {
+	if x != nil {
+		return x.TargetUrl
+	}
+	return ""
+}
+
+// AwsCodeBuildSourceAuth pins the authorization CodeBuild uses for a source.
+type AwsCodeBuildSourceAuth struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// type is the authorization mechanism.
+	//
+	//	CODECONNECTIONS:  A CodeConnections connection (recommended; no stored
+	//	                  tokens, resource is the connection ARN)
+	//	SECRETS_MANAGER:  A Secrets Manager secret holding the provider token
+	//	                  (resource is the secret ARN)
+	//	OAUTH:            The account-level OAuth authorization (legacy)
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// resource is the ARN of the authorization object — the CodeConnections
+	// connection ARN or the Secrets Manager secret ARN, depending on type.
+	// Always a reference, never the credential value itself.
+	Resource      string `protobuf:"bytes,2,opt,name=resource,proto3" json:"resource,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCodeBuildSourceAuth) Reset() {
+	*x = AwsCodeBuildSourceAuth{}
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCodeBuildSourceAuth) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCodeBuildSourceAuth) ProtoMessage() {}
+
+func (x *AwsCodeBuildSourceAuth) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCodeBuildSourceAuth.ProtoReflect.Descriptor instead.
+func (*AwsCodeBuildSourceAuth) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsCodeBuildSourceAuth) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildSourceAuth) GetResource() string {
+	if x != nil {
+		return x.Resource
+	}
+	return ""
+}
+
+// AwsCodeBuildSecondarySourceVersion pins the version (branch, tag, or
+// commit) a secondary source builds from.
+type AwsCodeBuildSecondarySourceVersion struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// source_identifier matches the source_identifier of an entry in
+	// secondary_sources.
+	SourceIdentifier string `protobuf:"bytes,1,opt,name=source_identifier,json=sourceIdentifier,proto3" json:"source_identifier,omitempty"`
+	// source_version is the branch name, tag, commit SHA, or S3 object
+	// version for that source.
+	SourceVersion string `protobuf:"bytes,2,opt,name=source_version,json=sourceVersion,proto3" json:"source_version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCodeBuildSecondarySourceVersion) Reset() {
+	*x = AwsCodeBuildSecondarySourceVersion{}
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCodeBuildSecondarySourceVersion) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCodeBuildSecondarySourceVersion) ProtoMessage() {}
+
+func (x *AwsCodeBuildSecondarySourceVersion) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCodeBuildSecondarySourceVersion.ProtoReflect.Descriptor instead.
+func (*AwsCodeBuildSecondarySourceVersion) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AwsCodeBuildSecondarySourceVersion) GetSourceIdentifier() string {
+	if x != nil {
+		return x.SourceIdentifier
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildSecondarySourceVersion) GetSourceVersion() string {
+	if x != nil {
+		return x.SourceVersion
+	}
+	return ""
 }
 
 // AwsCodeBuildEnvironment defines the build container configuration.
@@ -340,47 +749,75 @@ type AwsCodeBuildEnvironment struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// type is the build environment type.
 	//
-	//	LINUX_CONTAINER:              Standard Linux (x86_64)
-	//	LINUX_GPU_CONTAINER:          Linux with GPU support
-	//	ARM_CONTAINER:                Linux (ARM64)
+	//	LINUX_CONTAINER:               Standard Linux (x86_64)
+	//	LINUX_GPU_CONTAINER:           Linux with GPU support
+	//	ARM_CONTAINER:                 Linux (ARM64)
+	//	WINDOWS_CONTAINER:             Windows (legacy alias; prefer the
+	//	                               versioned Windows Server types)
 	//	WINDOWS_SERVER_2019_CONTAINER: Windows Server 2019
 	//	WINDOWS_SERVER_2022_CONTAINER: Windows Server 2022
-	//	LINUX_LAMBDA_CONTAINER:       Lambda-based Linux (x86_64)
-	//	ARM_LAMBDA_CONTAINER:         Lambda-based Linux (ARM64)
+	//	LINUX_LAMBDA_CONTAINER:        Lambda-based Linux (x86_64) — fastest
+	//	                               start, no privileged mode or timeouts
+	//	ARM_LAMBDA_CONTAINER:          Lambda-based Linux (ARM64)
+	//	LINUX_EC2:                     EC2-based Linux (reserved fleets)
+	//	ARM_EC2:                       EC2-based Linux ARM (reserved fleets)
+	//	WINDOWS_EC2:                   EC2-based Windows (reserved fleets)
+	//	MAC_ARM:                       macOS on Apple Silicon (reserved
+	//	                               fleets only — iOS/macOS builds)
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// compute_type is the compute capacity for the build container.
 	//
-	//	Standard:     BUILD_GENERAL1_SMALL, BUILD_GENERAL1_MEDIUM,
-	//	              BUILD_GENERAL1_LARGE, BUILD_GENERAL1_XLARGE, BUILD_GENERAL1_2XLARGE
-	//	Lambda:       BUILD_LAMBDA_1GB through BUILD_LAMBDA_10GB
+	//	Standard:  BUILD_GENERAL1_SMALL, BUILD_GENERAL1_MEDIUM,
+	//	           BUILD_GENERAL1_LARGE, BUILD_GENERAL1_XLARGE,
+	//	           BUILD_GENERAL1_2XLARGE
+	//	Lambda:    BUILD_LAMBDA_1GB through BUILD_LAMBDA_10GB
+	//	Fleets:    ATTRIBUTE_BASED_COMPUTE (the fleet picks machines by
+	//	           attributes), CUSTOM_INSTANCE_TYPE (the fleet pins an EC2
+	//	           instance type) — both only meaningful when the project or
+	//	           its fleet uses reserved capacity
 	ComputeType string `protobuf:"bytes,2,opt,name=compute_type,json=computeType,proto3" json:"compute_type,omitempty"`
 	// image is the Docker image identifier for the build environment.
 	// Use AWS managed images (e.g., "aws/codebuild/amazonlinux2-x86_64-standard:5.0")
 	// or a custom image URI from ECR or Docker Hub.
 	Image string `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
+	// certificate is an S3 path (bucket/key ending in .pem or .zip) to a
+	// certificate bundle the build trusts — for reaching source providers or
+	// registries behind private CAs.
+	Certificate string `protobuf:"bytes,4,opt,name=certificate,proto3" json:"certificate,omitempty"`
 	// privileged_mode enables Docker daemon access inside the build container.
-	// Required for building Docker images. Only applicable to non-Lambda types.
-	PrivilegedMode bool `protobuf:"varint,4,opt,name=privileged_mode,json=privilegedMode,proto3" json:"privileged_mode,omitempty"`
+	// Required for building Docker images. Not supported for Lambda types.
+	PrivilegedMode bool `protobuf:"varint,5,opt,name=privileged_mode,json=privilegedMode,proto3" json:"privileged_mode,omitempty"`
 	// image_pull_credentials_type controls how the build image is pulled.
 	//
 	//	CODEBUILD:    CodeBuild uses its own credentials (default, for AWS images)
 	//	SERVICE_ROLE: CodeBuild uses the project's service role (for ECR private images)
-	ImagePullCredentialsType *string `protobuf:"bytes,5,opt,name=image_pull_credentials_type,json=imagePullCredentialsType,proto3,oneof" json:"image_pull_credentials_type,omitempty"`
+	ImagePullCredentialsType *string `protobuf:"bytes,6,opt,name=image_pull_credentials_type,json=imagePullCredentialsType,proto3,oneof" json:"image_pull_credentials_type,omitempty"`
 	// environment_variables define key-value pairs available during the build.
 	// Supports plaintext values, SSM Parameter Store references, and
 	// Secrets Manager references.
-	EnvironmentVariables []*AwsCodeBuildEnvironmentVariable `protobuf:"bytes,6,rep,name=environment_variables,json=environmentVariables,proto3" json:"environment_variables,omitempty"`
+	EnvironmentVariables []*AwsCodeBuildEnvironmentVariable `protobuf:"bytes,7,rep,name=environment_variables,json=environmentVariables,proto3" json:"environment_variables,omitempty"`
 	// registry_credential provides credentials for pulling the build image
 	// from a private Docker registry. Only needed when image_pull_credentials_type
 	// is SERVICE_ROLE and the image is in a non-ECR private registry.
-	RegistryCredential *AwsCodeBuildRegistryCredential `protobuf:"bytes,7,opt,name=registry_credential,json=registryCredential,proto3" json:"registry_credential,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	RegistryCredential *AwsCodeBuildRegistryCredential `protobuf:"bytes,8,opt,name=registry_credential,json=registryCredential,proto3" json:"registry_credential,omitempty"`
+	// docker_server provisions a persistent, dedicated Docker server for the
+	// project's builds — Docker layer state survives across builds, giving
+	// dramatically faster image builds than a per-build daemon. Choose the
+	// server's compute size independently of the build compute.
+	DockerServer *AwsCodeBuildDockerServer `protobuf:"bytes,9,opt,name=docker_server,json=dockerServer,proto3" json:"docker_server,omitempty"`
+	// fleet_arn joins this project to a reserved-capacity fleet — a pool of
+	// pre-provisioned, always-warm build machines (zero queue/provisioning
+	// time; required for MAC_ARM and the EC2 environment types). The fleet is
+	// a shared, account-level resource managed outside this project; reference
+	// it by ARN.
+	FleetArn      string `protobuf:"bytes,10,opt,name=fleet_arn,json=fleetArn,proto3" json:"fleet_arn,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsCodeBuildEnvironment) Reset() {
 	*x = AwsCodeBuildEnvironment{}
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -392,7 +829,7 @@ func (x *AwsCodeBuildEnvironment) String() string {
 func (*AwsCodeBuildEnvironment) ProtoMessage() {}
 
 func (x *AwsCodeBuildEnvironment) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -405,7 +842,7 @@ func (x *AwsCodeBuildEnvironment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodeBuildEnvironment.ProtoReflect.Descriptor instead.
 func (*AwsCodeBuildEnvironment) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AwsCodeBuildEnvironment) GetType() string {
@@ -425,6 +862,13 @@ func (x *AwsCodeBuildEnvironment) GetComputeType() string {
 func (x *AwsCodeBuildEnvironment) GetImage() string {
 	if x != nil {
 		return x.Image
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildEnvironment) GetCertificate() string {
+	if x != nil {
+		return x.Certificate
 	}
 	return ""
 }
@@ -457,6 +901,77 @@ func (x *AwsCodeBuildEnvironment) GetRegistryCredential() *AwsCodeBuildRegistryC
 	return nil
 }
 
+func (x *AwsCodeBuildEnvironment) GetDockerServer() *AwsCodeBuildDockerServer {
+	if x != nil {
+		return x.DockerServer
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildEnvironment) GetFleetArn() string {
+	if x != nil {
+		return x.FleetArn
+	}
+	return ""
+}
+
+// AwsCodeBuildDockerServer configures the project's persistent Docker server.
+type AwsCodeBuildDockerServer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// compute_type sizes the Docker server (same scale as the build compute
+	// types, e.g. BUILD_GENERAL1_MEDIUM).
+	ComputeType string `protobuf:"bytes,1,opt,name=compute_type,json=computeType,proto3" json:"compute_type,omitempty"`
+	// security_group_ids attach VPC security groups to the Docker server when
+	// the project runs inside a VPC. Maximum 5.
+	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AwsCodeBuildDockerServer) Reset() {
+	*x = AwsCodeBuildDockerServer{}
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCodeBuildDockerServer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCodeBuildDockerServer) ProtoMessage() {}
+
+func (x *AwsCodeBuildDockerServer) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCodeBuildDockerServer.ProtoReflect.Descriptor instead.
+func (*AwsCodeBuildDockerServer) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AwsCodeBuildDockerServer) GetComputeType() string {
+	if x != nil {
+		return x.ComputeType
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildDockerServer) GetSecurityGroupIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.SecurityGroupIds
+	}
+	return nil
+}
+
 // AwsCodeBuildEnvironmentVariable defines a build environment variable.
 type AwsCodeBuildEnvironmentVariable struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -464,7 +979,8 @@ type AwsCodeBuildEnvironmentVariable struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// value is the environment variable value. For PARAMETER_STORE type,
 	// this is the SSM parameter name. For SECRETS_MANAGER, this is the
-	// secret ARN or name.
+	// secret ARN or name. Never put secret material in a PLAINTEXT value —
+	// it is visible to anyone who can describe the project.
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	// type controls how the value is interpreted.
 	//
@@ -478,7 +994,7 @@ type AwsCodeBuildEnvironmentVariable struct {
 
 func (x *AwsCodeBuildEnvironmentVariable) Reset() {
 	*x = AwsCodeBuildEnvironmentVariable{}
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -490,7 +1006,7 @@ func (x *AwsCodeBuildEnvironmentVariable) String() string {
 func (*AwsCodeBuildEnvironmentVariable) ProtoMessage() {}
 
 func (x *AwsCodeBuildEnvironmentVariable) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -503,7 +1019,7 @@ func (x *AwsCodeBuildEnvironmentVariable) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodeBuildEnvironmentVariable.ProtoReflect.Descriptor instead.
 func (*AwsCodeBuildEnvironmentVariable) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AwsCodeBuildEnvironmentVariable) GetName() string {
@@ -543,7 +1059,7 @@ type AwsCodeBuildRegistryCredential struct {
 
 func (x *AwsCodeBuildRegistryCredential) Reset() {
 	*x = AwsCodeBuildRegistryCredential{}
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -555,7 +1071,7 @@ func (x *AwsCodeBuildRegistryCredential) String() string {
 func (*AwsCodeBuildRegistryCredential) ProtoMessage() {}
 
 func (x *AwsCodeBuildRegistryCredential) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -568,7 +1084,7 @@ func (x *AwsCodeBuildRegistryCredential) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodeBuildRegistryCredential.ProtoReflect.Descriptor instead.
 func (*AwsCodeBuildRegistryCredential) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AwsCodeBuildRegistryCredential) GetCredential() string {
@@ -585,7 +1101,10 @@ func (x *AwsCodeBuildRegistryCredential) GetCredentialProvider() string {
 	return ""
 }
 
-// AwsCodeBuildArtifacts defines the build output configuration.
+// AwsCodeBuildArtifacts defines a build output configuration. The same shape
+// describes the primary output (spec.artifacts) and secondary outputs
+// (spec.secondary_artifacts); secondary outputs MUST carry an
+// artifact_identifier.
 type AwsCodeBuildArtifacts struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// type is the artifact output type.
@@ -614,13 +1133,28 @@ type AwsCodeBuildArtifacts struct {
 	// encryption_disabled disables server-side encryption for artifacts.
 	// By default, CodeBuild encrypts artifacts using the project's encryption key.
 	EncryptionDisabled bool `protobuf:"varint,7,opt,name=encryption_disabled,json=encryptionDisabled,proto3" json:"encryption_disabled,omitempty"`
+	// override_artifact_name lets the buildspec's artifacts.name override the
+	// name configured here — used for per-build artifact names (e.g., embedding
+	// the version or commit).
+	OverrideArtifactName bool `protobuf:"varint,8,opt,name=override_artifact_name,json=overrideArtifactName,proto3" json:"override_artifact_name,omitempty"`
+	// bucket_owner_access grants the owning account of the destination bucket
+	// access to the uploaded artifacts (for cross-account artifact buckets).
+	//
+	//	NONE:      Bucket owner gets no access (default)
+	//	READ_ONLY: Bucket owner can read the artifacts
+	//	FULL:      Bucket owner has full control
+	BucketOwnerAccess string `protobuf:"bytes,9,opt,name=bucket_owner_access,json=bucketOwnerAccess,proto3" json:"bucket_owner_access,omitempty"`
+	// artifact_identifier names this output. REQUIRED for secondary artifacts
+	// (matching the buildspec's secondary-artifacts key); optional on the
+	// primary output. Alphanumeric and underscore.
+	ArtifactIdentifier string `protobuf:"bytes,10,opt,name=artifact_identifier,json=artifactIdentifier,proto3" json:"artifact_identifier,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
 func (x *AwsCodeBuildArtifacts) Reset() {
 	*x = AwsCodeBuildArtifacts{}
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -632,7 +1166,7 @@ func (x *AwsCodeBuildArtifacts) String() string {
 func (*AwsCodeBuildArtifacts) ProtoMessage() {}
 
 func (x *AwsCodeBuildArtifacts) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -645,7 +1179,7 @@ func (x *AwsCodeBuildArtifacts) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodeBuildArtifacts.ProtoReflect.Descriptor instead.
 func (*AwsCodeBuildArtifacts) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AwsCodeBuildArtifacts) GetType() string {
@@ -697,6 +1231,27 @@ func (x *AwsCodeBuildArtifacts) GetEncryptionDisabled() bool {
 	return false
 }
 
+func (x *AwsCodeBuildArtifacts) GetOverrideArtifactName() bool {
+	if x != nil {
+		return x.OverrideArtifactName
+	}
+	return false
+}
+
+func (x *AwsCodeBuildArtifacts) GetBucketOwnerAccess() string {
+	if x != nil {
+		return x.BucketOwnerAccess
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildArtifacts) GetArtifactIdentifier() string {
+	if x != nil {
+		return x.ArtifactIdentifier
+	}
+	return ""
+}
+
 // AwsCodeBuildCache configures build caching to speed up subsequent builds.
 type AwsCodeBuildCache struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -714,14 +1269,17 @@ type AwsCodeBuildCache struct {
 	//	LOCAL_SOURCE_CACHE:        Cache Git metadata
 	//	LOCAL_DOCKER_LAYER_CACHE:  Cache Docker layers
 	//	LOCAL_CUSTOM_CACHE:        Cache paths specified in buildspec
-	Modes         []string `protobuf:"bytes,3,rep,name=modes,proto3" json:"modes,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Modes []string `protobuf:"bytes,3,rep,name=modes,proto3" json:"modes,omitempty"`
+	// cache_namespace scopes S3 cache keys so multiple projects (or branches)
+	// can share one cache bucket without collisions.
+	CacheNamespace string `protobuf:"bytes,4,opt,name=cache_namespace,json=cacheNamespace,proto3" json:"cache_namespace,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AwsCodeBuildCache) Reset() {
 	*x = AwsCodeBuildCache{}
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -733,7 +1291,7 @@ func (x *AwsCodeBuildCache) String() string {
 func (*AwsCodeBuildCache) ProtoMessage() {}
 
 func (x *AwsCodeBuildCache) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -746,7 +1304,7 @@ func (x *AwsCodeBuildCache) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodeBuildCache.ProtoReflect.Descriptor instead.
 func (*AwsCodeBuildCache) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AwsCodeBuildCache) GetType() string {
@@ -770,6 +1328,13 @@ func (x *AwsCodeBuildCache) GetModes() []string {
 	return nil
 }
 
+func (x *AwsCodeBuildCache) GetCacheNamespace() string {
+	if x != nil {
+		return x.CacheNamespace
+	}
+	return ""
+}
+
 // AwsCodeBuildLogsConfig controls where build logs are sent.
 type AwsCodeBuildLogsConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -783,7 +1348,7 @@ type AwsCodeBuildLogsConfig struct {
 
 func (x *AwsCodeBuildLogsConfig) Reset() {
 	*x = AwsCodeBuildLogsConfig{}
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -795,7 +1360,7 @@ func (x *AwsCodeBuildLogsConfig) String() string {
 func (*AwsCodeBuildLogsConfig) ProtoMessage() {}
 
 func (x *AwsCodeBuildLogsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -808,7 +1373,7 @@ func (x *AwsCodeBuildLogsConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodeBuildLogsConfig.ProtoReflect.Descriptor instead.
 func (*AwsCodeBuildLogsConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AwsCodeBuildLogsConfig) GetCloudwatchLogs() *AwsCodeBuildCloudWatchLogs {
@@ -843,7 +1408,7 @@ type AwsCodeBuildCloudWatchLogs struct {
 
 func (x *AwsCodeBuildCloudWatchLogs) Reset() {
 	*x = AwsCodeBuildCloudWatchLogs{}
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -855,7 +1420,7 @@ func (x *AwsCodeBuildCloudWatchLogs) String() string {
 func (*AwsCodeBuildCloudWatchLogs) ProtoMessage() {}
 
 func (x *AwsCodeBuildCloudWatchLogs) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -868,7 +1433,7 @@ func (x *AwsCodeBuildCloudWatchLogs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodeBuildCloudWatchLogs.ProtoReflect.Descriptor instead.
 func (*AwsCodeBuildCloudWatchLogs) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AwsCodeBuildCloudWatchLogs) GetStatus() string {
@@ -898,18 +1463,23 @@ type AwsCodeBuildS3Logs struct {
 	// status controls whether S3 logging is enabled.
 	// Default: DISABLED.
 	Status *string `protobuf:"bytes,1,opt,name=status,proto3,oneof" json:"status,omitempty"`
-	// location is the S3 bucket and prefix for log storage.
-	// Format: "bucket-name" or "bucket-name/prefix".
+	// location is the S3 bucket and prefix for log storage. AWS requires the
+	// prefix — the format is "bucket-name/prefix" (or the bucket ARN); a bare
+	// bucket name is rejected. When composing from an AwsS3Bucket reference,
+	// append the prefix to the referenced bucket_id.
 	Location *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
 	// encryption_disabled disables server-side encryption for log files.
 	EncryptionDisabled bool `protobuf:"varint,3,opt,name=encryption_disabled,json=encryptionDisabled,proto3" json:"encryption_disabled,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// bucket_owner_access grants the owning account of the log bucket access
+	// to the uploaded log files (for centralized cross-account log buckets).
+	BucketOwnerAccess string `protobuf:"bytes,4,opt,name=bucket_owner_access,json=bucketOwnerAccess,proto3" json:"bucket_owner_access,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *AwsCodeBuildS3Logs) Reset() {
 	*x = AwsCodeBuildS3Logs{}
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -921,7 +1491,7 @@ func (x *AwsCodeBuildS3Logs) String() string {
 func (*AwsCodeBuildS3Logs) ProtoMessage() {}
 
 func (x *AwsCodeBuildS3Logs) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -934,7 +1504,7 @@ func (x *AwsCodeBuildS3Logs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodeBuildS3Logs.ProtoReflect.Descriptor instead.
 func (*AwsCodeBuildS3Logs) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AwsCodeBuildS3Logs) GetStatus() string {
@@ -958,6 +1528,13 @@ func (x *AwsCodeBuildS3Logs) GetEncryptionDisabled() bool {
 	return false
 }
 
+func (x *AwsCodeBuildS3Logs) GetBucketOwnerAccess() string {
+	if x != nil {
+		return x.BucketOwnerAccess
+	}
+	return ""
+}
+
 // AwsCodeBuildVpcConfig places the build environment inside a VPC, enabling
 // access to private resources (RDS, ElastiCache, internal APIs, etc.).
 type AwsCodeBuildVpcConfig struct {
@@ -976,7 +1553,7 @@ type AwsCodeBuildVpcConfig struct {
 
 func (x *AwsCodeBuildVpcConfig) Reset() {
 	*x = AwsCodeBuildVpcConfig{}
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -988,7 +1565,7 @@ func (x *AwsCodeBuildVpcConfig) String() string {
 func (*AwsCodeBuildVpcConfig) ProtoMessage() {}
 
 func (x *AwsCodeBuildVpcConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1001,7 +1578,7 @@ func (x *AwsCodeBuildVpcConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodeBuildVpcConfig.ProtoReflect.Descriptor instead.
 func (*AwsCodeBuildVpcConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{10}
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AwsCodeBuildVpcConfig) GetVpcId() *v1.StringValueOrRef {
@@ -1025,26 +1602,266 @@ func (x *AwsCodeBuildVpcConfig) GetSecurityGroupIds() []*v1.StringValueOrRef {
 	return nil
 }
 
+// AwsCodeBuildFileSystemLocation mounts an Amazon EFS file system into the
+// build container. Requires vpc_config so builds run in subnets that can
+// reach the file system's mount targets.
+type AwsCodeBuildFileSystemLocation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// identifier names this mount; CodeBuild exposes it to the build as the
+	// environment variable CODEBUILD_<identifier> (uppercased).
+	Identifier string `protobuf:"bytes,1,opt,name=identifier,proto3" json:"identifier,omitempty"`
+	// location is the EFS mount source in the form
+	// <file-system-dns>:/<path>, e.g.
+	// "fs-0abc123.efs.us-east-1.amazonaws.com:/build-cache". The DNS name
+	// composes from an AwsElasticFileSystem's file_system_id as
+	// <file_system_id>.efs.<region>.amazonaws.com.
+	Location string `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
+	// mount_point is the absolute path inside the build container where the
+	// file system is mounted (e.g., "/mnt/build-cache").
+	MountPoint string `protobuf:"bytes,3,opt,name=mount_point,json=mountPoint,proto3" json:"mount_point,omitempty"`
+	// mount_options are NFS mount options. Omit for the EFS recommended
+	// defaults (nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2).
+	MountOptions string `protobuf:"bytes,4,opt,name=mount_options,json=mountOptions,proto3" json:"mount_options,omitempty"`
+	// type is the file system protocol. AWS currently supports only EFS.
+	Type          *string `protobuf:"bytes,5,opt,name=type,proto3,oneof" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCodeBuildFileSystemLocation) Reset() {
+	*x = AwsCodeBuildFileSystemLocation{}
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCodeBuildFileSystemLocation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCodeBuildFileSystemLocation) ProtoMessage() {}
+
+func (x *AwsCodeBuildFileSystemLocation) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCodeBuildFileSystemLocation.ProtoReflect.Descriptor instead.
+func (*AwsCodeBuildFileSystemLocation) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AwsCodeBuildFileSystemLocation) GetIdentifier() string {
+	if x != nil {
+		return x.Identifier
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildFileSystemLocation) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildFileSystemLocation) GetMountPoint() string {
+	if x != nil {
+		return x.MountPoint
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildFileSystemLocation) GetMountOptions() string {
+	if x != nil {
+		return x.MountOptions
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildFileSystemLocation) GetType() string {
+	if x != nil && x.Type != nil {
+		return *x.Type
+	}
+	return ""
+}
+
+// AwsCodeBuildBatchConfig enables and constrains batch builds.
+type AwsCodeBuildBatchConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// service_role is the IAM role CodeBuild assumes to launch the child
+	// builds of a batch. May be the project's service role or a dedicated one.
+	ServiceRole *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=service_role,json=serviceRole,proto3" json:"service_role,omitempty"`
+	// combine_artifacts merges the child builds' artifacts into a single
+	// artifact location for the whole batch.
+	CombineArtifacts bool `protobuf:"varint,2,opt,name=combine_artifacts,json=combineArtifacts,proto3" json:"combine_artifacts,omitempty"`
+	// timeout_in_mins is the maximum duration of the entire batch, in minutes
+	// (5-2160).
+	TimeoutInMins int32 `protobuf:"varint,3,opt,name=timeout_in_mins,json=timeoutInMins,proto3" json:"timeout_in_mins,omitempty"`
+	// restrictions bound what the batch's child builds may consume.
+	Restrictions  *AwsCodeBuildBatchRestrictions `protobuf:"bytes,4,opt,name=restrictions,proto3" json:"restrictions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCodeBuildBatchConfig) Reset() {
+	*x = AwsCodeBuildBatchConfig{}
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCodeBuildBatchConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCodeBuildBatchConfig) ProtoMessage() {}
+
+func (x *AwsCodeBuildBatchConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCodeBuildBatchConfig.ProtoReflect.Descriptor instead.
+func (*AwsCodeBuildBatchConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AwsCodeBuildBatchConfig) GetServiceRole() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ServiceRole
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildBatchConfig) GetCombineArtifacts() bool {
+	if x != nil {
+		return x.CombineArtifacts
+	}
+	return false
+}
+
+func (x *AwsCodeBuildBatchConfig) GetTimeoutInMins() int32 {
+	if x != nil {
+		return x.TimeoutInMins
+	}
+	return 0
+}
+
+func (x *AwsCodeBuildBatchConfig) GetRestrictions() *AwsCodeBuildBatchRestrictions {
+	if x != nil {
+		return x.Restrictions
+	}
+	return nil
+}
+
+// AwsCodeBuildBatchRestrictions bounds batch child builds.
+type AwsCodeBuildBatchRestrictions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// compute_types_allowed restricts which compute types child builds may
+	// request (values from the environment compute_type set). Empty allows all.
+	ComputeTypesAllowed []string `protobuf:"bytes,1,rep,name=compute_types_allowed,json=computeTypesAllowed,proto3" json:"compute_types_allowed,omitempty"`
+	// maximum_builds_allowed caps how many child builds one batch may spawn
+	// (1-100).
+	MaximumBuildsAllowed int32 `protobuf:"varint,2,opt,name=maximum_builds_allowed,json=maximumBuildsAllowed,proto3" json:"maximum_builds_allowed,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *AwsCodeBuildBatchRestrictions) Reset() {
+	*x = AwsCodeBuildBatchRestrictions{}
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCodeBuildBatchRestrictions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCodeBuildBatchRestrictions) ProtoMessage() {}
+
+func (x *AwsCodeBuildBatchRestrictions) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCodeBuildBatchRestrictions.ProtoReflect.Descriptor instead.
+func (*AwsCodeBuildBatchRestrictions) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *AwsCodeBuildBatchRestrictions) GetComputeTypesAllowed() []string {
+	if x != nil {
+		return x.ComputeTypesAllowed
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildBatchRestrictions) GetMaximumBuildsAllowed() int32 {
+	if x != nil {
+		return x.MaximumBuildsAllowed
+	}
+	return 0
+}
+
 // AwsCodeBuildWebhook configures automatic build triggers from the source
 // provider. Creates a webhook that listens for repository events.
 type AwsCodeBuildWebhook struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// build_type controls the build type triggered by the webhook.
 	//
-	//	BUILD:             Standard single build (default)
-	//	BUILD_BATCH:       Batch build
+	//	BUILD:                  Standard single build (default)
+	//	BUILD_BATCH:            Batch build (requires build_batch_config)
+	//	RUNNER_BUILDKITE_BUILD: The project acts as a Buildkite runner —
+	//	                        webhook events dispatch Buildkite jobs
 	BuildType string `protobuf:"bytes,1,opt,name=build_type,json=buildType,proto3" json:"build_type,omitempty"`
+	// manual_creation makes CodeBuild return the payload URL and HMAC secret
+	// WITHOUT registering the webhook with the provider — you configure the
+	// repository webhook by hand from the webhook_payload_url and
+	// webhook_secret stack outputs. Required for GitHub Enterprise; useful
+	// when the connection lacks admin rights on the repository.
+	ManualCreation bool `protobuf:"varint,2,opt,name=manual_creation,json=manualCreation,proto3" json:"manual_creation,omitempty"`
 	// filter_groups define which repository events trigger a build.
 	// Multiple groups are OR'd together — a build triggers if ANY group matches.
 	// Within a group, filters are AND'd — ALL filters in the group must match.
-	FilterGroups  []*AwsCodeBuildWebhookFilterGroup `protobuf:"bytes,2,rep,name=filter_groups,json=filterGroups,proto3" json:"filter_groups,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	FilterGroups []*AwsCodeBuildWebhookFilterGroup `protobuf:"bytes,3,rep,name=filter_groups,json=filterGroups,proto3" json:"filter_groups,omitempty"`
+	// scope_configuration widens the webhook beyond one repository — an
+	// organization- or group-level webhook (used with runner projects and
+	// org-wide CI). The webhook then fires for every repository in scope.
+	ScopeConfiguration *AwsCodeBuildWebhookScopeConfiguration `protobuf:"bytes,4,opt,name=scope_configuration,json=scopeConfiguration,proto3" json:"scope_configuration,omitempty"`
+	// pull_request_build_policy gates pull-request-triggered builds behind a
+	// comment approval — protection against untrusted code running in CI from
+	// fork PRs.
+	PullRequestBuildPolicy *AwsCodeBuildWebhookPullRequestBuildPolicy `protobuf:"bytes,5,opt,name=pull_request_build_policy,json=pullRequestBuildPolicy,proto3" json:"pull_request_build_policy,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *AwsCodeBuildWebhook) Reset() {
 	*x = AwsCodeBuildWebhook{}
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1056,7 +1873,7 @@ func (x *AwsCodeBuildWebhook) String() string {
 func (*AwsCodeBuildWebhook) ProtoMessage() {}
 
 func (x *AwsCodeBuildWebhook) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1069,7 +1886,7 @@ func (x *AwsCodeBuildWebhook) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodeBuildWebhook.ProtoReflect.Descriptor instead.
 func (*AwsCodeBuildWebhook) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{11}
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AwsCodeBuildWebhook) GetBuildType() string {
@@ -1079,9 +1896,30 @@ func (x *AwsCodeBuildWebhook) GetBuildType() string {
 	return ""
 }
 
+func (x *AwsCodeBuildWebhook) GetManualCreation() bool {
+	if x != nil {
+		return x.ManualCreation
+	}
+	return false
+}
+
 func (x *AwsCodeBuildWebhook) GetFilterGroups() []*AwsCodeBuildWebhookFilterGroup {
 	if x != nil {
 		return x.FilterGroups
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildWebhook) GetScopeConfiguration() *AwsCodeBuildWebhookScopeConfiguration {
+	if x != nil {
+		return x.ScopeConfiguration
+	}
+	return nil
+}
+
+func (x *AwsCodeBuildWebhook) GetPullRequestBuildPolicy() *AwsCodeBuildWebhookPullRequestBuildPolicy {
+	if x != nil {
+		return x.PullRequestBuildPolicy
 	}
 	return nil
 }
@@ -1098,7 +1936,7 @@ type AwsCodeBuildWebhookFilterGroup struct {
 
 func (x *AwsCodeBuildWebhookFilterGroup) Reset() {
 	*x = AwsCodeBuildWebhookFilterGroup{}
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1110,7 +1948,7 @@ func (x *AwsCodeBuildWebhookFilterGroup) String() string {
 func (*AwsCodeBuildWebhookFilterGroup) ProtoMessage() {}
 
 func (x *AwsCodeBuildWebhookFilterGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1123,7 +1961,7 @@ func (x *AwsCodeBuildWebhookFilterGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodeBuildWebhookFilterGroup.ProtoReflect.Descriptor instead.
 func (*AwsCodeBuildWebhookFilterGroup) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{12}
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AwsCodeBuildWebhookFilterGroup) GetFilters() []*AwsCodeBuildWebhookFilter {
@@ -1138,12 +1976,17 @@ type AwsCodeBuildWebhookFilter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// type is the event field to match against.
 	//
-	//	EVENT:            Event type (PUSH, PULL_REQUEST_CREATED, etc.)
-	//	BASE_REF:         Base branch for PRs (regex)
-	//	HEAD_REF:         Branch or tag name (regex)
-	//	ACTOR_ACCOUNT_ID: Source provider account ID
-	//	FILE_PATH:        Changed file paths (regex)
-	//	COMMIT_MESSAGE:   Commit message (regex)
+	//	EVENT:             Event type (PUSH, PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED, ...)
+	//	BASE_REF:          Base branch for PRs (regex)
+	//	HEAD_REF:          Branch or tag name (regex)
+	//	ACTOR_ACCOUNT_ID:  Source provider account ID
+	//	FILE_PATH:         Changed file paths (regex)
+	//	COMMIT_MESSAGE:    Commit message (regex)
+	//	WORKFLOW_NAME:     GitHub Actions workflow name (runner projects)
+	//	TAG_NAME:          Release tag name (regex)
+	//	RELEASE_NAME:      Release name (regex)
+	//	REPOSITORY_NAME:   Repository name (org-scoped webhooks; regex)
+	//	ORGANIZATION_NAME: Organization name (global-scoped webhooks; regex)
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// pattern is the regex pattern or comma-separated event list to match.
 	// For EVENT type: comma-separated values like "PUSH, PULL_REQUEST_CREATED".
@@ -1158,7 +2001,7 @@ type AwsCodeBuildWebhookFilter struct {
 
 func (x *AwsCodeBuildWebhookFilter) Reset() {
 	*x = AwsCodeBuildWebhookFilter{}
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[13]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1170,7 +2013,7 @@ func (x *AwsCodeBuildWebhookFilter) String() string {
 func (*AwsCodeBuildWebhookFilter) ProtoMessage() {}
 
 func (x *AwsCodeBuildWebhookFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[13]
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1183,7 +2026,7 @@ func (x *AwsCodeBuildWebhookFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodeBuildWebhookFilter.ProtoReflect.Descriptor instead.
 func (*AwsCodeBuildWebhookFilter) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{13}
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AwsCodeBuildWebhookFilter) GetType() string {
@@ -1207,56 +2050,236 @@ func (x *AwsCodeBuildWebhookFilter) GetExcludeMatchedPattern() bool {
 	return false
 }
 
+// AwsCodeBuildWebhookScopeConfiguration widens a webhook to an organization
+// or group scope.
+type AwsCodeBuildWebhookScopeConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// name is the organization (GitHub) or group (GitLab) the webhook covers.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// scope is the webhook's coverage.
+	//
+	//	GITHUB_ORGANIZATION: All repositories in a GitHub organization
+	//	GITHUB_GLOBAL:       All repositories the connection can reach
+	//	GITLAB_GROUP:        All projects in a GitLab group
+	Scope string `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty"`
+	// domain is the self-hosted provider domain (GitHub Enterprise Server /
+	// self-managed GitLab). Omit for the cloud-hosted providers.
+	Domain        string `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCodeBuildWebhookScopeConfiguration) Reset() {
+	*x = AwsCodeBuildWebhookScopeConfiguration{}
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCodeBuildWebhookScopeConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCodeBuildWebhookScopeConfiguration) ProtoMessage() {}
+
+func (x *AwsCodeBuildWebhookScopeConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCodeBuildWebhookScopeConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsCodeBuildWebhookScopeConfiguration) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AwsCodeBuildWebhookScopeConfiguration) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildWebhookScopeConfiguration) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildWebhookScopeConfiguration) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
+}
+
+// AwsCodeBuildWebhookPullRequestBuildPolicy gates PR-triggered builds behind
+// comment approval.
+type AwsCodeBuildWebhookPullRequestBuildPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// requires_comment_approval controls which pull requests need an approval
+	// comment before building.
+	//
+	//	DISABLED:           All PRs build immediately (default provider behavior)
+	//	FORK_PULL_REQUESTS: Only PRs from forks wait for approval — the common
+	//	                    open-source posture (protects secrets from
+	//	                    untrusted fork code)
+	//	ALL_PULL_REQUESTS:  Every PR waits for an approval comment
+	RequiresCommentApproval string `protobuf:"bytes,1,opt,name=requires_comment_approval,json=requiresCommentApproval,proto3" json:"requires_comment_approval,omitempty"`
+	// approver_roles are the repository roles whose comments count as
+	// approval. Defaults are provider-managed when empty.
+	ApproverRoles []string `protobuf:"bytes,2,rep,name=approver_roles,json=approverRoles,proto3" json:"approver_roles,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCodeBuildWebhookPullRequestBuildPolicy) Reset() {
+	*x = AwsCodeBuildWebhookPullRequestBuildPolicy{}
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCodeBuildWebhookPullRequestBuildPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCodeBuildWebhookPullRequestBuildPolicy) ProtoMessage() {}
+
+func (x *AwsCodeBuildWebhookPullRequestBuildPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCodeBuildWebhookPullRequestBuildPolicy.ProtoReflect.Descriptor instead.
+func (*AwsCodeBuildWebhookPullRequestBuildPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AwsCodeBuildWebhookPullRequestBuildPolicy) GetRequiresCommentApproval() string {
+	if x != nil {
+		return x.RequiresCommentApproval
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildWebhookPullRequestBuildPolicy) GetApproverRoles() []string {
+	if x != nil {
+		return x.ApproverRoles
+	}
+	return nil
+}
+
 var File_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	":dev/planton/provider/aws/awscodebuildproject/v1/spec.proto\x12/dev.planton.provider.aws.awscodebuildproject.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xba\x14\n" +
+	":dev/planton/provider/aws/awscodebuildproject/v1/spec.proto\x12/dev.planton.provider.aws.awscodebuildproject.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x9c2\n" +
 	"\x17AwsCodeBuildProjectSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12c\n" +
-	"\x06source\x18\x02 \x01(\v2C.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSourceB\x06\xbaH\x03\xc8\x01\x01R\x06source\x12r\n" +
-	"\venvironment\x18\x03 \x01(\v2H.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironmentB\x06\xbaH\x03\xc8\x01\x01R\venvironment\x12l\n" +
-	"\tartifacts\x18\x04 \x01(\v2F.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildArtifactsB\x06\xbaH\x03\xc8\x01\x01R\tartifacts\x12}\n" +
-	"\fservice_role\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\vserviceRole\x12*\n" +
-	"\vdescription\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\vdescription\x12\xcf\x01\n" +
-	"\x0eencryption_key\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBt\xaa\xa6\x1dQForeign-key reference to an AwsKmsKey (the KMS key ARN), not secret key material.\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\rencryptionKey\x12:\n" +
-	"\rbuild_timeout\x18\b \x01(\x05B\x10\xbaH\a\x1a\x05\x18\xf0\x10(\x05\x8a\xa6\x1d\x0260H\x00R\fbuildTimeout\x88\x01\x01\x12=\n" +
-	"\x0equeued_timeout\x18\t \x01(\x05B\x11\xbaH\a\x1a\x05\x18\xe0\x03(\x05\x8a\xa6\x1d\x03480H\x01R\rqueuedTimeout\x88\x01\x01\x12@\n" +
-	"\x16concurrent_build_limit\x18\n" +
-	" \x01(\x05B\n" +
-	"\xbaH\a\xd8\x01\x01\x1a\x02(\x01R\x14concurrentBuildLimit\x12%\n" +
-	"\x0esource_version\x18\v \x01(\tR\rsourceVersion\x12X\n" +
-	"\x05cache\x18\f \x01(\v2B.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCacheR\x05cache\x12h\n" +
-	"\vlogs_config\x18\r \x01(\v2G.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildLogsConfigR\n" +
+	"\x06source\x18\x02 \x01(\v2C.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSourceB\x06\xbaH\x03\xc8\x01\x01R\x06source\x12z\n" +
+	"\x11secondary_sources\x18\x03 \x03(\v2C.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSourceB\b\xbaH\x05\x92\x01\x02\x10\fR\x10secondarySources\x12\x99\x01\n" +
+	"\x19secondary_source_versions\x18\x04 \x03(\v2S.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSecondarySourceVersionB\b\xbaH\x05\x92\x01\x02\x10\fR\x17secondarySourceVersions\x12r\n" +
+	"\venvironment\x18\x05 \x01(\v2H.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironmentB\x06\xbaH\x03\xc8\x01\x01R\venvironment\x12l\n" +
+	"\tartifacts\x18\x06 \x01(\v2F.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildArtifactsB\x06\xbaH\x03\xc8\x01\x01R\tartifacts\x12\x81\x01\n" +
+	"\x13secondary_artifacts\x18\a \x03(\v2F.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildArtifactsB\b\xbaH\x05\x92\x01\x02\x10\fR\x12secondaryArtifacts\x12}\n" +
+	"\fservice_role\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\vserviceRole\x12*\n" +
+	"\vdescription\x18\t \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\vdescription\x12\xcf\x01\n" +
+	"\x0eencryption_key\x18\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBt\xaa\xa6\x1dQForeign-key reference to an AwsKmsKey (the KMS key ARN), not secret key material.\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\rencryptionKey\x12:\n" +
+	"\rbuild_timeout\x18\v \x01(\x05B\x10\xbaH\a\x1a\x05\x18\xf0\x10(\x05\x8a\xa6\x1d\x0260H\x00R\fbuildTimeout\x88\x01\x01\x12=\n" +
+	"\x0equeued_timeout\x18\f \x01(\x05B\x11\xbaH\a\x1a\x05\x18\xe0\x03(\x05\x8a\xa6\x1d\x03480H\x01R\rqueuedTimeout\x88\x01\x01\x12@\n" +
+	"\x16concurrent_build_limit\x18\r \x01(\x05B\n" +
+	"\xbaH\a\xd8\x01\x01\x1a\x02(\x01R\x14concurrentBuildLimit\x126\n" +
+	"\x10auto_retry_limit\x18\x0e \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18\n" +
+	"(\x01R\x0eautoRetryLimit\x12#\n" +
+	"\rbadge_enabled\x18\x0f \x01(\bR\fbadgeEnabled\x12%\n" +
+	"\x0esource_version\x18\x10 \x01(\tR\rsourceVersion\x12X\n" +
+	"\x05cache\x18\x11 \x01(\v2B.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCacheR\x05cache\x12h\n" +
+	"\vlogs_config\x18\x12 \x01(\v2G.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildLogsConfigR\n" +
 	"logsConfig\x12e\n" +
 	"\n" +
-	"vpc_config\x18\x0e \x01(\v2F.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildVpcConfigR\tvpcConfig\x12^\n" +
-	"\awebhook\x18\x0f \x01(\v2D.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookR\awebhook:\xa5\t\xbaH\xa1\t\x1a\xd3\x01\n" +
+	"vpc_config\x18\x13 \x01(\v2F.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildVpcConfigR\tvpcConfig\x12\x83\x01\n" +
+	"\x15file_system_locations\x18\x14 \x03(\v2O.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildFileSystemLocationR\x13fileSystemLocations\x12v\n" +
+	"\x12build_batch_config\x18\x15 \x01(\v2H.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildBatchConfigR\x10buildBatchConfig\x12Z\n" +
+	"\x12project_visibility\x18\x16 \x01(\tB&\xbaH\x18r\x16R\aPRIVATER\vPUBLIC_READ\x8a\xa6\x1d\aPRIVATEH\x02R\x11projectVisibility\x88\x01\x01\x12\x86\x01\n" +
+	"\x14resource_access_role\x18\x17 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x12resourceAccessRole\x12@\n" +
+	"\x0fresource_policy\x18\x18 \x01(\v2\x17.google.protobuf.StructR\x0eresourcePolicy\x12^\n" +
+	"\awebhook\x18\x19 \x01(\v2D.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookR\awebhook:\xd2\x1e\xbaH\xce\x1e\x1a\xd3\x01\n" +
 	"#codepipeline_source_artifacts_match\x12[when source.type is CODEPIPELINE, artifacts.type must also be CODEPIPELINE (and vice versa)\x1aO(this.source.type == 'CODEPIPELINE') == (this.artifacts.type == 'CODEPIPELINE')\x1a\xba\x01\n" +
 	"\x18source_location_required\x12Msource.location is required when source.type is not CODEPIPELINE or NO_SOURCE\x1aOthis.source.type in ['CODEPIPELINE', 'NO_SOURCE'] || this.source.location != ''\x1a\x9e\x01\n" +
-	" buildspec_required_for_no_source\x12:source.buildspec is required when source.type is NO_SOURCE\x1a>this.source.type != 'NO_SOURCE' || this.source.buildspec != ''\x1a\x96\x01\n" +
+	" buildspec_required_for_no_source\x12:source.buildspec is required when source.type is NO_SOURCE\x1a>this.source.type != 'NO_SOURCE' || this.source.buildspec != ''\x1a\xac\x01\n" +
+	"\x1cprimary_source_no_identifier\x12gsource.source_identifier must be empty on the primary source; it is only used to name secondary sources\x1a#this.source.source_identifier == ''\x1a\x9a\x01\n" +
+	"$secondary_sources_require_identifier\x128every secondary_sources entry must set source_identifier\x1a8this.secondary_sources.all(s, s.source_identifier != '')\x1a\xa4\x01\n" +
+	"&secondary_artifacts_require_identifier\x12<every secondary_artifacts entry must set artifact_identifier\x1a<this.secondary_artifacts.all(a, a.artifact_identifier != '')\x1a\x96\x01\n" +
 	"\x1ds3_artifacts_require_location\x128artifacts.location is required when artifacts.type is S3\x1a;this.artifacts.type != 'S3' || has(this.artifacts.location)\x1a\x97\x01\n" +
-	"\x1as3_cache_requires_location\x120cache.location is required when cache.type is S3\x1aG!has(this.cache) || this.cache.type != 'S3' || has(this.cache.location)\x1a\xb7\x02\n" +
-	"\"webhook_requires_compatible_source\x12\x88\x01webhook is only valid when source.type supports webhooks (GITHUB, BITBUCKET, GITHUB_ENTERPRISE, GITLAB, GITLAB_SELF_MANAGED, CODECOMMIT)\x1a\x85\x01!has(this.webhook) || this.source.type in ['GITHUB', 'BITBUCKET', 'GITHUB_ENTERPRISE', 'GITLAB', 'GITLAB_SELF_MANAGED', 'CODECOMMIT']B\x10\n" +
+	"\x1as3_cache_requires_location\x120cache.location is required when cache.type is S3\x1aG!has(this.cache) || this.cache.type != 'S3' || has(this.cache.location)\x1a\xa4\x02\n" +
+	"\x16lambda_env_no_timeouts\x12~build_timeout and queued_timeout are not supported for Lambda environment types (LINUX_LAMBDA_CONTAINER, ARM_LAMBDA_CONTAINER)\x1a\x89\x01!(this.environment.type in ['LINUX_LAMBDA_CONTAINER', 'ARM_LAMBDA_CONTAINER']) || (!has(this.build_timeout) && !has(this.queued_timeout))\x1a\xdf\x01\n" +
+	"\x1dlambda_env_no_privileged_mode\x12Ienvironment.privileged_mode is not supported for Lambda environment types\x1as!(this.environment.type in ['LINUX_LAMBDA_CONTAINER', 'ARM_LAMBDA_CONTAINER']) || !this.environment.privileged_mode\x1a\xbb\x02\n" +
+	".registry_credential_requires_service_role_pull\x12cenvironment.registry_credential requires environment.image_pull_credentials_type to be SERVICE_ROLE\x1a\xa3\x01!has(this.environment.registry_credential) || (has(this.environment.image_pull_credentials_type) && this.environment.image_pull_credentials_type == 'SERVICE_ROLE')\x1a\xe7\x01\n" +
+	"/public_visibility_requires_resource_access_role\x12Gresource_access_role is required when project_visibility is PUBLIC_READ\x1ak!has(this.project_visibility) || this.project_visibility != 'PUBLIC_READ' || has(this.resource_access_role)\x1a\xb7\x02\n" +
+	"\"webhook_requires_compatible_source\x12\x88\x01webhook is only valid when source.type supports webhooks (GITHUB, BITBUCKET, GITHUB_ENTERPRISE, GITLAB, GITLAB_SELF_MANAGED, CODECOMMIT)\x1a\x85\x01!has(this.webhook) || this.source.type in ['GITHUB', 'BITBUCKET', 'GITHUB_ENTERPRISE', 'GITLAB', 'GITLAB_SELF_MANAGED', 'CODECOMMIT']\x1a\xc8\x01\n" +
+	" badge_requires_repository_source\x12Qbadge_enabled is not supported when source.type is CODEPIPELINE, S3, or NO_SOURCE\x1aQ!this.badge_enabled || !(this.source.type in ['CODEPIPELINE', 'S3', 'NO_SOURCE'])\x1a\x93\x03\n" +
+	"!git_submodules_require_git_source\x12hgit_submodules_config is only supported for BITBUCKET, CODECOMMIT, GITHUB, and GITHUB_ENTERPRISE sources\x1a\x83\x02(!has(this.source.git_submodules_config) || this.source.type in ['BITBUCKET', 'CODECOMMIT', 'GITHUB', 'GITHUB_ENTERPRISE']) && this.secondary_sources.all(s, !has(s.git_submodules_config) || s.type in ['BITBUCKET', 'CODECOMMIT', 'GITHUB', 'GITHUB_ENTERPRISE'])\x1a\xa5\x04\n" +
+	"&build_status_requires_supported_source\x12\x90\x01report_build_status and build_status_config are only supported for GITHUB, BITBUCKET, GITHUB_ENTERPRISE, GITLAB, and GITLAB_SELF_MANAGED sources\x1a\xe7\x02((!this.source.report_build_status && !has(this.source.build_status_config)) || this.source.type in ['GITHUB', 'BITBUCKET', 'GITHUB_ENTERPRISE', 'GITLAB', 'GITLAB_SELF_MANAGED']) && this.secondary_sources.all(s, (!s.report_build_status && !has(s.build_status_config)) || s.type in ['GITHUB', 'BITBUCKET', 'GITHUB_ENTERPRISE', 'GITLAB', 'GITLAB_SELF_MANAGED'])B\x10\n" +
 	"\x0e_build_timeoutB\x11\n" +
-	"\x0f_queued_timeout\"\xe5\x02\n" +
+	"\x0f_queued_timeoutB\x15\n" +
+	"\x13_project_visibility\"\x8c\x06\n" +
 	"\x12AwsCodeBuildSource\x12\x88\x01\n" +
 	"\x04type\x18\x01 \x01(\tBt\xbaHq\xc8\x01\x01rlR\x06GITHUBR\tBITBUCKETR\n" +
 	"CODECOMMITR\fCODEPIPELINER\x11GITHUB_ENTERPRISER\x06GITLABR\x13GITLAB_SELF_MANAGEDR\tNO_SOURCER\x02S3R\x04type\x12\x1a\n" +
 	"\blocation\x18\x02 \x01(\tR\blocation\x12\x1c\n" +
 	"\tbuildspec\x18\x03 \x01(\tR\tbuildspec\x12/\n" +
-	"\x0fgit_clone_depth\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\rgitCloneDepth\x12.\n" +
-	"\x13report_build_status\x18\x05 \x01(\bR\x11reportBuildStatus\x12)\n" +
-	"\x10fetch_submodules\x18\x06 \x01(\bR\x0ffetchSubmodules\"\xbd\a\n" +
-	"\x17AwsCodeBuildEnvironment\x12\xc0\x01\n" +
-	"\x04type\x18\x01 \x01(\tB\xab\x01\xbaH\xa7\x01\xc8\x01\x01r\xa1\x01R\x0fLINUX_CONTAINERR\x13LINUX_GPU_CONTAINERR\rARM_CONTAINERR\x1dWINDOWS_SERVER_2019_CONTAINERR\x1dWINDOWS_SERVER_2022_CONTAINERR\x16LINUX_LAMBDA_CONTAINERR\x14ARM_LAMBDA_CONTAINERR\x04type\x12\xfb\x01\n" +
-	"\fcompute_type\x18\x02 \x01(\tB\xd7\x01\xbaH\xd3\x01\xc8\x01\x01r\xcd\x01R\x14BUILD_GENERAL1_SMALLR\x15BUILD_GENERAL1_MEDIUMR\x14BUILD_GENERAL1_LARGER\x15BUILD_GENERAL1_XLARGER\x16BUILD_GENERAL1_2XLARGER\x10BUILD_LAMBDA_1GBR\x10BUILD_LAMBDA_2GBR\x10BUILD_LAMBDA_4GBR\x10BUILD_LAMBDA_8GBR\x11BUILD_LAMBDA_10GBR\vcomputeType\x12\x1c\n" +
-	"\x05image\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05image\x12'\n" +
-	"\x0fprivileged_mode\x18\x04 \x01(\bR\x0eprivilegedMode\x12o\n" +
-	"\x1bimage_pull_credentials_type\x18\x05 \x01(\tB+\xbaH\x1br\x19R\tCODEBUILDR\fSERVICE_ROLE\x8a\xa6\x1d\tCODEBUILDH\x00R\x18imagePullCredentialsType\x88\x01\x01\x12\x85\x01\n" +
-	"\x15environment_variables\x18\x06 \x03(\v2P.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironmentVariableR\x14environmentVariables\x12\x80\x01\n" +
-	"\x13registry_credential\x18\a \x01(\v2O.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildRegistryCredentialR\x12registryCredentialB\x1e\n" +
-	"\x1c_image_pull_credentials_type\"\xbe\x01\n" +
+	"\x0fgit_clone_depth\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\rgitCloneDepth\x12\x84\x01\n" +
+	"\x15git_submodules_config\x18\x05 \x01(\v2P.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildGitSubmodulesConfigR\x13gitSubmodulesConfig\x12!\n" +
+	"\finsecure_ssl\x18\x06 \x01(\bR\vinsecureSsl\x12.\n" +
+	"\x13report_build_status\x18\a \x01(\bR\x11reportBuildStatus\x12~\n" +
+	"\x13build_status_config\x18\b \x01(\v2N.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildBuildStatusConfigR\x11buildStatusConfig\x12[\n" +
+	"\x04auth\x18\t \x01(\v2G.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSourceAuthR\x04auth\x12I\n" +
+	"\x11source_identifier\x18\n" +
+	" \x01(\tB\x1c\xbaH\x19\xd8\x01\x01r\x14\x18\x80\x012\x0f^[A-Za-z0-9_]+$R\x10sourceIdentifier\"L\n" +
+	"\x1fAwsCodeBuildGitSubmodulesConfig\x12)\n" +
+	"\x10fetch_submodules\x18\x01 \x01(\bR\x0ffetchSubmodules\"X\n" +
+	"\x1dAwsCodeBuildBuildStatusConfig\x12\x18\n" +
+	"\acontext\x18\x01 \x01(\tR\acontext\x12\x1d\n" +
+	"\n" +
+	"target_url\x18\x02 \x01(\tR\ttargetUrl\"\x83\x01\n" +
+	"\x16AwsCodeBuildSourceAuth\x12E\n" +
+	"\x04type\x18\x01 \x01(\tB1\xbaH.\xc8\x01\x01r)R\x0fCODECONNECTIONSR\x0fSECRETS_MANAGERR\x05OAUTHR\x04type\x12\"\n" +
+	"\bresource\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bresource\"\x9e\x01\n" +
+	"\"AwsCodeBuildSecondarySourceVersion\x12I\n" +
+	"\x11source_identifier\x18\x01 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14\x18\x80\x012\x0f^[A-Za-z0-9_]+$R\x10sourceIdentifier\x12-\n" +
+	"\x0esource_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rsourceVersion\"\xf0\t\n" +
+	"\x17AwsCodeBuildEnvironment\x12\xfd\x01\n" +
+	"\x04type\x18\x01 \x01(\tB\xe8\x01\xbaH\xe4\x01\xc8\x01\x01r\xde\x01R\x0fLINUX_CONTAINERR\x13LINUX_GPU_CONTAINERR\rARM_CONTAINERR\x11WINDOWS_CONTAINERR\x1dWINDOWS_SERVER_2019_CONTAINERR\x1dWINDOWS_SERVER_2022_CONTAINERR\x16LINUX_LAMBDA_CONTAINERR\x14ARM_LAMBDA_CONTAINERR\tLINUX_EC2R\aARM_EC2R\vWINDOWS_EC2R\aMAC_ARMR\x04type\x12\xaa\x02\n" +
+	"\fcompute_type\x18\x02 \x01(\tB\x86\x02\xbaH\x82\x02\xc8\x01\x01r\xfc\x01R\x14BUILD_GENERAL1_SMALLR\x15BUILD_GENERAL1_MEDIUMR\x14BUILD_GENERAL1_LARGER\x15BUILD_GENERAL1_XLARGER\x16BUILD_GENERAL1_2XLARGER\x10BUILD_LAMBDA_1GBR\x10BUILD_LAMBDA_2GBR\x10BUILD_LAMBDA_4GBR\x10BUILD_LAMBDA_8GBR\x11BUILD_LAMBDA_10GBR\x17ATTRIBUTE_BASED_COMPUTER\x14CUSTOM_INSTANCE_TYPER\vcomputeType\x12\x1c\n" +
+	"\x05image\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05image\x128\n" +
+	"\vcertificate\x18\x04 \x01(\tB\x16\xbaH\x13\xd8\x01\x01r\x0e2\f\\.(pem|zip)$R\vcertificate\x12'\n" +
+	"\x0fprivileged_mode\x18\x05 \x01(\bR\x0eprivilegedMode\x12o\n" +
+	"\x1bimage_pull_credentials_type\x18\x06 \x01(\tB+\xbaH\x1br\x19R\tCODEBUILDR\fSERVICE_ROLE\x8a\xa6\x1d\tCODEBUILDH\x00R\x18imagePullCredentialsType\x88\x01\x01\x12\x85\x01\n" +
+	"\x15environment_variables\x18\a \x03(\v2P.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironmentVariableR\x14environmentVariables\x12\x80\x01\n" +
+	"\x13registry_credential\x18\b \x01(\v2O.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildRegistryCredentialR\x12registryCredential\x12n\n" +
+	"\rdocker_server\x18\t \x01(\v2I.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildDockerServerR\fdockerServer\x12\x1b\n" +
+	"\tfleet_arn\x18\n" +
+	" \x01(\tR\bfleetArnB\x1e\n" +
+	"\x1c_image_pull_credentials_type\"\xd0\x02\n" +
+	"\x18AwsCodeBuildDockerServer\x12\x9d\x01\n" +
+	"\fcompute_type\x18\x01 \x01(\tBz\xbaHw\xc8\x01\x01rrR\x14BUILD_GENERAL1_SMALLR\x15BUILD_GENERAL1_MEDIUMR\x14BUILD_GENERAL1_LARGER\x15BUILD_GENERAL1_XLARGER\x16BUILD_GENERAL1_2XLARGER\vcomputeType\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\"\xbe\x01\n" +
 	"\x1fAwsCodeBuildEnvironmentVariable\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +
 	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\x12X\n" +
@@ -1267,7 +2290,7 @@ const file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc = 
 	"credential\x18\x01 \x01(\tB]\xbaH\x03\xc8\x01\x01\xaa\xa6\x1dSARN or name of a Secrets Manager secret (a reference), not the secret value itself.R\n" +
 	"credential\x12\xb0\x01\n" +
 	"\x13credential_provider\x18\x02 \x01(\tB\x7f\xbaH\x16\xc8\x01\x01r\x11\n" +
-	"\x0fSECRETS_MANAGER\xaa\xa6\x1dbProvider-type selector (constant SECRETS_MANAGER), not a secret value; the secret is `credential`.R\x12credentialProvider\"\x95\x03\n" +
+	"\x0fSECRETS_MANAGER\xaa\xa6\x1dbProvider-type selector (constant SECRETS_MANAGER), not a secret value; the secret is `credential`.R\x12credentialProvider\"\xeb\x04\n" +
 	"\x15AwsCodeBuildArtifacts\x12<\n" +
 	"\x04type\x18\x01 \x01(\tB(\xbaH%\xc8\x01\x01r R\fNO_ARTIFACTSR\x02S3R\fCODEPIPELINER\x04type\x12q\n" +
 	"\blocation\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12\x12\n" +
@@ -1275,11 +2298,16 @@ const file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc = 
 	"\x04path\x18\x04 \x01(\tR\x04path\x121\n" +
 	"\tpackaging\x18\x05 \x01(\tB\x13\xbaH\x10\xd8\x01\x01r\vR\x04NONER\x03ZIPR\tpackaging\x12?\n" +
 	"\x0enamespace_type\x18\x06 \x01(\tB\x18\xbaH\x15\xd8\x01\x01r\x10R\x04NONER\bBUILD_IDR\rnamespaceType\x12/\n" +
-	"\x13encryption_disabled\x18\a \x01(\bR\x12encryptionDisabled\"\xe6\x01\n" +
+	"\x13encryption_disabled\x18\a \x01(\bR\x12encryptionDisabled\x124\n" +
+	"\x16override_artifact_name\x18\b \x01(\bR\x14overrideArtifactName\x12O\n" +
+	"\x13bucket_owner_access\x18\t \x01(\tB\x1f\xbaH\x1c\xd8\x01\x01r\x17R\x04NONER\tREAD_ONLYR\x04FULLR\x11bucketOwnerAccess\x12M\n" +
+	"\x13artifact_identifier\x18\n" +
+	" \x01(\tB\x1c\xbaH\x19\xd8\x01\x01r\x14\x18\x80\x012\x0f^[A-Za-z0-9_]+$R\x12artifactIdentifier\"\xdd\x02\n" +
 	"\x11AwsCodeBuildCache\x12?\n" +
 	"\x04type\x18\x01 \x01(\tB&\xbaH\x17r\x15R\bNO_CACHER\x02S3R\x05LOCAL\x8a\xa6\x1d\bNO_CACHEH\x00R\x04type\x88\x01\x01\x12q\n" +
-	"\blocation\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12\x14\n" +
-	"\x05modes\x18\x03 \x03(\tR\x05modesB\a\n" +
+	"\blocation\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12b\n" +
+	"\x05modes\x18\x03 \x03(\tBL\xbaHI\x92\x01F\"DrBR\x12LOCAL_SOURCE_CACHER\x18LOCAL_DOCKER_LAYER_CACHER\x12LOCAL_CUSTOM_CACHER\x05modes\x12'\n" +
+	"\x0fcache_namespace\x18\x04 \x01(\tR\x0ecacheNamespaceB\a\n" +
 	"\x05_type\"\xec\x01\n" +
 	"\x16AwsCodeBuildLogsConfig\x12t\n" +
 	"\x0fcloudwatch_logs\x18\x01 \x01(\v2K.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCloudWatchLogsR\x0ecloudwatchLogs\x12\\\n" +
@@ -1290,11 +2318,12 @@ const file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc = 
 	"group_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xb6\x02\x92\xd4a\x1dstatus.outputs.log_group_nameR\tgroupName\x12\x1f\n" +
 	"\vstream_name\x18\x03 \x01(\tR\n" +
 	"streamNameB\t\n" +
-	"\a_status\"\x86\x02\n" +
+	"\a_status\"\xd7\x02\n" +
 	"\x12AwsCodeBuildS3Logs\x12A\n" +
 	"\x06status\x18\x01 \x01(\tB$\xbaH\x15r\x13R\aENABLEDR\bDISABLED\x8a\xa6\x1d\bDISABLEDH\x00R\x06status\x88\x01\x01\x12q\n" +
 	"\blocation\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12/\n" +
-	"\x13encryption_disabled\x18\x03 \x01(\bR\x12encryptionDisabledB\t\n" +
+	"\x13encryption_disabled\x18\x03 \x01(\bR\x12encryptionDisabled\x12O\n" +
+	"\x13bucket_owner_access\x18\x04 \x01(\tB\x1f\xbaH\x1c\xd8\x01\x01r\x17R\x04NONER\tREAD_ONLYR\x04FULLR\x11bucketOwnerAccessB\t\n" +
 	"\a_status\"\xa7\x03\n" +
 	"\x15AwsCodeBuildVpcConfig\x12o\n" +
 	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x81\x01\n" +
@@ -1302,17 +2331,47 @@ const file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc = 
 	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\n" +
 	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x10\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x98\x01\n" +
 	"\x12security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB6\xbaH\n" +
-	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x05\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\"\xc8\x01\n" +
-	"\x13AwsCodeBuildWebhook\x12;\n" +
+	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x05\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\"\xef\x01\n" +
+	"\x1eAwsCodeBuildFileSystemLocation\x12&\n" +
 	"\n" +
-	"build_type\x18\x01 \x01(\tB\x1c\xbaH\x19\xd8\x01\x01r\x14R\x05BUILDR\vBUILD_BATCHR\tbuildType\x12t\n" +
-	"\rfilter_groups\x18\x02 \x03(\v2O.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilterGroupR\ffilterGroups\"\x90\x01\n" +
+	"identifier\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"identifier\x12\"\n" +
+	"\blocation\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12'\n" +
+	"\vmount_point\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"mountPoint\x12#\n" +
+	"\rmount_options\x18\x04 \x01(\tR\fmountOptions\x12*\n" +
+	"\x04type\x18\x05 \x01(\tB\x11\xbaH\ar\x05\n" +
+	"\x03EFS\x8a\xa6\x1d\x03EFSH\x00R\x04type\x88\x01\x01B\a\n" +
+	"\x05_type\"\xf0\x02\n" +
+	"\x17AwsCodeBuildBatchConfig\x12}\n" +
+	"\fservice_role\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\vserviceRole\x12+\n" +
+	"\x11combine_artifacts\x18\x02 \x01(\bR\x10combineArtifacts\x125\n" +
+	"\x0ftimeout_in_mins\x18\x03 \x01(\x05B\r\xbaH\n" +
+	"\xd8\x01\x01\x1a\x05\x18\xf0\x10(\x05R\rtimeoutInMins\x12r\n" +
+	"\frestrictions\x18\x04 \x01(\v2N.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildBatchRestrictionsR\frestrictions\"\xa5\x03\n" +
+	"\x1dAwsCodeBuildBatchRestrictions\x12\xbf\x02\n" +
+	"\x15compute_types_allowed\x18\x01 \x03(\tB\x8a\x02\xbaH\x86\x02\x92\x01\x82\x02\"\xff\x01r\xfc\x01R\x14BUILD_GENERAL1_SMALLR\x15BUILD_GENERAL1_MEDIUMR\x14BUILD_GENERAL1_LARGER\x15BUILD_GENERAL1_XLARGER\x16BUILD_GENERAL1_2XLARGER\x10BUILD_LAMBDA_1GBR\x10BUILD_LAMBDA_2GBR\x10BUILD_LAMBDA_4GBR\x10BUILD_LAMBDA_8GBR\x11BUILD_LAMBDA_10GBR\x17ATTRIBUTE_BASED_COMPUTER\x14CUSTOM_INSTANCE_TYPER\x13computeTypesAllowed\x12B\n" +
+	"\x16maximum_builds_allowed\x18\x02 \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18d(\x01R\x14maximumBuildsAllowed\"\xab\x04\n" +
+	"\x13AwsCodeBuildWebhook\x12S\n" +
+	"\n" +
+	"build_type\x18\x01 \x01(\tB4\xbaH1\xd8\x01\x01r,R\x05BUILDR\vBUILD_BATCHR\x16RUNNER_BUILDKITE_BUILDR\tbuildType\x12'\n" +
+	"\x0fmanual_creation\x18\x02 \x01(\bR\x0emanualCreation\x12t\n" +
+	"\rfilter_groups\x18\x03 \x03(\v2O.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilterGroupR\ffilterGroups\x12\x87\x01\n" +
+	"\x13scope_configuration\x18\x04 \x01(\v2V.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookScopeConfigurationR\x12scopeConfiguration\x12\x95\x01\n" +
+	"\x19pull_request_build_policy\x18\x05 \x01(\v2Z.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookPullRequestBuildPolicyR\x16pullRequestBuildPolicy\"\x90\x01\n" +
 	"\x1eAwsCodeBuildWebhookFilterGroup\x12n\n" +
-	"\afilters\x18\x01 \x03(\v2J.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilterB\b\xbaH\x05\x92\x01\x02\b\x01R\afilters\"\xdb\x01\n" +
-	"\x19AwsCodeBuildWebhookFilter\x12d\n" +
-	"\x04type\x18\x01 \x01(\tBP\xbaHM\xc8\x01\x01rHR\x05EVENTR\bBASE_REFR\bHEAD_REFR\x10ACTOR_ACCOUNT_IDR\tFILE_PATHR\x0eCOMMIT_MESSAGER\x04type\x12 \n" +
+	"\afilters\x18\x01 \x03(\v2J.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilterB\b\xbaH\x05\x92\x01\x02\b\x01R\afilters\"\xaa\x02\n" +
+	"\x19AwsCodeBuildWebhookFilter\x12\xb2\x01\n" +
+	"\x04type\x18\x01 \x01(\tB\x9d\x01\xbaH\x99\x01\xc8\x01\x01r\x93\x01R\x05EVENTR\bBASE_REFR\bHEAD_REFR\x10ACTOR_ACCOUNT_IDR\tFILE_PATHR\x0eCOMMIT_MESSAGER\rWORKFLOW_NAMER\bTAG_NAMER\fRELEASE_NAMER\x0fREPOSITORY_NAMER\x11ORGANIZATION_NAMER\x04type\x12 \n" +
 	"\apattern\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\apattern\x126\n" +
-	"\x17exclude_matched_pattern\x18\x03 \x01(\bR\x15excludeMatchedPatternB\x8c\x03\n" +
+	"\x17exclude_matched_pattern\x18\x03 \x01(\bR\x15excludeMatchedPattern\"\xad\x01\n" +
+	"%AwsCodeBuildWebhookScopeConfiguration\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12P\n" +
+	"\x05scope\x18\x02 \x01(\tB:\xbaH7\xc8\x01\x01r2R\x13GITHUB_ORGANIZATIONR\rGITHUB_GLOBALR\fGITLAB_GROUPR\x05scope\x12\x16\n" +
+	"\x06domain\x18\x03 \x01(\tR\x06domain\"\xb8\x03\n" +
+	")AwsCodeBuildWebhookPullRequestBuildPolicy\x12u\n" +
+	"\x19requires_comment_approval\x18\x01 \x01(\tB9\xbaH6\xc8\x01\x01r1R\bDISABLEDR\x12FORK_PULL_REQUESTSR\x11ALL_PULL_REQUESTSR\x17requiresCommentApproval\x12\x93\x02\n" +
+	"\x0eapprover_roles\x18\x02 \x03(\tB\xeb\x01\xbaH\xe7\x01\x92\x01\xe3\x01\"\xe0\x01r\xdd\x01R\vGITHUB_READR\rGITHUB_TRIAGER\fGITHUB_WRITER\x0fGITHUB_MAINTAINR\fGITHUB_ADMINR\fGITLAB_GUESTR\x0eGITLAB_PLANNERR\x0fGITLAB_REPORTERR\x10GITLAB_DEVELOPERR\x11GITLAB_MAINTAINERR\fGITLAB_OWNERR\x0eBITBUCKET_READR\x0fBITBUCKET_WRITER\x0fBITBUCKET_ADMINR\rapproverRolesB\x8c\x03\n" +
 	"3com.dev.planton.provider.aws.awscodebuildproject.v1B\tSpecProtoP\x01Zggithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awscodebuildproject/v1;awscodebuildprojectv1\xa2\x02\x05DPPAA\xaa\x02/Dev.Planton.Provider.Aws.Awscodebuildproject.V1\xca\x02/Dev\\Planton\\Provider\\Aws\\Awscodebuildproject\\V1\xe2\x02;Dev\\Planton\\Provider\\Aws\\Awscodebuildproject\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Aws::Awscodebuildproject::V1b\x06proto3"
 
 var (
@@ -1327,52 +2386,79 @@ func file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescGZIP
 	return file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_goTypes = []any{
-	(*AwsCodeBuildProjectSpec)(nil),         // 0: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec
-	(*AwsCodeBuildSource)(nil),              // 1: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSource
-	(*AwsCodeBuildEnvironment)(nil),         // 2: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironment
-	(*AwsCodeBuildEnvironmentVariable)(nil), // 3: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironmentVariable
-	(*AwsCodeBuildRegistryCredential)(nil),  // 4: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildRegistryCredential
-	(*AwsCodeBuildArtifacts)(nil),           // 5: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildArtifacts
-	(*AwsCodeBuildCache)(nil),               // 6: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCache
-	(*AwsCodeBuildLogsConfig)(nil),          // 7: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildLogsConfig
-	(*AwsCodeBuildCloudWatchLogs)(nil),      // 8: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCloudWatchLogs
-	(*AwsCodeBuildS3Logs)(nil),              // 9: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildS3Logs
-	(*AwsCodeBuildVpcConfig)(nil),           // 10: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildVpcConfig
-	(*AwsCodeBuildWebhook)(nil),             // 11: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhook
-	(*AwsCodeBuildWebhookFilterGroup)(nil),  // 12: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilterGroup
-	(*AwsCodeBuildWebhookFilter)(nil),       // 13: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilter
-	(*v1.StringValueOrRef)(nil),             // 14: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsCodeBuildProjectSpec)(nil),                   // 0: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec
+	(*AwsCodeBuildSource)(nil),                        // 1: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSource
+	(*AwsCodeBuildGitSubmodulesConfig)(nil),           // 2: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildGitSubmodulesConfig
+	(*AwsCodeBuildBuildStatusConfig)(nil),             // 3: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildBuildStatusConfig
+	(*AwsCodeBuildSourceAuth)(nil),                    // 4: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSourceAuth
+	(*AwsCodeBuildSecondarySourceVersion)(nil),        // 5: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSecondarySourceVersion
+	(*AwsCodeBuildEnvironment)(nil),                   // 6: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironment
+	(*AwsCodeBuildDockerServer)(nil),                  // 7: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildDockerServer
+	(*AwsCodeBuildEnvironmentVariable)(nil),           // 8: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironmentVariable
+	(*AwsCodeBuildRegistryCredential)(nil),            // 9: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildRegistryCredential
+	(*AwsCodeBuildArtifacts)(nil),                     // 10: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildArtifacts
+	(*AwsCodeBuildCache)(nil),                         // 11: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCache
+	(*AwsCodeBuildLogsConfig)(nil),                    // 12: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildLogsConfig
+	(*AwsCodeBuildCloudWatchLogs)(nil),                // 13: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCloudWatchLogs
+	(*AwsCodeBuildS3Logs)(nil),                        // 14: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildS3Logs
+	(*AwsCodeBuildVpcConfig)(nil),                     // 15: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildVpcConfig
+	(*AwsCodeBuildFileSystemLocation)(nil),            // 16: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildFileSystemLocation
+	(*AwsCodeBuildBatchConfig)(nil),                   // 17: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildBatchConfig
+	(*AwsCodeBuildBatchRestrictions)(nil),             // 18: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildBatchRestrictions
+	(*AwsCodeBuildWebhook)(nil),                       // 19: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhook
+	(*AwsCodeBuildWebhookFilterGroup)(nil),            // 20: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilterGroup
+	(*AwsCodeBuildWebhookFilter)(nil),                 // 21: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilter
+	(*AwsCodeBuildWebhookScopeConfiguration)(nil),     // 22: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookScopeConfiguration
+	(*AwsCodeBuildWebhookPullRequestBuildPolicy)(nil), // 23: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookPullRequestBuildPolicy
+	(*v1.StringValueOrRef)(nil),                       // 24: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*structpb.Struct)(nil),                           // 25: google.protobuf.Struct
 }
 var file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.source:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSource
-	2,  // 1: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.environment:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironment
-	5,  // 2: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.artifacts:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildArtifacts
-	14, // 3: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.service_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 4: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.encryption_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 5: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.cache:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCache
-	7,  // 6: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.logs_config:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildLogsConfig
-	10, // 7: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.vpc_config:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildVpcConfig
-	11, // 8: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.webhook:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhook
-	3,  // 9: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironment.environment_variables:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironmentVariable
-	4,  // 10: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironment.registry_credential:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildRegistryCredential
-	14, // 11: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildArtifacts.location:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 12: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCache.location:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 13: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildLogsConfig.cloudwatch_logs:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCloudWatchLogs
-	9,  // 14: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildLogsConfig.s3_logs:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildS3Logs
-	14, // 15: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCloudWatchLogs.group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 16: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildS3Logs.location:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 17: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildVpcConfig.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 18: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildVpcConfig.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 19: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildVpcConfig.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 20: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhook.filter_groups:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilterGroup
-	13, // 21: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilterGroup.filters:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilter
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	1,  // 1: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.secondary_sources:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSource
+	5,  // 2: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.secondary_source_versions:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSecondarySourceVersion
+	6,  // 3: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.environment:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironment
+	10, // 4: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.artifacts:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildArtifacts
+	10, // 5: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.secondary_artifacts:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildArtifacts
+	24, // 6: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.service_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 7: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.encryption_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 8: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.cache:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCache
+	12, // 9: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.logs_config:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildLogsConfig
+	15, // 10: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.vpc_config:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildVpcConfig
+	16, // 11: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.file_system_locations:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildFileSystemLocation
+	17, // 12: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.build_batch_config:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildBatchConfig
+	24, // 13: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.resource_access_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 14: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.resource_policy:type_name -> google.protobuf.Struct
+	19, // 15: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildProjectSpec.webhook:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhook
+	2,  // 16: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSource.git_submodules_config:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildGitSubmodulesConfig
+	3,  // 17: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSource.build_status_config:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildBuildStatusConfig
+	4,  // 18: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSource.auth:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildSourceAuth
+	8,  // 19: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironment.environment_variables:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironmentVariable
+	9,  // 20: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironment.registry_credential:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildRegistryCredential
+	7,  // 21: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironment.docker_server:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildDockerServer
+	24, // 22: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildDockerServer.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 23: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildArtifacts.location:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 24: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCache.location:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 25: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildLogsConfig.cloudwatch_logs:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCloudWatchLogs
+	14, // 26: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildLogsConfig.s3_logs:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildS3Logs
+	24, // 27: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildCloudWatchLogs.group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 28: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildS3Logs.location:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 29: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildVpcConfig.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 30: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildVpcConfig.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 31: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildVpcConfig.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 32: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildBatchConfig.service_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 33: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildBatchConfig.restrictions:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildBatchRestrictions
+	20, // 34: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhook.filter_groups:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilterGroup
+	22, // 35: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhook.scope_configuration:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookScopeConfiguration
+	23, // 36: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhook.pull_request_build_policy:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookPullRequestBuildPolicy
+	21, // 37: dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilterGroup.filters:type_name -> dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookFilter
+	38, // [38:38] is the sub-list for method output_type
+	38, // [38:38] is the sub-list for method input_type
+	38, // [38:38] is the sub-list for extension type_name
+	38, // [38:38] is the sub-list for extension extendee
+	0,  // [0:38] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_init() }
@@ -1381,18 +2467,19 @@ func file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_init() {
 		return
 	}
 	file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
-	file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
 	file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
 	file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
-	file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[11].OneofWrappers = []any{}
+	file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[14].OneofWrappers = []any{}
+	file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

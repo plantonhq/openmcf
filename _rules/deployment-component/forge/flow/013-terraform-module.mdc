@@ -162,6 +162,22 @@ NOTES
   avoid modeling a policy/user-data string field out of interpolation concerns.
   (Exercise one template-introducer-bearing value in the kind's E2E scenario:
   `tofu validate` never sees real tfvars, so only a rendered run proves it.)
+- **The offline `tofu plan` proof: render tfvars with
+  `planton tofu load-tfvars <path-to-hack-manifest>` (positional arg; prints
+  HCL tfvars to stdout), save to a file, then in `iac/tf/` run
+  `tofu init -backend=false` + `tofu plan -input=false -refresh=false
+  -var-file=<file>`.** Two credential realities: the AWS provider validates
+  credentials via an STS `GetCallerIdentity` call at PLAN time, so dummy static
+  keys fail the "offline" proof — a real credential chain is required even
+  though `-refresh=false` with no state reads or mutates nothing. And the
+  provider's AWS SDK can fail to refresh a cached SSO token that the AWS CLI
+  itself accepts — when an `AWS_PROFILE` SSO profile errors with "refresh
+  cached SSO token failed", export short-lived static credentials instead:
+  `eval $(aws configure export-credentials --profile <profile> --format env)`.
+  The proof passes when the plan renders every expected resource
+  (`Plan: N to add`) with zero errors. Remove the `.terraform/`,
+  `.terraform.lock.hcl`, and any plan-file artifacts afterwards (gitignored,
+  but they bloat the working tree).
 
 HANDLING OPTIONAL FIELDS WITH DEFAULTS
 - Fields with `(dev.planton.shared.options.default)` are `optional` in the proto schema
@@ -209,6 +225,16 @@ HANDLING PROTO-OPTIONAL TRI-STATES (presence WITHOUT a platform default)
   `try(obj.attr, default)` -- `try(o.s3_origin.create_oac, false)` is both the
   null guard and the default in one expression, and works in `for` filters,
   `for_each`, and resource arguments alike.
+- **`coalesce(x, "")` ERRORS when every argument is empty.** HCL's `coalesce`
+  requires at least one non-null, NON-EMPTY-STRING argument, so
+  `coalesce(field, "") != ""` fails at plan time exactly when the field is
+  absent -- the case it was meant to guard. Generator-flattened
+  `StringValueOrRef` fields (and every `optional(string, "")` contract
+  attribute) are never null -- they carry the contract default `""` -- so
+  test them with a plain `field != ""`. Reserve `coalesce` for genuinely
+  nullable attributes with a non-empty fallback (e.g.
+  `coalesce(nullable_enum, "OPTIONAL")`), and only `tofu plan` with real
+  tfvars proves the difference (`tofu validate` cannot).
 - Example:
   ```hcl
   # CORRECT: Planton guarantees content_type is populated (default: application/octet-stream)
@@ -218,3 +244,27 @@ HANDLING PROTO-OPTIONAL TRI-STATES (presence WITHOUT a platform default)
   content_type = coalesce(each.value.content_type, "application/octet-stream")
   ```
 - See the reference component `iac/tf/` directories named in TOOLS for worked examples
+
+HANDLING RECURSIVE PROTO MESSAGES (self-referential statement trees)
+- When a spec message references itself (e.g. WAFv2 AND/OR/NOT statements, or any
+  nested tree whose descriptor cycle would hang the variables generator), the
+  generator detects the cycle on the current walk path and collapses that subtree
+  to bare `any` in `variables.tf`.
+- Terraform cannot express `list(any)` or `map(any)` when element types differ
+  across entries (heterogeneous object shapes under one repeated field). When a
+  list or map's element type contains free-form `any`, the generator emits the
+  **entire attribute** as bare `any` (`TFFreeFormList` / `TFFreeFormMap`), not
+  `list(object({...}))` with an `any` leaf -- otherwise `tofu plan` fails with
+  "element types must all match for conversion to list".
+- The module must serialize such trees itself (typically `rule_json` / `jsonencode`
+  in HCL, or a Go builder in Pulumi) rather than expecting typed nested Terraform
+  resources for every statement variant. Add a unit test on the serializer and a
+  regression test in `variablestf_test.go` when introducing a new recursive spec.
+- **NO 64-bit integers inside an `any`-typed subtree that feeds a JSON provider
+  argument.** protojson stringifies int64/uint64 ("16384", not 16384) — the
+  typed-contract path never notices, but a provider that unmarshals the
+  serialized JSON into typed Go structs rejects it at APPLY time ("cannot
+  unmarshal string into ... of type int64"), and Pulumi's Go builder (which
+  marshals real ints) silently diverges. Type such fields int32/uint32 when the
+  domain fits (it almost always does — sizes cap at int32 max, ASNs are uint32);
+  only a live Terraform run catches the mismatch, never `tofu validate`.

@@ -29,8 +29,12 @@ func boolPtr(b bool) *bool {
 	return &b
 }
 
-func int32Val(i int32) int32 {
-	return i
+func int32Ptr(i int32) *int32 {
+	return &i
+}
+
+func int64Ptr(i int64) *int64 {
+	return &i
 }
 
 var _ = ginkgo.Describe("AwsFsxOntapVolumeSpec validations", func() {
@@ -41,7 +45,7 @@ var _ = ginkgo.Describe("AwsFsxOntapVolumeSpec validations", func() {
 			Region:                  "us-west-2",
 			StorageVirtualMachineId: strRef("svm-0123456789abcdef0"),
 			Name:                    "vol_default",
-			SizeInMegabytes:         1024,
+			SizeInMegabytes:         int32Ptr(1024),
 		}
 	})
 
@@ -60,12 +64,37 @@ var _ = ginkgo.Describe("AwsFsxOntapVolumeSpec validations", func() {
 		spec.VolumeStyle = stringPtr("FLEXVOL")
 		spec.SecurityStyle = "UNIX"
 		spec.SnapshotPolicy = "default"
-		spec.StorageEfficiencyEnabled = true
+		spec.StorageEfficiencyEnabled = boolPtr(true)
 		spec.CopyTagsToBackups = boolPtr(true)
+		spec.FinalBackupTags = map[string]string{"retention": "final"}
 		spec.TieringPolicy = &AwsFsxOntapVolumeTieringPolicy{
 			Name:          "AUTO",
 			CoolingPeriod: 31,
 		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts the byte-precise size arm", func() {
+		spec.SizeInMegabytes = nil
+		spec.SizeInBytes = int64Ptr(4398046511104) // 4 TiB
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a size beyond 2 PiB via size_in_bytes", func() {
+		spec.SizeInMegabytes = nil
+		spec.SizeInBytes = int64Ptr(3000000000000000) // ~2.7 PiB
+		spec.VolumeStyle = stringPtr("FLEXGROUP")
+		spec.AggregateConfiguration = &AwsFsxOntapVolumeAggregateConfiguration{
+			Aggregates: []string{"aggr1", "aggr2"},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts explicit storage_efficiency_enabled false", func() {
+		spec.StorageEfficiencyEnabled = boolPtr(false)
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
@@ -281,13 +310,37 @@ var _ = ginkgo.Describe("AwsFsxOntapVolumeSpec validations", func() {
 	})
 
 	ginkgo.It("rejects size_in_megabytes below minimum (20)", func() {
-		spec.SizeInMegabytes = 19
+		spec.SizeInMegabytes = int32Ptr(19)
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects size_in_megabytes of zero", func() {
-		spec.SizeInMegabytes = 0
+	// -------------------------------------------------------------------------
+	// CEL validation — size_exactly_one_arm
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("rejects a spec with no size arm", func() {
+		spec.SizeInMegabytes = nil
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a spec with both size arms", func() {
+		spec.SizeInBytes = int64Ptr(1073741824)
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects size_in_bytes below the 20 MiB minimum", func() {
+		spec.SizeInMegabytes = nil
+		spec.SizeInBytes = int64Ptr(1048576)
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects size_in_bytes above the ~20 PiB ceiling", func() {
+		spec.SizeInMegabytes = nil
+		spec.SizeInBytes = int64Ptr(22517998000000001)
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
@@ -459,6 +512,65 @@ var _ = ginkgo.Describe("AwsFsxOntapVolumeSpec validations", func() {
 				"aggr7", "aggr8", "aggr9", "aggr10", "aggr11", "aggr12", "aggr13",
 			},
 			ConstituentsPerAggregate: 8,
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an aggregate name outside the aggrN pattern", func() {
+		spec.VolumeStyle = stringPtr("FLEXGROUP")
+		spec.AggregateConfiguration = &AwsFsxOntapVolumeAggregateConfiguration{
+			Aggregates: []string{"aggregate1"},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects constituents_per_aggregate above 200", func() {
+		spec.VolumeStyle = stringPtr("FLEXGROUP")
+		spec.AggregateConfiguration = &AwsFsxOntapVolumeAggregateConfiguration{
+			Aggregates:               []string{"aggr1"},
+			ConstituentsPerAggregate: 201,
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Field bounds — junction path, snapshot policy, retention values
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("rejects junction_path exceeding 255 characters", func() {
+		longPath := "/"
+		for i := 0; i < 255; i++ {
+			longPath += "a"
+		}
+		spec.JunctionPath = longPath
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects retention duration value above 65535", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType: "COMPLIANCE",
+			RetentionPeriod: &AwsFsxOntapVolumeRetentionPeriod{
+				DefaultRetention: &AwsFsxOntapVolumeRetentionDuration{
+					Type:  "DAYS",
+					Value: 65536,
+				},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects autocommit value above 65535", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType: "ENTERPRISE",
+			AutocommitPeriod: &AwsFsxOntapVolumeAutocommitPeriod{
+				Type:  "DAYS",
+				Value: 65536,
+			},
 		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())

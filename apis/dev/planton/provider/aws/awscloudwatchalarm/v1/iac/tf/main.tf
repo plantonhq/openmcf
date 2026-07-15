@@ -1,9 +1,18 @@
 resource "aws_cloudwatch_metric_alarm" "this" {
-  alarm_name          = local.resource_name
+  alarm_name = local.resource_name
+
+  # Threshold-mode evaluation contract. Null for PromQL alarms — the query
+  # itself expresses the condition, and the provider rejects these arguments
+  # in that mode.
   comparison_operator = local.comparison_operator
   evaluation_periods  = local.evaluation_periods
+  threshold           = local.threshold
+  threshold_metric_id = local.threshold_metric_id
+  datapoints_to_alarm = local.datapoints_to_alarm
+  treat_missing_data  = local.treat_missing_data
 
-  # Simple metric fields (used when NOT using metric_queries).
+  # Simple metric mode (mutually exclusive with metric_query and
+  # evaluation_criteria — CEL-enforced in the spec).
   metric_name        = local.metric_name
   namespace          = local.namespace
   period             = local.period
@@ -12,48 +21,61 @@ resource "aws_cloudwatch_metric_alarm" "this" {
   dimensions         = local.dimensions
   unit               = local.unit
 
-  # Evaluation.
-  datapoints_to_alarm = local.datapoints_to_alarm
-  threshold           = local.threshold
-  threshold_metric_id = local.threshold_metric_id
-  treat_missing_data  = local.treat_missing_data
-
-  # Actions.
+  # Actions. actions_enabled is tri-state: null = AWS default (true); an
+  # explicit false suppresses actions without stopping evaluation.
   actions_enabled           = local.actions_enabled
   alarm_actions             = local.alarm_actions
   ok_actions                = local.ok_actions
   insufficient_data_actions = local.insufficient_data_actions
 
-  # Description.
   alarm_description = local.alarm_description
 
-  # Percentile.
+  # Percentile low-sample behavior — only meaningful for percentile stats.
   evaluate_low_sample_count_percentiles = local.evaluate_low_sample_count_percentiles
 
-  # Metric queries (used for math expressions / multi-metric alarms).
+  # Metric query mode: math expressions, anomaly detection bands, and
+  # multi-metric alarms. Each query is either an expression or a raw metric
+  # retrieval (never both — CEL-enforced).
   dynamic "metric_query" {
-    for_each = local.metric_queries
+    for_each = var.spec.metric_queries
     content {
       id          = metric_query.value.id
-      expression  = try(metric_query.value.expression, null)
-      label       = try(metric_query.value.label, null)
-      period      = try(metric_query.value.period, null)
-      return_data = try(metric_query.value.return_data, null)
-      account_id  = try(metric_query.value.account_id, null)
+      expression  = metric_query.value.expression != "" ? metric_query.value.expression : null
+      label       = metric_query.value.label != "" ? metric_query.value.label : null
+      period      = metric_query.value.period != 0 ? metric_query.value.period : null
+      return_data = metric_query.value.return_data
+      account_id  = metric_query.value.account_id != "" ? metric_query.value.account_id : null
 
       dynamic "metric" {
-        for_each = try(metric_query.value.metric, null) != null ? [metric_query.value.metric] : []
+        for_each = metric_query.value.metric != null ? [metric_query.value.metric] : []
         content {
           metric_name = metric.value.metric_name
-          namespace   = metric.value.namespace
+          namespace   = metric.value.namespace != "" ? metric.value.namespace : null
           period      = metric.value.period
           stat        = metric.value.stat
-          dimensions  = try(metric.value.dimensions, null)
-          unit        = try(metric.value.unit, null)
+          dimensions  = length(metric.value.dimensions) > 0 ? metric.value.dimensions : null
+          unit        = metric.value.unit != "" ? metric.value.unit : null
         }
       }
     }
   }
 
-  tags = local.tags
+  # PromQL mode: alarm on a PromQL query against an Amazon Managed Service
+  # for Prometheus workspace. pending/recovery periods are tri-states — null
+  # lets AWS apply its default firing behavior, while an explicit 0 means
+  # "transition immediately".
+  dynamic "evaluation_criteria" {
+    for_each = local.is_promql ? [var.spec.evaluation_criteria] : []
+    content {
+      promql_criteria {
+        query           = evaluation_criteria.value.promql_criteria.query
+        pending_period  = evaluation_criteria.value.promql_criteria.pending_period
+        recovery_period = evaluation_criteria.value.promql_criteria.recovery_period
+      }
+    }
+  }
+
+  evaluation_interval = local.evaluation_interval
+
+  tags = local.aws_tags
 }

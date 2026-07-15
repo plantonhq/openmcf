@@ -1,6 +1,11 @@
 # ---------------------------------------------------------------------------
 # Kinesis Data Firehose delivery stream
 # ---------------------------------------------------------------------------
+# Exactly one destination block renders (the proto oneof guarantees one arm;
+# local.destination_type selects it). The typed processor pipeline from the
+# spec is normalized ONCE in locals.tf (local.processors_normalized) and every
+# destination renders the same list — keeping the spec's intent-level model
+# while sending AWS its raw {type, parameters[]} shape.
 
 resource "aws_kinesis_firehose_delivery_stream" "this" {
   name        = local.delivery_stream_name
@@ -17,6 +22,24 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
     content {
       kinesis_stream_arn = src.value.stream_arn
       role_arn           = src.value.role_arn
+    }
+  }
+
+  # The MSK source (whole block ForceNew). Connectivity + role live in the
+  # nested authentication_configuration; read_from_timestamp rewinds the
+  # topic to a point in time at creation.
+  dynamic "msk_source_configuration" {
+    for_each = local.has_msk_source ? [var.spec.msk_source] : []
+    iterator = src
+    content {
+      msk_cluster_arn     = src.value.msk_cluster_arn
+      topic_name          = src.value.topic_name
+      read_from_timestamp = try(src.value.read_from_timestamp, null) != "" ? src.value.read_from_timestamp : null
+
+      authentication_configuration {
+        connectivity = src.value.connectivity
+        role_arn     = src.value.role_arn
+      }
     }
   }
 
@@ -75,46 +98,24 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
         }
       }
 
-      # --- Processing configuration (Lambda) ---
+      # --- Processing pipeline (normalized typed processors) ---
 
       dynamic "processing_configuration" {
-        for_each = try(dest.value.processing.enabled, false) ? [dest.value.processing] : []
-        iterator = proc
+        for_each = local.processing_enabled ? [1] : []
         content {
           enabled = true
-          processors {
-            type = "Lambda"
 
-            # LambdaArn (always required when processing is enabled)
-            parameters {
-              parameter_name  = "LambdaArn"
-              parameter_value = proc.value.lambda_arn
-            }
+          dynamic "processors" {
+            for_each = local.processors_normalized
+            content {
+              type = processors.value.type
 
-            # BufferSizeInMBs (optional, 1-3 MiB)
-            dynamic "parameters" {
-              for_each = try(proc.value.buffer_size_in_mbs, 0) > 0 ? [proc.value.buffer_size_in_mbs] : []
-              content {
-                parameter_name  = "BufferSizeInMBs"
-                parameter_value = tostring(parameters.value)
-              }
-            }
-
-            # BufferIntervalInSeconds (optional, 60-900s)
-            dynamic "parameters" {
-              for_each = try(proc.value.buffer_interval_in_seconds, 0) > 0 ? [proc.value.buffer_interval_in_seconds] : []
-              content {
-                parameter_name  = "BufferIntervalInSeconds"
-                parameter_value = tostring(parameters.value)
-              }
-            }
-
-            # NumberOfRetries (optional, 0-300)
-            dynamic "parameters" {
-              for_each = try(proc.value.number_of_retries, 0) > 0 ? [proc.value.number_of_retries] : []
-              content {
-                parameter_name  = "NumberOfRetries"
-                parameter_value = tostring(parameters.value)
+              dynamic "parameters" {
+                for_each = processors.value.parameters
+                content {
+                  parameter_name  = parameters.value.name
+                  parameter_value = parameters.value.value
+                }
               }
             }
           }
@@ -221,8 +222,17 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
       buffering_size     = try(dest.value.buffering.size_in_mbs, 0) > 0 ? dest.value.buffering.size_in_mbs : null
       retry_duration     = try(dest.value.retry_duration_in_seconds, 0) > 0 ? dest.value.retry_duration_in_seconds : null
 
-      # S3 backup mode
+      # S3 backup mode (ForceNew on OpenSearch destinations)
       s3_backup_mode = try(dest.value.s3_backup_mode, null) != "" ? dest.value.s3_backup_mode : null
+
+      # --- Document ID assignment ---
+
+      dynamic "document_id_options" {
+        for_each = try(dest.value.default_document_id_format, null) != "" ? [dest.value.default_document_id_format] : []
+        content {
+          default_document_id_format = document_id_options.value
+        }
+      }
 
       # --- S3 config (required — backs up failed/all documents) ---
 
@@ -237,42 +247,24 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
         buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
       }
 
-      # --- Processing configuration (Lambda) ---
+      # --- Processing pipeline (normalized typed processors) ---
 
       dynamic "processing_configuration" {
-        for_each = try(dest.value.processing.enabled, false) ? [dest.value.processing] : []
-        iterator = proc
+        for_each = local.processing_enabled ? [1] : []
         content {
           enabled = true
-          processors {
-            type = "Lambda"
 
-            parameters {
-              parameter_name  = "LambdaArn"
-              parameter_value = proc.value.lambda_arn
-            }
+          dynamic "processors" {
+            for_each = local.processors_normalized
+            content {
+              type = processors.value.type
 
-            dynamic "parameters" {
-              for_each = try(proc.value.buffer_size_in_mbs, 0) > 0 ? [proc.value.buffer_size_in_mbs] : []
-              content {
-                parameter_name  = "BufferSizeInMBs"
-                parameter_value = tostring(parameters.value)
-              }
-            }
-
-            dynamic "parameters" {
-              for_each = try(proc.value.buffer_interval_in_seconds, 0) > 0 ? [proc.value.buffer_interval_in_seconds] : []
-              content {
-                parameter_name  = "BufferIntervalInSeconds"
-                parameter_value = tostring(parameters.value)
-              }
-            }
-
-            dynamic "parameters" {
-              for_each = try(proc.value.number_of_retries, 0) > 0 ? [proc.value.number_of_retries] : []
-              content {
-                parameter_name  = "NumberOfRetries"
-                parameter_value = tostring(parameters.value)
+              dynamic "parameters" {
+                for_each = processors.value.parameters
+                content {
+                  parameter_name  = parameters.value.name
+                  parameter_value = parameters.value.value
+                }
               }
             }
           }
@@ -292,6 +284,89 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
       }
 
       # --- VPC config (for VPC-deployed OpenSearch domains, ForceNew) ---
+
+      dynamic "vpc_config" {
+        for_each = try(dest.value.vpc_config, null) != null ? [dest.value.vpc_config] : []
+        iterator = vpc
+        content {
+          role_arn           = vpc.value.role_arn
+          subnet_ids         = vpc.value.subnet_ids
+          security_group_ids = vpc.value.security_group_ids
+        }
+      }
+    }
+  }
+
+  # ===========================================================================
+  # OpenSearch Serverless destination
+  # ===========================================================================
+
+  dynamic "opensearchserverless_configuration" {
+    for_each = local.destination_type == "opensearchserverless" ? [var.spec.opensearch_serverless] : []
+    iterator = dest
+    content {
+      collection_endpoint = dest.value.collection_endpoint
+      index_name          = dest.value.index_name
+      role_arn            = dest.value.role_arn
+
+      # Delivery configuration
+      buffering_interval = try(dest.value.buffering.interval_in_seconds, 0) > 0 ? dest.value.buffering.interval_in_seconds : null
+      buffering_size     = try(dest.value.buffering.size_in_mbs, 0) > 0 ? dest.value.buffering.size_in_mbs : null
+      retry_duration     = try(dest.value.retry_duration_in_seconds, 0) > 0 ? dest.value.retry_duration_in_seconds : null
+
+      # S3 backup mode (ForceNew)
+      s3_backup_mode = try(dest.value.s3_backup_mode, null) != "" ? dest.value.s3_backup_mode : null
+
+      # --- S3 config (required — backs up failed/all documents) ---
+
+      s3_configuration {
+        bucket_arn          = dest.value.s3_config.bucket_arn
+        role_arn            = dest.value.s3_config.role_arn
+        prefix              = try(dest.value.s3_config.prefix, null) != "" ? dest.value.s3_config.prefix : null
+        error_output_prefix = try(dest.value.s3_config.error_output_prefix, null) != "" ? dest.value.s3_config.error_output_prefix : null
+        compression_format  = try(dest.value.s3_config.compression_format, null) != "" ? dest.value.s3_config.compression_format : null
+        kms_key_arn         = dest.value.s3_config.kms_key_arn != "" ? dest.value.s3_config.kms_key_arn : null
+        buffering_interval  = try(dest.value.s3_config.buffering.interval_in_seconds, 0) > 0 ? dest.value.s3_config.buffering.interval_in_seconds : null
+        buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
+      }
+
+      # --- Processing pipeline (normalized typed processors) ---
+
+      dynamic "processing_configuration" {
+        for_each = local.processing_enabled ? [1] : []
+        content {
+          enabled = true
+
+          dynamic "processors" {
+            for_each = local.processors_normalized
+            content {
+              type = processors.value.type
+
+              dynamic "parameters" {
+                for_each = processors.value.parameters
+                content {
+                  parameter_name  = parameters.value.name
+                  parameter_value = parameters.value.value
+                }
+              }
+            }
+          }
+        }
+      }
+
+      # --- CloudWatch logging ---
+
+      dynamic "cloudwatch_logging_options" {
+        for_each = try(dest.value.logging.enabled, false) ? [dest.value.logging] : []
+        iterator = log
+        content {
+          enabled         = true
+          log_group_name  = log.value.log_group_name
+          log_stream_name = log.value.log_stream_name
+        }
+      }
+
+      # --- VPC config (ForceNew) ---
 
       dynamic "vpc_config" {
         for_each = try(dest.value.vpc_config, null) != null ? [dest.value.vpc_config] : []
@@ -327,6 +402,18 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
       # S3 backup mode
       s3_backup_mode = try(dest.value.s3_backup_mode, null) != "" ? dest.value.s3_backup_mode : null
 
+      # --- Secrets Manager credentials (XOR with access_key, ForceNew switch) ---
+
+      dynamic "secrets_manager_configuration" {
+        for_each = try(dest.value.secrets_manager, null) != null ? [dest.value.secrets_manager] : []
+        iterator = sm
+        content {
+          enabled    = true
+          secret_arn = sm.value.secret_arn
+          role_arn   = sm.value.role_arn != "" ? sm.value.role_arn : null
+        }
+      }
+
       # --- S3 config (required — backs up failed/all records) ---
 
       s3_configuration {
@@ -340,42 +427,24 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
         buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
       }
 
-      # --- Processing configuration (Lambda) ---
+      # --- Processing pipeline (normalized typed processors) ---
 
       dynamic "processing_configuration" {
-        for_each = try(dest.value.processing.enabled, false) ? [dest.value.processing] : []
-        iterator = proc
+        for_each = local.processing_enabled ? [1] : []
         content {
           enabled = true
-          processors {
-            type = "Lambda"
 
-            parameters {
-              parameter_name  = "LambdaArn"
-              parameter_value = proc.value.lambda_arn
-            }
+          dynamic "processors" {
+            for_each = local.processors_normalized
+            content {
+              type = processors.value.type
 
-            dynamic "parameters" {
-              for_each = try(proc.value.buffer_size_in_mbs, 0) > 0 ? [proc.value.buffer_size_in_mbs] : []
-              content {
-                parameter_name  = "BufferSizeInMBs"
-                parameter_value = tostring(parameters.value)
-              }
-            }
-
-            dynamic "parameters" {
-              for_each = try(proc.value.buffer_interval_in_seconds, 0) > 0 ? [proc.value.buffer_interval_in_seconds] : []
-              content {
-                parameter_name  = "BufferIntervalInSeconds"
-                parameter_value = tostring(parameters.value)
-              }
-            }
-
-            dynamic "parameters" {
-              for_each = try(proc.value.number_of_retries, 0) > 0 ? [proc.value.number_of_retries] : []
-              content {
-                parameter_name  = "NumberOfRetries"
-                parameter_value = tostring(parameters.value)
+              dynamic "parameters" {
+                for_each = processors.value.parameters
+                content {
+                  parameter_name  = parameters.value.name
+                  parameter_value = parameters.value.value
+                }
               }
             }
           }
@@ -417,6 +486,9 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
   # ===========================================================================
   # Redshift destination
   # ===========================================================================
+  # Provider quirk (documented, not visible in code): on updates the provider
+  # force-nulls error_output_prefix on both the staging and backup S3 blocks —
+  # the Redshift COPY API rejects it. Avoid relying on error prefixes here.
 
   dynamic "redshift_configuration" {
     for_each = local.destination_type == "redshift" ? [var.spec.redshift] : []
@@ -429,15 +501,27 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
       data_table_columns = try(dest.value.data_table_columns, null) != "" ? dest.value.data_table_columns : null
       copy_options       = try(dest.value.copy_options, null) != "" ? dest.value.copy_options : null
 
-      # Authentication
+      # Authentication — plaintext pair XOR Secrets Manager (CEL-enforced)
       username = try(dest.value.username, null) != "" ? dest.value.username : null
-      password = dest.value.password != "" ? dest.value.password : null
+      password = try(dest.value.password, null) != "" ? dest.value.password : null
 
       # Delivery configuration
       retry_duration = try(dest.value.retry_duration_in_seconds, 0) > 0 ? dest.value.retry_duration_in_seconds : null
 
       # S3 backup mode for source records
       s3_backup_mode = try(dest.value.s3_backup_mode, null) != "" ? dest.value.s3_backup_mode : null
+
+      # --- Secrets Manager credentials (ForceNew switch) ---
+
+      dynamic "secrets_manager_configuration" {
+        for_each = try(dest.value.secrets_manager, null) != null ? [dest.value.secrets_manager] : []
+        iterator = sm
+        content {
+          enabled    = true
+          secret_arn = sm.value.secret_arn
+          role_arn   = sm.value.role_arn != "" ? sm.value.role_arn : null
+        }
+      }
 
       # --- S3 intermediate staging config (required for Redshift COPY) ---
 
@@ -469,42 +553,312 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
         }
       }
 
-      # --- Processing configuration (Lambda) ---
+      # --- Processing pipeline (normalized typed processors) ---
 
       dynamic "processing_configuration" {
-        for_each = try(dest.value.processing.enabled, false) ? [dest.value.processing] : []
-        iterator = proc
+        for_each = local.processing_enabled ? [1] : []
         content {
           enabled = true
-          processors {
-            type = "Lambda"
 
-            parameters {
-              parameter_name  = "LambdaArn"
-              parameter_value = proc.value.lambda_arn
-            }
+          dynamic "processors" {
+            for_each = local.processors_normalized
+            content {
+              type = processors.value.type
 
-            dynamic "parameters" {
-              for_each = try(proc.value.buffer_size_in_mbs, 0) > 0 ? [proc.value.buffer_size_in_mbs] : []
-              content {
-                parameter_name  = "BufferSizeInMBs"
-                parameter_value = tostring(parameters.value)
+              dynamic "parameters" {
+                for_each = processors.value.parameters
+                content {
+                  parameter_name  = parameters.value.name
+                  parameter_value = parameters.value.value
+                }
               }
             }
+          }
+        }
+      }
 
-            dynamic "parameters" {
-              for_each = try(proc.value.buffer_interval_in_seconds, 0) > 0 ? [proc.value.buffer_interval_in_seconds] : []
-              content {
-                parameter_name  = "BufferIntervalInSeconds"
-                parameter_value = tostring(parameters.value)
+      # --- CloudWatch logging ---
+
+      dynamic "cloudwatch_logging_options" {
+        for_each = try(dest.value.logging.enabled, false) ? [dest.value.logging] : []
+        iterator = log
+        content {
+          enabled         = true
+          log_group_name  = log.value.log_group_name
+          log_stream_name = log.value.log_stream_name
+        }
+      }
+    }
+  }
+
+  # ===========================================================================
+  # Splunk destination
+  # ===========================================================================
+
+  dynamic "splunk_configuration" {
+    for_each = local.destination_type == "splunk" ? [var.spec.splunk] : []
+    iterator = dest
+    content {
+      # HEC endpoint — note: Splunk has no destination-level role_arn; the
+      # S3 configuration's role carries the backup permissions.
+      hec_endpoint               = dest.value.hec_endpoint
+      hec_endpoint_type          = try(dest.value.hec_endpoint_type, null) != "" ? dest.value.hec_endpoint_type : null
+      hec_token                  = try(dest.value.hec_token, null) != "" ? dest.value.hec_token : null
+      hec_acknowledgment_timeout = try(dest.value.hec_acknowledgment_timeout_in_seconds, 0) > 0 ? dest.value.hec_acknowledgment_timeout_in_seconds : null
+
+      # Delivery configuration (Splunk caps: 0-60s interval, 1-5 MiB size)
+      buffering_interval = try(dest.value.buffering.interval_in_seconds, 0) > 0 ? dest.value.buffering.interval_in_seconds : null
+      buffering_size     = try(dest.value.buffering.size_in_mbs, 0) > 0 ? dest.value.buffering.size_in_mbs : null
+      retry_duration     = try(dest.value.retry_duration_in_seconds, 0) > 0 ? dest.value.retry_duration_in_seconds : null
+
+      # S3 backup mode
+      s3_backup_mode = try(dest.value.s3_backup_mode, null) != "" ? dest.value.s3_backup_mode : null
+
+      # --- Secrets Manager credentials (XOR with hec_token, ForceNew switch) ---
+
+      dynamic "secrets_manager_configuration" {
+        for_each = try(dest.value.secrets_manager, null) != null ? [dest.value.secrets_manager] : []
+        iterator = sm
+        content {
+          enabled    = true
+          secret_arn = sm.value.secret_arn
+          role_arn   = sm.value.role_arn != "" ? sm.value.role_arn : null
+        }
+      }
+
+      # --- S3 config (required — backs up failed/all events) ---
+
+      s3_configuration {
+        bucket_arn          = dest.value.s3_config.bucket_arn
+        role_arn            = dest.value.s3_config.role_arn
+        prefix              = try(dest.value.s3_config.prefix, null) != "" ? dest.value.s3_config.prefix : null
+        error_output_prefix = try(dest.value.s3_config.error_output_prefix, null) != "" ? dest.value.s3_config.error_output_prefix : null
+        compression_format  = try(dest.value.s3_config.compression_format, null) != "" ? dest.value.s3_config.compression_format : null
+        kms_key_arn         = dest.value.s3_config.kms_key_arn != "" ? dest.value.s3_config.kms_key_arn : null
+        buffering_interval  = try(dest.value.s3_config.buffering.interval_in_seconds, 0) > 0 ? dest.value.s3_config.buffering.interval_in_seconds : null
+        buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
+      }
+
+      # --- Processing pipeline (normalized typed processors) ---
+
+      dynamic "processing_configuration" {
+        for_each = local.processing_enabled ? [1] : []
+        content {
+          enabled = true
+
+          dynamic "processors" {
+            for_each = local.processors_normalized
+            content {
+              type = processors.value.type
+
+              dynamic "parameters" {
+                for_each = processors.value.parameters
+                content {
+                  parameter_name  = parameters.value.name
+                  parameter_value = parameters.value.value
+                }
               }
             }
+          }
+        }
+      }
 
-            dynamic "parameters" {
-              for_each = try(proc.value.number_of_retries, 0) > 0 ? [proc.value.number_of_retries] : []
-              content {
-                parameter_name  = "NumberOfRetries"
-                parameter_value = tostring(parameters.value)
+      # --- CloudWatch logging ---
+
+      dynamic "cloudwatch_logging_options" {
+        for_each = try(dest.value.logging.enabled, false) ? [dest.value.logging] : []
+        iterator = log
+        content {
+          enabled         = true
+          log_group_name  = log.value.log_group_name
+          log_stream_name = log.value.log_stream_name
+        }
+      }
+    }
+  }
+
+  # ===========================================================================
+  # Snowflake destination
+  # ===========================================================================
+
+  dynamic "snowflake_configuration" {
+    for_each = local.destination_type == "snowflake" ? [var.spec.snowflake] : []
+    iterator = dest
+    content {
+      # Snowflake target
+      account_url = dest.value.account_url
+      database    = dest.value.database
+      schema      = dest.value.schema
+      table       = dest.value.table
+      role_arn    = dest.value.role_arn
+
+      # Authentication — inline key pair XOR Secrets Manager (CEL-enforced)
+      user           = try(dest.value.user, null) != "" ? dest.value.user : null
+      private_key    = try(dest.value.private_key, null) != "" ? dest.value.private_key : null
+      key_passphrase = try(dest.value.key_passphrase, null) != "" ? dest.value.key_passphrase : null
+
+      # Data loading
+      data_loading_option  = try(dest.value.data_loading_option, null) != "" ? dest.value.data_loading_option : null
+      content_column_name  = try(dest.value.content_column_name, null) != "" ? dest.value.content_column_name : null
+      metadata_column_name = try(dest.value.metadata_column_name, null) != "" ? dest.value.metadata_column_name : null
+
+      # Delivery configuration (Snowpipe Streaming defaults: 0s / 1 MiB)
+      buffering_interval = try(dest.value.buffering.interval_in_seconds, 0) > 0 ? dest.value.buffering.interval_in_seconds : null
+      buffering_size     = try(dest.value.buffering.size_in_mbs, 0) > 0 ? dest.value.buffering.size_in_mbs : null
+      retry_duration     = try(dest.value.retry_duration_in_seconds, 0) > 0 ? dest.value.retry_duration_in_seconds : null
+
+      # S3 backup mode
+      s3_backup_mode = try(dest.value.s3_backup_mode, null) != "" ? dest.value.s3_backup_mode : null
+
+      # --- Secrets Manager credentials (ForceNew switch) ---
+
+      dynamic "secrets_manager_configuration" {
+        for_each = try(dest.value.secrets_manager, null) != null ? [dest.value.secrets_manager] : []
+        iterator = sm
+        content {
+          enabled    = true
+          secret_arn = sm.value.secret_arn
+          role_arn   = sm.value.role_arn != "" ? sm.value.role_arn : null
+        }
+      }
+
+      # --- Snowflake role (least-privilege ingestion role) ---
+
+      dynamic "snowflake_role_configuration" {
+        for_each = try(dest.value.snowflake_role, null) != "" ? [dest.value.snowflake_role] : []
+        content {
+          enabled        = true
+          snowflake_role = snowflake_role_configuration.value
+        }
+      }
+
+      # --- PrivateLink connectivity ---
+
+      dynamic "snowflake_vpc_configuration" {
+        for_each = try(dest.value.private_link_vpce_id, null) != "" ? [dest.value.private_link_vpce_id] : []
+        content {
+          private_link_vpce_id = snowflake_vpc_configuration.value
+        }
+      }
+
+      # --- S3 config (required — backs up failed/all records) ---
+
+      s3_configuration {
+        bucket_arn          = dest.value.s3_config.bucket_arn
+        role_arn            = dest.value.s3_config.role_arn
+        prefix              = try(dest.value.s3_config.prefix, null) != "" ? dest.value.s3_config.prefix : null
+        error_output_prefix = try(dest.value.s3_config.error_output_prefix, null) != "" ? dest.value.s3_config.error_output_prefix : null
+        compression_format  = try(dest.value.s3_config.compression_format, null) != "" ? dest.value.s3_config.compression_format : null
+        kms_key_arn         = dest.value.s3_config.kms_key_arn != "" ? dest.value.s3_config.kms_key_arn : null
+        buffering_interval  = try(dest.value.s3_config.buffering.interval_in_seconds, 0) > 0 ? dest.value.s3_config.buffering.interval_in_seconds : null
+        buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
+      }
+
+      # --- Processing pipeline (normalized typed processors) ---
+
+      dynamic "processing_configuration" {
+        for_each = local.processing_enabled ? [1] : []
+        content {
+          enabled = true
+
+          dynamic "processors" {
+            for_each = local.processors_normalized
+            content {
+              type = processors.value.type
+
+              dynamic "parameters" {
+                for_each = processors.value.parameters
+                content {
+                  parameter_name  = parameters.value.name
+                  parameter_value = parameters.value.value
+                }
+              }
+            }
+          }
+        }
+      }
+
+      # --- CloudWatch logging ---
+
+      dynamic "cloudwatch_logging_options" {
+        for_each = try(dest.value.logging.enabled, false) ? [dest.value.logging] : []
+        iterator = log
+        content {
+          enabled         = true
+          log_group_name  = log.value.log_group_name
+          log_stream_name = log.value.log_stream_name
+        }
+      }
+    }
+  }
+
+  # ===========================================================================
+  # Iceberg destination
+  # ===========================================================================
+
+  dynamic "iceberg_configuration" {
+    for_each = local.destination_type == "iceberg" ? [var.spec.iceberg] : []
+    iterator = dest
+    content {
+      # Glue catalog target (ForceNew) and delivery role
+      catalog_arn = dest.value.catalog_arn
+      role_arn    = dest.value.role_arn
+
+      # Append-only mode (ForceNew) — omit when false so AWS owns the default.
+      append_only = dest.value.append_only ? true : null
+
+      # Delivery configuration
+      buffering_interval = try(dest.value.buffering.interval_in_seconds, 0) > 0 ? dest.value.buffering.interval_in_seconds : null
+      buffering_size     = try(dest.value.buffering.size_in_mbs, 0) > 0 ? dest.value.buffering.size_in_mbs : null
+      retry_duration     = try(dest.value.retry_duration_in_seconds, 0) > 0 ? dest.value.retry_duration_in_seconds : null
+
+      # S3 backup mode
+      s3_backup_mode = try(dest.value.s3_backup_mode, null) != "" ? dest.value.s3_backup_mode : null
+
+      # --- Destination tables (ForceNew; unique keys enable upserts) ---
+
+      dynamic "destination_table_configuration" {
+        for_each = try(dest.value.destination_tables, [])
+        iterator = tbl
+        content {
+          database_name          = tbl.value.database_name
+          table_name             = tbl.value.table_name
+          s3_error_output_prefix = try(tbl.value.s3_error_output_prefix, null) != "" ? tbl.value.s3_error_output_prefix : null
+          unique_keys            = length(try(tbl.value.unique_keys, [])) > 0 ? tbl.value.unique_keys : null
+        }
+      }
+
+      # --- S3 config (required — backs up failed/all records) ---
+
+      s3_configuration {
+        bucket_arn          = dest.value.s3_config.bucket_arn
+        role_arn            = dest.value.s3_config.role_arn
+        prefix              = try(dest.value.s3_config.prefix, null) != "" ? dest.value.s3_config.prefix : null
+        error_output_prefix = try(dest.value.s3_config.error_output_prefix, null) != "" ? dest.value.s3_config.error_output_prefix : null
+        compression_format  = try(dest.value.s3_config.compression_format, null) != "" ? dest.value.s3_config.compression_format : null
+        kms_key_arn         = dest.value.s3_config.kms_key_arn != "" ? dest.value.s3_config.kms_key_arn : null
+        buffering_interval  = try(dest.value.s3_config.buffering.interval_in_seconds, 0) > 0 ? dest.value.s3_config.buffering.interval_in_seconds : null
+        buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
+      }
+
+      # --- Processing pipeline (normalized typed processors) ---
+
+      dynamic "processing_configuration" {
+        for_each = local.processing_enabled ? [1] : []
+        content {
+          enabled = true
+
+          dynamic "processors" {
+            for_each = local.processors_normalized
+            content {
+              type = processors.value.type
+
+              dynamic "parameters" {
+                for_each = processors.value.parameters
+                content {
+                  parameter_name  = parameters.value.name
+                  parameter_value = parameters.value.value
+                }
               }
             }
           }

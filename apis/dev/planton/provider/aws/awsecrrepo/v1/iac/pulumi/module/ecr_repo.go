@@ -10,48 +10,86 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// ecrRepo creates an AWS ECR repository and optional lifecycle and repository policies
-// based on the fields in AwsEcrRepoSpec.
+// ecrRepo creates the ECR repository plus its two folded 1:1 satellites (the
+// lifecycle policy and the repository policy) from AwsEcrRepoSpec.
 func ecrRepo(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	spec := locals.AwsEcrRepo.Spec
 
-	imageTagMutability := "MUTABLE"
-
-	if spec.ImageImmutable {
-		imageTagMutability = "IMMUTABLE"
+	// Tag mutability — the spec default is MUTABLE (the AWS default). The
+	// exclusion filters only exist in the *_WITH_EXCLUSION modes
+	// (CEL-enforced); WILDCARD is the only filter type AWS supports today, so
+	// it is materialized here rather than modeled in the spec.
+	imageTagMutability := spec.GetImageTagMutability()
+	if imageTagMutability == "" {
+		imageTagMutability = "MUTABLE"
+	}
+	var exclusionFilters ecr.RepositoryImageTagMutabilityExclusionFilterArray
+	for _, filter := range spec.ImageTagMutabilityExclusionFilters {
+		exclusionFilters = append(exclusionFilters, &ecr.RepositoryImageTagMutabilityExclusionFilterArgs{
+			Filter:     pulumi.String(filter),
+			FilterType: pulumi.String("WILDCARD"),
+		})
 	}
 
-	// Configure image scanning (defaults to true for security)
-	imageScanningConfiguration := &ecr.RepositoryImageScanningConfigurationArgs{
-		ScanOnPush: pulumi.Bool(spec.GetScanOnPush()),
+	// Encryption — the whole configuration is create-time (ForceNew). A
+	// customer-managed key only applies to the KMS types (CEL-enforced).
+	encryptionType := spec.GetEncryptionType()
+	if encryptionType == "" {
+		encryptionType = "AES256"
+	}
+	encryptionConfig := &ecr.RepositoryEncryptionConfigurationArgs{
+		EncryptionType: pulumi.String(encryptionType),
+	}
+	if spec.KmsKeyId.GetValue() != "" {
+		encryptionConfig.KmsKey = pulumi.String(spec.KmsKeyId.GetValue())
+	}
+
+	// scan_on_push defaults to true (the spec's recommended security posture).
+	scanOnPush := true
+	if spec.ScanOnPush != nil {
+		scanOnPush = spec.GetScanOnPush()
 	}
 
 	repo, err := ecr.NewRepository(ctx, locals.AwsEcrRepo.Metadata.Name, &ecr.RepositoryArgs{
-		Name:                       pulumi.String(spec.RepositoryName),
-		ImageTagMutability:         pulumi.String(imageTagMutability),
-		ImageScanningConfiguration: imageScanningConfiguration,
-		ForceDelete:                pulumi.Bool(spec.ForceDelete),
-		Tags:                       pulumi.ToStringMap(locals.AwsTags),
-		EncryptionConfigurations: ecr.RepositoryEncryptionConfigurationArray{
-			&ecr.RepositoryEncryptionConfigurationArgs{
-				EncryptionType: pulumi.String(spec.GetEncryptionType()),
-				KmsKey: func() pulumi.StringInput {
-					if spec.KmsKeyId != nil && spec.KmsKeyId.GetValue() != "" {
-						return pulumi.String(spec.KmsKeyId.GetValue())
-					}
-					return pulumi.String("")
-				}(),
-			},
+		// The repository name is the immutable registry path (ForceNew).
+		// Changing it replaces the repository; images are NOT migrated.
+		Name:                               pulumi.String(spec.RepositoryName),
+		ImageTagMutability:                 pulumi.String(imageTagMutability),
+		ImageTagMutabilityExclusionFilters: exclusionFilters,
+		ImageScanningConfiguration: &ecr.RepositoryImageScanningConfigurationArgs{
+			ScanOnPush: pulumi.Bool(scanOnPush),
 		},
+		ForceDelete: pulumi.Bool(spec.ForceDelete),
+		EncryptionConfigurations: ecr.RepositoryEncryptionConfigurationArray{
+			encryptionConfig,
+		},
+		Tags: pulumi.ToStringMap(locals.AwsTags),
 	}, pulumi.Provider(provider))
 	if err != nil {
-		return errors.Wrap(err, "unable to create AWS ECR Repository")
+		return errors.Wrap(err, "unable to create ECR repository")
 	}
 
-	// Create lifecycle policy if specified
-	if spec.LifecyclePolicy != nil {
+	// Lifecycle policy — a separate AWS API resource keyed 1:1 by the
+	// repository, folded into the spec as structured rules.
+	if len(spec.LifecycleRules) > 0 {
 		if err := createLifecyclePolicy(ctx, locals, repo, provider); err != nil {
 			return errors.Wrap(err, "unable to create lifecycle policy")
+		}
+	}
+
+	// Repository policy — resource-based access control (cross-account
+	// pulls, service principals like Lambda). Also a 1:1 folded satellite.
+	if spec.RepositoryPolicy != nil {
+		policyJson, err := spec.RepositoryPolicy.MarshalJSON()
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal repository policy")
+		}
+		_, err = ecr.NewRepositoryPolicy(ctx, fmt.Sprintf("%s-policy", locals.AwsEcrRepo.Metadata.Name), &ecr.RepositoryPolicyArgs{
+			Repository: repo.Name,
+			Policy:     pulumi.String(policyJson),
+		}, pulumi.Provider(provider))
+		if err != nil {
+			return errors.Wrap(err, "failed to create repository policy")
 		}
 	}
 
@@ -63,65 +101,48 @@ func ecrRepo(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error 
 	return nil
 }
 
-// createLifecyclePolicy generates and applies an ECR lifecycle policy
-// based on the simplified configuration in the spec.
+// createLifecyclePolicy rebuilds the exact lifecycle policy JSON document AWS
+// expects from the spec's structured rules. "expire" is the only action ECR
+// supports and the "days" count unit only exists for sinceImagePushed, so
+// both are materialized here. tagged rules carry exactly one selector list
+// (CEL-enforced); untagged/any rules carry none.
 func createLifecyclePolicy(ctx *pulumi.Context, locals *Locals, repo *ecr.Repository, provider *aws.Provider) error {
-	spec := locals.AwsEcrRepo.Spec
-	lifecyclePolicy := spec.LifecyclePolicy
+	rules := make([]map[string]interface{}, 0, len(locals.AwsEcrRepo.Spec.LifecycleRules))
+	for _, rule := range locals.AwsEcrRepo.Spec.LifecycleRules {
+		selection := map[string]interface{}{
+			"tagStatus":   rule.TagStatus,
+			"countType":   rule.CountType,
+			"countNumber": rule.CountNumber,
+		}
+		if rule.CountType == "sinceImagePushed" {
+			selection["countUnit"] = "days"
+		}
+		if len(rule.TagPrefixes) > 0 {
+			selection["tagPrefixList"] = rule.TagPrefixes
+		}
+		if len(rule.TagPatterns) > 0 {
+			selection["tagPatternList"] = rule.TagPatterns
+		}
 
-	// Build lifecycle policy rules
-	rules := []map[string]interface{}{}
-
-	// Rule 1: Expire untagged images after specified days
-	if lifecyclePolicy.GetExpireUntaggedAfterDays() > 0 {
-		rules = append(rules, map[string]interface{}{
-			"rulePriority": 1,
-			"description":  fmt.Sprintf("Expire untagged images after %d days", lifecyclePolicy.GetExpireUntaggedAfterDays()),
-			"selection": map[string]interface{}{
-				"tagStatus":   "untagged",
-				"countType":   "sinceImagePushed",
-				"countUnit":   "days",
-				"countNumber": lifecyclePolicy.GetExpireUntaggedAfterDays(),
-			},
-			"action": map[string]interface{}{
-				"type": "expire",
-			},
-		})
+		entry := map[string]interface{}{
+			"rulePriority": rule.RulePriority,
+			"selection":    selection,
+			"action":       map[string]interface{}{"type": "expire"},
+		}
+		if rule.Description != "" {
+			entry["description"] = rule.Description
+		}
+		rules = append(rules, entry)
 	}
 
-	// Rule 2: Keep only the most recent N images
-	if lifecyclePolicy.GetMaxImageCount() > 0 {
-		rules = append(rules, map[string]interface{}{
-			"rulePriority": 2,
-			"description":  fmt.Sprintf("Keep only the last %d images", lifecyclePolicy.GetMaxImageCount()),
-			"selection": map[string]interface{}{
-				"tagStatus":   "any",
-				"countType":   "imageCountMoreThan",
-				"countNumber": lifecyclePolicy.GetMaxImageCount(),
-			},
-			"action": map[string]interface{}{
-				"type": "expire",
-			},
-		})
-	}
-
-	// Only create the lifecycle policy if there are rules
-	if len(rules) == 0 {
-		return nil
-	}
-
-	policyDocument := map[string]interface{}{
-		"rules": rules,
-	}
-
-	policyJSON, err := json.Marshal(policyDocument)
+	policyJson, err := json.Marshal(map[string]interface{}{"rules": rules})
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal lifecycle policy JSON")
 	}
 
 	_, err = ecr.NewLifecyclePolicy(ctx, fmt.Sprintf("%s-lifecycle", locals.AwsEcrRepo.Metadata.Name), &ecr.LifecyclePolicyArgs{
 		Repository: repo.Name,
-		Policy:     pulumi.String(string(policyJSON)),
+		Policy:     pulumi.String(policyJson),
 	}, pulumi.Provider(provider))
 	if err != nil {
 		return errors.Wrap(err, "failed to create lifecycle policy")

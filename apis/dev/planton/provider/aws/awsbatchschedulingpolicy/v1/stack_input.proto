@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsbatchschedulingpolicy.v1;
+
+import "dev/planton/provider/aws/awsbatchschedulingpolicy/v1/api.proto";
+import "dev/planton/provider/aws/provider.proto";
+
+// AwsBatchSchedulingPolicyStackInput is the input for the
+// aws-batch-scheduling-policy IaC modules.
+message AwsBatchSchedulingPolicyStackInput {
+  // target cloud-resource
+  AwsBatchSchedulingPolicy target = 1;
+
+  // provider-config
+  dev.planton.provider.aws.AwsProviderConfig provider_config = 2;
+}

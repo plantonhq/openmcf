@@ -1,0 +1,40 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsHttpApiDomain
+metadata:
+  name: <domain-resource-name>
+  org: <organization>
+  env: prod
+  id: <resource-id>
+spec:
+  region: <aws-region>
+  # Replace with your owned domain (lowercase; must be covered by the
+  # certificate).
+  domainName: partner-api.example.com
+  certificateArn:
+    valueFrom:
+      kind: AwsCertManagerCert
+      name: <certificate-resource-name>
+      fieldPath: status.outputs.cert_arn
+  # Mutual TLS: clients must present a certificate chaining to a CA in the
+  # S3-hosted truststore. Pin the object version so CA rotation is an
+  # explicit change, never a silent side effect of overwriting the object.
+  mutualTls:
+    # Replace with your truststore bundle's S3 URI and pinned object version.
+    truststoreUri: s3://example-security-bucket/truststore.pem
+    truststoreVersion: example-object-version
+  apiMappings:
+    # https://<domain>/ -> the primary partner API
+    - apiId:
+        valueFrom:
+          kind: AwsHttpApiGateway
+          name: <primary-api-resource-name>
+          fieldPath: status.outputs.api_id
+      stage: $default
+    # https://<domain>/webhooks/... -> the webhook intake API
+    - apiId:
+        valueFrom:
+          kind: AwsHttpApiGateway
+          name: <webhooks-api-resource-name>
+          fieldPath: status.outputs.api_id
+      stage: $default
+      apiMappingKey: webhooks

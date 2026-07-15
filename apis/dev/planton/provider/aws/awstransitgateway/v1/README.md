@@ -1,24 +1,30 @@
 # AWS Transit Gateway
 
-An AWS Transit Gateway is a regional networking hub that interconnects VPCs, VPN connections, and Direct Connect gateways through a single, centralized point. It replaces complex VPC peering meshes with a scalable hub-and-spoke topology.
+An AWS Transit Gateway is the regional networking hub that interconnects VPCs, VPN connections, and Direct Connect gateways through a single, centralized point. It replaces complex VPC peering meshes with a scalable hub-and-spoke topology.
+
+This component provisions the hub itself. What composes AROUND the hub is modeled as first-class resources:
+
+- **`AwsTransitGatewayVpcAttachment`** connects one VPC (via subnets) to the gateway.
+- **`AwsTransitGatewayRouteTable`** defines an isolated routing domain -- its associations, propagations, and static routes.
+
+With the default association and propagation dials enabled (the defaults), every attachment lands in the gateway's default route table and advertises its VPC CIDRs there -- full-mesh connectivity with zero routing configuration. Disable one or both to build segmented topologies from custom route tables.
 
 ## When to Use
 
-- **Multi-VPC connectivity**: Connect 2 or more VPCs that need to communicate with each other. Transit Gateway scales far better than VPC peering (which requires N*(N-1)/2 connections).
+- **Multi-VPC connectivity**: Connect 2 or more VPCs that need to communicate. A Transit Gateway scales far better than VPC peering (which needs N*(N-1)/2 connections).
 - **Hybrid networking**: Connect on-premises networks to multiple VPCs through VPN or Direct Connect via a single attachment point.
-- **Centralized inspection**: Route all inter-VPC traffic through a firewall appliance VPC using appliance mode for symmetric routing.
-- **Shared services**: Provide a shared-services VPC (DNS, monitoring, logging) accessible from all application VPCs.
+- **Centralized inspection**: Route inter-VPC traffic through a firewall appliance VPC (appliance mode on that VPC's attachment keeps flows AZ-symmetric).
+- **Shared services**: Expose a shared-services VPC (DNS, monitoring, logging) to all application VPCs while keeping the applications isolated from each other.
 
 ## When NOT to Use
 
-- **Single VPC**: If you only have one VPC and no plans to expand, you do not need a Transit Gateway.
+- **Single VPC**: No inter-VPC traffic means no hub to route it.
 - **Two VPCs only**: Simple VPC peering may be more cost-effective for exactly two VPCs with low traffic.
-- **Cross-region**: Each Transit Gateway is regional. For cross-region connectivity, you need TGW peering (not yet supported in this component's v1).
+- **Cross-region**: Each Transit Gateway is regional. Cross-region connectivity uses TGW peering attachments -- a separate surface (see the docs deferral ledger).
 
 ## Prerequisites
 
-- At least one AwsVpc resource deployed with private subnets
-- AWS credentials with permissions for `ec2:CreateTransitGateway`, `ec2:CreateTransitGatewayVpcAttachment`, and related actions
+- AWS credentials with permissions for `ec2:CreateTransitGateway` and related actions.
 
 ## Spec Fields
 
@@ -26,64 +32,72 @@ An AWS Transit Gateway is a regional networking hub that interconnects VPCs, VPN
 
 | Field | Type | Default | Description |
 |---|---|---|---|
+| `region` | string | (required) | AWS region for the gateway |
 | `description` | string | - | Human-readable description |
-| `amazonSideAsn` | int64 | 64512 | BGP ASN for the Amazon side (64512-65534 or 4200000000-4294967294) |
+| `amazonSideAsn` | int64 | 64512 | BGP ASN for the Amazon side (64512-65534 or 4200000000-4294967294). Changing it replaces the gateway |
 
 ### Routing Behavior
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `defaultRouteTableAssociation` | bool | true | Auto-associate new attachments with default route table |
-| `defaultRouteTablePropagation` | bool | true | Auto-propagate routes from new attachments |
+| `defaultRouteTableAssociation` | optional bool | true | Auto-associate new attachments with the default route table. Disable -> enable REPLACES the gateway |
+| `defaultRouteTablePropagation` | optional bool | true | Auto-propagate attachment routes into the default route table. Disable -> enable REPLACES the gateway |
 
-### Feature Toggles
+### Feature Dials
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `dnsSupport` | bool | true | DNS resolution across attached VPCs |
-| `vpnEcmpSupport` | bool | true | Equal Cost Multi-Path for VPN connections |
-| `autoAcceptSharedAttachments` | bool | false | Auto-accept RAM-shared attachments |
+| `dnsSupport` | optional bool | true | DNS resolution across attached VPCs |
+| `vpnEcmpSupport` | optional bool | true | Equal Cost Multi-Path for VPN connections |
+| `autoAcceptSharedAttachments` | bool | false | Auto-accept RAM-shared attachment requests |
 | `securityGroupReferencingSupport` | bool | false | Cross-VPC security group references |
-| `multicastSupport` | bool | false | Multicast routing (ForceNew -- immutable after creation) |
+| `multicastSupport` | bool | false | Multicast routing (create-time immutable) |
+| `encryptionSupport` | optional bool | AWS-computed | Enforce in-transit encryption; leave unset unless pinning the posture |
 
 ### CIDR Blocks
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `transitGatewayCidrBlocks` | string[] | [] | TGW CIDR blocks for Connect/GRE (max 5) |
+| `transitGatewayCidrBlocks` | string[] | [] | TGW CIDR blocks for TGW Connect/GRE (max 5; IPv4 /24 or larger, IPv6 /64 or larger, never 169.254.0.0/16) |
 
-### VPC Attachments
-
-Each VPC attachment connects one VPC to the Transit Gateway:
-
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `name` | string | yes | - | Unique attachment name (lowercase alphanumeric + hyphens) |
-| `vpcId` | StringValueOrRef | yes | - | VPC ID to attach |
-| `subnetIds` | StringValueOrRef[] | yes | - | Subnet IDs (one per AZ recommended) |
-| `dnsSupport` | bool | no | true | Per-attachment DNS override |
-| `ipv6Support` | bool | no | false | IPv6 traffic routing |
-| `applianceModeSupport` | bool | no | false | Symmetric routing for firewall appliances |
-| `defaultRouteTableAssociation` | bool | no | true | Per-attachment route table association override |
-| `defaultRouteTablePropagation` | bool | no | true | Per-attachment route propagation override |
-
-## Outputs
+## Stack Outputs
 
 | Output | Description |
 |---|---|
-| `transit_gateway_id` | The TGW ID (primary reference for downstream resources) |
-| `transit_gateway_arn` | TGW ARN for IAM policies and RAM sharing |
-| `owner_id` | AWS account ID that owns the TGW |
-| `association_default_route_table_id` | Default association route table ID |
-| `propagation_default_route_table_id` | Default propagation route table ID |
-| `vpc_attachment_ids` | Map of attachment name to VPC attachment ID |
+| `transit_gateway_id` | The gateway ID referenced by attachments, route tables, subnet routes, VPN connections, and Direct Connect gateways |
+| `transit_gateway_arn` | ARN for IAM policies and AWS RAM sharing |
+| `owner_id` | Owning AWS account ID |
+| `association_default_route_table_id` | Default association route table (empty when disabled) |
+| `propagation_default_route_table_id` | Default propagation route table (empty when disabled) |
 
-## Deliberately Excluded from v1
+## Composition
 
-The following features are intentionally deferred to keep the abstraction clean and focused:
+- An `AwsTransitGatewayVpcAttachment` references `status.outputs.transit_gateway_id` to join a VPC to this hub.
+- An `AwsTransitGatewayRouteTable` references the same output to carve an isolated routing domain.
+- An `AwsSubnet` route with `targetType: transit_gateway` sends VPC traffic to this hub (compose `targetId` from this resource's `transit_gateway_id` output).
 
-- **Custom route tables**: Default auto-association/propagation covers 80%+ of use cases
-- **Static routes**: Future `AwsTransitGatewayRoute` component can reference exported route table IDs
-- **Cross-region peering**: Separate lifecycle, planned as a future component
-- **Multicast domain configuration**: The multicast toggle is available, but domain/group setup is deferred
-- **Connect attachments**: SD-WAN/GRE integration is highly specialized
+## Example: full-mesh hub
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsTransitGateway
+metadata:
+  name: core-hub
+spec:
+  region: us-east-1
+  description: Full-mesh hub for the platform VPCs
+```
+
+## Example: segmented hub (custom routing domains)
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsTransitGateway
+metadata:
+  name: segmented-hub
+spec:
+  region: us-east-1
+  description: Segmented hub - custom route tables own all routing
+  defaultRouteTableAssociation: false
+  defaultRouteTablePropagation: false
+```

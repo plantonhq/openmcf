@@ -11,22 +11,35 @@ import (
 
 // Locals holds pre-computed values derived from the stack input.
 type Locals struct {
-	Target  *awsmemorydbclusterv1.AwsMemorydbCluster
-	Spec    *awsmemorydbclusterv1.AwsMemorydbClusterSpec
+	Target *awsmemorydbclusterv1.AwsMemorydbCluster
+	Spec   *awsmemorydbclusterv1.AwsMemorydbClusterSpec
+
+	// ClusterName is metadata.name -- the AWS cluster name is create-time
+	// immutable, and metadata.name is the naming basis both engines share so
+	// a manifest deploys identically on either. AWS caps it at 40 characters.
+	// The module-managed subnet group and parameter group derive their names
+	// from it too, so everything the module owns is discoverable by one name.
+	ClusterName string
+
 	AwsTags map[string]string
 }
 
-func initializeLocals(ctx *pulumi.Context, in *awsmemorydbclusterv1.AwsMemorydbClusterStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, in *awsmemorydbclusterv1.AwsMemorydbClusterStackInput) *Locals {
 	locals := &Locals{}
 	locals.Target = in.Target
 	locals.Spec = in.Target.Spec
 
+	metadata := in.Target.Metadata
+	locals.ClusterName = metadata.Name
+
+	// Resource-identity tags match the Terraform module key-for-key.
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
-		awstagkeys.Organization: locals.Target.Metadata.Org,
-		awstagkeys.Environment:  locals.Target.Metadata.Env,
+		awstagkeys.Organization: metadata.Org,
+		awstagkeys.Environment:  metadata.Env,
 		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsMemorydbCluster.String(),
-		awstagkeys.ResourceId:   locals.Target.Metadata.Id,
+		awstagkeys.ResourceId:   metadata.Id,
 	}
 
 	return locals

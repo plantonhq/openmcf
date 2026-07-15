@@ -22,7 +22,7 @@ variable "spec" {
     http_version = optional(string, "")
     is_ipv6_enabled = optional(bool, false)
     price_class = optional(string, "")
-    web_acl_id = optional(string, "")
+    web_acl_arn = optional(string, "")
     origins = list(object({
       origin_id = string
       domain_name = string

@@ -23,8 +23,10 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsClientVpn represents an AWS Client VPN endpoint resource.
-// It encapsulates the configuration for a managed OpenVPN endpoint attached to a VPC.
+// AwsClientVpn represents an AWS Client VPN endpoint resource — the managed
+// OpenVPN front door for remote access into AWS networks, attached to a VPC
+// (via folded subnet associations) or to a transit gateway, with folded
+// authorization rules and routes governing what connected clients can reach.
 type AwsClientVpn struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version must be set to "aws.planton.dev/v1".
@@ -34,7 +36,7 @@ type AwsClientVpn struct {
 	// metadata captures identifying information (name, org, version, etc.)
 	// and must pass standard validations for resource naming.
 	Metadata *shared.CloudResourceMetadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	// spec holds the core configuration data defining how the ECS service is deployed.
+	// spec holds the core configuration data defining how the Client VPN endpoint is deployed.
 	Spec *AwsClientVpnSpec `protobuf:"bytes,4,opt,name=spec,proto3" json:"spec,omitempty"`
 	// status holds runtime or post-deployment information.
 	Status        *AwsClientVpnStatus `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
@@ -107,7 +109,7 @@ func (x *AwsClientVpn) GetStatus() *AwsClientVpnStatus {
 	return nil
 }
 
-// AwsClientVpnStatus describes the status fields for an ECS service resource.
+// AwsClientVpnStatus describes the status fields for a Client VPN resource.
 type AwsClientVpnStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.

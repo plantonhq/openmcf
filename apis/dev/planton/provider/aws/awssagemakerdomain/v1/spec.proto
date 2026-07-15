@@ -9,10 +9,16 @@ import "dev/planton/shared/options/options.proto";
 // AwsSagemakerDomainSpec defines the desired state of an Amazon SageMaker Domain.
 // A SageMaker Domain is the top-level organizational unit for Amazon SageMaker Studio,
 // providing a shared workspace where data scientists and ML engineers access JupyterLab
-// notebooks, custom kernels, and ML tooling. The domain provisions a dedicated EFS
-// file system for user home directories, configures VPC networking for notebook and
-// training traffic, and establishes IAM execution roles that govern what AWS resources
-// users can access from their Studio sessions.
+// notebooks, the Code Editor IDE, Canvas no-code ML, custom kernels, and ML tooling.
+// The domain provisions a dedicated EFS file system for user home directories, configures
+// VPC networking for notebook and training traffic, and establishes IAM execution roles
+// that govern what AWS resources users can access from their Studio sessions.
+//
+// The domain carries two inheritance planes: default_user_settings is the baseline every
+// user profile inherits, and default_space_settings is the baseline every shared
+// (collaborative) space inherits. Domain-scoped administration knobs -- Docker access,
+// domain-level security groups, RStudio licensing, identity-propagation posture -- sit at
+// the top level of this spec.
 message AwsSagemakerDomainSpec {
   // The AWS region where the resource will be created.
   // Example: "us-west-2", "eu-west-1"
@@ -24,7 +30,8 @@ message AwsSagemakerDomainSpec {
   // "IAM": users authenticate with AWS IAM credentials. Suitable for single-account teams
   //   or programmatic access. Each user's IAM identity determines their permissions.
   // "SSO": users authenticate via AWS IAM Identity Center (formerly AWS SSO). Recommended
-  //   for enterprise teams with centralized identity management.
+  //   for enterprise teams with centralized identity management, and required for
+  //   trusted identity propagation.
   // ForceNew: changing auth_mode forces domain replacement.
   string auth_mode = 2 [(buf.validate.field).required = true];
 
@@ -44,11 +51,12 @@ message AwsSagemakerDomainSpec {
   // ForceNew: changing subnets forces domain replacement.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 4 [
     (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 16,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
-  // kms_key_id is the KMS key ARN used to encrypt the EFS volume attached to the domain.
+  // kms_key_id is the KMS key used to encrypt the EFS volume attached to the domain.
   // Each SageMaker Domain creates a dedicated EFS file system for user home directories.
   // If omitted, AWS uses the default aws/elasticfilesystem service key.
   // ForceNew: changing the KMS key forces domain replacement.
@@ -57,30 +65,64 @@ message AwsSagemakerDomainSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
   ];
 
-  // --- Network ---
+  // --- Network & lifecycle posture ---
 
   // app_network_access_type controls whether notebook and training traffic can reach the internet.
-  // "PublicInternetOnly" (default): ENIs have internet access via VPC routing.
+  // "PublicInternetOnly" (default): ENIs have internet access via AWS-managed networking.
   // "VpcOnly": all traffic stays within the VPC; internet access requires a NAT gateway.
   // "VpcOnly" is recommended for production to prevent data exfiltration and satisfy
   // compliance requirements. Docker trusted accounts only work in VpcOnly mode.
   optional string app_network_access_type = 6 [(dev.planton.shared.options.default) = "PublicInternetOnly"];
 
-  // --- User Settings ---
+  // app_security_group_management selects who manages the security groups attached to the
+  // ENIs that SageMaker creates for apps.
+  // "Service": SageMaker creates and manages the security groups.
+  // "Customer": you manage them (required when RStudio needs to reach a license endpoint
+  //   through customer-controlled networking).
+  // AWS only honors this setting when RStudio Server Pro is configured on the domain
+  // (r_studio_server_pro_domain_settings), so the spec requires that pairing up front
+  // rather than letting the value be silently ignored at deploy time.
+  optional string app_security_group_management = 7;
+
+  // tag_propagation controls whether tags on the domain automatically propagate to the
+  // SageMaker resources created within it (apps, spaces, user profiles).
+  // "ENABLED": in-domain resources inherit the domain's tags -- recommended for cost
+  //   allocation, because per-app compute charges then carry the domain's tags.
+  // "DISABLED" (default, AWS's own): in-domain resources start untagged.
+  optional string tag_propagation = 8 [(dev.planton.shared.options.default) = "DISABLED"];
+
+  // home_efs_retention_policy decides what happens to the domain's auto-created EFS file
+  // system (user home directories) when the domain is deleted.
+  // "Retain" (default, AWS's own): the EFS file system survives domain deletion. Home
+  //   directories are preserved, but the file system keeps accruing storage charges and
+  //   must be deleted by hand when no longer needed.
+  // "Delete": the EFS file system is deleted with the domain -- the right choice for
+  //   ephemeral and test domains, and the only choice that leaves nothing behind.
+  // ForceNew: the retention decision is fixed at create time.
+  optional string home_efs_retention_policy = 9 [(dev.planton.shared.options.default) = "Retain"];
+
+  // --- User & space baselines ---
 
   // default_user_settings defines the default configuration inherited by all user profiles
-  // in the domain. These settings control the execution environment, app configurations,
-  // security boundaries, and storage defaults. Individual user profiles can override these
-  // defaults via AwsSagemakerUserProfile (not in v1 scope).
-  AwsSagemakerDomainDefaultUserSettings default_user_settings = 7 [(buf.validate.field).required = true];
+  // in the domain. These settings control the execution environment, per-IDE app
+  // configurations, security boundaries, and storage defaults. Individual user profiles
+  // can override these defaults.
+  AwsSagemakerDomainDefaultUserSettings default_user_settings = 10 [(buf.validate.field).required = true];
 
-  // --- Domain Settings ---
+  // default_space_settings defines the default configuration inherited by all shared
+  // (collaborative) spaces in the domain. Spaces are workspaces multiple users can attach
+  // to; they carry their own execution role and app baselines, separate from the per-user
+  // plane above.
+  AwsSagemakerDomainDefaultSpaceSettings default_space_settings = 11;
+
+  // --- Domain-scoped administration ---
 
   // domain_security_group_ids are security groups applied at the domain level for
   // domain-scoped apps and shared resources. These are separate from user-level security
-  // groups (default_user_settings.security_group_ids) and control domain-wide network boundaries.
-  // Maximum 3 security groups. ForceNew: changing these forces domain replacement.
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef domain_security_group_ids = 8 [
+  // groups (default_user_settings.security_group_ids) and control domain-wide network
+  // boundaries. Maximum 3 security groups.
+  // ForceNew: changing these forces domain replacement.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef domain_security_group_ids = 12 [
     (buf.validate.field).repeated.max_items = 3,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
@@ -90,7 +132,30 @@ message AwsSagemakerDomainSpec {
   // When enabled, users can build and run custom Docker containers directly in their
   // notebooks and terminals -- essential for custom training containers, inference
   // endpoints, and reproducible ML pipelines.
-  AwsSagemakerDomainDockerSettings docker_settings = 9;
+  AwsSagemakerDomainDockerSettings docker_settings = 13;
+
+  // execution_role_identity_config controls how user identity appears in AWS CloudTrail
+  // and in the credentials SageMaker vends to apps.
+  // "USER_PROFILE_NAME": the sts:SourceIdentity of every session is set to the user
+  //   profile name, so CloudTrail events and IAM policies can distinguish WHICH user
+  //   acted through the shared execution role -- strongly recommended for auditability.
+  // "DISABLED": sessions carry only the execution role identity.
+  optional string execution_role_identity_config = 14;
+
+  // r_studio_server_pro_domain_settings enables RStudio (Posit) Workbench on the domain.
+  // RStudio on SageMaker requires a Posit license purchased through AWS License Manager;
+  // configuring this block is what activates the RStudio app plane for the domain.
+  AwsSagemakerDomainRStudioServerProDomainSettings r_studio_server_pro_domain_settings = 15;
+
+  // trusted_identity_propagation_status enables trusted identity propagation, which
+  // forwards the IAM Identity Center user identity through SageMaker to downstream
+  // AWS analytics services (Athena, Redshift, Lake Formation), so data-level permissions
+  // apply per human user instead of per execution role.
+  // Requires auth_mode "SSO" with ANY value: AWS rejects the setting outright on
+  // IAM-auth domains ("TrustedIdentityPropagationSettings is only supported for
+  // Domains with AWS IAM Identity Center enabled"), even when set to "DISABLED".
+  // Leave unset on IAM domains.
+  optional string trusted_identity_propagation_status = 16;
 
   // --- Cross-field validations ---
 
@@ -104,6 +169,48 @@ message AwsSagemakerDomainSpec {
     id: "app_network_access_type_valid"
     message: "app_network_access_type must be 'PublicInternetOnly' or 'VpcOnly'"
     expression: "!has(this.app_network_access_type) || this.app_network_access_type in ['PublicInternetOnly', 'VpcOnly']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "app_security_group_management_valid"
+    message: "app_security_group_management must be 'Service' or 'Customer'"
+    expression: "!has(this.app_security_group_management) || this.app_security_group_management in ['Service', 'Customer']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "app_security_group_management_requires_rstudio"
+    message: "app_security_group_management is only honored when r_studio_server_pro_domain_settings is configured"
+    expression: "!has(this.app_security_group_management) || has(this.r_studio_server_pro_domain_settings)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "tag_propagation_valid"
+    message: "tag_propagation must be 'ENABLED' or 'DISABLED'"
+    expression: "!has(this.tag_propagation) || this.tag_propagation in ['ENABLED', 'DISABLED']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "home_efs_retention_policy_valid"
+    message: "home_efs_retention_policy must be 'Retain' or 'Delete'"
+    expression: "!has(this.home_efs_retention_policy) || this.home_efs_retention_policy in ['Retain', 'Delete']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "execution_role_identity_config_valid"
+    message: "execution_role_identity_config must be 'USER_PROFILE_NAME' or 'DISABLED'"
+    expression: "!has(this.execution_role_identity_config) || this.execution_role_identity_config in ['USER_PROFILE_NAME', 'DISABLED']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "trusted_identity_propagation_status_valid"
+    message: "trusted_identity_propagation_status must be 'ENABLED' or 'DISABLED'"
+    expression: "!has(this.trusted_identity_propagation_status) || this.trusted_identity_propagation_status in ['ENABLED', 'DISABLED']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "trusted_identity_propagation_requires_sso"
+    message: "trusted_identity_propagation_status requires auth_mode 'SSO' (AWS rejects the setting on IAM-auth domains, even 'DISABLED')"
+    expression: "!has(this.trusted_identity_propagation_status) || this.auth_mode == 'SSO'"
   };
 }
 
@@ -144,25 +251,80 @@ message AwsSagemakerDomainDefaultUserSettings {
   // "DISABLED": restricts access to programmatic-only usage (API/CLI).
   optional string studio_web_portal = 4 [(dev.planton.shared.options.default) = "ENABLED"];
 
+  // auto_mount_home_efs controls whether each user's home directory on the domain's EFS
+  // file system is automatically mounted into their apps.
+  // "Enabled": home directories mount automatically (the classic Studio experience).
+  // "Disabled": apps start without the shared home directory -- pair with space storage
+  //   or custom file systems when home directories are not wanted.
+  // (AWS's third value, "DefaultAsDomain", is only valid on per-user profiles -- it means
+  // "inherit this domain-level setting" and is rejected here at the domain level.)
+  optional string auto_mount_home_efs = 5;
+
   // jupyter_lab_app_settings configures JupyterLab, the primary IDE for SageMaker Studio.
   // JupyterLab provides a modern notebook and code editing experience with built-in Git
   // integration, terminal access, extension support, and collaborative editing.
-  AwsSagemakerDomainJupyterLabAppSettings jupyter_lab_app_settings = 5;
+  AwsSagemakerDomainJupyterLabAppSettings jupyter_lab_app_settings = 6;
+
+  // jupyter_server_app_settings configures the classic Jupyter Server app (Studio
+  // Classic). Teams still running the previous-generation Studio experience configure
+  // its default resources and startup repositories here.
+  AwsSagemakerDomainJupyterServerAppSettings jupyter_server_app_settings = 7;
 
   // kernel_gateway_app_settings configures KernelGateway apps that provide custom compute
   // kernels. Use KernelGateway to bring your own Docker images with specialized ML
   // frameworks, custom libraries, or GPU-optimized environments that go beyond the
   // standard SageMaker-provided kernels.
-  AwsSagemakerDomainKernelGatewayAppSettings kernel_gateway_app_settings = 6;
+  AwsSagemakerDomainKernelGatewayAppSettings kernel_gateway_app_settings = 8;
+
+  // code_editor_app_settings configures the Code Editor app -- SageMaker's VS Code
+  // (Code-OSS) IDE. It carries the same resource-spec/lifecycle/custom-image/idle
+  // controls as JupyterLab, for teams that prefer a full code editor over notebooks.
+  AwsSagemakerDomainCodeEditorAppSettings code_editor_app_settings = 9;
+
+  // tensor_board_app_settings configures the TensorBoard app used to visualize
+  // training runs. Only the default resource spec is configurable.
+  AwsSagemakerDomainTensorBoardAppSettings tensor_board_app_settings = 10;
+
+  // r_session_app_settings configures RSession apps (the R kernels backing RStudio
+  // sessions). Requires RStudio to be enabled on the domain via
+  // r_studio_server_pro_domain_settings.
+  AwsSagemakerDomainRSessionAppSettings r_session_app_settings = 11;
+
+  // r_studio_server_pro_app_settings controls per-user RStudio Server Pro access.
+  // Requires RStudio to be enabled on the domain via r_studio_server_pro_domain_settings.
+  AwsSagemakerDomainRStudioServerProAppSettings r_studio_server_pro_app_settings = 12;
+
+  // canvas_app_settings configures SageMaker Canvas, the no-code ML workspace.
+  // Each sub-block is an independent Canvas capability (direct model deployment,
+  // EMR Serverless big-data processing, Bedrock generative AI, SaaS data connectors,
+  // Kendra document search, cross-account model registration, time-series forecasting,
+  // and the shared artifact workspace).
+  AwsSagemakerDomainCanvasAppSettings canvas_app_settings = 13;
 
   // sharing_settings controls notebook output sharing to S3. When enabled, notebook cell
   // outputs are persisted to an S3 location, allowing team members to view results
   // without running the notebook.
-  AwsSagemakerDomainSharingSettings sharing_settings = 7;
+  AwsSagemakerDomainSharingSettings sharing_settings = 14;
 
   // space_storage_settings configures default EBS volume sizes for user spaces.
   // Spaces use EBS volumes for working storage beyond the shared EFS home directory.
-  AwsSagemakerDomainSpaceStorageSettings space_storage_settings = 8;
+  AwsSagemakerDomainSpaceStorageSettings space_storage_settings = 15;
+
+  // custom_file_system_configs mount additional file systems (beyond the domain's own
+  // EFS home directories) into every user's apps -- shared datasets, feature stores,
+  // model artifact trees. Each entry names one file system and the path where it mounts.
+  repeated AwsSagemakerDomainCustomFileSystemConfig custom_file_system_configs = 16;
+
+  // custom_posix_user_config sets the POSIX identity (UID/GID) that apps run as when
+  // accessing the EFS home directory and custom file systems. Set this when file-system
+  // permissions on shared storage must map to a specific owner instead of SageMaker's
+  // default identity.
+  AwsSagemakerDomainCustomPosixUserConfig custom_posix_user_config = 17;
+
+  // studio_web_portal_settings hides parts of the Studio UI from users -- entire app
+  // types, specific instance types, or ML tools. Use it to keep expensive GPU instance
+  // types or unused tooling out of the picker instead of policing them after the fact.
+  AwsSagemakerDomainStudioWebPortalSettings studio_web_portal_settings = 18;
 
   // --- Cross-field validations ---
 
@@ -171,13 +333,62 @@ message AwsSagemakerDomainDefaultUserSettings {
     message: "studio_web_portal must be 'ENABLED' or 'DISABLED'"
     expression: "!has(this.studio_web_portal) || this.studio_web_portal in ['ENABLED', 'DISABLED']"
   };
+
+  option (buf.validate.message).cel = {
+    id: "auto_mount_home_efs_valid"
+    message: "auto_mount_home_efs must be 'Enabled' or 'Disabled' at the domain level"
+    expression: "!has(this.auto_mount_home_efs) || this.auto_mount_home_efs in ['Enabled', 'Disabled']"
+  };
 }
 
-// AwsSagemakerDomainJupyterLabAppSettings configures the JupyterLab IDE for the domain.
+// AwsSagemakerDomainDefaultSpaceSettings defines the default configuration inherited by
+// all shared (collaborative) spaces in the domain. Spaces are workspaces that multiple
+// users attach to; they run under their own execution role, separate from the per-user
+// baseline in default_user_settings.
+message AwsSagemakerDomainDefaultSpaceSettings {
+  // execution_role_arn is the IAM role assumed by SageMaker for workloads running in
+  // shared spaces. Like the user-level role, it must trust sagemaker.amazonaws.com.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // security_group_ids are security groups attached to the ENIs of apps running in
+  // shared spaces. Maximum 5 security groups.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 2 [
+    (buf.validate.field).repeated.max_items = 5,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // jupyter_lab_app_settings is the JupyterLab baseline for shared spaces (same shape
+  // as the user-level block).
+  AwsSagemakerDomainJupyterLabAppSettings jupyter_lab_app_settings = 3;
+
+  // jupyter_server_app_settings is the classic Jupyter Server baseline for shared spaces.
+  AwsSagemakerDomainJupyterServerAppSettings jupyter_server_app_settings = 4;
+
+  // kernel_gateway_app_settings is the KernelGateway baseline for shared spaces.
+  AwsSagemakerDomainKernelGatewayAppSettings kernel_gateway_app_settings = 5;
+
+  // space_storage_settings configures the default and maximum EBS volume sizes for
+  // shared spaces.
+  AwsSagemakerDomainSpaceStorageSettings space_storage_settings = 6;
+
+  // custom_file_system_configs mount additional file systems into every shared space's
+  // apps (same shape as the user-level block).
+  repeated AwsSagemakerDomainCustomFileSystemConfig custom_file_system_configs = 7;
+
+  // custom_posix_user_config sets the POSIX identity that shared-space apps run as.
+  AwsSagemakerDomainCustomPosixUserConfig custom_posix_user_config = 8;
+}
+
+// AwsSagemakerDomainJupyterLabAppSettings configures the JupyterLab IDE.
 // JupyterLab is the recommended primary IDE for SageMaker Studio, providing notebooks,
 // code editors, terminals, and extension support in a modern web interface.
 message AwsSagemakerDomainJupyterLabAppSettings {
-  // default_resource_spec sets the default compute instance type and lifecycle configuration
+  // default_resource_spec sets the default compute instance type and image configuration
   // for new JupyterLab apps. Users can override the instance type at app creation time.
   AwsSagemakerDomainResourceSpec default_resource_spec = 1;
 
@@ -186,20 +397,46 @@ message AwsSagemakerDomainJupyterLabAppSettings {
   // JupyterLab extensions, set environment variables, or mount additional storage.
   repeated string lifecycle_config_arns = 2;
 
+  // built_in_lifecycle_config_arn is the ARN of an AWS-curated (built-in) lifecycle
+  // configuration to run at app start, as opposed to the customer-authored scripts in
+  // lifecycle_config_arns.
+  string built_in_lifecycle_config_arn = 3;
+
   // custom_images are custom Docker images available as JupyterLab kernels.
   // Each image must be registered in SageMaker via an AppImageConfig that defines
   // the kernel specification and file system layout. Maximum 200 images.
-  repeated AwsSagemakerDomainCustomImage custom_images = 3 [(buf.validate.field).repeated.max_items = 200];
+  repeated AwsSagemakerDomainCustomImage custom_images = 4 [(buf.validate.field).repeated.max_items = 200];
 
   // code_repositories are Git repositories automatically cloned into JupyterLab on startup.
   // Provides immediate access to team code, shared notebooks, and documentation.
   // Maximum 10 repositories.
-  repeated AwsSagemakerDomainCodeRepository code_repositories = 4 [(buf.validate.field).repeated.max_items = 10];
+  repeated AwsSagemakerDomainCodeRepository code_repositories = 5 [(buf.validate.field).repeated.max_items = 10];
 
   // idle_settings configures automatic shutdown of idle JupyterLab instances.
   // Critical for cost management: without idle timeout, instances run 24/7 at full
   // compute cost even when no user is interacting with them.
-  AwsSagemakerDomainIdleSettings idle_settings = 5;
+  AwsSagemakerDomainIdleSettings idle_settings = 6;
+
+  // emr_settings pre-authorizes the IAM roles JupyterLab uses to discover and connect
+  // to Amazon EMR clusters for large-scale data processing directly from notebooks.
+  AwsSagemakerDomainEmrSettings emr_settings = 7;
+}
+
+// AwsSagemakerDomainJupyterServerAppSettings configures the classic Jupyter Server app
+// (SageMaker Studio Classic). Teams still on the previous-generation Studio experience
+// configure its defaults here; new deployments should prefer JupyterLab.
+message AwsSagemakerDomainJupyterServerAppSettings {
+  // default_resource_spec sets the default configuration for the Jupyter Server app.
+  // Jupyter Server runs on a lightweight system-managed instance ("system" instance type).
+  AwsSagemakerDomainResourceSpec default_resource_spec = 1;
+
+  // lifecycle_config_arns are ARNs of lifecycle configuration scripts for the
+  // Jupyter Server app.
+  repeated string lifecycle_config_arns = 2;
+
+  // code_repositories are Git repositories automatically cloned on startup.
+  // Maximum 10 repositories.
+  repeated AwsSagemakerDomainCodeRepository code_repositories = 3 [(buf.validate.field).repeated.max_items = 10];
 }
 
 // AwsSagemakerDomainKernelGatewayAppSettings configures KernelGateway for custom compute kernels.
@@ -207,7 +444,7 @@ message AwsSagemakerDomainJupyterLabAppSettings {
 // images with specialized ML frameworks, proprietary libraries, or GPU-optimized stacks
 // that are not available in the standard SageMaker-provided kernels.
 message AwsSagemakerDomainKernelGatewayAppSettings {
-  // default_resource_spec sets the default compute instance type and lifecycle configuration
+  // default_resource_spec sets the default compute instance type and image configuration
   // for new KernelGateway apps.
   AwsSagemakerDomainResourceSpec default_resource_spec = 1;
 
@@ -219,8 +456,289 @@ message AwsSagemakerDomainKernelGatewayAppSettings {
   repeated AwsSagemakerDomainCustomImage custom_images = 3 [(buf.validate.field).repeated.max_items = 200];
 }
 
+// AwsSagemakerDomainCodeEditorAppSettings configures the Code Editor app -- SageMaker's
+// VS Code (Code-OSS) IDE. It mirrors JupyterLab's controls for teams that prefer a full
+// code editor over the notebook-first experience.
+message AwsSagemakerDomainCodeEditorAppSettings {
+  // default_resource_spec sets the default compute instance type and image configuration
+  // for new Code Editor apps.
+  AwsSagemakerDomainResourceSpec default_resource_spec = 1;
+
+  // lifecycle_config_arns are ARNs of lifecycle configuration scripts for Code Editor apps.
+  repeated string lifecycle_config_arns = 2;
+
+  // built_in_lifecycle_config_arn is the ARN of an AWS-curated (built-in) lifecycle
+  // configuration to run at app start.
+  string built_in_lifecycle_config_arn = 3;
+
+  // custom_images are custom Docker images available in Code Editor. Maximum 200 images.
+  repeated AwsSagemakerDomainCustomImage custom_images = 4 [(buf.validate.field).repeated.max_items = 200];
+
+  // idle_settings configures automatic shutdown of idle Code Editor instances -- the
+  // same cost-control dial JupyterLab carries.
+  AwsSagemakerDomainIdleSettings idle_settings = 5;
+}
+
+// AwsSagemakerDomainTensorBoardAppSettings configures the TensorBoard app used to
+// visualize model training runs.
+message AwsSagemakerDomainTensorBoardAppSettings {
+  // default_resource_spec sets the default compute instance type and image configuration
+  // for the TensorBoard app.
+  AwsSagemakerDomainResourceSpec default_resource_spec = 1;
+}
+
+// AwsSagemakerDomainRSessionAppSettings configures RSession apps -- the R kernels backing
+// RStudio sessions on the domain.
+message AwsSagemakerDomainRSessionAppSettings {
+  // default_resource_spec sets the default compute instance type and image configuration
+  // for RSession apps.
+  AwsSagemakerDomainResourceSpec default_resource_spec = 1;
+
+  // custom_images are custom Docker images available as RSession kernels. Maximum 200 images.
+  repeated AwsSagemakerDomainCustomImage custom_images = 2 [(buf.validate.field).repeated.max_items = 200];
+}
+
+// AwsSagemakerDomainRStudioServerProAppSettings controls per-user RStudio Server Pro
+// access. This is the user-plane switch; the domain-plane RStudio activation (license
+// role, URLs) lives in r_studio_server_pro_domain_settings.
+message AwsSagemakerDomainRStudioServerProAppSettings {
+  // access_status grants or denies the user access to RStudio Server Pro.
+  // "ENABLED": the user sees and can launch RStudio.
+  // "DISABLED": RStudio is hidden for the user.
+  string access_status = 1;
+
+  // user_group assigns the RStudio authorization level.
+  // "R_STUDIO_ADMIN": administrative access to the RStudio Workbench admin dashboard.
+  // "R_STUDIO_USER" (AWS default): regular RStudio user.
+  // Only meaningful when access_status is "ENABLED" -- AWS ignores it otherwise, so the
+  // spec rejects the dead combination up front.
+  string user_group = 2;
+
+  // --- Cross-field validations ---
+
+  option (buf.validate.message).cel = {
+    id: "access_status_valid"
+    message: "access_status must be 'ENABLED' or 'DISABLED'"
+    expression: "this.access_status == '' || this.access_status in ['ENABLED', 'DISABLED']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "user_group_valid"
+    message: "user_group must be 'R_STUDIO_ADMIN' or 'R_STUDIO_USER'"
+    expression: "this.user_group == '' || this.user_group in ['R_STUDIO_ADMIN', 'R_STUDIO_USER']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "user_group_requires_enabled"
+    message: "user_group is only honored when access_status is 'ENABLED'"
+    expression: "this.user_group == '' || this.access_status == 'ENABLED'"
+  };
+}
+
+// AwsSagemakerDomainRStudioServerProDomainSettings enables RStudio (Posit) Workbench on
+// the domain. RStudio on SageMaker requires a Posit license purchased through AWS License
+// Manager; the domain execution role below is what SageMaker uses to validate the license
+// and run the RStudio server.
+message AwsSagemakerDomainRStudioServerProDomainSettings {
+  // domain_execution_role_arn is the IAM role SageMaker assumes to run the RStudio
+  // server for the domain (license validation, server lifecycle). Distinct from the
+  // per-user execution role.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef domain_execution_role_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // r_studio_connect_url is the URL of an RStudio Connect server where users publish
+  // Shiny apps and R Markdown documents from their sessions.
+  string r_studio_connect_url = 2;
+
+  // r_studio_package_manager_url is the URL of an RStudio Package Manager server that
+  // sessions resolve R packages from (instead of public CRAN).
+  string r_studio_package_manager_url = 3;
+
+  // default_resource_spec sets the compute instance type and image configuration for the
+  // RStudio server app itself.
+  AwsSagemakerDomainResourceSpec default_resource_spec = 4;
+}
+
+// AwsSagemakerDomainCanvasAppSettings configures SageMaker Canvas, the no-code ML
+// workspace. Each block below is an independent Canvas capability; absent blocks leave
+// that capability at AWS's default (typically enabled for free capabilities, unwired for
+// ones that need a role or credential).
+message AwsSagemakerDomainCanvasAppSettings {
+  // direct_deploy_status controls whether Canvas users can deploy models they build
+  // directly to SageMaker real-time endpoints ("ENABLED" or "DISABLED"). Direct
+  // deployment creates billable endpoints, so governance-minded teams often disable it
+  // and route models through the registry instead (model_register_settings).
+  optional string direct_deploy_status = 1;
+
+  // emr_serverless_settings lets Canvas run large data preparation and processing jobs
+  // on EMR Serverless.
+  AwsSagemakerDomainCanvasEmrServerlessSettings emr_serverless_settings = 2;
+
+  // generative_ai_bedrock_role_arn is the IAM role Canvas assumes to call Amazon Bedrock
+  // for generative-AI features. Setting the role is what enables the capability.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef generative_ai_bedrock_role_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // identity_provider_oauth_settings wire Canvas to external SaaS data sources
+  // (Salesforce Data Cloud, Snowflake) through OAuth. Each entry names the data source
+  // and the Secrets Manager secret holding its OAuth client credentials. Maximum 20.
+  repeated AwsSagemakerDomainCanvasIdentityProviderOauthSettings identity_provider_oauth_settings = 4 [(buf.validate.field).repeated.max_items = 20];
+
+  // kendra_settings_status controls whether Canvas can query Amazon Kendra indexes for
+  // document search ("ENABLED" or "DISABLED").
+  optional string kendra_settings_status = 5;
+
+  // model_register_settings controls whether Canvas users can register their models into
+  // a SageMaker Model Registry, optionally in another AWS account.
+  AwsSagemakerDomainCanvasModelRegisterSettings model_register_settings = 6;
+
+  // time_series_forecasting_settings enables Canvas time-series forecasting, which uses
+  // Amazon Forecast under the hood via the given IAM role.
+  AwsSagemakerDomainCanvasTimeSeriesForecastingSettings time_series_forecasting_settings = 7;
+
+  // workspace_settings pins the S3 location (and optional KMS key) where Canvas stores
+  // its working artifacts -- datasets, intermediate results, generated models.
+  AwsSagemakerDomainCanvasWorkspaceSettings workspace_settings = 8;
+
+  // --- Cross-field validations ---
+
+  option (buf.validate.message).cel = {
+    id: "direct_deploy_status_valid"
+    message: "direct_deploy_status must be 'ENABLED' or 'DISABLED'"
+    expression: "!has(this.direct_deploy_status) || this.direct_deploy_status in ['ENABLED', 'DISABLED']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "kendra_settings_status_valid"
+    message: "kendra_settings_status must be 'ENABLED' or 'DISABLED'"
+    expression: "!has(this.kendra_settings_status) || this.kendra_settings_status in ['ENABLED', 'DISABLED']"
+  };
+}
+
+// AwsSagemakerDomainCanvasEmrServerlessSettings lets Canvas run large data preparation
+// jobs on EMR Serverless under a dedicated execution role.
+message AwsSagemakerDomainCanvasEmrServerlessSettings {
+  // execution_role_arn is the IAM role Canvas uses to submit and manage EMR Serverless
+  // jobs.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // status enables or disables the capability ("ENABLED" or "DISABLED").
+  string status = 2;
+
+  // --- Cross-field validations ---
+
+  option (buf.validate.message).cel = {
+    id: "status_valid"
+    message: "status must be 'ENABLED' or 'DISABLED'"
+    expression: "this.status == '' || this.status in ['ENABLED', 'DISABLED']"
+  };
+}
+
+// AwsSagemakerDomainCanvasIdentityProviderOauthSettings wires Canvas to one external SaaS
+// data source through OAuth.
+message AwsSagemakerDomainCanvasIdentityProviderOauthSettings {
+  // data_source_name identifies the SaaS data source.
+  // "SalesforceGenie": Salesforce Data Cloud.
+  // "Snowflake": Snowflake.
+  string data_source_name = 1;
+
+  // secret_arn is the Secrets Manager secret holding the data source's OAuth client
+  // credentials (client ID and secret). The ARN is a reference Canvas resolves at
+  // connection time -- never secret material itself.
+  string secret_arn = 2 [(buf.validate.field).required = true];
+
+  // status enables or disables this connector ("ENABLED" or "DISABLED").
+  string status = 3;
+
+  // --- Cross-field validations ---
+
+  option (buf.validate.message).cel = {
+    id: "data_source_name_valid"
+    message: "data_source_name must be 'SalesforceGenie' or 'Snowflake'"
+    expression: "this.data_source_name == '' || this.data_source_name in ['SalesforceGenie', 'Snowflake']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "status_valid"
+    message: "status must be 'ENABLED' or 'DISABLED'"
+    expression: "this.status == '' || this.status in ['ENABLED', 'DISABLED']"
+  };
+}
+
+// AwsSagemakerDomainCanvasModelRegisterSettings controls whether Canvas users can
+// register the models they build into a SageMaker Model Registry.
+message AwsSagemakerDomainCanvasModelRegisterSettings {
+  // cross_account_model_register_role_arn is the IAM role Canvas assumes to register
+  // models into a Model Registry that lives in ANOTHER AWS account. Leave unset to
+  // register into this account's registry.
+  string cross_account_model_register_role_arn = 1;
+
+  // status enables or disables model registration ("ENABLED" or "DISABLED").
+  string status = 2;
+
+  // --- Cross-field validations ---
+
+  option (buf.validate.message).cel = {
+    id: "status_valid"
+    message: "status must be 'ENABLED' or 'DISABLED'"
+    expression: "this.status == '' || this.status in ['ENABLED', 'DISABLED']"
+  };
+}
+
+// AwsSagemakerDomainCanvasTimeSeriesForecastingSettings enables Canvas time-series
+// forecasting, which calls Amazon Forecast through the given IAM role.
+message AwsSagemakerDomainCanvasTimeSeriesForecastingSettings {
+  // amazon_forecast_role_arn is the IAM role Canvas assumes to call Amazon Forecast.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef amazon_forecast_role_arn = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // status enables or disables forecasting ("ENABLED" or "DISABLED").
+  string status = 2;
+
+  // --- Cross-field validations ---
+
+  option (buf.validate.message).cel = {
+    id: "status_valid"
+    message: "status must be 'ENABLED' or 'DISABLED'"
+    expression: "this.status == '' || this.status in ['ENABLED', 'DISABLED']"
+  };
+}
+
+// AwsSagemakerDomainCanvasWorkspaceSettings pins where Canvas stores its working
+// artifacts.
+message AwsSagemakerDomainCanvasWorkspaceSettings {
+  // s3_artifact_path is the S3 URI where Canvas stores datasets, intermediate results,
+  // and generated models. Example: "s3://my-canvas-workspace/artifacts/".
+  string s3_artifact_path = 1 [(buf.validate.field).string.max_len = 1024];
+
+  // s3_kms_key_id is the KMS key used to encrypt Canvas artifacts in S3.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef s3_kms_key_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // --- Cross-field validations ---
+
+  option (buf.validate.message).cel = {
+    id: "s3_artifact_path_format"
+    message: "s3_artifact_path must be an s3:// or https:// URI"
+    expression: "this.s3_artifact_path == '' || this.s3_artifact_path.startsWith('s3://') || this.s3_artifact_path.startsWith('https://')"
+  };
+}
+
 // AwsSagemakerDomainResourceSpec defines the default compute and image configuration for an
-// app type. This shared structure is used by JupyterLab, KernelGateway, and other app settings.
+// app type. This shared structure is used by JupyterLab, KernelGateway, Code Editor,
+// TensorBoard, RSession, RStudio, and Jupyter Server app settings.
 message AwsSagemakerDomainResourceSpec {
   // instance_type is the EC2 instance type for the app's compute.
   // Common choices:
@@ -247,6 +765,14 @@ message AwsSagemakerDomainResourceSpec {
   // Pins the app to an exact image version for reproducibility across team members.
   // Mutually exclusive with sagemaker_image_version_alias.
   string sagemaker_image_version_arn = 5;
+
+  // --- Cross-field validations ---
+
+  option (buf.validate.message).cel = {
+    id: "image_version_alias_xor_arn"
+    message: "sagemaker_image_version_alias and sagemaker_image_version_arn are mutually exclusive"
+    expression: "this.sagemaker_image_version_alias == '' || this.sagemaker_image_version_arn == ''"
+  };
 }
 
 // AwsSagemakerDomainCustomImage defines a custom Docker image available as a kernel
@@ -268,7 +794,7 @@ message AwsSagemakerDomainCustomImage {
 }
 
 // AwsSagemakerDomainCodeRepository defines a Git repository automatically cloned into
-// JupyterLab on startup, providing immediate access to team code and shared notebooks.
+// the app on startup, providing immediate access to team code and shared notebooks.
 message AwsSagemakerDomainCodeRepository {
   // repository_url is the HTTPS URL of the Git repository to clone.
   // Must be an HTTPS URL (SSH URLs are not supported by SageMaker).
@@ -284,17 +810,18 @@ message AwsSagemakerDomainCodeRepository {
 // Idle detection is based on user activity: notebook cell execution, terminal commands,
 // file operations, and UI interactions. When no activity is detected for the configured
 // timeout period, the instance is automatically stopped, releasing compute resources.
+//
+// The presence of this message IS the enable switch: configuring it turns idle shutdown
+// on, and omitting it leaves instances running until manually stopped. All three
+// timeouts are required whenever the block is set -- AWS transmits absent members as 0
+// and rejects the request ("Member must have value greater than or equal to 60"), so a
+// partial block can never deploy.
 message AwsSagemakerDomainIdleSettings {
-  // lifecycle_management enables or disables automatic idle shutdown.
-  // "ENABLED": idle instances are automatically shut down after idle_timeout_in_minutes.
-  // "DISABLED": instances run until manually stopped (not recommended for production).
-  string lifecycle_management = 1;
-
   // idle_timeout_in_minutes is the duration of inactivity (in minutes) before an instance
   // is automatically shut down. Range: 60-525600 (1 hour to 365 days).
   // A reasonable production default is 120 (2 hours).
-  int32 idle_timeout_in_minutes = 2 [
-    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+  int32 idle_timeout_in_minutes = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).int32.gte = 60,
     (buf.validate.field).int32.lte = 525600
   ];
@@ -302,8 +829,8 @@ message AwsSagemakerDomainIdleSettings {
   // min_idle_timeout_in_minutes sets the minimum idle timeout that individual users can
   // configure for their own apps. Prevents users from setting excessively short timeouts
   // that would cause disruptive shutdowns during brief pauses. Range: 60-525600.
-  int32 min_idle_timeout_in_minutes = 3 [
-    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+  int32 min_idle_timeout_in_minutes = 2 [
+    (buf.validate.field).required = true,
     (buf.validate.field).int32.gte = 60,
     (buf.validate.field).int32.lte = 525600
   ];
@@ -311,8 +838,8 @@ message AwsSagemakerDomainIdleSettings {
   // max_idle_timeout_in_minutes sets the maximum idle timeout that individual users can
   // configure. Prevents users from effectively disabling idle shutdown by setting
   // extremely long timeouts. Range: 60-525600.
-  int32 max_idle_timeout_in_minutes = 4 [
-    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+  int32 max_idle_timeout_in_minutes = 3 [
+    (buf.validate.field).required = true,
     (buf.validate.field).int32.gte = 60,
     (buf.validate.field).int32.lte = 525600
   ];
@@ -320,16 +847,28 @@ message AwsSagemakerDomainIdleSettings {
   // --- Cross-field validations ---
 
   option (buf.validate.message).cel = {
-    id: "lifecycle_management_valid"
-    message: "lifecycle_management must be 'ENABLED' or 'DISABLED'"
-    expression: "this.lifecycle_management == '' || this.lifecycle_management in ['ENABLED', 'DISABLED']"
+    id: "max_gte_min"
+    message: "max_idle_timeout_in_minutes must be >= min_idle_timeout_in_minutes"
+    expression: "this.max_idle_timeout_in_minutes >= this.min_idle_timeout_in_minutes"
   };
+}
 
-  option (buf.validate.message).cel = {
-    id: "idle_timeout_requires_enabled"
-    message: "idle_timeout_in_minutes requires lifecycle_management to be 'ENABLED'"
-    expression: "this.idle_timeout_in_minutes == 0 || this.lifecycle_management == 'ENABLED'"
-  };
+// AwsSagemakerDomainEmrSettings pre-authorizes the IAM roles JupyterLab uses to discover,
+// connect to, and run workloads on Amazon EMR clusters directly from notebooks.
+message AwsSagemakerDomainEmrSettings {
+  // assumable_role_arns are IAM roles the JupyterLab app can assume to CONNECT to EMR
+  // clusters -- including clusters in other AWS accounts (cross-account access).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef assumable_role_arns = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // execution_role_arns are IAM runtime roles available for EMR workloads submitted from
+  // the notebook (the role the EMR job itself runs under).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arns = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
 }
 
 // AwsSagemakerDomainSharingSettings controls notebook output sharing to S3.
@@ -387,6 +926,66 @@ message AwsSagemakerDomainSpaceStorageSettings {
     message: "maximum_ebs_volume_size_in_gb must be >= default_ebs_volume_size_in_gb"
     expression: "this.maximum_ebs_volume_size_in_gb >= this.default_ebs_volume_size_in_gb"
   };
+}
+
+// AwsSagemakerDomainCustomFileSystemConfig mounts one additional file system into apps.
+// The AWS API models this as a union of file-system types; EFS is the type SageMaker
+// domains support today, and new types slot in as additional arms of this message.
+message AwsSagemakerDomainCustomFileSystemConfig {
+  // efs_file_system_config mounts an Amazon EFS file system.
+  AwsSagemakerDomainEfsFileSystemConfig efs_file_system_config = 1 [(buf.validate.field).required = true];
+}
+
+// AwsSagemakerDomainEfsFileSystemConfig identifies an EFS file system and the path where
+// it mounts inside apps.
+message AwsSagemakerDomainEfsFileSystemConfig {
+  // file_system_id is the EFS file system to mount. The file system must be reachable
+  // from the domain's subnets (mount targets + security groups are the file system's
+  // own configuration).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef file_system_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsElasticFileSystem,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.file_system_id"
+  ];
+
+  // file_system_path is the path within the EFS file system to mount into apps.
+  // Example: "/shared/datasets"
+  string file_system_path = 2 [(buf.validate.field).required = true];
+}
+
+// AwsSagemakerDomainCustomPosixUserConfig sets the POSIX identity (UID/GID) that apps run
+// as when accessing the EFS home directory and custom file systems.
+message AwsSagemakerDomainCustomPosixUserConfig {
+  // uid is the POSIX user ID. Must be at least 10000.
+  int64 uid = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int64.gte = 10000
+  ];
+
+  // gid is the POSIX group ID. Must be at least 1001.
+  int64 gid = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int64.gte = 1001
+  ];
+}
+
+// AwsSagemakerDomainStudioWebPortalSettings hides parts of the Studio UI from users.
+// Hiding is a UI-governance dial (keeping expensive instance types or unused tools out of
+// the picker); it is not an IAM-level control.
+message AwsSagemakerDomainStudioWebPortalSettings {
+  // hidden_app_types are Studio app types to hide (e.g. "JupyterServer", "KernelGateway",
+  // "Canvas", "CodeEditor", "JupyterLab", "TensorBoard", "RStudioServerPro"). Values are
+  // SageMaker AppType names; AWS validates them at deploy time as the set grows.
+  repeated string hidden_app_types = 1;
+
+  // hidden_instance_types are instance types to hide from app-creation pickers
+  // (e.g. "ml.p3.2xlarge"). Values are SageMaker app instance type names.
+  repeated string hidden_instance_types = 2;
+
+  // hidden_ml_tools are Studio ML tools to hide (e.g. "DataWrangler", "FeatureStore",
+  // "EmrClusters", "AutoMl", "Experiments", "Pipelines"). Values are SageMaker MlTools
+  // names; AWS validates them at deploy time as the set grows.
+  repeated string hidden_ml_tools = 3;
 }
 
 // AwsSagemakerDomainDockerSettings controls Docker access within the SageMaker Domain.

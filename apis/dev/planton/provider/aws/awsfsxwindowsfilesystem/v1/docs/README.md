@@ -498,7 +498,7 @@ Enable the CA share feature via PowerShell on the FSx file system.
 | **Networking** | TCP 445 (SMB), TCP 5985 (WinRM), AD ports for authentication. |
 | **DNS aliases** | Up to 50 custom DNS names per file system. |
 
-For API reference and examples, see the parent [README.md](../README.md) and [examples.md](../examples.md).
+For API reference and examples, see the parent [README.md](../README.md).
 
 ---
 
@@ -507,14 +507,15 @@ For API reference and examples, see the parent [README.md](../README.md) and [ex
 | Spec Field | Default | ForceNew |
 |------------|---------|----------|
 | deployment_type | SINGLE_AZ_2 | Yes |
-| storage_capacity_gib | (required) | No (increase only) |
+| storage_capacity_gib | (required unless backup restore) | No (increase only) |
 | storage_type | SSD | Yes |
 | throughput_capacity | (required) | No |
 | subnet_ids | (required) | Yes |
-| preferred_subnet_id | (conditional) | Yes |
+| preferred_subnet_id | (required for MULTI_AZ_1) | Yes |
 | security_group_ids | (optional) | Yes |
 | kms_key_id | AWS-managed | Yes |
-| active_directory_id | (conditional) | No |
+| backup_id | (none) | Yes |
+| active_directory_id | (conditional) | Yes |
 | self_managed_active_directory | (conditional) | Partial |
 | aliases | (none) | No |
 | audit_log_configuration | (disabled) | No |
@@ -522,3 +523,4 @@ For API reference and examples, see the parent [README.md](../README.md) and [ex
 | automatic_backup_retention_days | 7 | No |
 | copy_tags_to_backups | false | Yes |
 | skip_final_backup | true | No |
+| final_backup_tags | (none) | No |

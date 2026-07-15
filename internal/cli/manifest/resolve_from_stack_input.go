@@ -22,6 +22,14 @@ var clipboardFlagValues = []string{"--clipboard", "--clip", "--cb", "-c"}
 // Special case: If the flag value is a clipboard flag name (e.g., "-i --clip"),
 // this indicates the user wants to read stack input from clipboard.
 func resolveFromStackInput(cmd *cobra.Command) (manifestPath string, isTemp bool, err error) {
+	// Not every command tree registers --stack-input (it is a pulumi-tree
+	// flag); for commands that don't, this source is simply absent rather
+	// than an error -- otherwise every tofu/terraform command that resolves
+	// a manifest would crash before reading --manifest.
+	if cmd.Flags().Lookup(string(flag.StackInput)) == nil {
+		return "", false, nil
+	}
+
 	stackInputPath, err := cmd.Flags().GetString(string(flag.StackInput))
 	if err != nil {
 		return "", false, errors.Wrap(err, "failed to get stack-input flag")

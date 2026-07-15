@@ -1,0 +1,14 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsWafRegexPatternSet
+metadata:
+  name: blocked-path-probes
+  org: acme
+  env: dev
+spec:
+  region: us-west-2
+  scope: REGIONAL
+  regularExpressions:
+    - ^/wp-admin/.*
+    - ^/\.env$
+    - ^/phpmyadmin/.*
+  description: Common scanner probe paths

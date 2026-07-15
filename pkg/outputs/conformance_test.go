@@ -1029,6 +1029,31 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsS3ObjectSet: a map-output kind — the three per-key maps are
+			// dot-flattened by both engines (object_etags.config/app.json = ...)
+			// and must route back into the proto maps with keys VERBATIM
+			// (object keys contain slashes and dots). bucket_id keys the E2E
+			// verifier's HeadObject loop; object_arns composes into IAM policy
+			// Resource lists.
+			name: "AwsS3ObjectSet",
+			kind: cloudresourcekind.CloudResourceKind_AwsS3ObjectSet,
+			rawOutputs: map[string]interface{}{
+				"bucket_id": "planton-oss-e2e-awss3bucket-prereq",
+				"object_arns": map[string]interface{}{
+					"config/app.json": "arn:aws:s3:::planton-oss-e2e-awss3bucket-prereq/config/app.json",
+				},
+				"object_etags": map[string]interface{}{
+					"config/app.json": "9a0364b9e99bb480dd25e1f0284c8555",
+				},
+				"object_version_ids": map[string]interface{}{
+					"config/app.json": "3sL4kqtJlcpXroDTDmJ+rmSpXd3dIbrHY+MTRCxf3vjVBH40Nr8X8gdRQBpUMLUo",
+				},
+			},
+			mustPopulate: []string{
+				"bucket_id", "object_arns", "object_etags", "object_version_ids",
+			},
+		},
+		{
 			// AwsKinesisStream: stream_arn is the join key consumers, Lambda
 			// event source mappings, DynamoDB streaming destinations, and
 			// Firehose sources reference; stream_name keys the E2E verifier.
@@ -1061,15 +1086,890 @@ func TestStackOutputsConformance(t *testing.T) {
 		{
 			// AwsKinesisFirehose: delivery_stream_arn is the IAM/EventBridge
 			// join key; delivery_stream_name keys the E2E verifier and the
-			// MSK broker-log delivery reference.
+			// MSK broker-log delivery reference; destination_id + version_id
+			// are the UpdateDestination coordinates AWS assigns at creation.
 			name: "AwsKinesisFirehose",
 			kind: cloudresourcekind.CloudResourceKind_AwsKinesisFirehose,
 			rawOutputs: map[string]interface{}{
 				"delivery_stream_arn":  "arn:aws:firehose:us-west-2:123456789012:deliverystream/planton-oss-e2e-firehose-smoke",
 				"delivery_stream_name": "planton-oss-e2e-firehose-smoke",
+				"destination_id":       "destinationId-000000000001",
+				"version_id":           "1",
 			},
 			mustPopulate: []string{
-				"delivery_stream_arn", "delivery_stream_name",
+				"delivery_stream_arn", "delivery_stream_name", "destination_id", "version_id",
+			},
+		},
+		{
+			// AwsEcrRepo: repository_url is what docker push/pull targets;
+			// repository_arn scopes IAM policies; repository_name keys the
+			// E2E verifier; registry_id is the owning account.
+			name: "AwsEcrRepo",
+			kind: cloudresourcekind.CloudResourceKind_AwsEcrRepo,
+			rawOutputs: map[string]interface{}{
+				"repository_name": "planton-oss-e2e/full-surface",
+				"repository_url":  "123456789012.dkr.ecr.us-west-2.amazonaws.com/planton-oss-e2e/full-surface",
+				"repository_arn":  "arn:aws:ecr:us-west-2:123456789012:repository/planton-oss-e2e/full-surface",
+				"registry_id":     "123456789012",
+			},
+			mustPopulate: []string{
+				"repository_name", "repository_url", "repository_arn", "registry_id",
+			},
+		},
+		{
+			// AwsRoute53Zone: zone_id is the join key every DNS-composing
+			// resource references (records, ACM validation, ALB/NLB alias
+			// registration) and keys the E2E verifier; nameservers carry the
+			// registrar delegation values.
+			name: "AwsRoute53Zone",
+			kind: cloudresourcekind.CloudResourceKind_AwsRoute53Zone,
+			rawOutputs: map[string]interface{}{
+				"zone_id":             "Z1D633PJN98FT9",
+				"zone_name":           "example.com",
+				"nameservers":         []interface{}{"ns-1.awsdns-01.org", "ns-2.awsdns-02.com"},
+				"primary_name_server": "ns-1.awsdns-01.org",
+				"zone_arn":            "arn:aws:route53:::hostedzone/Z1D633PJN98FT9",
+			},
+			mustPopulate: []string{
+				"zone_id", "zone_name", "nameservers", "primary_name_server", "zone_arn",
+			},
+		},
+		{
+			// AwsRoute53DnsRecord: fqdn + record_type + zone_id together key
+			// the E2E verifier (a record has no standalone describe API);
+			// is_alias and set_identifier echo the record's shape.
+			name: "AwsRoute53DnsRecord",
+			kind: cloudresourcekind.CloudResourceKind_AwsRoute53DnsRecord,
+			rawOutputs: map[string]interface{}{
+				"fqdn":           "canary.example.com",
+				"record_type":    "A",
+				"zone_id":        "Z1D633PJN98FT9",
+				"is_alias":       false,
+				"set_identifier": "canary",
+			},
+			mustPopulate: []string{
+				"fqdn", "record_type", "zone_id", "set_identifier",
+			},
+		},
+		{
+			// AwsRoute53HealthCheck: health_check_id is what DNS records
+			// reference (health_check_id) and calculated parents aggregate;
+			// it also keys the E2E verifier.
+			name: "AwsRoute53HealthCheck",
+			kind: cloudresourcekind.CloudResourceKind_AwsRoute53HealthCheck,
+			rawOutputs: map[string]interface{}{
+				"health_check_id":  "abcdef11-2222-3333-4444-555555fedcba",
+				"health_check_arn": "arn:aws:route53:::healthcheck/abcdef11-2222-3333-4444-555555fedcba",
+			},
+			mustPopulate: []string{
+				"health_check_id", "health_check_arn",
+			},
+		},
+		{
+			// AwsWafWebAcl: web_acl_arn is the FK target for every protected
+			// resource (CloudFront's web_acl_arn, the ALB association);
+			// capacity reports the deployed WCU total and
+			// application_integration_url carries the CAPTCHA/Challenge JS
+			// integration endpoint.
+			name: "AwsWafWebAcl",
+			kind: cloudresourcekind.CloudResourceKind_AwsWafWebAcl,
+			rawOutputs: map[string]interface{}{
+				"web_acl_arn":                 "arn:aws:wafv2:us-west-2:123456789012:regional/webacl/edge-acl/11111111-2222-3333-4444-555555555555",
+				"web_acl_id":                  "11111111-2222-3333-4444-555555555555",
+				"web_acl_name":                "edge-acl",
+				"capacity":                    125,
+				"application_integration_url": "https://11111111.us-west-2.captcha.awswaf.com/11111111/",
+			},
+			mustPopulate: []string{
+				"web_acl_arn", "web_acl_id", "web_acl_name", "capacity", "application_integration_url",
+			},
+		},
+		{
+			// AwsWafIpSet: ip_set_arn is what web ACL ip_set_reference
+			// statements point at; id + name address the set through the
+			// WAFv2 API (and key the E2E verifier).
+			name: "AwsWafIpSet",
+			kind: cloudresourcekind.CloudResourceKind_AwsWafIpSet,
+			rawOutputs: map[string]interface{}{
+				"ip_set_arn":  "arn:aws:wafv2:us-west-2:123456789012:regional/ipset/office-allowlist/66666666-7777-8888-9999-000000000000",
+				"ip_set_id":   "66666666-7777-8888-9999-000000000000",
+				"ip_set_name": "office-allowlist",
+			},
+			mustPopulate: []string{
+				"ip_set_arn", "ip_set_id", "ip_set_name",
+			},
+		},
+		{
+			// AwsWafRegexPatternSet: regex_pattern_set_arn is what web ACL
+			// regex_pattern_set_reference statements point at; id + name
+			// address the set through the WAFv2 API (and key the E2E
+			// verifier).
+			name: "AwsWafRegexPatternSet",
+			kind: cloudresourcekind.CloudResourceKind_AwsWafRegexPatternSet,
+			rawOutputs: map[string]interface{}{
+				"regex_pattern_set_arn":  "arn:aws:wafv2:us-west-2:123456789012:regional/regexpatternset/blocked-paths/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				"regex_pattern_set_id":   "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				"regex_pattern_set_name": "blocked-paths",
+			},
+			mustPopulate: []string{
+				"regex_pattern_set_arn", "regex_pattern_set_id", "regex_pattern_set_name",
+			},
+		},
+		{
+			// AwsBatchComputeEnvironment: compute_environment_arn is what job
+			// queues reference in their compute_environment_order; the name
+			// keys the E2E verifier and ecs_cluster_arn exposes the ECS
+			// cluster Batch runs tasks on.
+			name: "AwsBatchComputeEnvironment",
+			kind: cloudresourcekind.CloudResourceKind_AwsBatchComputeEnvironment,
+			rawOutputs: map[string]interface{}{
+				"compute_environment_arn":  "arn:aws:batch:us-west-2:123456789012:compute-environment/etl-fargate",
+				"compute_environment_name": "etl-fargate",
+				"ecs_cluster_arn":          "arn:aws:ecs:us-west-2:123456789012:cluster/AWSBatch-etl-fargate-11111111-2222-3333-4444-555555555555",
+				"status":                   "VALID",
+			},
+			mustPopulate: []string{
+				"compute_environment_arn", "compute_environment_name", "ecs_cluster_arn", "status",
+			},
+		},
+		{
+			// AwsBatchJobQueue: job_queue_arn is the submission handle and
+			// the target EventBridge Batch targets point at; the name keys
+			// the E2E verifier and name-addressed SubmitJob calls.
+			name: "AwsBatchJobQueue",
+			kind: cloudresourcekind.CloudResourceKind_AwsBatchJobQueue,
+			rawOutputs: map[string]interface{}{
+				"job_queue_arn":  "arn:aws:batch:us-west-2:123456789012:job-queue/etl-queue",
+				"job_queue_name": "etl-queue",
+			},
+			mustPopulate: []string{
+				"job_queue_arn", "job_queue_name",
+			},
+		},
+		{
+			// AwsBatchSchedulingPolicy: scheduling_policy_arn is what job
+			// queues reference through their scheduling_policy field.
+			name: "AwsBatchSchedulingPolicy",
+			kind: cloudresourcekind.CloudResourceKind_AwsBatchSchedulingPolicy,
+			rawOutputs: map[string]interface{}{
+				"scheduling_policy_arn":  "arn:aws:batch:us-west-2:123456789012:scheduling-policy/fair-share",
+				"scheduling_policy_name": "fair-share",
+			},
+			mustPopulate: []string{
+				"scheduling_policy_arn", "scheduling_policy_name",
+			},
+		},
+		{
+			// AwsBatchJobDefinition: the revision-carrying job_definition_arn
+			// is what EventBridge Batch targets reference (a new revision
+			// rolls the rule); arn_without_revision serves latest-ACTIVE
+			// consumers and revision is int64-typed.
+			name: "AwsBatchJobDefinition",
+			kind: cloudresourcekind.CloudResourceKind_AwsBatchJobDefinition,
+			rawOutputs: map[string]interface{}{
+				"job_definition_arn":   "arn:aws:batch:us-west-2:123456789012:job-definition/etl:7",
+				"arn_without_revision": "arn:aws:batch:us-west-2:123456789012:job-definition/etl",
+				"job_definition_name":  "etl",
+				"revision":             7,
+			},
+			mustPopulate: []string{
+				"job_definition_arn", "arn_without_revision", "job_definition_name", "revision",
+			},
+		},
+		{
+			// AwsCloudwatchLogGroup: log_group_arn is the FK target for Step
+			// Functions logging, Route 53 query logging, API Gateway access
+			// logs, and OpenSearch log publishing; log_group_name is the join
+			// key for name-addressed consumers (ECS awslogs, ElastiCache) and
+			// the E2E verifier.
+			name: "AwsCloudwatchLogGroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsCloudwatchLogGroup,
+			rawOutputs: map[string]interface{}{
+				"log_group_arn":  "arn:aws:logs:us-west-2:123456789012:log-group:app-logs",
+				"log_group_name": "app-logs",
+			},
+			mustPopulate: []string{
+				"log_group_arn", "log_group_name",
+			},
+		},
+		{
+			// AwsCloudwatchAlarm: alarm_arn is referenced by ECS service
+			// rollback alarms and ASG instance-refresh alarms; alarm_name is
+			// the join key composite alarm rules and actions suppressors use,
+			// and keys the E2E verifier.
+			name: "AwsCloudwatchAlarm",
+			kind: cloudresourcekind.CloudResourceKind_AwsCloudwatchAlarm,
+			rawOutputs: map[string]interface{}{
+				"alarm_arn":  "arn:aws:cloudwatch:us-west-2:123456789012:alarm:cpu-high",
+				"alarm_name": "cpu-high",
+			},
+			mustPopulate: []string{
+				"alarm_arn", "alarm_name",
+			},
+		},
+		{
+			// AwsCloudwatchCompositeAlarm: alarm_name is how parent composite
+			// alarms reference this one inside their own rule expressions;
+			// it also keys the E2E verifier.
+			name: "AwsCloudwatchCompositeAlarm",
+			kind: cloudresourcekind.CloudResourceKind_AwsCloudwatchCompositeAlarm,
+			rawOutputs: map[string]interface{}{
+				"alarm_arn":  "arn:aws:cloudwatch:us-west-2:123456789012:alarm:shared-cause",
+				"alarm_name": "shared-cause",
+			},
+			mustPopulate: []string{
+				"alarm_arn", "alarm_name",
+			},
+		},
+		{
+			// AwsStepFunction: state_machine_arn is the FK target for
+			// EventBridge targets and API Gateway service integrations;
+			// state_machine_version_arn pins consumers to a published
+			// snapshot when spec.publish is set. The name keys the E2E
+			// verifier.
+			name: "AwsStepFunction",
+			kind: cloudresourcekind.CloudResourceKind_AwsStepFunction,
+			rawOutputs: map[string]interface{}{
+				"state_machine_arn":         "arn:aws:states:us-west-2:123456789012:stateMachine:orders",
+				"state_machine_name":        "orders",
+				"state_machine_version_arn": "arn:aws:states:us-west-2:123456789012:stateMachine:orders:1",
+				"revision_id":               "aaaa1111-bbbb-2222-cccc-333344445555",
+				"status":                    "ACTIVE",
+				"creation_date":             "2026-07-07T00:00:00Z",
+			},
+			mustPopulate: []string{
+				"state_machine_arn", "state_machine_name",
+				"state_machine_version_arn", "revision_id", "status", "creation_date",
+			},
+		},
+		{
+			// AwsHttpApiGateway: api_id is the join key domain mappings
+			// reference; execution_arn feeds Lambda resource policies;
+			// stage_name composes into domain mappings.
+			name: "AwsHttpApiGateway",
+			kind: cloudresourcekind.CloudResourceKind_AwsHttpApiGateway,
+			rawOutputs: map[string]interface{}{
+				"api_id":           "a1b2c3d4",
+				"api_endpoint":     "https://a1b2c3d4.execute-api.us-west-2.amazonaws.com",
+				"api_arn":          "arn:aws:apigateway:us-west-2::/apis/a1b2c3d4",
+				"execution_arn":    "arn:aws:execute-api:us-west-2:123456789012:a1b2c3d4",
+				"stage_invoke_url": "https://a1b2c3d4.execute-api.us-west-2.amazonaws.com",
+				"stage_name":       "$default",
+			},
+			mustPopulate: []string{
+				"api_id", "api_endpoint", "api_arn",
+				"execution_arn", "stage_invoke_url", "stage_name",
+			},
+		},
+		{
+			// AwsHttpApiVpcLink: vpc_link_id is what private integrations set
+			// as connection_id; it also keys the E2E verifier.
+			name: "AwsHttpApiVpcLink",
+			kind: cloudresourcekind.CloudResourceKind_AwsHttpApiVpcLink,
+			rawOutputs: map[string]interface{}{
+				"vpc_link_id":  "abc123",
+				"vpc_link_arn": "arn:aws:apigateway:us-west-2::/vpclinks/abc123",
+			},
+			mustPopulate: []string{"vpc_link_id", "vpc_link_arn"},
+		},
+		{
+			// AwsHttpApiDomain: target_domain_name + hosted_zone_id are the
+			// DNS composition surface (a Route 53 alias record targets them);
+			// domain_name is the domain's join key and keys the E2E verifier.
+			name: "AwsHttpApiDomain",
+			kind: cloudresourcekind.CloudResourceKind_AwsHttpApiDomain,
+			rawOutputs: map[string]interface{}{
+				"domain_name":        "api.example.com",
+				"domain_name_arn":    "arn:aws:apigateway:us-west-2::/domainnames/api.example.com",
+				"target_domain_name": "d-abc123.execute-api.us-west-2.amazonaws.com",
+				"hosted_zone_id":     "Z2OJLYMUO9EFXC",
+			},
+			mustPopulate: []string{
+				"domain_name", "domain_name_arn", "target_domain_name", "hosted_zone_id",
+			},
+		},
+		{
+			// AwsCognitoUserPool: issuer is the JWT-authorizer join key (the
+			// scheme-carrying spelling of user_pool_endpoint); user_pool_domain
+			// is the RAW domain string ALB authenticate-cognito actions take;
+			// the CloudFront trio composes a custom domain's DNS alias record.
+			name: "AwsCognitoUserPool",
+			kind: cloudresourcekind.CloudResourceKind_AwsCognitoUserPool,
+			rawOutputs: map[string]interface{}{
+				"user_pool_id":                "us-west-2_Ab1Cd2EfG",
+				"user_pool_arn":               "arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_Ab1Cd2EfG",
+				"user_pool_endpoint":          "cognito-idp.us-west-2.amazonaws.com/us-west-2_Ab1Cd2EfG",
+				"issuer":                      "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_Ab1Cd2EfG",
+				"user_pool_domain":            "myapp-auth",
+				"hosted_ui_url":               "https://myapp-auth.auth.us-west-2.amazoncognito.com",
+				"cloudfront_distribution":     "d111abcdef8.cloudfront.net",
+				"cloudfront_distribution_arn": "arn:aws:cloudfront::123456789012:distribution/E1ABCDEF",
+				"cloudfront_hosted_zone_id":   "Z2FDTNDATAQYW2",
+			},
+			mustPopulate: []string{
+				"user_pool_id", "user_pool_arn", "user_pool_endpoint", "issuer",
+				"user_pool_domain", "hosted_ui_url",
+				"cloudfront_distribution", "cloudfront_distribution_arn", "cloudfront_hosted_zone_id",
+			},
+		},
+		{
+			// AwsCognitoIdentityProvider: provider_name is the sole
+			// integration identifier (IdPs have no ARN) -- app clients list it
+			// in supported_identity_providers.
+			name: "AwsCognitoIdentityProvider",
+			kind: cloudresourcekind.CloudResourceKind_AwsCognitoIdentityProvider,
+			rawOutputs: map[string]interface{}{
+				"provider_name": "Google",
+				"provider_type": "Google",
+				"user_pool_id":  "us-west-2_Ab1Cd2EfG",
+			},
+			mustPopulate: []string{"provider_name", "provider_type", "user_pool_id"},
+		},
+		{
+			// AwsCognitoUserPoolClient: client_id is the join key JWT
+			// authorizers list as an audience and ALB authenticate-cognito
+			// actions take as user_pool_client_id; the secret only exists for
+			// confidential clients.
+			name: "AwsCognitoUserPoolClient",
+			kind: cloudresourcekind.CloudResourceKind_AwsCognitoUserPoolClient,
+			rawOutputs: map[string]interface{}{
+				"client_id":     "1a2b3c4d5e6f7g8h9i0j",
+				"client_secret": "shhh-not-a-real-secret",
+				"user_pool_id":  "us-west-2_Ab1Cd2EfG",
+			},
+			mustPopulate: []string{"client_id", "client_secret", "user_pool_id"},
+		},
+		{
+			// AwsCognitoResourceServer: scope_identifiers are the exact
+			// strings app clients list in allowed_oauth_scopes; the identifier
+			// keys the E2E verifier within its pool.
+			name: "AwsCognitoResourceServer",
+			kind: cloudresourcekind.CloudResourceKind_AwsCognitoResourceServer,
+			rawOutputs: map[string]interface{}{
+				"resource_server_identifier": "https://api.example.com",
+				"scope_identifiers":          []interface{}{"https://api.example.com/read", "https://api.example.com/orders:write"},
+				"user_pool_id":               "us-west-2_Ab1Cd2EfG",
+			},
+			mustPopulate: []string{"resource_server_identifier", "scope_identifiers", "user_pool_id"},
+		},
+		{
+			// AwsElasticFileSystem: both engines emit the file system identity,
+			// the regional DNS name, the four per-subnet mount-target maps
+			// (keyed by resolved subnet ID), and the replication destination
+			// (empty string when replication is not configured — the shape must
+			// stay stable across the arms).
+			name: "AwsElasticFileSystem",
+			kind: cloudresourcekind.CloudResourceKind_AwsElasticFileSystem,
+			rawOutputs: map[string]interface{}{
+				"file_system_id":  "fs-0123456789abcdef0",
+				"file_system_arn": "arn:aws:elasticfilesystem:us-west-2:123456789012:file-system/fs-0123456789abcdef0",
+				"dns_name":        "fs-0123456789abcdef0.efs.us-west-2.amazonaws.com",
+				"mount_target_ids": map[string]interface{}{
+					"subnet-0aaa": "fsmt-0123456789abcdef0",
+					"subnet-0bbb": "fsmt-0123456789abcdef1",
+				},
+				"mount_target_ips": map[string]interface{}{
+					"subnet-0aaa": "10.0.1.50",
+					"subnet-0bbb": "10.0.2.51",
+				},
+				"mount_target_ipv6_addresses": map[string]interface{}{
+					"subnet-0aaa": "",
+					"subnet-0bbb": "",
+				},
+				"mount_target_dns_names": map[string]interface{}{
+					"subnet-0aaa": "us-west-2a.fs-0123456789abcdef0.efs.us-west-2.amazonaws.com",
+					"subnet-0bbb": "us-west-2b.fs-0123456789abcdef0.efs.us-west-2.amazonaws.com",
+				},
+				"replication_destination_file_system_id": "",
+			},
+			mustPopulate: []string{"file_system_id", "file_system_arn", "dns_name", "mount_target_ids", "mount_target_ips", "mount_target_dns_names"},
+		},
+		{
+			// AwsEfsAccessPoint: both engines emit the access point identity
+			// (Lambda takes the ARN, ECS volume authorization the ID) plus the
+			// file system it enters, so consumers can wire everything from
+			// this one node.
+			name: "AwsEfsAccessPoint",
+			kind: cloudresourcekind.CloudResourceKind_AwsEfsAccessPoint,
+			rawOutputs: map[string]interface{}{
+				"access_point_id":  "fsap-0123456789abcdef0",
+				"access_point_arn": "arn:aws:elasticfilesystem:us-west-2:123456789012:access-point/fsap-0123456789abcdef0",
+				"file_system_id":   "fs-0123456789abcdef0",
+				"file_system_arn":  "arn:aws:elasticfilesystem:us-west-2:123456789012:file-system/fs-0123456789abcdef0",
+			},
+			mustPopulate: []string{"access_point_id", "access_point_arn", "file_system_id", "file_system_arn"},
+		},
+		{
+			// AwsSesConfigurationSet: configuration_set_name is the join key
+			// email identities reference through their configuration_set field
+			// (and what SendEmail calls name); the ARN scopes IAM sending
+			// policies. The name also keys the E2E verifier.
+			name: "AwsSesConfigurationSet",
+			kind: cloudresourcekind.CloudResourceKind_AwsSesConfigurationSet,
+			rawOutputs: map[string]interface{}{
+				"configuration_set_arn":  "arn:aws:ses:us-west-2:123456789012:configuration-set/transactional-set",
+				"configuration_set_name": "transactional-set",
+			},
+			mustPopulate: []string{"configuration_set_arn", "configuration_set_name"},
+		},
+		{
+			// AwsSesEmailIdentity: the identity string keys the E2E verifier
+			// and composes DNS record names; dkim_tokens is the repeated
+			// output downstream Route53 CNAME records are built from -- it
+			// must land on the proto's repeated field, not silently drop.
+			name: "AwsSesEmailIdentity",
+			kind: cloudresourcekind.CloudResourceKind_AwsSesEmailIdentity,
+			rawOutputs: map[string]interface{}{
+				"identity_arn":        "arn:aws:ses:us-west-2:123456789012:identity/example.com",
+				"email_identity":      "example.com",
+				"identity_type":       "DOMAIN",
+				"verification_status": "PENDING",
+				"dkim_tokens": []interface{}{
+					"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+					"cccccccccccccccccccccccccccccccc",
+				},
+			},
+			mustPopulate: []string{"identity_arn", "email_identity", "identity_type", "verification_status", "dkim_tokens"},
+		},
+		{
+			// AwsAppRunnerService: service_arn is the join key (VPC ingress
+			// connections, deployment triggers, WAF association); service_url
+			// is the endpoint consumers point DNS at; custom_domains guards
+			// the two-level repeated-message shape (per-domain DNS target +
+			// certificate-validation records) Route53 compositions consume.
+			name: "AwsAppRunnerService",
+			kind: cloudresourcekind.CloudResourceKind_AwsAppRunnerService,
+			rawOutputs: map[string]interface{}{
+				"service_arn":    "arn:aws:apprunner:us-west-2:123456789012:service/my-api/abc123",
+				"service_id":     "abc123",
+				"service_url":    "abc123.us-west-2.awsapprunner.com",
+				"service_name":   "my-api",
+				"service_status": "RUNNING",
+				"custom_domains": []interface{}{
+					map[string]interface{}{
+						"domain_name": "app.example.com",
+						"dns_target":  "abc123.us-west-2.awsapprunner.com",
+						"status":      "pending_certificate_dns_validation",
+						"certificate_validation_records": []interface{}{
+							map[string]interface{}{
+								"record_name":  "_abc123.app.example.com.",
+								"record_type":  "CNAME",
+								"record_value": "_def456.acm-validations.aws.",
+							},
+						},
+					},
+				},
+			},
+			mustPopulate: []string{
+				"service_arn", "service_id", "service_url", "service_name",
+				"service_status", "custom_domains",
+			},
+		},
+		{
+			// AwsAppRunnerAutoScalingConfiguration: the revision-carrying ARN
+			// is what services reference (and what rolls them when a new
+			// revision registers); it also keys the E2E verifier.
+			name: "AwsAppRunnerAutoScalingConfiguration",
+			kind: cloudresourcekind.CloudResourceKind_AwsAppRunnerAutoScalingConfiguration,
+			rawOutputs: map[string]interface{}{
+				"configuration_arn":      "arn:aws:apprunner:us-west-2:123456789012:autoscalingconfiguration/my-asc/3/abc123",
+				"configuration_revision": 3,
+				"latest":                 true,
+			},
+			mustPopulate: []string{"configuration_arn", "configuration_revision", "latest"},
+		},
+		{
+			// AwsAppRunnerVpcConnector: the ARN is the egress join key App
+			// Runner services reference; it also keys the E2E verifier.
+			name: "AwsAppRunnerVpcConnector",
+			kind: cloudresourcekind.CloudResourceKind_AwsAppRunnerVpcConnector,
+			rawOutputs: map[string]interface{}{
+				"vpc_connector_arn":      "arn:aws:apprunner:us-west-2:123456789012:vpcconnector/my-vc/1/abc123",
+				"vpc_connector_revision": 1,
+				"status":                 "ACTIVE",
+			},
+			mustPopulate: []string{"vpc_connector_arn", "vpc_connector_revision", "status"},
+		},
+		{
+			// AwsAppRunnerObservabilityConfiguration: the revision-carrying
+			// ARN is what services reference to enable tracing; it also keys
+			// the E2E verifier.
+			name: "AwsAppRunnerObservabilityConfiguration",
+			kind: cloudresourcekind.CloudResourceKind_AwsAppRunnerObservabilityConfiguration,
+			rawOutputs: map[string]interface{}{
+				"configuration_arn":      "arn:aws:apprunner:us-west-2:123456789012:observabilityconfiguration/my-oc/2/abc123",
+				"configuration_revision": 2,
+				"latest":                 true,
+			},
+			mustPopulate: []string{"configuration_arn", "configuration_revision", "latest"},
+		},
+		{
+			// AwsTransitGateway: the gateway ID is the join key attachments,
+			// route tables, and subnet routes reference; the default route
+			// table pair lets tooling address the built-in tables.
+			name: "AwsTransitGateway",
+			kind: cloudresourcekind.CloudResourceKind_AwsTransitGateway,
+			rawOutputs: map[string]interface{}{
+				"transit_gateway_id":                 "tgw-0123456789abcdef0",
+				"transit_gateway_arn":                "arn:aws:ec2:us-west-2:123456789012:transit-gateway/tgw-0123456789abcdef0",
+				"owner_id":                           "123456789012",
+				"association_default_route_table_id": "tgw-rtb-0123456789abcdef0",
+				"propagation_default_route_table_id": "tgw-rtb-0123456789abcdef0",
+			},
+			mustPopulate: []string{"transit_gateway_id", "transit_gateway_arn", "owner_id", "association_default_route_table_id", "propagation_default_route_table_id"},
+		},
+		{
+			// AwsTransitGatewayVpcAttachment: the attachment ID is the join
+			// key route tables associate, propagate, and route against.
+			name: "AwsTransitGatewayVpcAttachment",
+			kind: cloudresourcekind.CloudResourceKind_AwsTransitGatewayVpcAttachment,
+			rawOutputs: map[string]interface{}{
+				"attachment_id":  "tgw-attach-0123456789abcdef0",
+				"attachment_arn": "arn:aws:ec2:us-west-2:123456789012:transit-gateway-attachment/tgw-attach-0123456789abcdef0",
+				"vpc_owner_id":   "123456789012",
+			},
+			mustPopulate: []string{"attachment_id", "attachment_arn", "vpc_owner_id"},
+		},
+		{
+			// AwsTransitGatewayRouteTable: the table ID keys the E2E verifier
+			// and any route-management tooling.
+			name: "AwsTransitGatewayRouteTable",
+			kind: cloudresourcekind.CloudResourceKind_AwsTransitGatewayRouteTable,
+			rawOutputs: map[string]interface{}{
+				"route_table_id":  "tgw-rtb-0123456789abcdef0",
+				"route_table_arn": "arn:aws:ec2:us-west-2:123456789012:transit-gateway-route-table/tgw-rtb-0123456789abcdef0",
+			},
+			mustPopulate: []string{"route_table_id", "route_table_arn"},
+		},
+		{
+			// AwsAthenaWorkgroup: workgroup_name keys the E2E verifier and every
+			// StartQueryExecution call; effective_engine_version reflects what AWS
+			// resolved for an AUTO engine selection.
+			name: "AwsAthenaWorkgroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsAthenaWorkgroup,
+			rawOutputs: map[string]interface{}{
+				"workgroup_arn":            "arn:aws:athena:us-west-2:123456789012:workgroup/analytics",
+				"workgroup_name":           "analytics",
+				"effective_engine_version": "Athena engine version 3",
+			},
+			mustPopulate: []string{"workgroup_arn", "workgroup_name", "effective_engine_version"},
+		},
+		{
+			// AwsGlueCatalogDatabase: database_name keys the E2E verifier and is
+			// the join key Athena queries, Glue crawlers, and Redshift Spectrum
+			// external schemas reference.
+			name: "AwsGlueCatalogDatabase",
+			kind: cloudresourcekind.CloudResourceKind_AwsGlueCatalogDatabase,
+			rawOutputs: map[string]interface{}{
+				"database_name": "sales_lake",
+				"database_arn":  "arn:aws:glue:us-west-2:123456789012:database/sales_lake",
+				"catalog_id":    "123456789012",
+			},
+			mustPopulate: []string{"database_name", "database_arn", "catalog_id"},
+		},
+		{
+			// AwsCodeBuildProject: project_name keys the E2E verifier and
+			// CodePipeline Build actions; the webhook trio (incl. the
+			// provider-minted secret) is exported empty when no webhook exists,
+			// so the output SHAPE is engine- and configuration-invariant.
+			name: "AwsCodeBuildProject",
+			kind: cloudresourcekind.CloudResourceKind_AwsCodeBuildProject,
+			rawOutputs: map[string]interface{}{
+				"project_arn":          "arn:aws:codebuild:us-west-2:123456789012:project/api-ci",
+				"project_name":         "api-ci",
+				"service_role_arn":     "arn:aws:iam::123456789012:role/codebuild-service-role",
+				"badge_url":            "https://codebuild.us-west-2.amazonaws.com/badges?uuid=abc",
+				"public_project_alias": "api-ci-public",
+				"webhook_url":          "https://github.com/example/repo/settings/hooks/1",
+				"webhook_payload_url":  "https://codebuild.us-west-2.amazonaws.com/webhooks?t=abc",
+				"webhook_secret":       "0123456789abcdef",
+			},
+			mustPopulate: []string{
+				"project_arn", "project_name", "service_role_arn", "badge_url",
+				"public_project_alias", "webhook_url", "webhook_payload_url", "webhook_secret",
+			},
+		},
+		{
+			// AwsCodePipeline: pipeline_name keys the E2E verifier and CLI
+			// operations; pipeline_arn is what IAM policies and EventBridge
+			// targets reference.
+			name: "AwsCodePipeline",
+			kind: cloudresourcekind.CloudResourceKind_AwsCodePipeline,
+			rawOutputs: map[string]interface{}{
+				"pipeline_arn":  "arn:aws:codepipeline:us-west-2:123456789012:release-pipeline",
+				"pipeline_name": "release-pipeline",
+			},
+			mustPopulate: []string{"pipeline_arn", "pipeline_name"},
+		},
+		{
+			// AwsMemorydbCluster: cluster_name keys the E2E verifier;
+			// cluster_endpoint_address/port are what applications connect to;
+			// the group-name pair is exported in EVERY arm (module-managed,
+			// bring-your-own, or empty when a default applies) so the output
+			// shape is engine- and configuration-invariant.
+			name: "AwsMemorydbCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsMemorydbCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_endpoint_address": "clustercfg.sessions.abc123.memorydb.us-west-2.amazonaws.com",
+				"cluster_endpoint_port":    6379,
+				"cluster_arn":              "arn:aws:memorydb:us-west-2:123456789012:cluster/sessions",
+				"cluster_name":             "sessions",
+				"engine_patch_version":     "7.2.6",
+				"subnet_group_name":        "sessions",
+				"parameter_group_name":     "",
+			},
+			mustPopulate: []string{
+				"cluster_endpoint_address", "cluster_endpoint_port", "cluster_arn",
+				"cluster_name", "engine_patch_version", "subnet_group_name",
+			},
+		},
+		{
+			// AwsMemorydbUser: user_name is the join key ACL membership lists
+			// reference; user_arn is what IAM memorydb:Connect policies need.
+			name: "AwsMemorydbUser",
+			kind: cloudresourcekind.CloudResourceKind_AwsMemorydbUser,
+			rawOutputs: map[string]interface{}{
+				"user_name":              "orders-service",
+				"user_arn":               "arn:aws:memorydb:us-west-2:123456789012:user/orders-service",
+				"minimum_engine_version": "7.2",
+			},
+			mustPopulate: []string{"user_name", "user_arn", "minimum_engine_version"},
+		},
+		{
+			// AwsMemorydbAcl: acl_name is the join key the cluster's acl_name
+			// reference resolves against.
+			name: "AwsMemorydbAcl",
+			kind: cloudresourcekind.CloudResourceKind_AwsMemorydbAcl,
+			rawOutputs: map[string]interface{}{
+				"acl_name":               "payments-env-acl",
+				"acl_arn":                "arn:aws:memorydb:us-west-2:123456789012:acl/payments-env-acl",
+				"minimum_engine_version": "7.2",
+			},
+			mustPopulate: []string{"acl_name", "acl_arn", "minimum_engine_version"},
+		},
+		{
+			// AwsClientVpn: the endpoint ID keys the E2E verifier and the
+			// client-configuration export; subnet_association_ids proves the
+			// dot-flattened map route into the proto map field; the TGW
+			// attachment ID is exported empty for VPC-attached endpoints so
+			// the output shape is configuration-invariant.
+			name: "AwsClientVpn",
+			kind: cloudresourcekind.CloudResourceKind_AwsClientVpn,
+			rawOutputs: map[string]interface{}{
+				"client_vpn_endpoint_id":               "cvpn-endpoint-0123456789abcdef0",
+				"client_vpn_endpoint_arn":              "arn:aws:ec2:us-west-2:123456789012:client-vpn-endpoint/cvpn-endpoint-0123456789abcdef0",
+				"endpoint_dns_name":                    "cvpn-endpoint-0123456789abcdef0.prod.clientvpn.us-west-2.amazonaws.com",
+				"self_service_portal_url":              "",
+				"subnet_association_ids.subnet-aaa111": "cvpn-assoc-0aaa",
+				"subnet_association_ids.subnet-bbb222": "cvpn-assoc-0bbb",
+				"transit_gateway_attachment_id":        "",
+			},
+			mustPopulate: []string{
+				"client_vpn_endpoint_id", "client_vpn_endpoint_arn", "endpoint_dns_name",
+				"subnet_association_ids",
+			},
+		},
+		{
+			// AwsGlobalAccelerator: the accelerator ARN keys the E2E verifier;
+			// the repeated accelerator_ip_addresses guards the static-anycast
+			// export both engines flatten from ip_sets (an engine that exports
+			// an empty list fails here); the dot-flattened listener/endpoint
+			// group maps prove the name-keyed ARN routes into the proto map
+			// fields, including the "listener/group" composite keys surviving
+			// per-segment field lookup. dual_stack_dns_name is exported empty
+			// for IPV4 accelerators so the output shape is
+			// configuration-invariant.
+			name: "AwsGlobalAccelerator",
+			kind: cloudresourcekind.CloudResourceKind_AwsGlobalAccelerator,
+			rawOutputs: map[string]interface{}{
+				"accelerator_arn":                 "arn:aws:globalaccelerator::123456789012:accelerator/1234abcd-abcd-1234-abcd-1234abcdefgh",
+				"accelerator_dns_name":            "a1234567890abcdef.awsglobalaccelerator.com",
+				"accelerator_dual_stack_dns_name": "",
+				"accelerator_hosted_zone_id":      "Z2BJ6XQ5FK7U4H",
+				"accelerator_ip_addresses":        []interface{}{"75.2.0.1", "99.83.0.1"},
+				"listener_arns.web":               "arn:aws:globalaccelerator::123456789012:accelerator/1234abcd-abcd-1234-abcd-1234abcdefgh/listener/0123vxyz",
+				"endpoint_group_arns.web/primary": "arn:aws:globalaccelerator::123456789012:accelerator/1234abcd-abcd-1234-abcd-1234abcdefgh/listener/0123vxyz/endpoint-group/098765zyxwvu",
+			},
+			mustPopulate: []string{
+				"accelerator_arn", "accelerator_dns_name", "accelerator_hosted_zone_id",
+				"accelerator_ip_addresses", "listener_arns", "endpoint_group_arns",
+			},
+		},
+		{
+			// AwsFsxLustreFileSystem: file_system_id keys the E2E verifier;
+			// dns_name + mount_name compose the Lustre mount command; the
+			// repeated network_interface_ids guard the ENI list export both
+			// engines emit.
+			name: "AwsFsxLustreFileSystem",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxLustreFileSystem,
+			rawOutputs: map[string]interface{}{
+				"file_system_id":           "fs-0123456789abcdef0",
+				"file_system_arn":          "arn:aws:fsx:us-west-2:123456789012:file-system/fs-0123456789abcdef0",
+				"dns_name":                 "fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"mount_name":               "2p5wpbwj",
+				"network_interface_ids":    []interface{}{"eni-0abc123", "eni-0def456"},
+				"vpc_id":                   "vpc-0abc123",
+				"file_system_type_version": "2.15",
+				"owner_id":                 "123456789012",
+			},
+			mustPopulate: []string{
+				"file_system_id", "file_system_arn", "dns_name", "mount_name",
+				"network_interface_ids", "vpc_id", "file_system_type_version", "owner_id",
+			},
+		},
+		{
+			// AwsFsxOpenzfsFileSystem: file_system_id keys the E2E verifier;
+			// root_volume_id is the join key for child volumes;
+			// endpoint_ip_address carries the (floating, for MULTI_AZ) NFS
+			// endpoint.
+			name: "AwsFsxOpenzfsFileSystem",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxOpenzfsFileSystem,
+			rawOutputs: map[string]interface{}{
+				"file_system_id":        "fs-0123456789abcdef0",
+				"file_system_arn":       "arn:aws:fsx:us-west-2:123456789012:file-system/fs-0123456789abcdef0",
+				"dns_name":              "fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"endpoint_ip_address":   "10.0.1.25",
+				"root_volume_id":        "fsvol-0123456789abcdef0",
+				"network_interface_ids": []interface{}{"eni-0abc123"},
+				"vpc_id":                "vpc-0abc123",
+				"owner_id":              "123456789012",
+			},
+			mustPopulate: []string{
+				"file_system_id", "file_system_arn", "dns_name", "endpoint_ip_address",
+				"root_volume_id", "network_interface_ids", "vpc_id", "owner_id",
+			},
+		},
+		{
+			// AwsFsxWindowsFileSystem: file_system_id keys the E2E verifier;
+			// preferred_file_server_ip + remote_administration_endpoint carry
+			// the SMB/PowerShell endpoints.
+			name: "AwsFsxWindowsFileSystem",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxWindowsFileSystem,
+			rawOutputs: map[string]interface{}{
+				"file_system_id":                 "fs-0123456789abcdef0",
+				"file_system_arn":                "arn:aws:fsx:us-west-2:123456789012:file-system/fs-0123456789abcdef0",
+				"dns_name":                       "fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"preferred_file_server_ip":       "10.0.1.30",
+				"remote_administration_endpoint": "fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"network_interface_ids":          []interface{}{"eni-0abc123"},
+				"vpc_id":                         "vpc-0abc123",
+				"owner_id":                       "123456789012",
+			},
+			mustPopulate: []string{
+				"file_system_id", "file_system_arn", "dns_name", "preferred_file_server_ip",
+				"remote_administration_endpoint", "network_interface_ids", "vpc_id", "owner_id",
+			},
+		},
+		{
+			// AwsFsxDataRepositoryAssociation: association_id keys the E2E
+			// verifier and FSx data repository tasks; file_system_id is
+			// echoed for composition.
+			name: "AwsFsxDataRepositoryAssociation",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxDataRepositoryAssociation,
+			rawOutputs: map[string]interface{}{
+				"association_id":  "dra-0123456789abcdef0",
+				"association_arn": "arn:aws:fsx:us-west-2:123456789012:association/fs-0123456789abcdef0/dra-0123456789abcdef0",
+				"file_system_id":  "fs-0123456789abcdef0",
+			},
+			mustPopulate: []string{
+				"association_id", "association_arn", "file_system_id",
+			},
+		},
+		{
+			// AwsFsxOntapFileSystem: file_system_id keys the E2E verifier and
+			// is the SVM join key; the management/intercluster endpoint pairs
+			// carry the ONTAP CLI and SnapMirror endpoints (there is NO
+			// file-system-level data dns_name for ONTAP — data access is via
+			// SVM endpoints); the repeated lists guard the multi-value
+			// exports both engines emit.
+			name: "AwsFsxOntapFileSystem",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxOntapFileSystem,
+			rawOutputs: map[string]interface{}{
+				"file_system_id":            "fs-0123456789abcdef0",
+				"file_system_arn":           "arn:aws:fsx:us-west-2:123456789012:file-system/fs-0123456789abcdef0",
+				"management_dns_name":       "management.fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"management_ip_addresses":   []interface{}{"198.19.255.10"},
+				"intercluster_dns_name":     "intercluster.fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"intercluster_ip_addresses": []interface{}{"198.19.255.11", "198.19.255.12"},
+				"network_interface_ids":     []interface{}{"eni-0abc123", "eni-0def456"},
+				"vpc_id":                    "vpc-0abc123",
+				"owner_id":                  "123456789012",
+			},
+			mustPopulate: []string{
+				"file_system_id", "file_system_arn", "management_dns_name",
+				"management_ip_addresses", "intercluster_dns_name",
+				"intercluster_ip_addresses", "network_interface_ids", "vpc_id", "owner_id",
+			},
+		},
+		{
+			// AwsFsxOntapStorageVirtualMachine: svm_id keys the E2E verifier
+			// and is the volume join key; the per-protocol endpoint pairs
+			// (iscsi/management/nfs/smb) carry the data-access surface — smb
+			// is exported empty when no Active Directory is configured so the
+			// output shape stays configuration-invariant.
+			name: "AwsFsxOntapStorageVirtualMachine",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxOntapStorageVirtualMachine,
+			rawOutputs: map[string]interface{}{
+				"svm_id":                  "svm-0123456789abcdef0",
+				"arn":                     "arn:aws:fsx:us-west-2:123456789012:storage-virtual-machine/fs-0123456789abcdef0/svm-0123456789abcdef0",
+				"uuid":                    "abcdef01-2345-6789-abcd-ef0123456789",
+				"subtype":                 "DEFAULT",
+				"iscsi_dns_name":          "iscsi.svm-0123456789abcdef0.fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"iscsi_ip_addresses":      []interface{}{"10.0.1.40"},
+				"management_dns_name":     "svm-0123456789abcdef0.fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"management_ip_addresses": []interface{}{"10.0.1.41"},
+				"nfs_dns_name":            "svm-0123456789abcdef0.fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"nfs_ip_addresses":        []interface{}{"10.0.1.41"},
+				"smb_dns_name":            "",
+				"smb_ip_addresses":        []interface{}{},
+			},
+			mustPopulate: []string{
+				"svm_id", "arn", "uuid", "subtype", "iscsi_dns_name",
+				"iscsi_ip_addresses", "management_dns_name", "management_ip_addresses",
+				"nfs_dns_name", "nfs_ip_addresses",
+			},
+		},
+		{
+			// AwsFsxOntapVolume: volume_id keys the E2E verifier; uuid and
+			// the echoed file_system_id support ONTAP CLI operations and
+			// composition; flexcache_endpoint_type and ontap_volume_type are
+			// AWS-computed classifications.
+			name: "AwsFsxOntapVolume",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxOntapVolume,
+			rawOutputs: map[string]interface{}{
+				"volume_id":               "fsvol-0123456789abcdef0",
+				"arn":                     "arn:aws:fsx:us-west-2:123456789012:volume/fs-0123456789abcdef0/fsvol-0123456789abcdef0",
+				"uuid":                    "01234567-89ab-cdef-0123-456789abcdef",
+				"file_system_id":          "fs-0123456789abcdef0",
+				"flexcache_endpoint_type": "NONE",
+				"ontap_volume_type":       "RW",
+			},
+			mustPopulate: []string{
+				"volume_id", "arn", "uuid", "file_system_id",
+				"flexcache_endpoint_type", "ontap_volume_type",
+			},
+		},
+		{
+			// AwsSagemakerDomain: domain_id keys the E2E verifier and is the
+			// join key user profiles and spaces reference; the two SSO outputs
+			// are empty strings under IAM auth so the output SHAPE is
+			// auth-mode-invariant.
+			name: "AwsSagemakerDomain",
+			kind: cloudresourcekind.CloudResourceKind_AwsSagemakerDomain,
+			rawOutputs: map[string]interface{}{
+				"domain_id":                             "d-0123456789ab",
+				"domain_arn":                            "arn:aws:sagemaker:us-west-2:123456789012:domain/d-0123456789ab",
+				"domain_url":                            "https://d-0123456789ab.studio.us-west-2.sagemaker.aws",
+				"home_efs_file_system_id":               "fs-0123456789abcdef0",
+				"security_group_id_for_domain_boundary": "sg-0123456789abcdef0",
+				"single_sign_on_application_arn":        "arn:aws:sso::123456789012:application/ssoins-abc/apl-def",
+				"single_sign_on_managed_application_instance_id": "app-ins-0123456789abcdef",
+			},
+			mustPopulate: []string{
+				"domain_id", "domain_arn", "domain_url", "home_efs_file_system_id",
+				"security_group_id_for_domain_boundary", "single_sign_on_application_arn",
+				"single_sign_on_managed_application_instance_id",
 			},
 		},
 		{

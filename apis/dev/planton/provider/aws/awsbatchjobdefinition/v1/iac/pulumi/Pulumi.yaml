@@ -1,0 +1,3 @@
+name: aws-batch-job-definition
+runtime: go
+description: Deploy an AWS Batch job definition using Planton

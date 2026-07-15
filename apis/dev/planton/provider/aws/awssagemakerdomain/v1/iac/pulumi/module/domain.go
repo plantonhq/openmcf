@@ -8,35 +8,66 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// domain creates the SageMaker Domain. The spec's presence semantics map
+// one-to-one onto the SDK: absent optional scalars and messages are simply not
+// sent, so AWS applies its own defaults and the preview stays clean -- never
+// an always-sent zero value, which would pin defaults and create phantom
+// diffs. Same contract as the Terraform module.
 func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*sagemaker.Domain, error) {
-	spec := locals.AwsSagemakerDomain.Spec
+	spec := locals.Spec
 
-	// Resolve subnet IDs
 	var subnetIds pulumi.StringArray
 	for _, s := range spec.SubnetIds {
 		subnetIds = append(subnetIds, pulumi.String(s.GetValue()))
 	}
 
 	args := &sagemaker.DomainArgs{
-		DomainName:          pulumi.String(locals.AwsSagemakerDomain.Metadata.Id),
+		// The domain's cloud name is metadata.name (create-time-immutable);
+		// set explicitly so both engines deploy the identical name instead of
+		// relying on Pulumi auto-naming.
+		DomainName:          pulumi.String(locals.DomainName),
 		AuthMode:            pulumi.String(spec.AuthMode),
 		VpcId:               pulumi.String(spec.VpcId.GetValue()),
 		SubnetIds:           subnetIds,
 		DefaultUserSettings: buildDefaultUserSettings(spec.DefaultUserSettings),
-		Tags:                pulumi.ToStringMap(locals.Labels),
+		Tags:                pulumi.ToStringMap(locals.AwsTags),
 	}
 
-	if spec.KmsKeyId != nil && spec.KmsKeyId.GetValue() != "" {
+	if spec.KmsKeyId.GetValue() != "" {
 		args.KmsKeyId = pulumi.StringPtr(spec.KmsKeyId.GetValue())
 	}
 
-	if spec.AppNetworkAccessType != nil && spec.GetAppNetworkAccessType() != "" {
+	if spec.AppNetworkAccessType != nil {
 		args.AppNetworkAccessType = pulumi.StringPtr(spec.GetAppNetworkAccessType())
 	}
 
-	domainSettings := buildDomainSettings(spec)
-	if domainSettings != nil {
+	// Only honored by AWS when RStudio is configured (the spec enforces the
+	// pairing, so a silent no-op cannot reach this argument).
+	if spec.AppSecurityGroupManagement != nil {
+		args.AppSecurityGroupManagement = pulumi.StringPtr(spec.GetAppSecurityGroupManagement())
+	}
+
+	// Whether the domain's tags propagate to apps/spaces/user profiles
+	// created inside it. Absent defers to AWS's default (DISABLED).
+	if spec.TagPropagation != nil {
+		args.TagPropagation = pulumi.StringPtr(spec.GetTagPropagation())
+	}
+
+	// What happens to the domain's auto-created EFS file system on destroy.
+	// AWS's default is Retain, which leaves a billing orphan behind -- the
+	// spec surfaces the decision so ephemeral domains can opt into Delete.
+	if spec.HomeEfsRetentionPolicy != nil {
+		args.RetentionPolicy = &sagemaker.DomainRetentionPolicyArgs{
+			HomeEfsFileSystem: pulumi.StringPtr(spec.GetHomeEfsRetentionPolicy()),
+		}
+	}
+
+	if domainSettings := buildDomainSettings(spec); domainSettings != nil {
 		args.DomainSettings = domainSettings
+	}
+
+	if spec.DefaultSpaceSettings != nil {
+		args.DefaultSpaceSettings = buildDefaultSpaceSettings(spec.DefaultSpaceSettings)
 	}
 
 	createdDomain, err := sagemaker.NewDomain(ctx, "sagemaker-domain", args, pulumi.Provider(provider))
@@ -47,209 +78,15 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*sagem
 	return createdDomain, nil
 }
 
-func buildDefaultUserSettings(dus *awssagemakerdomainv1.AwsSagemakerDomainDefaultUserSettings) *sagemaker.DomainDefaultUserSettingsArgs {
-	settings := &sagemaker.DomainDefaultUserSettingsArgs{
-		ExecutionRole: pulumi.String(dus.ExecutionRoleArn.GetValue()),
-	}
-
-	if len(dus.SecurityGroupIds) > 0 {
-		var sgs pulumi.StringArray
-		for _, sg := range dus.SecurityGroupIds {
-			sgs = append(sgs, pulumi.String(sg.GetValue()))
-		}
-		settings.SecurityGroups = sgs
-	}
-
-	if dus.DefaultLandingUri != "" {
-		settings.DefaultLandingUri = pulumi.StringPtr(dus.DefaultLandingUri)
-	}
-
-	if dus.StudioWebPortal != nil && dus.GetStudioWebPortal() != "" {
-		settings.StudioWebPortal = pulumi.StringPtr(dus.GetStudioWebPortal())
-	}
-
-	if dus.JupyterLabAppSettings != nil {
-		settings.JupyterLabAppSettings = buildJupyterLabAppSettings(dus.JupyterLabAppSettings)
-	}
-
-	if dus.KernelGatewayAppSettings != nil {
-		settings.KernelGatewayAppSettings = buildKernelGatewayAppSettings(dus.KernelGatewayAppSettings)
-	}
-
-	if dus.SharingSettings != nil {
-		settings.SharingSettings = buildSharingSettings(dus.SharingSettings)
-	}
-
-	if dus.SpaceStorageSettings != nil {
-		settings.SpaceStorageSettings = buildSpaceStorageSettings(dus.SpaceStorageSettings)
-	}
-
-	return settings
-}
-
-func buildJupyterLabAppSettings(jl *awssagemakerdomainv1.AwsSagemakerDomainJupyterLabAppSettings) *sagemaker.DomainDefaultUserSettingsJupyterLabAppSettingsArgs {
-	jlArgs := &sagemaker.DomainDefaultUserSettingsJupyterLabAppSettingsArgs{}
-
-	if jl.DefaultResourceSpec != nil {
-		rs := jl.DefaultResourceSpec
-		rsArgs := &sagemaker.DomainDefaultUserSettingsJupyterLabAppSettingsDefaultResourceSpecArgs{}
-		if rs.InstanceType != "" {
-			rsArgs.InstanceType = pulumi.StringPtr(rs.InstanceType)
-		}
-		if rs.LifecycleConfigArn != "" {
-			rsArgs.LifecycleConfigArn = pulumi.StringPtr(rs.LifecycleConfigArn)
-		}
-		if rs.SagemakerImageArn != "" {
-			rsArgs.SagemakerImageArn = pulumi.StringPtr(rs.SagemakerImageArn)
-		}
-		if rs.SagemakerImageVersionAlias != "" {
-			rsArgs.SagemakerImageVersionAlias = pulumi.StringPtr(rs.SagemakerImageVersionAlias)
-		}
-		if rs.SagemakerImageVersionArn != "" {
-			rsArgs.SagemakerImageVersionArn = pulumi.StringPtr(rs.SagemakerImageVersionArn)
-		}
-		jlArgs.DefaultResourceSpec = rsArgs
-	}
-
-	if len(jl.LifecycleConfigArns) > 0 {
-		var arns pulumi.StringArray
-		for _, arn := range jl.LifecycleConfigArns {
-			arns = append(arns, pulumi.String(arn))
-		}
-		jlArgs.LifecycleConfigArns = arns
-	}
-
-	if len(jl.CustomImages) > 0 {
-		var images sagemaker.DomainDefaultUserSettingsJupyterLabAppSettingsCustomImageArray
-		for _, img := range jl.CustomImages {
-			imgArgs := &sagemaker.DomainDefaultUserSettingsJupyterLabAppSettingsCustomImageArgs{
-				AppImageConfigName: pulumi.String(img.AppImageConfigName),
-				ImageName:          pulumi.String(img.ImageName),
-			}
-			if img.ImageVersionNumber != nil {
-				imgArgs.ImageVersionNumber = pulumi.IntPtr(int(img.GetImageVersionNumber()))
-			}
-			images = append(images, imgArgs)
-		}
-		jlArgs.CustomImages = images
-	}
-
-	if len(jl.CodeRepositories) > 0 {
-		var repos sagemaker.DomainDefaultUserSettingsJupyterLabAppSettingsCodeRepositoryArray
-		for _, repo := range jl.CodeRepositories {
-			repos = append(repos, &sagemaker.DomainDefaultUserSettingsJupyterLabAppSettingsCodeRepositoryArgs{
-				RepositoryUrl: pulumi.String(repo.RepositoryUrl),
-			})
-		}
-		jlArgs.CodeRepositories = repos
-	}
-
-	// Idle settings map to AppLifecycleManagement.IdleSettings in the Pulumi SDK
-	if jl.IdleSettings != nil {
-		idle := jl.IdleSettings
-		idleArgs := &sagemaker.DomainDefaultUserSettingsJupyterLabAppSettingsAppLifecycleManagementIdleSettingsArgs{}
-		if idle.LifecycleManagement != "" {
-			idleArgs.LifecycleManagement = pulumi.StringPtr(idle.LifecycleManagement)
-		}
-		if idle.IdleTimeoutInMinutes != 0 {
-			idleArgs.IdleTimeoutInMinutes = pulumi.IntPtr(int(idle.IdleTimeoutInMinutes))
-		}
-		if idle.MinIdleTimeoutInMinutes != 0 {
-			idleArgs.MinIdleTimeoutInMinutes = pulumi.IntPtr(int(idle.MinIdleTimeoutInMinutes))
-		}
-		if idle.MaxIdleTimeoutInMinutes != 0 {
-			idleArgs.MaxIdleTimeoutInMinutes = pulumi.IntPtr(int(idle.MaxIdleTimeoutInMinutes))
-		}
-		jlArgs.AppLifecycleManagement = &sagemaker.DomainDefaultUserSettingsJupyterLabAppSettingsAppLifecycleManagementArgs{
-			IdleSettings: idleArgs,
-		}
-	}
-
-	return jlArgs
-}
-
-func buildKernelGatewayAppSettings(kg *awssagemakerdomainv1.AwsSagemakerDomainKernelGatewayAppSettings) *sagemaker.DomainDefaultUserSettingsKernelGatewayAppSettingsArgs {
-	kgArgs := &sagemaker.DomainDefaultUserSettingsKernelGatewayAppSettingsArgs{}
-
-	if kg.DefaultResourceSpec != nil {
-		rs := kg.DefaultResourceSpec
-		rsArgs := &sagemaker.DomainDefaultUserSettingsKernelGatewayAppSettingsDefaultResourceSpecArgs{}
-		if rs.InstanceType != "" {
-			rsArgs.InstanceType = pulumi.StringPtr(rs.InstanceType)
-		}
-		if rs.LifecycleConfigArn != "" {
-			rsArgs.LifecycleConfigArn = pulumi.StringPtr(rs.LifecycleConfigArn)
-		}
-		if rs.SagemakerImageArn != "" {
-			rsArgs.SagemakerImageArn = pulumi.StringPtr(rs.SagemakerImageArn)
-		}
-		if rs.SagemakerImageVersionAlias != "" {
-			rsArgs.SagemakerImageVersionAlias = pulumi.StringPtr(rs.SagemakerImageVersionAlias)
-		}
-		if rs.SagemakerImageVersionArn != "" {
-			rsArgs.SagemakerImageVersionArn = pulumi.StringPtr(rs.SagemakerImageVersionArn)
-		}
-		kgArgs.DefaultResourceSpec = rsArgs
-	}
-
-	if len(kg.LifecycleConfigArns) > 0 {
-		var arns pulumi.StringArray
-		for _, arn := range kg.LifecycleConfigArns {
-			arns = append(arns, pulumi.String(arn))
-		}
-		kgArgs.LifecycleConfigArns = arns
-	}
-
-	if len(kg.CustomImages) > 0 {
-		var images sagemaker.DomainDefaultUserSettingsKernelGatewayAppSettingsCustomImageArray
-		for _, img := range kg.CustomImages {
-			imgArgs := &sagemaker.DomainDefaultUserSettingsKernelGatewayAppSettingsCustomImageArgs{
-				AppImageConfigName: pulumi.String(img.AppImageConfigName),
-				ImageName:          pulumi.String(img.ImageName),
-			}
-			if img.ImageVersionNumber != nil {
-				imgArgs.ImageVersionNumber = pulumi.IntPtr(int(img.GetImageVersionNumber()))
-			}
-			images = append(images, imgArgs)
-		}
-		kgArgs.CustomImages = images
-	}
-
-	return kgArgs
-}
-
-func buildSharingSettings(ss *awssagemakerdomainv1.AwsSagemakerDomainSharingSettings) *sagemaker.DomainDefaultUserSettingsSharingSettingsArgs {
-	ssArgs := &sagemaker.DomainDefaultUserSettingsSharingSettingsArgs{}
-
-	if ss.NotebookOutputOption != nil && ss.GetNotebookOutputOption() != "" {
-		ssArgs.NotebookOutputOption = pulumi.StringPtr(ss.GetNotebookOutputOption())
-	}
-
-	if ss.S3KmsKeyId != nil && ss.S3KmsKeyId.GetValue() != "" {
-		ssArgs.S3KmsKeyId = pulumi.StringPtr(ss.S3KmsKeyId.GetValue())
-	}
-
-	if ss.S3OutputPath != "" {
-		ssArgs.S3OutputPath = pulumi.StringPtr(ss.S3OutputPath)
-	}
-
-	return ssArgs
-}
-
-func buildSpaceStorageSettings(sss *awssagemakerdomainv1.AwsSagemakerDomainSpaceStorageSettings) *sagemaker.DomainDefaultUserSettingsSpaceStorageSettingsArgs {
-	return &sagemaker.DomainDefaultUserSettingsSpaceStorageSettingsArgs{
-		DefaultEbsStorageSettings: &sagemaker.DomainDefaultUserSettingsSpaceStorageSettingsDefaultEbsStorageSettingsArgs{
-			DefaultEbsVolumeSizeInGb: pulumi.Int(int(sss.DefaultEbsVolumeSizeInGb)),
-			MaximumEbsVolumeSizeInGb: pulumi.Int(int(sss.MaximumEbsVolumeSizeInGb)),
-		},
-	}
-}
-
+// buildDomainSettings assembles the provider's domain_settings block from the
+// spec's top-level domain-administration fields. The spec models them flat
+// (everything in a Domain spec is a "domain setting" -- the wrapper adds no
+// information for manifest authors); the block is reconstructed here and only
+// sent when at least one dial is set.
 func buildDomainSettings(spec *awssagemakerdomainv1.AwsSagemakerDomainSpec) *sagemaker.DomainDomainSettingsArgs {
 	hasDomainSettings := false
 	dsArgs := &sagemaker.DomainDomainSettingsArgs{}
 
-	// Domain-level security groups
 	if len(spec.DomainSecurityGroupIds) > 0 {
 		var sgIds pulumi.StringArray
 		for _, sg := range spec.DomainSecurityGroupIds {
@@ -259,7 +96,6 @@ func buildDomainSettings(spec *awssagemakerdomainv1.AwsSagemakerDomainSpec) *sag
 		hasDomainSettings = true
 	}
 
-	// Docker settings
 	if spec.DockerSettings != nil {
 		docker := spec.DockerSettings
 		dockerArgs := &sagemaker.DomainDomainSettingsDockerSettingsArgs{}
@@ -274,6 +110,58 @@ func buildDomainSettings(spec *awssagemakerdomainv1.AwsSagemakerDomainSpec) *sag
 			dockerArgs.VpcOnlyTrustedAccounts = accounts
 		}
 		dsArgs.DockerSettings = dockerArgs
+		hasDomainSettings = true
+	}
+
+	// USER_PROFILE_NAME stamps each session's sts:SourceIdentity with the
+	// acting user profile, so CloudTrail can attribute actions taken through
+	// the shared execution role to a human.
+	if spec.ExecutionRoleIdentityConfig != nil {
+		dsArgs.ExecutionRoleIdentityConfig = pulumi.StringPtr(spec.GetExecutionRoleIdentityConfig())
+		hasDomainSettings = true
+	}
+
+	// RStudio (Posit) Workbench activation: configuring the domain execution
+	// role is what turns the RStudio app plane on for the domain.
+	if rstudio := spec.RStudioServerProDomainSettings; rstudio != nil {
+		rsArgs := &sagemaker.DomainDomainSettingsRStudioServerProDomainSettingsArgs{
+			DomainExecutionRoleArn: pulumi.String(rstudio.DomainExecutionRoleArn.GetValue()),
+		}
+		if rstudio.RStudioConnectUrl != "" {
+			rsArgs.RStudioConnectUrl = pulumi.StringPtr(rstudio.RStudioConnectUrl)
+		}
+		if rstudio.RStudioPackageManagerUrl != "" {
+			rsArgs.RStudioPackageManagerUrl = pulumi.StringPtr(rstudio.RStudioPackageManagerUrl)
+		}
+		if rs := rstudio.DefaultResourceSpec; rs != nil {
+			specArgs := &sagemaker.DomainDomainSettingsRStudioServerProDomainSettingsDefaultResourceSpecArgs{}
+			if rs.InstanceType != "" {
+				specArgs.InstanceType = pulumi.StringPtr(rs.InstanceType)
+			}
+			if rs.LifecycleConfigArn != "" {
+				specArgs.LifecycleConfigArn = pulumi.StringPtr(rs.LifecycleConfigArn)
+			}
+			if rs.SagemakerImageArn != "" {
+				specArgs.SagemakerImageArn = pulumi.StringPtr(rs.SagemakerImageArn)
+			}
+			if rs.SagemakerImageVersionAlias != "" {
+				specArgs.SagemakerImageVersionAlias = pulumi.StringPtr(rs.SagemakerImageVersionAlias)
+			}
+			if rs.SagemakerImageVersionArn != "" {
+				specArgs.SagemakerImageVersionArn = pulumi.StringPtr(rs.SagemakerImageVersionArn)
+			}
+			rsArgs.DefaultResourceSpec = specArgs
+		}
+		dsArgs.RStudioServerProDomainSettings = rsArgs
+		hasDomainSettings = true
+	}
+
+	// Trusted identity propagation: the spec's CEL guarantees ENABLED only
+	// ever reaches AWS on an SSO domain (AWS rejects it under IAM auth).
+	if spec.TrustedIdentityPropagationStatus != nil {
+		dsArgs.TrustedIdentityPropagationSettings = &sagemaker.DomainDomainSettingsTrustedIdentityPropagationSettingsArgs{
+			Status: pulumi.String(spec.GetTrustedIdentityPropagationStatus()),
+		}
 		hasDomainSettings = true
 	}
 

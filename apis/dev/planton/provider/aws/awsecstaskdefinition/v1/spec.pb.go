@@ -967,17 +967,18 @@ func (x *AwsEcsTaskDefinitionVolume) GetHostPath() string {
 // there is no good reason to mount EFS unencrypted in transit.
 type AwsEcsTaskDefinitionEfsVolume struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The EFS file system ID (e.g. "fs-0123456789abcdef0"). A literal ID --
-	// Planton has no EFS kind yet, so there is nothing to reference.
-	FileSystemId string `protobuf:"bytes,1,opt,name=file_system_id,json=fileSystemId,proto3" json:"file_system_id,omitempty"`
+	// The EFS file system backing the volume. Reference an AwsElasticFileSystem
+	// resource or pass a literal file system ID (e.g. "fs-0123456789abcdef0").
+	FileSystemId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=file_system_id,json=fileSystemId,proto3" json:"file_system_id,omitempty"`
 	// The path within the file system to mount as the volume root. Ignored
 	// when access_point_id is set (the access point defines the root).
 	// Default: "/".
 	RootDirectory string `protobuf:"bytes,2,opt,name=root_directory,json=rootDirectory,proto3" json:"root_directory,omitempty"`
 	// Mount through this EFS access point -- the recommended pattern:
 	// the access point pins the POSIX identity and root path, so tasks
-	// cannot wander the file system.
-	AccessPointId string `protobuf:"bytes,3,opt,name=access_point_id,json=accessPointId,proto3" json:"access_point_id,omitempty"`
+	// cannot wander the file system. Reference an AwsEfsAccessPoint resource
+	// or pass a literal access point ID (e.g. "fsap-0123456789abcdef0").
+	AccessPointId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=access_point_id,json=accessPointId,proto3" json:"access_point_id,omitempty"`
 	// Authorize the mount with the task's IAM role (execution/task role
 	// must carry elasticfilesystem:ClientMount/ClientWrite). Requires
 	// transit encryption, which the modules enable automatically.
@@ -1016,11 +1017,11 @@ func (*AwsEcsTaskDefinitionEfsVolume) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsecstaskdefinition_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *AwsEcsTaskDefinitionEfsVolume) GetFileSystemId() string {
+func (x *AwsEcsTaskDefinitionEfsVolume) GetFileSystemId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.FileSystemId
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsEcsTaskDefinitionEfsVolume) GetRootDirectory() string {
@@ -1030,11 +1031,11 @@ func (x *AwsEcsTaskDefinitionEfsVolume) GetRootDirectory() string {
 	return ""
 }
 
-func (x *AwsEcsTaskDefinitionEfsVolume) GetAccessPointId() string {
+func (x *AwsEcsTaskDefinitionEfsVolume) GetAccessPointId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.AccessPointId
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsEcsTaskDefinitionEfsVolume) GetIamAuthorization() bool {
@@ -1539,11 +1540,11 @@ const file_dev_planton_provider_aws_awsecstaskdefinition_v1_spec_proto_rawDesc =
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12a\n" +
 	"\x03efs\x18\x02 \x01(\v2O.dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionEfsVolumeR\x03efs\x12\x1b\n" +
 	"\thost_path\x18\x03 \x01(\tR\bhostPath:y\xbaHv\x1at\n" +
-	"\x11efs_xor_host_path\x127a volume is backed by either efs or host_path, not both\x1a&!has(this.efs) || this.host_path == ''\"\xc9\x01\n" +
-	"\x1dAwsEcsTaskDefinitionEfsVolume\x12,\n" +
-	"\x0efile_system_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\ffileSystemId\x12%\n" +
-	"\x0eroot_directory\x18\x02 \x01(\tR\rrootDirectory\x12&\n" +
-	"\x0faccess_point_id\x18\x03 \x01(\tR\raccessPointId\x12+\n" +
+	"\x11efs_xor_host_path\x127a volume is backed by either efs or host_path, not both\x1a&!has(this.efs) || this.host_path == ''\"\x82\x03\n" +
+	"\x1dAwsEcsTaskDefinitionEfsVolume\x12\x86\x01\n" +
+	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_idR\ffileSystemId\x12%\n" +
+	"\x0eroot_directory\x18\x02 \x01(\tR\rrootDirectory\x12\x83\x01\n" +
+	"\x0faccess_point_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xe8\x02\x92\xd4a\x1estatus.outputs.access_point_idR\raccessPointId\x12+\n" +
 	"\x11iam_authorization\x18\x04 \x01(\bR\x10iamAuthorization\"\xdb\x04\n" +
 	"#AwsEcsTaskDefinitionRuntimePlatform\x12)\n" +
 	"\x10cpu_architecture\x18\x01 \x01(\tR\x0fcpuArchitecture\x126\n" +
@@ -1641,15 +1642,17 @@ var file_dev_planton_provider_aws_awsecstaskdefinition_v1_spec_proto_depIdxs = [
 	16, // 15: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionContainer.docker_labels:type_name -> dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionContainer.DockerLabelsEntry
 	13, // 16: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionContainer.restart_policy:type_name -> dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionRestartPolicy
 	7,  // 17: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionVolume.efs:type_name -> dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionEfsVolume
-	20, // 18: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionLogging.log_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 19: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionLogConfiguration.options:type_name -> dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionLogConfiguration.OptionsEntry
-	18, // 20: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionLogConfiguration.secret_options:type_name -> dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionLogConfiguration.SecretOptionsEntry
-	19, // 21: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionFirelens.options:type_name -> dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionFirelens.OptionsEntry
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	20, // 18: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionEfsVolume.file_system_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 19: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionEfsVolume.access_point_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 20: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionLogging.log_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 21: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionLogConfiguration.options:type_name -> dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionLogConfiguration.OptionsEntry
+	18, // 22: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionLogConfiguration.secret_options:type_name -> dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionLogConfiguration.SecretOptionsEntry
+	19, // 23: dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionFirelens.options:type_name -> dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionFirelens.OptionsEntry
+	24, // [24:24] is the sub-list for method output_type
+	24, // [24:24] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsecstaskdefinition_v1_spec_proto_init() }

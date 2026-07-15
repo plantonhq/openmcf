@@ -37,7 +37,12 @@ type AwsCognitoIdentityProviderStackOutputs struct {
 	ProviderName string `protobuf:"bytes,1,opt,name=provider_name,json=providerName,proto3" json:"provider_name,omitempty"`
 	// The type of the identity provider (e.g., "Google", "OIDC", "SAML").
 	// Informational — useful for downstream tooling and display.
-	ProviderType  string `protobuf:"bytes,2,opt,name=provider_type,json=providerType,proto3" json:"provider_type,omitempty"`
+	ProviderType string `protobuf:"bytes,2,opt,name=provider_type,json=providerType,proto3" json:"provider_type,omitempty"`
+	// The user pool this identity provider is attached to, resolved from the
+	// spec reference. Providers are keyed by (pool id, provider name) in AWS,
+	// and a consumer holding only this resource gets both halves of that key
+	// from its outputs.
+	UserPoolId    string `protobuf:"bytes,3,opt,name=user_pool_id,json=userPoolId,proto3" json:"user_pool_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -86,14 +91,23 @@ func (x *AwsCognitoIdentityProviderStackOutputs) GetProviderType() string {
 	return ""
 }
 
+func (x *AwsCognitoIdentityProviderStackOutputs) GetUserPoolId() string {
+	if x != nil {
+		return x.UserPoolId
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awscognitoidentityprovider_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awscognitoidentityprovider_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Jdev/planton/provider/aws/awscognitoidentityprovider/v1/stack_outputs.proto\x126dev.planton.provider.aws.awscognitoidentityprovider.v1\"r\n" +
+	"Jdev/planton/provider/aws/awscognitoidentityprovider/v1/stack_outputs.proto\x126dev.planton.provider.aws.awscognitoidentityprovider.v1\"\x94\x01\n" +
 	"&AwsCognitoIdentityProviderStackOutputs\x12#\n" +
 	"\rprovider_name\x18\x01 \x01(\tR\fproviderName\x12#\n" +
-	"\rprovider_type\x18\x02 \x01(\tR\fproviderTypeB\xc5\x03\n" +
+	"\rprovider_type\x18\x02 \x01(\tR\fproviderType\x12 \n" +
+	"\fuser_pool_id\x18\x03 \x01(\tR\n" +
+	"userPoolIdB\xc5\x03\n" +
 	":com.dev.planton.provider.aws.awscognitoidentityprovider.v1B\x11StackOutputsProtoP\x01Zugithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitoidentityprovider/v1;awscognitoidentityproviderv1\xa2\x02\x05DPPAA\xaa\x026Dev.Planton.Provider.Aws.Awscognitoidentityprovider.V1\xca\x026Dev\\Planton\\Provider\\Aws\\Awscognitoidentityprovider\\V1\xe2\x02BDev\\Planton\\Provider\\Aws\\Awscognitoidentityprovider\\V1\\GPBMetadata\xea\x02;Dev::Planton::Provider::Aws::Awscognitoidentityprovider::V1b\x06proto3"
 
 var (

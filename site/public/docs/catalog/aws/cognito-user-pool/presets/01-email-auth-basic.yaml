@@ -17,8 +17,3 @@ spec:
   accountRecoveryMechanisms:
     - name: verified_email
       priority: 1
-  clients:
-    - name: web-app
-      explicitAuthFlows:
-        - ALLOW_USER_SRP_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH

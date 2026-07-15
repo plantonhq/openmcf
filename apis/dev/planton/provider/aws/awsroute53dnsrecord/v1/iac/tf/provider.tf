@@ -1,10 +1,10 @@
 terraform {
-  required_version = ">= 1.0"
-
   required_providers {
     aws = {
+      # v6 family floor: every modeled argument (geoproximity/CIDR/multivalue
+      # routing, allow_overwrite, alias) predates the v6 line.
       source  = "hashicorp/aws"
-      version = ">= 5.0"
+      version = ">= 6.0.0"
     }
   }
 }

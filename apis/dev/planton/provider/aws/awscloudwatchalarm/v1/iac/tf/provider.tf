@@ -1,8 +1,13 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      source = "hashicorp/aws"
+      # Floor, not a ceiling. PromQL alarms (evaluation_criteria +
+      # evaluation_interval) landed in v6.42.0, but that release shipped a
+      # plan-time regression (spurious "One of 'metric_name', 'metric_query',
+      # or 'evaluation_criteria' must be set" errors) fixed in v6.43.0 — so
+      # the floor deliberately skips the broken release.
+      version = ">= 6.43.0"
     }
   }
 }

@@ -1,16 +1,23 @@
 # Terraform Module to Deploy AwsEcrRepo
 
-This module provisions an AWS ECR (Elastic Container Registry) repository for storing and managing Docker images.
-It supports encryption, image tag mutability, automatic image scanning, and lifecycle policies with best practice defaults.
+This module provisions an AWS ECR (Elastic Container Registry) repository at the full
+repository surface, plus its two folded 1:1 satellites: the lifecycle policy and the
+repository policy.
 
 ## Features
 
-- **Encryption**: AES256 (default) or KMS encryption
-- **Image Tag Mutability**: Configurable MUTABLE/IMMUTABLE tags
-- **Image Scanning**: Automatic vulnerability scanning on push
-- **Lifecycle Policies**: Automatic cleanup of untagged images
-- **Force Delete**: Optional protection against accidental deletion
-- **Best Practices**: Secure defaults aligned with production standards
+- **Tag Mutability**: MUTABLE, IMMUTABLE, and the exclusion-filtered pair
+  (IMMUTABLE_WITH_EXCLUSION / MUTABLE_WITH_EXCLUSION) with wildcard tag filters
+- **Encryption**: AES256 (default), customer-managed KMS, or dual-layer KMS_DSSE
+  (the whole configuration is create-time — changing it replaces the repository)
+- **Image Scanning**: Automatic vulnerability scanning on push (default on)
+- **Lifecycle Rules**: The full structured rule model (priorities, tag
+  prefix/pattern selectors, count-by-age or count-by-number) rebuilt into the exact
+  policy JSON AWS expects
+- **Repository Policy**: Folded resource-based access policy (cross-account pulls,
+  service principals)
+- **Force Delete**: Optional protection against deleting a repository that still
+  holds images
 
 Generated `variables.tf` reflects the proto schema for `AwsEcrRepo`.
 
@@ -27,5 +34,4 @@ planton tofu destroy --manifest hack/manifest.yaml --auto-approve
 
 **Note**: Credentials are provided via stack input (CLI), not in the manifest `spec`.
 
-For more examples, see [`examples.md`](./examples.md) and [`hack/manifest.yaml`](../hack/manifest.yaml).
-
+For a full-surface example, see [`hack/manifest.yaml`](../hack/manifest.yaml).

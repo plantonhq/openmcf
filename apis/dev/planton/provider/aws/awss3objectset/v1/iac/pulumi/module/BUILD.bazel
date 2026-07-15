@@ -11,7 +11,6 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//apis/dev/planton/provider/aws/awss3objectset/v1:awss3objectset",
-        "//apis/dev/planton/shared/foreignkey/v1:foreignkey",
         "//pkg/iac/pulumi/pulumimodule/provider/aws/pulumiawsprovider",
         "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/s3",

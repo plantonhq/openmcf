@@ -1,6 +1,10 @@
 terraform {
   required_providers {
     aws = {
+      # Floor 6.12.0: the IMMUTABLE_WITH_EXCLUSION / MUTABLE_WITH_EXCLUSION
+      # mutability modes and image_tag_mutability_exclusion_filter landed
+      # across 6.10.0–6.12.0 (aws_ecr_repository_policy and
+      # aws_ecr_lifecycle_policy are far older).
       source  = "hashicorp/aws"
       version = ">= 6.12.0"
     }

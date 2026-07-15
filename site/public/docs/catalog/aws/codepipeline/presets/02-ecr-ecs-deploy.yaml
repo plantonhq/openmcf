@@ -3,6 +3,7 @@ kind: AwsCodePipeline
 metadata:
   name: my-service-deploy
 spec:
+  region: us-east-1
   pipelineType: V2
   executionMode: QUEUED
   roleArn:

@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbatchcomputeenvironment
+spec:
+  # A MANAGED Batch compute environment under live E2E. The Fargate
+  # scenario is the zero-instance shape: Fargate provisions capacity only
+  # when jobs run and this lane submits none, so the environment reaches
+  # VALID in seconds at zero compute cost. The subnet prerequisite is
+  # declared in the registry (VPC -> subnets chain); the security group is
+  # scenario-declared optional composition. Deletion is
+  # disable-then-delete: the verifier treats DELETING/DELETED lifecycle
+  # states as absent. Deliberately not in the live lane: the EC2/SPOT arm
+  # (same provider payload, but needs an instance-profile fixture; instance
+  # selection, launch templates, and allocation strategies are proven by
+  # CEL spec tests and the offline plan gate) and Batch-on-EKS (needs a
+  # live EKS cluster fixture -- the most expensive fixture in the catalog).
+  # Live dual-engine run 2026-07-08 (incl. the VPC -> subnet -> SG fixture
+  # chain): Pulumi 3m38s / Terraform 3m26s.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 25

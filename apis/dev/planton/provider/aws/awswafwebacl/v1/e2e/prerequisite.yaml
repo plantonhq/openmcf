@@ -1,0 +1,33 @@
+# Fixture AwsWafWebAcl consumed by protected-resource scenarios (the ALB
+# association lane). Minimal REGIONAL shape -- one managed rule group over an
+# allow baseline -- because the consumer only needs a real web ACL ARN to
+# associate; the web ACL's own full surface is exercised by its own scenario.
+# Dependency-free, fixed name so name-aware resolution and orphan sweeps
+# stay stable.
+apiVersion: aws.planton.dev/v1
+kind: AwsWafWebAcl
+metadata:
+  name: planton-oss-e2e-awswafwebacl-prereq
+  id: planton-oss-e2e-awswafwebacl-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awswafwebacl
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  scope: REGIONAL
+  defaultAction:
+    type: allow
+  rules:
+    - name: aws-managed-common
+      priority: 1
+      overrideAction: count
+      statement:
+        managedRuleGroup:
+          name: AWSManagedRulesCommonRuleSet
+          vendorName: AWS

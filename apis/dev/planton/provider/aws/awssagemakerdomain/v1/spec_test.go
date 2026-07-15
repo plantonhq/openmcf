@@ -122,8 +122,9 @@ var _ = ginkgo.Describe("AwsSagemakerDomainSpec Validation Tests", func() {
 			input := validMinimalSpec()
 			input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
 				IdleSettings: &AwsSagemakerDomainIdleSettings{
-					LifecycleManagement:  "ENABLED",
-					IdleTimeoutInMinutes: 120,
+					IdleTimeoutInMinutes:    120,
+					MinIdleTimeoutInMinutes: 60,
+					MaxIdleTimeoutInMinutes: 480,
 				},
 			}
 			err := protovalidate.Validate(input)
@@ -299,7 +300,6 @@ var _ = ginkgo.Describe("AwsSagemakerDomainSpec Validation Tests", func() {
 					InstanceType: "ml.t3.medium",
 				},
 				IdleSettings: &AwsSagemakerDomainIdleSettings{
-					LifecycleManagement:     "ENABLED",
 					IdleTimeoutInMinutes:    120,
 					MinIdleTimeoutInMinutes: 60,
 					MaxIdleTimeoutInMinutes: 480,
@@ -427,18 +427,10 @@ var _ = ginkgo.Describe("AwsSagemakerDomainSpec Validation Tests", func() {
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should fail when lifecycle_management is invalid", func() {
-			input := validMinimalSpec()
-			input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
-				IdleSettings: &AwsSagemakerDomainIdleSettings{
-					LifecycleManagement: "AUTO",
-				},
-			}
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should fail when idle_timeout is set without lifecycle_management enabled", func() {
+		ginkgo.It("should fail when idle settings omit the user min/max bounds", func() {
+			// The live API rejects a partial idle block (absent members
+			// transmit as 0, below the 60-minute floor), so all three
+			// timeouts are required whenever the block is set.
 			input := validMinimalSpec()
 			input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
 				IdleSettings: &AwsSagemakerDomainIdleSettings{
@@ -453,8 +445,9 @@ var _ = ginkgo.Describe("AwsSagemakerDomainSpec Validation Tests", func() {
 			input := validMinimalSpec()
 			input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
 				IdleSettings: &AwsSagemakerDomainIdleSettings{
-					LifecycleManagement:  "ENABLED",
-					IdleTimeoutInMinutes: 30,
+					IdleTimeoutInMinutes:    30,
+					MinIdleTimeoutInMinutes: 60,
+					MaxIdleTimeoutInMinutes: 480,
 				},
 			}
 			err := protovalidate.Validate(input)
@@ -465,8 +458,22 @@ var _ = ginkgo.Describe("AwsSagemakerDomainSpec Validation Tests", func() {
 			input := validMinimalSpec()
 			input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
 				IdleSettings: &AwsSagemakerDomainIdleSettings{
-					LifecycleManagement:  "ENABLED",
-					IdleTimeoutInMinutes: 600000,
+					IdleTimeoutInMinutes:    600000,
+					MinIdleTimeoutInMinutes: 60,
+					MaxIdleTimeoutInMinutes: 480,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when the max idle timeout is below the min", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
+				IdleSettings: &AwsSagemakerDomainIdleSettings{
+					IdleTimeoutInMinutes:    120,
+					MinIdleTimeoutInMinutes: 240,
+					MaxIdleTimeoutInMinutes: 120,
 				},
 			}
 			err := protovalidate.Validate(input)
@@ -527,6 +534,518 @@ var _ = ginkgo.Describe("AwsSagemakerDomainSpec Validation Tests", func() {
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-4"}},
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-5"}},
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-6"}},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+	})
+
+	// ===== DOMAIN-SCOPED ADMINISTRATION =====
+
+	ginkgo.Describe("Domain-scoped administration settings", func() {
+
+		ginkgo.It("should accept tag_propagation ENABLED", func() {
+			input := validMinimalSpec()
+			input.Spec.TagPropagation = proto.String("ENABLED")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when tag_propagation is invalid", func() {
+			input := validMinimalSpec()
+			input.Spec.TagPropagation = proto.String("ALWAYS")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept home_efs_retention_policy Delete", func() {
+			input := validMinimalSpec()
+			input.Spec.HomeEfsRetentionPolicy = proto.String("Delete")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when home_efs_retention_policy is invalid", func() {
+			input := validMinimalSpec()
+			input.Spec.HomeEfsRetentionPolicy = proto.String("Keep")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept execution_role_identity_config USER_PROFILE_NAME", func() {
+			input := validMinimalSpec()
+			input.Spec.ExecutionRoleIdentityConfig = proto.String("USER_PROFILE_NAME")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when execution_role_identity_config is invalid", func() {
+			input := validMinimalSpec()
+			input.Spec.ExecutionRoleIdentityConfig = proto.String("SESSION_NAME")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept trusted identity propagation ENABLED on an SSO domain", func() {
+			input := validMinimalSpec()
+			input.Spec.AuthMode = "SSO"
+			input.Spec.TrustedIdentityPropagationStatus = proto.String("ENABLED")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept trusted identity propagation DISABLED on an SSO domain", func() {
+			input := validMinimalSpec()
+			input.Spec.AuthMode = "SSO"
+			input.Spec.TrustedIdentityPropagationStatus = proto.String("DISABLED")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when trusted identity propagation is set on an IAM domain", func() {
+			// The live API rejects the setting outright on IAM-auth domains,
+			// even "DISABLED" -- stricter than value-gating on ENABLED alone.
+			for _, v := range []string{"ENABLED", "DISABLED"} {
+				input := validMinimalSpec()
+				input.Spec.TrustedIdentityPropagationStatus = proto.String(v)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			}
+		})
+
+		ginkgo.It("should fail when trusted_identity_propagation_status is invalid", func() {
+			input := validMinimalSpec()
+			input.Spec.TrustedIdentityPropagationStatus = proto.String("ON")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept app_security_group_management with RStudio configured", func() {
+			input := validMinimalSpec()
+			input.Spec.AppSecurityGroupManagement = proto.String("Customer")
+			input.Spec.RStudioServerProDomainSettings = &AwsSagemakerDomainRStudioServerProDomainSettings{
+				DomainExecutionRoleArn: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/RStudioDomainRole"},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when app_security_group_management is set without RStudio", func() {
+			input := validMinimalSpec()
+			input.Spec.AppSecurityGroupManagement = proto.String("Service")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when app_security_group_management is invalid", func() {
+			input := validMinimalSpec()
+			input.Spec.AppSecurityGroupManagement = proto.String("Managed")
+			input.Spec.RStudioServerProDomainSettings = &AwsSagemakerDomainRStudioServerProDomainSettings{
+				DomainExecutionRoleArn: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/RStudioDomainRole"},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when RStudio domain settings are missing the domain execution role", func() {
+			input := validMinimalSpec()
+			input.Spec.RStudioServerProDomainSettings = &AwsSagemakerDomainRStudioServerProDomainSettings{}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when subnet_ids exceeds max of 16", func() {
+			input := validMinimalSpec()
+			var subnets []*foreignkeyv1.StringValueOrRef
+			for i := 0; i < 17; i++ {
+				subnets = append(subnets, &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-x"},
+				})
+			}
+			input.Spec.SubnetIds = subnets
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+	})
+
+	// ===== USER-PLANE ADDITIONS =====
+
+	ginkgo.Describe("Default user settings additions", func() {
+
+		ginkgo.It("should accept auto_mount_home_efs values", func() {
+			for _, v := range []string{"Enabled", "Disabled"} {
+				input := validMinimalSpec()
+				input.Spec.DefaultUserSettings.AutoMountHomeEfs = proto.String(v)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			}
+		})
+
+		ginkgo.It("should fail when auto_mount_home_efs is invalid", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.AutoMountHomeEfs = proto.String("ENABLED")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject the profile-only DefaultAsDomain value at the domain level", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.AutoMountHomeEfs = proto.String("DefaultAsDomain")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept Code Editor settings with idle shutdown", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CodeEditorAppSettings = &AwsSagemakerDomainCodeEditorAppSettings{
+				DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "ml.t3.large"},
+				IdleSettings: &AwsSagemakerDomainIdleSettings{
+					IdleTimeoutInMinutes:    120,
+					MinIdleTimeoutInMinutes: 60,
+					MaxIdleTimeoutInMinutes: 480,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept classic Jupyter Server settings", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.JupyterServerAppSettings = &AwsSagemakerDomainJupyterServerAppSettings{
+				DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "system"},
+				CodeRepositories: []*AwsSagemakerDomainCodeRepository{
+					{RepositoryUrl: "https://github.com/org/classic-notebooks.git"},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept TensorBoard settings", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.TensorBoardAppSettings = &AwsSagemakerDomainTensorBoardAppSettings{
+				DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "ml.m5.large"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept JupyterLab EMR settings with role refs", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
+				EmrSettings: &AwsSagemakerDomainEmrSettings{
+					AssumableRoleArns: []*foreignkeyv1.StringValueOrRef{
+						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/EmrConnect"}},
+					},
+					ExecutionRoleArns: []*foreignkeyv1.StringValueOrRef{
+						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/EmrRuntime"}},
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a built-in lifecycle config on JupyterLab", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
+				BuiltInLifecycleConfigArn: "arn:aws:sagemaker:us-west-2:123456789012:studio-lifecycle-config/built-in",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a resource spec pinning an image version by alias", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
+				DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{
+					SagemakerImageArn:          "arn:aws:sagemaker:us-west-2:123456789012:image/custom",
+					SagemakerImageVersionAlias: "v2.0",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when a resource spec sets both image version alias and ARN", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
+				DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{
+					SagemakerImageVersionAlias: "v2.0",
+					SagemakerImageVersionArn:   "arn:aws:sagemaker:us-west-2:123456789012:image-version/custom/2",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a custom EFS file system mount", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CustomFileSystemConfigs = []*AwsSagemakerDomainCustomFileSystemConfig{
+				{
+					EfsFileSystemConfig: &AwsSagemakerDomainEfsFileSystemConfig{
+						FileSystemId: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "fs-0123456789abcdef0"},
+						},
+						FileSystemPath: "/shared/datasets",
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when a custom file system config has no EFS arm", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CustomFileSystemConfigs = []*AwsSagemakerDomainCustomFileSystemConfig{{}}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when an EFS mount is missing the file system path", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CustomFileSystemConfigs = []*AwsSagemakerDomainCustomFileSystemConfig{
+				{
+					EfsFileSystemConfig: &AwsSagemakerDomainEfsFileSystemConfig{
+						FileSystemId: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "fs-0123456789abcdef0"},
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a valid POSIX user config", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CustomPosixUserConfig = &AwsSagemakerDomainCustomPosixUserConfig{
+				Uid: 10000,
+				Gid: 1001,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when POSIX uid is below 10000", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CustomPosixUserConfig = &AwsSagemakerDomainCustomPosixUserConfig{
+				Uid: 500,
+				Gid: 1001,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when POSIX gid is below 1001", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CustomPosixUserConfig = &AwsSagemakerDomainCustomPosixUserConfig{
+				Uid: 10000,
+				Gid: 1000,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept studio web portal hiding settings", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.StudioWebPortalSettings = &AwsSagemakerDomainStudioWebPortalSettings{
+				HiddenAppTypes:      []string{"JupyterServer", "Canvas"},
+				HiddenInstanceTypes: []string{"ml.p3.2xlarge"},
+				HiddenMlTools:       []string{"DataWrangler"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept RStudio app access with a user group", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.RStudioServerProAppSettings = &AwsSagemakerDomainRStudioServerProAppSettings{
+				AccessStatus: "ENABLED",
+				UserGroup:    "R_STUDIO_ADMIN",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when RStudio user_group is set without ENABLED access", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.RStudioServerProAppSettings = &AwsSagemakerDomainRStudioServerProAppSettings{
+				AccessStatus: "DISABLED",
+				UserGroup:    "R_STUDIO_USER",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when RStudio user_group is invalid", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.RStudioServerProAppSettings = &AwsSagemakerDomainRStudioServerProAppSettings{
+				AccessStatus: "ENABLED",
+				UserGroup:    "R_STUDIO_ROOT",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept RSession settings with custom images", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.RSessionAppSettings = &AwsSagemakerDomainRSessionAppSettings{
+				DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "ml.m5.large"},
+				CustomImages: []*AwsSagemakerDomainCustomImage{
+					{AppImageConfigName: "r-config", ImageName: "r-image"},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+	})
+
+	// ===== CANVAS =====
+
+	ginkgo.Describe("Canvas app settings", func() {
+
+		ginkgo.It("should accept a full Canvas configuration", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CanvasAppSettings = &AwsSagemakerDomainCanvasAppSettings{
+				DirectDeployStatus: proto.String("ENABLED"),
+				EmrServerlessSettings: &AwsSagemakerDomainCanvasEmrServerlessSettings{
+					ExecutionRoleArn: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/CanvasEmr"},
+					},
+					Status: "ENABLED",
+				},
+				GenerativeAiBedrockRoleArn: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/CanvasBedrock"},
+				},
+				IdentityProviderOauthSettings: []*AwsSagemakerDomainCanvasIdentityProviderOauthSettings{
+					{
+						DataSourceName: "Snowflake",
+						SecretArn:      "arn:aws:secretsmanager:us-west-2:123456789012:secret:snowflake-oauth",
+						Status:         "ENABLED",
+					},
+				},
+				KendraSettingsStatus: proto.String("ENABLED"),
+				ModelRegisterSettings: &AwsSagemakerDomainCanvasModelRegisterSettings{
+					Status: "ENABLED",
+				},
+				TimeSeriesForecastingSettings: &AwsSagemakerDomainCanvasTimeSeriesForecastingSettings{
+					AmazonForecastRoleArn: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/CanvasForecast"},
+					},
+					Status: "ENABLED",
+				},
+				WorkspaceSettings: &AwsSagemakerDomainCanvasWorkspaceSettings{
+					S3ArtifactPath: "s3://canvas-workspace/artifacts/",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when direct_deploy_status is invalid", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CanvasAppSettings = &AwsSagemakerDomainCanvasAppSettings{
+				DirectDeployStatus: proto.String("ON"),
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when an OAuth connector is missing the secret ARN", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CanvasAppSettings = &AwsSagemakerDomainCanvasAppSettings{
+				IdentityProviderOauthSettings: []*AwsSagemakerDomainCanvasIdentityProviderOauthSettings{
+					{DataSourceName: "Snowflake"},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when an OAuth connector names an unknown data source", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CanvasAppSettings = &AwsSagemakerDomainCanvasAppSettings{
+				IdentityProviderOauthSettings: []*AwsSagemakerDomainCanvasIdentityProviderOauthSettings{
+					{
+						DataSourceName: "Databricks",
+						SecretArn:      "arn:aws:secretsmanager:us-west-2:123456789012:secret:x",
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when the Canvas workspace path is not an s3:// or https:// URI", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CanvasAppSettings = &AwsSagemakerDomainCanvasAppSettings{
+				WorkspaceSettings: &AwsSagemakerDomainCanvasWorkspaceSettings{
+					S3ArtifactPath: "gs://wrong-cloud/artifacts/",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when EMR Serverless status is invalid", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultUserSettings.CanvasAppSettings = &AwsSagemakerDomainCanvasAppSettings{
+				EmrServerlessSettings: &AwsSagemakerDomainCanvasEmrServerlessSettings{
+					Status: "ACTIVE",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+	})
+
+	// ===== SPACE PLANE =====
+
+	ginkgo.Describe("Default space settings", func() {
+
+		ginkgo.It("should accept space settings with their own execution role", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultSpaceSettings = &AwsSagemakerDomainDefaultSpaceSettings{
+				ExecutionRoleArn: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/SpaceExecRole"},
+				},
+				JupyterLabAppSettings: &AwsSagemakerDomainJupyterLabAppSettings{
+					DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "ml.t3.medium"},
+				},
+				SpaceStorageSettings: &AwsSagemakerDomainSpaceStorageSettings{
+					DefaultEbsVolumeSizeInGb: 10,
+					MaximumEbsVolumeSizeInGb: 100,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when space settings are missing the execution role", func() {
+			input := validMinimalSpec()
+			input.Spec.DefaultSpaceSettings = &AwsSagemakerDomainDefaultSpaceSettings{}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when space security groups exceed max of 5", func() {
+			input := validMinimalSpec()
+			var sgs []*foreignkeyv1.StringValueOrRef
+			for i := 0; i < 6; i++ {
+				sgs = append(sgs, &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-x"},
+				})
+			}
+			input.Spec.DefaultSpaceSettings = &AwsSagemakerDomainDefaultSpaceSettings{
+				ExecutionRoleArn: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/SpaceExecRole"},
+				},
+				SecurityGroupIds: sgs,
 			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).ToNot(gomega.BeNil())

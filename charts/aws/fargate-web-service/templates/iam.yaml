@@ -1,0 +1,50 @@
+# The two IAM roles every Fargate service needs, kept deliberately separate
+# because they answer different questions:
+#   - the EXECUTION role is what the ECS agent uses BEFORE your code runs
+#     (pull the image, create the log stream);
+#   - the TASK role is what YOUR CODE gets when it calls AWS APIs.
+# Collapsing them into one role is the classic over-grant — the app would
+# inherit registry-wide pull rights it never needs, and the agent would
+# inherit every app permission you add later.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: "{{ values.service_name }}-execution-role"
+spec:
+  region: "{{ values.aws_region }}"
+  # Only the ECS tasks service can assume either of these roles — a task on
+  # any other principal's behalf cannot borrow them.
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: ecs-tasks.amazonaws.com
+        Action: sts:AssumeRole
+  managedPolicyArns:
+    # ECR pull + CloudWatch Logs write — exactly what the agent needs and
+    # nothing else. This attachment is also what satisfies the task
+    # definition's awslogs logging contract: Fargate tasks that log to
+    # CloudWatch (this chart's default) must carry an execution role that
+    # can create and write log streams.
+    - value: arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: "{{ values.service_name }}-task-role"
+spec:
+  region: "{{ values.aws_region }}"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: ecs-tasks.amazonaws.com
+        Action: sts:AssumeRole
+  # Deliberately ships with NO permissions: a web service that only answers
+  # HTTP needs none, and every AWS API your app does call should be granted
+  # here explicitly (S3 buckets, SQS queues, DynamoDB tables — by ARN).
+  # Granting into this role, not the execution role, is what keeps "what can
+  # the app touch" auditable in one place.

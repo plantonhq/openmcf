@@ -1,0 +1,60 @@
+# The routing layer: one rule matching the backbone's event namespace and
+# delivering to the durable plane. Rules are where the backbone grows —
+# add sibling rules on the same bus (per event type, per consumer team)
+# as routing needs sharpen; prefix matching on "source" makes this first
+# rule the catch-all for the whole namespace.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsEventBridgeRule
+metadata:
+  name: "{{ values.backbone_name }}-route"
+spec:
+  region: "{{ values.aws_region }}"
+  eventBusName:
+    valueFrom:
+      kind: AwsEventBridgeBus
+      name: "{{ values.backbone_name }}-bus"
+      fieldPath: status.outputs.bus_name
+  description: "Routes {{ values.event_source_prefix }}* events to the delivery plane"
+  # Content-based prefix match on the event's "source" field — the
+  # reverse-DNS convention lets one rule cover every service publishing
+  # under the namespace without enumerating them.
+  eventPattern:
+    source:
+      - prefix: "{{ values.event_source_prefix }}"
+  targets:
+    # The durable path. No IAM role: SQS delivery authorizes through
+    # the QUEUE's resource policy (queues.yaml carries the grant).
+    - name: work-queue
+      arn:
+        valueFrom:
+          kind: AwsSqsQueue
+          name: "{{ values.backbone_name }}-work-queue"
+          fieldPath: status.outputs.queue_arn
+      # Events EventBridge cannot deliver at all (policy misconfigured,
+      # queue deleted) park in the DLQ after retries instead of
+      # vanishing — the difference between an outage you can replay and
+      # one you can only apologize for.
+      deadLetterConfig:
+        arn:
+          valueFrom:
+            kind: AwsSqsQueue
+            name: "{{ values.backbone_name }}-dlq"
+            fieldPath: status.outputs.queue_arn
+{% if values.sns_fanout_enabled | bool %}
+    # The fan-out path: the same matched event also goes to the SNS
+    # topic, which copies it to every subscribed queue. Like SQS, SNS
+    # delivery authorizes through the topic's own policy.
+    - name: fanout-topic
+      arn:
+        valueFrom:
+          kind: AwsSnsTopic
+          name: "{{ values.backbone_name }}-fanout"
+          fieldPath: status.outputs.topic_arn
+      deadLetterConfig:
+        arn:
+          valueFrom:
+            kind: AwsSqsQueue
+            name: "{{ values.backbone_name }}-dlq"
+            fieldPath: status.outputs.queue_arn
+{% endif %}

@@ -1,12 +1,21 @@
 locals {
-  tags = {
-    "planton.org/resource"      = "true"
-    "planton.org/organization"  = var.metadata.org
-    "planton.org/environment"   = var.metadata.env
-    "planton.org/resource-kind" = "AwsBatchComputeEnvironment"
-    "planton.org/resource-id"   = var.metadata.id
+  # Resource-identity tags follow the catalog convention. These land on the
+  # compute environment itself; tags for the EC2 instances Batch launches
+  # are a separate concern carried by spec.compute_resources.resource_tags.
+  aws_tags = {
+    "Name"                     = var.metadata.name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsBatchComputeEnvironment"
+    "planton.ai/resource-id"   = var.metadata.id
   }
 
-  is_ec2  = contains(["EC2", "SPOT"], var.spec.compute_resources.type)
-  is_spot = var.spec.compute_resources.type == "SPOT"
+  cr = var.spec.compute_resources
+
+  # The spec's CEL rules guarantee EC2/SPOT-only fields are absent for the
+  # Fargate types; these switches exist to build the right provider payload
+  # (AWS rejects EC2 knobs on Fargate requests), not to discard user intent.
+  is_ec2_family = contains(["EC2", "SPOT"], local.cr.type)
+  is_spot       = local.cr.type == "SPOT"
 }

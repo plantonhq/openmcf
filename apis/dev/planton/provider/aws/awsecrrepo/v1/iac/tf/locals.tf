@@ -1,61 +1,58 @@
 locals {
-  # resource name and tags
-  resource_name = coalesce(try(var.metadata.name, null), "aws-ecr-repo")
-  tags = merge({
-    "Name" = local.resource_name
-  }, try(var.metadata.labels, {}))
+  # Resource-identity tags follow the catalog convention. The repository's
+  # cloud name comes from spec.repository_name (ECR names are slash-namespaced
+  # registry paths, a different concept from the graph node's name).
+  aws_tags = {
+    "Name"                     = var.metadata.name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsEcrRepo"
+    "planton.ai/resource-id"   = var.metadata.id
+  }
 
-  # image tag mutability
-  image_tag_mutability = try(var.spec.image_immutable, false) ? "IMMUTABLE" : "MUTABLE"
+  # Tag mutability — the spec default is MUTABLE (the AWS default). The
+  # exclusion filters only apply to the *_WITH_EXCLUSION modes (CEL-enforced),
+  # and AWS currently supports only wildcard-type filters, so filter_type is
+  # materialized here rather than modeled in the spec.
+  image_tag_mutability = coalesce(var.spec.image_tag_mutability, "MUTABLE")
 
-  # encryption settings
-  encryption_type   = upper(try(var.spec.encryption_type, "AES256"))
-  is_kms_encryption = local.encryption_type == "KMS"
-  kms_key_id        = local.is_kms_encryption ? try(var.spec.kms_key_id.value, null) : null
+  # Encryption — the whole configuration is create-time (ForceNew). A
+  # customer-managed key only applies to the KMS types (CEL-enforced); with
+  # AES256 the key must be null.
+  encryption_type = coalesce(var.spec.encryption_type, "AES256")
+  kms_key_id      = var.spec.kms_key_id != "" ? var.spec.kms_key_id : null
 
-  # Lifecycle policy (cost control), driven entirely by spec.lifecycle_policy. When the block is
-  # absent, no policy is created. AWS rejects a lifecycle policy that has more than one rule
-  # selecting untagged images, so we emit at most ONE untagged rule (expire by age) plus an
-  # "any" keep-last-N rule. The "any" rule must carry the highest rulePriority, which it does.
-  # Each rule is included only when its knob is a positive value, so a partially-specified block
-  # (or a pruned zero) never produces an invalid rule.
-  #
-  # The rules are composed as a TUPLE filtered for nulls, never via concat() of
-  # conditionally-empty lists: the two selection objects have different attribute
-  # sets (countUnit is required for sinceImagePushed and forbidden for
-  # imageCountMoreThan), and concat() unifies mismatched object types to
-  # map(string) -- which silently stringifies countNumber and makes the ECR API
-  # reject the policy ("instance type (string) does not match ... integer").
-  # A tuple preserves each rule's own type, so jsonencode keeps the numbers.
-  lifecycle_policy     = try(var.spec.lifecycle_policy, null)
-  expire_untagged_days = try(local.lifecycle_policy.expire_untagged_after_days, 0)
-  max_image_count      = try(local.lifecycle_policy.max_image_count, 0)
-  untagged_expiry_rule = local.expire_untagged_days > 0 ? {
-    rulePriority = 1
-    description  = "Expire untagged images older than ${local.expire_untagged_days} day(s)"
-    selection = {
-      tagStatus   = "untagged"
-      countType   = "sinceImagePushed"
-      countUnit   = "days"
-      countNumber = local.expire_untagged_days
+  # scan_on_push defaults to true (the spec's recommended security posture)
+  # when the optional is pruned from the tfvars.
+  scan_on_push = coalesce(var.spec.scan_on_push, true)
+
+  # Lifecycle rules — the spec models the ECR lifecycle policy JSON
+  # structurally; this rebuilds the exact document AWS expects. "expire" is
+  # the only action ECR supports and the "days" count unit only exists for
+  # sinceImagePushed, so both are materialized here. tagged rules carry
+  # exactly one selector list (CEL-enforced); untagged/any rules carry none.
+  lifecycle_rules = [
+    for rule in var.spec.lifecycle_rules : {
+      rulePriority = rule.rule_priority
+      description  = rule.description != "" ? rule.description : null
+      selection = merge(
+        {
+          tagStatus   = rule.tag_status
+          countType   = rule.count_type
+          countNumber = rule.count_number
+        },
+        rule.count_type == "sinceImagePushed" ? { countUnit = "days" } : {},
+        length(rule.tag_prefixes) > 0 ? { tagPrefixList = rule.tag_prefixes } : {},
+        length(rule.tag_patterns) > 0 ? { tagPatternList = rule.tag_patterns } : {},
+      )
+      action = {
+        type = "expire"
+      }
     }
-    action = {
-      type = "expire"
-    }
-  } : null
-  keep_last_n_rule = local.max_image_count > 0 ? {
-    rulePriority = 2
-    description  = "Keep only the most recent ${local.max_image_count} images"
-    selection = {
-      tagStatus   = "any"
-      countType   = "imageCountMoreThan"
-      countNumber = local.max_image_count
-    }
-    action = {
-      type = "expire"
-    }
-  } : null
-  lifecycle_rules = [for rule in [local.untagged_expiry_rule, local.keep_last_n_rule] : rule if rule != null]
+  ]
+
+  # Repository policy — the Struct arrives from the tfvars layer as a nested
+  # object; the provider wants the document as a JSON string.
+  repository_policy = var.spec.repository_policy != null ? jsonencode(var.spec.repository_policy) : null
 }
-
-

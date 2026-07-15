@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awswafregexpatternset.v1;
+
+import "dev/planton/provider/aws/awswafregexpatternset/v1/api.proto";
+import "dev/planton/provider/aws/provider.proto";
+
+// AwsWafRegexPatternSetStackInput is the input for the
+// aws-waf-regex-pattern-set IaC modules.
+message AwsWafRegexPatternSetStackInput {
+  // target cloud-resource
+  AwsWafRegexPatternSet target = 1;
+
+  // provider-config
+  dev.planton.provider.aws.AwsProviderConfig provider_config = 2;
+}

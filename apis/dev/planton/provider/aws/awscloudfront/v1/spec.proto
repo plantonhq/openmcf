@@ -113,9 +113,9 @@ message AwsCloudFrontSpec {
 
   // The AWS WAF Web ACL protecting the distribution, by ARN.
   // CloudFront-scope ACLs (scope CLOUDFRONT, which must live in
-  // us-east-1) are addressed by ARN. Can reference an AwsWafWebAcl
-  // resource.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef web_acl_id = 9 [
+  // us-east-1) are addressed by ARN — never by the bare web ACL ID.
+  // Can reference an AwsWafWebAcl resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef web_acl_arn = 9 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsWafWebAcl,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.web_acl_arn"
   ];

@@ -253,10 +253,15 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "ec2inst"
   }];
+  // Every Client VPN endpoint requires an ACM server certificate at create
+  // time; the imported self-signed fixture satisfies it. Subnets/VPC are
+  // optional composition (a zero-association endpoint is valid) -- composed
+  // scenarios declare them via the e2e-prerequisites annotation.
   AwsClientVpn = 221 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsvpn"
+    prerequisites: [AwsCertManagerCert]
   }];
   AwsDocumentDb = 222 [(kind_meta) = {
     provider: aws
@@ -264,10 +269,14 @@ enum CloudResourceKind {
     id_prefix: "docdb"
     prerequisites: [AwsSubnet]
   }];
+  // AwsRoute53Zone is a prerequisite because every record lives inside a
+  // hosted zone -- the spec's zone_id reference must resolve before the
+  // record can be created.
   AwsRoute53DnsRecord = 223 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "r53rec"
+    prerequisites: [AwsRoute53Zone]
   }];
   // AwsS3Bucket is a prerequisite because the object set's bucket reference
   // is required -- objects cannot exist without the bucket that holds them.
@@ -405,10 +414,33 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awshttpapigw"
   }];
+  // AwsIamRole is a prerequisite because a state machine cannot be created
+  // without an execution role it can assume -- the spec's role_arn reference
+  // must resolve before the CreateStateMachine call.
   AwsStepFunction = 241 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awssfn"
+    prerequisites: [AwsIamRole]
+  }];
+  // AwsSubnet is a prerequisite because a VPC link is a set of managed ENIs
+  // provisioned into referenced subnets -- the subnet references must resolve
+  // before the link can be created. Security groups are optional on the link,
+  // so they compose per-scenario rather than as a registry prerequisite.
+  AwsHttpApiVpcLink = 356 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awshttpvpcl"
+    prerequisites: [AwsSubnet]
+  }];
+  // AwsCertManagerCert is a prerequisite because a custom domain cannot be
+  // created without a TLS certificate in the same region covering the domain
+  // -- the spec's certificate_arn reference must resolve first.
+  AwsHttpApiDomain = 357 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awshttpdom"
+    prerequisites: [AwsCertManagerCert]
   }];
   // AwsVpcEndpoint's composed E2E scenarios reference the AwsVpc
   // prerequisite's outputs (vpc_id + default_route_table_id for gateway
@@ -540,46 +572,81 @@ enum CloudResourceKind {
 
   // --- Storage ---
 
+  // AwsSubnet and AwsSecurityGroup are prerequisites because mount targets
+  // (required, min 1) place the file system's NFS endpoints into subnets and
+  // attach security groups -- both references must resolve before the
+  // CreateMountTarget calls.
   AwsElasticFileSystem = 290 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsefs"
+    prerequisites: [
+      AwsSubnet,
+      AwsSecurityGroup
+    ]
+  }];
+
+  // AwsElasticFileSystem is a prerequisite because an access point is created
+  // INTO a file system -- the spec's required file_system_id reference must
+  // resolve before the CreateAccessPoint call.
+  AwsEfsAccessPoint = 360 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsefsap"
+    prerequisites: [AwsElasticFileSystem]
   }];
 
   AwsFsxLustreFileSystem = 291 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsfxl"
+    prerequisites: [AwsSubnet]
   }];
 
   AwsFsxOpenzfsFileSystem = 292 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsfxz"
+    prerequisites: [AwsSubnet]
   }];
 
+  // Every Windows file system must join an Active Directory domain; the
+  // directory itself is external infrastructure (AWS Managed Microsoft AD or
+  // a self-managed domain), so only the network dependency is a declarable
+  // prerequisite.
   AwsFsxWindowsFileSystem = 293 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsfxw"
+    prerequisites: [AwsSubnet]
   }];
 
   AwsFsxOntapFileSystem = 294 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsfxo"
+    prerequisites: [AwsSubnet]
   }];
 
   AwsFsxOntapStorageVirtualMachine = 295 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsfxosvm"
+    prerequisites: [AwsFsxOntapFileSystem]
   }];
 
   AwsFsxOntapVolume = 296 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsfxov"
+    prerequisites: [AwsFsxOntapStorageVirtualMachine]
+  }];
+
+  AwsFsxDataRepositoryAssociation = 375 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsfxdra"
+    prerequisites: [AwsFsxLustreFileSystem]
   }];
 
   // --- Auth / Identity ---
@@ -590,10 +657,34 @@ enum CloudResourceKind {
     id_prefix: "awscog"
   }];
 
+  // AwsCognitoUserPool is a prerequisite because an identity provider is
+  // created INTO a pool -- the spec's required user_pool_id reference must
+  // resolve before the CreateIdentityProvider call.
   AwsCognitoIdentityProvider = 302 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awscogidp"
+    prerequisites: [AwsCognitoUserPool]
+  }];
+
+  // AwsCognitoUserPool is a prerequisite because an app client is created
+  // INTO a pool -- the spec's required user_pool_id reference must resolve
+  // before the CreateUserPoolClient call.
+  AwsCognitoUserPoolClient = 358 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awscogclient"
+    prerequisites: [AwsCognitoUserPool]
+  }];
+
+  // AwsCognitoUserPool is a prerequisite because a resource server is created
+  // INTO a pool -- the spec's required user_pool_id reference must resolve
+  // before the CreateResourceServer call.
+  AwsCognitoResourceServer = 359 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awscogrs"
+    prerequisites: [AwsCognitoUserPool]
   }];
 
   // --- Security (WAF) ---
@@ -602,6 +693,18 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awswaf"
+  }];
+
+  AwsWafIpSet = 361 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awswafips"
+  }];
+
+  AwsWafRegexPatternSet = 362 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awswafregex"
   }];
 
   // --- Monitoring / Observability ---
@@ -616,6 +719,13 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awscwa"
+  }];
+
+  AwsCloudwatchCompositeAlarm = 355 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awscwca"
+    prerequisites: [AwsCloudwatchAlarm]
   }];
 
   // --- Analytics / Streaming ---
@@ -669,24 +779,110 @@ enum CloudResourceKind {
   }];
 
   // AI/ML
+  // A domain cannot exist without VPC subnets and a SageMaker execution role
+  // (default_user_settings.execution_role_arn is required), so both are hard
+  // deploy prerequisites.
   AwsSagemakerDomain = 270 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "sgmkd"
+    prerequisites: [
+      AwsSubnet,
+      AwsIamRole
+    ]
   }];
 
   // Containers
+
+  // A service can run entirely on companion defaults, so the App Runner
+  // family's kinds are dependency-free leaves except the VPC connector
+  // (which cannot exist without subnets and security groups). A service's
+  // companion references (auto scaling / VPC connector / observability /
+  // WAF) are optional composition -- scenarios declare them via the
+  // e2e-prerequisites annotation.
   AwsAppRunnerService = 320 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsar"
   }];
 
+  AwsAppRunnerAutoScalingConfiguration = 368 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsarasc"
+  }];
+
+  AwsAppRunnerVpcConnector = 369 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsarvc"
+    prerequisites: [
+      AwsSubnet,
+      AwsSecurityGroup
+    ]
+  }];
+
+  AwsAppRunnerObservabilityConfiguration = 370 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsaroc"
+  }];
+
+  // AwsTransitGateway is a prerequisite because an attachment cannot exist
+  // without the gateway it attaches to; AwsSubnet because the attachment
+  // provisions an ENI into at least one subnet (the VPC arrives transitively
+  // through the subnet's own prerequisites).
+  AwsTransitGatewayVpcAttachment = 371 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awstgwa"
+    prerequisites: [
+      AwsTransitGateway,
+      AwsSubnet
+    ]
+  }];
+
+  // Only the gateway is a hard prerequisite: a route table can exist empty.
+  // Associations, propagations, and routes referencing attachments are
+  // optional composition -- scenarios declare them via the e2e-prerequisites
+  // annotation.
+  AwsTransitGatewayRouteTable = 372 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awstgwrt"
+  }];
+
   // Batch Processing
+
+  // A MANAGED compute environment always launches into VPC subnets, so the
+  // subnet is a hard deploy prerequisite (security groups are required only
+  // for the Fargate types -- scenario-declared, not a registry edge).
   AwsBatchComputeEnvironment = 321 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsbat"
+    prerequisites: [AwsSubnet]
+  }];
+
+  // A job queue cannot exist without at least one VALID compute environment
+  // to map onto.
+  AwsBatchJobQueue = 363 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsbatjq"
+    prerequisites: [AwsBatchComputeEnvironment]
+  }];
+
+  AwsBatchSchedulingPolicy = 364 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsbatsp"
+  }];
+
+  AwsBatchJobDefinition = 365 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsbatjd"
   }];
 
   // CI/CD
@@ -694,12 +890,17 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awscb"
+    prerequisites: [AwsIamRole]
   }];
 
   AwsCodePipeline = 331 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awscp"
+    prerequisites: [
+      AwsIamRole,
+      AwsS3Bucket
+    ]
   }];
 
   // Workflow / Orchestration
@@ -725,10 +926,29 @@ enum CloudResourceKind {
   }];
 
   // In-Memory Database
+
+  // A cluster always launches into a subnet group; the subnets are the hard
+  // deploy prerequisite. The ACL it attaches is optional composition (the
+  // built-in "open-access" ACL needs no resource) -- scenarios declare the
+  // ACL/user chain via the e2e-prerequisites annotation.
   AwsMemorydbCluster = 342 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsmdb"
+    prerequisites: [AwsSubnet]
+  }];
+  AwsMemorydbUser = 373 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsmdbuser"
+  }];
+  // An empty ACL is valid (MemoryDB has no mandatory "default" member), so
+  // the user is optional composition -- the composed scenario declares it via
+  // the e2e-prerequisites annotation, never a registry edge.
+  AwsMemorydbAcl = 374 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsmdbacl"
   }];
 
   // Streaming
@@ -785,6 +1005,28 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awsrun"
     prerequisites: [AwsSubnet]
+  }];
+
+  AwsRoute53HealthCheck = 376 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "r53hc"
+  }];
+
+  // Both SES kinds are dependency-free leaves: an identity's configuration
+  // set is optional composition (scenarios declare it via the
+  // e2e-prerequisites annotation), and a configuration set's event
+  // destinations reference other kinds only optionally.
+  AwsSesConfigurationSet = 366 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awssescs"
+  }];
+
+  AwsSesEmailIdentity = 367 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awssesid"
   }];
 
   // 400–599: Azure resources

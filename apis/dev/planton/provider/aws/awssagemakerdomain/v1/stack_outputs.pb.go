@@ -48,8 +48,12 @@ type AwsSagemakerDomainStackOutputs struct {
 	// created for this domain. Only populated when auth_mode is "SSO".
 	// Useful for SSO configuration and access management.
 	SingleSignOnApplicationArn string `protobuf:"bytes,6,opt,name=single_sign_on_application_arn,json=singleSignOnApplicationArn,proto3" json:"single_sign_on_application_arn,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// single_sign_on_managed_application_instance_id is the IAM Identity Center managed
+	// application instance ID for this domain. Only populated when auth_mode is "SSO".
+	// Used when assigning Identity Center users and groups to the domain programmatically.
+	SingleSignOnManagedApplicationInstanceId string `protobuf:"bytes,7,opt,name=single_sign_on_managed_application_instance_id,json=singleSignOnManagedApplicationInstanceId,proto3" json:"single_sign_on_managed_application_instance_id,omitempty"`
+	unknownFields                            protoimpl.UnknownFields
+	sizeCache                                protoimpl.SizeCache
 }
 
 func (x *AwsSagemakerDomainStackOutputs) Reset() {
@@ -124,11 +128,18 @@ func (x *AwsSagemakerDomainStackOutputs) GetSingleSignOnApplicationArn() string 
 	return ""
 }
 
+func (x *AwsSagemakerDomainStackOutputs) GetSingleSignOnManagedApplicationInstanceId() string {
+	if x != nil {
+		return x.SingleSignOnManagedApplicationInstanceId
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awssagemakerdomain_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awssagemakerdomain_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/aws/awssagemakerdomain/v1/stack_outputs.proto\x12.dev.planton.provider.aws.awssagemakerdomain.v1\"\xc6\x02\n" +
+	"Bdev/planton/provider/aws/awssagemakerdomain/v1/stack_outputs.proto\x12.dev.planton.provider.aws.awssagemakerdomain.v1\"\xa8\x03\n" +
 	"\x1eAwsSagemakerDomainStackOutputs\x12\x1b\n" +
 	"\tdomain_id\x18\x01 \x01(\tR\bdomainId\x12\x1d\n" +
 	"\n" +
@@ -137,7 +148,8 @@ const file_dev_planton_provider_aws_awssagemakerdomain_v1_stack_outputs_proto_ra
 	"domain_url\x18\x03 \x01(\tR\tdomainUrl\x124\n" +
 	"\x17home_efs_file_system_id\x18\x04 \x01(\tR\x13homeEfsFileSystemId\x12O\n" +
 	"%security_group_id_for_domain_boundary\x18\x05 \x01(\tR securityGroupIdForDomainBoundary\x12B\n" +
-	"\x1esingle_sign_on_application_arn\x18\x06 \x01(\tR\x1asingleSignOnApplicationArnB\x8d\x03\n" +
+	"\x1esingle_sign_on_application_arn\x18\x06 \x01(\tR\x1asingleSignOnApplicationArn\x12`\n" +
+	".single_sign_on_managed_application_instance_id\x18\a \x01(\tR(singleSignOnManagedApplicationInstanceIdB\x8d\x03\n" +
 	"2com.dev.planton.provider.aws.awssagemakerdomain.v1B\x11StackOutputsProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awssagemakerdomain/v1;awssagemakerdomainv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Aws.Awssagemakerdomain.V1\xca\x02.Dev\\Planton\\Provider\\Aws\\Awssagemakerdomain\\V1\xe2\x02:Dev\\Planton\\Provider\\Aws\\Awssagemakerdomain\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Aws::Awssagemakerdomain::V1b\x06proto3"
 
 var (

@@ -16,8 +16,10 @@ import "dev/planton/shared/options/options.proto";
 // executing tests, or deploying to production.
 //
 // This component creates a pipeline with artifact stores, stages, actions,
-// and optionally V2 features: git-based triggers for automatic execution
-// and pipeline-level variables for parameterization.
+// and the V2 feature set: git-based triggers for automatic execution,
+// pipeline-level variables for parameterization, and stage-level conditions
+// (entry gates, success checks, and failure handling with automatic
+// rollback or retry).
 //
 // Bundling rationale: A pipeline is the top-level orchestration unit. Stages
 // and actions are integral parts of the pipeline definition and cannot exist
@@ -122,6 +124,23 @@ message AwsCodePipelineSpec {
     message: "execution_mode QUEUED and PARALLEL are only supported on V2 pipelines"
     expression: "!has(this.execution_mode) || this.execution_mode == '' || this.execution_mode == 'SUPERSEDED' || !has(this.pipeline_type) || this.pipeline_type == '' || this.pipeline_type == 'V2'"
   };
+
+  // Stage conditions (entry gates, success checks, failure handling) require
+  // a V2 pipeline.
+  option (buf.validate.message).cel = {
+    id: "stage_conditions_require_v2"
+    message: "stage before_entry, on_success, and on_failure conditions are only supported on V2 pipelines"
+    expression: "this.stages.all(s, !has(s.before_entry) && !has(s.on_success) && !has(s.on_failure)) || !has(this.pipeline_type) || this.pipeline_type == '' || this.pipeline_type == 'V2'"
+  };
+
+  // Single-region pipelines use one store without a region; cross-region
+  // pipelines must set a region on every store (the provider rejects the
+  // mixed shape at apply time — caught here at validation time instead).
+  option (buf.validate.message).cel = {
+    id: "artifact_stores_region_shape"
+    message: "a single artifact store must omit region; multiple (cross-region) artifact stores must each set region"
+    expression: "size(this.artifact_stores) <= 1 || this.artifact_stores.all(s, s.region != '')"
+  };
 }
 
 // AwsCodePipelineArtifactStore defines an S3 bucket used to store pipeline
@@ -156,6 +175,7 @@ message AwsCodePipelineStage {
     (buf.validate.field).string = {
       min_len: 1
       max_len: 100
+      pattern: "^[0-9A-Za-z_.@\\-]+$"
     }
   ];
 
@@ -165,6 +185,191 @@ message AwsCodePipelineStage {
   repeated AwsCodePipelineAction actions = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).repeated.min_items = 1
+  ];
+
+  // before_entry is an entry gate: its rules must pass before the stage
+  // starts (e.g., a DeploymentWindow rule that only admits executions
+  // during business hours, or a CloudWatchAlarm rule that blocks deploys
+  // while an alarm is firing). V2 pipelines only.
+  AwsCodePipelineStageCondition before_entry = 3;
+
+  // on_success runs verification rules after the stage's actions succeed;
+  // a failing rule fails the stage despite the successful actions (e.g., a
+  // post-deploy CloudWatchAlarm check). V2 pipelines only.
+  AwsCodePipelineStageCondition on_success = 4;
+
+  // on_failure controls what happens when the stage fails: automatically
+  // roll back to the last successful state, retry the stage, or
+  // conditionally decide via rules. V2 pipelines only.
+  AwsCodePipelineFailureHandling on_failure = 5;
+}
+
+// AwsCodePipelineStageCondition is a gate evaluated before a stage starts
+// (before_entry) or after it succeeds (on_success). The condition's rules
+// are AND'd — all must pass.
+message AwsCodePipelineStageCondition {
+  // result is the outcome applied when the condition's rules do NOT pass.
+  //   FAIL: Fail the stage (default behavior when omitted)
+  //   SKIP: Skip the stage and continue the pipeline (before_entry gates)
+  string result = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "FAIL",
+        "SKIP"
+      ]
+    }
+  ];
+
+  // rules are the checks that make up this condition (1-5, AND'd together).
+  repeated AwsCodePipelineRule rules = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 5
+  ];
+}
+
+// AwsCodePipelineFailureHandling controls a stage's failure behavior.
+message AwsCodePipelineFailureHandling {
+  // result is the action taken when the stage fails.
+  //   ROLLBACK: Automatically roll the stage back to its last successful
+  //             execution's state
+  //   RETRY:    Automatically retry per retry_configuration
+  //   FAIL:     Fail the pipeline execution (default behavior when omitted)
+  string result = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ROLLBACK",
+        "RETRY",
+        "FAIL"
+      ]
+    }
+  ];
+
+  // retry_configuration tunes automatic retry when result is RETRY.
+  AwsCodePipelineRetryConfiguration retry_configuration = 2;
+
+  // condition optionally gates the failure handling behind rules — the
+  // result applies only when the rules pass.
+  AwsCodePipelineStageCondition condition = 3;
+
+  // retry_configuration only makes sense with the RETRY result.
+  option (buf.validate.message).cel = {
+    id: "retry_configuration_requires_retry_result"
+    message: "retry_configuration requires result to be RETRY"
+    expression: "!has(this.retry_configuration) || this.result == 'RETRY'"
+  };
+}
+
+// AwsCodePipelineRetryConfiguration tunes automatic stage retry.
+message AwsCodePipelineRetryConfiguration {
+  // retry_mode selects what is retried.
+  //   FAILED_ACTIONS: Only the failed actions re-run (default)
+  //   ALL_ACTIONS:    The whole stage re-runs from its first action
+  string retry_mode = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "FAILED_ACTIONS",
+        "ALL_ACTIONS"
+      ]
+    }
+  ];
+}
+
+// AwsCodePipelineRule is a single check inside a stage condition. AWS
+// provides managed rule types (owner AWS, category Rule): DeploymentWindow,
+// CloudWatchAlarm, LambdaInvoke, VariableCheck, Commands.
+message AwsCodePipelineRule {
+  // name is the rule name, unique within the condition.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 100
+      pattern: "^[A-Za-z0-9.@\\-_]+$"
+    }
+  ];
+
+  // rule_type_id identifies which managed rule runs.
+  AwsCodePipelineRuleTypeId rule_type_id = 2 [(buf.validate.field).required = true];
+
+  // configuration contains rule-provider-specific key-value pairs (e.g.,
+  // DeploymentWindow: Cron, TimeZone; CloudWatchAlarm: AlarmName,
+  // WaitTime; LambdaInvoke: FunctionName).
+  map<string, string> configuration = 3;
+
+  // commands are shell commands executed by the Commands rule provider
+  // (max 50, each 1-1000 characters).
+  repeated string commands = 4 [(buf.validate.field).repeated = {
+    max_items: 50
+    items: {
+      string: {
+        min_len: 1
+        max_len: 1000
+      }
+    }
+  }];
+
+  // input_artifacts are artifact names available to the rule (e.g., for
+  // Commands rules operating on build output).
+  repeated string input_artifacts = 5;
+
+  // region is the AWS region where the rule executes. Omit to run in the
+  // pipeline's region.
+  string region = 6;
+
+  // role_arn is an IAM role the rule assumes instead of the pipeline's
+  // role (e.g., a scoped role for the LambdaInvoke rule).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // timeout_in_minutes is the maximum time the rule can run (5-86400).
+  int32 timeout_in_minutes = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 5
+      lte: 86400
+    }
+  ];
+}
+
+// AwsCodePipelineRuleTypeId identifies a condition rule's type.
+message AwsCodePipelineRuleTypeId {
+  // provider is the managed rule provider: DeploymentWindow,
+  // CloudWatchAlarm, LambdaInvoke, VariableCheck, or Commands.
+  string provider = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 35
+    }
+  ];
+
+  // category is the rule category. AWS currently supports only "Rule".
+  optional string category = 2 [
+    (dev.planton.shared.options.default) = "Rule",
+    (buf.validate.field).string.const = "Rule"
+  ];
+
+  // owner identifies who provides the rule. AWS currently supports only
+  // "AWS" (managed rules).
+  optional string owner = 3 [
+    (dev.planton.shared.options.default) = "AWS",
+    (buf.validate.field).string.const = "AWS"
+  ];
+
+  // version is the rule type version. Typically "1"; AWS resolves the
+  // current version when omitted.
+  string version = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 9
+      pattern: "^[0-9A-Za-z_\\-]+$"
+    }
   ];
 }
 
@@ -179,6 +384,7 @@ message AwsCodePipelineAction {
     (buf.validate.field).string = {
       min_len: 1
       max_len: 100
+      pattern: "^[0-9A-Za-z_.@\\-]+$"
     }
   ];
 
@@ -272,7 +478,13 @@ message AwsCodePipelineAction {
   // namespace defines a variable namespace for this action's output variables.
   // Other actions can reference these variables as #{namespace.VariableName}.
   // Only meaningful for actions that produce output variables (e.g., source actions).
-  string namespace = 9 [(buf.validate.field).string.max_len = 100];
+  string namespace = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 100
+      pattern: "^[0-9A-Za-z_@\\-]+$"
+    }
+  ];
 
   // region is the AWS region where this action executes. Required for
   // cross-region actions. If omitted, the action runs in the pipeline's region.
@@ -297,8 +509,10 @@ message AwsCodePipelineAction {
     }
   ];
 
-  // timeout_in_minutes is the maximum time an action can run before timing out.
-  // Range: 5-86400 (60 days). If omitted, the action uses the provider default.
+  // timeout_in_minutes overrides the action type's default timeout.
+  // Range: 5-86400 (60 days). AWS supports this override ONLY on Manual
+  // Approval actions (category Approval, provider Manual) — every other
+  // action type is rejected at pipeline creation.
   int32 timeout_in_minutes = 13 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).int32 = {
@@ -306,6 +520,15 @@ message AwsCodePipelineAction {
       lte: 86400
     }
   ];
+
+  // AWS rejects a timeout override on any non-Approval action at
+  // CreatePipeline ("Overridden timeout is only supported for Manual
+  // Approval action type") — caught here at validation time instead.
+  option (buf.validate.message).cel = {
+    id: "timeout_only_for_approval_actions"
+    message: "timeout_in_minutes is only supported on Manual Approval actions (category Approval)"
+    expression: "this.timeout_in_minutes == 0 || this.category == 'Approval'"
+  };
 }
 
 // AwsCodePipelineTrigger defines an automatic pipeline execution trigger
@@ -343,6 +566,13 @@ message AwsCodePipelineGitConfiguration {
   // pull_request defines filters for pull request events (open, update, close).
   // Multiple PR filters are OR'd.
   repeated AwsCodePipelineGitPullRequest pull_request = 3 [(buf.validate.field).repeated.max_items = 3];
+
+  // A trigger that never fires is a configuration mistake.
+  option (buf.validate.message).cel = {
+    id: "git_configuration_needs_filter"
+    message: "git_configuration requires at least one push or pull_request filter"
+    expression: "size(this.push) > 0 || size(this.pull_request) > 0"
+  };
 }
 
 // AwsCodePipelineGitPush defines filters for git push events. All specified
@@ -360,6 +590,8 @@ message AwsCodePipelineGitPush {
 
 // AwsCodePipelineGitPullRequest defines filters for pull request events.
 // All specified filter types within a single block are AND'd together.
+// (Pull-request triggers filter by branches and file paths only — tag
+// filtering exists only on push triggers.)
 message AwsCodePipelineGitPullRequest {
   // branches filters by target branch name patterns (glob syntax).
   AwsCodePipelineGitFilter branches = 1;
@@ -367,21 +599,55 @@ message AwsCodePipelineGitPullRequest {
   // file_paths filters by changed file path patterns (glob syntax).
   AwsCodePipelineGitFilter file_paths = 2;
 
-  // events specifies which PR lifecycle events trigger the pipeline.
-  // Valid values: OPEN, UPDATE, CLOSED.
-  repeated string events = 3;
+  // events specifies which PR lifecycle events trigger the pipeline
+  // (1-3 values). Valid values: OPEN, UPDATED, CLOSED.
+  repeated string events = 3 [(buf.validate.field).repeated = {
+    max_items: 3
+    items: {
+      string: {
+        in: [
+          "OPEN",
+          "UPDATED",
+          "CLOSED"
+        ]
+      }
+    }
+  }];
 }
 
 // AwsCodePipelineGitFilter provides include and exclude patterns for
 // git-based trigger filtering. Patterns use glob syntax.
 message AwsCodePipelineGitFilter {
   // includes are glob patterns that must match for the filter to pass.
-  // At least one include pattern must match.
-  repeated string includes = 1 [(buf.validate.field).repeated.max_items = 8];
+  // At least one include pattern must match. Each pattern 1-255 characters.
+  repeated string includes = 1 [(buf.validate.field).repeated = {
+    max_items: 8
+    items: {
+      string: {
+        min_len: 1
+        max_len: 255
+      }
+    }
+  }];
 
   // excludes are glob patterns that cause the filter to reject a match.
-  // Exclusions take precedence over inclusions.
-  repeated string excludes = 2 [(buf.validate.field).repeated.max_items = 8];
+  // Exclusions take precedence over inclusions. Each pattern 1-255 characters.
+  repeated string excludes = 2 [(buf.validate.field).repeated = {
+    max_items: 8
+    items: {
+      string: {
+        min_len: 1
+        max_len: 255
+      }
+    }
+  }];
+
+  // An empty filter block matches nothing — require at least one pattern.
+  option (buf.validate.message).cel = {
+    id: "git_filter_needs_pattern"
+    message: "a git filter requires at least one includes or excludes pattern"
+    expression: "size(this.includes) > 0 || size(this.excludes) > 0"
+  };
 }
 
 // AwsCodePipelineVariable defines a pipeline-level variable that can be

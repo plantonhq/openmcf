@@ -1,0 +1,21 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsBatchSchedulingPolicy
+metadata:
+  name: test-batch-fair-share
+  id: test-batch-fair-share
+  org: test-org
+  env: dev
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: test
+    pulumi.planton.dev/project: test
+    pulumi.planton.dev/stack.name: dev.AwsBatchSchedulingPolicy.test-batch-fair-share
+spec:
+  region: us-west-2
+  computeReservation: 10
+  shareDecaySeconds: 3600
+  shareDistributions:
+    - shareIdentifier: teamA
+      weightFactor: 0.5
+    - shareIdentifier: adhoc*
+      weightFactor: 2

@@ -646,9 +646,7 @@ func (x *AwsLambdaImageConfig) GetWorkingDirectory() string {
 type AwsLambdaFileSystemConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The EFS ACCESS POINT ARN (not the file system ARN). Reference an
-	// AwsElasticFileSystem access-point output by name -- e.g. valueFrom
-	// fieldPath "status.outputs.access_point_arns.<access-point-name>"
-	// -- or pass a literal access point ARN.
+	// AwsEfsAccessPoint resource or pass a literal access point ARN.
 	AccessPointArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=access_point_arn,json=accessPointArn,proto3" json:"access_point_arn,omitempty"`
 	// Where the file system appears inside the execution environment.
 	// Must be under /mnt, e.g. "/mnt/data".
@@ -1379,9 +1377,9 @@ const file_dev_planton_provider_aws_awslambda_v1_spec_proto_rawDesc = "" +
 	"\ventry_point\x18\x01 \x03(\tR\n" +
 	"entryPoint\x12\x18\n" +
 	"\acommand\x18\x02 \x03(\tR\acommand\x12+\n" +
-	"\x11working_directory\x18\x03 \x01(\tR\x10workingDirectory\"\xd1\x01\n" +
-	"\x19AwsLambdaFileSystemConfig\x12i\n" +
-	"\x10access_point_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\v\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x02R\x0eaccessPointArn\x12I\n" +
+	"\x11working_directory\x18\x03 \x01(\tR\x10workingDirectory\"\xf5\x01\n" +
+	"\x19AwsLambdaFileSystemConfig\x12\x8c\x01\n" +
+	"\x10access_point_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xe8\x02\x92\xd4a\x1fstatus.outputs.access_point_arnR\x0eaccessPointArn\x12I\n" +
 	"\x10local_mount_path\x18\x02 \x01(\tB\x1f\xbaH\x1cr\x1a\x10\x012\x16^/mnt/[a-zA-Z0-9-_.]+$R\x0elocalMountPath\"\xf5\x04\n" +
 	"\x16AwsLambdaLoggingConfig\x123\n" +
 	"\n" +

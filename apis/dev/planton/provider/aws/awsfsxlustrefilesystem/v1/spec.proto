@@ -7,119 +7,201 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
 // AwsFsxLustreFileSystemSpec defines the desired configuration for an Amazon FSx
-// for Lustre file system — a fully managed, high-performance file system optimized
-// for fast processing of workloads such as machine learning training, high
-// performance computing (HPC), video processing, and financial modeling.
+// for Lustre file system — a fully managed, high-performance parallel file system
+// optimized for fast processing of workloads such as machine learning training,
+// high performance computing (HPC), video processing, and financial modeling.
 //
 // Lustre delivers sub-millisecond latencies, hundreds of GB/s throughput, and
-// millions of IOPS, making it the standard for compute-intensive workloads that
-// need to process massive datasets quickly. It integrates natively with Amazon S3,
-// allowing transparent access to S3 objects as files on the file system.
+// millions of IOPS. It integrates natively with Amazon S3, allowing transparent
+// access to S3 objects as files on the file system.
+//
+// Choosing a shape:
+// - SCRATCH_2 + SSD: ephemeral processing storage (no replication, no backups).
+//   Cheapest way to burn through a dataset; anything worth keeping is exported
+//   back to S3.
+// - PERSISTENT_2 + SSD: durable, within-AZ-replicated storage with the highest
+//   throughput tiers and metadata IOPS tuning. The default choice for new
+//   production workloads.
+// - PERSISTENT_2 + INTELLIGENT_TIERING: elastic capacity that grows and shrinks
+//   with your data (no provisioned storage_capacity_gib); throughput is
+//   provisioned absolutely via throughput_capacity and reads are served from a
+//   provisioned SSD read cache. For large, cool datasets with hot subsets.
+// - PERSISTENT_1 + HDD: lowest cost per TiB for throughput-oriented, sequential
+//   workloads; requires drive_cache_type and per_unit_storage_throughput 12 or 40.
+//
+// S3 integration comes in two generations:
+// - The legacy in-spec import_path/export_path arms (SCRATCH_1/SCRATCH_2/
+//   PERSISTENT_1 only) create one implicit S3 link at file-system creation and
+//   are immutable afterwards.
+// - AwsFsxDataRepositoryAssociation is the modern, first-class link (required
+//   for PERSISTENT_2): many links per file system, each with its own lifecycle
+//   and bidirectional auto import/export policies. Prefer it for anything
+//   persistent.
 //
 // Key design notes:
-// - `deployment_type`, `storage_type`, `subnet_id`, `security_group_ids`, and
-//   `kms_key_id` are ForceNew — changing them requires replacing the file system.
-//   Plan these upfront.
-// - Lustre file systems are single-AZ only — exactly one subnet is required.
-// - Scratch file systems are ephemeral (no replication, no backups). Use for
-//   temporary processing. Persistent file systems replicate data within the AZ
-//   and support automatic backups.
-// - S3 import/export paths (legacy) are ForceNew. For more flexible S3 integration,
-//   use a separate data repository association resource.
-// - Credentials, region, and deployment workflow live outside this spec in stack inputs.
+// - `deployment_type`, `storage_type`, `subnet_id`, `security_group_ids`,
+//   `kms_key_id`, `backup_id`, `efa_enabled`, `drive_cache_type`, and the S3
+//   import settings are ForceNew — changing them replaces the file system.
+// - Lustre file systems are single-AZ — exactly one subnet.
+// - Storage capacity can grow in place (never shrink; growth on SCRATCH_1
+//   replaces the file system).
+// - Credentials, region, and deployment workflow live outside this spec in
+//   stack inputs.
 message AwsFsxLustreFileSystemSpec {
-  // The AWS region where the resource will be created.
+  // The AWS region where the file system will be created.
   // Example: "us-west-2", "eu-west-1"
   string region = 1 [(buf.validate.field).string.min_len = 1];
 
   // ---------------------------------------------------------------------------
-  // File System Core
+  // File system core
   // ---------------------------------------------------------------------------
 
   // Deployment type controlling data durability and performance characteristics.
   // ForceNew — cannot be changed after creation.
   //
-  // - "SCRATCH_1": temporary storage, no data replication. Lowest cost. Legacy.
-  // - "SCRATCH_2": temporary storage, no data replication. Higher burst throughput
-  //   than SCRATCH_1. Recommended for short-lived processing jobs.
-  // - "PERSISTENT_1": persistent storage with data replicated within a single AZ.
-  //   Supports automatic backups. Suitable for long-running workloads.
-  // - "PERSISTENT_2": latest persistent option with higher throughput tiers,
-  //   metadata IOPS configuration, and SSD storage. Recommended for new production
-  //   workloads requiring persistent storage.
+  // - "SCRATCH_1": temporary storage, no replication. Legacy; fixed 200 MB/s/TiB
+  //   throughput. Growing storage on SCRATCH_1 replaces the file system.
+  // - "SCRATCH_2": temporary storage, no replication, burst throughput up to
+  //   1300 MB/s/TiB. Recommended for short-lived processing jobs.
+  // - "PERSISTENT_1": within-AZ-replicated storage with automatic backups.
+  //   The only deployment type supporting HDD storage and the legacy S3
+  //   import/export arms alongside SCRATCH types.
+  // - "PERSISTENT_2": the current persistent generation — higher throughput
+  //   tiers (125-1000 MB/s/TiB), metadata IOPS configuration, EFA/GPUDirect
+  //   support, and the INTELLIGENT_TIERING storage class. Recommended for new
+  //   production workloads.
   //
-  // Default: SCRATCH_2
+  // Default: SCRATCH_2 (the provider's own default is the legacy SCRATCH_1;
+  // this spec recommends SCRATCH_2 for its strictly better burst throughput at
+  // the same price).
   optional string deployment_type = 2 [(dev.planton.shared.options.default) = "SCRATCH_2"];
 
-  // Storage capacity in GiB. Minimum 1200 GiB. Exact valid values depend on
-  // deployment type and storage type:
+  // Storage capacity in GiB. Minimum 1200. Valid step sizes depend on the
+  // deployment and storage types (AWS enforces these at create time):
   //
-  // - SCRATCH_2 and PERSISTENT_2 (SSD): 1200, then increments of 2400.
-  // - PERSISTENT_1 (SSD): 1200, then increments of 2400.
-  // - PERSISTENT_1 (HDD): 6000, then increments of 6000.
+  // - SCRATCH_2 / PERSISTENT_1 / PERSISTENT_2 (SSD): 1200, 2400, then
+  //   increments of 2400.
+  // - PERSISTENT_1 (HDD): increments of 6000 (12 MB/s/TiB) or 1800
+  //   (40 MB/s/TiB).
   // - SCRATCH_1: 1200, 2400, 3600, then increments of 3600.
   //
-  // Can be increased after creation but never decreased. Increasing storage on
-  // SCRATCH_1 forces replacement.
-  int32 storage_capacity_gib = 3 [(buf.validate.field).int32.gte = 1200];
+  // Can be increased in place (never decreased; growth on SCRATCH_1 replaces
+  // the file system). Leave unset in exactly two cases: restoring from a
+  // backup (`backup_id` — capacity comes from the backup), or the
+  // INTELLIGENT_TIERING storage class (capacity is elastic and never
+  // provisioned).
+  optional int32 storage_capacity_gib = 3 [(buf.validate.field).int32.gte = 1200];
 
-  // Storage media type. ForceNew — cannot be changed after creation.
+  // Storage class backing the file system. ForceNew.
   //
-  // - "SSD": solid-state drives. Sub-millisecond latency. Required for SCRATCH_2,
-  //   PERSISTENT_2, and recommended for most workloads.
-  // - "HDD": hard disk drives. Lower cost, higher latency. Only available for
-  //   PERSISTENT_1 deployments. Requires `per_unit_storage_throughput` of 12 or 40.
+  // - "SSD": solid-state drives, sub-millisecond latency. Required for
+  //   SCRATCH_1/SCRATCH_2 and the default for both PERSISTENT generations.
+  // - "HDD": hard disk drives — lowest cost per TiB for sequential,
+  //   throughput-oriented workloads. PERSISTENT_1 only; requires
+  //   drive_cache_type and per_unit_storage_throughput 12 or 40.
+  // - "INTELLIGENT_TIERING": elastic, pay-for-what-you-store capacity with a
+  //   provisioned SSD read cache. PERSISTENT_2 only; requires
+  //   throughput_capacity, data_read_cache_configuration, and
+  //   metadata_configuration, and forbids provisioned storage_capacity_gib.
   //
   // Default: SSD
   optional string storage_type = 4 [(dev.planton.shared.options.default) = "SSD"];
 
-  // Throughput per unit of storage in MB/s/TiB. Required for PERSISTENT_1 and
-  // PERSISTENT_2 deployments. Invalid for SCRATCH types.
+  // Throughput per unit of storage in MB/s/TiB, for provisioned-capacity
+  // PERSISTENT deployments (SSD and HDD storage). Invalid for SCRATCH types
+  // and for INTELLIGENT_TIERING (which provisions throughput absolutely via
+  // throughput_capacity instead).
   //
-  // Valid values depend on deployment type and storage type:
+  // Valid values by deployment and storage type:
   // - PERSISTENT_1 + SSD: 50, 100, 200
   // - PERSISTENT_1 + HDD: 12, 40
   // - PERSISTENT_2 + SSD: 125, 250, 500, 1000
-  int32 per_unit_storage_throughput = 5;
-
-  // Enable LZ4 data compression for all data on the file system. Reduces storage
-  // consumption and can improve throughput for compressible data. Can be changed
-  // after creation. Compression does not affect file system performance for
-  // Lustre operations.
   //
-  // Default: NONE
-  optional string data_compression_type = 6 [(dev.planton.shared.options.default) = "NONE"];
+  // Can be changed in place on PERSISTENT_2 (throughput scales while the file
+  // system stays online), except when efa_enabled pins it at creation.
+  optional int32 per_unit_storage_throughput = 5 [(buf.validate.field).int32 = {
+    in: [
+      12,
+      40,
+      50,
+      100,
+      125,
+      200,
+      250,
+      500,
+      1000
+    ]
+  }];
 
-  // Lustre file system type version. ForceNew — cannot be changed after creation.
-  // Format: "x.y" (e.g., "2.12", "2.15").
+  // Absolute throughput in MB/s for the INTELLIGENT_TIERING storage class.
+  // Must be 4000 or a multiple of 4000. Required when (and only meaningful
+  // when) storage_type is INTELLIGENT_TIERING — provisioned-capacity file
+  // systems size their throughput per-TiB via per_unit_storage_throughput
+  // instead.
+  optional int32 throughput_capacity = 6 [(buf.validate.field).int32.gte = 4000];
+
+  // Enable LZ4 data compression for all data on the file system. Reduces
+  // storage consumption and can improve throughput for compressible data.
+  // Can be changed after creation (new writes are compressed; existing data
+  // is not rewritten).
   //
+  // - "NONE": no compression (default).
+  // - "LZ4": LZ4 compression.
+  optional string data_compression_type = 7 [(dev.planton.shared.options.default) = "NONE"];
+
+  // Lustre file system version, in "x.y" format (e.g., "2.12", "2.15").
   // Leave empty to use the latest version supported by the deployment type.
-  // Explicitly set only if workload compatibility requires a specific version.
-  string file_system_type_version = 7;
+  // Upgrades apply in place; a downgrade replaces the file system.
+  string file_system_type_version = 8 [(buf.validate.field).cel = {
+    id: "file_system_type_version_format"
+    message: "file_system_type_version must be in the format x.y (e.g., '2.12', '2.15')"
+    expression: "this == '' || this.matches('^[0-9]\\\\.[0-9]+$')"
+  }];
+
+  // Enable Elastic Fabric Adapter (EFA) and GPUDirect Storage (GDS) support,
+  // giving GPU instances a direct, OS-bypass data path to the file system.
+  // ForceNew — must be decided at creation, and while enabled it also pins
+  // per_unit_storage_throughput. Requires PERSISTENT_2 with
+  // metadata_configuration, and an EFA-enabled security group attached via
+  // security_group_ids.
+  bool efa_enabled = 9;
+
+  // Read cache for HDD-backed file systems. PERSISTENT_1 + HDD only, and
+  // REQUIRED there (AWS's contract for HDD file systems). ForceNew.
+  //
+  // - "READ": provision an SSD read cache sized to 20% of storage capacity —
+  //   gives HDD file systems SSD-like latency for frequently read data.
+  // - "NONE": no read cache.
+  string drive_cache_type = 10;
+
+  // Provisioned SSD read cache for the INTELLIGENT_TIERING storage class.
+  // Required when storage_type is INTELLIGENT_TIERING; invalid otherwise.
+  AwsFsxLustreFileSystemDataReadCacheConfiguration data_read_cache_configuration = 11;
 
   // ---------------------------------------------------------------------------
   // Networking (ForceNew)
   // ---------------------------------------------------------------------------
 
-  // Subnet ID for the file system's network interface. Required. ForceNew.
+  // Subnet for the file system's network interfaces. Required. ForceNew.
   //
-  // Lustre file systems are single-AZ — exactly one subnet is supported. The
-  // file system's ENI is created in this subnet. All compute resources mounting
-  // this file system must have network connectivity to this subnet.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 8 [
+  // Lustre file systems are single-AZ — exactly one subnet is supported. All
+  // compute resources mounting this file system must have network connectivity
+  // to this subnet.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 12 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
-  // Security groups for the file system's network interface. ForceNew.
+  // Security groups for the file system's network interfaces. ForceNew.
+  // Up to 50. When empty, AWS attaches the VPC's default security group.
   //
   // Must allow Lustre traffic between the file system and its clients:
   // - TCP port 988 (Lustre protocol)
   // - TCP ports 1018-1023 (Lustre data channels)
-  //
-  // Up to 50 security groups.
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 9 [
+  // EFA-enabled file systems additionally need an EFA-enabled security group.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 13 [
+    (buf.validate.field).repeated.max_items = 50,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
   ];
@@ -128,128 +210,242 @@ message AwsFsxLustreFileSystemSpec {
   // Encryption
   // ---------------------------------------------------------------------------
 
-  // Customer-managed KMS key ARN for encryption at rest. ForceNew — the KMS key
-  // cannot be changed after creation. When omitted, the file system uses the
-  // AWS-managed FSx key. All Lustre file systems are encrypted at rest by default
-  // using AWS-managed keys; this field upgrades to a customer-managed key.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 10 [
+  // Customer-managed KMS key ARN for encryption at rest. ForceNew. When
+  // omitted, the file system uses the AWS-managed FSx key (all Lustre file
+  // systems are encrypted at rest); this field upgrades to a customer-managed
+  // key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 14 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
   ];
 
   // ---------------------------------------------------------------------------
-  // S3 Data Repository (Legacy — ForceNew)
+  // Restore
   // ---------------------------------------------------------------------------
 
-  // S3 URI to import data from (e.g., "s3://my-bucket" or "s3://my-bucket/prefix").
-  // ForceNew. Only supported on SCRATCH_1 and SCRATCH_2 deployments.
-  //
-  // When set, the file system automatically imports file metadata from S3. File
-  // data is lazy-loaded on first access. For more flexible S3 integration on
-  // PERSISTENT deployments, use a separate data repository association.
-  string import_path = 11;
+  // ID of an FSx backup to restore this file system from ("backup-...").
+  // ForceNew. When set, storage capacity and most file-system settings come
+  // from the backup; leave storage_capacity_gib unset.
+  string backup_id = 15;
 
-  // S3 URI for exporting data back to S3 (e.g., "s3://my-bucket/output/").
-  // ForceNew. Requires `import_path` to be set.
+  // ---------------------------------------------------------------------------
+  // Legacy S3 data repository (SCRATCH_1 / SCRATCH_2 / PERSISTENT_1 only)
+  // ---------------------------------------------------------------------------
+
+  // S3 URI to link as the file system's data repository (e.g., "s3://my-bucket"
+  // or "s3://my-bucket/prefix"). ForceNew. Not supported on PERSISTENT_2 —
+  // use AwsFsxDataRepositoryAssociation there (and prefer it for PERSISTENT_1
+  // too; this arm is the legacy single-link generation).
   //
-  // When set, changes made on the file system are automatically exported to S3.
-  string export_path = 12;
+  // When set, the file system imports file metadata from S3 at creation; file
+  // data is lazy-loaded on first access.
+  string import_path = 16 [(buf.validate.field).cel = {
+    id: "import_path_format"
+    message: "import_path must be an S3 URI beginning with s3:// (3-900 characters)"
+    expression: "this == '' || (this.startsWith('s3://') && size(this) >= 3 && size(this) <= 900)"
+  }];
+
+  // S3 URI where changed files are exported back to S3 (e.g.,
+  // "s3://my-bucket/output/"). ForceNew. Requires import_path and must use the
+  // same bucket. Set equal to import_path to overwrite objects in place; when
+  // omitted AWS exports to "s3://{import bucket}/FSxLustre{creation timestamp}".
+  string export_path = 17 [(buf.validate.field).cel = {
+    id: "export_path_format"
+    message: "export_path must be an S3 URI beginning with s3:// (3-900 characters)"
+    expression: "this == '' || (this.startsWith('s3://') && size(this) >= 3 && size(this) <= 900)"
+  }];
+
+  // How the file system stays in sync as objects change in the linked S3
+  // bucket. Requires import_path.
+  //
+  // - "NONE": import listings only at creation (default).
+  // - "NEW": import metadata for objects added to the bucket.
+  // - "NEW_CHANGED": also update metadata for changed objects.
+  // - "NEW_CHANGED_DELETED": also delete file metadata when objects are
+  //   deleted from the bucket.
+  string auto_import_policy = 18;
+
+  // Stripe configuration for imported files: the maximum amount of data per
+  // file (in MiB) stored on a single physical disk. Range: 1-512000. Requires
+  // import_path; AWS defaults to 1024. ForceNew.
+  optional int32 imported_file_chunk_size = 19 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 512000
+  }];
+
+  // ---------------------------------------------------------------------------
+  // POSIX root squash
+  // ---------------------------------------------------------------------------
+
+  // Root squash configuration — maps root (UID/GID 0) clients to an
+  // unprivileged identity so no mounting host has automatic root access to
+  // the file system's contents. A POSIX-security hardening measure for
+  // multi-tenant compute fleets. Can be changed after creation.
+  AwsFsxLustreFileSystemRootSquashConfiguration root_squash_configuration = 20;
 
   // ---------------------------------------------------------------------------
   // Logging
   // ---------------------------------------------------------------------------
 
-  // CloudWatch logging configuration for Lustre audit events (file access,
-  // file creation, deletion). Useful for compliance and debugging.
-  AwsFsxLustreFileSystemLogConfiguration log_configuration = 13;
+  // CloudWatch logging for data repository events (imports/exports between
+  // the file system and its linked S3 repositories). Useful for auditing
+  // repository task failures and lifecycle debugging.
+  AwsFsxLustreFileSystemLogConfiguration log_configuration = 21;
+
+  // ---------------------------------------------------------------------------
+  // Metadata configuration (PERSISTENT_2 only)
+  // ---------------------------------------------------------------------------
+
+  // Metadata performance configuration. PERSISTENT_2 only (required there
+  // when storage_type is INTELLIGENT_TIERING or efa_enabled is set). Controls
+  // the metadata IOPS available for file creation, listing, and similar
+  // operations. Most workloads perform well with AUTOMATIC mode.
+  AwsFsxLustreFileSystemMetadataConfiguration metadata_configuration = 22;
 
   // ---------------------------------------------------------------------------
   // Backup (PERSISTENT deployments only)
   // ---------------------------------------------------------------------------
 
-  // Automatic backup configuration. Backups are only supported on PERSISTENT_1
-  // and PERSISTENT_2 deployments. Scratch file systems cannot have backups.
-
-  // Number of days to retain automatic backups. Range: 0-90. Set to 0 to disable
-  // automatic backups.
+  // Number of days to retain automatic backups. Range: 0-90; 0 disables
+  // automatic backups. Backups are only supported on PERSISTENT deployments.
   //
   // Default: 0 (no automatic backups)
-  optional int32 automatic_backup_retention_days = 14 [(dev.planton.shared.options.default) = "0"];
+  optional int32 automatic_backup_retention_days = 23 [
+    (dev.planton.shared.options.default) = "0",
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 90
+    }
+  ];
 
-  // Daily UTC time to start automatic backups, in HH:MM format (e.g., "05:00").
-  // If not specified and backups are enabled, AWS chooses a default window.
-  string daily_automatic_backup_start_time = 15;
+  // Daily UTC time to start automatic backups, in "HH:MM" format (e.g.,
+  // "05:00"). Only meaningful when automatic backups are enabled; when
+  // omitted AWS chooses a window.
+  string daily_automatic_backup_start_time = 24 [(buf.validate.field).cel = {
+    id: "daily_backup_time_format"
+    message: "daily_automatic_backup_start_time must be in 24-hour HH:MM format (e.g., '05:00')"
+    expression: "this == '' || this.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')"
+  }];
 
-  // Copy tags from the file system to backups. ForceNew.
-  bool copy_tags_to_backups = 16;
+  // Copy the file system's tags to its automatic backups. ForceNew.
+  bool copy_tags_to_backups = 25;
 
-  // Skip creating a final backup when the file system is deleted. Applies only to
-  // PERSISTENT deployments with backup support.
+  // Skip creating a final backup when the file system is deleted. Applies to
+  // PERSISTENT deployments (SCRATCH file systems have no backups).
   //
-  // Default: true
-  optional bool skip_final_backup = 17 [(dev.planton.shared.options.default) = "true"];
+  // Default: true — deletion is clean by default; set to false to keep a
+  // last-resort restore point (the final backup outlives the file system and
+  // keeps billing until deleted).
+  optional bool skip_final_backup = 26 [(dev.planton.shared.options.default) = "true"];
+
+  // Tags applied to the final backup taken on deletion. Only meaningful when
+  // skip_final_backup is false.
+  map<string, string> final_backup_tags = 27;
 
   // ---------------------------------------------------------------------------
   // Maintenance
   // ---------------------------------------------------------------------------
 
-  // Weekly UTC maintenance window in the format "d:HH:MM" where d is the day of
-  // the week (1=Monday, 7=Sunday). Example: "1:05:00" for Monday at 05:00 UTC.
-  string weekly_maintenance_start_time = 18;
+  // Weekly UTC maintenance window in "d:HH:MM" format where d is the day of
+  // the week (1=Monday, 7=Sunday). Example: "1:05:00" for Monday 05:00 UTC.
+  string weekly_maintenance_start_time = 28 [(buf.validate.field).cel = {
+    id: "weekly_maintenance_time_format"
+    message: "weekly_maintenance_start_time must be in d:HH:MM format where d is 1 (Monday) through 7 (Sunday), e.g., '1:05:00'"
+    expression: "this == '' || this.matches('^[1-7]:([01][0-9]|2[0-3]):[0-5][0-9]$')"
+  }];
 
   // ---------------------------------------------------------------------------
-  // Metadata Configuration (PERSISTENT_2 only)
-  // ---------------------------------------------------------------------------
-
-  // Metadata performance configuration. Only supported on PERSISTENT_2 deployments.
-  // Controls the metadata IOPS available for file creation, listing, and similar
-  // operations. Most workloads perform well with AUTOMATIC mode.
-  AwsFsxLustreFileSystemMetadataConfiguration metadata_configuration = 19;
-
-  // ---------------------------------------------------------------------------
-  // CEL Validations
+  // Spec-level CEL validations
   // ---------------------------------------------------------------------------
 
   // deployment_type valid values.
   option (buf.validate.message).cel = {
     id: "deployment_type_valid"
     message: "deployment_type must be 'SCRATCH_1', 'SCRATCH_2', 'PERSISTENT_1', or 'PERSISTENT_2'"
-    expression: "this.deployment_type == '' || this.deployment_type in ['SCRATCH_1', 'SCRATCH_2', 'PERSISTENT_1', 'PERSISTENT_2']"
+    expression: "!has(this.deployment_type) || this.deployment_type in ['SCRATCH_1', 'SCRATCH_2', 'PERSISTENT_1', 'PERSISTENT_2']"
   };
 
   // storage_type valid values.
   option (buf.validate.message).cel = {
     id: "storage_type_valid"
-    message: "storage_type must be 'SSD' or 'HDD'"
-    expression: "this.storage_type == '' || this.storage_type in ['SSD', 'HDD']"
+    message: "storage_type must be 'SSD', 'HDD', or 'INTELLIGENT_TIERING'"
+    expression: "!has(this.storage_type) || this.storage_type in ['SSD', 'HDD', 'INTELLIGENT_TIERING']"
+  };
+
+  // Provisioned capacity is required unless it comes from a backup restore or
+  // the capacity-less INTELLIGENT_TIERING class provides it elastically.
+  option (buf.validate.message).cel = {
+    id: "storage_capacity_required"
+    message: "storage_capacity_gib is required (leave it unset only when restoring from backup_id or when storage_type is 'INTELLIGENT_TIERING')"
+    expression: "has(this.storage_capacity_gib) || this.backup_id != '' || (has(this.storage_type) && this.storage_type == 'INTELLIGENT_TIERING')"
   };
 
   // HDD requires PERSISTENT_1.
   option (buf.validate.message).cel = {
     id: "hdd_requires_persistent_1"
     message: "storage_type 'HDD' is only supported with deployment_type 'PERSISTENT_1'"
-    expression: "this.storage_type != 'HDD' || this.deployment_type == 'PERSISTENT_1'"
+    expression: "!has(this.storage_type) || this.storage_type != 'HDD' || this.deployment_type == 'PERSISTENT_1'"
   };
 
-  // per_unit_storage_throughput requires PERSISTENT deployment types.
+  // INTELLIGENT_TIERING requires PERSISTENT_2 with its full companion set —
+  // absolute throughput, a read cache, and metadata configuration.
   option (buf.validate.message).cel = {
-    id: "throughput_requires_persistent"
-    message: "per_unit_storage_throughput can only be set for PERSISTENT_1 or PERSISTENT_2 deployment types"
-    expression: "this.per_unit_storage_throughput == 0 || this.deployment_type in ['PERSISTENT_1', 'PERSISTENT_2']"
+    id: "intelligent_tiering_contract"
+    message: "storage_type 'INTELLIGENT_TIERING' requires deployment_type 'PERSISTENT_2' plus throughput_capacity, data_read_cache_configuration, and metadata_configuration"
+    expression: "!has(this.storage_type) || this.storage_type != 'INTELLIGENT_TIERING' || (this.deployment_type == 'PERSISTENT_2' && has(this.throughput_capacity) && has(this.data_read_cache_configuration) && has(this.metadata_configuration))"
+  };
+
+  // HDD file systems must state their read-cache decision; SSD and
+  // INTELLIGENT_TIERING file systems must not carry the HDD-only knob.
+  option (buf.validate.message).cel = {
+    id: "drive_cache_type_hdd_contract"
+    message: "drive_cache_type ('READ' or 'NONE') is required when storage_type is 'HDD' and invalid otherwise"
+    expression: "(has(this.storage_type) && this.storage_type == 'HDD') ? (this.drive_cache_type in ['READ', 'NONE']) : (this.drive_cache_type == '')"
+  };
+
+  // per_unit_storage_throughput is the provisioned-capacity PERSISTENT knob.
+  option (buf.validate.message).cel = {
+    id: "per_unit_throughput_requires_persistent"
+    message: "per_unit_storage_throughput applies only to PERSISTENT_1 or PERSISTENT_2 deployments with provisioned (SSD/HDD) storage"
+    expression: "!has(this.per_unit_storage_throughput) || (this.deployment_type in ['PERSISTENT_1', 'PERSISTENT_2'] && (!has(this.storage_type) || this.storage_type != 'INTELLIGENT_TIERING'))"
+  };
+
+  // throughput_capacity is the INTELLIGENT_TIERING knob (required there,
+  // invalid elsewhere) and must be a multiple of 4000.
+  option (buf.validate.message).cel = {
+    id: "throughput_capacity_intelligent_tiering_contract"
+    message: "throughput_capacity (a multiple of 4000 MB/s) is required when storage_type is 'INTELLIGENT_TIERING' and invalid otherwise"
+    expression: "(has(this.storage_type) && this.storage_type == 'INTELLIGENT_TIERING') ? (has(this.throughput_capacity) && this.throughput_capacity % 4000 == 0) : !has(this.throughput_capacity)"
+  };
+
+  // data_read_cache_configuration accompanies INTELLIGENT_TIERING only.
+  option (buf.validate.message).cel = {
+    id: "data_read_cache_requires_intelligent_tiering"
+    message: "data_read_cache_configuration is only supported when storage_type is 'INTELLIGENT_TIERING'"
+    expression: "!has(this.data_read_cache_configuration) || (has(this.storage_type) && this.storage_type == 'INTELLIGENT_TIERING')"
+  };
+
+  // EFA/GPUDirect is a PERSISTENT_2 capability and requires metadata
+  // configuration.
+  option (buf.validate.message).cel = {
+    id: "efa_requires_persistent_2_metadata"
+    message: "efa_enabled requires deployment_type 'PERSISTENT_2' and metadata_configuration"
+    expression: "!this.efa_enabled || (this.deployment_type == 'PERSISTENT_2' && has(this.metadata_configuration))"
   };
 
   // data_compression_type valid values.
   option (buf.validate.message).cel = {
     id: "data_compression_type_valid"
     message: "data_compression_type must be 'NONE' or 'LZ4'"
-    expression: "this.data_compression_type == '' || this.data_compression_type in ['NONE', 'LZ4']"
+    expression: "!has(this.data_compression_type) || this.data_compression_type in ['NONE', 'LZ4']"
   };
 
-  // import_path requires SCRATCH deployment type.
+  // The legacy S3 link arms are not supported on PERSISTENT_2 (use
+  // AwsFsxDataRepositoryAssociation there).
   option (buf.validate.message).cel = {
-    id: "import_path_requires_scratch"
-    message: "import_path is only supported on SCRATCH_1 and SCRATCH_2 deployment types (use data repository associations for PERSISTENT)"
-    expression: "this.import_path == '' || this.deployment_type in ['SCRATCH_1', 'SCRATCH_2']"
+    id: "import_path_not_persistent_2"
+    message: "import_path is not supported on PERSISTENT_2 deployments — use an AwsFsxDataRepositoryAssociation instead"
+    expression: "this.import_path == '' || this.deployment_type != 'PERSISTENT_2'"
   };
 
   // export_path requires import_path.
@@ -259,19 +455,103 @@ message AwsFsxLustreFileSystemSpec {
     expression: "this.export_path == '' || this.import_path != ''"
   };
 
+  // auto_import_policy valid values, and requires import_path.
+  option (buf.validate.message).cel = {
+    id: "auto_import_policy_valid"
+    message: "auto_import_policy must be 'NONE', 'NEW', 'NEW_CHANGED', or 'NEW_CHANGED_DELETED', and requires import_path"
+    expression: "this.auto_import_policy == '' || (this.import_path != '' && this.auto_import_policy in ['NONE', 'NEW', 'NEW_CHANGED', 'NEW_CHANGED_DELETED'])"
+  };
+
+  // imported_file_chunk_size requires import_path.
+  option (buf.validate.message).cel = {
+    id: "chunk_size_requires_import"
+    message: "imported_file_chunk_size requires import_path to be set"
+    expression: "!has(this.imported_file_chunk_size) || this.import_path != ''"
+  };
+
   // metadata_configuration requires PERSISTENT_2.
   option (buf.validate.message).cel = {
     id: "metadata_config_requires_persistent_2"
     message: "metadata_configuration is only supported on PERSISTENT_2 deployment type"
     expression: "!has(this.metadata_configuration) || this.deployment_type == 'PERSISTENT_2'"
   };
+
+  // Restoring from a backup and provisioning fresh capacity are mutually
+  // exclusive create shapes.
+  option (buf.validate.message).cel = {
+    id: "backup_restore_excludes_capacity"
+    message: "storage_capacity_gib cannot be set when restoring from backup_id (capacity comes from the backup)"
+    expression: "this.backup_id == '' || !has(this.storage_capacity_gib)"
+  };
 }
 
-// AwsFsxLustreFileSystemLogConfiguration configures CloudWatch logging for Lustre
-// file system audit events. Events include file access, creation, deletion, and
-// permission changes.
+// AwsFsxLustreFileSystemDataReadCacheConfiguration provisions the SSD read
+// cache that serves hot data for INTELLIGENT_TIERING file systems. All reads
+// hit the cache; cold data is promoted on access.
+message AwsFsxLustreFileSystemDataReadCacheConfiguration {
+  // How the read cache is sized.
+  //
+  // - "PROPORTIONAL_TO_THROUGHPUT_CAPACITY": AWS sizes the cache from the
+  //   provisioned throughput (the recommended hands-off mode).
+  // - "USER_PROVISIONED": you set the exact cache size via `size_gib`.
+  // - "NO_CACHE": no SSD read cache (every read pays the tiered-storage
+  //   latency; only for purely archival access patterns).
+  string sizing_mode = 1 [(buf.validate.field).required = true];
+
+  // Read cache size in GiB when sizing_mode is "USER_PROVISIONED". The valid
+  // range scales with throughput_capacity: for every 4000 MB/s provisioned,
+  // AWS accepts 32 GiB to 131072 GiB of cache (e.g., 8000 MB/s allows
+  // 64-262144 GiB).
+  optional int32 size_gib = 2 [(buf.validate.field).int32.gte = 32];
+
+  // sizing_mode valid values.
+  option (buf.validate.message).cel = {
+    id: "sizing_mode_valid"
+    message: "sizing_mode must be 'NO_CACHE', 'USER_PROVISIONED', or 'PROPORTIONAL_TO_THROUGHPUT_CAPACITY'"
+    expression: "this.sizing_mode in ['NO_CACHE', 'USER_PROVISIONED', 'PROPORTIONAL_TO_THROUGHPUT_CAPACITY']"
+  };
+
+  // size_gib pairs exclusively with USER_PROVISIONED.
+  option (buf.validate.message).cel = {
+    id: "size_requires_user_provisioned"
+    message: "size_gib can only be set when sizing_mode is 'USER_PROVISIONED'"
+    expression: "!has(this.size_gib) || this.sizing_mode == 'USER_PROVISIONED'"
+  };
+}
+
+// AwsFsxLustreFileSystemRootSquashConfiguration maps root clients to an
+// unprivileged UID:GID so mounting hosts do not get automatic root access to
+// file system contents.
+message AwsFsxLustreFileSystemRootSquashConfiguration {
+  // The UID:GID pair that root users are squashed to (e.g., "65534:65534" for
+  // nobody:nogroup). Both values range 0-4294967294. Setting this enables
+  // root squash; omit the whole block to leave root access unrestricted.
+  string root_squash = 1 [(buf.validate.field).cel = {
+    id: "root_squash_format"
+    message: "root_squash must be in UID:GID format (e.g., '65534:65534')"
+    expression: "this == '' || this.matches('^[0-9]{1,10}:[0-9]{1,10}$')"
+  }];
+
+  // Lustre NIDs (network identifiers) of clients EXEMPT from root squash —
+  // administrative hosts that keep real root access. Format: an IPv4 address
+  // (ranges allowed in brackets) followed by "@tcp", e.g. "10.0.1.6@tcp" or
+  // "10.0.[2-10].[1-255]@tcp".
+  repeated string no_squash_nids = 2 [(buf.validate.field).repeated.items = {
+    cel: [
+      {
+        id: "nid_format"
+        message: "each NID must be an IPv4 address or bracketed range followed by '@tcp' (e.g., '10.0.1.6@tcp')"
+        expression: "this.matches('^([0-9\\\\[\\\\]-]*\\\\.){3}([0-9\\\\[\\\\]-]*)@tcp$')"
+      }
+    ]
+  }];
+}
+
+// AwsFsxLustreFileSystemLogConfiguration configures CloudWatch logging for
+// data repository events — imports, exports, and repository task activity
+// between the file system and its linked S3 data repositories.
 message AwsFsxLustreFileSystemLogConfiguration {
-  // CloudWatch Logs log group ARN to receive audit events. The log group must
+  // CloudWatch Logs log group ARN to receive the events. The log group must
   // exist and have a resource policy allowing FSx to write to it. If not set,
   // logging is disabled regardless of the level setting.
   dev.planton.shared.foreignkey.v1.StringValueOrRef destination = 1 [
@@ -279,7 +559,7 @@ message AwsFsxLustreFileSystemLogConfiguration {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"
   ];
 
-  // Audit log level controlling which events are logged.
+  // Log level controlling which events are logged.
   //
   // - "DISABLED": no logging (default when log_configuration is omitted).
   // - "WARN_ONLY": log warning-level events only.
@@ -293,41 +573,63 @@ message AwsFsxLustreFileSystemLogConfiguration {
   option (buf.validate.message).cel = {
     id: "log_level_valid"
     message: "level must be 'DISABLED', 'WARN_ONLY', 'ERROR_ONLY', or 'WARN_ERROR'"
-    expression: "this.level == '' || this.level in ['DISABLED', 'WARN_ONLY', 'ERROR_ONLY', 'WARN_ERROR']"
+    expression: "!has(this.level) || this.level in ['DISABLED', 'WARN_ONLY', 'ERROR_ONLY', 'WARN_ERROR']"
   };
 }
 
-// AwsFsxLustreFileSystemMetadataConfiguration controls the metadata performance
-// of PERSISTENT_2 Lustre file systems. Metadata operations include file creation,
-// listing, stat, rename, and deletion.
+// AwsFsxLustreFileSystemMetadataConfiguration controls the metadata
+// performance of PERSISTENT_2 Lustre file systems. Metadata operations include
+// file creation, listing, stat, rename, and deletion.
 message AwsFsxLustreFileSystemMetadataConfiguration {
   // Metadata IOPS mode.
   //
-  // - "AUTOMATIC": FSx scales metadata IOPS based on file system storage capacity.
-  //   Provides 1500-192000 IOPS depending on provisioned storage.
-  // - "USER_PROVISIONED": you specify the exact metadata IOPS. Allows higher
-  //   performance independent of storage size but at additional cost.
+  // - "AUTOMATIC": FSx scales metadata IOPS with the file system's storage
+  //   capacity. The right choice for most workloads.
+  // - "USER_PROVISIONED": you specify exact metadata IOPS — higher
+  //   metadata performance independent of storage size, at additional cost.
   //
   // Default: AUTOMATIC
   optional string mode = 1 [(dev.planton.shared.options.default) = "AUTOMATIC"];
 
-  // Metadata IOPS when mode is "USER_PROVISIONED". Ignored in AUTOMATIC mode.
+  // Metadata IOPS when mode is "USER_PROVISIONED". IOPS can be increased in
+  // place; a decrease replaces the file system.
   //
-  // Valid values: 1500, 3000, 6000, 12000, 24000, 36000, 48000, 60000, 72000,
-  // 84000, 96000, 108000, 120000, 132000, 144000, 156000, 168000, 180000, 192000.
-  int32 iops = 2;
+  // Valid values: 1500, 3000, 6000, then multiples of 12000 up to 192000.
+  optional int32 iops = 2 [(buf.validate.field).int32 = {
+    in: [
+      1500,
+      3000,
+      6000,
+      12000,
+      24000,
+      36000,
+      48000,
+      60000,
+      72000,
+      84000,
+      96000,
+      108000,
+      120000,
+      132000,
+      144000,
+      156000,
+      168000,
+      180000,
+      192000
+    ]
+  }];
 
   // mode valid values.
   option (buf.validate.message).cel = {
     id: "metadata_mode_valid"
     message: "mode must be 'AUTOMATIC' or 'USER_PROVISIONED'"
-    expression: "this.mode == '' || this.mode in ['AUTOMATIC', 'USER_PROVISIONED']"
+    expression: "!has(this.mode) || this.mode in ['AUTOMATIC', 'USER_PROVISIONED']"
   };
 
-  // iops requires USER_PROVISIONED mode.
+  // iops pairs exclusively with USER_PROVISIONED mode.
   option (buf.validate.message).cel = {
     id: "iops_requires_user_provisioned"
     message: "iops can only be set when mode is 'USER_PROVISIONED'"
-    expression: "this.iops == 0 || this.mode == 'USER_PROVISIONED'"
+    expression: "!has(this.iops) || (has(this.mode) && this.mode == 'USER_PROVISIONED')"
   };
 }

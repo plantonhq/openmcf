@@ -1,0 +1,61 @@
+# The pipeline's two stores: the S3 bucket that ferries artifacts between
+# stages, and the ECR repository the build pushes production images to.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsS3Bucket
+metadata:
+  # The bucket's name IS the resource name; S3 names are global, hence the
+  # org-prefixed default.
+  name: "{{ values.artifacts_bucket_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+  # SSE-S3 covers pipeline artifacts fine (they are transient build
+  # materials, not state); switch to aws:kms with a key reference when a
+  # compliance regime demands customer-managed keys.
+  encryption:
+    sseAlgorithm: AES256
+  # Pipeline artifacts occasionally carry things that must never leak —
+  # source snapshots, build configs — so all four public-access guards are
+  # on, unconditionally.
+  publicAccessBlock:
+    blockPublicAcls: true
+    blockPublicPolicy: true
+    ignorePublicAcls: true
+    restrictPublicBuckets: true
+  lifecycleRules:
+    # Every execution writes new artifact objects and nothing ever reads
+    # old ones — 30 days keeps plenty of debugging window before they stop
+    # being anything but storage cost.
+    - id: expire-old-artifacts
+      status: Enabled
+      expiration:
+        days: 30
+    # Interrupted uploads (a killed build mid-artifact-write) leave
+    # invisible billable parts behind.
+    - id: abort-stale-multipart-uploads
+      status: Enabled
+      abortIncompleteMultipartUploadDays: 7
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsEcrRepo
+metadata:
+  name: "{{ values.pipeline_name }}-repo"
+spec:
+  region: "{{ values.aws_region }}"
+  repositoryName: "{{ values.pipeline_name }}"
+  # Immutable tags make deploys deterministic: the tag a pipeline shipped
+  # can never be silently repointed. "latest" is excluded as the one moving
+  # pointer for humans poking around — production references always use the
+  # per-build tag.
+  imageTagMutability: IMMUTABLE_WITH_EXCLUSION
+  imageTagMutabilityExclusionFilters:
+    - latest
+  scanOnPush: true
+  lifecycleRules:
+    # Untagged layers are the residue of overwritten "latest" pushes;
+    # a week of forensic window, then they are only storage cost.
+    - rulePriority: 1
+      description: expire untagged images after 7 days
+      tagStatus: untagged
+      countType: sinceImagePushed
+      countNumber: 7

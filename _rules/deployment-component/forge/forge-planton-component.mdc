@@ -127,12 +127,27 @@ secret OR a cross-resource reference, never plaintext).
 A field whose NAME merely *looks* like a secret (a public key, an access-key *id*, a resource
 *name*, a key *algorithm*) is NOT a secret -- exempt it with
 `(dev.planton.shared.options.sensitive_exempt_reason) = "<why>"`. Never set both options on one
-field.
+field. Exempt only what the gate actually flags: the guard matches by name PATTERN, and an
+exemption on a field the pattern never matches (e.g. `secret_arn` -- `*_arn` names are treated
+as references, not secrets) is itself a gate failure ("pointless exemption"). Run
+`planton secret-coverage --check` first and annotate from its report; for unflagged
+reference-carrying names, let the field comment state the not-secret rationale instead.
 
 This is identified in rule 001 and applied in rule 002. The ratcheting gate
 `planton secret-coverage --check` fails the build on any unannotated secret-looking field, so a
 forged component is not done until the gate is green. Authority: the option comments in
 `dev/planton/shared/options/options.proto`.
+
+**Run registry-driven guards with a freshly built CLI, never the installed binary.**
+`secret-coverage`, `validate-refs`, and every other command that walks the kind registry
+reads the protos COMPILED INTO the binary, not the working tree -- a stale installed
+`planton` reports false gaps (fields it predates) and false stale-baseline entries
+(exemptions it predates), and can equally report false greens. Build from the working
+tree first (`go build -o /tmp/planton-dev .` at the repo root -- the root package is the
+CLI main) and run the guard through that binary. The same false-result class applies in
+reverse: a green from an old binary proves nothing about the current tree. The
+`go test ./pkg/secretcoverage/ ./pkg/refcheck/` suites always test the working tree and
+are the cheaper equivalent gate when no CLI invocation is needed.
 
 ## Usage
 
@@ -335,6 +350,16 @@ fabricate them.** Acquire them with this do-first, two-tier protocol. (Note: `gh
 can `secret list` names but CANNOT read Actions secret VALUES — they are write-only.
 Only the CI runner can read them.)
 
+**Profile honesty is non-negotiable.** `e2e/profile.yaml` may claim
+`status: green` with `validated_provisioners` entries ONLY after a live
+deploy → verify → destroy run has actually passed on those provisioners.
+Until then, author the profile as `status: deferred` with an empty
+`validated_provisioners` list and a `deferred_reason` stating what remains
+(the field is `deferred_reason` — protojson silently drops unknown keys, so a
+misspelled key vanishes without an error). A profile that overclaims is a
+lie in the release ledger; flip it to green in the same session the lanes
+pass, never before.
+
 ### Wire the kind into the provider E2E first (required for either tier)
 
 A new kind is only exercised once it is registered in the provider harness:
@@ -373,7 +398,13 @@ prerequisites, and deploy in topological order — so annotating the top of a
 chain is enough. Unknown kinds and self-references fail loudly. Singular AND
 repeated `StringValueOrRef` fields both resolve, refs nested inside (repeated)
 spec messages resolve too, and a repeated list can mix literals with
-references.
+references. Audit the annotation against EVERY `valueFrom` kind the scenario
+references: a reference to a kind that is neither a registry prerequisite nor
+annotated stays UNRESOLVED, and the failure mode is engine-asymmetric and
+live-only — the Terraform lane fails at apply with "Null value found in list"
+(the tfvars renderer emits a null element for the unresolved ref) while the
+Pulumi module silently sends an empty string, which some AWS APIs accept, so a
+green Pulumi lane can mask the gap until the Terraform lane runs.
 
 **Install manifests declare their own composed fixtures the same way.** The
 resolver also reads the `planton.dev/e2e-prerequisites` annotation on each
@@ -444,7 +475,25 @@ go test -tags e2e ./e2e/<provider>/... -run 'Test<Kind>' -v -count=1
 ```
 
 (`-count=1` matters too: a cached `go test` result silently replays the old
-run instead of touching the cloud.) If a lane still fails this way, the
+run instead of touching the cloud.) **Export `GITHUB_TOKEN` for every live
+lane** (`GITHUB_TOKEN=$(gh auth token)`): a fresh private `PULUMI_HOME` has no
+plugin cache, so every Pulumi command resolves plugins through anonymous
+GitHub API calls, and a few back-to-back lanes exhaust the anonymous rate
+limit. The failure then lands WHEREVER the next plugin resolution happens —
+including `pulumi destroy` and `pulumi stack rm` during DEPENDENCIES-DOWN —
+so fixtures orphan and every later lane fails its DEPENDENCIES-UP with
+`EntityAlreadyExists`/`BucketAlreadyOwnedByYou` name conflicts. The log line
+`GitHub rate limit exceeded ... You can set GITHUB_TOKEN` buried in a
+teardown error is the signature; the token lifts the limit entirely. **The
+private TMPDIR must be a SHORT path** — never a nested `mktemp -d` chain. Terraform/OpenTofu providers are
+go-plugin processes that hand-shake over unix domain sockets created under
+`$TMPDIR`, and macOS caps a socket path at 104 bytes; a deep TMPDIR (e.g.
+`/var/folders/.../T/tmp.X/tmp.Y/tmp.Z`) overflows that limit and every
+Terraform lane fails at provider-schema time with the cryptic
+`Unrecognized remote plugin message` — which looks like a corrupted plugin
+but is purely the socket path length. Pulumi lanes are unaffected, so a
+"Pulumi passes / Terraform fails to even instantiate the provider" split is
+the signature of this failure. If a lane still fails this way, the
 leaked resources remain recoverable through the backend directory left under
 `$TMPDIR` — `pulumi destroy --stack <name>` with `PULUMI_BACKEND_URL=file://…`
 from the dependency's module directory, then sweep the account.

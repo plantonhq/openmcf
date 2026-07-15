@@ -4,299 +4,293 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/apprunner"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/wafv2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// service creates the main AWS App Runner Service resource. It builds the source
-// configuration (image or code), instance configuration, health check, networking,
-// encryption, and observability settings from the spec, then exports all stack outputs.
-func service(
-	ctx *pulumi.Context,
-	locals *Locals,
-	provider *aws.Provider,
-	createdVpcConnector *apprunner.VpcConnector,
-	createdAutoScaling *apprunner.AutoScalingConfigurationVersion,
-) error {
+// service creates the App Runner service, its custom domain associations,
+// and the optional WAF association, then exports outputs.
+//
+// The service's shared companions -- auto scaling configuration, VPC
+// connector, and observability configuration -- are separate first-class
+// resources referenced by ARN, never created here: each is designed by AWS
+// to be shared across services, so embedding one per service would fork what
+// should be tuned in one place.
+func service(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	spec := locals.AwsAppRunnerService.Spec
-	resourceName := locals.AwsAppRunnerService.Metadata.Name
+	serviceName := locals.AwsAppRunnerService.Metadata.Name
 
-	// --- Source configuration ---
-	sourceConfig := buildSourceConfiguration(locals)
-
-	// --- Service args ---
-	args := &apprunner.ServiceArgs{
-		ServiceName:         pulumi.String(resourceName),
-		SourceConfiguration: sourceConfig,
-		Tags:                pulumi.ToStringMap(locals.AwsTags),
+	// --- Source configuration -------------------------------------------
+	// Exactly one of image/code repository is present (spec CEL). Port,
+	// start command, and the env var/secret maps live at the spec top level
+	// and are routed into whichever arm is active.
+	sourceArgs := &apprunner.ServiceSourceConfigurationArgs{
+		// Sent explicitly (never defaulted) because the honest default is
+		// conditional on the source: AWS enables auto-deploy for code repos
+		// and private ECR only, and REJECTS it for ECR_PUBLIC (spec CEL
+		// guards the invalid combination before AWS would).
+		AutoDeploymentsEnabled: pulumi.Bool(spec.AutoDeploymentsEnabled),
 	}
 
-	// --- Instance configuration ---
-	instanceConfig := &apprunner.ServiceInstanceConfigurationArgs{}
-	hasInstanceConfig := false
-
-	if spec.GetCpu() != "" {
-		instanceConfig.Cpu = pulumi.String(spec.GetCpu())
-		hasInstanceConfig = true
-	}
-	if spec.GetMemory() != "" {
-		instanceConfig.Memory = pulumi.String(spec.GetMemory())
-		hasInstanceConfig = true
-	}
-	if spec.GetInstanceRoleArn().GetValue() != "" {
-		instanceConfig.InstanceRoleArn = pulumi.String(spec.GetInstanceRoleArn().GetValue())
-		hasInstanceConfig = true
-	}
-	if hasInstanceConfig {
-		args.InstanceConfiguration = instanceConfig
-	}
-
-	// --- Health check configuration ---
-	if hc := spec.GetHealthCheck(); hc != nil {
-		healthCheckArgs := &apprunner.ServiceHealthCheckConfigurationArgs{}
-
-		if hc.GetProtocol() != "" {
-			healthCheckArgs.Protocol = pulumi.String(hc.GetProtocol())
+	// Private ECR pulls use the access role; code repositories use the
+	// out-of-band App Runner connection. The two never coexist because the
+	// source arms are mutually exclusive.
+	if spec.ImageSource != nil && spec.ImageSource.AccessRoleArn.GetValue() != "" {
+		sourceArgs.AuthenticationConfiguration = &apprunner.ServiceSourceConfigurationAuthenticationConfigurationArgs{
+			AccessRoleArn: pulumi.StringPtr(spec.ImageSource.AccessRoleArn.GetValue()),
 		}
-		if hc.GetPath() != "" {
-			healthCheckArgs.Path = pulumi.String(hc.GetPath())
-		}
-		if hc.GetIntervalSeconds() > 0 {
-			healthCheckArgs.Interval = pulumi.Int(int(hc.GetIntervalSeconds()))
-		}
-		if hc.GetTimeoutSeconds() > 0 {
-			healthCheckArgs.Timeout = pulumi.Int(int(hc.GetTimeoutSeconds()))
-		}
-		if hc.GetHealthyThreshold() > 0 {
-			healthCheckArgs.HealthyThreshold = pulumi.Int(int(hc.GetHealthyThreshold()))
-		}
-		if hc.GetUnhealthyThreshold() > 0 {
-			healthCheckArgs.UnhealthyThreshold = pulumi.Int(int(hc.GetUnhealthyThreshold()))
-		}
-
-		args.HealthCheckConfiguration = healthCheckArgs
 	}
-
-	// --- Network configuration ---
-	// Attach a VPC Connector (inline-created or externally referenced) for egress,
-	// and configure ingress access (public/private, IP address type).
-	networkConfig := buildNetworkConfiguration(locals, createdVpcConnector)
-	if networkConfig != nil {
-		args.NetworkConfiguration = networkConfig
-	}
-
-	// --- Auto Scaling Configuration ---
-	if createdAutoScaling != nil {
-		args.AutoScalingConfigurationArn = createdAutoScaling.Arn
-	}
-
-	// --- Encryption configuration ---
-	if spec.GetKmsKeyArn().GetValue() != "" {
-		args.EncryptionConfiguration = &apprunner.ServiceEncryptionConfigurationArgs{
-			KmsKey: pulumi.String(spec.GetKmsKeyArn().GetValue()),
+	if spec.CodeSource != nil {
+		sourceArgs.AuthenticationConfiguration = &apprunner.ServiceSourceConfigurationAuthenticationConfigurationArgs{
+			ConnectionArn: pulumi.StringPtr(spec.CodeSource.ConnectionArn.GetValue()),
 		}
 	}
 
-	// --- Observability configuration ---
-	if spec.GetObservabilityEnabled() {
-		obsArgs := &apprunner.ServiceObservabilityConfigurationArgs{
-			ObservabilityEnabled: pulumi.Bool(true),
-		}
-		if spec.GetObservabilityConfigurationArn().GetValue() != "" {
-			obsArgs.ObservabilityConfigurationArn = pulumi.String(spec.GetObservabilityConfigurationArn().GetValue())
-		}
-		args.ObservabilityConfiguration = obsArgs
+	// Runtime settings shared by both source arms.
+	var port pulumi.StringPtrInput
+	if spec.Port != nil {
+		port = pulumi.StringPtr(*spec.Port)
+	}
+	var startCommand pulumi.StringPtrInput
+	if spec.StartCommand != "" {
+		startCommand = pulumi.StringPtr(spec.StartCommand)
+	}
+	var envVars pulumi.StringMapInput
+	if len(spec.EnvironmentVariables) > 0 {
+		envVars = pulumi.ToStringMap(spec.EnvironmentVariables)
+	}
+	var envSecrets pulumi.StringMapInput
+	if len(spec.EnvironmentSecrets) > 0 {
+		envSecrets = pulumi.ToStringMap(spec.EnvironmentSecrets)
 	}
 
-	// --- Create the service ---
-	svc, err := apprunner.NewService(ctx, resourceName, args, pulumi.Provider(provider))
+	if spec.ImageSource != nil {
+		sourceArgs.ImageRepository = &apprunner.ServiceSourceConfigurationImageRepositoryArgs{
+			ImageIdentifier:     pulumi.String(spec.ImageSource.ImageIdentifier),
+			ImageRepositoryType: pulumi.String(spec.ImageSource.ImageRepositoryType),
+			ImageConfiguration: &apprunner.ServiceSourceConfigurationImageRepositoryImageConfigurationArgs{
+				Port:                        port,
+				StartCommand:                startCommand,
+				RuntimeEnvironmentVariables: envVars,
+				RuntimeEnvironmentSecrets:   envSecrets,
+			},
+		}
+	}
+
+	if spec.CodeSource != nil {
+		codeConfigArgs := &apprunner.ServiceSourceConfigurationCodeRepositoryCodeConfigurationArgs{
+			ConfigurationSource: pulumi.String(spec.CodeSource.ConfigurationSource),
+		}
+		// Build settings apply only in API mode; in REPOSITORY mode App
+		// Runner reads apprunner.yaml from the source directory and AWS
+		// rejects inline values.
+		if spec.CodeSource.ConfigurationSource == "API" {
+			valuesArgs := &apprunner.ServiceSourceConfigurationCodeRepositoryCodeConfigurationCodeConfigurationValuesArgs{
+				Runtime:                     pulumi.String(spec.CodeSource.Runtime),
+				Port:                        port,
+				StartCommand:                startCommand,
+				RuntimeEnvironmentVariables: envVars,
+				RuntimeEnvironmentSecrets:   envSecrets,
+			}
+			if spec.CodeSource.BuildCommand != "" {
+				valuesArgs.BuildCommand = pulumi.StringPtr(spec.CodeSource.BuildCommand)
+			}
+			codeConfigArgs.CodeConfigurationValues = valuesArgs
+		}
+
+		codeRepoArgs := &apprunner.ServiceSourceConfigurationCodeRepositoryArgs{
+			RepositoryUrl: pulumi.String(spec.CodeSource.RepositoryUrl),
+			// BRANCH is the only source-code-version type AWS supports; the
+			// spec models the branch directly rather than a one-value enum
+			// wrapper.
+			SourceCodeVersion: &apprunner.ServiceSourceConfigurationCodeRepositorySourceCodeVersionArgs{
+				Type:  pulumi.String("BRANCH"),
+				Value: pulumi.String(spec.CodeSource.Branch),
+			},
+			CodeConfiguration: codeConfigArgs,
+		}
+		if spec.CodeSource.SourceDirectory != "" {
+			codeRepoArgs.SourceDirectory = pulumi.StringPtr(spec.CodeSource.SourceDirectory)
+		}
+		sourceArgs.CodeRepository = codeRepoArgs
+	}
+
+	// --- Instance configuration ------------------------------------------
+	instanceArgs := &apprunner.ServiceInstanceConfigurationArgs{}
+	if spec.Cpu != nil {
+		instanceArgs.Cpu = pulumi.StringPtr(*spec.Cpu)
+	}
+	if spec.Memory != nil {
+		instanceArgs.Memory = pulumi.StringPtr(*spec.Memory)
+	}
+	if spec.InstanceRoleArn.GetValue() != "" {
+		instanceArgs.InstanceRoleArn = pulumi.StringPtr(spec.InstanceRoleArn.GetValue())
+	}
+
+	serviceArgs := &apprunner.ServiceArgs{
+		// The cloud name is metadata.name -- the same basis the Terraform
+		// module uses, so both engines create the same physical identity.
+		// ForceNew: renaming replaces the service.
+		ServiceName:           pulumi.String(serviceName),
+		SourceConfiguration:   sourceArgs,
+		InstanceConfiguration: instanceArgs,
+		Tags:                  pulumi.ToStringMap(locals.AwsTags),
+	}
+
+	// --- Health check ------------------------------------------------------
+	// Only sent when the spec configures it; AWS then applies TCP checks on
+	// the service port with its own defaults. The path is meaningful only
+	// for HTTP -- sending it alongside TCP would be silently ignored, so it
+	// is omitted deliberately.
+	if hc := spec.HealthCheck; hc != nil {
+		hcArgs := &apprunner.ServiceHealthCheckConfigurationArgs{}
+		protocol := "TCP"
+		if hc.Protocol != nil {
+			protocol = *hc.Protocol
+		}
+		hcArgs.Protocol = pulumi.StringPtr(protocol)
+		if protocol == "HTTP" && hc.Path != nil {
+			hcArgs.Path = pulumi.StringPtr(*hc.Path)
+		}
+		if hc.Interval != nil {
+			hcArgs.Interval = pulumi.IntPtr(int(*hc.Interval))
+		}
+		if hc.Timeout != nil {
+			hcArgs.Timeout = pulumi.IntPtr(int(*hc.Timeout))
+		}
+		if hc.HealthyThreshold != nil {
+			hcArgs.HealthyThreshold = pulumi.IntPtr(int(*hc.HealthyThreshold))
+		}
+		if hc.UnhealthyThreshold != nil {
+			hcArgs.UnhealthyThreshold = pulumi.IntPtr(int(*hc.UnhealthyThreshold))
+		}
+		serviceArgs.HealthCheckConfiguration = hcArgs
+	}
+
+	// --- Networking ---------------------------------------------------------
+	// Always sent explicitly so the deployed shape never depends on AWS-side
+	// defaults: egress routes through the referenced VPC connector when one
+	// is set, ingress publicness and address family mirror the spec.
+	egressArgs := &apprunner.ServiceNetworkConfigurationEgressConfigurationArgs{
+		EgressType: pulumi.StringPtr("DEFAULT"),
+	}
+	if spec.VpcConnectorArn.GetValue() != "" {
+		egressArgs.EgressType = pulumi.StringPtr("VPC")
+		egressArgs.VpcConnectorArn = pulumi.StringPtr(spec.VpcConnectorArn.GetValue())
+	}
+	isPubliclyAccessible := true
+	if spec.IsPubliclyAccessible != nil {
+		isPubliclyAccessible = *spec.IsPubliclyAccessible
+	}
+	networkArgs := &apprunner.ServiceNetworkConfigurationArgs{
+		EgressConfiguration: egressArgs,
+		IngressConfiguration: &apprunner.ServiceNetworkConfigurationIngressConfigurationArgs{
+			IsPubliclyAccessible: pulumi.BoolPtr(isPubliclyAccessible),
+		},
+	}
+	if spec.IpAddressType != nil {
+		networkArgs.IpAddressType = pulumi.StringPtr(*spec.IpAddressType)
+	}
+	serviceArgs.NetworkConfiguration = networkArgs
+
+	// --- Encryption (ForceNew) ----------------------------------------------
+	if spec.KmsKeyArn.GetValue() != "" {
+		serviceArgs.EncryptionConfiguration = &apprunner.ServiceEncryptionConfigurationArgs{
+			KmsKey: pulumi.String(spec.KmsKeyArn.GetValue()),
+		}
+	}
+
+	// --- Observability --------------------------------------------------------
+	// Presence of the configuration reference IS the enable switch -- there
+	// is no separate toggle to drift out of sync.
+	if spec.ObservabilityConfigurationArn.GetValue() != "" {
+		serviceArgs.ObservabilityConfiguration = &apprunner.ServiceObservabilityConfigurationArgs{
+			ObservabilityEnabled:          pulumi.Bool(true),
+			ObservabilityConfigurationArn: pulumi.StringPtr(spec.ObservabilityConfigurationArn.GetValue()),
+		}
+	}
+
+	// --- Auto scaling -----------------------------------------------------------
+	// Unset falls back to the account's default auto scaling configuration.
+	if spec.AutoScalingConfigurationArn.GetValue() != "" {
+		serviceArgs.AutoScalingConfigurationArn = pulumi.StringPtr(spec.AutoScalingConfigurationArn.GetValue())
+	}
+
+	createdService, err := apprunner.NewService(ctx, serviceName, serviceArgs, pulumi.Provider(provider))
 	if err != nil {
 		return errors.Wrap(err, "failed to create App Runner service")
 	}
 
-	// --- Export stack outputs ---
-	ctx.Export(OpServiceArn, svc.Arn)
-	ctx.Export(OpServiceId, svc.ServiceId)
-	ctx.Export(OpServiceUrl, svc.ServiceUrl)
-	ctx.Export(OpServiceName, pulumi.String(resourceName))
-	ctx.Export(OpServiceStatus, svc.Status)
+	// --- Custom domain associations ---------------------------------------
+	// One association per spec entry, keyed by domain name so entries add
+	// and remove independently. The association returns as soon as
+	// validation records are available -- it deliberately does not wait for
+	// the domain to go active, because that requires DNS records this
+	// module does not manage.
+	domainOutputs := pulumi.Array{}
+	for _, domain := range spec.CustomDomains {
+		enableWww := true
+		if domain.EnableWwwSubdomain != nil {
+			enableWww = *domain.EnableWwwSubdomain
+		}
+		createdAssociation, err := apprunner.NewCustomDomainAssociation(ctx, serviceName+"-"+domain.DomainName, &apprunner.CustomDomainAssociationArgs{
+			DomainName:         pulumi.String(domain.DomainName),
+			ServiceArn:         createdService.Arn,
+			EnableWwwSubdomain: pulumi.BoolPtr(enableWww),
+		}, pulumi.Provider(provider))
+		if err != nil {
+			return errors.Wrapf(err, "failed to associate custom domain %q", domain.DomainName)
+		}
+
+		// Shaped key-for-key with the Terraform output so both engines
+		// flatten onto the same stack-outputs contract.
+		records := createdAssociation.CertificateValidationRecords.ApplyT(func(recs []apprunner.CustomDomainAssociationCertificateValidationRecord) []map[string]string {
+			out := make([]map[string]string, 0, len(recs))
+			for _, r := range recs {
+				record := map[string]string{"record_name": "", "record_type": "", "record_value": ""}
+				if r.Name != nil {
+					record["record_name"] = *r.Name
+				}
+				if r.Type != nil {
+					record["record_type"] = *r.Type
+				}
+				if r.Value != nil {
+					record["record_value"] = *r.Value
+				}
+				out = append(out, record)
+			}
+			return out
+		})
+
+		domainOutputs = append(domainOutputs, pulumi.Map{
+			"domain_name":                    pulumi.String(domain.DomainName),
+			"dns_target":                     createdAssociation.DnsTarget,
+			"status":                         createdAssociation.Status,
+			"certificate_validation_records": records,
+		})
+	}
+
+	// --- WAF association ----------------------------------------------------
+	// The protected resource points at the web ACL (the same direction
+	// CloudFront models it) -- the association is glue with no identity of
+	// its own, so it folds here rather than existing as a kind.
+	if spec.WebAclArn.GetValue() != "" {
+		_, err := wafv2.NewWebAclAssociation(ctx, serviceName+"-waf", &wafv2.WebAclAssociationArgs{
+			ResourceArn: createdService.Arn,
+			WebAclArn:   pulumi.String(spec.WebAclArn.GetValue()),
+		}, pulumi.Provider(provider))
+		if err != nil {
+			return errors.Wrap(err, "failed to associate WAF web ACL")
+		}
+	}
+
+	// Export outputs matching AwsAppRunnerServiceStackOutputs.
+	ctx.Export(OpServiceArn, createdService.Arn)
+	ctx.Export(OpServiceId, createdService.ServiceId)
+	ctx.Export(OpServiceUrl, createdService.ServiceUrl)
+	ctx.Export(OpServiceName, createdService.ServiceName)
+	ctx.Export(OpServiceStatus, createdService.Status)
+	ctx.Export(OpCustomDomains, domainOutputs)
 
 	return nil
-}
-
-// buildSourceConfiguration constructs the ServiceSourceConfigurationArgs from the spec.
-// Exactly one of image_source or code_source must be set (enforced by proto validation).
-func buildSourceConfiguration(locals *Locals) *apprunner.ServiceSourceConfigurationArgs {
-	spec := locals.AwsAppRunnerService.Spec
-	sourceConfig := &apprunner.ServiceSourceConfigurationArgs{}
-
-	// Auto-deployments enabled (defaults to true via proto).
-	sourceConfig.AutoDeploymentsEnabled = pulumi.Bool(spec.GetAutoDeploymentsEnabled())
-
-	// --- Image source ---
-	if img := spec.GetImageSource(); img != nil && img.GetImageIdentifier() != "" {
-		imageRepoArgs := &apprunner.ServiceSourceConfigurationImageRepositoryArgs{
-			ImageIdentifier:     pulumi.String(img.GetImageIdentifier()),
-			ImageRepositoryType: pulumi.String(img.GetImageRepositoryType()),
-		}
-
-		// Build ImageConfiguration for port, start_command, env vars, and env secrets.
-		imageConfigArgs := buildImageConfiguration(spec)
-		if imageConfigArgs != nil {
-			imageRepoArgs.ImageConfiguration = imageConfigArgs
-		}
-
-		sourceConfig.ImageRepository = imageRepoArgs
-
-		// Authentication: access_role_arn is required for private ECR registries.
-		if img.GetAccessRoleArn().GetValue() != "" {
-			sourceConfig.AuthenticationConfiguration = &apprunner.ServiceSourceConfigurationAuthenticationConfigurationArgs{
-				AccessRoleArn: pulumi.String(img.GetAccessRoleArn().GetValue()),
-			}
-		}
-	}
-
-	// --- Code source ---
-	if code := spec.GetCodeSource(); code != nil && code.GetRepositoryUrl() != "" {
-		codeRepoArgs := &apprunner.ServiceSourceConfigurationCodeRepositoryArgs{
-			RepositoryUrl: pulumi.String(code.GetRepositoryUrl()),
-			SourceCodeVersion: &apprunner.ServiceSourceConfigurationCodeRepositorySourceCodeVersionArgs{
-				Type:  pulumi.String("BRANCH"),
-				Value: pulumi.String(code.GetBranch()),
-			},
-		}
-
-		// Code configuration: runtime, build command, port, start command, env vars.
-		codeConfigArgs := &apprunner.ServiceSourceConfigurationCodeRepositoryCodeConfigurationArgs{
-			ConfigurationSource: pulumi.String(code.GetConfigurationSource()),
-		}
-
-		// When configuration_source is "API", provide code configuration values.
-		if code.GetConfigurationSource() == "API" {
-			codeValues := &apprunner.ServiceSourceConfigurationCodeRepositoryCodeConfigurationCodeConfigurationValuesArgs{
-				Runtime: pulumi.String(code.GetRuntime()),
-			}
-			if code.GetBuildCommand() != "" {
-				codeValues.BuildCommand = pulumi.String(code.GetBuildCommand())
-			}
-			if spec.GetPort() != "" {
-				codeValues.Port = pulumi.String(spec.GetPort())
-			}
-			if spec.GetStartCommand() != "" {
-				codeValues.StartCommand = pulumi.String(spec.GetStartCommand())
-			}
-			if len(spec.GetEnvironmentVariables()) > 0 {
-				codeValues.RuntimeEnvironmentVariables = pulumi.ToStringMap(spec.GetEnvironmentVariables())
-			}
-			if len(spec.GetEnvironmentSecrets()) > 0 {
-				codeValues.RuntimeEnvironmentSecrets = pulumi.ToStringMap(spec.GetEnvironmentSecrets())
-			}
-			codeConfigArgs.CodeConfigurationValues = codeValues
-		}
-
-		codeRepoArgs.CodeConfiguration = codeConfigArgs
-
-		// Set source_directory if provided.
-		if code.GetSourceDirectory() != "" {
-			codeRepoArgs.SourceDirectory = pulumi.String(code.GetSourceDirectory())
-		}
-
-		sourceConfig.CodeRepository = codeRepoArgs
-
-		// Authentication: connection_arn is required for GitHub code source access.
-		if code.GetConnectionArn().GetValue() != "" {
-			sourceConfig.AuthenticationConfiguration = &apprunner.ServiceSourceConfigurationAuthenticationConfigurationArgs{
-				ConnectionArn: pulumi.String(code.GetConnectionArn().GetValue()),
-			}
-		}
-	}
-
-	return sourceConfig
-}
-
-// buildImageConfiguration constructs the ImageConfigurationArgs for image-based
-// deployments. It maps port, start_command, environment variables, and secrets.
-func buildImageConfiguration(spec interface {
-	GetPort() string
-	GetStartCommand() string
-	GetEnvironmentVariables() map[string]string
-	GetEnvironmentSecrets() map[string]string
-}) *apprunner.ServiceSourceConfigurationImageRepositoryImageConfigurationArgs {
-	args := &apprunner.ServiceSourceConfigurationImageRepositoryImageConfigurationArgs{}
-	hasConfig := false
-
-	if spec.GetPort() != "" {
-		args.Port = pulumi.String(spec.GetPort())
-		hasConfig = true
-	}
-	if spec.GetStartCommand() != "" {
-		args.StartCommand = pulumi.String(spec.GetStartCommand())
-		hasConfig = true
-	}
-	if len(spec.GetEnvironmentVariables()) > 0 {
-		args.RuntimeEnvironmentVariables = pulumi.ToStringMap(spec.GetEnvironmentVariables())
-		hasConfig = true
-	}
-	if len(spec.GetEnvironmentSecrets()) > 0 {
-		args.RuntimeEnvironmentSecrets = pulumi.ToStringMap(spec.GetEnvironmentSecrets())
-		hasConfig = true
-	}
-
-	if !hasConfig {
-		return nil
-	}
-	return args
-}
-
-// buildNetworkConfiguration constructs the ServiceNetworkConfigurationArgs.
-// It wires up egress (VPC Connector) and ingress (public accessibility, IP type).
-func buildNetworkConfiguration(
-	locals *Locals,
-	createdVpcConnector *apprunner.VpcConnector,
-) *apprunner.ServiceNetworkConfigurationArgs {
-	spec := locals.AwsAppRunnerService.Spec
-	hasNetworkConfig := false
-
-	netConfig := &apprunner.ServiceNetworkConfigurationArgs{}
-
-	// --- Egress: VPC Connector ---
-	// Prefer inline-created connector; fall back to externally referenced ARN.
-	if createdVpcConnector != nil {
-		netConfig.EgressConfiguration = &apprunner.ServiceNetworkConfigurationEgressConfigurationArgs{
-			EgressType:      pulumi.String("VPC"),
-			VpcConnectorArn: createdVpcConnector.Arn,
-		}
-		hasNetworkConfig = true
-	} else if spec.GetVpcConnectorArn().GetValue() != "" {
-		netConfig.EgressConfiguration = &apprunner.ServiceNetworkConfigurationEgressConfigurationArgs{
-			EgressType:      pulumi.String("VPC"),
-			VpcConnectorArn: pulumi.String(spec.GetVpcConnectorArn().GetValue()),
-		}
-		hasNetworkConfig = true
-	}
-
-	// --- Ingress: public accessibility and IP address type ---
-	ingressConfig := &apprunner.ServiceNetworkConfigurationIngressConfigurationArgs{}
-	hasIngress := false
-
-	// is_publicly_accessible: the proto optional field returns false when nil,
-	// but we want to set it explicitly when the user provides it.
-	if spec.IsPubliclyAccessible != nil {
-		ingressConfig.IsPubliclyAccessible = pulumi.Bool(spec.GetIsPubliclyAccessible())
-		hasIngress = true
-	}
-
-	if hasIngress {
-		netConfig.IngressConfiguration = ingressConfig
-		hasNetworkConfig = true
-	}
-
-	if spec.GetIpAddressType() != "" {
-		netConfig.IpAddressType = pulumi.String(spec.GetIpAddressType())
-		hasNetworkConfig = true
-	}
-
-	if !hasNetworkConfig {
-		return nil
-	}
-	return netConfig
 }

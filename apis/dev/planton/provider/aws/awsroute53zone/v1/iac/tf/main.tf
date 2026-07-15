@@ -1,28 +1,61 @@
-##############################
-# Route53 Hosted Zone
-##############################
-resource "aws_route53_zone" "r53_zone" {
-  # var.metadata.name is expected to be something like "example.com"
-  name = var.metadata.name
+resource "aws_route53_zone" "this" {
+  # metadata.name IS the domain (ForceNew — a zone cannot be renamed).
+  name          = local.zone_name
+  comment       = local.comment
+  force_destroy = var.spec.force_destroy
 
-  # Use metadata.labels for tags, fallback to {} if null
-  tags = merge(
-      var.metadata.labels != null ? var.metadata.labels : {},
-    {
-      "Name" = var.metadata.name
+  # Reusable delegation sets are public-zone-only and conflict with the vpc
+  # block — both couplings are CEL-enforced in the spec.
+  delegation_set_id = local.delegation_set_id
+
+  # Public zones only; the provider requires an explicit false to switch it
+  # back off once set, so only emit it when enabled.
+  enable_accelerated_recovery = var.spec.enable_accelerated_recovery ? true : null
+
+  # A private zone is defined by its VPC set: AWS creates the zone attached to
+  # the first VPC and associates the rest; the provider manages the whole set
+  # declaratively (adding/removing entries associates/disassociates).
+  dynamic "vpc" {
+    for_each = local.vpc_associations
+    content {
+      vpc_id     = vpc.value.vpc_id
+      vpc_region = vpc.value.vpc_region
     }
-  )
+  }
+
+  tags = local.aws_tags
 }
 
-##############################
-# Route53 Records
-##############################
-resource "aws_route53_record" "records" {
-  for_each = local.normalized_records
+# DNSSEC key-signing key — the asymmetric KMS key behind the zone's signatures.
+# The key must live in us-east-1 with key spec ECC_NIST_P256 and a key policy
+# allowing dnssec-route53.amazonaws.com (documented on the spec).
+resource "aws_route53_key_signing_key" "this" {
+  count = local.dnssec_enabled ? 1 : 0
 
-  zone_id = aws_route53_zone.r53_zone.zone_id
-  name    = each.value.name
-  type    = each.value.record_type
-  ttl     = each.value.ttl_seconds == 0 ? 300 : each.value.ttl_seconds
-  records = each.value.values
+  hosted_zone_id             = aws_route53_zone.this.zone_id
+  key_management_service_arn = var.spec.dnssec.kms_key_arn
+  name                       = local.ksk_name
+  status                     = "ACTIVE"
+}
+
+# Signing only flips on after the KSK exists — an explicit dependency, not
+# just ordering.
+resource "aws_route53_hosted_zone_dnssec" "this" {
+  count = local.dnssec_enabled ? 1 : 0
+
+  hosted_zone_id = aws_route53_zone.this.zone_id
+  signing_status = "SIGNING"
+
+  depends_on = [aws_route53_key_signing_key.this]
+}
+
+# Query logging — public zones only (CEL-enforced). The destination log group
+# must live in us-east-1 and carry an account-level CloudWatch Logs resource
+# policy allowing route53.amazonaws.com; that policy is account-scoped (max 10
+# per region) and deliberately NOT created per zone.
+resource "aws_route53_query_log" "this" {
+  count = local.query_logging_enabled ? 1 : 0
+
+  zone_id                  = aws_route53_zone.this.zone_id
+  cloudwatch_log_group_arn = var.spec.query_logging.cloudwatch_log_group_arn
 }

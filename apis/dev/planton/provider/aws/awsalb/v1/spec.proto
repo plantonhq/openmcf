@@ -77,7 +77,18 @@ message AwsAlbSpec {
   // What happens to requests when an attached WAF is unreachable: when true,
   // requests pass through ("fail open"); when false (AWS default), they are
   // rejected ("fail closed"). A deliberate availability-versus-security call.
+  // Only meaningful when web_acl_arn attaches a WAF to this ALB.
   bool waf_fail_open_enabled = 10;
+
+  // The REGIONAL-scope WAFv2 web ACL protecting this ALB, by ARN — the
+  // modules create the web-ACL association alongside the load balancer.
+  // An ALB has at most one web ACL; leave unset for no WAF. The web ACL
+  // must live in the same region as the ALB. Can reference an
+  // AwsWafWebAcl resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef web_acl_arn = 22 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsWafWebAcl,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.web_acl_arn"
+  ];
 
   // Allows Amazon Application Recovery Controller to shift this ALB's
   // traffic away from an impaired Availability Zone.

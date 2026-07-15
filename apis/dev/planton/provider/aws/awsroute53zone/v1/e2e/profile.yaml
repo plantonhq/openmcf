@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsroute53zone
+spec:
+  # A Route 53 hosted zone under live E2E: the harness runs deploy ->
+  # GetHostedZone verify -> destroy -> verify-destroyed on both provisioners.
+  # Two scenarios: a public zone (comment + force_destroy — creating a zone
+  # needs no domain ownership, so any name works) and a private zone
+  # composing the shared AwsVpc fixture via the e2e-prerequisites annotation
+  # (the kind itself honestly requires nothing — public zones are leaves).
+  # Zones create in seconds at $0.50/month prorated-to-minutes cost.
+  # Deliberately not in the live scenarios: DNSSEC signing (the KSK demands
+  # a us-east-1 ECC_NIST_P256 KMS key carrying the dnssec-route53 service
+  # key policy — a key-policy-prepared fixture the shared KMS fixture does
+  # not model), query logging (delivery requires an ACCOUNT-level CloudWatch
+  # Logs resource policy — max 10 per region, shared across zones — which a
+  # per-lane fixture must not own), and reusable delegation sets (account
+  # objects with no kind to compose from). All three arms are proven by CEL
+  # spec tests, both engines' builds, and the offline gate.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

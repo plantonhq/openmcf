@@ -1,0 +1,34 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsBatchJobDefinition
+metadata:
+  org: example-org
+  env: prod
+  name: fargate-etl
+  id: fargate-etl-id
+spec:
+  region: <aws-region>
+  platformCapabilities:
+    - FARGATE
+  container:
+    image: <account-id>.dkr.ecr.<aws-region>.amazonaws.com/etl:latest
+    command:
+      - python
+      - run.py
+      - Ref::dataset
+    vcpus: 1
+    memoryMib: 2048
+    executionRole:
+      value: <execution-role-arn>
+    jobRole:
+      value: <job-role-arn>
+  parameters:
+    dataset: s3://data-lake/default
+  retryStrategy:
+    attempts: 3
+    evaluateOnExit:
+      - action: RETRY
+        onStatusReason: Host EC2*
+      - action: EXIT
+        onExitCode: "1*"
+  timeout:
+    attemptDurationSeconds: 7200

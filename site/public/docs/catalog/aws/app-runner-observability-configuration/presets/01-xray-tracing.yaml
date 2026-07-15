@@ -1,0 +1,11 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsAppRunnerObservabilityConfiguration
+metadata:
+  org: example-org
+  env: prod
+  name: xray-tracing
+  id: xray-tracing-id
+spec:
+  region: <aws-region>
+  traceConfiguration:
+    vendor: AWSXRAY
