@@ -1,0 +1,38 @@
+{% if values.front_door_waf_enabled | bool %}
+# Optional WAF: PREVENTION mode blocks malicious traffic at the edge.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorFirewallPolicy
+metadata:
+  name: "{{ values.env }}-static-waf"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-static-site"
+      fieldPath: status.outputs.resource_group_name
+  policyName: "{{ values.env }}staticwaf"
+  sku: STANDARD
+  mode: {{ values.front_door_waf_mode }}
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorSecurityPolicy
+metadata:
+  name: "{{ values.env }}-static-waf-attach"
+spec:
+  profileId:
+    valueFrom:
+      kind: AzureFrontDoorProfile
+      name: "{{ values.env }}-static-fd"
+      fieldPath: status.outputs.profile_id
+  securityPolicyName: waf-on-endpoint
+  firewallPolicyId:
+    valueFrom:
+      kind: AzureFrontDoorFirewallPolicy
+      name: "{{ values.env }}-static-waf"
+      fieldPath: status.outputs.firewall_policy_id
+  domainIds:
+    - valueFrom:
+        kind: AzureFrontDoorEndpoint
+        name: "{{ values.env }}-static-fd-endpoint"
+        fieldPath: status.outputs.endpoint_id
+{% endif %}

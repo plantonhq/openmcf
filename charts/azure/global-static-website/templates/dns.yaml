@@ -1,0 +1,156 @@
+# Custom domain wiring: public DNS zone, Front Door custom domain with
+# managed TLS, and the TXT/CNAME records that self-complete validation.
+# Deploys in pending-validation state until registrar NS delegation is live.
+apiVersion: azure.planton.dev/v1
+kind: AzureDnsZone
+metadata:
+  name: "{{ values.env }}-public-dns"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-static-site"
+      fieldPath: status.outputs.resource_group_name
+  zoneName: "{{ values.dns_zone_name }}"
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorCustomDomain
+metadata:
+  name: "{{ values.env }}-static-custom-domain"
+spec:
+  profileId:
+    valueFrom:
+      kind: AzureFrontDoorProfile
+      name: "{{ values.env }}-static-fd"
+      fieldPath: status.outputs.profile_id
+  domainName: "{{ values.custom_domain_label }}-{{ values.dns_zone_name | replace('.', '-') }}"
+  hostName: "{{ values.custom_domain_label }}.{{ values.dns_zone_name }}"
+  dnsZoneId:
+    valueFrom:
+      kind: AzureDnsZone
+      name: "{{ values.env }}-public-dns"
+      fieldPath: status.outputs.zone_id
+  tls:
+    certificateType: MANAGED_CERTIFICATE
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureDnsRecord
+metadata:
+  name: "{{ values.env }}-dnsauth-txt"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-static-site"
+      fieldPath: status.outputs.resource_group_name
+  zoneName:
+    valueFrom:
+      kind: AzureDnsZone
+      name: "{{ values.env }}-public-dns"
+      fieldPath: status.outputs.zone_name
+  name: "_dnsauth.{{ values.custom_domain_label }}"
+  ttlSeconds: 60
+  txt:
+    - valueFrom:
+        kind: AzureFrontDoorCustomDomain
+        name: "{{ values.env }}-static-custom-domain"
+        fieldPath: status.outputs.validation_token
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureDnsRecord
+metadata:
+  name: "{{ values.env }}-custom-domain-cname"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-static-site"
+      fieldPath: status.outputs.resource_group_name
+  zoneName:
+    valueFrom:
+      kind: AzureDnsZone
+      name: "{{ values.env }}-public-dns"
+      fieldPath: status.outputs.zone_name
+  name: "{{ values.custom_domain_label }}"
+  ttlSeconds: 300
+  cname:
+    value:
+      valueFrom:
+        kind: AzureFrontDoorEndpoint
+        name: "{{ values.env }}-static-fd-endpoint"
+        fieldPath: status.outputs.host_name
+---
+{% if values.apex_alias_enabled | bool %}
+# The zone apex: an alias A record tracking the Front Door endpoint by
+# ARM ID (DNS forbids CNAME at @).
+apiVersion: azure.planton.dev/v1
+kind: AzureDnsRecord
+metadata:
+  name: "{{ values.env }}-apex-alias"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-static-site"
+      fieldPath: status.outputs.resource_group_name
+  zoneName:
+    valueFrom:
+      kind: AzureDnsZone
+      name: "{{ values.env }}-public-dns"
+      fieldPath: status.outputs.zone_name
+  name: "@"
+  ttlSeconds: 300
+  a:
+    targetResourceId:
+      valueFrom:
+        kind: AzureFrontDoorEndpoint
+        name: "{{ values.env }}-static-fd-endpoint"
+        fieldPath: status.outputs.endpoint_id
+{% endif %}
+---
+# Attach the custom domain to the cached route.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorRoute
+metadata:
+  name: "{{ values.env }}-static-custom-route"
+spec:
+  endpointId:
+    valueFrom:
+      kind: AzureFrontDoorEndpoint
+      name: "{{ values.env }}-static-fd-endpoint"
+      fieldPath: status.outputs.endpoint_id
+  routeName: custom-domain
+  originGroupId:
+    valueFrom:
+      kind: AzureFrontDoorOriginGroup
+      name: "{{ values.env }}-static-origin-group"
+      fieldPath: status.outputs.origin_group_id
+  originIds:
+    - valueFrom:
+        kind: AzureFrontDoorOrigin
+        name: "{{ values.env }}-static-origin"
+        fieldPath: status.outputs.origin_id
+  patternsToMatch:
+    - "/*"
+  supportedProtocols:
+    - HTTP
+    - HTTPS
+  forwardingProtocol: HTTPS_ONLY
+  httpsRedirectEnabled: true
+  linkToDefaultDomain: false
+  customDomainIds:
+    - valueFrom:
+        kind: AzureFrontDoorCustomDomain
+        name: "{{ values.env }}-static-custom-domain"
+        fieldPath: status.outputs.custom_domain_id
+  enabled: true
+  cache:
+    queryStringCachingBehavior: IGNORE_QUERY_STRING
+    compressionEnabled: true
+    contentTypesToCompress:
+      - text/html
+      - text/css
+      - text/javascript
+      - application/javascript
+      - application/json
+      - image/svg+xml
