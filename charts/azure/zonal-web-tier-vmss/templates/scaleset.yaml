@@ -1,0 +1,80 @@
+# The fleet: FLEXIBLE orchestration (Azure's recommendation for new
+# workloads -- instances are real VMs, mixable and individually
+# manageable) spread across zones 1-3, so a zone outage removes a
+# third of capacity instead of the tier. Fault-domain count 1 is the
+# zonal contract: zones ARE the fault isolation, so within each zone
+# Azure places instances without a second fault-domain constraint.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualMachineScaleSet
+metadata:
+  name: "{{ values.env }}-web-vmss"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-tier"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-web-vmss"
+  skuName: "{{ values.vm_sku }}"
+  instances: {{ values.instances }}
+  zones: ["1", "2", "3"]
+  platformFaultDomainCount: 1
+  osProfile:
+    computerNamePrefix: web
+    linux:
+      adminUsername: "{{ values.admin_username }}"
+      # Key-only access: password authentication stays at its secure
+      # default (disabled). The key is the ONLY interactive door, and
+      # the NSG does not even expose one to the Internet.
+      sshPublicKeys:
+        - publicKey: "{{ values.ssh_public_key }}"
+  # First-boot bootstrap (base64 cloud-init). The default installs
+  # nginx so instances answer the load balancer's health probe out of
+  # the box; egress for the package install rides the LB's outbound
+  # rule.
+  customData: "{{ values.cloud_init_base64 }}"
+  # Ubuntu LTS by reference, not by image id -- "latest" tracks the
+  # current 24.04 build at each instance creation.
+  sourceImageReference:
+    publisher: Canonical
+    offer: ubuntu-24_04-lts
+    sku: server
+    version: latest
+  osDisk:
+    caching: READ_WRITE
+    # SSD-backed for a serving tier; PREMIUM_LRS is the step up when
+    # disk latency starts to matter.
+    storageAccountType: STANDARD_SSD_LRS
+  # Flexible mode takes user-assigned identities only -- and the tier's
+  # identity being a first-class node is exactly how instances get
+  # keyless access to other Azure resources.
+  identity:
+    type: USER_ASSIGNED
+    identityIds:
+      - valueFrom:
+          kind: AzureUserAssignedIdentity
+          name: "{{ values.env }}-web-tier-identity"
+          fieldPath: status.outputs.identity_id
+  networkInterfaces:
+    - name: primary
+      primary: true
+      ipConfigurations:
+        - name: internal
+          primary: true
+          subnetId:
+            valueFrom:
+              kind: AzureSubnet
+              name: "{{ values.env }}-web-subnet"
+              fieldPath: status.outputs.subnet_id
+          # Pool membership from the member side, through the load
+          # balancer's name-keyed map output -- every instance's NIC
+          # joins the "web" pool at creation.
+          loadBalancerBackendAddressPoolIds:
+            - valueFrom:
+                kind: AzureLoadBalancer
+                name: "{{ values.env }}-web-lb"
+                fieldPath: status.outputs.backend_pool_ids.web
+  # Managed-storage boot diagnostics: serial console + screenshot for
+  # boot-loop debugging, no storage account to manage.
+  bootDiagnostics: {}

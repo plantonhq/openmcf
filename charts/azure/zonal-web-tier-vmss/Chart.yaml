@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: Azure Zonal Web Tier (VMSS)
+spec:
+  selector:
+    kind: platform
+  description: The honest IaaS web tier -- a Flexible virtual machine scale set spread across three availability zones behind a zone-redundant Standard Load Balancer, SSH-key-only Linux with cloud-init bootstrap, an identity attached for keyless Azure access, deny-by-default network security, deterministic SNAT egress, and the CPU alert that says when to scale
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/azure/azurevirtualmachinescaleset/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/azure/zonal-web-tier-vmss
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/azure/zonal-web-tier-vmss/README.md

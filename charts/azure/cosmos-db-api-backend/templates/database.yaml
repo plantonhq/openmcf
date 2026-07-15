@@ -1,0 +1,97 @@
+# The Cosmos DB account in the keyless, private posture Azure's own
+# security baseline describes: key-based data-plane access is DISABLED
+# (localAuthenticationEnabled: false), so primary/secondary keys cannot
+# be used even if read -- Entra RBAC is the only door. The public data
+# plane is off; traffic arrives through the private endpoint.
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbAccount
+metadata:
+  name: "{{ values.env }}-cosmos"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-cosmos-api"
+      fieldPath: status.outputs.resource_group_name
+  accountName: "{{ values.cosmos_account_name }}"
+  # The SQL (NoSQL) API -- what the data-plane RBAC below governs.
+  kind: GLOBAL_DOCUMENT_DB
+  consistencyPolicy:
+    consistencyLevel: "{{ values.consistency_level }}"
+  # The primary region always carries failover priority 0. Zone
+  # redundancy spreads its replicas across availability zones for a
+  # 25% RU premium.
+  geoLocations:
+    - location: "{{ values.region }}"
+      failoverPriority: 0
+      zoneRedundant: {{ values.zone_redundant_enabled }}
+{% if values.secondary_region_enabled | bool %}
+    - location: "{{ values.secondary_region }}"
+      failoverPriority: 1
+  # With a second region present, let Azure fail over on its own --
+  # manual failover during a regional outage is exactly the button
+  # nobody wants to be finding at 3 a.m.
+  automaticFailoverEnabled: true
+{% endif %}
+  # The keyless core: no key- or connection-string-based data access.
+  # SDK clients construct CosmosClient(endpoint, tokenCredential); the
+  # role assignment below is what authorizes them.
+  localAuthenticationEnabled: false
+  # Keys also stop mattering for metadata writes; leaving this default
+  # (true) would be harmless, but the posture reads cleaner disabled.
+  accessKeyMetadataWritesEnabled: false
+  # No public data plane -- the private endpoint is the only path.
+  # Deploys still run over ARM (the management plane is separate).
+  publicNetworkAccessEnabled: false
+  # Continuous backup: point-in-time restore to any second in the last
+  # seven days, no backup windows to schedule. The 30-day tier is a
+  # one-field upgrade.
+  backup:
+    type: CONTINUOUS
+    tier: CONTINUOUS_7_DAYS
+---
+# The database is a namespace here -- throughput lives on the container
+# (dedicated RU/s per workload), so the database itself carries no
+# shared-throughput budget.
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbSqlDatabase
+metadata:
+  name: "{{ values.env }}-cosmos-db"
+spec:
+  cosmosdbAccountId:
+    valueFrom:
+      kind: AzureCosmosdbAccount
+      name: "{{ values.env }}-cosmos"
+      fieldPath: status.outputs.cosmosdb_account_id
+  databaseName: "{{ values.database_name }}"
+---
+# The API's primary container. Autoscale keeps the floor at 10% of the
+# ceiling and follows demand -- the right default for an API whose
+# traffic breathes; the ceiling (autoscale_max_throughput) is the cost
+# guardrail the throttle alert watches.
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbSqlContainer
+metadata:
+  name: "{{ values.env }}-cosmos-container"
+spec:
+  sqlDatabaseId:
+    valueFrom:
+      kind: AzureCosmosdbSqlDatabase
+      name: "{{ values.env }}-cosmos-db"
+      fieldPath: status.outputs.sql_database_id
+  containerName: "{{ values.container_name }}"
+  partitionKeyPaths:
+    - "{{ values.partition_key_path }}"
+  autoscaleMaxThroughput: {{ values.autoscale_max_throughput }}
+  # Azure's own default indexing posture, stated explicitly so it is a
+  # decision and not an accident: index every property (ad-hoc queries
+  # stay fast) except the system _etag, which nothing queries. Workloads
+  # with large write-heavy payload subtrees should move the subtree to
+  # excludedPaths -- every indexed property costs write RUs.
+  indexingPolicy:
+    indexingMode: CONSISTENT
+    includedPaths:
+      - path: /*
+    excludedPaths:
+      - path: '/"_etag"/?'
