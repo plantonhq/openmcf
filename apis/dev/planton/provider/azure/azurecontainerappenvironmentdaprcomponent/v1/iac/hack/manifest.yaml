@@ -15,9 +15,11 @@ spec:
       value: dGVzdC1hY2NvdW50LWtleQ==
   metadata:
     - name: accountName
-      value: teststorageaccount
+      value:
+        value: teststorageaccount
     - name: containerName
-      value: dapr-state
+      value:
+        value: dapr-state
     - name: accountKey
       secret_name: account-key
   scopes:

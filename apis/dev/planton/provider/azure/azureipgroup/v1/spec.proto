@@ -67,9 +67,7 @@ message AzureIpGroupSpec {
   // placeholder anchor that rules reference before the address plan is
   // final -- and entries update in place: adding or removing an address
   // immediately retargets every rule that references the group.
-  repeated string cidrs = 4 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string cidrs = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Free-form tags applied to the group, merged over the Planton-derived
   // resource tags (organization, environment, resource id); a user tag

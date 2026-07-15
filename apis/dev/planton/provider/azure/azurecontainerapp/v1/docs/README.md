@@ -12,7 +12,7 @@ Every change to the template (containers, scale, volumes) creates a revision. SI
 
 ### Scaling
 
-Scaling is KEDA under the hood: HTTP/TCP concurrency rules, the Azure Queue rule, and custom rules covering the KEDA scaler catalog (the provider validates the type against its pinned allowlist, mirrored in the spec). Custom rules optionally execute under a managed identity (`identity_id`) instead of connection-string secrets. Replica bounds (0-300), the cooldown period, and the polling interval complete the scaler surface.
+Scaling is KEDA under the hood: HTTP/TCP concurrency rules, the Azure Queue rule, and custom rules covering the KEDA scaler catalog (the provider validates the type against its pinned allowlist, mirrored in the spec). Custom rules optionally execute under a managed identity (`identity_id` -- the literal "System" or a referenced user-assigned identity) instead of connection-string secrets. Replica bounds (0-300), the cooldown period, and the polling interval complete the scaler surface.
 
 ### Volumes
 

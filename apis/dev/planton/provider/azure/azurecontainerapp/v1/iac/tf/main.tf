@@ -229,7 +229,8 @@ resource "azurerm_container_app" "main" {
         custom_rule_type = custom_scale_rule.value.custom_rule_type
         metadata         = custom_scale_rule.value.metadata
         # Workload identity for the scaler instead of connection-string
-        # secrets ("System" or a user-assigned identity ARM id).
+        # secrets ("System" or a user-assigned identity ARM id; foreign-key
+        # references arrive pre-resolved to the literal id).
         identity_id = custom_scale_rule.value.identity_id
 
         dynamic "authentication" {

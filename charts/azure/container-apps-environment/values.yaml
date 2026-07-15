@@ -1,0 +1,73 @@
+params:
+  # ─── Placement ───────────────────────────────────────────────────────────────
+  - name: region
+    description: Azure region for every resource in the estate. Zone redundancy requires a region with availability zones (most primary regions qualify)
+    value: centralus
+
+  # ─── Network ─────────────────────────────────────────────────────────────────
+  - name: vnet_cidr
+    description: Address space of the environment's virtual network
+    value: 10.20.0.0/16
+
+  - name: infra_subnet_cidr
+    description: CIDR of the environment's infrastructure subnet, inside vnet_cidr. Azure requires /21 or larger -- the Container Apps platform reserves a significant portion for its own load balancers and replicas
+    value: 10.20.0.0/21
+
+  # ─── Global names (must change) ──────────────────────────────────────────────
+  - name: servicebus_namespace_name
+    description: Globally unique Service Bus namespace name (6-50 characters, letters/digits/hyphens, starts with a letter; the "-sb" and "-mgmt" suffixes are reserved by Azure). MUST be changed before deploying
+    value: my-capps-bus
+
+  - name: storage_account_name
+    description: Globally unique storage account name (3-24 lowercase alphanumerics, no hyphens) backing the shared Azure Files volume. MUST be changed before deploying
+    value: mycappsshared
+
+  # ─── Environment posture ─────────────────────────────────────────────────────
+  - name: zone_redundancy_enabled
+    description: Spread the environment's infrastructure across availability zones. Fixed at creation; off saves nothing on Consumption but leaves the platform single-zone
+    value: true
+    type: bool
+
+  - name: internal_only_enabled
+    description: Give the environment an internal (VNet-only) load balancer -- apps with external ingress become reachable from the VNet, never the internet. Turn on when fronting the API with your own edge (Application Gateway, Front Door via private link)
+    value: false
+    type: bool
+
+  # ─── Workloads ───────────────────────────────────────────────────────────────
+  - name: api_image
+    description: Container image for the public API app. The default is Microsoft's quickstart image listening on port 80 -- replace it with your service
+    value: mcr.microsoft.com/k8se/quickstart:latest
+
+  - name: worker_image
+    description: Container image for the internal queue-driven worker. The default quickstart image stands in until your consumer replaces it
+    value: mcr.microsoft.com/k8se/quickstart:latest
+
+  - name: job_image
+    description: Container image for the scheduled job. The default quickstart-jobs image runs to completion -- replace it with your batch task
+    value: mcr.microsoft.com/k8se/quickstart-jobs:latest
+
+  - name: worker_max_replicas
+    description: Upper replica bound for the worker as queue depth grows (KEDA adds a replica per 10 pending messages). The floor is 0 -- the worker scales to zero when the queue is empty
+    value: 10
+    type: int
+
+  - name: job_cron_expression
+    description: "UTC cron schedule for the batch job (5 fields: minute hour day-of-month month day-of-week). Default: daily at 03:00 UTC"
+    value: "0 3 * * *"
+
+  # ─── Messaging ───────────────────────────────────────────────────────────────
+  - name: orders_topic_name
+    description: The Dapr pub/sub topic the API publishes and the worker subscribes to. With the queue-based Service Bus component, each topic maps to a Service Bus queue of the same name -- the chart provisions that queue with dead-letter posture, so pick the name your domain uses (e.g. orders, events)
+    value: orders
+
+  # ─── Shared volume ───────────────────────────────────────────────────────────
+  - name: shared_volume_quota_gb
+    description: Size cap of the shared Azure Files volume mounted into the worker (GiB). Standard tier bills only for used capacity
+    value: 64
+    type: int
+
+  # ─── Telemetry ───────────────────────────────────────────────────────────────
+  - name: log_retention_days
+    description: Log Analytics workspace retention in days
+    value: 30
+    type: int

@@ -766,9 +766,15 @@ type AzureContainerAppJobEventScaleRule struct {
 	Authentication []*AzureContainerAppJobScaleRuleAuth `protobuf:"bytes,4,rep,name=authentication,proto3" json:"authentication,omitempty"`
 	// Managed identity KEDA uses to execute the scale rule (workload
 	// identity for the scaler instead of connection-string secrets).
-	// Value is either "System" (the job's system-assigned identity) or a
-	// User Assigned Identity ARM resource ID.
-	IdentityId    string `protobuf:"bytes,5,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
+	// The literal "System" (the job's system-assigned identity) or a User
+	// Assigned Identity ARM resource ID -- reference the identity that is
+	// also in the job's identity block so the scaler and the workload share
+	// one principal. With an identity set, Azure scalers need no
+	// `authentication` entries at all: grant the identity the data-plane
+	// read role on the scaled resource (e.g. Azure Service Bus Data
+	// Receiver for queue depth) and leave the connection secret out of the
+	// job entirely.
+	IdentityId    *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -831,11 +837,11 @@ func (x *AzureContainerAppJobEventScaleRule) GetAuthentication() []*AzureContain
 	return nil
 }
 
-func (x *AzureContainerAppJobEventScaleRule) GetIdentityId() string {
+func (x *AzureContainerAppJobEventScaleRule) GetIdentityId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.IdentityId
 	}
-	return ""
+	return nil
 }
 
 // AzureContainerAppJobScaleRuleAuth provides authentication for an
@@ -1871,15 +1877,15 @@ const file_dev_planton_provider_azure_azurecontainerappjob_v1_spec_proto_rawDesc
 	"\x05rules\x18\x04 \x03(\v2V.dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEventScaleRuleR\x05rulesB\x11\n" +
 	"\x0f_max_executionsB\x11\n" +
 	"\x0f_min_executionsB\x1e\n" +
-	"\x1c_polling_interval_in_seconds\"\xc4\r\n" +
+	"\x1c_polling_interval_in_seconds\"\x9d\x0e\n" +
 	"\"AzureContainerAppJobEventScaleRule\x12\xaf\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\x9a\x01\xbaH\x96\x01\xba\x01\x8b\x01\n" +
 	"\x1ajob_scale_rule_name_format\x12Nscale rule name must be lowercase alphanumeric characters, hyphens, or periods\x1a\x1dthis.matches('^[a-z0-9.-]+$')\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x81\t\n" +
 	"\x10custom_rule_type\x18\x02 \x01(\tB\xd6\b\xbaH\xd2\b\xba\x01\xcb\b\n" +
 	"\x1ejob_scale_rule_type_vocabulary\x12\x94\x01custom_rule_type must be a KEDA scaler Azure Container Apps supports, e.g. azure-queue, azure-servicebus, kafka, rabbitmq (see keda.sh/docs/scalers)\x1a\x91\athis in ['activemq', 'artemis-queue', 'kafka', 'pulsar', 'aws-cloudwatch', 'aws-dynamodb', 'aws-dynamodb-streams', 'aws-kinesis-stream', 'aws-sqs-queue', 'azure-app-insights', 'azure-blob', 'azure-data-explorer', 'azure-eventhub', 'azure-log-analytics', 'azure-monitor', 'azure-pipelines', 'azure-servicebus', 'azure-queue', 'cassandra', 'cpu', 'cron', 'datadog', 'elasticsearch', 'external', 'external-push', 'gcp-stackdriver', 'gcp-storage', 'gcp-pubsub', 'graphite', 'http', 'huawei-cloudeye', 'ibmmq', 'influxdb', 'kubernetes-workload', 'liiklus', 'memory', 'metrics-api', 'mongodb', 'mssql', 'mysql', 'nats-jetstream', 'stan', 'tcp', 'new-relic', 'openstack-metric', 'openstack-swift', 'postgresql', 'predictkube', 'prometheus', 'rabbitmq', 'redis', 'redis-cluster', 'redis-sentinel', 'redis-streams', 'redis-cluster-streams', 'redis-sentinel-streams', 'selenium-grid', 'solace-event-queue', 'github-runner']\xc8\x01\x01R\x0ecustomRuleType\x12\x8a\x01\n" +
 	"\bmetadata\x18\x03 \x03(\v2d.dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEventScaleRule.MetadataEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\bmetadata\x12}\n" +
-	"\x0eauthentication\x18\x04 \x03(\v2U.dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobScaleRuleAuthR\x0eauthentication\x12\x1f\n" +
-	"\videntity_id\x18\x05 \x01(\tR\n" +
+	"\x0eauthentication\x18\x04 \x03(\v2U.dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobScaleRuleAuthR\x0eauthentication\x12x\n" +
+	"\videntity_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\n" +
 	"identityId\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -2062,24 +2068,25 @@ var file_dev_planton_provider_azure_azurecontainerappjob_v1_spec_proto_depIdxs =
 	8,  // 13: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEventScale.rules:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEventScaleRule
 	21, // 14: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEventScaleRule.metadata:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEventScaleRule.MetadataEntry
 	9,  // 15: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEventScaleRule.authentication:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobScaleRuleAuth
-	12, // 16: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobContainer.env:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEnvVar
-	13, // 17: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobContainer.liveness_probe:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbe
-	13, // 18: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobContainer.readiness_probe:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbe
-	13, // 19: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobContainer.startup_probe:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbe
-	15, // 20: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobContainer.volume_mounts:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobVolumeMount
-	12, // 21: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobInitContainer.env:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEnvVar
-	15, // 22: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobInitContainer.volume_mounts:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobVolumeMount
-	0,  // 23: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbe.transport:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbeTransport
-	14, // 24: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbe.headers:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbeHeader
-	1,  // 25: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobVolume.storage_type:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobVolumeStorageType
-	22, // 26: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobVolume.storage_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 27: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobIdentity.type:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobIdentityType
-	22, // 28: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobIdentity.user_assigned_identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // [29:29] is the sub-list for method output_type
-	29, // [29:29] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	22, // 16: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEventScaleRule.identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 17: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobContainer.env:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEnvVar
+	13, // 18: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobContainer.liveness_probe:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbe
+	13, // 19: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobContainer.readiness_probe:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbe
+	13, // 20: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobContainer.startup_probe:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbe
+	15, // 21: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobContainer.volume_mounts:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobVolumeMount
+	12, // 22: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobInitContainer.env:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEnvVar
+	15, // 23: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobInitContainer.volume_mounts:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobVolumeMount
+	0,  // 24: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbe.transport:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbeTransport
+	14, // 25: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbe.headers:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobProbeHeader
+	1,  // 26: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobVolume.storage_type:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobVolumeStorageType
+	22, // 27: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobVolume.storage_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 28: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobIdentity.type:type_name -> dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobIdentityType
+	22, // 29: dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobIdentity.user_assigned_identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	30, // [30:30] is the sub-list for method output_type
+	30, // [30:30] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurecontainerappjob_v1_spec_proto_init() }

@@ -60,6 +60,9 @@ func Resources(ctx *pulumi.Context, stackInput *azurecontainerappenvironmentdapr
 
 	// The component's configuration entries; keys depend on the component
 	// type. The spec's CEL guarantees value XOR secret_name per entry.
+	// Values may be foreign-key references (e.g. an azureClientId entry
+	// tracking a managed identity's client_id); they arrive pre-resolved
+	// to literals.
 	if len(spec.Metadata) > 0 {
 		metadataEntries := make(containerapp.EnvironmentDaprComponentMetadataArray, 0, len(spec.Metadata))
 		for _, metadataEntry := range spec.Metadata {
@@ -68,8 +71,8 @@ func Resources(ctx *pulumi.Context, stackInput *azurecontainerappenvironmentdapr
 			}
 			if metadataEntry.SecretName != "" {
 				entryArgs.SecretName = pulumi.StringPtr(metadataEntry.SecretName)
-			} else if metadataEntry.Value != "" {
-				entryArgs.Value = pulumi.StringPtr(metadataEntry.Value)
+			} else if metadataEntry.Value.GetValue() != "" {
+				entryArgs.Value = pulumi.StringPtr(metadataEntry.Value.GetValue())
 			}
 			metadataEntries = append(metadataEntries, entryArgs)
 		}

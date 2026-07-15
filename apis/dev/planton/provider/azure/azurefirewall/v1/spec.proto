@@ -119,9 +119,7 @@ message AzureFirewallSpec {
   // WITHOUT an attached policy -- ARM rejects firewall-level DNS
   // parameters when firewall_policy_id is set (DNS is managed by the
   // policy's dns block instead).
-  repeated string dns_servers = 10 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string dns_servers = 10 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Run the firewall as a DNS proxy for clients pointing their DNS at
   // its private IP. Required for FQDN-based network rules to resolve
@@ -135,9 +133,7 @@ message AzureFirewallSpec {
   // RFC 1918 set). When unset, Azure defaults to the IANA private
   // ranges. Policy-attached firewalls normally configure SNAT ranges on
   // the policy instead.
-  repeated string private_ip_ranges = 12 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string private_ip_ranges = 12 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // The Virtual WAN hub to deploy into (AZFW_HUB model only).
   AzureFirewallVirtualHub virtual_hub = 13;
@@ -145,9 +141,7 @@ message AzureFirewallSpec {
   // The availability zones the firewall spans, e.g. ["1", "2", "3"].
   // Zone redundancy is free on Azure Firewall (you pay only the normal
   // deployment cost) and is the production posture. Fixed at creation.
-  repeated string zones = 14 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string zones = 14 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Free-form tags applied to the firewall, merged over the
   // Planton-derived resource tags (organization, environment, resource
@@ -305,9 +299,7 @@ message AzureFirewallVirtualHub {
   // The Virtual WAN hub's ARM id. A bare reference: Planton has no
   // Virtual WAN kind yet, so supply the id as a literal or an explicit
   // kind/fieldPath reference.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_hub_id = 1 [
-    (buf.validate.field).required = true
-  ];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_hub_id = 1 [(buf.validate.field).required = true];
 
   // How many public IPs Azure assigns the hub firewall (Azure manages
   // the addresses; they surface as outputs). At least 1; defaults to 1.

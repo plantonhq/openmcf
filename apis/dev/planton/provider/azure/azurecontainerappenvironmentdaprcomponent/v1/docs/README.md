@@ -23,7 +23,7 @@ parity-verified against pulumi-azure v6
 | `init_timeout` | `init_timeout` | Optional, default "5s"; the provider's interval format (`[0-9]+[smh]`) mirrored as a CEL |
 | `ignore_errors` | `ignore_errors` | Optional bool, default false -- left false so a broken backend fails loudly at sidecar startup |
 | `secret` | `secrets[]` | Dapr component secrets are name/value pairs (NOT the app-level secret schema -- no Key Vault reference or identity fields on this resource); values are sensitive |
-| `metadata` | `metadata[]` | name + (value XOR secret_name), the XOR as a message CEL |
+| `metadata` | `metadata[]` | name + (value XOR secret_name), the XOR as a message CEL; the value is a StringValueOrRef so deploy-time outputs (a managed identity's client_id for keyless auth) wire by reference |
 | `scopes` | `scopes[]` | The consuming apps' `dapr.app_id`s; empty exposes the component to every Dapr-enabled app |
 
 No tags: ARM does not support tags on Dapr component registrations.

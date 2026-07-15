@@ -2430,9 +2430,15 @@ type AzureContainerAppCustomScaleRule struct {
 	Authentication []*AzureContainerAppScaleRuleAuth `protobuf:"bytes,4,rep,name=authentication,proto3" json:"authentication,omitempty"`
 	// Managed identity KEDA uses to execute the scale rule (workload
 	// identity for the scaler instead of connection-string secrets).
-	// Value is either "System" (the app's system-assigned identity) or a
-	// User Assigned Identity ARM resource ID.
-	IdentityId    string `protobuf:"bytes,5,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
+	// The literal "System" (the app's system-assigned identity) or a User
+	// Assigned Identity ARM resource ID -- reference the identity that is
+	// also in the app's identity block so the scaler and the workload share
+	// one principal. With an identity set, Azure scalers need no
+	// `authentication` entries at all: grant the identity the data-plane
+	// read role on the scaled resource (e.g. Azure Service Bus Data
+	// Receiver for queue depth) and leave the connection secret out of the
+	// app entirely.
+	IdentityId    *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2495,11 +2501,11 @@ func (x *AzureContainerAppCustomScaleRule) GetAuthentication() []*AzureContainer
 	return nil
 }
 
-func (x *AzureContainerAppCustomScaleRule) GetIdentityId() string {
+func (x *AzureContainerAppCustomScaleRule) GetIdentityId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.IdentityId
 	}
-	return ""
+	return nil
 }
 
 // AzureContainerAppScaleRuleAuth provides authentication for a scale rule.
@@ -2905,15 +2911,15 @@ const file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc = 
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tqueueName\x12*\n" +
 	"\fqueue_length\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\vqueueLength\x12\x81\x01\n" +
 	"\x0eauthentication\x18\x04 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuthB\b\xbaH\x05\x92\x01\x02\b\x01R\x0eauthentication:\xfb\x01\xbaH\xf7\x01\x1a\xf4\x01\n" +
-	"!queue_rule_auth_trigger_parameter\x12\x97\x01Azure Queue scale rule authentication entries must set trigger_parameter (typically \"connection\") so KEDA knows which scaler parameter the secret feeds\x1a5this.authentication.all(a, a.trigger_parameter != '')\"\xaa\x0f\n" +
+	"!queue_rule_auth_trigger_parameter\x12\x97\x01Azure Queue scale rule authentication entries must set trigger_parameter (typically \"connection\") so KEDA knows which scaler parameter the secret feeds\x1a5this.authentication.all(a, a.trigger_parameter != '')\"\x83\x10\n" +
 	" AzureContainerAppCustomScaleRule\x12\xac\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\x97\x01\xbaH\x93\x01\xba\x01\x88\x01\n" +
 	"\x17custom_rule_name_format\x12Nscale rule name must be lowercase alphanumeric characters, hyphens, or periods\x1a\x1dthis.matches('^[a-z0-9.-]+$')\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x97\t\n" +
 	"\x10custom_rule_type\x18\x02 \x01(\tB\xec\b\xbaH\xe8\b\xba\x01\xe1\b\n" +
 	"\x1bcustom_rule_type_vocabulary\x12\xad\x01custom_rule_type must be a KEDA scaler Azure Container Apps supports, e.g. kafka, prometheus, redis, cron, cpu, memory, azure-servicebus, rabbitmq (see keda.sh/docs/scalers)\x1a\x91\athis in ['activemq', 'artemis-queue', 'kafka', 'pulsar', 'aws-cloudwatch', 'aws-dynamodb', 'aws-dynamodb-streams', 'aws-kinesis-stream', 'aws-sqs-queue', 'azure-app-insights', 'azure-blob', 'azure-data-explorer', 'azure-eventhub', 'azure-log-analytics', 'azure-monitor', 'azure-pipelines', 'azure-servicebus', 'azure-queue', 'cassandra', 'cpu', 'cron', 'datadog', 'elasticsearch', 'external', 'external-push', 'gcp-stackdriver', 'gcp-storage', 'gcp-pubsub', 'graphite', 'http', 'huawei-cloudeye', 'ibmmq', 'influxdb', 'kubernetes-workload', 'liiklus', 'memory', 'metrics-api', 'mongodb', 'mssql', 'mysql', 'nats-jetstream', 'stan', 'tcp', 'new-relic', 'openstack-metric', 'openstack-swift', 'postgresql', 'predictkube', 'prometheus', 'rabbitmq', 'redis', 'redis-cluster', 'redis-sentinel', 'redis-streams', 'redis-cluster-streams', 'redis-sentinel-streams', 'selenium-grid', 'solace-event-queue', 'github-runner']\xc8\x01\x01R\x0ecustomRuleType\x12\x85\x01\n" +
 	"\bmetadata\x18\x03 \x03(\v2_.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.MetadataEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\bmetadata\x12w\n" +
-	"\x0eauthentication\x18\x04 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuthR\x0eauthentication\x12\x1f\n" +
-	"\videntity_id\x18\x05 \x01(\tR\n" +
+	"\x0eauthentication\x18\x04 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuthR\x0eauthentication\x12x\n" +
+	"\videntity_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\n" +
 	"identityId\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -3069,14 +3075,15 @@ var file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_depIdxs = []
 	26, // 35: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppAzureQueueScaleRule.authentication:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuth
 	30, // 36: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.metadata:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.MetadataEntry
 	26, // 37: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.authentication:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuth
-	6,  // 38: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDapr.app_protocol:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDaprProtocol
-	7,  // 39: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentity.type:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentityType
-	31, // 40: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentity.user_assigned_identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	41, // [41:41] is the sub-list for method output_type
-	41, // [41:41] is the sub-list for method input_type
-	41, // [41:41] is the sub-list for extension type_name
-	41, // [41:41] is the sub-list for extension extendee
-	0,  // [0:41] is the sub-list for field type_name
+	31, // 38: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 39: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDapr.app_protocol:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDaprProtocol
+	7,  // 40: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentity.type:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentityType
+	31, // 41: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentity.user_assigned_identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	42, // [42:42] is the sub-list for method output_type
+	42, // [42:42] is the sub-list for method input_type
+	42, // [42:42] is the sub-list for extension type_name
+	42, // [42:42] is the sub-list for extension extendee
+	0,  // [0:42] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_init() }

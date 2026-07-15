@@ -99,7 +99,27 @@ var _ = ginkgo.Describe("AzureContainerAppJobSpec Validation Tests", func() {
 						Name:           "sb-depth",
 						CustomRuleType: "azure-servicebus",
 						Metadata:       map[string]string{"queueName": "work", "messageCount": "10"},
-						IdentityId:     "System",
+						IdentityId:     literal("System"),
+					}},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts an event scale rule identity referenced from a user-assigned identity", func() {
+			input := minimalSpec()
+			input.Spec.ManualTrigger = nil
+			input.Spec.EventTrigger = &AzureContainerAppJobEventTrigger{
+				Scale: &AzureContainerAppJobEventScale{
+					Rules: []*AzureContainerAppJobEventScaleRule{{
+						Name:           "sb-depth",
+						CustomRuleType: "azure-servicebus",
+						Metadata:       map[string]string{"queueName": "work", "messageCount": "10"},
+						IdentityId: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+								ValueFrom: &foreignkeyv1.ValueFromRef{Name: "scaler-identity"},
+							},
+						},
 					}},
 				},
 			}

@@ -141,9 +141,7 @@ message AzureFirewallPolicySpec {
   // unset, Azure defaults to the IANA RFC 1918 ranges. Replace the list
   // when your organization routes public ranges internally (e.g. carrier
   // NAT space) or wants SNAT for specific private destinations.
-  repeated string private_ip_ranges = 15 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string private_ip_ranges = 15 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Let Azure learn the private ranges automatically from route tables
   // and VNet address space instead of (or in addition to) the static
@@ -214,15 +212,11 @@ enum AzureFirewallPolicyThreatIntelligenceMode {
 message AzureFirewallPolicyThreatIntelligenceAllowlist {
   // IP addresses and CIDR ranges the feed must never flag,
   // e.g. "203.0.113.7" or "10.0.0.0/16".
-  repeated string ip_addresses = 1 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string ip_addresses = 1 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Fully-qualified domain names the feed must never flag,
   // e.g. "partner.example.com".
-  repeated string fqdns = 2 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string fqdns = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   option (buf.validate.message).cel = {
     id: "threat_intel_allowlist_not_empty"
@@ -235,9 +229,7 @@ message AzureFirewallPolicyThreatIntelligenceAllowlist {
 message AzureFirewallPolicyDns {
   // Custom upstream DNS servers (IPv4) the firewall resolves against.
   // When empty, Azure's default resolver is used.
-  repeated string servers = 1 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string servers = 1 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Run the firewall as a DNS proxy: clients point their DNS at the
   // firewall's private IP, and the firewall resolves upstream. Required
@@ -260,9 +252,7 @@ message AzureFirewallPolicyIntrusionDetection {
 
   // The ranges IDPS treats as the private (internal) side of traffic
   // direction classification. Defaults to the RFC 1918 ranges when empty.
-  repeated string private_ranges = 3 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string private_ranges = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Trusted flows IDPS must not inspect -- match by protocol, source,
   // destination, and ports. Use for latency-sensitive or already-encrypted
@@ -313,13 +303,14 @@ message AzureFirewallPolicyIdpsTrafficBypass {
   // The protocol of the bypassed flow.
   AzureFirewallPolicyIdpsBypassProtocol protocol = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum = {defined_only: true, not_in: [0]}
+    (buf.validate.field).enum = {
+      defined_only: true
+      not_in: [0]
+    }
   ];
 
   // Source IP addresses/CIDRs of the bypassed flow.
-  repeated string source_addresses = 4 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string source_addresses = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Source IP Groups of the bypassed flow -- references to AzureIpGroup
   // ARM ids, the reusable alternative to literal source_addresses.
@@ -329,9 +320,7 @@ message AzureFirewallPolicyIdpsTrafficBypass {
   ];
 
   // Destination IP addresses/CIDRs of the bypassed flow.
-  repeated string destination_addresses = 6 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string destination_addresses = 6 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Destination IP Groups of the bypassed flow -- references to
   // AzureIpGroup ARM ids.
@@ -341,9 +330,7 @@ message AzureFirewallPolicyIdpsTrafficBypass {
   ];
 
   // Destination ports of the bypassed flow, e.g. "443" or "*".
-  repeated string destination_ports = 8 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string destination_ports = 8 [(buf.validate.field).repeated.items.string.min_len = 1];
 }
 
 // The protocol vocabulary for IDPS traffic bypasses.
@@ -490,17 +477,26 @@ message AzureFirewallPolicyExplicitProxy {
   // provider enforces an upper bound of 35536 on proxy ports (its
   // published validation), so values above that are rejected at deploy
   // time even though they parse as ports.
-  optional int32 http_port = 2 [(buf.validate.field).int32 = {gte: 0, lte: 35536}];
+  optional int32 http_port = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 35536
+  }];
 
   // The port the proxy listens on for HTTPS, e.g. 8088.
-  optional int32 https_port = 3 [(buf.validate.field).int32 = {gte: 0, lte: 35536}];
+  optional int32 https_port = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 35536
+  }];
 
   // Serve clients a PAC (proxy auto-configuration) file instead of a
   // static proxy setting. Pair with pac_file_port and pac_file.
   bool enable_pac_file = 4;
 
   // The port the PAC file is served on, e.g. 8089.
-  optional int32 pac_file_port = 5 [(buf.validate.field).int32 = {gte: 0, lte: 35536}];
+  optional int32 pac_file_port = 5 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 35536
+  }];
 
   // The SAS URL of the PAC file blob the firewall serves to clients.
   // Azure requires the port and file together when PAC is enabled.

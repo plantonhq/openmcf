@@ -10,6 +10,7 @@ Dapr components are the pluggable backends behind Dapr's building blocks. A comp
 
 - **Any Dapr component type**: state stores, pub/sub brokers, secret stores, input/output bindings -- in Dapr's own dotted notation
 - **Secret-safe configuration**: connection strings and keys travel as component secrets referenced from metadata by `secret_name`, never inlined
+- **Composable metadata values**: a metadata value can reference another resource's output -- the keyless-auth entries are the canonical case (`azureClientId` tracking a managed identity's `client_id`), removing broker credentials from the deployment entirely
 - **App scoping**: expose the component only to the named `dapr.app_id`s -- scope production components deliberately
 - **Fail-loud initialisation**: `ignore_errors` defaults to false so a broken backend fails at sidecar startup, not on first use
 
@@ -26,7 +27,7 @@ Dapr components are the pluggable backends behind Dapr's building blocks. A comp
 | `component_name` | What app code passes to the Dapr API. Max 60 lowercase alphanumerics/hyphens. ForceNew |
 | `component_type` | Dapr's dotted type notation (e.g. `state.azure.blobstorage`). ForceNew |
 | `version` | "v1" for virtually all stable components |
-| `metadata[]` | Component configuration; each entry is a literal value XOR a `secret_name` reference |
+| `metadata[]` | Component configuration; each entry carries a value (literal or a reference to another resource's output) XOR a `secret_name` reference |
 | `secrets[]` | Named secret values referenced from metadata |
 | `scopes[]` | The `dapr.app_id`s allowed to use the component; empty = all Dapr-enabled apps |
 
@@ -58,9 +59,11 @@ spec:
       value: "<storage-account-access-key>"
   metadata:
     - name: accountName
-      value: mystorageaccount
+      value:
+        value: mystorageaccount
     - name: containerName
-      value: dapr-state
+      value:
+        value: dapr-state
     - name: accountKey
       secretName: account-key
   scopes:

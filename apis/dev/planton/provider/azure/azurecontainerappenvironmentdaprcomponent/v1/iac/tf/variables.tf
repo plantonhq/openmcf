@@ -44,8 +44,10 @@ variable "spec" {
       value = string
     })), [])
 
-    # Configuration entries: literal value XOR secret_name per entry
-    # (spec-enforced).
+    # Configuration entries: value XOR secret_name per entry
+    # (spec-enforced). A value may be a foreign-key reference in the spec
+    # (e.g. an azureClientId entry tracking a managed identity's
+    # client_id output); references arrive here flattened to literals.
     metadata = optional(list(object({
       name        = string
       value       = optional(string)

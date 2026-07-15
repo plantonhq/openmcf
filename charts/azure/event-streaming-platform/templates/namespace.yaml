@@ -1,0 +1,39 @@
+# The streaming namespace. STANDARD is the tier where the platform's
+# capabilities live (consumer groups beyond $Default, capture, schema
+# registry, auto-inflate); PREMIUM buys dedicated capacity when the
+# estate outgrows shared throughput units.
+#
+# The system-assigned identity is the capture writer: the namespace
+# itself authenticates to the archive storage account with an Entra
+# token (the role grant lives beside the storage account), so archival
+# involves no storage key at any point.
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHubNamespace
+metadata:
+  name: "{{ values.env }}-streams"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-streaming"
+      fieldPath: status.outputs.resource_group_name
+  namespaceName: "{{ values.eventhub_namespace_name }}"
+  sku: STANDARD
+  identity:
+    type: SYSTEM_ASSIGNED
+  {% if values.auto_inflate_enabled | bool %}
+  # Ride demand instead of throttling it: Azure raises TUs as ingress
+  # grows, up to the ceiling (the cost guard). Inflation never deflates
+  # -- scale back manually after a spike. Azure requires the ceiling
+  # only alongside auto-inflate, so the pair renders together.
+  autoInflateEnabled: true
+  maximumThroughputUnits: {{ values.max_throughput_units }}
+  {% endif %}
+  {% if values.keyless_only_enabled | bool %}
+  # Entra-only data plane: every SAS key on the namespace stops
+  # authenticating, portal tooling included. The chart's SAS credentials
+  # are suppressed in this mode -- producers and consumers authenticate
+  # as managed identities with Event Hubs data-plane roles.
+  localAuthenticationEnabled: false
+  {% endif %}

@@ -1,0 +1,63 @@
+params:
+  # ─── Placement ───────────────────────────────────────────────────────────────
+  - name: region
+    description: Azure region for the namespace, the archive storage, and monitoring
+    value: centralus
+
+  # ─── Global names (must change) ──────────────────────────────────────────────
+  - name: eventhub_namespace_name
+    description: Globally unique Event Hubs namespace name (6-50 characters, letters/digits/hyphens, starts with a letter). MUST be changed before deploying
+    value: my-event-streams
+
+  - name: archive_storage_account_name
+    description: Globally unique storage account name (3-24 lowercase alphanumerics) for the capture archive -- Data Lake Gen2 (hierarchical namespace) so analytics engines read it directly. MUST be changed before deploying
+    value: myeventarchive
+
+  # ─── Throughput ──────────────────────────────────────────────────────────────
+  - name: auto_inflate_enabled
+    description: Let Azure raise throughput units automatically as ingestion grows (up to max_throughput_units) instead of throttling producers. Inflation never deflates -- scale back down manually after a spike
+    value: true
+    type: bool
+
+  - name: max_throughput_units
+    description: The auto-inflate ceiling (1-40 TUs). Each TU carries 1 MB/s or 1000 events/s ingress -- the ceiling is the cost guard, so size it to the budget, not the dream
+    value: 10
+    type: int
+
+  - name: ingest_partition_count
+    description: Partitions on the raw ingest hub -- the parallelism ceiling for consumers, fixed for life on a shared namespace (size for peak up front). 8 suits typical production ingestion
+    value: 8
+    type: int
+
+  - name: processed_partition_count
+    description: Partitions on the processed (post-enrichment) hub. Downstream fan-out is usually narrower than raw ingestion
+    value: 4
+    type: int
+
+  - name: retention_days
+    description: Days events stay replayable on both hubs (STANDARD tier caps at 7). Capture below is the long-term archive; stream retention only needs to cover reprocessing windows
+    value: 7
+    type: int
+
+  # ─── Capture (the streaming-to-batch bridge) ─────────────────────────────────
+  - name: capture_enabled
+    description: Archive every ingest-hub event to Data Lake storage in Avro (keyless -- the namespace's own identity writes, no storage key involved). Off drops the entire archive arm (storage account, container, grant) and events vanish past stream retention
+    value: true
+    type: bool
+
+  # ─── Access control ──────────────────────────────────────────────────────────
+  - name: keyless_only_enabled
+    description: Disable SAS (shared-key) authentication on the namespace entirely -- Entra identities become the only way in, and the chart's per-role SAS credentials are not created. Turn on when every producer and consumer runs with a managed identity
+    value: false
+    type: bool
+
+  # ─── Notifications ───────────────────────────────────────────────────────────
+  - name: ops_email
+    description: Email address for throttling and capture-backlog alerts
+    value: ops@example.com
+
+  # ─── Telemetry ───────────────────────────────────────────────────────────────
+  - name: log_retention_days
+    description: Log Analytics workspace retention in days
+    value: 30
+    type: int

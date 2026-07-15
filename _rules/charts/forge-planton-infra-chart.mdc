@@ -49,6 +49,20 @@ rebuilding a chart under `charts/<provider>/<chart-name>/`.
    must render a valid chart in BOTH branches independently — validation flips
    every bool once, so a toggle that only works in combination with another is
    a design defect.
+   - **A credential output existing is not a reason to ship it.** When one
+     in-chart workload consumes another in-chart service (a broker, a storage
+     account) and both a credential face (connection string, SAS, access key)
+     and an identity seam exist, compose the keyless path: a managed identity,
+     the narrowest data-plane role grant on the service, and the identity's
+     client id (plus the service's render-known name/endpoint) wired by
+     reference. Reach for the sensitive credential output only where the
+     platform offers no identity-based alternative for that seam, and say so
+     in the template comment.
+   - **When a service can create entities inside a resource IaC owns
+     (a sidecar's pub/sub topics, an agent's queues), disable that service's
+     entity management** and provision the entities as first-class chart
+     resources — topology stays owned by code with real posture, and the
+     consuming identity's grant drops from owner/manage to send/receive.
 6. **No hardcoded provisioner.** Chart resources must not carry the
    `planton.dev/provisioner` key. The IaC engine (OpenTofu vs Pulumi) is a
    property of the deploying organization, resolved from its mapping — never of

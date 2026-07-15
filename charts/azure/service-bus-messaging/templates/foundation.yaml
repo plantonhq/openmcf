@@ -1,0 +1,48 @@
+# One resource group holds the whole estate so a single delete reclaims
+# everything the chart created.
+apiVersion: azure.planton.dev/v1
+kind: AzureResourceGroup
+metadata:
+  name: "{{ values.env }}-messaging"
+spec:
+  name: "{{ values.env }}-messaging"
+  region: "{{ values.region }}"
+---
+# Operational-log destination for the broker: who connected, what
+# throttled, which entities error. Metric alerting rides Azure Monitor
+# directly; this workspace is for the forensic queries after the alert.
+apiVersion: azure.planton.dev/v1
+kind: AzureLogAnalyticsWorkspace
+metadata:
+  name: "{{ values.env }}-messaging-logs"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-messaging"
+      fieldPath: status.outputs.resource_group_name
+  workspaceName: "{{ values.env }}-messaging-logs"
+  retentionInDays: {{ values.log_retention_days }}
+---
+# Route the namespace's operational logs and metrics into the workspace.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorDiagnosticSetting
+metadata:
+  name: "{{ values.env }}-messaging-bus-diag"
+spec:
+  settingName: servicebus-logs
+  targetResourceId:
+    valueFrom:
+      kind: AzureServiceBusNamespace
+      name: "{{ values.env }}-bus"
+      fieldPath: status.outputs.namespace_id
+  logAnalyticsWorkspaceId:
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: "{{ values.env }}-messaging-logs"
+      fieldPath: status.outputs.workspace_id
+  enabledLogs:
+    - categoryGroup: allLogs
+  enabledMetrics:
+    - category: AllMetrics

@@ -86,7 +86,8 @@ spec:
         start: 0 8 * * 1-5
         end: 0 18 * * 1-5
         desiredReplicas: "5"
-      identity_id: System
+      identity_id:
+        value: System
   secrets:
     - name: api-key
       value: plain-text-secret

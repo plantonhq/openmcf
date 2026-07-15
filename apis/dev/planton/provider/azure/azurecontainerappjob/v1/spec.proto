@@ -310,9 +310,18 @@ message AzureContainerAppJobEventScaleRule {
 
   // Managed identity KEDA uses to execute the scale rule (workload
   // identity for the scaler instead of connection-string secrets).
-  // Value is either "System" (the job's system-assigned identity) or a
-  // User Assigned Identity ARM resource ID.
-  string identity_id = 5;
+  // The literal "System" (the job's system-assigned identity) or a User
+  // Assigned Identity ARM resource ID -- reference the identity that is
+  // also in the job's identity block so the scaler and the workload share
+  // one principal. With an identity set, Azure scalers need no
+  // `authentication` entries at all: grant the identity the data-plane
+  // read role on the scaled resource (e.g. Azure Service Bus Data
+  // Receiver for queue depth) and leave the connection secret out of the
+  // job entirely.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef identity_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
 }
 
 // AzureContainerAppJobScaleRuleAuth provides authentication for an

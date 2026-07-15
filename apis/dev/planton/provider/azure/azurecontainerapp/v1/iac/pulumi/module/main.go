@@ -532,9 +532,10 @@ func buildCustomScaleRules(specs []*azurecontainerappv1.AzureContainerAppCustomS
 			rule.Authentications = buildCustomScaleRuleAuth(r.Authentication)
 		}
 		// Workload identity for the scaler instead of connection-string
-		// secrets ("System" or a user-assigned identity ARM id).
-		if r.IdentityId != "" {
-			rule.IdentityId = pulumi.StringPtr(r.IdentityId)
+		// secrets ("System" or a user-assigned identity ARM id; foreign-key
+		// references arrive pre-resolved to the literal id).
+		if r.IdentityId.GetValue() != "" {
+			rule.IdentityId = pulumi.StringPtr(r.IdentityId.GetValue())
 		}
 		rules = append(rules, rule)
 	}

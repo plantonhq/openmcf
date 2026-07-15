@@ -1,0 +1,159 @@
+# The public API: the estate's front door. External ingress (internet,
+# or VNet-only when the environment runs internal), HTTPS enforced by
+# the platform, Dapr sidecar publishing to the pub/sub component as the
+# shared workload identity.
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerApp
+metadata:
+  name: "{{ values.env }}-api"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-container-apps"
+      fieldPath: status.outputs.resource_group_name
+  containerAppName: "{{ values.env }}-api"
+  containerAppEnvironmentId:
+    valueFrom:
+      kind: AzureContainerAppEnvironment
+      name: "{{ values.env }}-capps"
+      fieldPath: status.outputs.environment_id
+  containers:
+    - name: api
+      image: "{{ values.api_image }}"
+      # The Consumption floor: 0.25 vCPU / 0.5Gi. Size up per service
+      # once real load profiles exist -- this is a per-replica setting.
+      cpu: 0.25
+      memory: 0.5Gi
+  # An API should ride demand but never disappear: keep one warm replica
+  # so first requests never pay a cold start.
+  minReplicas: 1
+  maxReplicas: 10
+  ingress:
+    externalEnabled: true
+    targetPort: 80
+    trafficWeight:
+      # SINGLE revision mode (the default): all traffic to the latest
+      # revision. Split weights only after moving to MULTIPLE.
+      - latestRevision: true
+        percentage: 100
+  dapr:
+    # The id other Dapr apps and component scopes address this app by.
+    appId: api
+    appPort: 80
+  identity:
+    type: USER_ASSIGNED
+    userAssignedIdentityIds:
+      - valueFrom:
+          kind: AzureUserAssignedIdentity
+          name: "{{ values.env }}-capps-identity"
+          fieldPath: status.outputs.identity_id
+---
+# The worker: no ingress at all -- it is driven entirely by the queue.
+# Scales from ZERO on queue depth through KEDA's azure-servicebus
+# scaler, running under the same workload identity Dapr uses, so the
+# scale plumbing is as keyless as the message plumbing.
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerApp
+metadata:
+  name: "{{ values.env }}-worker"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-container-apps"
+      fieldPath: status.outputs.resource_group_name
+  containerAppName: "{{ values.env }}-worker"
+  containerAppEnvironmentId:
+    valueFrom:
+      kind: AzureContainerAppEnvironment
+      name: "{{ values.env }}-capps"
+      fieldPath: status.outputs.environment_id
+  containers:
+    - name: worker
+      image: "{{ values.worker_image }}"
+      cpu: 0.25
+      memory: 0.5Gi
+      volumeMounts:
+        - name: shared-data
+          path: /data
+  volumes:
+    # The persistent SMB volume registered on the environment -- shared
+    # scratch space that survives replica restarts and is visible to
+    # every worker replica at once.
+    - name: shared-data
+      storageType: AZURE_FILE
+      storageName:
+        valueFrom:
+          kind: AzureContainerAppEnvironmentStorage
+          name: "{{ values.env }}-capps-shared-volume"
+          fieldPath: status.outputs.storage_name
+  # Scale-to-zero: no messages, no replicas, no cost. KEDA polls queue
+  # depth with the workload identity and wakes the worker on demand.
+  minReplicas: 0
+  maxReplicas: {{ values.worker_max_replicas }}
+  customScaleRules:
+    - name: queue-depth
+      customRuleType: azure-servicebus
+      metadata:
+        # The topic's backing queue (Dapr's queue-based pub/sub maps
+        # topic -> queue by name). One replica per 10 pending messages.
+        queueName: "{{ values.orders_topic_name }}"
+        messageCount: "10"
+        # Keyless scaler auth: the namespace by name; the identity below
+        # supplies the token. No connection-string secret exists.
+        namespace: "{{ values.servicebus_namespace_name }}"
+      identityId:
+        valueFrom:
+          kind: AzureUserAssignedIdentity
+          name: "{{ values.env }}-capps-identity"
+          fieldPath: status.outputs.identity_id
+  dapr:
+    appId: worker
+    appPort: 80
+  identity:
+    type: USER_ASSIGNED
+    userAssignedIdentityIds:
+      - valueFrom:
+          kind: AzureUserAssignedIdentity
+          name: "{{ values.env }}-capps-identity"
+          fieldPath: status.outputs.identity_id
+---
+# The scheduled job: run-to-completion batch work (reports, cleanup,
+# reconciliation) on the same environment -- no always-on replica
+# burning money between runs.
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppJob
+metadata:
+  name: "{{ values.env }}-batch-job"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-container-apps"
+      fieldPath: status.outputs.resource_group_name
+  jobName: "{{ values.env }}-batch-job"
+  containerAppEnvironmentId:
+    valueFrom:
+      kind: AzureContainerAppEnvironment
+      name: "{{ values.env }}-capps"
+      fieldPath: status.outputs.environment_id
+  # The job's hard deadline: a replica running longer is terminated and
+  # counted failed. Thirty minutes fits nightly batch work; size to the
+  # slowest legitimate run, not the average.
+  replicaTimeoutInSeconds: 1800
+  containers:
+    - name: batch
+      image: "{{ values.job_image }}"
+      cpu: 0.25
+      memory: 0.5Gi
+  scheduleTrigger:
+    cronExpression: "{{ values.job_cron_expression }}"
+  identity:
+    type: USER_ASSIGNED
+    userAssignedIdentityIds:
+      - valueFrom:
+          kind: AzureUserAssignedIdentity
+          name: "{{ values.env }}-capps-identity"
+          fieldPath: status.outputs.identity_id

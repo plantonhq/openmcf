@@ -199,7 +199,8 @@ resource "azurerm_container_app_job" "main" {
               custom_rule_type = rules.value.custom_rule_type
               metadata         = rules.value.metadata
               # Workload identity for the scaler instead of
-              # connection-string secrets.
+              # connection-string secrets (foreign-key references arrive
+              # pre-resolved to the literal id).
               identity_id = rules.value.identity_id
 
               dynamic "authentication" {

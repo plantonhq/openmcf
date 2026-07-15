@@ -1,0 +1,27 @@
+# One resource group holds the whole estate so a single delete reclaims
+# everything the chart created.
+apiVersion: azure.planton.dev/v1
+kind: AzureResourceGroup
+metadata:
+  name: "{{ values.env }}-container-apps"
+spec:
+  name: "{{ values.env }}-container-apps"
+  region: "{{ values.region }}"
+---
+# The Log Analytics workspace the environment streams its console and
+# system logs into (logs_destination LOG_ANALYTICS on the environment),
+# and the destination for the Service Bus diagnostic setting. One
+# workspace for the whole estate keeps correlation queries trivial.
+apiVersion: azure.planton.dev/v1
+kind: AzureLogAnalyticsWorkspace
+metadata:
+  name: "{{ values.env }}-capps-logs"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-container-apps"
+      fieldPath: status.outputs.resource_group_name
+  workspaceName: "{{ values.env }}-capps-logs"
+  retentionInDays: {{ values.log_retention_days }}

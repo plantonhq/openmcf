@@ -177,9 +177,10 @@ func buildEventScale(scale *azurecontainerappjobv1.AzureContainerAppJobEventScal
 				ruleArgs.Authentications = auths
 			}
 			// Workload identity for the scaler instead of
-			// connection-string secrets.
-			if rule.IdentityId != "" {
-				ruleArgs.IdentityId = pulumi.StringPtr(rule.IdentityId)
+			// connection-string secrets (foreign-key references arrive
+			// pre-resolved to the literal id).
+			if rule.IdentityId.GetValue() != "" {
+				ruleArgs.IdentityId = pulumi.StringPtr(rule.IdentityId.GetValue())
 			}
 			rules = append(rules, ruleArgs)
 		}

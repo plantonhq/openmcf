@@ -56,7 +56,10 @@ message AzureFirewallPolicyRuleCollectionGroupSpec {
   // slot between existing ones without renumbering.
   int32 priority = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).int32 = {gte: 100, lte: 65000}
+    (buf.validate.field).int32 = {
+      gte: 100
+      lte: 65000
+    }
   ];
 
   // Application rule collections: allow/deny by HTTP(S)/MSSQL destination
@@ -122,13 +125,19 @@ message AzureFirewallPolicyApplicationRuleCollection {
   // type: 100-65000, lower runs first.
   int32 priority = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).int32 = {gte: 100, lte: 65000}
+    (buf.validate.field).int32 = {
+      gte: 100
+      lte: 65000
+    }
   ];
 
   // Whether matching traffic is allowed or denied.
   AzureFirewallPolicyFilterAction action = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum = {defined_only: true, not_in: [0]}
+    (buf.validate.field).enum = {
+      defined_only: true
+      not_in: [0]
+    }
   ];
 
   // The collection's rules, evaluated in order.
@@ -157,9 +166,7 @@ message AzureFirewallPolicyApplicationRule {
   repeated AzureFirewallPolicyApplicationProtocol protocols = 3;
 
   // Source IP addresses/CIDRs (or "*" for any).
-  repeated string source_addresses = 4 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string source_addresses = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Source IP Groups -- references to AzureIpGroup ARM ids, the reusable
   // alternative to literal source_addresses.
@@ -170,31 +177,23 @@ message AzureFirewallPolicyApplicationRule {
 
   // Destination IP addresses/CIDRs (or "*"). Use for L7 filtering to
   // fixed addresses; prefer FQDNs for anything DNS-named.
-  repeated string destination_addresses = 6 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string destination_addresses = 6 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Destination fully-qualified domain names, e.g. "api.github.com" or
   // "*.ubuntu.com". FQDN filtering without TLS termination matches the
   // TLS SNI; with terminate_tls the firewall sees the decrypted host.
-  repeated string destination_fqdns = 7 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string destination_fqdns = 7 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Destination URLs including paths, e.g.
   // "github.com/planton/*". URL (path-level) filtering is Premium-only
   // and requires terminate_tls for HTTPS traffic -- without decryption
   // the firewall cannot see the path.
-  repeated string destination_urls = 8 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string destination_urls = 8 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Azure-curated FQDN tags naming well-known service endpoint sets,
   // e.g. "WindowsUpdate", "AzureKubernetesService". The tag tracks
   // Microsoft's endpoint list so you do not have to.
-  repeated string destination_fqdn_tags = 9 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string destination_fqdn_tags = 9 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Decrypt, inspect, and re-encrypt matching TLS traffic using the
   // policy's tls_certificate (Premium only). Required for URL filtering
@@ -204,9 +203,7 @@ message AzureFirewallPolicyApplicationRule {
   // Azure web categories to match, e.g. "Gambling", "SocialNetworking"
   // (Premium only). Category classification of HTTPS traffic is
   // SNI-based unless terminate_tls is on.
-  repeated string web_categories = 11 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string web_categories = 11 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // HTTP headers to ADD to matching requests before forwarding (e.g. a
   // token an upstream requires). Applies to HTTP and TLS-terminated
@@ -219,14 +216,20 @@ message AzureFirewallPolicyApplicationProtocol {
   // The protocol type.
   AzureFirewallPolicyApplicationProtocolType type = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum = {defined_only: true, not_in: [0]}
+    (buf.validate.field).enum = {
+      defined_only: true
+      not_in: [0]
+    }
   ];
 
   // The port the protocol runs on: 0-64000 (the provider's enforced
   // bound), e.g. 80 for HTTP, 443 for HTTPS, 1433 for MSSQL.
   int32 port = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).int32 = {gte: 0, lte: 64000}
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 64000
+    }
   ];
 }
 
@@ -273,13 +276,19 @@ message AzureFirewallPolicyNetworkRuleCollection {
   // type: 100-65000, lower runs first.
   int32 priority = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).int32 = {gte: 100, lte: 65000}
+    (buf.validate.field).int32 = {
+      gte: 100
+      lte: 65000
+    }
   ];
 
   // Whether matching traffic is allowed or denied.
   AzureFirewallPolicyFilterAction action = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum = {defined_only: true, not_in: [0]}
+    (buf.validate.field).enum = {
+      defined_only: true
+      not_in: [0]
+    }
   ];
 
   // The collection's rules, evaluated in order.
@@ -306,13 +315,16 @@ message AzureFirewallPolicyNetworkRule {
   // The protocols the rule matches: ANY, TCP, UDP, or ICMP.
   repeated AzureFirewallPolicyRuleProtocol protocols = 3 [(buf.validate.field).repeated = {
     min_items: 1
-    items: {enum: {defined_only: true, not_in: [0]}}
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
   }];
 
   // Source IP addresses/CIDRs (or "*" for any).
-  repeated string source_addresses = 4 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string source_addresses = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Source IP Groups -- references to AzureIpGroup ARM ids.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_ip_groups = 5 [
@@ -322,9 +334,7 @@ message AzureFirewallPolicyNetworkRule {
 
   // Destination IP addresses/CIDRs, "*", or Azure service tags
   // (e.g. "AzureCloud.EastUS", "Storage").
-  repeated string destination_addresses = 6 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string destination_addresses = 6 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Destination IP Groups -- references to AzureIpGroup ARM ids.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef destination_ip_groups = 7 [
@@ -334,14 +344,14 @@ message AzureFirewallPolicyNetworkRule {
 
   // Destination FQDNs, e.g. "time.windows.com". Requires the policy's
   // DNS proxy so the firewall and clients resolve identically.
-  repeated string destination_fqdns = 8 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string destination_fqdns = 8 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Destination ports: a port ("443"), a range ("1000-2000"), or "*".
   repeated string destination_ports = 9 [(buf.validate.field).repeated = {
     min_items: 1
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 }
 
@@ -359,7 +369,10 @@ message AzureFirewallPolicyNatRuleCollection {
   // type: 100-65000, lower runs first.
   int32 priority = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).int32 = {gte: 100, lte: 65000}
+    (buf.validate.field).int32 = {
+      gte: 100
+      lte: 65000
+    }
   ];
 
   // The collection's rules, evaluated in order.
@@ -382,13 +395,16 @@ message AzureFirewallPolicyNatRule {
   // The protocols the rule matches. DNAT supports only TCP and UDP.
   repeated AzureFirewallPolicyRuleProtocol protocols = 3 [(buf.validate.field).repeated = {
     min_items: 1
-    items: {enum: {defined_only: true, not_in: [0]}}
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
   }];
 
   // Source IP addresses/CIDRs (or "*" for any).
-  repeated string source_addresses = 4 [
-    (buf.validate.field).repeated.items.string.min_len = 1
-  ];
+  repeated string source_addresses = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Source IP Groups -- references to AzureIpGroup ARM ids.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_ip_groups = 5 [
@@ -405,7 +421,9 @@ message AzureFirewallPolicyNatRule {
   // the list shape mirrors ARM's own, which may lift the cap.
   repeated string destination_ports = 7 [(buf.validate.field).repeated = {
     max_items: 1
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 
   // The internal IP address the traffic is translated TO. Exactly one of
@@ -420,7 +438,10 @@ message AzureFirewallPolicyNatRule {
   // The internal port the traffic is translated to, 1-65535.
   int32 translated_port = 10 [
     (buf.validate.field).required = true,
-    (buf.validate.field).int32 = {gte: 1, lte: 65535}
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
   ];
 
   option (buf.validate.message).cel = {

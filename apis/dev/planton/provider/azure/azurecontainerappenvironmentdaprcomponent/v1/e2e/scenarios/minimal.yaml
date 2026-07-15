@@ -30,6 +30,7 @@ spec:
   initTimeout: 10s
   metadata:
     - name: schedule
-      value: "@every 15m"
+      value:
+        value: "@every 15m"
   scopes:
     - planton-oss-e2e-app

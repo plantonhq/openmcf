@@ -26,6 +26,9 @@ resource "azurerm_container_app_environment_dapr_component" "main" {
 
   # The component's configuration entries; keys depend on the component
   # type. The spec's CEL guarantees value XOR secret_name per entry.
+  # Values may be foreign-key references in the spec (e.g. an
+  # azureClientId entry tracking a managed identity's client_id); they
+  # arrive here pre-resolved to literals.
   dynamic "metadata" {
     for_each = var.spec.metadata
     content {

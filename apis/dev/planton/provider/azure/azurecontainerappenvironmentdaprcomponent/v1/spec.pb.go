@@ -255,15 +255,23 @@ func (x *AzureContainerAppEnvironmentDaprComponentSecret) GetValue() string {
 // AzureContainerAppEnvironmentDaprComponentMetadata defines one
 // configuration entry for the component.
 //
-// An entry carries either a literal value or a reference to one of the
+// An entry carries either a value or a reference to one of the
 // component's secrets -- never both.
 type AzureContainerAppEnvironmentDaprComponentMetadata struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The metadata key (component-type specific, e.g. "accountName",
 	// "redisHost", "consumerID").
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Literal value. Mutually exclusive with secret_name.
-	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	// The entry's value: a reference or a literal. Reference another
+	// resource's output when the value is minted at deploy time -- the
+	// keyless-auth entries are the canonical case (an "azureClientId"
+	// entry tracking an AzureUserAssignedIdentity's client_id output, so
+	// the component authenticates with a managed identity instead of a
+	// connection-string secret). Pass literals for everything knowable up
+	// front (hosts, namespace names, consumer IDs, feature flags). No kind
+	// dominates Dapr metadata values, so references declare their kind
+	// explicitly. Mutually exclusive with secret_name.
+	Value *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	// Reference to a secret in the component's `secrets` list. Use for
 	// connection strings and keys. Mutually exclusive with value.
 	SecretName    string `protobuf:"bytes,3,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
@@ -308,11 +316,11 @@ func (x *AzureContainerAppEnvironmentDaprComponentMetadata) GetName() string {
 	return ""
 }
 
-func (x *AzureContainerAppEnvironmentDaprComponentMetadata) GetValue() string {
+func (x *AzureContainerAppEnvironmentDaprComponentMetadata) GetValue() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Value
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureContainerAppEnvironmentDaprComponentMetadata) GetSecretName() string {
@@ -346,14 +354,14 @@ const file_dev_planton_provider_azure_azurecontainerappenvironmentdaprcomponent_
 	"/AzureContainerAppEnvironmentDaprComponentSecret\x12\xc9\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xb4\x01\xbaH\xb0\x01\xba\x01\xa2\x01\n" +
 	"\x17dapr_secret_name_format\x12Vsecret name must be lowercase alphanumeric or hyphens, start and end with alphanumeric\x1a/this.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$')\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\x12$\n" +
-	"\x05value\x18\x02 \x01(\tB\x0e\xbaH\a\xc8\x01\x01r\x02\x10\x01\xa0\xa6\x1d\x01R\x05value\"\xdf\x02\n" +
+	"\x05value\x18\x02 \x01(\tB\x0e\xbaH\a\xc8\x01\x01r\x02\x10\x01\xa0\xa6\x1d\x01R\x05value\"\x8a\x03\n" +
 	"1AzureContainerAppEnvironmentDaprComponentMetadata\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\x12\x1f\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12H\n" +
+	"\x05value\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x05value\x12\x1f\n" +
 	"\vsecret_name\x18\x03 \x01(\tR\n" +
-	"secretName:\xd2\x01\xbaH\xce\x01\x1a\xcb\x01\n" +
-	"\x1edapr_metadata_value_xor_secret\x12za metadata entry takes either a literal value or a secret_name, not both -- move secrets into the component's secrets list\x1a-!(this.value != '' && this.secret_name != '')B\xb3\x04\n" +
+	"secretName:\xc9\x01\xbaH\xc5\x01\x1a\xc2\x01\n" +
+	"\x1edapr_metadata_value_xor_secret\x12ra metadata entry takes either a value or a secret_name, not both -- move secrets into the component's secrets list\x1a,!(has(this.value) && this.secret_name != '')B\xb3\x04\n" +
 	"Kcom.dev.planton.provider.azure.azurecontainerappenvironmentdaprcomponent.v1B\tSpecProtoP\x01Z\x95\x01github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecontainerappenvironmentdaprcomponent/v1;azurecontainerappenvironmentdaprcomponentv1\xa2\x02\x05DPPAA\xaa\x02GDev.Planton.Provider.Azure.Azurecontainerappenvironmentdaprcomponent.V1\xca\x02GDev\\Planton\\Provider\\Azure\\Azurecontainerappenvironmentdaprcomponent\\V1\xe2\x02SDev\\Planton\\Provider\\Azure\\Azurecontainerappenvironmentdaprcomponent\\V1\\GPBMetadata\xea\x02LDev::Planton::Provider::Azure::Azurecontainerappenvironmentdaprcomponent::V1b\x06proto3"
 
 var (
@@ -379,11 +387,12 @@ var file_dev_planton_provider_azure_azurecontainerappenvironmentdaprcomponent_v1
 	3, // 0: dev.planton.provider.azure.azurecontainerappenvironmentdaprcomponent.v1.AzureContainerAppEnvironmentDaprComponentSpec.container_app_environment_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 1: dev.planton.provider.azure.azurecontainerappenvironmentdaprcomponent.v1.AzureContainerAppEnvironmentDaprComponentSpec.secrets:type_name -> dev.planton.provider.azure.azurecontainerappenvironmentdaprcomponent.v1.AzureContainerAppEnvironmentDaprComponentSecret
 	2, // 2: dev.planton.provider.azure.azurecontainerappenvironmentdaprcomponent.v1.AzureContainerAppEnvironmentDaprComponentSpec.metadata:type_name -> dev.planton.provider.azure.azurecontainerappenvironmentdaprcomponent.v1.AzureContainerAppEnvironmentDaprComponentMetadata
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 3: dev.planton.provider.azure.azurecontainerappenvironmentdaprcomponent.v1.AzureContainerAppEnvironmentDaprComponentMetadata.value:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() {

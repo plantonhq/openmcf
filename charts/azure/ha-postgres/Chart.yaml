@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: Azure HA PostgreSQL
+spec:
+  selector:
+    kind: platform
+  description: The definitive managed PostgreSQL -- zone-redundant high availability, VNet-injected private networking with no public endpoint, Microsoft Entra administration, customer-managed-key encryption on by default, an optional read replica, and the CPU/storage/connection alerts every serious database carries
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/azure/azurepostgresqlflexibleserver/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/azure/ha-postgres
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/azure/ha-postgres/README.md

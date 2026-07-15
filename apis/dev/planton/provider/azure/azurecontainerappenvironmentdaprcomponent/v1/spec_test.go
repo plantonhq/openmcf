@@ -21,6 +21,14 @@ func literal(value string) *foreignkeyv1.StringValueOrRef {
 	}
 }
 
+func ref(name string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{Name: name},
+		},
+	}
+}
+
 func strPtr(s string) *string { return &s }
 
 // minimalSpec returns a valid state-store component.
@@ -55,9 +63,21 @@ var _ = ginkgo.Describe("AzureContainerAppEnvironmentDaprComponentSpec Validatio
 				Value: "base64key==",
 			}}
 			input.Spec.Metadata = []*AzureContainerAppEnvironmentDaprComponentMetadata{
-				{Name: "accountName", Value: "mystorageaccount"},
-				{Name: "containerName", Value: "state"},
+				{Name: "accountName", Value: literal("mystorageaccount")},
+				{Name: "containerName", Value: literal("state")},
 				{Name: "accountKey", SecretName: "account-key"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a metadata value referenced from another resource's output", func() {
+			// The keyless-auth shape: azureClientId tracks a managed
+			// identity's client_id output instead of shipping a
+			// connection-string secret.
+			input := minimalSpec()
+			input.Spec.Metadata = []*AzureContainerAppEnvironmentDaprComponentMetadata{
+				{Name: "namespaceName", Value: literal("my-bus.servicebus.windows.net")},
+				{Name: "azureClientId", Value: ref("workload-identity")},
 			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
@@ -132,7 +152,7 @@ var _ = ginkgo.Describe("AzureContainerAppEnvironmentDaprComponentSpec Validatio
 			input := minimalSpec()
 			input.Spec.Metadata = []*AzureContainerAppEnvironmentDaprComponentMetadata{{
 				Name:       "accountKey",
-				Value:      "literal",
+				Value:      literal("literal"),
 				SecretName: "account-key",
 			}}
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())

@@ -42,9 +42,11 @@ spec:
       value: "<storage-account-access-key>"
   metadata:
     - name: accountName
-      value: mystorageaccount
+      value:
+        value: mystorageaccount
     - name: containerName
-      value: dapr-state
+      value:
+        value: dapr-state
     - name: accountKey
       secretName: account-key
   scopes:
