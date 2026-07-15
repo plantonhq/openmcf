@@ -8,7 +8,7 @@ spec:
   # via the ARM API (generic GetByID on the database's ARM id), destroys
   # it, and verifies it is gone -- on both provisioners. The pool-attach
   # scenario additionally deploys the elastic-pool fixture (declared via
-  # the extra-prerequisites annotation) and joins it.
+  # the e2e-prerequisites annotation) and joins it.
   tier: 1
   status: green
   validated_provisioners:

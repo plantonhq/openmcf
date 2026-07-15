@@ -6,7 +6,7 @@ spec:
   # The harness deploys the fixture resource group, TWO scenario-local
   # storage accounts (source with versioning + change feed, destination
   # with versioning -- Azure's apply-time prerequisites), and a container
-  # on each (all declared via the extra-prerequisites annotation, in
+  # on each (all declared via the e2e-prerequisites annotation, in
   # deploy order -- account names are globally unique and Azure briefly
   # holds a just-deleted name, so accounts are never shared
   # recreate-per-scenario registry prerequisites), creates the

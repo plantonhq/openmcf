@@ -7,7 +7,7 @@ spec:
   # group -> fixture VNet -> the firewall-shaped subnet instance (ARM name
   # exactly "AzureFirewallSubnet", /26) -> scenario-local no-zone Standard
   # static public IP + fixture STANDARD firewall policy (both via the
-  # extra-prerequisites annotation) -> the policy-attached firewall.
+  # e2e-prerequisites annotation) -> the policy-attached firewall.
   # Verified via the ARM API (generic GetByID on the firewall's ARM id),
   # destroyed, verified gone -- on both provisioners. Azure Firewall
   # provisions AND deletes in 10-20+ minutes each way, so a single engine

@@ -5,7 +5,7 @@ metadata:
 spec:
   # The harness deploys the fixture resource group, a scenario-local
   # Cosmos SQL account and a custom role definition on it (declared via
-  # extra-prerequisites, in deploy order), plus the fixture
+  # e2e-prerequisites, in deploy order), plus the fixture
   # user-assigned identity by kind name; the assignment under test then
   # binds the custom role to the identity's principal at the account
   # scope -- the full four-kind composed chain, proving all three FK

@@ -4,7 +4,7 @@
 # proving the environment FK seam, the share/account/access-key trio
 # resolved through the fixtures' captured outputs, and the READ_WRITE
 # access mode. The account + share are declared via the
-# extra-prerequisites annotation instead of registry prerequisites:
+# e2e-prerequisites annotation instead of registry prerequisites:
 # storage-account names are globally unique and sequential subtests that
 # destroy and recreate the same name hang on recreate. The composed
 # chain is RG -> environment + (account -> share) -> registration.

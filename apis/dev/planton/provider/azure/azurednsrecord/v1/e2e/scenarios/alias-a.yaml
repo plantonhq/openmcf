@@ -2,7 +2,7 @@
 # Public IP by ARM ID -- the alias mechanism that keeps the answer in
 # sync with the resource (and the only way to point an apex at an Azure
 # resource, since DNS forbids CNAME there). The Public IP is an OPTIONAL
-# seam, so it arrives via the extra-prerequisites annotation rather than
+# seam, so it arrives via the e2e-prerequisites annotation rather than
 # a registry prerequisite.
 apiVersion: azure.planton.dev/v1
 kind: AzureDnsRecord

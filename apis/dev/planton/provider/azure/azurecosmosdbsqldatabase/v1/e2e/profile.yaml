@@ -4,7 +4,7 @@ metadata:
   name: azurecosmosdbsqldatabase
 spec:
   # The harness deploys the fixture resource group and a scenario-local
-  # Cosmos account (declared via extra-prerequisites -- account names
+  # Cosmos account (declared via e2e-prerequisites -- account names
   # are globally unique), creates the SQL database with 400 RU/s shared
   # throughput, verifies it via the ARM API, destroys it, and verifies
   # it is gone -- on both provisioners. The scenario-local account pins

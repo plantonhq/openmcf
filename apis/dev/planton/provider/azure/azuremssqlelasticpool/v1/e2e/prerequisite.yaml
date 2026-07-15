@@ -1,5 +1,5 @@
 # AzureMssqlElasticPool install profile used as the fixture by the
-# database pool-attach scenario (declared via its extra-prerequisites
+# database pool-attach scenario (declared via its e2e-prerequisites
 # annotation). The harness deploys this document (via the pool's Pulumi
 # module) after the fixture server and captures its outputs --
 # elastic_pool_id in particular -- for the pooled database's reference to

@@ -4,7 +4,7 @@ metadata:
   name: azurecosmosdbsqlcontainer
 spec:
   # The harness deploys the fixture resource group, a scenario-local
-  # account and database (declared via extra-prerequisites in deploy
+  # account and database (declared via e2e-prerequisites in deploy
   # order), creates the SQL container with a partition key, verifies it
   # via the ARM API, destroys it, and verifies it is gone -- on both
   # provisioners. The scenario-local account pins westus3 (eastus

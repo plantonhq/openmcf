@@ -1,5 +1,5 @@
 # Scenario-local Standard static public IP for the firewall's data path.
-# The firewall scenario deploys this via the extra-prerequisites annotation
+# The firewall scenario deploys this via the e2e-prerequisites annotation
 # (a manifest path -- the shared AzurePublicIp fixture is pinned to zone 1
 # for the NAT gateway's zonal pairing, while the firewall smoke deploys
 # without zones, so it brings its own no-zone address).

@@ -1,6 +1,6 @@
 # AzurePublicIp fixture with a DNS label, used by the DNS-record
 # reference scenarios (declared via the path form of the
-# planton.dev/e2e-extra-prerequisites annotation). The label makes Azure
+# planton.dev/e2e-prerequisites annotation). The label makes Azure
 # mint the fqdn output ({label}.{region}.cloudapp.azure.com) -- a real
 # deploy-time hostname the scenarios' TXT and CNAME references resolve
 # against. Distinct from the shared fixture address: that one is

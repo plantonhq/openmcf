@@ -4,7 +4,7 @@ metadata:
   name: azureservicebustopic
 spec:
   # The harness deploys the fixture resource group and a SCENARIO-LOCAL
-  # Service Bus namespace (extra-prerequisites annotation -- namespace
+  # Service Bus namespace (e2e-prerequisites annotation -- namespace
   # names are globally unique with a post-delete hold), creates a topic
   # with duplicate detection and publish ordering, verifies it via the
   # ARM API, destroys it, and verifies it is gone -- on both

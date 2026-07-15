@@ -3,14 +3,18 @@ kind: ComponentE2EProfile
 metadata:
   name: azurednsrecord
 spec:
-  # Three scenarios on the fixture zone (registry prerequisite):
+  # Five scenarios on the fixture zone (registry prerequisite):
   # - minimal: an apex MX record set with two differently-preferenced
   #   mail servers (proving the typed pair shape end to end),
   # - srv: an underscore-service SRV record with real
   #   priority/weight/port/target values,
   # - alias-a: an apex alias A record tracking a fixture Public IP
   #   (proving the target_resource_id seam through the extra-fixtures
-  #   annotation).
+  #   annotation),
+  # - txt-ref: a TXT record mixing a referenced deploy-time value and a
+  #   literal (proving the repeated StringValueOrRef txt seam),
+  # - cname-ref: a CNAME whose target hostname is resolved from another
+  #   resource's output (proving the cname.value reference seam).
   # Record sets create and delete in seconds; the fixture chain dominates
   # every lane.
   tier: 1

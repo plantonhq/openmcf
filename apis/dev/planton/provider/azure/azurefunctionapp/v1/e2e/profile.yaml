@@ -5,7 +5,7 @@ metadata:
 spec:
   # The scenario deploys the fixture resource group and the fixture
   # Basic B1 plan (registry prerequisites) plus a SCENARIO-LOCAL storage
-  # account (extra-prerequisites annotation -- account names are
+  # account (e2e-prerequisites annotation -- account names are
   # globally unique and Azure briefly holds a just-deleted name),
   # creates a Python function app bound to the account by name + access
   # key through the account's captured outputs, verifies it via the ARM

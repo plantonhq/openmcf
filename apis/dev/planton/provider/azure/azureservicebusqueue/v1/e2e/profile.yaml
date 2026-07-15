@@ -4,7 +4,7 @@ metadata:
   name: azureservicebusqueue
 spec:
   # The harness deploys the fixture resource group and a SCENARIO-LOCAL
-  # Service Bus namespace (declared via the extra-prerequisites
+  # Service Bus namespace (declared via the e2e-prerequisites
   # annotation -- namespace names are globally unique with a post-delete
   # hold, so the namespace is never a shared recreate-per-scenario
   # registry prerequisite), creates a fully-dialed queue (sessions,

@@ -4,7 +4,7 @@ metadata:
   name: azurestorageshare
 spec:
   # The harness deploys the fixture resource group and a SCENARIO-LOCAL
-  # storage account (declared via the extra-prerequisites annotation --
+  # storage account (declared via the e2e-prerequisites annotation --
   # account names are globally unique and Azure briefly holds a
   # just-deleted name, so the account is never a shared recreate-per-
   # scenario registry prerequisite), creates the share, verifies it via

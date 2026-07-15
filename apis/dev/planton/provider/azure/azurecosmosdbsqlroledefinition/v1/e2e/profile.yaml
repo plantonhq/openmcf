@@ -4,7 +4,7 @@ metadata:
   name: azurecosmosdbsqlroledefinition
 spec:
   # The harness deploys the fixture resource group and a scenario-local
-  # Cosmos SQL account (declared via extra-prerequisites -- account
+  # Cosmos SQL account (declared via e2e-prerequisites -- account
   # names are globally unique), creates a custom read-only role
   # definition with a generated GUID, verifies it via the ARM API,
   # destroys it, and verifies it is gone -- on both provisioners. The

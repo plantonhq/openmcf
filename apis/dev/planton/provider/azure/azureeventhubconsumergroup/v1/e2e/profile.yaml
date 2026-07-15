@@ -4,7 +4,7 @@ metadata:
   name: azureeventhubconsumergroup
 spec:
   # The harness deploys the fixture resource group, a SCENARIO-LOCAL
-  # Event Hubs namespace, and a scenario-local hub (extra-prerequisites
+  # Event Hubs namespace, and a scenario-local hub (e2e-prerequisites
   # annotation -- namespace names are globally unique, never a shared
   # recreate-per-scenario registry prerequisite), creates a consumer
   # group with user metadata on the hub, verifies it via the ARM API,

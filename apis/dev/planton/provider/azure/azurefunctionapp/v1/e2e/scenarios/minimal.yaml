@@ -3,7 +3,7 @@
 # storage account for runtime state -- proving the plan FK seam, the
 # account-name + access-key storage binding through the account's
 # captured outputs, the enum dials, and user tags. The account is
-# declared via the extra-prerequisites annotation instead of a registry
+# declared via the e2e-prerequisites annotation instead of a registry
 # prerequisite: storage-account names are globally unique and sequential
 # subtests that destroy and recreate the same name hang on recreate.
 apiVersion: azure.planton.dev/v1
