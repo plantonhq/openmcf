@@ -203,6 +203,14 @@ validator, which is strict-or-stricter than the control plane's engine):
   `{{ service | replace('.', '-') }}` for name-safe identifiers) when the set
   is the CHART's design decision, not user input — parameterize only what a
   user should change.
+- **Prefer the `| replace(a, b)` FILTER over the `.replace(a, b)` string
+  method.** The two-argument method form is a Python-ism: the Go/Jinjava
+  dialect's method requires the third `count` argument and fails the render
+  without it, while the filter form takes two arguments on every engine. More
+  generally, when a value needs surgery beyond a trim, reshape the PARAMETER
+  instead of string-manipulating in the template (e.g. take a subdomain label
+  and compose `{{ label }}.{{ zone }}` rather than taking an FQDN and carving
+  the zone back out of it) — the composed form needs no string surgery at all.
 - **Bool params interpolate directly into bool manifest fields**
   (`deletionProtection: {{ values.my_toggle }}`): engines differ on rendered
   casing (`True` vs `true`) but both parse as YAML booleans — do not build

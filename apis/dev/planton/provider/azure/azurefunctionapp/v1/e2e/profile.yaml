@@ -10,6 +10,14 @@ spec:
   # creates a Python function app bound to the account by name + access
   # key through the account's captured outputs, verifies it via the ARM
   # API, destroys it, and verifies it is gone.
+  #
+  # The x_azure_fdid repeated-StringValueOrRef retrofit was NOT re-run
+  # live here: the owner's project-wide live-E2E closure (2026-07-15)
+  # landed before this lane started. Green stands on the pre-retrofit
+  # dual-engine run plus the sibling proof -- AzureLinuxWebApp carries
+  # the byte-identical ip-restriction headers message and passed live
+  # on Pulumi the same day; Terraform receives pre-resolved literals
+  # via tfvars flattening on both kinds.
   tier: 1
   status: green
   validated_provisioners:
