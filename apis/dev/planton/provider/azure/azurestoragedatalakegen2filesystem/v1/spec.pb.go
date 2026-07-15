@@ -183,17 +183,25 @@ type AzureStorageDataLakeGen2FilesystemSpec struct {
 	// AzureStorageEncryptionScope's name output; the scope must live on
 	// the SAME account as the filesystem. Fixed at creation.
 	DefaultEncryptionScope *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=default_encryption_scope,json=defaultEncryptionScope,proto3" json:"default_encryption_scope,omitempty"`
-	// The Entra object ID of the user who OWNS the filesystem's root path
-	// ("/"), or the special value $superuser. The owning user always
-	// holds the root's user-class permissions regardless of the ACL.
-	// Unset leaves Azure's default owner ($superuser -- the account's
-	// shared-key principal).
-	Owner string `protobuf:"bytes,4,opt,name=owner,proto3" json:"owner,omitempty"`
-	// The Entra object ID of the group that owns the filesystem's root
-	// path ("/"), or the special value $superuser. Group-class ACL
-	// entries without an explicit object ID evaluate against this group.
-	// Unset leaves Azure's default owning group.
-	Group string `protobuf:"bytes,5,opt,name=group,proto3" json:"group,omitempty"`
+	// The Entra principal that OWNS the filesystem's root path ("/"). The
+	// owning user always holds the root's user-class permissions
+	// regardless of the ACL. Takes an Entra object ID (a GUID -- for a
+	// managed identity this is the PRINCIPAL id, not the client id) or
+	// the special literal $superuser. References an
+	// AzureUserAssignedIdentity's principal_id output so a workload
+	// identity can own its zone; Entra users, groups, and service
+	// principals are granted by literal object ID. Unset leaves Azure's
+	// default owner ($superuser -- the account's shared-key principal).
+	Owner *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=owner,proto3" json:"owner,omitempty"`
+	// The Entra principal that owns the filesystem's root path ("/") as
+	// its GROUP. Group-class ACL entries without an explicit object ID
+	// evaluate against this group. Takes an Entra object ID (a GUID) or
+	// the special literal $superuser; references an
+	// AzureUserAssignedIdentity's principal_id output when a workload
+	// identity plays the owning-group role, while Entra security groups
+	// are granted by literal object ID. Unset leaves Azure's default
+	// owning group.
+	Group *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=group,proto3" json:"group,omitempty"`
 	// The POSIX access control list applied to the filesystem's ROOT path
 	// ("/"). Access entries gate operations on the root itself; default
 	// entries are the template newly created children inherit. Requires
@@ -263,18 +271,18 @@ func (x *AzureStorageDataLakeGen2FilesystemSpec) GetDefaultEncryptionScope() *v1
 	return nil
 }
 
-func (x *AzureStorageDataLakeGen2FilesystemSpec) GetOwner() string {
+func (x *AzureStorageDataLakeGen2FilesystemSpec) GetOwner() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Owner
 	}
-	return ""
+	return nil
 }
 
-func (x *AzureStorageDataLakeGen2FilesystemSpec) GetGroup() string {
+func (x *AzureStorageDataLakeGen2FilesystemSpec) GetGroup() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Group
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureStorageDataLakeGen2FilesystemSpec) GetAces() []*AzureStorageDataLakeGen2FilesystemAce {
@@ -305,13 +313,15 @@ type AzureStorageDataLakeGen2FilesystemAce struct {
 	// when unqualified); MASK caps the effective permissions of every
 	// named entry; OTHER covers callers matched by no other entry.
 	Type AzureStorageDataLakeGen2FilesystemAceType `protobuf:"varint,2,opt,name=type,proto3,enum=dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAceType" json:"type,omitempty"`
-	// The Entra object ID (user, group, service principal, or managed
-	// identity) this entry applies to. Only valid for USER and GROUP
-	// entries; leave unset to address the root path's OWNING user or
-	// group. NOTE: for a managed identity this is the PRINCIPAL id, not
-	// the client id -- an ACL naming the client id silently never
-	// matches.
-	ObjectId string `protobuf:"bytes,3,opt,name=object_id,json=objectId,proto3" json:"object_id,omitempty"`
+	// The Entra object ID (a GUID) of the user, group, service principal,
+	// or managed identity this entry applies to. Only valid for USER and
+	// GROUP entries; leave unset to address the root path's OWNING user
+	// or group. References an AzureUserAssignedIdentity's principal_id
+	// output so a workload identity's zone access composes by reference;
+	// Entra users and security groups are granted by literal object ID.
+	// NOTE: for a managed identity this is the PRINCIPAL id, not the
+	// client id -- an ACL naming the client id silently never matches.
+	ObjectId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=object_id,json=objectId,proto3" json:"object_id,omitempty"`
 	// The entry's permissions in POSIX short form: exactly three
 	// characters -- r or - (read), w or - (write), x or - (execute, i.e.
 	// traverse for directories). Examples: rwx (full), r-x (read and
@@ -365,11 +375,11 @@ func (x *AzureStorageDataLakeGen2FilesystemAce) GetType() AzureStorageDataLakeGe
 	return AzureStorageDataLakeGen2FilesystemAceType_azure_storage_data_lake_gen2_filesystem_ace_type_unspecified
 }
 
-func (x *AzureStorageDataLakeGen2FilesystemAce) GetObjectId() string {
+func (x *AzureStorageDataLakeGen2FilesystemAce) GetObjectId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.ObjectId
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureStorageDataLakeGen2FilesystemAce) GetPermissions() string {
@@ -383,32 +393,29 @@ var File_dev_planton_provider_azure_azurestoragedatalakegen2filesystem_v1_spec_p
 
 const file_dev_planton_provider_azure_azurestoragedatalakegen2filesystem_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Kdev/planton/provider/azure/azurestoragedatalakegen2filesystem/v1/spec.proto\x12@dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe4\v\n" +
+	"Kdev/planton/provider/azure/azurestoragedatalakegen2filesystem/v1/spec.proto\x12@dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa2\t\n" +
 	"&AzureStorageDataLakeGen2FilesystemSpec\x12\x92\x01\n" +
 	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\x8d\x02\n" +
 	"\x0ffilesystem_name\x18\x02 \x01(\tB\xe3\x01\xbaH\xdf\x01\xba\x01\xd8\x01\n" +
 	"\x1badls_filesystem_name_format\x12{filesystem_name must be 3-63 lowercase letters, digits, and hyphens, not starting with a hyphen (or the special name $root)\x1a<this == '$root' || this.matches('^[0-9a-z][0-9a-z-]{2,62}$')\xc8\x01\x01R\x0efilesystemName\x12\x9b\x01\n" +
-	"\x18default_encryption_scope\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xee\x03\x92\xd4a$status.outputs.encryption_scope_nameR\x16defaultEncryptionScope\x12\x8e\x02\n" +
-	"\x05owner\x18\x04 \x01(\tB\xf7\x01\xbaH\xf3\x01\xba\x01\xef\x01\n" +
-	"\x1cadls_filesystem_owner_format\x12Iowner must be an Entra object ID (a GUID) or the special value $superuser\x1a\x83\x01this == '' || this == '$superuser' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')R\x05owner\x12\x8e\x02\n" +
-	"\x05group\x18\x05 \x01(\tB\xf7\x01\xbaH\xf3\x01\xba\x01\xef\x01\n" +
-	"\x1cadls_filesystem_group_format\x12Igroup must be an Entra object ID (a GUID) or the special value $superuser\x1a\x83\x01this == '' || this == '$superuser' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')R\x05group\x12{\n" +
+	"\x18default_encryption_scope\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xee\x03\x92\xd4a$status.outputs.encryption_scope_nameR\x16defaultEncryptionScope\x12n\n" +
+	"\x05owner\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\x05owner\x12n\n" +
+	"\x05group\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\x05group\x12{\n" +
 	"\x04aces\x18\x06 \x03(\v2g.dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAceR\x04aces\x12\x98\x01\n" +
 	"\n" +
 	"properties\x18\a \x03(\v2x.dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemSpec.PropertiesEntryR\n" +
 	"properties\x1a=\n" +
 	"\x0fPropertiesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xed\a\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf9\x06\n" +
 	"%AzureStorageDataLakeGen2FilesystemAce\x12\x8c\x01\n" +
 	"\x05scope\x18\x01 \x01(\x0e2l.dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAceScopeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x05scope\x12\x8b\x01\n" +
 	"\x04type\x18\x02 \x01(\x0e2k.dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAceTypeB\n" +
-	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\xe8\x01\n" +
-	"\tobject_id\x18\x03 \x01(\tB\xca\x01\xbaH\xc6\x01\xba\x01\xc2\x01\n" +
-	"$adls_filesystem_ace_object_id_format\x12-object_id must be an Entra object ID (a GUID)\x1akthis == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')R\bobjectId\x12\xce\x01\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12u\n" +
+	"\tobject_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectId\x12\xce\x01\n" +
 	"\vpermissions\x18\x04 \x01(\tB\xab\x01\xbaH\xa7\x01\xba\x01\xa0\x01\n" +
 	"&adls_filesystem_ace_permissions_format\x12Vpermissions must be the three-character POSIX form [r-][w-][x-], e.g. rwx, r-x, or ---\x1a\x1ethis.matches('^[r-][w-][x-]$')\xc8\x01\x01R\vpermissions:\xea\x01\xbaH\xe6\x01\x1a\xe3\x01\n" +
-	"(adls_filesystem_ace_object_id_entry_type\x12}object_id can only be set on USER and GROUP entries -- MASK and OTHER entries apply to every caller, not a specific principal\x1a8this.object_id == '' || this.type == 1 || this.type == 2*\x88\x01\n" +
+	"(adls_filesystem_ace_object_id_entry_type\x12}object_id can only be set on USER and GROUP entries -- MASK and OTHER entries apply to every caller, not a specific principal\x1a8!has(this.object_id) || this.type == 1 || this.type == 2*\x88\x01\n" +
 	"*AzureStorageDataLakeGen2FilesystemAceScope\x12A\n" +
 	"=azure_storage_data_lake_gen2_filesystem_ace_scope_unspecified\x10\x00\x12\n" +
 	"\n" +
@@ -447,15 +454,18 @@ var file_dev_planton_provider_azure_azurestoragedatalakegen2filesystem_v1_spec_p
 var file_dev_planton_provider_azure_azurestoragedatalakegen2filesystem_v1_spec_proto_depIdxs = []int32{
 	5, // 0: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemSpec.storage_account_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	5, // 1: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemSpec.default_encryption_scope:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemSpec.aces:type_name -> dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAce
-	4, // 3: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemSpec.properties:type_name -> dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemSpec.PropertiesEntry
-	0, // 4: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAce.scope:type_name -> dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAceScope
-	1, // 5: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAce.type:type_name -> dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAceType
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	5, // 2: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemSpec.owner:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 3: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemSpec.group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 4: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemSpec.aces:type_name -> dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAce
+	4, // 5: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemSpec.properties:type_name -> dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemSpec.PropertiesEntry
+	0, // 6: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAce.scope:type_name -> dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAceScope
+	1, // 7: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAce.type:type_name -> dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAceType
+	5, // 8: dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAce.object_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurestoragedatalakegen2filesystem_v1_spec_proto_init() }

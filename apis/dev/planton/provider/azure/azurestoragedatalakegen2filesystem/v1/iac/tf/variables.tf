@@ -31,16 +31,22 @@ variable "spec" {
     default_encryption_scope = optional(string)
 
     # The Entra object ID (or $superuser) owning the root path.
+    # References (e.g. a user-assigned identity's principal_id) are
+    # resolved to the literal object ID by the platform before the
+    # module runs.
     owner = optional(string)
 
     # The Entra object ID (or $superuser) of the root path's owning
-    # group.
+    # group. References are resolved to the literal object ID by the
+    # platform before the module runs.
     group = optional(string)
 
     # The root path's POSIX ACL. scope is the spec enum's name string
     # (ACCESS, DEFAULT -- unset means ACCESS); type likewise (USER,
-    # GROUP, MASK, OTHER); object_id only on USER/GROUP entries;
-    # permissions in the three-character rwx form.
+    # GROUP, MASK, OTHER); object_id only on USER/GROUP entries --
+    # references (e.g. a user-assigned identity's principal_id) are
+    # resolved to the literal object ID by the platform before the
+    # module runs; permissions in the three-character rwx form.
     aces = optional(list(object({
       scope       = optional(string)
       type        = string

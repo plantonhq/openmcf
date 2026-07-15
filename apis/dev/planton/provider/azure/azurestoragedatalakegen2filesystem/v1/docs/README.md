@@ -20,8 +20,8 @@ is a data-plane URL, not an ARM id.
 | `storage_account_id` | `storage_account_id` | ARM-id parent FK, ForceNew |
 | `name` | `filesystem_name` | Required, ForceNew; azurerm's exact validator mirrored as CEL: `$root` or lowercase alnum/hyphen 3-63 not starting with a hyphen |
 | `default_encryption_scope` | `default_encryption_scope` | `StringValueOrRef` → `AzureStorageEncryptionScope.encryption_scope_name` (the container-kind precedent), ForceNew; sent only when set (Computed on the provider -- Azure returns a scope value even when unspecified) |
-| `owner` / `group` | same | UUID or `$superuser` (azurerm's exact `validation.Any` contract as CEL); Computed -- sent only when set so Azure's defaults stand |
-| `ace` | `aces` | scope (access/default) and type (user/group/mask/other) as closed enums; `id` renamed `object_id` (it IS an Entra object ID -- the catalog's established Entra vocabulary; a bare `id` inside an ACL entry reads as a resource id); permissions `[r-][w-][x-]` (giovanni's `ValidateACEPermissions` regex as CEL); the mask/other-take-no-qualifier contract (giovanni's `ACE.Validate`) as a message CEL |
+| `owner` / `group` | same | `StringValueOrRef` → `AzureUserAssignedIdentity.principal_id` (a workload identity owning its zone composes by reference); literal forms take a UUID or `$superuser` -- azurerm's `validation.Any` contract lives in the field comment (wrappers cannot carry value-format CELs); Computed -- sent only when set so Azure's defaults stand |
+| `ace` | `aces` | scope (access/default) and type (user/group/mask/other) as closed enums; `id` renamed `object_id` (it IS an Entra object ID -- the catalog's established Entra vocabulary; a bare `id` inside an ACL entry reads as a resource id) and carried as `StringValueOrRef` → `AzureUserAssignedIdentity.principal_id` so in-graph identities are granted by reference; permissions `[r-][w-][x-]` (giovanni's `ValidateACEPermissions` regex as CEL); the mask/other-take-no-qualifier contract (giovanni's `ACE.Validate`) as a presence-form message CEL |
 | `properties` | `properties` | Metadata map; Azure requires base64-encoded VALUES (documented on the field) |
 
 ## Decomposition Decisions
@@ -73,5 +73,8 @@ is a data-plane URL, not an ARM id.
 
 - `storage_account_id` → `AzureStorageAccount.status.outputs.storage_account_id`
 - `default_encryption_scope` → `AzureStorageEncryptionScope.status.outputs.encryption_scope_name`
+- `owner` / `group` / `aces[].object_id` → `AzureUserAssignedIdentity.status.outputs.principal_id`
+  (workload identities in the same graph; Entra users/security groups by
+  literal object ID)
 - `filesystem_id` output ← `AzureRoleAssignment.scope` (data-plane
   grants at filesystem granularity)

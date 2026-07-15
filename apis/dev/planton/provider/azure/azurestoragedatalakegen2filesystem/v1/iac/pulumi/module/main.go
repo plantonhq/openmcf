@@ -60,11 +60,11 @@ func Resources(ctx *pulumi.Context, stackInput *azurestoragedatalakegen2filesyst
 		// encrypts under this one. Fixed at creation.
 		filesystemArgs.DefaultEncryptionScope = pulumi.String(spec.DefaultEncryptionScope.GetValue())
 	}
-	if spec.Owner != "" {
-		filesystemArgs.Owner = pulumi.String(spec.Owner)
+	if spec.Owner.GetValue() != "" {
+		filesystemArgs.Owner = pulumi.String(spec.Owner.GetValue())
 	}
-	if spec.Group != "" {
-		filesystemArgs.Group = pulumi.String(spec.Group)
+	if spec.Group.GetValue() != "" {
+		filesystemArgs.Group = pulumi.String(spec.Group.GetValue())
 	}
 
 	// The root path's POSIX ACL. Access entries gate the root itself;
@@ -84,8 +84,8 @@ func Resources(ctx *pulumi.Context, stackInput *azurestoragedatalakegen2filesyst
 			}
 			// Only USER/GROUP entries name a principal (enforced in the
 			// spec); an unqualified entry addresses the owning user/group.
-			if ace.ObjectId != "" {
-				aceArgs.Id = pulumi.String(ace.ObjectId)
+			if ace.ObjectId.GetValue() != "" {
+				aceArgs.Id = pulumi.String(ace.ObjectId.GetValue())
 			}
 			aces = append(aces, aceArgs)
 		}

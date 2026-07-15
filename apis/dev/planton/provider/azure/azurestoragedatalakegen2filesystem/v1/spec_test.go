@@ -85,8 +85,22 @@ var _ = ginkgo.Describe("AzureStorageDataLakeGen2FilesystemSpec Validation Tests
 
 		ginkgo.It("should accept owner and group as object IDs or $superuser", func() {
 			input := minimalSpec()
-			input.Spec.Owner = objectId
-			input.Spec.Group = "$superuser"
+			input.Spec.Owner = literal(objectId)
+			input.Spec.Group = literal("$superuser")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept owner by reference to a user-assigned identity", func() {
+			input := minimalSpec()
+			input.Spec.Owner = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+					ValueFrom: &foreignkeyv1.ValueFromRef{
+						Kind:      cloudresourcekind.CloudResourceKind_AzureUserAssignedIdentity,
+						Name:      "lake-engineering",
+						FieldPath: "status.outputs.principal_id",
+					},
+				},
+			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
@@ -94,10 +108,30 @@ var _ = ginkgo.Describe("AzureStorageDataLakeGen2FilesystemSpec Validation Tests
 			input := minimalSpec()
 			input.Spec.Aces = []*AzureStorageDataLakeGen2FilesystemAce{
 				{Type: AzureStorageDataLakeGen2FilesystemAceType_USER, Permissions: "rwx"},
-				{Type: AzureStorageDataLakeGen2FilesystemAceType_USER, ObjectId: objectId, Permissions: "--x"},
+				{Type: AzureStorageDataLakeGen2FilesystemAceType_USER, ObjectId: literal(objectId), Permissions: "--x"},
 				{Type: AzureStorageDataLakeGen2FilesystemAceType_GROUP, Permissions: "r-x"},
 				{Type: AzureStorageDataLakeGen2FilesystemAceType_MASK, Permissions: "r-x"},
 				{Type: AzureStorageDataLakeGen2FilesystemAceType_OTHER, Permissions: "---"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept an ACL entry naming its principal by reference", func() {
+			input := minimalSpec()
+			input.Spec.Aces = []*AzureStorageDataLakeGen2FilesystemAce{
+				{
+					Type: AzureStorageDataLakeGen2FilesystemAceType_USER,
+					ObjectId: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+							ValueFrom: &foreignkeyv1.ValueFromRef{
+								Kind:      cloudresourcekind.CloudResourceKind_AzureUserAssignedIdentity,
+								Name:      "lake-engineering",
+								FieldPath: "status.outputs.principal_id",
+							},
+						},
+					},
+					Permissions: "rwx",
+				},
 			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
@@ -108,7 +142,7 @@ var _ = ginkgo.Describe("AzureStorageDataLakeGen2FilesystemSpec Validation Tests
 				{
 					Scope:       AzureStorageDataLakeGen2FilesystemAceScope_DEFAULT,
 					Type:        AzureStorageDataLakeGen2FilesystemAceType_GROUP,
-					ObjectId:    objectId,
+					ObjectId:    literal(objectId),
 					Permissions: "r-x",
 				},
 			}
@@ -144,18 +178,6 @@ var _ = ginkgo.Describe("AzureStorageDataLakeGen2FilesystemSpec Validation Tests
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("should reject an owner that is neither a GUID nor $superuser", func() {
-			input := minimalSpec()
-			input.Spec.Owner = "somebody@example.com"
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("should reject a group that is neither a GUID nor $superuser", func() {
-			input := minimalSpec()
-			input.Spec.Group = "engineering"
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
-		})
-
 		ginkgo.It("should reject an ACL entry without a type", func() {
 			input := minimalSpec()
 			input.Spec.Aces = []*AzureStorageDataLakeGen2FilesystemAce{
@@ -177,7 +199,7 @@ var _ = ginkgo.Describe("AzureStorageDataLakeGen2FilesystemSpec Validation Tests
 		ginkgo.It("should reject an object ID on a MASK entry", func() {
 			input := minimalSpec()
 			input.Spec.Aces = []*AzureStorageDataLakeGen2FilesystemAce{
-				{Type: AzureStorageDataLakeGen2FilesystemAceType_MASK, ObjectId: objectId, Permissions: "r-x"},
+				{Type: AzureStorageDataLakeGen2FilesystemAceType_MASK, ObjectId: literal(objectId), Permissions: "r-x"},
 			}
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
@@ -185,15 +207,7 @@ var _ = ginkgo.Describe("AzureStorageDataLakeGen2FilesystemSpec Validation Tests
 		ginkgo.It("should reject an object ID on an OTHER entry", func() {
 			input := minimalSpec()
 			input.Spec.Aces = []*AzureStorageDataLakeGen2FilesystemAce{
-				{Type: AzureStorageDataLakeGen2FilesystemAceType_OTHER, ObjectId: objectId, Permissions: "---"},
-			}
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("should reject an ACL entry whose object ID is not a GUID", func() {
-			input := minimalSpec()
-			input.Spec.Aces = []*AzureStorageDataLakeGen2FilesystemAce{
-				{Type: AzureStorageDataLakeGen2FilesystemAceType_USER, ObjectId: "not-a-guid", Permissions: "rwx"},
+				{Type: AzureStorageDataLakeGen2FilesystemAceType_OTHER, ObjectId: literal(objectId), Permissions: "---"},
 			}
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})

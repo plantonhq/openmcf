@@ -29,10 +29,12 @@ AzureStorageContainer instead.
 - `filesystem_name` -- 3-63 lowercase letters/digits/hyphens; the
   container segment of every abfss:// URL (renaming replaces the
   filesystem and everything in it)
-- `owner` / `group` -- the root path's owning principal/group (Entra
-  object IDs or `$superuser`)
+- `owner` / `group` -- the root path's owning principal/group: an
+  in-graph workload identity by reference (an AzureUserAssignedIdentity's
+  `principal_id` output), or a literal Entra object ID / `$superuser`
 - `aces` -- the root path's POSIX ACL; DEFAULT-scope entries are the
-  inheritance template for new children
+  inheritance template for new children, and each entry's `object_id`
+  likewise takes an identity reference or a literal Entra object ID
 - `default_encryption_scope` -- sub-account key isolation for just this
   filesystem, referencing an AzureStorageEncryptionScope
 

@@ -62,26 +62,32 @@ message AzureStorageDataLakeGen2FilesystemSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.encryption_scope_name"
   ];
 
-  // The Entra object ID of the user who OWNS the filesystem's root path
-  // ("/"), or the special value $superuser. The owning user always
-  // holds the root's user-class permissions regardless of the ACL.
-  // Unset leaves Azure's default owner ($superuser -- the account's
-  // shared-key principal).
-  string owner = 4 [(buf.validate.field).cel = {
-    id: "adls_filesystem_owner_format"
-    message: "owner must be an Entra object ID (a GUID) or the special value $superuser"
-    expression: "this == '' || this == '$superuser' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
-  }];
+  // The Entra principal that OWNS the filesystem's root path ("/"). The
+  // owning user always holds the root's user-class permissions
+  // regardless of the ACL. Takes an Entra object ID (a GUID -- for a
+  // managed identity this is the PRINCIPAL id, not the client id) or
+  // the special literal $superuser. References an
+  // AzureUserAssignedIdentity's principal_id output so a workload
+  // identity can own its zone; Entra users, groups, and service
+  // principals are granted by literal object ID. Unset leaves Azure's
+  // default owner ($superuser -- the account's shared-key principal).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef owner = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.principal_id"
+  ];
 
-  // The Entra object ID of the group that owns the filesystem's root
-  // path ("/"), or the special value $superuser. Group-class ACL
-  // entries without an explicit object ID evaluate against this group.
-  // Unset leaves Azure's default owning group.
-  string group = 5 [(buf.validate.field).cel = {
-    id: "adls_filesystem_group_format"
-    message: "group must be an Entra object ID (a GUID) or the special value $superuser"
-    expression: "this == '' || this == '$superuser' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
-  }];
+  // The Entra principal that owns the filesystem's root path ("/") as
+  // its GROUP. Group-class ACL entries without an explicit object ID
+  // evaluate against this group. Takes an Entra object ID (a GUID) or
+  // the special literal $superuser; references an
+  // AzureUserAssignedIdentity's principal_id output when a workload
+  // identity plays the owning-group role, while Entra security groups
+  // are granted by literal object ID. Unset leaves Azure's default
+  // owning group.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef group = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.principal_id"
+  ];
 
   // The POSIX access control list applied to the filesystem's ROOT path
   // ("/"). Access entries gate operations on the root itself; default
@@ -118,17 +124,18 @@ message AzureStorageDataLakeGen2FilesystemAce {
     not_in: [0]
   }];
 
-  // The Entra object ID (user, group, service principal, or managed
-  // identity) this entry applies to. Only valid for USER and GROUP
-  // entries; leave unset to address the root path's OWNING user or
-  // group. NOTE: for a managed identity this is the PRINCIPAL id, not
-  // the client id -- an ACL naming the client id silently never
-  // matches.
-  string object_id = 3 [(buf.validate.field).cel = {
-    id: "adls_filesystem_ace_object_id_format"
-    message: "object_id must be an Entra object ID (a GUID)"
-    expression: "this == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
-  }];
+  // The Entra object ID (a GUID) of the user, group, service principal,
+  // or managed identity this entry applies to. Only valid for USER and
+  // GROUP entries; leave unset to address the root path's OWNING user
+  // or group. References an AzureUserAssignedIdentity's principal_id
+  // output so a workload identity's zone access composes by reference;
+  // Entra users and security groups are granted by literal object ID.
+  // NOTE: for a managed identity this is the PRINCIPAL id, not the
+  // client id -- an ACL naming the client id silently never matches.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef object_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.principal_id"
+  ];
 
   // The entry's permissions in POSIX short form: exactly three
   // characters -- r or - (read), w or - (write), x or - (execute, i.e.
@@ -146,7 +153,7 @@ message AzureStorageDataLakeGen2FilesystemAce {
   option (buf.validate.message).cel = {
     id: "adls_filesystem_ace_object_id_entry_type"
     message: "object_id can only be set on USER and GROUP entries -- MASK and OTHER entries apply to every caller, not a specific principal"
-    expression: "this.object_id == '' || this.type == 1 || this.type == 2"
+    expression: "!has(this.object_id) || this.type == 1 || this.type == 2"
   };
 }
 
