@@ -233,6 +233,12 @@ validator, which is strict-or-stricter than the control plane's engine):
   + fieldPath). Deliberately polymorphic references (e.g. a route target whose
   kind is selected by a sibling enum) resolve nothing by default — writing the
   explicit ref is the designed usage, not a workaround.
+- **Map-typed outputs are addressed by ENTRY KEY in the fieldPath**: a kind that
+  exports a name-keyed map (a load balancer's `backend_pool_ids`, `probe_ids`)
+  is referenced as `status.outputs.backend_pool_ids.<sub-resource-name>` — the
+  key is the name the chart itself gave the sub-resource, so the reference is
+  render-known on both sides. Keys containing dots cannot be addressed through
+  a dot path; name sub-resources accordingly.
 - **Struct-typed spec fields (inline policy documents) cannot carry
   `valueFrom`** — a Struct holds plain JSON, not references, and outputs of
   not-yet-created resources cannot appear in it anyway. Feed cross-resource

@@ -26,7 +26,12 @@ import (
 //   - segments resolve by exact proto field name first, then by a camelCase->snake_case
 //     fallback (chart authors write either form);
 //   - bracketed or bare integer segments index into repeated message fields;
-//   - every non-terminal segment must be a message, and the terminal field must be a
+//   - a map field is addressed by KEY: the segment after it is the entry key (any
+//     non-empty string -- keys are runtime data, e.g. a load balancer's name-keyed
+//     pool-id outputs referenced as "status.outputs.backend_pool_ids.web"), never a
+//     field on the synthetic map-entry message. Keys containing dots cannot be
+//     addressed through a dot path -- name sub-resources accordingly;
+//   - every non-terminal segment must be a message, and the terminal value must be a
 //     string (a valueFrom always feeds a string-valued reference).
 func ResolveValueFromPath(kind cloudresourcekind.CloudResourceKind, fieldPath string) string {
 	inst, err := crkreflect.NewInstance(kind)
@@ -41,7 +46,8 @@ func ResolveValueFromPath(kind cloudresourcekind.CloudResourceKind, fieldPath st
 	var fd protoreflect.FieldDescriptor
 	segments := strings.Split(fieldPath, ".")
 
-	for i, seg := range segments {
+	for i := 0; i < len(segments); i++ {
+		seg := segments[i]
 		if isIndexSegment(seg) {
 			if fd == nil || !fd.IsList() || fd.Kind() != protoreflect.MessageKind {
 				return "cannot index into '" + seg + "' -- preceding field is not a repeated message"
@@ -57,6 +63,33 @@ func ResolveValueFromPath(kind cloudresourcekind.CloudResourceKind, fieldPath st
 		if fd == nil {
 			return "no field named '" + seg + "' on " + string(current.FullName())
 		}
+
+		if fd.IsMap() {
+			if i == len(segments)-1 {
+				return "field '" + seg + "' is a map -- address one entry by appending its key (e.g. '" + fieldPath + ".<key>')"
+			}
+			i++ // the next segment is the entry KEY -- runtime data, any non-empty string
+			if segments[i] == "" {
+				return "empty map key after '" + seg + "'"
+			}
+			switch fd.MapValue().Kind() {
+			case protoreflect.StringKind:
+				if i != len(segments)-1 {
+					return "cannot descend into the string map value of '" + seg + "'"
+				}
+				return ""
+			case protoreflect.MessageKind:
+				if i == len(segments)-1 {
+					return "terminal field '" + fieldPath + "' is a message map value, expected string"
+				}
+				current = fd.MapValue().Message()
+				fd = nil
+				continue
+			default:
+				return "map value of '" + seg + "' is " + fd.MapValue().Kind().String() + ", expected string"
+			}
+		}
+
 		if i < len(segments)-1 {
 			if fd.Kind() != protoreflect.MessageKind {
 				return "cannot descend into scalar field '" + seg + "'"
@@ -65,8 +98,12 @@ func ResolveValueFromPath(kind cloudresourcekind.CloudResourceKind, fieldPath st
 		}
 	}
 
-	if fd.Kind() != protoreflect.StringKind {
-		return "terminal field '" + fieldPath + "' is " + fd.Kind().String() + ", expected string"
+	if fd == nil || fd.Kind() != protoreflect.StringKind {
+		kindName := "not a field"
+		if fd != nil {
+			kindName = fd.Kind().String()
+		}
+		return "terminal field '" + fieldPath + "' is " + kindName + ", expected string"
 	}
 	return ""
 }
