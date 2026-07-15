@@ -30,7 +30,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMysqlFlexibleServer
 metadata:
   name: my-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

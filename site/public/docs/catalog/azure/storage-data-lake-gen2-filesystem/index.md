@@ -31,7 +31,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureStorageDataLakeGen2Filesystem
 metadata:
   name: raw-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

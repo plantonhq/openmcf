@@ -33,7 +33,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePublicIpPrefix
 metadata:
   name: prod-egress-prefix
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -91,7 +91,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePublicIpPrefix
 metadata:
   name: nat-snat-prefix
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -136,7 +136,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePublicIpPrefix
 metadata:
   name: partner-allowlist
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

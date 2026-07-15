@@ -25,7 +25,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationSecurityGroup
 metadata:
   name: web-tier
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -72,7 +72,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationSecurityGroup
 metadata:
   name: app-tier
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

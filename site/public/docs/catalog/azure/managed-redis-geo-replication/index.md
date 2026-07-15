@@ -40,7 +40,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureManagedRedisGeoReplication
 metadata:
   name: global-cache-group
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

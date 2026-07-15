@@ -33,7 +33,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRoleAssignment
 metadata:
   name: app-reader
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -85,7 +85,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRoleAssignment
 metadata:
   name: app-acr-pull
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRoleAssignment
 metadata:
   name: cascade-blob-reader
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -141,7 +141,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRoleAssignment
 metadata:
   name: cost-auditor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

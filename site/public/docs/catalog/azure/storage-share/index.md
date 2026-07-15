@@ -30,7 +30,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureStorageShare
 metadata:
   name: team-files
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

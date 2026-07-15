@@ -33,7 +33,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVirtualNetworkPeering
 metadata:
   name: hub-to-spoke1
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVirtualNetworkPeering
 metadata:
   name: hub-to-spoke1
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVirtualNetworkPeering
 metadata:
   name: spoke1-to-hub
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -138,7 +138,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureVirtualNetworkPeering
 metadata:
   name: shared-to-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

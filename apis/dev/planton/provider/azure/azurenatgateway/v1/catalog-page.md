@@ -28,7 +28,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNatGateway
 metadata:
   name: my-natgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -83,7 +83,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNatGateway
 metadata:
   name: basic-natgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNatGateway
 metadata:
   name: long-lived-natgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNatGateway
 metadata:
   name: scale-natgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -166,7 +166,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNatGateway
 metadata:
   name: v2-natgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -191,7 +191,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNatGateway
 metadata:
   name: aks-egress-natgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

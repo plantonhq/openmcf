@@ -32,7 +32,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationInsights
 metadata:
   name: web-app-insights
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

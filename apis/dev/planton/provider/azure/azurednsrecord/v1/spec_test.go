@@ -354,7 +354,6 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Validation Tests", func() {
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-
 			ginkgo.It("should return a validation error for an invalid record name", func() {
 				input := validResource()
 				input.Spec.Name = "Not A Record!"

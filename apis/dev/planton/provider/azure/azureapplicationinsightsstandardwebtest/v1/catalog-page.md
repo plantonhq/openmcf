@@ -22,7 +22,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationInsightsStandardWebTest
 metadata:
   name: homepage-health
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

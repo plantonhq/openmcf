@@ -34,7 +34,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerAppCustomDomain
 metadata:
   name: app-custom-domain
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

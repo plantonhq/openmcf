@@ -34,7 +34,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZone
 metadata:
   name: postgres-privatelink-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -78,7 +78,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZone
 metadata:
   name: postgres-privatelink-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -97,7 +97,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZone
 metadata:
   name: corp-internal-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -30,7 +30,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorProfile
 metadata:
   name: my-front-door
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

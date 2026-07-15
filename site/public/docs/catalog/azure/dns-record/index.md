@@ -30,7 +30,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsRecord
 metadata:
   name: www-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

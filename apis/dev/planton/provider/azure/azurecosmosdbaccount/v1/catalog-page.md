@@ -23,7 +23,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureCosmosdbAccount
 metadata:
   name: app-cosmos
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

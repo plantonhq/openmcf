@@ -25,7 +25,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRouteTable
 metadata:
   name: egress-via-firewall
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -85,7 +85,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRouteTable
 metadata:
   name: forced-tunnel
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -110,7 +110,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRouteTable
 metadata:
   name: deny-lateral
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -136,7 +136,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRouteTable
 metadata:
   name: firewall-with-backup-bypass
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

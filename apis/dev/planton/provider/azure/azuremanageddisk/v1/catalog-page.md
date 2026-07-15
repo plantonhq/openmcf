@@ -27,7 +27,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureManagedDisk
 metadata:
   name: orders-db-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +143,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureManagedDisk
 metadata:
   name: orders-db-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -181,7 +181,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureManagedDisk
 metadata:
   name: ledger-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -208,7 +208,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureManagedDisk
 metadata:
   name: cluster-quorum
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -238,7 +238,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureManagedDisk
 metadata:
   name: orders-db-restored
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -263,7 +263,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureManagedDisk
 metadata:
   name: pii-vault-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -294,7 +294,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureManagedDisk
 metadata:
   name: shared-content
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

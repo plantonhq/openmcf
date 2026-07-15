@@ -33,7 +33,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRedisCacheAccessPolicyAssignment
 metadata:
   name: orders-app-data-reader
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

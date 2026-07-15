@@ -28,7 +28,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMssqlServer
 metadata:
   name: my-sql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

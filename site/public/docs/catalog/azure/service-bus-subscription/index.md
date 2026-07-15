@@ -31,7 +31,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureServiceBusSubscription
 metadata:
   name: billing-consumer
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -30,7 +30,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureStorageContainer
 metadata:
   name: app-uploads
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

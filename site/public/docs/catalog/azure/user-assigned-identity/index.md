@@ -31,7 +31,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureUserAssignedIdentity
 metadata:
   name: my-identity
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -77,7 +77,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureUserAssignedIdentity
 metadata:
   name: payments-identity
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -120,7 +120,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureUserAssignedIdentity
 metadata:
   name: regulated-identity
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -146,7 +146,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureUserAssignedIdentity
 metadata:
   name: ci-deployer
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

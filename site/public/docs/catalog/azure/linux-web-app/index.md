@@ -205,7 +205,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLinuxWebApp
 metadata:
   name: internal-portal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

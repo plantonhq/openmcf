@@ -27,7 +27,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationGateway
 metadata:
   name: web-gateway
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

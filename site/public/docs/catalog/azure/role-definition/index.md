@@ -33,7 +33,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRoleDefinition
 metadata:
   name: vm-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -88,7 +88,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRoleDefinition
 metadata:
   name: project-admin
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -115,7 +115,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRoleDefinition
 metadata:
   name: blob-auditor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -141,7 +141,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureRoleDefinition
 metadata:
   name: env-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

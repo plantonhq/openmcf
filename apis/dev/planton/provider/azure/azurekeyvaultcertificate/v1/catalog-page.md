@@ -23,7 +23,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureKeyVaultCertificate
 metadata:
   name: internal-tls
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

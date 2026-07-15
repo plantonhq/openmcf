@@ -40,7 +40,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNetworkInterface
 metadata:
   name: my-nic
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -119,7 +119,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNetworkInterface
 metadata:
   name: app-nic
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -146,7 +146,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNetworkInterface
 metadata:
   name: bastion-nic
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -179,7 +179,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNetworkInterface
 metadata:
   name: web-1-nic
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -216,7 +216,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNetworkInterface
 metadata:
   name: fw-inside-nic
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -246,7 +246,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureNetworkInterface
 metadata:
   name: dual-stack-nic
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

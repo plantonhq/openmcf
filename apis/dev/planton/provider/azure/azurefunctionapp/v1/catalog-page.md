@@ -28,7 +28,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFunctionApp
 metadata:
   name: my-func
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -120,7 +120,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFunctionApp
 metadata:
   name: events-fn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -151,7 +151,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFunctionApp
 metadata:
   name: private-fn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -185,7 +185,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureFunctionApp
 metadata:
   name: ref-fn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

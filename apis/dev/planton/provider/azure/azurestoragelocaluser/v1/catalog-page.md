@@ -23,7 +23,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureStorageLocalUser
 metadata:
   name: partner01
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

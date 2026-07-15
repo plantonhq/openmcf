@@ -34,7 +34,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureAksCluster
 metadata:
   name: prod-aks
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -111,7 +111,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureAksCluster
 metadata:
   name: private-aks
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -145,7 +145,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureAksCluster
 metadata:
   name: prod-aks
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

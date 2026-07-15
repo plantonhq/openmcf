@@ -34,7 +34,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZoneVirtualNetworkLink
 metadata:
   name: postgres-zone-hub-link
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -82,7 +82,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZoneVirtualNetworkLink
 metadata:
   name: postgres-zone-spoke-link
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -104,7 +104,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZoneVirtualNetworkLink
 metadata:
   name: corp-zone-hub-link
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZoneVirtualNetworkLink
 metadata:
   name: postgres-zone-spoke2-link
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

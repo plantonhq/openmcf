@@ -36,7 +36,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerRegistry
 metadata:
   name: my-registry
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -98,7 +98,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerRegistry
 metadata:
   name: prod-registry
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -120,7 +120,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerRegistry
 metadata:
   name: global-registry
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -149,7 +149,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerRegistry
 metadata:
   name: restricted-registry
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -177,7 +177,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerRegistry
 metadata:
   name: locked-registry
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

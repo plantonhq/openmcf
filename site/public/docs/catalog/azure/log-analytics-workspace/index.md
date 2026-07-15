@@ -32,7 +32,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLogAnalyticsWorkspace
 metadata:
   name: platform-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

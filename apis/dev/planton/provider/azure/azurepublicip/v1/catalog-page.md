@@ -159,7 +159,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePublicIp
 metadata:
   name: nat-egress-pip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -184,7 +184,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePublicIp
 metadata:
   name: v6-frontend-pip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

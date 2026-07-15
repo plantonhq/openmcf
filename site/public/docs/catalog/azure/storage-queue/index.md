@@ -30,7 +30,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureStorageQueue
 metadata:
   name: work-items
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

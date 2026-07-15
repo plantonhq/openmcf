@@ -33,7 +33,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureKeyVault
 metadata:
   name: platform-vault
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -88,7 +88,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureKeyVault
 metadata:
   name: prod-vault
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
