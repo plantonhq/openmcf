@@ -1,0 +1,39 @@
+package module
+
+import (
+	azureeventhubschemagroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubschemagroup/v1"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+type Locals struct {
+	AzureEventHubSchemaGroup *azureeventhubschemagroupv1.AzureEventHubSchemaGroup
+	NamespaceId              string
+}
+
+// Enum wire maps to ARM's values. Both enums are required in the spec
+// (unspecified is rejected at validation), so no unspecified fallback row
+// is needed -- an unmapped value would send the empty string and fail
+// loudly at the provider, which is the right outcome.
+var schemaCompatibilityStrings = map[azureeventhubschemagroupv1.AzureEventHubSchemaCompatibility]string{
+	azureeventhubschemagroupv1.AzureEventHubSchemaCompatibility_NONE:     "None",
+	azureeventhubschemagroupv1.AzureEventHubSchemaCompatibility_BACKWARD: "Backward",
+	azureeventhubschemagroupv1.AzureEventHubSchemaCompatibility_FORWARD:  "Forward",
+}
+
+var schemaTypeStrings = map[azureeventhubschemagroupv1.AzureEventHubSchemaType]string{
+	azureeventhubschemagroupv1.AzureEventHubSchemaType_AVRO: "Avro",
+	azureeventhubschemagroupv1.AzureEventHubSchemaType_JSON: "Json",
+}
+
+func initializeLocals(ctx *pulumi.Context, stackInput *azureeventhubschemagroupv1.AzureEventHubSchemaGroupStackInput) *Locals {
+	locals := &Locals{}
+
+	locals.AzureEventHubSchemaGroup = stackInput.Target
+	locals.NamespaceId = stackInput.Target.Spec.NamespaceId.GetValue()
+
+	// Schema groups carry no Azure tags: ARM does not support tags on
+	// Event Hubs entities, so the platform's identity tags live on the
+	// parent namespace.
+
+	return locals
+}

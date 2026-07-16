@@ -1,0 +1,30 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageObjectReplication
+metadata:
+  name: my-content-distribution
+spec:
+  sourceStorageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: <origin-account-resource-name>
+      fieldPath: status.outputs.storage_account_id
+  destinationStorageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: <regional-account-resource-name>
+      fieldPath: status.outputs.storage_account_id
+  rules:
+    # Forward-looking (OnlyNewObjects is the default) and scoped to one
+    # namespace prefix -- distribute just the published subset.
+    - sourceContainerName:
+        valueFrom:
+          kind: AzureStorageContainer
+          name: <source-container-resource-name>
+          fieldPath: status.outputs.container_name
+      destinationContainerName:
+        valueFrom:
+          kind: AzureStorageContainer
+          name: <destination-container-resource-name>
+          fieldPath: status.outputs.container_name
+      prefixMatch:
+        - published/

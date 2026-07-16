@@ -1,0 +1,40 @@
+# The environment's own network. VNet injection is what makes the rest
+# of the hardened posture possible: internal-only exposure, private
+# endpoints later, NFS volumes if the workloads ever need them -- none
+# of it can be retrofitted onto a networkless environment (the subnet
+# is fixed at creation).
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: "{{ values.env }}-capps-vnet"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-container-apps"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-capps-vnet"
+  addressSpaces:
+    - "{{ values.vnet_cidr }}"
+---
+# The infrastructure subnet the Container Apps platform occupies. Azure
+# mandates /21 or larger (2048+ IPs) and the Microsoft.App/environments
+# delegation -- the platform places its own load balancers, envoy
+# proxies, and app replicas inside it.
+apiVersion: azure.planton.dev/v1
+kind: AzureSubnet
+metadata:
+  name: "{{ values.env }}-capps-infra-subnet"
+spec:
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-capps-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  name: capps-infrastructure
+  addressPrefixes:
+    - "{{ values.infra_subnet_cidr }}"
+  delegations:
+    - name: capps-delegation
+      serviceName: Microsoft.App/environments

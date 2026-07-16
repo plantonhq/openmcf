@@ -1,0 +1,80 @@
+params:
+  # ─── Placement ───────────────────────────────────────────────────────────────
+  - name: region
+    description: Azure region for every resource in the estate (the web app must live in the same region as its service plan)
+    value: centralus
+
+  # ─── Network ─────────────────────────────────────────────────────────────────
+  - name: vnet_cidr
+    description: Address space of the application virtual network
+    value: 10.10.0.0/16
+
+  - name: app_subnet_cidr
+    description: CIDR of the App Service integration subnet, delegated to Microsoft.Web/serverFarms, inside vnet_cidr
+    value: 10.10.1.0/24
+
+  - name: db_subnet_cidr
+    description: CIDR of the PostgreSQL delegated subnet, inside vnet_cidr. Must not overlap app_subnet_cidr
+    value: 10.10.2.0/24
+
+  # ─── Application identity ────────────────────────────────────────────────────
+  - name: web_app_name
+    description: Globally unique Linux web app name (becomes <name>.azurewebsites.net). Change before deploying
+    value: my-prod-web-app
+
+  - name: key_vault_name
+    description: Globally unique Key Vault name (3-24 lowercase alphanumerics, no hyphens). Change before deploying
+    value: myprodwebappkv
+
+  # ─── Database credentials ────────────────────────────────────────────────────
+  - name: postgres_admin_login
+    description: PostgreSQL administrator login for password authentication
+    value: pgadmin
+
+  - name: postgres_admin_password
+    description: PostgreSQL administrator password (8-128 characters). MUST be changed before deploying -- nothing in the graph outputs a database password
+    value: ChangeMe-Prod-Web-App-2026!
+
+  # ─── Database posture ────────────────────────────────────────────────────────
+  - name: postgres_ha_enabled
+    description: Deploy PostgreSQL with zone-redundant high availability (ZONE_REDUNDANT). Off saves cost for non-production estates
+    value: true
+    type: bool
+
+  - name: postgres_sku_name
+    description: PostgreSQL Flexible Server SKU (General Purpose v4 is the production default)
+    value: GP_Standard_D2s_v3
+
+  # ─── Edge security ───────────────────────────────────────────────────────────
+  - name: front_door_waf_mode
+    description: "Front Door WAF enforcement mode: PREVENTION blocks malicious traffic; DETECTION logs only while tuning"
+    value: PREVENTION
+
+  # ─── Custom domain (optional) ────────────────────────────────────────────────
+  - name: custom_domain_enabled
+    description: Deploy a public DNS zone, Front Door custom domain, and the TXT/CNAME records that self-complete domain validation. Requires a registrar-delegated zone you control
+    value: false
+    type: bool
+
+  - name: dns_zone_name
+    description: The public DNS zone name (e.g. example.com) when custom_domain_enabled is true. MUST match a zone you can delegate at your registrar
+    value: example.com
+
+  - name: custom_domain_label
+    description: The subdomain label Front Door should serve when custom_domain_enabled is true (e.g. www serves www.<dns_zone_name>). Managed TLS is issued once the _dnsauth TXT record validates
+    value: www
+
+  # ─── Notification channels ───────────────────────────────────────────────────
+  - name: ops_email
+    description: Email address for routine operational alerts
+    value: ops@example.com
+
+  - name: critical_email
+    description: Email address for paging alerts (availability failures)
+    value: oncall@example.com
+
+  # ─── Telemetry ───────────────────────────────────────────────────────────────
+  - name: log_retention_days
+    description: Log Analytics workspace retention in days
+    value: 30
+    type: int

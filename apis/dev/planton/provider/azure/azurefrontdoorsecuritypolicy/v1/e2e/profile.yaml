@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurefrontdoorsecuritypolicy
+spec:
+  # The harness deploys the fixture resource group, the fixture Front
+  # Door profile + endpoint (registry prerequisites, transitive), and
+  # the fixture STANDARD WAF policy, then creates the security policy
+  # associating the WAF with the endpoint's default domain, verifies it
+  # via the ARM API, destroys it, and verifies it is gone -- on both
+  # provisioners. The profile fixture's ~18-minute deletion dominates
+  # (the Front Door family timing class): observed 1361s (pulumi) /
+  # 1463s (terraform) per run. Custom-domain association is covered
+  # offline only: a validated domain needs a delegated DNS zone the
+  # test subscription does not own.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 45

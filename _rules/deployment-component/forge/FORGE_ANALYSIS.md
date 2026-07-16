@@ -24,7 +24,6 @@ Based on rules 001-022:
 - ✅ Entrypoint files: `main.go`, `Pulumi.yaml`, `Makefile` (rule 010)
 - ✅ E2E testing (rule 011)
 - ✅ `README.md` (rule 012)
-- ✅ `debug.sh` (rule 012)
 
 #### IaC - Terraform
 - ✅ Module files: `variables.tf`, `provider.tf`, `locals.tf`, `main.tf`, `outputs.tf` (rule 013)
@@ -72,7 +71,7 @@ Based on rules 001-022:
 11. 008-hack-manifest.mdc - Generate test manifest
 12. 009-pulumi-module.mdc - Generate Pulumi module
 13. 010-pulumi-entrypoint.mdc - Generate Pulumi entrypoint
-14. 012-pulumi-docs.mdc - Generate iac/pulumi/README.md, debug.sh
+14. 012-pulumi-docs.mdc - Generate iac/pulumi/README.md
 15. 013-terraform-module.mdc - Generate Terraform module
 16. 015-terraform-docs.mdc - Generate iac/tf/README.md
 17. 022-presets.mdc - Generate initial presets (2-3 common configurations)

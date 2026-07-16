@@ -1,26 +1,26 @@
-# Public DNS Zone
+# Public Zone
 
-This preset creates an Azure DNS Zone for hosting public DNS records for a domain. The zone is created empty -- DNS records are managed separately via `AzureDnsRecord` resources or added inline via the `records` field. This zone-only approach gives you the most flexibility and is the standard starting point for DNS management in Azure.
+The 30-second public DNS zone: an empty, internet-facing zone for a domain you own, ready for records and registrar delegation. Azure's defaults cover the SOA record; governance tags carry your ownership conventions.
 
 ## When to Use
 
-- Hosting DNS for a public domain (e.g., `example.com`)
-- Migrating DNS management from another provider to Azure DNS
-- Setting up a DNS zone before creating individual records with `AzureDnsRecord`
+- Hosting a domain's DNS on Azure (new domain, or migrating from another provider)
+- The DNS foundation for custom-domain flows (Front Door, Container Apps) that publish validation records into the zone
+- A delegated subdomain zone a team manages independently (set `zoneName` to the subdomain)
 
 ## Key Configuration Choices
 
-- **Zone only, no inline records** -- Records are managed separately via `AzureDnsRecord` resources. This keeps the zone definition stable while records can change independently
-- **Public zone** -- For private DNS (internal VNet resolution), use `AzurePrivateDnsZone` instead
+- `zoneName` -- the domain, with no trailing dot; renaming replaces the zone and its records
+- `resourceGroup` -- management-plane scope only; resolution is unaffected
+- SOA settings are omitted deliberately -- Azure's defaults are right for nearly everyone
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
-| --- | --- | --- |
-| `<your-domain.com>` | Your DNS domain name (e.g., `example.com`) | Your domain registrar |
-| `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
+|---|---|---|
+| `example.com` | Replace with the domain the zone hosts | Your domain registrar account |
+| `<your-resource-group>` | The resource group name | `AzureResourceGroup.status.outputs.resource_group_name`, or the Azure portal |
 
 ## Related Presets
 
-- **AzureDnsRecord 01-a-record** -- Create an A record in this zone
-- **AzureDnsRecord 02-cname-record** -- Create a CNAME record in this zone
+- `02-delegation-ready-zone` -- adds SOA contact customization for operational tooling

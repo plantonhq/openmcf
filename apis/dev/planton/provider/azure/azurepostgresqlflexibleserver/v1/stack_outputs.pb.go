@@ -24,41 +24,43 @@ const (
 // **AzurePostgresqlFlexibleServerStackOutputs** captures the outputs of
 // provisioning an Azure Database for PostgreSQL Flexible Server.
 //
-// The primary outputs are `server_id` for resource identification, `fqdn`
-// for constructing connection strings, and `administrator_login` for
-// authentication. The `database_ids` map provides individual database
-// resource IDs for downstream references.
-//
-// In the database-stack infra chart, the `fqdn` and `administrator_login`
-// outputs are used by applications to construct PostgreSQL connection strings.
-// The `server_id` is referenced by AzurePrivateEndpoint for private connectivity.
+// `fqdn` + `administrator_login` are what applications need to construct
+// connection strings. `server_id` is the join key for everything that
+// attaches to or derives from the server: AzurePrivateEndpoint's
+// private_connection_resource_id, and another
+// AzurePostgresqlFlexibleServer's source_server_id when composing read
+// replicas or restores. `identity_principal_id` is the grant seam for the
+// server's system-assigned identity.
 type AzurePostgresqlFlexibleServerStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Manager ID of the PostgreSQL Flexible Server.
+	// The Azure Resource Manager ID of the server.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DBforPostgreSQL/flexibleServers/{name}
-	//
 	// Referenced by AzurePrivateEndpoint (private_connection_resource_id)
-	// for establishing private connectivity to the database server.
+	// and by replica/restore servers (source_server_id).
 	ServerId string `protobuf:"bytes,1,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
-	// The name of the PostgreSQL Flexible Server.
+	// The name of the server.
 	ServerName string `protobuf:"bytes,2,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`
-	// The fully qualified domain name of the PostgreSQL Flexible Server.
-	// Format: {name}.postgres.database.azure.com
+	// The server's fully qualified domain name
+	// ({name}.postgres.database.azure.com). For a VNet-injected server it
+	// resolves to the private address through the private DNS zone.
+	// Connection strings take the shape:
 	//
-	// Used to construct connection strings:
-	//
-	//	postgresql://{admin_login}:{password}@{fqdn}:5432/{database}?sslmode=require
+	//	postgresql://{login}:{password}@{fqdn}:5432/{database}?sslmode=require
 	Fqdn string `protobuf:"bytes,3,opt,name=fqdn,proto3" json:"fqdn,omitempty"`
-	// The administrator login name.
-	// Exported so downstream resources and applications can construct
-	// connection strings without needing to duplicate this value.
+	// The administrator login, echoed so applications can construct
+	// connection strings without duplicating the value. Empty on an
+	// Entra-only server (password auth disabled).
 	AdministratorLogin string `protobuf:"bytes,4,opt,name=administrator_login,json=administratorLogin,proto3" json:"administrator_login,omitempty"`
-	// Map of database names to their Azure Resource Manager IDs.
-	// Only populated for databases defined in the spec's `databases` field.
-	// Format: { "myapp": "/subscriptions/.../databases/myapp" }
-	DatabaseIds   map[string]string `protobuf:"bytes,5,rep,name=database_ids,json=databaseIds,proto3" json:"database_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The ARM ID of each database declared in the spec, keyed by database
+	// name.
+	// Example valueFrom fieldPath: status.outputs.database_ids.myapp
+	DatabaseIds map[string]string `protobuf:"bytes,5,rep,name=database_ids,json=databaseIds,proto3" json:"database_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The principal (directory object) ID of the server's system-assigned
+	// managed identity -- the subject for AzureRoleAssignment grants. Empty
+	// unless the identity type includes SYSTEM_ASSIGNED.
+	IdentityPrincipalId string `protobuf:"bytes,6,opt,name=identity_principal_id,json=identityPrincipalId,proto3" json:"identity_principal_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AzurePostgresqlFlexibleServerStackOutputs) Reset() {
@@ -126,18 +128,26 @@ func (x *AzurePostgresqlFlexibleServerStackOutputs) GetDatabaseIds() map[string]
 	return nil
 }
 
+func (x *AzurePostgresqlFlexibleServerStackOutputs) GetIdentityPrincipalId() string {
+	if x != nil {
+		return x.IdentityPrincipalId
+	}
+	return ""
+}
+
 var File_dev_planton_provider_azure_azurepostgresqlflexibleserver_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurepostgresqlflexibleserver_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Odev/planton/provider/azure/azurepostgresqlflexibleserver/v1/stack_outputs.proto\x12;dev.planton.provider.azure.azurepostgresqlflexibleserver.v1\"\x8b\x03\n" +
+	"Odev/planton/provider/azure/azurepostgresqlflexibleserver/v1/stack_outputs.proto\x12;dev.planton.provider.azure.azurepostgresqlflexibleserver.v1\"\xbf\x03\n" +
 	")AzurePostgresqlFlexibleServerStackOutputs\x12\x1b\n" +
 	"\tserver_id\x18\x01 \x01(\tR\bserverId\x12\x1f\n" +
 	"\vserver_name\x18\x02 \x01(\tR\n" +
 	"serverName\x12\x12\n" +
 	"\x04fqdn\x18\x03 \x01(\tR\x04fqdn\x12/\n" +
 	"\x13administrator_login\x18\x04 \x01(\tR\x12administratorLogin\x12\x9a\x01\n" +
-	"\fdatabase_ids\x18\x05 \x03(\v2w.dev.planton.provider.azure.azurepostgresqlflexibleserver.v1.AzurePostgresqlFlexibleServerStackOutputs.DatabaseIdsEntryR\vdatabaseIds\x1a>\n" +
+	"\fdatabase_ids\x18\x05 \x03(\v2w.dev.planton.provider.azure.azurepostgresqlflexibleserver.v1.AzurePostgresqlFlexibleServerStackOutputs.DatabaseIdsEntryR\vdatabaseIds\x122\n" +
+	"\x15identity_principal_id\x18\x06 \x01(\tR\x13identityPrincipalId\x1a>\n" +
 	"\x10DatabaseIdsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xe6\x03\n" +

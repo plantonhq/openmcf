@@ -24,10 +24,11 @@ const (
 )
 
 // AzureMysqlFlexibleServer is the top-level API resource for an Azure
-// Database for MySQL Flexible Server.
-// Azure Database for MySQL Flexible Server is a fully managed relational
-// database service with granular control over compute, storage, high availability,
-// and networking. Supports MySQL 5.7, 8.0.21, and 8.4.
+// Database for MySQL Flexible Server: Azure's managed MySQL with
+// per-server compute/storage sizing, zone-redundant high availability,
+// Microsoft Entra administration, customer-managed-key encryption, read
+// replicas, and point-in-time restore. Supports MySQL 5.7, 8.0.21 (the
+// 8.0 series), and 8.4.
 type AzureMysqlFlexibleServer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version

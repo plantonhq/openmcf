@@ -2,54 +2,41 @@
 
 ## Overview
 
-This Pulumi module provisions an Azure User-Assigned Managed Identity with optional
-RBAC role assignments using the Azure Classic provider (`pulumi-azure`). It creates
-a `authorization.UserAssignedIdentity` resource and zero or more
-`authorization.Assignment` resources based on the spec's `role_assignments` list.
+This Pulumi module provisions a user-assigned managed identity using the
+Azure Classic provider (`pulumi-azure`). It creates a single
+`authorization.UserAssignedIdentity`: the standalone, credential-free Azure
+AD identity workloads authenticate as.
+
+Tags and isolation scope update in place; the name, region, and resource
+group are the identity's ARM identity, so changing any of them replaces it --
+minting a NEW principal and client ID that invalidates existing grants and
+federated trust rules. The identity is deliberately just the identity:
+grants live in `AzureRoleAssignment` and keyless trust rules in
+`AzureFederatedIdentityCredential`, both referencing this module's outputs.
 
 ## Resources Created
 
 - `authorization.UserAssignedIdentity` -- the managed identity
-- `authorization.Assignment` (N) -- one per role assignment in the spec
 
 ## Inputs
 
 The module receives an `AzureUserAssignedIdentityStackInput` containing:
 
-- `target.spec.region` -- Azure region
-- `target.spec.resource_group` -- resource group name (resolved from StringValueOrRef)
-- `target.spec.name` -- identity name
-- `target.spec.role_assignments` -- list of scope + role_definition_name pairs
-- `target.metadata` -- Planton metadata for tagging
-- `provider_config` -- Azure credentials
+- `target.spec.region` -- the Azure region (a regional resource)
+- `target.spec.resource_group` -- the resource group name (references resolved to a literal by the platform)
+- `target.spec.name` -- the identity's name, unique within the resource group
+- `target.spec.isolation_scope` -- optional opt-in regional isolation
+- `target.spec.tags` -- user tags merged over the metadata-derived tags (user wins)
+- `provider_config` -- Azure credentials (static client secret, keyless web identity, or ambient chain)
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `identity_id` | Azure Resource Manager ID of the identity |
-| `principal_id` | Service Principal Object ID |
-| `client_id` | Application/Client ID |
-| `tenant_id` | Azure AD Tenant ID |
-
-## Key Implementation Details
-
-### Role Assignment Naming
-
-Role assignments are named `{identity-name}-ra-{index}` to ensure uniqueness within
-the Pulumi stack. The index corresponds to the position in the `role_assignments` list.
-
-### AAD Replication Handling
-
-`SkipServicePrincipalAadCheck` is set to `true` on all role assignments. Azure AD
-replication is eventually consistent -- after creating a managed identity, there can
-be a delay before the principal is visible for role assignment. Setting this flag
-avoids 403 errors during creation.
-
-### DependsOn
-
-All role assignments explicitly depend on the identity resource to ensure the
-principal ID is available before Azure attempts to create the role binding.
+| `identity_id` | ARM ID of the identity (what consumers and federated credentials attach to) |
+| `principal_id` | Service principal object ID (what role assignments grant to) |
+| `client_id` | Client/application ID (what workloads present to authenticate) |
+| `tenant_id` | Azure AD tenant ID |
 
 ## Local Development
 

@@ -1,39 +1,47 @@
 # AzurePostgresqlFlexibleServer - Pulumi Module
 
-Pulumi implementation for the AzurePostgresqlFlexibleServer deployment component.
+Pulumi implementation for the AzurePostgresqlFlexibleServer deployment
+component.
 
 ## Architecture
 
-The module creates three types of Azure resources:
-
-1. **Flexible Server** (`postgresql.FlexibleServer`) -- The PostgreSQL server instance
-2. **Databases** (`postgresql.FlexibleServerDatabase`) -- Application databases on the server
-3. **Firewall Rules** (`postgresql.FlexibleServerFirewallRule`) -- IP-based access rules
-
-## Resource Dependencies
-
 ```
-FlexibleServer
-├── FlexibleServerDatabase (per database, DependsOn: server)
-└── FlexibleServerFirewallRule (per rule, DependsOn: server)
+postgresql.FlexibleServer
+├── postgresql.FlexibleServerDatabase (per databases entry, Parent: server)
+├── postgresql.FlexibleServerFirewallRule (per firewall_rules entry, Parent: server)
+├── postgresql.FlexibleServerConfiguration (per server_parameters entry, Parent: server)
+└── postgresql.FlexibleServerActiveDirectoryAdministrator (per aad_administrators entry, Parent: server)
 ```
+
+The deploying credential's client configuration (`core.GetClientConfig`)
+supplies the tenant fallback for Entra authentication and administrator
+grants when the spec does not pin one.
 
 ## Key Design Decisions
 
-### Network Mode (C10)
+- **Create-mode enums map through exhaustive vocabularies** in `locals.go`
+  (create mode, HA mode, identity type, principal type) -- unspecified
+  create_mode is not sent at all, matching the Terraform module's null.
+- **`version` is only sent for a fresh (DEFAULT) server** -- replicas and
+  restores inherit the source's version, so materializing the spec default
+  onto them would fight the service.
+- **Presence guards on every optional-with-default field** (version,
+  public_network_access_enabled, backup_retention_days,
+  authentication.password_auth_enabled, database charset/collation): stack
+  inputs built from a manifest do not materialize proto defaults, so unset
+  falls back to the documented default explicitly.
+- **`replication_role` is day-2 only** -- Azure rejects it at creation; the
+  only legal update value ("None") promotes a replica in place.
+- **`identity_principal_id` is exported conditionally** -- populated only
+  when the identity type includes SYSTEM_ASSIGNED, empty otherwise,
+  matching the Terraform module's conditional output.
 
-Public vs private access is determined by `delegated_subnet_id`:
-- Set --> `PublicNetworkAccessEnabled = false` (private VNet access)
-- Not set --> `PublicNetworkAccessEnabled = true` (public, firewall rules apply)
+## Provider
 
-### Authentication
-
-Password auth is always enabled. AAD auth is omitted for v1 (80/20).
-
-### Storage
-
-Uses `StorageMb` (Azure's native unit). Cannot be downgraded.
-`AutoGrowEnabled` available for unpredictable growth patterns.
+The Azure provider is built by the shared
+`pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)` builder, which
+dispatches static client-secret, keyless (web identity), and ambient
+credential chains. Never construct the provider inline.
 
 ## Running Locally
 
@@ -43,12 +51,4 @@ make build
 
 # Run with Pulumi
 make run
-
-# Debug
-./debug.sh
 ```
-
-## Provider
-
-Uses `pulumi-azure` v6 classic provider (`github.com/pulumi/pulumi-azure/sdk/v6/go/azure/postgresql`),
-consistent with all other Azure modules in Planton.

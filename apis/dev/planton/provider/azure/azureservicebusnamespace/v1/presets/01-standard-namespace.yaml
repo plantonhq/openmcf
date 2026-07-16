@@ -1,0 +1,18 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusNamespace
+metadata:
+  name: my-app-bus
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: my-messaging-rg
+      fieldPath: status.outputs.resource_group_name
+  # Globally unique -- becomes {name}.servicebus.windows.net.
+  namespaceName: myorg-app-bus
+  # STANDARD is also the spec default -- stated explicitly because the
+  # tier is the one decision every namespace owner must make.
+  sku: STANDARD
+  tags:
+    purpose: order-processing

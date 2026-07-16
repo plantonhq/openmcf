@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureapplicationinsightsstandardwebtest.v1;
+
+// **AzureApplicationInsightsStandardWebTestStackOutputs** captures the
+// outputs of provisioning an Application Insights Standard Web Test.
+message AzureApplicationInsightsStandardWebTestStackOutputs {
+  // The Azure Resource Manager ID of the web test. This is the seam an
+  // AzureMonitorMetricAlert references (web_test_id) to alert on the test's
+  // availability.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/webTests/{name}
+  string web_test_id = 1;
+
+  // The name of the web test resource.
+  string web_test_name = 2;
+
+  // The synthetic monitor id Azure assigns the test -- the id availability
+  // metrics and the portal use to identify the monitor.
+  string synthetic_monitor_id = 3;
+}

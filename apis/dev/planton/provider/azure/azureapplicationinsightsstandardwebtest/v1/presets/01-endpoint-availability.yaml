@@ -1,0 +1,29 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureApplicationInsightsStandardWebTest
+metadata:
+  name: my-endpoint-web-test
+spec:
+  resourceGroup:
+    value: <resource-group-name>
+  name: homepage-health
+  region: eastus
+  applicationInsightsId:
+    valueFrom:
+      name: <application-insights>
+  frequency: 300
+  timeout: 30
+  retryEnabled: true
+  request:
+    # Replace with your endpoint. Must stay https: the SSL checks below
+    # are rejected on plain-http URLs.
+    url: https://www.example.com/health
+    httpVerb: GET
+  validationRules:
+    expectedStatusCode: 200
+    sslCheckEnabled: true
+    sslCertRemainingLifetime: 30
+  geoLocations:
+    - us-tx-sn1-azr
+    - us-va-ash-azr
+    - emea-nl-ams-azr
+  description: Multi-region availability check for the public endpoint

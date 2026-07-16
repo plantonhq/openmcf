@@ -24,49 +24,61 @@ const (
 // **AzureRedisCacheStackOutputs** captures the outputs of provisioning an
 // Azure Cache for Redis instance.
 //
-// The primary outputs are `hostname` and `primary_connection_string` for
-// application connectivity, and `redis_id` for downstream resource references
-// (e.g., AzurePrivateEndpoint).
+// For application connectivity, `primary_connection_string` is the
+// ready-to-use answer (host, SSL port, and key in one string). Frameworks
+// that want separate values compose `hostname`, `ssl_port`, and
+// `primary_access_key`. Keyless (Entra) clients need only `hostname` --
+// they authenticate with tokens under access-policy assignments instead of
+// keys.
 //
-// The `primary_connection_string` contains the host, SSL port, and access key
-// in a ready-to-use format:
-//
-//	`{hostname}:{ssl_port},password={primary_access_key},ssl=True,abortConnect=False`
-//
-// Applications should use `primary_connection_string` when possible. For
-// frameworks that require separate host/port/password values, use `hostname`,
-// `ssl_port`, and `primary_access_key` individually.
+// The access keys and connection strings are SECRET-BEARING: treat any
+// output that embeds them as a credential in downstream configuration.
 type AzureRedisCacheStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Azure Resource Manager ID of the Redis cache.
-	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Cache/Redis/{name}
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Cache/redis/{name}
 	//
-	// Referenced by AzurePrivateEndpoint (private_connection_resource_id)
-	// for establishing private connectivity to the cache.
-	RedisId string `protobuf:"bytes,1,opt,name=redis_id,json=redisId,proto3" json:"redis_id,omitempty"`
-	// The hostname of the Redis cache.
-	// Format: {name}.redis.cache.windows.net
-	//
-	// Used to construct connection strings or configure Redis clients directly.
-	Hostname string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	// The SSL port of the Redis cache.
-	// Always 6380 for Azure Cache for Redis.
-	SslPort int32 `protobuf:"varint,3,opt,name=ssl_port,json=sslPort,proto3" json:"ssl_port,omitempty"`
-	// The primary access key for authentication.
-	// Used as the password in Redis connection strings and client configurations.
-	//
-	// Sensitive: treat as a secret in downstream configurations.
-	PrimaryAccessKey string `protobuf:"bytes,4,opt,name=primary_access_key,json=primaryAccessKey,proto3" json:"primary_access_key,omitempty"`
-	// The primary connection string for the Redis cache.
-	// Format: {hostname}:{ssl_port},password={key},ssl=True,abortConnect=False
-	//
-	// This is the recommended way to connect to the cache. Most Redis client
-	// libraries and frameworks accept this format directly.
-	//
-	// Sensitive: contains the access key.
-	PrimaryConnectionString string `protobuf:"bytes,5,opt,name=primary_connection_string,json=primaryConnectionString,proto3" json:"primary_connection_string,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// The reference target for everything that composes with the cache:
+	// AzureRedisLinkedServer (geo-replication), AzureRedisCacheAccessPolicy
+	// and AzureRedisCacheAccessPolicyAssignment (Entra data-plane RBAC), and
+	// AzurePrivateEndpoint (private connectivity).
+	RedisCacheId string `protobuf:"bytes,1,opt,name=redis_cache_id,json=redisCacheId,proto3" json:"redis_cache_id,omitempty"`
+	// The cache's name -- the DNS label of the endpoint and the value
+	// sibling resources address the cache by within its resource group.
+	RedisCacheName string `protobuf:"bytes,2,opt,name=redis_cache_name,json=redisCacheName,proto3" json:"redis_cache_name,omitempty"`
+	// The Azure region the cache lives in. AzureRedisLinkedServer references
+	// this as the linked cache's location, so geo-replication composes
+	// without hand-repeating the region.
+	Region string `protobuf:"bytes,3,opt,name=region,proto3" json:"region,omitempty"`
+	// The resource group the cache lives in.
+	ResourceGroupName string `protobuf:"bytes,4,opt,name=resource_group_name,json=resourceGroupName,proto3" json:"resource_group_name,omitempty"`
+	// The cache's DNS hostname: {cache_name}.redis.cache.windows.net.
+	// Keyless (Entra) clients need only this -- tokens replace keys.
+	Hostname string `protobuf:"bytes,5,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	// The plaintext non-SSL port (6379). Only open when
+	// non_ssl_port_enabled is true.
+	Port int32 `protobuf:"varint,6,opt,name=port,proto3" json:"port,omitempty"`
+	// The TLS port (6380) -- the port every production client should use.
+	SslPort int32 `protobuf:"varint,7,opt,name=ssl_port,json=sslPort,proto3" json:"ssl_port,omitempty"`
+	// The primary access key (a SECRET). Used as the password in Redis
+	// connection strings. Empty when access-keys authentication is disabled.
+	PrimaryAccessKey string `protobuf:"bytes,8,opt,name=primary_access_key,json=primaryAccessKey,proto3" json:"primary_access_key,omitempty"`
+	// The secondary access key (a SECRET). Kept live so clients can be
+	// rotated to it while the primary is regenerated, and vice versa --
+	// zero-downtime key rotation.
+	SecondaryAccessKey string `protobuf:"bytes,9,opt,name=secondary_access_key,json=secondaryAccessKey,proto3" json:"secondary_access_key,omitempty"`
+	// Ready-to-use primary connection string (a SECRET -- embeds the
+	// primary key): {hostname}:{ssl_port},password={key},ssl=True,abortConnect=False
+	PrimaryConnectionString string `protobuf:"bytes,10,opt,name=primary_connection_string,json=primaryConnectionString,proto3" json:"primary_connection_string,omitempty"`
+	// Ready-to-use secondary connection string (a SECRET -- embeds the
+	// secondary key), for the rotation window.
+	SecondaryConnectionString string `protobuf:"bytes,11,opt,name=secondary_connection_string,json=secondaryConnectionString,proto3" json:"secondary_connection_string,omitempty"`
+	// The system-assigned identity's principal (object) ID -- what RBAC
+	// grants target when the identity block requests SYSTEM_ASSIGNED. Empty
+	// otherwise.
+	IdentityPrincipalId string `protobuf:"bytes,12,opt,name=identity_principal_id,json=identityPrincipalId,proto3" json:"identity_principal_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AzureRedisCacheStackOutputs) Reset() {
@@ -99,9 +111,30 @@ func (*AzureRedisCacheStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurerediscache_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AzureRedisCacheStackOutputs) GetRedisId() string {
+func (x *AzureRedisCacheStackOutputs) GetRedisCacheId() string {
 	if x != nil {
-		return x.RedisId
+		return x.RedisCacheId
+	}
+	return ""
+}
+
+func (x *AzureRedisCacheStackOutputs) GetRedisCacheName() string {
+	if x != nil {
+		return x.RedisCacheName
+	}
+	return ""
+}
+
+func (x *AzureRedisCacheStackOutputs) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+func (x *AzureRedisCacheStackOutputs) GetResourceGroupName() string {
+	if x != nil {
+		return x.ResourceGroupName
 	}
 	return ""
 }
@@ -111,6 +144,13 @@ func (x *AzureRedisCacheStackOutputs) GetHostname() string {
 		return x.Hostname
 	}
 	return ""
+}
+
+func (x *AzureRedisCacheStackOutputs) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
 }
 
 func (x *AzureRedisCacheStackOutputs) GetSslPort() int32 {
@@ -127,9 +167,30 @@ func (x *AzureRedisCacheStackOutputs) GetPrimaryAccessKey() string {
 	return ""
 }
 
+func (x *AzureRedisCacheStackOutputs) GetSecondaryAccessKey() string {
+	if x != nil {
+		return x.SecondaryAccessKey
+	}
+	return ""
+}
+
 func (x *AzureRedisCacheStackOutputs) GetPrimaryConnectionString() string {
 	if x != nil {
 		return x.PrimaryConnectionString
+	}
+	return ""
+}
+
+func (x *AzureRedisCacheStackOutputs) GetSecondaryConnectionString() string {
+	if x != nil {
+		return x.SecondaryConnectionString
+	}
+	return ""
+}
+
+func (x *AzureRedisCacheStackOutputs) GetIdentityPrincipalId() string {
+	if x != nil {
+		return x.IdentityPrincipalId
 	}
 	return ""
 }
@@ -138,13 +199,21 @@ var File_dev_planton_provider_azure_azurerediscache_v1_stack_outputs_proto proto
 
 const file_dev_planton_provider_azure_azurerediscache_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/azure/azurerediscache/v1/stack_outputs.proto\x12-dev.planton.provider.azure.azurerediscache.v1\"\xd9\x01\n" +
-	"\x1bAzureRedisCacheStackOutputs\x12\x19\n" +
-	"\bredis_id\x18\x01 \x01(\tR\aredisId\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname\x12\x19\n" +
-	"\bssl_port\x18\x03 \x01(\x05R\asslPort\x12,\n" +
-	"\x12primary_access_key\x18\x04 \x01(\tR\x10primaryAccessKey\x12:\n" +
-	"\x19primary_connection_string\x18\x05 \x01(\tR\x17primaryConnectionStringB\x84\x03\n" +
+	"Adev/planton/provider/azure/azurerediscache/v1/stack_outputs.proto\x12-dev.planton.provider.azure.azurerediscache.v1\"\x90\x04\n" +
+	"\x1bAzureRedisCacheStackOutputs\x12$\n" +
+	"\x0eredis_cache_id\x18\x01 \x01(\tR\fredisCacheId\x12(\n" +
+	"\x10redis_cache_name\x18\x02 \x01(\tR\x0eredisCacheName\x12\x16\n" +
+	"\x06region\x18\x03 \x01(\tR\x06region\x12.\n" +
+	"\x13resource_group_name\x18\x04 \x01(\tR\x11resourceGroupName\x12\x1a\n" +
+	"\bhostname\x18\x05 \x01(\tR\bhostname\x12\x12\n" +
+	"\x04port\x18\x06 \x01(\x05R\x04port\x12\x19\n" +
+	"\bssl_port\x18\a \x01(\x05R\asslPort\x12,\n" +
+	"\x12primary_access_key\x18\b \x01(\tR\x10primaryAccessKey\x120\n" +
+	"\x14secondary_access_key\x18\t \x01(\tR\x12secondaryAccessKey\x12:\n" +
+	"\x19primary_connection_string\x18\n" +
+	" \x01(\tR\x17primaryConnectionString\x12>\n" +
+	"\x1bsecondary_connection_string\x18\v \x01(\tR\x19secondaryConnectionString\x122\n" +
+	"\x15identity_principal_id\x18\f \x01(\tR\x13identityPrincipalIdB\x84\x03\n" +
 	"1com.dev.planton.provider.azure.azurerediscache.v1B\x11StackOutputsProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurerediscache/v1;azurerediscachev1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Azure.Azurerediscache.V1\xca\x02-Dev\\Planton\\Provider\\Azure\\Azurerediscache\\V1\xe2\x029Dev\\Planton\\Provider\\Azure\\Azurerediscache\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Azure::Azurerediscache::V1b\x06proto3"
 
 var (

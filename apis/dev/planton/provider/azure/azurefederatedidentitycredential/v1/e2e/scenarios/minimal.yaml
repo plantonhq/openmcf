@@ -1,0 +1,37 @@
+# Minimal AzureFederatedIdentityCredential scenario: a GitHub-Actions-shaped
+# trust rule on the fixture identity.
+#
+# The parent reference resolves against the registry prerequisite's captured
+# outputs through the field's default kind (AzureUserAssignedIdentity -> the
+# fixture identity's ARM id), keeping the scenario fully registry-driven --
+# no literal subscription ids. The issuer/subject encode the exact
+# GitHub-OIDC shape users deploy; nothing external needs to exist for the
+# credential to be written (Azure validates the trust rule's syntax, not the
+# issuer's reachability, at write time). audience is omitted to exercise the
+# spec's declared default (api://AzureADTokenExchange) through both engines.
+apiVersion: azure.planton.dev/v1
+kind: AzureFederatedIdentityCredential
+metadata:
+  name: planton-oss-e2e-azurefederatedidentitycredential-smoke
+  id: planton-oss-e2e-azurefederatedidentitycredential-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefederatedidentitycredential
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  name: planton-oss-e2e-github-main
+  userAssignedIdentity:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-identity
+  # A literal issuer exercises the value form of the literal-or-reference
+  # field; the reference form (an AKS cluster's oidc_issuer_url output) is
+  # not exercised here because provisioning a cluster fixture would dominate
+  # the scenario's runtime without changing what this write validates.
+  issuer:
+    value: https://token.actions.githubusercontent.com
+  subject: repo:planton-oss/e2e-smoke:ref:refs/heads/main

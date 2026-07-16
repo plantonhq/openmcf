@@ -15,271 +15,159 @@ func TestAzureSubnetSpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "AzureSubnetSpec Validation Tests")
 }
 
+// literal builds a StringValueOrRef carrying a literal value.
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+// ref builds a StringValueOrRef carrying a value_from reference.
+func ref(name string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{Name: name},
+		},
+	}
+}
+
+const testVirtualNetworkId = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet"
+
+// validResource returns a minimal valid AzureSubnet that individual cases
+// then mutate into the shape under test.
+func validResource() *AzureSubnet {
+	return &AzureSubnet{
+		ApiVersion: "azure.planton.dev/v1",
+		Kind:       "AzureSubnet",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "test-subnet",
+		},
+		Spec: &AzureSubnetSpec{
+			VirtualNetworkId: literal(testVirtualNetworkId),
+			Name:             "my-subnet",
+			AddressPrefixes:  []string{"10.0.1.0/24"},
+		},
+	}
+}
+
 var _ = ginkgo.Describe("AzureSubnetSpec Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
 		ginkgo.Context("azure_subnet", func() {
 
 			ginkgo.It("should not return a validation error for minimal valid fields", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:          "my-subnet",
-						AddressPrefix: "10.0.1.0/24",
-					},
+				err := protovalidate.Validate(validResource())
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept the virtual network as a reference", func() {
+				input := validResource()
+				input.Spec.VirtualNetworkId = ref("prod-vnet")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept multiple address prefixes (dual-stack)", func() {
+				input := validResource()
+				input.Spec.AddressPrefixes = []string{"10.0.1.0/24", "fd00:db8:deca:1::/64"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept an IPAM pool instead of address prefixes", func() {
+				input := validResource()
+				input.Spec.AddressPrefixes = nil
+				input.Spec.IpAddressPool = &AzureSubnetIpAddressPool{
+					Id:                  "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/networkManagers/nm/ipamPools/pool1",
+					NumberOfIpAddresses: "256",
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with full metadata", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "prod-db-subnet",
-						Org:  "mycompany",
-						Env:  "production",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "prod-network-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-network-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet",
-							},
-						},
-						Name:          "prod-db-subnet",
-						AddressPrefix: "10.0.2.0/24",
-					},
+			ginkgo.It("should accept service endpoints with policy ids", func() {
+				input := validResource()
+				input.Spec.ServiceEndpoints = []string{"Microsoft.Storage", "Microsoft.Sql"}
+				input.Spec.ServiceEndpointPolicyIds = []string{
+					"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/serviceEndpointPolicies/storage-only",
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with service endpoints", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:             "my-subnet",
-						AddressPrefix:    "10.0.1.0/24",
-						ServiceEndpoints: []string{"Microsoft.Sql", "Microsoft.Storage", "Microsoft.KeyVault"},
-					},
+			ginkgo.It("should accept a delegation without actions", func() {
+				input := validResource()
+				input.Spec.Delegations = []*AzureSubnetDelegation{
+					{Name: "container-apps", ServiceName: "Microsoft.App/environments"},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with delegation", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
+			ginkgo.It("should accept multiple delegations with actions", func() {
+				input := validResource()
+				input.Spec.Delegations = []*AzureSubnetDelegation{
+					{
+						Name:        "postgresql",
+						ServiceName: "Microsoft.DBforPostgreSQL/flexibleServers",
+						Actions:     []string{"Microsoft.Network/virtualNetworks/subnets/join/action"},
 					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:          "pg-delegated-subnet",
-						AddressPrefix: "10.0.3.0/24",
-						Delegation: &AzureSubnetDelegation{
-							Name:        "postgresql",
-							ServiceName: "Microsoft.DBforPostgreSQL/flexibleServers",
-							Actions:     []string{"Microsoft.Network/virtualNetworks/subnets/action"},
-						},
-					},
+					{Name: "netapp", ServiceName: "Microsoft.Netapp/volumes"},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with delegation without actions", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:          "cae-subnet",
-						AddressPrefix: "10.0.4.0/23",
-						Delegation: &AzureSubnetDelegation{
-							Name:        "container-apps",
-							ServiceName: "Microsoft.App/environments",
-						},
-					},
+			ginkgo.It("should accept every private endpoint network policy mode", func() {
+				for _, mode := range []AzureSubnetPrivateEndpointNetworkPolicies{
+					AzureSubnetPrivateEndpointNetworkPolicies_ENABLED,
+					AzureSubnetPrivateEndpointNetworkPolicies_NETWORK_SECURITY_GROUP_ENABLED,
+					AzureSubnetPrivateEndpointNetworkPolicies_ROUTE_TABLE_ENABLED,
+				} {
+					input := validResource()
+					input.Spec.PrivateEndpointNetworkPolicies = mode
+					err := protovalidate.Validate(input)
+					gomega.Expect(err).To(gomega.BeNil())
 				}
+			})
+
+			ginkgo.It("should accept private link service network policies disabled", func() {
+				input := validResource()
+				disabled := false
+				input.Spec.PrivateLinkServiceNetworkPoliciesEnabled = &disabled
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with private_endpoint_network_policies set to Enabled", func() {
-				penp := "Enabled"
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:                           "pe-subnet",
-						AddressPrefix:                  "10.0.5.0/24",
-						PrivateEndpointNetworkPolicies: &penp,
-					},
-				}
+			ginkgo.It("should accept disabling default outbound access", func() {
+				input := validResource()
+				disabled := false
+				input.Spec.DefaultOutboundAccessEnabled = &disabled
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with private_endpoint_network_policies set to NetworkSecurityGroupEnabled", func() {
-				penp := "NetworkSecurityGroupEnabled"
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:                           "nsg-pe-subnet",
-						AddressPrefix:                  "10.0.6.0/24",
-						PrivateEndpointNetworkPolicies: &penp,
-					},
-				}
+			ginkgo.It("should accept tenant sharing scope when default outbound access is explicitly false", func() {
+				input := validResource()
+				disabled := false
+				input.Spec.DefaultOutboundAccessEnabled = &disabled
+				input.Spec.SharingScope = AzureSubnetSharingScope_TENANT
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with private_link_service_network_policies_enabled set to false", func() {
-				plsnpe := false
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:                                     "pls-subnet",
-						AddressPrefix:                            "10.0.7.0/24",
-						PrivateLinkServiceNetworkPoliciesEnabled: &plsnpe,
-					},
-				}
+			ginkgo.It("should accept the route table attachment as a reference", func() {
+				input := validResource()
+				input.Spec.RouteTableId = ref("egress-firewall-routes")
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with all fields populated", func() {
-				penp := "Disabled"
-				plsnpe := true
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "full-subnet",
-						Org:  "mycompany",
-						Env:  "production",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "prod-network-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-network-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet",
-							},
-						},
-						Name:             "prod-app-subnet",
-						AddressPrefix:    "10.0.10.0/24",
-						ServiceEndpoints: []string{"Microsoft.Sql", "Microsoft.Storage"},
-						Delegation: &AzureSubnetDelegation{
-							Name:        "web",
-							ServiceName: "Microsoft.Web/serverFarms",
-							Actions:     []string{"Microsoft.Network/virtualNetworks/subnets/action"},
-						},
-						PrivateEndpointNetworkPolicies:           &penp,
-						PrivateLinkServiceNetworkPoliciesEnabled: &plsnpe,
-					},
-				}
+			ginkgo.It("should accept all three attachments together", func() {
+				input := validResource()
+				input.Spec.RouteTableId = literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/routeTables/rt")
+				input.Spec.NetworkSecurityGroupId = literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/networkSecurityGroups/nsg")
+				input.Spec.NatGatewayId = literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/natGateways/nat")
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -289,297 +177,131 @@ var _ = ginkgo.Describe("AzureSubnetSpec Validation Tests", func() {
 	ginkgo.Describe("When invalid input is passed", func() {
 		ginkgo.Context("azure_subnet", func() {
 
-			ginkgo.It("should return a validation error when resource_group is missing", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:          "my-subnet",
-						AddressPrefix: "10.0.1.0/24",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when vnet_id is missing", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name:          "my-subnet",
-						AddressPrefix: "10.0.1.0/24",
-					},
-				}
+			ginkgo.It("should return a validation error when virtual_network_id is missing", func() {
+				input := validResource()
+				input.Spec.VirtualNetworkId = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when name is missing", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						AddressPrefix: "10.0.1.0/24",
-					},
-				}
+				input := validResource()
+				input.Spec.Name = ""
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when name exceeds maximum length", func() {
+			ginkgo.It("should return a validation error when name exceeds 80 characters", func() {
+				input := validResource()
 				tooLongName := ""
 				for len(tooLongName) < 81 {
 					tooLongName += "a"
 				}
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:          tooLongName,
-						AddressPrefix: "10.0.1.0/24",
-					},
+				input.Spec.Name = tooLongName
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when name starts with a non-alphanumeric character", func() {
+				input := validResource()
+				input.Spec.Name = "-bad-name"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when name ends with a period", func() {
+				input := validResource()
+				input.Spec.Name = "bad-name."
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when no address source is set", func() {
+				input := validResource()
+				input.Spec.AddressPrefixes = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when both address sources are set", func() {
+				input := validResource()
+				input.Spec.IpAddressPool = &AzureSubnetIpAddressPool{
+					Id:                  "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/networkManagers/nm/ipamPools/pool1",
+					NumberOfIpAddresses: "256",
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when address_prefix is missing", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name: "my-subnet",
-					},
+			ginkgo.It("should return a validation error when the IPAM pool count is not a positive number", func() {
+				input := validResource()
+				input.Spec.AddressPrefixes = nil
+				input.Spec.IpAddressPool = &AzureSubnetIpAddressPool{
+					Id:                  "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/networkManagers/nm/ipamPools/pool1",
+					NumberOfIpAddresses: "0",
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when private_endpoint_network_policies has invalid value", func() {
-				invalid := "InvalidValue"
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:                           "my-subnet",
-						AddressPrefix:                  "10.0.1.0/24",
-						PrivateEndpointNetworkPolicies: &invalid,
-					},
+			ginkgo.It("should return a validation error when a delegation is missing its name", func() {
+				input := validResource()
+				input.Spec.Delegations = []*AzureSubnetDelegation{
+					{ServiceName: "Microsoft.DBforPostgreSQL/flexibleServers"},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when delegation name is missing", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:          "my-subnet",
-						AddressPrefix: "10.0.1.0/24",
-						Delegation: &AzureSubnetDelegation{
-							ServiceName: "Microsoft.DBforPostgreSQL/flexibleServers",
-						},
-					},
+			ginkgo.It("should return a validation error when a delegation is missing its service name", func() {
+				input := validResource()
+				input.Spec.Delegations = []*AzureSubnetDelegation{
+					{Name: "postgresql"},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when delegation service_name is missing", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:          "my-subnet",
-						AddressPrefix: "10.0.1.0/24",
-						Delegation: &AzureSubnetDelegation{
-							Name: "postgresql",
-						},
-					},
-				}
+			ginkgo.It("should return a validation error when sharing scope is set without disabling default outbound access", func() {
+				input := validResource()
+				input.Spec.SharingScope = AzureSubnetSharingScope_TENANT
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when sharing scope is set with default outbound access explicitly true", func() {
+				input := validResource()
+				enabled := true
+				input.Spec.DefaultOutboundAccessEnabled = &enabled
+				input.Spec.SharingScope = AzureSubnetSharingScope_TENANT
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when api_version is incorrect", func() {
-				input := &AzureSubnet{
-					ApiVersion: "wrong.version/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:          "my-subnet",
-						AddressPrefix: "10.0.1.0/24",
-					},
-				}
+				input := validResource()
+				input.ApiVersion = "wrong.version/v1"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when kind is incorrect", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "WrongKind",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:          "my-subnet",
-						AddressPrefix: "10.0.1.0/24",
-					},
-				}
+				input := validResource()
+				input.Kind = "WrongKind"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when metadata is missing", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Spec: &AzureSubnetSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						Name:          "my-subnet",
-						AddressPrefix: "10.0.1.0/24",
-					},
-				}
+				input := validResource()
+				input.Metadata = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when spec is missing", func() {
-				input := &AzureSubnet{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureSubnet",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-subnet",
-					},
-				}
+				input := validResource()
+				input.Spec = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

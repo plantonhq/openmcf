@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppEnvironmentManagedCertificate
+metadata:
+  name: my-http-validated-cert
+spec:
+  certificateName: example-com
+  containerAppEnvironmentId:
+    valueFrom:
+      kind: AzureContainerAppEnvironment
+      name: <your-environment>
+      fieldPath: status.outputs.environment_id
+  subjectName: example.com
+  # HTTP validation: Azure serves a token over HTTP on the domain --
+  # the method for apex domains, which route by A record and cannot
+  # CNAME.
+  domainControlValidation: HTTP

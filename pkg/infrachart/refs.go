@@ -34,11 +34,32 @@ func (e RefError) Error() string {
 // StringValueOrRef as a leaf) so a chart accepted offline is accepted at publish time.
 func CheckValueFromRefs(manifest proto.Message) []RefError {
 	var errs []RefError
-	walkMessage(manifest.ProtoReflect(), "", &errs)
+	walkRefs(manifest.ProtoReflect(), "", func(path string, vf *foreignkeyv1.ValueFromRef) {
+		checkRef(vf, path, &errs)
+	})
 	return errs
 }
 
-func walkMessage(m protoreflect.Message, prefix string, out *[]RefError) {
+// collectValueFromRefs returns every populated valueFrom reference in a loaded
+// manifest with its field path -- the raw sites, unvalidated, for checks that need
+// to see the reference targets themselves (e.g. intra-chart target resolution).
+func collectValueFromRefs(manifest proto.Message) []refSite {
+	var sites []refSite
+	walkRefs(manifest.ProtoReflect(), "", func(path string, vf *foreignkeyv1.ValueFromRef) {
+		sites = append(sites, refSite{FieldPath: path, Ref: vf})
+	})
+	return sites
+}
+
+// refSite is one populated valueFrom reference at a field path in a manifest.
+type refSite struct {
+	FieldPath string
+	Ref       *foreignkeyv1.ValueFromRef
+}
+
+// walkRefs visits every populated StringValueOrRef.valueFrom in the message tree,
+// recursing into nested messages, repeated messages, and map values.
+func walkRefs(m protoreflect.Message, prefix string, visit func(path string, vf *foreignkeyv1.ValueFromRef)) {
 	m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
 		path := string(fd.Name())
 		if prefix != "" {
@@ -51,7 +72,7 @@ func walkMessage(m protoreflect.Message, prefix string, out *[]RefError) {
 				return true
 			}
 			v.Map().Range(func(mk protoreflect.MapKey, mv protoreflect.Value) bool {
-				visitMessageValue(mv.Message(), path+"."+mk.String(), out)
+				visitMessageValue(mv.Message(), path+"."+mk.String(), visit)
 				return true
 			})
 		case fd.IsList():
@@ -60,25 +81,25 @@ func walkMessage(m protoreflect.Message, prefix string, out *[]RefError) {
 			}
 			list := v.List()
 			for i := 0; i < list.Len(); i++ {
-				visitMessageValue(list.Get(i).Message(), fmt.Sprintf("%s[%d]", path, i), out)
+				visitMessageValue(list.Get(i).Message(), fmt.Sprintf("%s[%d]", path, i), visit)
 			}
 		case fd.Kind() == protoreflect.MessageKind:
-			visitMessageValue(v.Message(), path, out)
+			visitMessageValue(v.Message(), path, visit)
 		}
 		return true
 	})
 }
 
-// visitMessageValue checks a message value: a StringValueOrRef leaf is validated, any
-// other message is recursed into.
-func visitMessageValue(m protoreflect.Message, path string, out *[]RefError) {
+// visitMessageValue visits a message value: a StringValueOrRef leaf's populated
+// valueFrom is handed to the visitor, any other message is recursed into.
+func visitMessageValue(m protoreflect.Message, path string, visit func(path string, vf *foreignkeyv1.ValueFromRef)) {
 	if svor, ok := m.Interface().(*foreignkeyv1.StringValueOrRef); ok {
 		if vf := svor.GetValueFrom(); vf != nil {
-			checkRef(vf, path, out)
+			visit(path, vf)
 		}
 		return
 	}
-	walkMessage(m, path, out)
+	walkRefs(m, path, visit)
 }
 
 func checkRef(vf *foreignkeyv1.ValueFromRef, path string, out *[]RefError) {

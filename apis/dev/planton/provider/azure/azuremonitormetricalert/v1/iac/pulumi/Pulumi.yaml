@@ -1,0 +1,3 @@
+name: azure-monitor-metric-alert
+runtime: go
+description: Pulumi program for Azure Monitor metric alert rules

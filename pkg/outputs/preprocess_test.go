@@ -20,14 +20,16 @@ func TestPreprocessKeys_HyphensPreserved(t *testing.T) {
 	// whole-key rewrite would corrupt them. Hyphenated FIELD names are
 	// normalized per segment at lookup time instead (see populate.go).
 	input := map[string]string{
-		"load-balancer-arn": "arn:aws:elasticloadbalancing:...",
+		"load-balancer-arn":      "arn:aws:elasticloadbalancing:...",
+		"nat_rule_ids.ssh-admin": "/subscriptions/s/.../inboundNatRules/ssh-admin",
 	}
 	got := preprocessKeys(input)
 
 	assertKey(t, got, "load-balancer-arn", "arn:aws:elasticloadbalancing:...")
+	assertKey(t, got, "nat_rule_ids.ssh-admin", "/subscriptions/s/.../inboundNatRules/ssh-admin")
 }
 
-func TestPreprocessKeys_Combined(t *testing.T) {
+func TestPreprocessKeys_BracketWithHyphenatedNames(t *testing.T) {
 	input := map[string]string{
 		"private-subnets.[0].nat-gateway.public-ip": "34.56.78.90",
 	}

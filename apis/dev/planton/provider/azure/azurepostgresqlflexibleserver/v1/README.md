@@ -1,96 +1,105 @@
 # AzurePostgresqlFlexibleServer
 
-Azure Database for PostgreSQL Flexible Server is a fully managed relational database service
-that provides granular control over database management and configuration. It supports
-burstable, general-purpose, and memory-optimized compute tiers, zone-redundant and same-zone
-high availability, automatic backups with point-in-time restore, and private VNet integration.
+Azure Database for PostgreSQL Flexible Server is Azure's managed PostgreSQL:
+per-server compute/storage sizing, zone-redundant high availability with
+automatic failover, Microsoft Entra (Azure AD) authentication,
+customer-managed-key encryption, read replicas, and point-in-time restore.
+Databases, firewall rules, server parameters, and Entra administrators are
+configured on the server and managed with it.
 
 ## When to Use
 
 Use AzurePostgresqlFlexibleServer when you need:
 
 - **Managed PostgreSQL** with automatic patching, backups, and monitoring
-- **Flexible compute tiers** from burstable dev/test (B_Standard_B1ms) to production (GP_Standard_D16s_v3)
-- **High availability** with automatic failover (ZoneRedundant or SameZone)
-- **Private VNet access** using delegated subnets and private DNS zones
-- **Multiple databases** on a single server instance
+- **Flexible compute tiers** from burstable dev/test (`B_Standard_B1ms`) to
+  memory-optimized production (`MO_Standard_E64ds_v5`)
+- **High availability** with a synchronously replicated standby
+  (zone-redundant or same-zone) and automatic failover
+- **Private networking** via VNet injection (delegated subnet + private DNS
+  zone) or private endpoints
+- **Entra-only authentication** to eliminate static database passwords
+- **Customer-managed-key encryption** composed against `AzureKeyVaultKey`
+- **Read replicas and restores** -- a replica or restored server is another
+  `AzurePostgresqlFlexibleServer` referencing the source's `server_id`
 
 ## Key Configuration
 
-### Compute Tiers (sku_name)
+### Compute Tiers (`sku_name`)
 
 | Tier | Prefix | Use Case | Example |
 |------|--------|----------|---------|
 | Burstable | `B_Standard_` | Dev/test, low-traffic | `B_Standard_B1ms` (1 vCPU, 2 GiB) |
-| General Purpose | `GP_Standard_` | Production workloads | `GP_Standard_D2s_v3` (2 vCPU, 8 GiB) |
-| Memory Optimized | `MO_Standard_` | Analytics, caching | `MO_Standard_E2s_v3` (2 vCPU, 16 GiB) |
+| General Purpose | `GP_Standard_` | Production workloads | `GP_Standard_D4ds_v5` (4 vCPU, 16 GiB) |
+| Memory Optimized | `MO_Standard_` | Analytics, caching | `MO_Standard_E4s_v3` (4 vCPU, 32 GiB) |
 
-### Storage (storage_mb)
+Burstable SKUs support neither high availability nor read replicas.
 
-Storage is provisioned in MB. Common sizes:
+### Storage (`storage_mb` + `storage_tier`)
 
-| Size | Value |
-|------|-------|
-| 32 GB | `32768` |
-| 64 GB | `65536` |
-| 128 GB | `131072` |
-| 256 GB | `262144` |
-| 512 GB | `524288` |
-| 1 TB | `1048576` |
+Storage comes from a fixed ladder (32768 = 32 GiB up to 33553408 = 32 TiB)
+and only grows -- shrinking replaces the server. Each size has a default
+performance tier (IOPS class) and a bounded valid range; set `storage_tier`
+to buy more IOPS without growing capacity. Enable `auto_grow_enabled` for
+databases with unpredictable growth.
 
-Storage cannot be downgraded once provisioned. Enable `auto_grow_enabled` for databases with unpredictable growth.
+### Networking
 
-### Network Access
+Two independent dials, matching Azure's contract:
 
-**Public access** (default): The server is accessible over the internet. Use `firewall_rules` to restrict which IP addresses can connect.
+- **`public_network_access_enabled`** (default true) -- the public endpoint,
+  allowlisted by `firewall_rules`
+- **VNet injection** -- `delegated_subnet_id` (a subnet delegated to
+  `Microsoft.DBforPostgreSQL/flexibleServers`) + `private_dns_zone_id`;
+  requires public access explicitly off
 
-**Private VNet access**: Set `delegated_subnet_id` to a subnet delegated to `Microsoft.DBforPostgreSQL/flexibleServers`. Public access is automatically disabled. Optionally set `private_dns_zone_id` for DNS resolution within the VNet.
+### Authentication
 
-### High Availability
+- **Password auth** (default): `administrator_login` + `administrator_password`
+- **Microsoft Entra**: enable `authentication.active_directory_auth_enabled`
+  and declare `aad_administrators`; disable password auth entirely for an
+  Entra-only posture (credentials must then be omitted)
 
-Set the `high_availability` block to enable automatic failover:
+### Lifecycle (`create_mode`)
 
-- **ZoneRedundant**: Standby in a different availability zone (recommended for production)
-- **SameZone**: Standby in the same zone (faster failover, no zone-level protection)
+| Mode | What it creates | Requires |
+|------|-----------------|----------|
+| DEFAULT (unset) | A fresh, empty server | `sku_name` (+ credentials with password auth) |
+| REPLICA | An asynchronous read replica | `source_server_id` |
+| POINT_IN_TIME_RESTORE | Same-region restore | `source_server_id` + restore timestamp |
+| GEO_RESTORE | Paired-region restore | source with geo-redundant backups + timestamp |
+| REVIVE_DROPPED | Revive a soft-deleted server | `source_server_id` |
 
-Burstable SKUs do NOT support high availability.
+Promote a replica by setting `replication_role: NONE` on it (irreversible).
 
-### PostgreSQL Versions
+### Versions
 
-Supported: 12, 13, 14, 15, 16 (default), 17
+Supported: 11-18. Default 16. In-place upgrades go up only; elastic
+clusters (`cluster` block, sharded/citus-based) require 17+.
 
-Version 16 is recommended for new deployments. Version 17 adds new features including cluster support.
+## Fields That Replace the Server When Changed
 
-## ForceNew Fields
-
-Changing these fields destroys and recreates the server (data loss risk):
-
-- `name` -- server hostname
-- `administrator_login` -- admin username
-- `delegated_subnet_id` -- VNet integration
-- `geo_redundant_backup_enabled` -- backup configuration
+`server_name`, `region`, `resource_group`, `administrator_login` (once
+set), `delegated_subnet_id`, `geo_redundant_backup_enabled`,
+`customer_managed_key`, `cluster`, the restore/replica trio -- plus any
+`version` downgrade or `storage_mb` shrink.
 
 ## Stack Outputs
 
 | Output | Description |
 |--------|-------------|
-| `server_id` | Azure Resource Manager ID |
+| `server_id` | ARM ID -- the seam for private endpoints and replica/restore sources |
 | `server_name` | Server name |
-| `fqdn` | Fully qualified domain name |
-| `administrator_login` | Admin login name |
-| `database_ids` | Map of database name to resource ID |
+| `fqdn` | `{name}.postgres.database.azure.com` -- resolves privately when VNet-injected |
+| `administrator_login` | Admin login (empty on Entra-only servers) |
+| `database_ids` | Name-keyed map of database ARM IDs |
+| `identity_principal_id` | System-assigned identity's principal -- the role-assignment seam |
 
 ## Related Resources
 
-- **AzureSubnet** -- Delegated subnet for VNet integration
-- **AzurePrivateDnsZone** -- DNS resolution for private access
-- **AzurePrivateEndpoint** -- Alternative private connectivity (via Private Link)
-- **AzureResourceGroup** -- Container for the server
-
-## Infra Chart Usage
-
-This resource is a key component of:
-
-- **database-stack** -- PostgreSQL + optional MSSQL + Redis + PrivateEndpoint
-- **container-apps-environment** -- Optional database backend
-- **web-app-environment** -- Optional database backend
+- **AzureResourceGroup** -- the server's container
+- **AzureSubnet** -- the delegated subnet for VNet injection
+- **AzurePrivateDnsZone** -- private name resolution for the fqdn
+- **AzurePrivateEndpoint** -- alternative private connectivity (Private Link)
+- **AzureUserAssignedIdentity** -- CMK unwrap identity / Entra administrators
+- **AzureKeyVaultKey** -- the customer-managed encryption key

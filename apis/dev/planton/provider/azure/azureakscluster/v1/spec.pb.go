@@ -24,78 +24,955 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Control plane SKU tier for the AKS cluster.
-type AzureAksClusterControlPlaneSku int32
+// Control-plane pricing/support tier. Unspecified means Azure's default
+// (Free).
+type AzureAksClusterSkuTier int32
 
 const (
-	// Standard tier with financially-backed 99.95% uptime SLA (with Availability Zones) or 99.9% SLA (single AZ).
-	// Recommended default for production. Costs approximately $73/month per cluster.
-	AzureAksClusterControlPlaneSku_STANDARD AzureAksClusterControlPlaneSku = 0
-	// Free tier with no uptime SLA. Suitable only for dev/test environments.
-	// Not recommended for production workloads.
-	AzureAksClusterControlPlaneSku_FREE AzureAksClusterControlPlaneSku = 1
+	// Not specified: Azure's default (Free) -- no uptime SLA.
+	AzureAksClusterSkuTier_azure_aks_cluster_sku_tier_unspecified AzureAksClusterSkuTier = 0
+	// Free control plane: no SLA, up to 1000 nodes. Dev/test only.
+	AzureAksClusterSkuTier_FREE AzureAksClusterSkuTier = 1
+	// Standard tier: financially-backed 99.95% API-server SLA (with
+	// availability zones), 5000-node scale. The production baseline.
+	AzureAksClusterSkuTier_STANDARD AzureAksClusterSkuTier = 2
+	// Premium tier: Standard plus AKS Long Term Support eligibility.
+	AzureAksClusterSkuTier_PREMIUM AzureAksClusterSkuTier = 3
 )
 
-// Enum value maps for AzureAksClusterControlPlaneSku.
+// Enum value maps for AzureAksClusterSkuTier.
 var (
-	AzureAksClusterControlPlaneSku_name = map[int32]string{
-		0: "STANDARD",
+	AzureAksClusterSkuTier_name = map[int32]string{
+		0: "azure_aks_cluster_sku_tier_unspecified",
 		1: "FREE",
+		2: "STANDARD",
+		3: "PREMIUM",
 	}
-	AzureAksClusterControlPlaneSku_value = map[string]int32{
-		"STANDARD": 0,
-		"FREE":     1,
+	AzureAksClusterSkuTier_value = map[string]int32{
+		"azure_aks_cluster_sku_tier_unspecified": 0,
+		"FREE":                                   1,
+		"STANDARD":                               2,
+		"PREMIUM":                                3,
 	}
 )
 
-func (x AzureAksClusterControlPlaneSku) Enum() *AzureAksClusterControlPlaneSku {
-	p := new(AzureAksClusterControlPlaneSku)
+func (x AzureAksClusterSkuTier) Enum() *AzureAksClusterSkuTier {
+	p := new(AzureAksClusterSkuTier)
 	*p = x
 	return p
 }
 
-func (x AzureAksClusterControlPlaneSku) String() string {
+func (x AzureAksClusterSkuTier) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureAksClusterControlPlaneSku) Descriptor() protoreflect.EnumDescriptor {
+func (AzureAksClusterSkuTier) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[0].Descriptor()
 }
 
-func (AzureAksClusterControlPlaneSku) Type() protoreflect.EnumType {
+func (AzureAksClusterSkuTier) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[0]
 }
 
-func (x AzureAksClusterControlPlaneSku) Number() protoreflect.EnumNumber {
+func (x AzureAksClusterSkuTier) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureAksClusterControlPlaneSku.Descriptor instead.
-func (AzureAksClusterControlPlaneSku) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use AzureAksClusterSkuTier.Descriptor instead.
+func (AzureAksClusterSkuTier) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-// Network plugin options for the AKS cluster.
+// Kubernetes-version support plan.
+type AzureAksClusterSupportPlan int32
+
+const (
+	// Not specified: Azure's default (KubernetesOfficial).
+	AzureAksClusterSupportPlan_azure_aks_cluster_support_plan_unspecified AzureAksClusterSupportPlan = 0
+	// Community-aligned support windows for each Kubernetes version.
+	AzureAksClusterSupportPlan_KUBERNETES_OFFICIAL AzureAksClusterSupportPlan = 1
+	// Two-year long-term support for eligible versions; requires PREMIUM.
+	AzureAksClusterSupportPlan_AKS_LONG_TERM_SUPPORT AzureAksClusterSupportPlan = 2
+)
+
+// Enum value maps for AzureAksClusterSupportPlan.
+var (
+	AzureAksClusterSupportPlan_name = map[int32]string{
+		0: "azure_aks_cluster_support_plan_unspecified",
+		1: "KUBERNETES_OFFICIAL",
+		2: "AKS_LONG_TERM_SUPPORT",
+	}
+	AzureAksClusterSupportPlan_value = map[string]int32{
+		"azure_aks_cluster_support_plan_unspecified": 0,
+		"KUBERNETES_OFFICIAL":                        1,
+		"AKS_LONG_TERM_SUPPORT":                      2,
+	}
+)
+
+func (x AzureAksClusterSupportPlan) Enum() *AzureAksClusterSupportPlan {
+	p := new(AzureAksClusterSupportPlan)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterSupportPlan) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterSupportPlan) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[1].Descriptor()
+}
+
+func (AzureAksClusterSupportPlan) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[1]
+}
+
+func (x AzureAksClusterSupportPlan) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterSupportPlan.Descriptor instead.
+func (AzureAksClusterSupportPlan) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+// OS disk placement for AKS nodes.
+type AzureAksClusterOsDiskType int32
+
+const (
+	// Not specified: Azure's default (Managed).
+	AzureAksClusterOsDiskType_azure_aks_cluster_os_disk_type_unspecified AzureAksClusterOsDiskType = 0
+	// Persistent managed disk -- survives node restarts, billed separately.
+	AzureAksClusterOsDiskType_MANAGED AzureAksClusterOsDiskType = 1
+	// Node-local ephemeral disk -- faster, free, right for stateless nodes
+	// whenever the VM size's cache disk fits the OS image.
+	AzureAksClusterOsDiskType_EPHEMERAL AzureAksClusterOsDiskType = 2
+)
+
+// Enum value maps for AzureAksClusterOsDiskType.
+var (
+	AzureAksClusterOsDiskType_name = map[int32]string{
+		0: "azure_aks_cluster_os_disk_type_unspecified",
+		1: "MANAGED",
+		2: "EPHEMERAL",
+	}
+	AzureAksClusterOsDiskType_value = map[string]int32{
+		"azure_aks_cluster_os_disk_type_unspecified": 0,
+		"MANAGED":   1,
+		"EPHEMERAL": 2,
+	}
+)
+
+func (x AzureAksClusterOsDiskType) Enum() *AzureAksClusterOsDiskType {
+	p := new(AzureAksClusterOsDiskType)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterOsDiskType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterOsDiskType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[2].Descriptor()
+}
+
+func (AzureAksClusterOsDiskType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[2]
+}
+
+func (x AzureAksClusterOsDiskType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterOsDiskType.Descriptor instead.
+func (AzureAksClusterOsDiskType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+// Kubelet state placement for AKS nodes.
+type AzureAksClusterKubeletDiskType int32
+
+const (
+	// Not specified: Azure's default (the OS disk).
+	AzureAksClusterKubeletDiskType_azure_aks_cluster_kubelet_disk_type_unspecified AzureAksClusterKubeletDiskType = 0
+	// Kubelet state on the OS disk.
+	AzureAksClusterKubeletDiskType_OS AzureAksClusterKubeletDiskType = 1
+	// Kubelet state on the VM's temporary disk (higher IOPS for image
+	// churn; contents lost on deallocation, which kubelet state tolerates).
+	AzureAksClusterKubeletDiskType_TEMPORARY AzureAksClusterKubeletDiskType = 2
+)
+
+// Enum value maps for AzureAksClusterKubeletDiskType.
+var (
+	AzureAksClusterKubeletDiskType_name = map[int32]string{
+		0: "azure_aks_cluster_kubelet_disk_type_unspecified",
+		1: "OS",
+		2: "TEMPORARY",
+	}
+	AzureAksClusterKubeletDiskType_value = map[string]int32{
+		"azure_aks_cluster_kubelet_disk_type_unspecified": 0,
+		"OS":        1,
+		"TEMPORARY": 2,
+	}
+)
+
+func (x AzureAksClusterKubeletDiskType) Enum() *AzureAksClusterKubeletDiskType {
+	p := new(AzureAksClusterKubeletDiskType)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterKubeletDiskType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterKubeletDiskType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[3].Descriptor()
+}
+
+func (AzureAksClusterKubeletDiskType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[3]
+}
+
+func (x AzureAksClusterKubeletDiskType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterKubeletDiskType.Descriptor instead.
+func (AzureAksClusterKubeletDiskType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+// Node OS image for AKS pools. Values 1-5 are Linux; 6-7 are Windows and
+// only valid on standalone Windows node pools.
+type AzureAksClusterOsSku int32
+
+const (
+	// Not specified: Azure's default image for the pool's OS type
+	// (currently Ubuntu for Linux, Windows Server 2022 for Windows).
+	AzureAksClusterOsSku_azure_aks_cluster_os_sku_unspecified AzureAksClusterOsSku = 0
+	// Ubuntu, version following AKS's default for the Kubernetes version.
+	AzureAksClusterOsSku_UBUNTU AzureAksClusterOsSku = 1
+	// Ubuntu 22.04 LTS, pinned.
+	AzureAksClusterOsSku_UBUNTU_2204 AzureAksClusterOsSku = 2
+	// Ubuntu 24.04 LTS, pinned.
+	AzureAksClusterOsSku_UBUNTU_2404 AzureAksClusterOsSku = 3
+	// Azure Linux (Microsoft's minimal container-host distro), version
+	// following AKS's default.
+	AzureAksClusterOsSku_AZURE_LINUX AzureAksClusterOsSku = 4
+	// Azure Linux 3, pinned.
+	AzureAksClusterOsSku_AZURE_LINUX_3 AzureAksClusterOsSku = 5
+	// Windows Server 2019 (standalone Windows pools only; retired for new
+	// pools on Kubernetes >= 1.33).
+	AzureAksClusterOsSku_WINDOWS_2019 AzureAksClusterOsSku = 6
+	// Windows Server 2022 (standalone Windows pools only).
+	AzureAksClusterOsSku_WINDOWS_2022 AzureAksClusterOsSku = 7
+)
+
+// Enum value maps for AzureAksClusterOsSku.
+var (
+	AzureAksClusterOsSku_name = map[int32]string{
+		0: "azure_aks_cluster_os_sku_unspecified",
+		1: "UBUNTU",
+		2: "UBUNTU_2204",
+		3: "UBUNTU_2404",
+		4: "AZURE_LINUX",
+		5: "AZURE_LINUX_3",
+		6: "WINDOWS_2019",
+		7: "WINDOWS_2022",
+	}
+	AzureAksClusterOsSku_value = map[string]int32{
+		"azure_aks_cluster_os_sku_unspecified": 0,
+		"UBUNTU":                               1,
+		"UBUNTU_2204":                          2,
+		"UBUNTU_2404":                          3,
+		"AZURE_LINUX":                          4,
+		"AZURE_LINUX_3":                        5,
+		"WINDOWS_2019":                         6,
+		"WINDOWS_2022":                         7,
+	}
+)
+
+func (x AzureAksClusterOsSku) Enum() *AzureAksClusterOsSku {
+	p := new(AzureAksClusterOsSku)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterOsSku) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterOsSku) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[4].Descriptor()
+}
+
+func (AzureAksClusterOsSku) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[4]
+}
+
+func (x AzureAksClusterOsSku) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterOsSku.Descriptor instead.
+func (AzureAksClusterOsSku) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+// Multi-Instance GPU (MIG) partitioning profile for A100 GPU nodes.
+type AzureAksClusterGpuInstance int32
+
+const (
+	// Not specified: no MIG partitioning.
+	AzureAksClusterGpuInstance_azure_aks_cluster_gpu_instance_unspecified AzureAksClusterGpuInstance = 0
+	// Seven 1g.5gb slices per GPU.
+	AzureAksClusterGpuInstance_MIG1G AzureAksClusterGpuInstance = 1
+	// Three 2g.10gb slices per GPU.
+	AzureAksClusterGpuInstance_MIG2G AzureAksClusterGpuInstance = 2
+	// Two 3g.20gb slices per GPU.
+	AzureAksClusterGpuInstance_MIG3G AzureAksClusterGpuInstance = 3
+	// One 4g.20gb slice per GPU.
+	AzureAksClusterGpuInstance_MIG4G AzureAksClusterGpuInstance = 4
+	// One 7g.40gb slice (the whole GPU as a single MIG device).
+	AzureAksClusterGpuInstance_MIG7G AzureAksClusterGpuInstance = 5
+)
+
+// Enum value maps for AzureAksClusterGpuInstance.
+var (
+	AzureAksClusterGpuInstance_name = map[int32]string{
+		0: "azure_aks_cluster_gpu_instance_unspecified",
+		1: "MIG1G",
+		2: "MIG2G",
+		3: "MIG3G",
+		4: "MIG4G",
+		5: "MIG7G",
+	}
+	AzureAksClusterGpuInstance_value = map[string]int32{
+		"azure_aks_cluster_gpu_instance_unspecified": 0,
+		"MIG1G": 1,
+		"MIG2G": 2,
+		"MIG3G": 3,
+		"MIG4G": 4,
+		"MIG7G": 5,
+	}
+)
+
+func (x AzureAksClusterGpuInstance) Enum() *AzureAksClusterGpuInstance {
+	p := new(AzureAksClusterGpuInstance)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterGpuInstance) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterGpuInstance) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[5].Descriptor()
+}
+
+func (AzureAksClusterGpuInstance) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[5]
+}
+
+func (x AzureAksClusterGpuInstance) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterGpuInstance.Descriptor instead.
+func (AzureAksClusterGpuInstance) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+// NVIDIA GPU driver installation policy for GPU node pools.
+type AzureAksClusterGpuDriver int32
+
+const (
+	// Not specified: Azure's default (install the driver on GPU sizes).
+	AzureAksClusterGpuDriver_azure_aks_cluster_gpu_driver_unspecified AzureAksClusterGpuDriver = 0
+	// AKS installs the NVIDIA driver.
+	AzureAksClusterGpuDriver_INSTALL AzureAksClusterGpuDriver = 1
+	// AKS skips driver installation -- for self-managed GPU operators.
+	AzureAksClusterGpuDriver_NONE AzureAksClusterGpuDriver = 2
+)
+
+// Enum value maps for AzureAksClusterGpuDriver.
+var (
+	AzureAksClusterGpuDriver_name = map[int32]string{
+		0: "azure_aks_cluster_gpu_driver_unspecified",
+		1: "INSTALL",
+		2: "NONE",
+	}
+	AzureAksClusterGpuDriver_value = map[string]int32{
+		"azure_aks_cluster_gpu_driver_unspecified": 0,
+		"INSTALL": 1,
+		"NONE":    2,
+	}
+)
+
+func (x AzureAksClusterGpuDriver) Enum() *AzureAksClusterGpuDriver {
+	p := new(AzureAksClusterGpuDriver)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterGpuDriver) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterGpuDriver) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[6].Descriptor()
+}
+
+func (AzureAksClusterGpuDriver) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[6]
+}
+
+func (x AzureAksClusterGpuDriver) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterGpuDriver.Descriptor instead.
+func (AzureAksClusterGpuDriver) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+// What the cluster autoscaler does with nodes it removes.
+type AzureAksClusterScaleDownMode int32
+
+const (
+	// Not specified: Azure's default (Delete).
+	AzureAksClusterScaleDownMode_azure_aks_cluster_scale_down_mode_unspecified AzureAksClusterScaleDownMode = 0
+	// Removed nodes are deleted -- billing stops entirely.
+	AzureAksClusterScaleDownMode_DELETE AzureAksClusterScaleDownMode = 1
+	// Removed nodes are stopped (deallocated) -- compute billing stops but
+	// disks persist for faster scale-up.
+	AzureAksClusterScaleDownMode_DEALLOCATE AzureAksClusterScaleDownMode = 2
+)
+
+// Enum value maps for AzureAksClusterScaleDownMode.
+var (
+	AzureAksClusterScaleDownMode_name = map[int32]string{
+		0: "azure_aks_cluster_scale_down_mode_unspecified",
+		1: "DELETE",
+		2: "DEALLOCATE",
+	}
+	AzureAksClusterScaleDownMode_value = map[string]int32{
+		"azure_aks_cluster_scale_down_mode_unspecified": 0,
+		"DELETE":     1,
+		"DEALLOCATE": 2,
+	}
+)
+
+func (x AzureAksClusterScaleDownMode) Enum() *AzureAksClusterScaleDownMode {
+	p := new(AzureAksClusterScaleDownMode)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterScaleDownMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterScaleDownMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[7].Descriptor()
+}
+
+func (AzureAksClusterScaleDownMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[7]
+}
+
+func (x AzureAksClusterScaleDownMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterScaleDownMode.Descriptor instead.
+func (AzureAksClusterScaleDownMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+// Container runtime class for a node pool.
+type AzureAksClusterWorkloadRuntime int32
+
+const (
+	// Not specified: Azure's default (OCIContainer).
+	AzureAksClusterWorkloadRuntime_azure_aks_cluster_workload_runtime_unspecified AzureAksClusterWorkloadRuntime = 0
+	// Standard OCI containers.
+	AzureAksClusterWorkloadRuntime_OCI_CONTAINER AzureAksClusterWorkloadRuntime = 1
+	// Kata Containers on Microsoft Hyper-V: each pod in a lightweight
+	// utility VM for kernel-level isolation.
+	AzureAksClusterWorkloadRuntime_KATA_MSHV_VM_ISOLATION AzureAksClusterWorkloadRuntime = 2
+)
+
+// Enum value maps for AzureAksClusterWorkloadRuntime.
+var (
+	AzureAksClusterWorkloadRuntime_name = map[int32]string{
+		0: "azure_aks_cluster_workload_runtime_unspecified",
+		1: "OCI_CONTAINER",
+		2: "KATA_MSHV_VM_ISOLATION",
+	}
+	AzureAksClusterWorkloadRuntime_value = map[string]int32{
+		"azure_aks_cluster_workload_runtime_unspecified": 0,
+		"OCI_CONTAINER":          1,
+		"KATA_MSHV_VM_ISOLATION": 2,
+	}
+)
+
+func (x AzureAksClusterWorkloadRuntime) Enum() *AzureAksClusterWorkloadRuntime {
+	p := new(AzureAksClusterWorkloadRuntime)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterWorkloadRuntime) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterWorkloadRuntime) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[8].Descriptor()
+}
+
+func (AzureAksClusterWorkloadRuntime) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[8]
+}
+
+func (x AzureAksClusterWorkloadRuntime) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterWorkloadRuntime.Descriptor instead.
+func (AzureAksClusterWorkloadRuntime) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+// Kubelet CPU manager policy.
+type AzureAksClusterCpuManagerPolicy int32
+
+const (
+	// Not specified: kubelet default ("none") -- shared CPU pool.
+	AzureAksClusterCpuManagerPolicy_azure_aks_cluster_cpu_manager_policy_unspecified AzureAksClusterCpuManagerPolicy = 0
+	// Shared CPU pool for all pods.
+	AzureAksClusterCpuManagerPolicy_CPU_MANAGER_NONE AzureAksClusterCpuManagerPolicy = 1
+	// Exclusive core pinning for Guaranteed-QoS pods with integer CPU
+	// requests.
+	AzureAksClusterCpuManagerPolicy_CPU_MANAGER_STATIC AzureAksClusterCpuManagerPolicy = 2
+)
+
+// Enum value maps for AzureAksClusterCpuManagerPolicy.
+var (
+	AzureAksClusterCpuManagerPolicy_name = map[int32]string{
+		0: "azure_aks_cluster_cpu_manager_policy_unspecified",
+		1: "CPU_MANAGER_NONE",
+		2: "CPU_MANAGER_STATIC",
+	}
+	AzureAksClusterCpuManagerPolicy_value = map[string]int32{
+		"azure_aks_cluster_cpu_manager_policy_unspecified": 0,
+		"CPU_MANAGER_NONE":   1,
+		"CPU_MANAGER_STATIC": 2,
+	}
+)
+
+func (x AzureAksClusterCpuManagerPolicy) Enum() *AzureAksClusterCpuManagerPolicy {
+	p := new(AzureAksClusterCpuManagerPolicy)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterCpuManagerPolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterCpuManagerPolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[9].Descriptor()
+}
+
+func (AzureAksClusterCpuManagerPolicy) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[9]
+}
+
+func (x AzureAksClusterCpuManagerPolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterCpuManagerPolicy.Descriptor instead.
+func (AzureAksClusterCpuManagerPolicy) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+// Kubelet topology manager policy for NUMA alignment.
+type AzureAksClusterTopologyManagerPolicy int32
+
+const (
+	// Not specified: kubelet default ("none") -- no NUMA alignment.
+	AzureAksClusterTopologyManagerPolicy_azure_aks_cluster_topology_manager_policy_unspecified AzureAksClusterTopologyManagerPolicy = 0
+	// No alignment.
+	AzureAksClusterTopologyManagerPolicy_TOPOLOGY_NONE AzureAksClusterTopologyManagerPolicy = 1
+	// Prefer aligned placement, admit regardless.
+	AzureAksClusterTopologyManagerPolicy_BEST_EFFORT AzureAksClusterTopologyManagerPolicy = 2
+	// Admit only pods whose preferred alignment is achievable.
+	AzureAksClusterTopologyManagerPolicy_RESTRICTED AzureAksClusterTopologyManagerPolicy = 3
+	// Admit only pods placeable on a single NUMA node.
+	AzureAksClusterTopologyManagerPolicy_SINGLE_NUMA_NODE AzureAksClusterTopologyManagerPolicy = 4
+)
+
+// Enum value maps for AzureAksClusterTopologyManagerPolicy.
+var (
+	AzureAksClusterTopologyManagerPolicy_name = map[int32]string{
+		0: "azure_aks_cluster_topology_manager_policy_unspecified",
+		1: "TOPOLOGY_NONE",
+		2: "BEST_EFFORT",
+		3: "RESTRICTED",
+		4: "SINGLE_NUMA_NODE",
+	}
+	AzureAksClusterTopologyManagerPolicy_value = map[string]int32{
+		"azure_aks_cluster_topology_manager_policy_unspecified": 0,
+		"TOPOLOGY_NONE":    1,
+		"BEST_EFFORT":      2,
+		"RESTRICTED":       3,
+		"SINGLE_NUMA_NODE": 4,
+	}
+)
+
+func (x AzureAksClusterTopologyManagerPolicy) Enum() *AzureAksClusterTopologyManagerPolicy {
+	p := new(AzureAksClusterTopologyManagerPolicy)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterTopologyManagerPolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterTopologyManagerPolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[10].Descriptor()
+}
+
+func (AzureAksClusterTopologyManagerPolicy) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[10]
+}
+
+func (x AzureAksClusterTopologyManagerPolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterTopologyManagerPolicy.Descriptor instead.
+func (AzureAksClusterTopologyManagerPolicy) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+// Transparent Huge Pages mode.
+type AzureAksClusterTransparentHugePage int32
+
+const (
+	// Not specified: the OS default ("always").
+	AzureAksClusterTransparentHugePage_azure_aks_cluster_transparent_huge_page_unspecified AzureAksClusterTransparentHugePage = 0
+	// THP for all memory regions.
+	AzureAksClusterTransparentHugePage_THP_ALWAYS AzureAksClusterTransparentHugePage = 1
+	// THP only for madvise(MADV_HUGEPAGE) regions.
+	AzureAksClusterTransparentHugePage_THP_MADVISE AzureAksClusterTransparentHugePage = 2
+	// THP disabled.
+	AzureAksClusterTransparentHugePage_THP_NEVER AzureAksClusterTransparentHugePage = 3
+)
+
+// Enum value maps for AzureAksClusterTransparentHugePage.
+var (
+	AzureAksClusterTransparentHugePage_name = map[int32]string{
+		0: "azure_aks_cluster_transparent_huge_page_unspecified",
+		1: "THP_ALWAYS",
+		2: "THP_MADVISE",
+		3: "THP_NEVER",
+	}
+	AzureAksClusterTransparentHugePage_value = map[string]int32{
+		"azure_aks_cluster_transparent_huge_page_unspecified": 0,
+		"THP_ALWAYS":  1,
+		"THP_MADVISE": 2,
+		"THP_NEVER":   3,
+	}
+)
+
+func (x AzureAksClusterTransparentHugePage) Enum() *AzureAksClusterTransparentHugePage {
+	p := new(AzureAksClusterTransparentHugePage)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterTransparentHugePage) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterTransparentHugePage) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[11].Descriptor()
+}
+
+func (AzureAksClusterTransparentHugePage) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[11]
+}
+
+func (x AzureAksClusterTransparentHugePage) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterTransparentHugePage.Descriptor instead.
+func (AzureAksClusterTransparentHugePage) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+// Transparent Huge Pages defrag behavior.
+type AzureAksClusterTransparentHugePageDefrag int32
+
+const (
+	// Not specified: the OS default ("madvise").
+	AzureAksClusterTransparentHugePageDefrag_azure_aks_cluster_transparent_huge_page_defrag_unspecified AzureAksClusterTransparentHugePageDefrag = 0
+	// Synchronous defrag on every THP allocation.
+	AzureAksClusterTransparentHugePageDefrag_DEFRAG_ALWAYS AzureAksClusterTransparentHugePageDefrag = 1
+	// Defer defrag to kswapd.
+	AzureAksClusterTransparentHugePageDefrag_DEFRAG_DEFER AzureAksClusterTransparentHugePageDefrag = 2
+	// Defer generally, defrag synchronously for madvise regions.
+	AzureAksClusterTransparentHugePageDefrag_DEFRAG_DEFER_MADVISE AzureAksClusterTransparentHugePageDefrag = 3
+	// Defrag synchronously only for madvise regions.
+	AzureAksClusterTransparentHugePageDefrag_DEFRAG_MADVISE AzureAksClusterTransparentHugePageDefrag = 4
+	// Never defrag.
+	AzureAksClusterTransparentHugePageDefrag_DEFRAG_NEVER AzureAksClusterTransparentHugePageDefrag = 5
+)
+
+// Enum value maps for AzureAksClusterTransparentHugePageDefrag.
+var (
+	AzureAksClusterTransparentHugePageDefrag_name = map[int32]string{
+		0: "azure_aks_cluster_transparent_huge_page_defrag_unspecified",
+		1: "DEFRAG_ALWAYS",
+		2: "DEFRAG_DEFER",
+		3: "DEFRAG_DEFER_MADVISE",
+		4: "DEFRAG_MADVISE",
+		5: "DEFRAG_NEVER",
+	}
+	AzureAksClusterTransparentHugePageDefrag_value = map[string]int32{
+		"azure_aks_cluster_transparent_huge_page_defrag_unspecified": 0,
+		"DEFRAG_ALWAYS":        1,
+		"DEFRAG_DEFER":         2,
+		"DEFRAG_DEFER_MADVISE": 3,
+		"DEFRAG_MADVISE":       4,
+		"DEFRAG_NEVER":         5,
+	}
+)
+
+func (x AzureAksClusterTransparentHugePageDefrag) Enum() *AzureAksClusterTransparentHugePageDefrag {
+	p := new(AzureAksClusterTransparentHugePageDefrag)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterTransparentHugePageDefrag) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterTransparentHugePageDefrag) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[12].Descriptor()
+}
+
+func (AzureAksClusterTransparentHugePageDefrag) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[12]
+}
+
+func (x AzureAksClusterTransparentHugePageDefrag) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterTransparentHugePageDefrag.Descriptor instead.
+func (AzureAksClusterTransparentHugePageDefrag) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+// Protocol for an allowed host-port range.
+type AzureAksClusterHostPortProtocol int32
+
+const (
+	// Not specified.
+	AzureAksClusterHostPortProtocol_azure_aks_cluster_host_port_protocol_unspecified AzureAksClusterHostPortProtocol = 0
+	// TCP.
+	AzureAksClusterHostPortProtocol_TCP AzureAksClusterHostPortProtocol = 1
+	// UDP.
+	AzureAksClusterHostPortProtocol_UDP AzureAksClusterHostPortProtocol = 2
+)
+
+// Enum value maps for AzureAksClusterHostPortProtocol.
+var (
+	AzureAksClusterHostPortProtocol_name = map[int32]string{
+		0: "azure_aks_cluster_host_port_protocol_unspecified",
+		1: "TCP",
+		2: "UDP",
+	}
+	AzureAksClusterHostPortProtocol_value = map[string]int32{
+		"azure_aks_cluster_host_port_protocol_unspecified": 0,
+		"TCP": 1,
+		"UDP": 2,
+	}
+)
+
+func (x AzureAksClusterHostPortProtocol) Enum() *AzureAksClusterHostPortProtocol {
+	p := new(AzureAksClusterHostPortProtocol)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterHostPortProtocol) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterHostPortProtocol) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[13].Descriptor()
+}
+
+func (AzureAksClusterHostPortProtocol) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[13]
+}
+
+func (x AzureAksClusterHostPortProtocol) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterHostPortProtocol.Descriptor instead.
+func (AzureAksClusterHostPortProtocol) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+// Behavior for nodes that cannot be drained during an upgrade.
+type AzureAksClusterUndrainableNodeBehavior int32
+
+const (
+	// Not specified: Azure's default -- the upgrade errors on an
+	// undrainable node.
+	AzureAksClusterUndrainableNodeBehavior_azure_aks_cluster_undrainable_node_behavior_unspecified AzureAksClusterUndrainableNodeBehavior = 0
+	// Cordon the undrainable node into quarantine and continue.
+	AzureAksClusterUndrainableNodeBehavior_CORDON AzureAksClusterUndrainableNodeBehavior = 1
+	// Leave the node schedulable and continue.
+	AzureAksClusterUndrainableNodeBehavior_SCHEDULE AzureAksClusterUndrainableNodeBehavior = 2
+)
+
+// Enum value maps for AzureAksClusterUndrainableNodeBehavior.
+var (
+	AzureAksClusterUndrainableNodeBehavior_name = map[int32]string{
+		0: "azure_aks_cluster_undrainable_node_behavior_unspecified",
+		1: "CORDON",
+		2: "SCHEDULE",
+	}
+	AzureAksClusterUndrainableNodeBehavior_value = map[string]int32{
+		"azure_aks_cluster_undrainable_node_behavior_unspecified": 0,
+		"CORDON":   1,
+		"SCHEDULE": 2,
+	}
+)
+
+func (x AzureAksClusterUndrainableNodeBehavior) Enum() *AzureAksClusterUndrainableNodeBehavior {
+	p := new(AzureAksClusterUndrainableNodeBehavior)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterUndrainableNodeBehavior) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterUndrainableNodeBehavior) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[14].Descriptor()
+}
+
+func (AzureAksClusterUndrainableNodeBehavior) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[14]
+}
+
+func (x AzureAksClusterUndrainableNodeBehavior) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterUndrainableNodeBehavior.Descriptor instead.
+func (AzureAksClusterUndrainableNodeBehavior) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+// Managed identity flavor for the cluster control plane.
+type AzureAksClusterIdentityType int32
+
+const (
+	// Not specified: SystemAssigned.
+	AzureAksClusterIdentityType_azure_aks_cluster_identity_type_unspecified AzureAksClusterIdentityType = 0
+	// Azure-managed identity created with the cluster.
+	AzureAksClusterIdentityType_SYSTEM_ASSIGNED AzureAksClusterIdentityType = 1
+	// Bring-your-own user-assigned identity (set identity_ids).
+	AzureAksClusterIdentityType_USER_ASSIGNED AzureAksClusterIdentityType = 2
+)
+
+// Enum value maps for AzureAksClusterIdentityType.
+var (
+	AzureAksClusterIdentityType_name = map[int32]string{
+		0: "azure_aks_cluster_identity_type_unspecified",
+		1: "SYSTEM_ASSIGNED",
+		2: "USER_ASSIGNED",
+	}
+	AzureAksClusterIdentityType_value = map[string]int32{
+		"azure_aks_cluster_identity_type_unspecified": 0,
+		"SYSTEM_ASSIGNED": 1,
+		"USER_ASSIGNED":   2,
+	}
+)
+
+func (x AzureAksClusterIdentityType) Enum() *AzureAksClusterIdentityType {
+	p := new(AzureAksClusterIdentityType)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterIdentityType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterIdentityType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[15].Descriptor()
+}
+
+func (AzureAksClusterIdentityType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[15]
+}
+
+func (x AzureAksClusterIdentityType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterIdentityType.Descriptor instead.
+func (AzureAksClusterIdentityType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+// CNI plugin for the cluster.
 type AzureAksClusterNetworkPlugin int32
 
 const (
-	// Azure CNI (Container Network Interface) provides advanced networking with full VNet integration.
-	// Recommended default. Supports both Overlay and Dynamic IP allocation modes.
-	AzureAksClusterNetworkPlugin_AZURE_CNI AzureAksClusterNetworkPlugin = 0
-	// Kubenet provides basic networking with NAT.
-	// DEPRECATED: Will be retired on March 31, 2028. Do not use for new clusters.
-	AzureAksClusterNetworkPlugin_KUBENET AzureAksClusterNetworkPlugin = 1
+	// Not specified: the modules apply the modern AKS default, Azure CNI.
+	AzureAksClusterNetworkPlugin_azure_aks_cluster_network_plugin_unspecified AzureAksClusterNetworkPlugin = 0
+	// Azure CNI -- full VNet integration; pair with OVERLAY mode (the
+	// default) or a pod subnet for traditional dynamic allocation.
+	AzureAksClusterNetworkPlugin_AZURE_CNI AzureAksClusterNetworkPlugin = 1
+	// Kubenet -- basic NAT networking. Deprecated; AKS retires it March
+	// 2028. Do not use for new clusters.
+	AzureAksClusterNetworkPlugin_KUBENET AzureAksClusterNetworkPlugin = 2
+	// No managed CNI -- bring your own network plugin.
+	AzureAksClusterNetworkPlugin_NETWORK_PLUGIN_NONE AzureAksClusterNetworkPlugin = 3
 )
 
 // Enum value maps for AzureAksClusterNetworkPlugin.
 var (
 	AzureAksClusterNetworkPlugin_name = map[int32]string{
-		0: "AZURE_CNI",
-		1: "KUBENET",
+		0: "azure_aks_cluster_network_plugin_unspecified",
+		1: "AZURE_CNI",
+		2: "KUBENET",
+		3: "NETWORK_PLUGIN_NONE",
 	}
 	AzureAksClusterNetworkPlugin_value = map[string]int32{
-		"AZURE_CNI": 0,
-		"KUBENET":   1,
+		"azure_aks_cluster_network_plugin_unspecified": 0,
+		"AZURE_CNI":           1,
+		"KUBENET":             2,
+		"NETWORK_PLUGIN_NONE": 3,
 	}
 )
 
@@ -110,11 +987,11 @@ func (x AzureAksClusterNetworkPlugin) String() string {
 }
 
 func (AzureAksClusterNetworkPlugin) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[1].Descriptor()
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[16].Descriptor()
 }
 
 func (AzureAksClusterNetworkPlugin) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[1]
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[16]
 }
 
 func (x AzureAksClusterNetworkPlugin) Number() protoreflect.EnumNumber {
@@ -123,30 +1000,31 @@ func (x AzureAksClusterNetworkPlugin) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AzureAksClusterNetworkPlugin.Descriptor instead.
 func (AzureAksClusterNetworkPlugin) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{16}
 }
 
-// Network plugin mode for Azure CNI.
+// Azure CNI addressing mode.
 type AzureAksClusterNetworkPluginMode int32
 
 const (
-	// Overlay mode (recommended): Pods get IPs from a private, non-VNet CIDR (e.g., 10.244.0.0/16).
-	// Solves VNet IP exhaustion and allows massive cluster scaling. Supports all Azure Network Policy options.
-	AzureAksClusterNetworkPluginMode_OVERLAY AzureAksClusterNetworkPluginMode = 0
-	// Dynamic IP allocation: Pods get real VNet IPs dynamically from a dedicated pod subnet (no pre-allocation).
-	// Use this when pods need direct VNet addressability and VNet IP space is plentiful.
-	AzureAksClusterNetworkPluginMode_DYNAMIC AzureAksClusterNetworkPluginMode = 1
+	// Not specified: with AZURE_CNI the modules apply OVERLAY (the modern
+	// default); set nothing here AND a pod_subnet_id on pools for
+	// traditional dynamic pod-IP allocation.
+	AzureAksClusterNetworkPluginMode_azure_aks_cluster_network_plugin_mode_unspecified AzureAksClusterNetworkPluginMode = 0
+	// Overlay: pods draw from pod_cidr (not VNet space). Solves IP
+	// exhaustion; the right mode for nearly every new cluster.
+	AzureAksClusterNetworkPluginMode_OVERLAY AzureAksClusterNetworkPluginMode = 1
 )
 
 // Enum value maps for AzureAksClusterNetworkPluginMode.
 var (
 	AzureAksClusterNetworkPluginMode_name = map[int32]string{
-		0: "OVERLAY",
-		1: "DYNAMIC",
+		0: "azure_aks_cluster_network_plugin_mode_unspecified",
+		1: "OVERLAY",
 	}
 	AzureAksClusterNetworkPluginMode_value = map[string]int32{
-		"OVERLAY": 0,
-		"DYNAMIC": 1,
+		"azure_aks_cluster_network_plugin_mode_unspecified": 0,
+		"OVERLAY": 1,
 	}
 )
 
@@ -161,11 +1039,11 @@ func (x AzureAksClusterNetworkPluginMode) String() string {
 }
 
 func (AzureAksClusterNetworkPluginMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[2].Descriptor()
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[17].Descriptor()
 }
 
 func (AzureAksClusterNetworkPluginMode) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[2]
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[17]
 }
 
 func (x AzureAksClusterNetworkPluginMode) Number() protoreflect.EnumNumber {
@@ -174,65 +1052,1346 @@ func (x AzureAksClusterNetworkPluginMode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AzureAksClusterNetworkPluginMode.Descriptor instead.
 func (AzureAksClusterNetworkPluginMode) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{17}
 }
 
-// AzureAksClusterSpec defines the specification required to deploy an Azure Kubernetes Service (AKS) cluster.
-// This spec covers the 80/20 configurations needed for production-ready AKS clusters based on Microsoft's baseline architecture.
+// Network policy engine.
+type AzureAksClusterNetworkPolicy int32
+
+const (
+	// Not specified: no NetworkPolicy enforcement.
+	AzureAksClusterNetworkPolicy_azure_aks_cluster_network_policy_unspecified AzureAksClusterNetworkPolicy = 0
+	// Azure's NetworkPolicy implementation (iptables).
+	AzureAksClusterNetworkPolicy_NETWORK_POLICY_AZURE AzureAksClusterNetworkPolicy = 1
+	// Calico -- the widest NetworkPolicy feature set on the classic
+	// dataplane.
+	AzureAksClusterNetworkPolicy_CALICO AzureAksClusterNetworkPolicy = 2
+	// Cilium eBPF policy -- requires the CILIUM data plane.
+	AzureAksClusterNetworkPolicy_NETWORK_POLICY_CILIUM AzureAksClusterNetworkPolicy = 3
+)
+
+// Enum value maps for AzureAksClusterNetworkPolicy.
+var (
+	AzureAksClusterNetworkPolicy_name = map[int32]string{
+		0: "azure_aks_cluster_network_policy_unspecified",
+		1: "NETWORK_POLICY_AZURE",
+		2: "CALICO",
+		3: "NETWORK_POLICY_CILIUM",
+	}
+	AzureAksClusterNetworkPolicy_value = map[string]int32{
+		"azure_aks_cluster_network_policy_unspecified": 0,
+		"NETWORK_POLICY_AZURE":                         1,
+		"CALICO":                                       2,
+		"NETWORK_POLICY_CILIUM":                        3,
+	}
+)
+
+func (x AzureAksClusterNetworkPolicy) Enum() *AzureAksClusterNetworkPolicy {
+	p := new(AzureAksClusterNetworkPolicy)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterNetworkPolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterNetworkPolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[18].Descriptor()
+}
+
+func (AzureAksClusterNetworkPolicy) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[18]
+}
+
+func (x AzureAksClusterNetworkPolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterNetworkPolicy.Descriptor instead.
+func (AzureAksClusterNetworkPolicy) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+// Dataplane technology.
+type AzureAksClusterNetworkDataPlane int32
+
+const (
+	// Not specified: Azure's default (iptables-based) dataplane.
+	AzureAksClusterNetworkDataPlane_azure_aks_cluster_network_data_plane_unspecified AzureAksClusterNetworkDataPlane = 0
+	// The classic Azure dataplane.
+	AzureAksClusterNetworkDataPlane_DATA_PLANE_AZURE AzureAksClusterNetworkDataPlane = 1
+	// Cilium eBPF dataplane -- higher throughput and the foundation for
+	// advanced_networking observability/security.
+	AzureAksClusterNetworkDataPlane_DATA_PLANE_CILIUM AzureAksClusterNetworkDataPlane = 2
+)
+
+// Enum value maps for AzureAksClusterNetworkDataPlane.
+var (
+	AzureAksClusterNetworkDataPlane_name = map[int32]string{
+		0: "azure_aks_cluster_network_data_plane_unspecified",
+		1: "DATA_PLANE_AZURE",
+		2: "DATA_PLANE_CILIUM",
+	}
+	AzureAksClusterNetworkDataPlane_value = map[string]int32{
+		"azure_aks_cluster_network_data_plane_unspecified": 0,
+		"DATA_PLANE_AZURE":  1,
+		"DATA_PLANE_CILIUM": 2,
+	}
+)
+
+func (x AzureAksClusterNetworkDataPlane) Enum() *AzureAksClusterNetworkDataPlane {
+	p := new(AzureAksClusterNetworkDataPlane)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterNetworkDataPlane) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterNetworkDataPlane) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[19].Descriptor()
+}
+
+func (AzureAksClusterNetworkDataPlane) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[19]
+}
+
+func (x AzureAksClusterNetworkDataPlane) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterNetworkDataPlane.Descriptor instead.
+func (AzureAksClusterNetworkDataPlane) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+// IP family for cluster addressing.
+type AzureAksClusterIpVersion int32
+
+const (
+	// Not specified.
+	AzureAksClusterIpVersion_azure_aks_cluster_ip_version_unspecified AzureAksClusterIpVersion = 0
+	// IPv4.
+	AzureAksClusterIpVersion_IPV4 AzureAksClusterIpVersion = 1
+	// IPv6 (dual-stack only -- always alongside IPV4).
+	AzureAksClusterIpVersion_IPV6 AzureAksClusterIpVersion = 2
+)
+
+// Enum value maps for AzureAksClusterIpVersion.
+var (
+	AzureAksClusterIpVersion_name = map[int32]string{
+		0: "azure_aks_cluster_ip_version_unspecified",
+		1: "IPV4",
+		2: "IPV6",
+	}
+	AzureAksClusterIpVersion_value = map[string]int32{
+		"azure_aks_cluster_ip_version_unspecified": 0,
+		"IPV4": 1,
+		"IPV6": 2,
+	}
+)
+
+func (x AzureAksClusterIpVersion) Enum() *AzureAksClusterIpVersion {
+	p := new(AzureAksClusterIpVersion)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterIpVersion) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterIpVersion) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[20].Descriptor()
+}
+
+func (AzureAksClusterIpVersion) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[20]
+}
+
+func (x AzureAksClusterIpVersion) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterIpVersion.Descriptor instead.
+func (AzureAksClusterIpVersion) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+// Cluster egress model.
+type AzureAksClusterOutboundType int32
+
+const (
+	// Not specified: Azure's default (loadBalancer).
+	AzureAksClusterOutboundType_azure_aks_cluster_outbound_type_unspecified AzureAksClusterOutboundType = 0
+	// SNAT through the managed Standard load balancer.
+	AzureAksClusterOutboundType_LOAD_BALANCER AzureAksClusterOutboundType = 1
+	// AKS-managed NAT gateway (managed VNet clusters).
+	AzureAksClusterOutboundType_MANAGED_NAT_GATEWAY AzureAksClusterOutboundType = 2
+	// The NAT gateway attached to your BYO subnet (compose it via
+	// AzureSubnet's nat_gateway_id seam).
+	AzureAksClusterOutboundType_USER_ASSIGNED_NAT_GATEWAY AzureAksClusterOutboundType = 3
+	// Your route table decides (firewall egress / forced tunneling);
+	// requires a BYO subnet with an attached AzureRouteTable.
+	AzureAksClusterOutboundType_USER_DEFINED_ROUTING AzureAksClusterOutboundType = 4
+	// No managed egress path at all -- network-isolated clusters; pair
+	// with bootstrap_profile CACHE.
+	AzureAksClusterOutboundType_OUTBOUND_NONE AzureAksClusterOutboundType = 5
+)
+
+// Enum value maps for AzureAksClusterOutboundType.
+var (
+	AzureAksClusterOutboundType_name = map[int32]string{
+		0: "azure_aks_cluster_outbound_type_unspecified",
+		1: "LOAD_BALANCER",
+		2: "MANAGED_NAT_GATEWAY",
+		3: "USER_ASSIGNED_NAT_GATEWAY",
+		4: "USER_DEFINED_ROUTING",
+		5: "OUTBOUND_NONE",
+	}
+	AzureAksClusterOutboundType_value = map[string]int32{
+		"azure_aks_cluster_outbound_type_unspecified": 0,
+		"LOAD_BALANCER":             1,
+		"MANAGED_NAT_GATEWAY":       2,
+		"USER_ASSIGNED_NAT_GATEWAY": 3,
+		"USER_DEFINED_ROUTING":      4,
+		"OUTBOUND_NONE":             5,
+	}
+)
+
+func (x AzureAksClusterOutboundType) Enum() *AzureAksClusterOutboundType {
+	p := new(AzureAksClusterOutboundType)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterOutboundType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterOutboundType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[21].Descriptor()
+}
+
+func (AzureAksClusterOutboundType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[21]
+}
+
+func (x AzureAksClusterOutboundType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterOutboundType.Descriptor instead.
+func (AzureAksClusterOutboundType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+// Backend pool membership type for the managed load balancer.
+type AzureAksClusterLoadBalancerBackendPoolType int32
+
+const (
+	// Not specified: Azure's default (NodeIPConfiguration).
+	AzureAksClusterLoadBalancerBackendPoolType_azure_aks_cluster_load_balancer_backend_pool_type_unspecified AzureAksClusterLoadBalancerBackendPoolType = 0
+	// Nodes join by VMSS NIC IP configuration.
+	AzureAksClusterLoadBalancerBackendPoolType_NODE_IP_CONFIGURATION AzureAksClusterLoadBalancerBackendPoolType = 1
+	// Nodes join by IP address.
+	AzureAksClusterLoadBalancerBackendPoolType_NODE_IP AzureAksClusterLoadBalancerBackendPoolType = 2
+)
+
+// Enum value maps for AzureAksClusterLoadBalancerBackendPoolType.
+var (
+	AzureAksClusterLoadBalancerBackendPoolType_name = map[int32]string{
+		0: "azure_aks_cluster_load_balancer_backend_pool_type_unspecified",
+		1: "NODE_IP_CONFIGURATION",
+		2: "NODE_IP",
+	}
+	AzureAksClusterLoadBalancerBackendPoolType_value = map[string]int32{
+		"azure_aks_cluster_load_balancer_backend_pool_type_unspecified": 0,
+		"NODE_IP_CONFIGURATION": 1,
+		"NODE_IP":               2,
+	}
+)
+
+func (x AzureAksClusterLoadBalancerBackendPoolType) Enum() *AzureAksClusterLoadBalancerBackendPoolType {
+	p := new(AzureAksClusterLoadBalancerBackendPoolType)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterLoadBalancerBackendPoolType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterLoadBalancerBackendPoolType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[22].Descriptor()
+}
+
+func (AzureAksClusterLoadBalancerBackendPoolType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[22]
+}
+
+func (x AzureAksClusterLoadBalancerBackendPoolType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterLoadBalancerBackendPoolType.Descriptor instead.
+func (AzureAksClusterLoadBalancerBackendPoolType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{22}
+}
+
+// Cluster autoscaler scale-out expander strategy.
+type AzureAksClusterAutoscalerExpander int32
+
+const (
+	// Not specified: Azure's default (random).
+	AzureAksClusterAutoscalerExpander_azure_aks_cluster_autoscaler_expander_unspecified AzureAksClusterAutoscalerExpander = 0
+	// Pick the group wasting the least resources for the pending pods.
+	AzureAksClusterAutoscalerExpander_LEAST_WASTE AzureAksClusterAutoscalerExpander = 1
+	// Pick the group that schedules the most pending pods.
+	AzureAksClusterAutoscalerExpander_MOST_PODS AzureAksClusterAutoscalerExpander = 2
+	// Follow user-configured group priorities.
+	AzureAksClusterAutoscalerExpander_PRIORITY AzureAksClusterAutoscalerExpander = 3
+	// Random choice.
+	AzureAksClusterAutoscalerExpander_RANDOM AzureAksClusterAutoscalerExpander = 4
+)
+
+// Enum value maps for AzureAksClusterAutoscalerExpander.
+var (
+	AzureAksClusterAutoscalerExpander_name = map[int32]string{
+		0: "azure_aks_cluster_autoscaler_expander_unspecified",
+		1: "LEAST_WASTE",
+		2: "MOST_PODS",
+		3: "PRIORITY",
+		4: "RANDOM",
+	}
+	AzureAksClusterAutoscalerExpander_value = map[string]int32{
+		"azure_aks_cluster_autoscaler_expander_unspecified": 0,
+		"LEAST_WASTE": 1,
+		"MOST_PODS":   2,
+		"PRIORITY":    3,
+		"RANDOM":      4,
+	}
+)
+
+func (x AzureAksClusterAutoscalerExpander) Enum() *AzureAksClusterAutoscalerExpander {
+	p := new(AzureAksClusterAutoscalerExpander)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterAutoscalerExpander) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterAutoscalerExpander) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[23].Descriptor()
+}
+
+func (AzureAksClusterAutoscalerExpander) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[23]
+}
+
+func (x AzureAksClusterAutoscalerExpander) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterAutoscalerExpander.Descriptor instead.
+func (AzureAksClusterAutoscalerExpander) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{23}
+}
+
+// Automatic Kubernetes-version upgrade channel.
+type AzureAksClusterUpgradeChannel int32
+
+const (
+	// Not specified: no automatic Kubernetes upgrades (Azure's default).
+	AzureAksClusterUpgradeChannel_azure_aks_cluster_upgrade_channel_unspecified AzureAksClusterUpgradeChannel = 0
+	// Auto-apply patch releases of the current minor.
+	AzureAksClusterUpgradeChannel_PATCH AzureAksClusterUpgradeChannel = 1
+	// Track the latest supported minor (N-1 of newest).
+	AzureAksClusterUpgradeChannel_STABLE AzureAksClusterUpgradeChannel = 2
+	// Track the newest supported minor.
+	AzureAksClusterUpgradeChannel_RAPID AzureAksClusterUpgradeChannel = 3
+	// Only refresh node images to the latest for the current version.
+	AzureAksClusterUpgradeChannel_NODE_IMAGE AzureAksClusterUpgradeChannel = 4
+)
+
+// Enum value maps for AzureAksClusterUpgradeChannel.
+var (
+	AzureAksClusterUpgradeChannel_name = map[int32]string{
+		0: "azure_aks_cluster_upgrade_channel_unspecified",
+		1: "PATCH",
+		2: "STABLE",
+		3: "RAPID",
+		4: "NODE_IMAGE",
+	}
+	AzureAksClusterUpgradeChannel_value = map[string]int32{
+		"azure_aks_cluster_upgrade_channel_unspecified": 0,
+		"PATCH":      1,
+		"STABLE":     2,
+		"RAPID":      3,
+		"NODE_IMAGE": 4,
+	}
+)
+
+func (x AzureAksClusterUpgradeChannel) Enum() *AzureAksClusterUpgradeChannel {
+	p := new(AzureAksClusterUpgradeChannel)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterUpgradeChannel) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterUpgradeChannel) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[24].Descriptor()
+}
+
+func (AzureAksClusterUpgradeChannel) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[24]
+}
+
+func (x AzureAksClusterUpgradeChannel) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterUpgradeChannel.Descriptor instead.
+func (AzureAksClusterUpgradeChannel) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{24}
+}
+
+// Node OS image upgrade channel.
+type AzureAksClusterNodeOsUpgradeChannel int32
+
+const (
+	// Not specified: Azure's default (NodeImage).
+	AzureAksClusterNodeOsUpgradeChannel_azure_aks_cluster_node_os_upgrade_channel_unspecified AzureAksClusterNodeOsUpgradeChannel = 0
+	// Re-image nodes as AKS publishes patched images (recommended).
+	AzureAksClusterNodeOsUpgradeChannel_NODE_OS_NODE_IMAGE AzureAksClusterNodeOsUpgradeChannel = 1
+	// Apply OS security patches in place without re-imaging.
+	AzureAksClusterNodeOsUpgradeChannel_SECURITY_PATCH AzureAksClusterNodeOsUpgradeChannel = 2
+	// You manage node OS patching entirely.
+	AzureAksClusterNodeOsUpgradeChannel_UNMANAGED AzureAksClusterNodeOsUpgradeChannel = 3
+	// No automatic node OS updates.
+	AzureAksClusterNodeOsUpgradeChannel_NODE_OS_NONE AzureAksClusterNodeOsUpgradeChannel = 4
+)
+
+// Enum value maps for AzureAksClusterNodeOsUpgradeChannel.
+var (
+	AzureAksClusterNodeOsUpgradeChannel_name = map[int32]string{
+		0: "azure_aks_cluster_node_os_upgrade_channel_unspecified",
+		1: "NODE_OS_NODE_IMAGE",
+		2: "SECURITY_PATCH",
+		3: "UNMANAGED",
+		4: "NODE_OS_NONE",
+	}
+	AzureAksClusterNodeOsUpgradeChannel_value = map[string]int32{
+		"azure_aks_cluster_node_os_upgrade_channel_unspecified": 0,
+		"NODE_OS_NODE_IMAGE": 1,
+		"SECURITY_PATCH":     2,
+		"UNMANAGED":          3,
+		"NODE_OS_NONE":       4,
+	}
+)
+
+func (x AzureAksClusterNodeOsUpgradeChannel) Enum() *AzureAksClusterNodeOsUpgradeChannel {
+	p := new(AzureAksClusterNodeOsUpgradeChannel)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterNodeOsUpgradeChannel) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterNodeOsUpgradeChannel) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[25].Descriptor()
+}
+
+func (AzureAksClusterNodeOsUpgradeChannel) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[25]
+}
+
+func (x AzureAksClusterNodeOsUpgradeChannel) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterNodeOsUpgradeChannel.Descriptor instead.
+func (AzureAksClusterNodeOsUpgradeChannel) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{25}
+}
+
+// Day of week for maintenance scheduling.
+type AzureAksClusterWeekDay int32
+
+const (
+	// Not specified.
+	AzureAksClusterWeekDay_azure_aks_cluster_week_day_unspecified AzureAksClusterWeekDay = 0
+	// Sunday.
+	AzureAksClusterWeekDay_SUNDAY AzureAksClusterWeekDay = 1
+	// Monday.
+	AzureAksClusterWeekDay_MONDAY AzureAksClusterWeekDay = 2
+	// Tuesday.
+	AzureAksClusterWeekDay_TUESDAY AzureAksClusterWeekDay = 3
+	// Wednesday.
+	AzureAksClusterWeekDay_WEDNESDAY AzureAksClusterWeekDay = 4
+	// Thursday.
+	AzureAksClusterWeekDay_THURSDAY AzureAksClusterWeekDay = 5
+	// Friday.
+	AzureAksClusterWeekDay_FRIDAY AzureAksClusterWeekDay = 6
+	// Saturday.
+	AzureAksClusterWeekDay_SATURDAY AzureAksClusterWeekDay = 7
+)
+
+// Enum value maps for AzureAksClusterWeekDay.
+var (
+	AzureAksClusterWeekDay_name = map[int32]string{
+		0: "azure_aks_cluster_week_day_unspecified",
+		1: "SUNDAY",
+		2: "MONDAY",
+		3: "TUESDAY",
+		4: "WEDNESDAY",
+		5: "THURSDAY",
+		6: "FRIDAY",
+		7: "SATURDAY",
+	}
+	AzureAksClusterWeekDay_value = map[string]int32{
+		"azure_aks_cluster_week_day_unspecified": 0,
+		"SUNDAY":                                 1,
+		"MONDAY":                                 2,
+		"TUESDAY":                                3,
+		"WEDNESDAY":                              4,
+		"THURSDAY":                               5,
+		"FRIDAY":                                 6,
+		"SATURDAY":                               7,
+	}
+)
+
+func (x AzureAksClusterWeekDay) Enum() *AzureAksClusterWeekDay {
+	p := new(AzureAksClusterWeekDay)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterWeekDay) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterWeekDay) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[26].Descriptor()
+}
+
+func (AzureAksClusterWeekDay) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[26]
+}
+
+func (x AzureAksClusterWeekDay) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterWeekDay.Descriptor instead.
+func (AzureAksClusterWeekDay) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{26}
+}
+
+// Maintenance schedule recurrence.
+type AzureAksClusterMaintenanceFrequency int32
+
+const (
+	// Not specified.
+	AzureAksClusterMaintenanceFrequency_azure_aks_cluster_maintenance_frequency_unspecified AzureAksClusterMaintenanceFrequency = 0
+	// Every `interval` days.
+	AzureAksClusterMaintenanceFrequency_DAILY AzureAksClusterMaintenanceFrequency = 1
+	// Every `interval` weeks on day_of_week.
+	AzureAksClusterMaintenanceFrequency_WEEKLY AzureAksClusterMaintenanceFrequency = 2
+	// Every `interval` months on the week_index-th day_of_week.
+	AzureAksClusterMaintenanceFrequency_RELATIVE_MONTHLY AzureAksClusterMaintenanceFrequency = 3
+	// Every `interval` months on day_of_month.
+	AzureAksClusterMaintenanceFrequency_ABSOLUTE_MONTHLY AzureAksClusterMaintenanceFrequency = 4
+)
+
+// Enum value maps for AzureAksClusterMaintenanceFrequency.
+var (
+	AzureAksClusterMaintenanceFrequency_name = map[int32]string{
+		0: "azure_aks_cluster_maintenance_frequency_unspecified",
+		1: "DAILY",
+		2: "WEEKLY",
+		3: "RELATIVE_MONTHLY",
+		4: "ABSOLUTE_MONTHLY",
+	}
+	AzureAksClusterMaintenanceFrequency_value = map[string]int32{
+		"azure_aks_cluster_maintenance_frequency_unspecified": 0,
+		"DAILY":            1,
+		"WEEKLY":           2,
+		"RELATIVE_MONTHLY": 3,
+		"ABSOLUTE_MONTHLY": 4,
+	}
+)
+
+func (x AzureAksClusterMaintenanceFrequency) Enum() *AzureAksClusterMaintenanceFrequency {
+	p := new(AzureAksClusterMaintenanceFrequency)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterMaintenanceFrequency) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterMaintenanceFrequency) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[27].Descriptor()
+}
+
+func (AzureAksClusterMaintenanceFrequency) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[27]
+}
+
+func (x AzureAksClusterMaintenanceFrequency) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterMaintenanceFrequency.Descriptor instead.
+func (AzureAksClusterMaintenanceFrequency) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{27}
+}
+
+// Week-of-month index for RELATIVE_MONTHLY maintenance.
+type AzureAksClusterWeekIndex int32
+
+const (
+	// Not specified.
+	AzureAksClusterWeekIndex_azure_aks_cluster_week_index_unspecified AzureAksClusterWeekIndex = 0
+	// First occurrence of the weekday.
+	AzureAksClusterWeekIndex_FIRST AzureAksClusterWeekIndex = 1
+	// Second occurrence.
+	AzureAksClusterWeekIndex_SECOND AzureAksClusterWeekIndex = 2
+	// Third occurrence.
+	AzureAksClusterWeekIndex_THIRD AzureAksClusterWeekIndex = 3
+	// Fourth occurrence.
+	AzureAksClusterWeekIndex_FOURTH AzureAksClusterWeekIndex = 4
+	// Last occurrence.
+	AzureAksClusterWeekIndex_LAST AzureAksClusterWeekIndex = 5
+)
+
+// Enum value maps for AzureAksClusterWeekIndex.
+var (
+	AzureAksClusterWeekIndex_name = map[int32]string{
+		0: "azure_aks_cluster_week_index_unspecified",
+		1: "FIRST",
+		2: "SECOND",
+		3: "THIRD",
+		4: "FOURTH",
+		5: "LAST",
+	}
+	AzureAksClusterWeekIndex_value = map[string]int32{
+		"azure_aks_cluster_week_index_unspecified": 0,
+		"FIRST":  1,
+		"SECOND": 2,
+		"THIRD":  3,
+		"FOURTH": 4,
+		"LAST":   5,
+	}
+)
+
+func (x AzureAksClusterWeekIndex) Enum() *AzureAksClusterWeekIndex {
+	p := new(AzureAksClusterWeekIndex)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterWeekIndex) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterWeekIndex) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[28].Descriptor()
+}
+
+func (AzureAksClusterWeekIndex) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[28]
+}
+
+func (x AzureAksClusterWeekIndex) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterWeekIndex.Descriptor instead.
+func (AzureAksClusterWeekIndex) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{28}
+}
+
+// Default NGINX controller posture for web app routing.
+type AzureAksClusterNginxDefaultController int32
+
+const (
+	// Not specified: Azure's default (AnnotationControlled).
+	AzureAksClusterNginxDefaultController_azure_aks_cluster_nginx_default_controller_unspecified AzureAksClusterNginxDefaultController = 0
+	// Per-Ingress annotations choose internal/external.
+	AzureAksClusterNginxDefaultController_ANNOTATION_CONTROLLED AzureAksClusterNginxDefaultController = 1
+	// Default controller behind an internal (VNet-only) load balancer.
+	AzureAksClusterNginxDefaultController_INTERNAL AzureAksClusterNginxDefaultController = 2
+	// Default controller behind an external (public) load balancer.
+	AzureAksClusterNginxDefaultController_EXTERNAL AzureAksClusterNginxDefaultController = 3
+	// No default controller.
+	AzureAksClusterNginxDefaultController_NGINX_NONE AzureAksClusterNginxDefaultController = 4
+)
+
+// Enum value maps for AzureAksClusterNginxDefaultController.
+var (
+	AzureAksClusterNginxDefaultController_name = map[int32]string{
+		0: "azure_aks_cluster_nginx_default_controller_unspecified",
+		1: "ANNOTATION_CONTROLLED",
+		2: "INTERNAL",
+		3: "EXTERNAL",
+		4: "NGINX_NONE",
+	}
+	AzureAksClusterNginxDefaultController_value = map[string]int32{
+		"azure_aks_cluster_nginx_default_controller_unspecified": 0,
+		"ANNOTATION_CONTROLLED":                                  1,
+		"INTERNAL":                                               2,
+		"EXTERNAL":                                               3,
+		"NGINX_NONE":                                             4,
+	}
+)
+
+func (x AzureAksClusterNginxDefaultController) Enum() *AzureAksClusterNginxDefaultController {
+	p := new(AzureAksClusterNginxDefaultController)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterNginxDefaultController) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterNginxDefaultController) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[29].Descriptor()
+}
+
+func (AzureAksClusterNginxDefaultController) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[29]
+}
+
+func (x AzureAksClusterNginxDefaultController) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterNginxDefaultController.Descriptor instead.
+func (AzureAksClusterNginxDefaultController) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{29}
+}
+
+// Service mesh mode.
+type AzureAksClusterServiceMeshMode int32
+
+const (
+	// Not specified.
+	AzureAksClusterServiceMeshMode_azure_aks_cluster_service_mesh_mode_unspecified AzureAksClusterServiceMeshMode = 0
+	// Azure-managed Istio.
+	AzureAksClusterServiceMeshMode_ISTIO AzureAksClusterServiceMeshMode = 1
+)
+
+// Enum value maps for AzureAksClusterServiceMeshMode.
+var (
+	AzureAksClusterServiceMeshMode_name = map[int32]string{
+		0: "azure_aks_cluster_service_mesh_mode_unspecified",
+		1: "ISTIO",
+	}
+	AzureAksClusterServiceMeshMode_value = map[string]int32{
+		"azure_aks_cluster_service_mesh_mode_unspecified": 0,
+		"ISTIO": 1,
+	}
+)
+
+func (x AzureAksClusterServiceMeshMode) Enum() *AzureAksClusterServiceMeshMode {
+	p := new(AzureAksClusterServiceMeshMode)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterServiceMeshMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterServiceMeshMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[30].Descriptor()
+}
+
+func (AzureAksClusterServiceMeshMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[30]
+}
+
+func (x AzureAksClusterServiceMeshMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterServiceMeshMode.Descriptor instead.
+func (AzureAksClusterServiceMeshMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{30}
+}
+
+// Key Vault network reachability for KMS.
+type AzureAksClusterKeyVaultNetworkAccess int32
+
+const (
+	// Not specified: Azure's default (Public).
+	AzureAksClusterKeyVaultNetworkAccess_azure_aks_cluster_key_vault_network_access_unspecified AzureAksClusterKeyVaultNetworkAccess = 0
+	// Key Vault reachable over its public endpoint.
+	AzureAksClusterKeyVaultNetworkAccess_KMS_PUBLIC AzureAksClusterKeyVaultNetworkAccess = 1
+	// Key Vault reachable over private endpoints only.
+	AzureAksClusterKeyVaultNetworkAccess_KMS_PRIVATE AzureAksClusterKeyVaultNetworkAccess = 2
+)
+
+// Enum value maps for AzureAksClusterKeyVaultNetworkAccess.
+var (
+	AzureAksClusterKeyVaultNetworkAccess_name = map[int32]string{
+		0: "azure_aks_cluster_key_vault_network_access_unspecified",
+		1: "KMS_PUBLIC",
+		2: "KMS_PRIVATE",
+	}
+	AzureAksClusterKeyVaultNetworkAccess_value = map[string]int32{
+		"azure_aks_cluster_key_vault_network_access_unspecified": 0,
+		"KMS_PUBLIC":  1,
+		"KMS_PRIVATE": 2,
+	}
+)
+
+func (x AzureAksClusterKeyVaultNetworkAccess) Enum() *AzureAksClusterKeyVaultNetworkAccess {
+	p := new(AzureAksClusterKeyVaultNetworkAccess)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterKeyVaultNetworkAccess) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterKeyVaultNetworkAccess) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[31].Descriptor()
+}
+
+func (AzureAksClusterKeyVaultNetworkAccess) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[31]
+}
+
+func (x AzureAksClusterKeyVaultNetworkAccess) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterKeyVaultNetworkAccess.Descriptor instead.
+func (AzureAksClusterKeyVaultNetworkAccess) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{31}
+}
+
+// Windows license option.
+type AzureAksClusterWindowsLicense int32
+
+const (
+	// Not specified: pay-as-you-go Windows licensing.
+	AzureAksClusterWindowsLicense_azure_aks_cluster_windows_license_unspecified AzureAksClusterWindowsLicense = 0
+	// Azure Hybrid Use Benefit -- bring your own Windows Server licenses.
+	AzureAksClusterWindowsLicense_WINDOWS_SERVER AzureAksClusterWindowsLicense = 1
+)
+
+// Enum value maps for AzureAksClusterWindowsLicense.
+var (
+	AzureAksClusterWindowsLicense_name = map[int32]string{
+		0: "azure_aks_cluster_windows_license_unspecified",
+		1: "WINDOWS_SERVER",
+	}
+	AzureAksClusterWindowsLicense_value = map[string]int32{
+		"azure_aks_cluster_windows_license_unspecified": 0,
+		"WINDOWS_SERVER": 1,
+	}
+)
+
+func (x AzureAksClusterWindowsLicense) Enum() *AzureAksClusterWindowsLicense {
+	p := new(AzureAksClusterWindowsLicense)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterWindowsLicense) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterWindowsLicense) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[32].Descriptor()
+}
+
+func (AzureAksClusterWindowsLicense) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[32]
+}
+
+func (x AzureAksClusterWindowsLicense) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterWindowsLicense.Descriptor instead.
+func (AzureAksClusterWindowsLicense) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{32}
+}
+
+// Bootstrap artifact source.
+type AzureAksClusterBootstrapArtifactSource int32
+
+const (
+	// Not specified: Azure's default (Direct from Microsoft Container
+	// Registry).
+	AzureAksClusterBootstrapArtifactSource_azure_aks_cluster_bootstrap_artifact_source_unspecified AzureAksClusterBootstrapArtifactSource = 0
+	// Pull directly from Microsoft Container Registry.
+	AzureAksClusterBootstrapArtifactSource_DIRECT AzureAksClusterBootstrapArtifactSource = 1
+	// Pull through your caching Azure Container Registry (network-isolated
+	// clusters).
+	AzureAksClusterBootstrapArtifactSource_CACHE AzureAksClusterBootstrapArtifactSource = 2
+)
+
+// Enum value maps for AzureAksClusterBootstrapArtifactSource.
+var (
+	AzureAksClusterBootstrapArtifactSource_name = map[int32]string{
+		0: "azure_aks_cluster_bootstrap_artifact_source_unspecified",
+		1: "DIRECT",
+		2: "CACHE",
+	}
+	AzureAksClusterBootstrapArtifactSource_value = map[string]int32{
+		"azure_aks_cluster_bootstrap_artifact_source_unspecified": 0,
+		"DIRECT": 1,
+		"CACHE":  2,
+	}
+)
+
+func (x AzureAksClusterBootstrapArtifactSource) Enum() *AzureAksClusterBootstrapArtifactSource {
+	p := new(AzureAksClusterBootstrapArtifactSource)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterBootstrapArtifactSource) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterBootstrapArtifactSource) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[33].Descriptor()
+}
+
+func (AzureAksClusterBootstrapArtifactSource) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[33]
+}
+
+func (x AzureAksClusterBootstrapArtifactSource) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterBootstrapArtifactSource.Descriptor instead.
+func (AzureAksClusterBootstrapArtifactSource) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{33}
+}
+
+// Node auto-provisioning mode.
+type AzureAksClusterNodeProvisioningMode int32
+
+const (
+	// Not specified: Azure's default (Manual).
+	AzureAksClusterNodeProvisioningMode_azure_aks_cluster_node_provisioning_mode_unspecified AzureAksClusterNodeProvisioningMode = 0
+	// You manage node pools.
+	AzureAksClusterNodeProvisioningMode_MANUAL AzureAksClusterNodeProvisioningMode = 1
+	// AKS (Karpenter) provisions and removes pools automatically.
+	AzureAksClusterNodeProvisioningMode_AUTO AzureAksClusterNodeProvisioningMode = 2
+)
+
+// Enum value maps for AzureAksClusterNodeProvisioningMode.
+var (
+	AzureAksClusterNodeProvisioningMode_name = map[int32]string{
+		0: "azure_aks_cluster_node_provisioning_mode_unspecified",
+		1: "MANUAL",
+		2: "AUTO",
+	}
+	AzureAksClusterNodeProvisioningMode_value = map[string]int32{
+		"azure_aks_cluster_node_provisioning_mode_unspecified": 0,
+		"MANUAL": 1,
+		"AUTO":   2,
+	}
+)
+
+func (x AzureAksClusterNodeProvisioningMode) Enum() *AzureAksClusterNodeProvisioningMode {
+	p := new(AzureAksClusterNodeProvisioningMode)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterNodeProvisioningMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterNodeProvisioningMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[34].Descriptor()
+}
+
+func (AzureAksClusterNodeProvisioningMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[34]
+}
+
+func (x AzureAksClusterNodeProvisioningMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterNodeProvisioningMode.Descriptor instead.
+func (AzureAksClusterNodeProvisioningMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{34}
+}
+
+// Default system pools behavior under node auto-provisioning.
+type AzureAksClusterNodeProvisioningDefaultPools int32
+
+const (
+	// Not specified: Azure's default (Auto).
+	AzureAksClusterNodeProvisioningDefaultPools_azure_aks_cluster_node_provisioning_default_pools_unspecified AzureAksClusterNodeProvisioningDefaultPools = 0
+	// AKS seeds managed default pools.
+	AzureAksClusterNodeProvisioningDefaultPools_NODE_POOLS_AUTO AzureAksClusterNodeProvisioningDefaultPools = 1
+	// No seeded pools -- everything auto-provisions from workload demand.
+	AzureAksClusterNodeProvisioningDefaultPools_NODE_POOLS_NONE AzureAksClusterNodeProvisioningDefaultPools = 2
+)
+
+// Enum value maps for AzureAksClusterNodeProvisioningDefaultPools.
+var (
+	AzureAksClusterNodeProvisioningDefaultPools_name = map[int32]string{
+		0: "azure_aks_cluster_node_provisioning_default_pools_unspecified",
+		1: "NODE_POOLS_AUTO",
+		2: "NODE_POOLS_NONE",
+	}
+	AzureAksClusterNodeProvisioningDefaultPools_value = map[string]int32{
+		"azure_aks_cluster_node_provisioning_default_pools_unspecified": 0,
+		"NODE_POOLS_AUTO": 1,
+		"NODE_POOLS_NONE": 2,
+	}
+)
+
+func (x AzureAksClusterNodeProvisioningDefaultPools) Enum() *AzureAksClusterNodeProvisioningDefaultPools {
+	p := new(AzureAksClusterNodeProvisioningDefaultPools)
+	*p = x
+	return p
+}
+
+func (x AzureAksClusterNodeProvisioningDefaultPools) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureAksClusterNodeProvisioningDefaultPools) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[35].Descriptor()
+}
+
+func (AzureAksClusterNodeProvisioningDefaultPools) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes[35]
+}
+
+func (x AzureAksClusterNodeProvisioningDefaultPools) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureAksClusterNodeProvisioningDefaultPools.Descriptor instead.
+func (AzureAksClusterNodeProvisioningDefaultPools) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{35}
+}
+
+// **AzureAksClusterSpec** defines the configuration for creating an Azure
+// Kubernetes Service (AKS) managed cluster: the control plane, its identity
+// and access model, its network fabric, the mandatory default node pool, and
+// the Azure-managed add-ons that turn a bare cluster into a platform.
+//
+// The cluster deliberately carries exactly ONE node pool -- the default
+// (system) pool Azure requires at creation. Every additional pool is its own
+// composable AzureAksNodePool resource referencing this cluster's
+// `cluster_id` output: pools have independent lifecycles (scale, upgrade,
+// spot-evict, delete) and coupling them to the cluster would force cluster
+// updates for pool changes.
+//
+// Workload identity composition: enabling `oidc_issuer_enabled` (on by
+// default) publishes the cluster's OIDC issuer URL as the `oidc_issuer_url`
+// output, which an AzureFederatedIdentityCredential consumes as its `issuer`
+// -- the keyless (secret-less) path for pods to act as an Azure managed
+// identity.
 type AzureAksClusterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Azure region in which to create the AKS cluster (e.g., "eastus").
-	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// The Azure Resource Group where the AKS Cluster will be created.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
-	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,14,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// The Azure resource ID of the Virtual Network subnet to use for cluster nodes.
-	// This should reference the subnet created by an AzureVirtualNetwork resource.
-	VnetSubnetId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=vnet_subnet_id,json=vnetSubnetId,proto3" json:"vnet_subnet_id,omitempty"`
-	// Kubernetes version for the cluster control plane.
-	// It is recommended to explicitly set a version (e.g., "1.30") for production clusters to prevent unintended upgrades.
-	KubernetesVersion string `protobuf:"bytes,3,opt,name=kubernetes_version,json=kubernetesVersion,proto3" json:"kubernetes_version,omitempty"`
-	// Control plane SKU tier. STANDARD provides financially-backed 99.95% uptime SLA (with AZs) and is required for production.
-	// FREE tier has no SLA and is only suitable for dev/test environments.
-	// Defaults to STANDARD for production-ready deployments.
-	ControlPlaneSku AzureAksClusterControlPlaneSku `protobuf:"varint,4,opt,name=control_plane_sku,json=controlPlaneSku,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterControlPlaneSku" json:"control_plane_sku,omitempty"`
-	// Networking plugin for the AKS cluster.
-	// AZURE_CNI provides advanced networking with full VNet integration. KUBENET is deprecated and will be retired in March 2028.
-	// Defaults to AZURE_CNI.
-	NetworkPlugin AzureAksClusterNetworkPlugin `protobuf:"varint,5,opt,name=network_plugin,json=networkPlugin,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPlugin" json:"network_plugin,omitempty"`
-	// Network plugin mode for Azure CNI. Only applicable when network_plugin is AZURE_CNI.
-	// OVERLAY mode (recommended) uses a private CIDR for pods (10.244.0.0/16) and solves VNet IP exhaustion.
-	// DYNAMIC mode assigns pods real VNet IPs dynamically from a dedicated pod subnet.
-	// Defaults to OVERLAY.
-	NetworkPluginMode AzureAksClusterNetworkPluginMode `protobuf:"varint,6,opt,name=network_plugin_mode,json=networkPluginMode,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginMode" json:"network_plugin_mode,omitempty"`
-	// Deploy the cluster as a private cluster (no public API server endpoint).
-	// When true, the API server endpoint will be private and accessible only from within the VNet.
-	// When false (default), a public endpoint is created (use authorized_ip_ranges to restrict access).
-	PrivateClusterEnabled bool `protobuf:"varint,7,opt,name=private_cluster_enabled,json=privateClusterEnabled,proto3" json:"private_cluster_enabled,omitempty"`
-	// Authorized IP address ranges (CIDR blocks) that are allowed to access the API server.
-	// This is applicable only if the cluster has a public endpoint.
-	// Leave empty to allow all (0.0.0.0/0) or for private clusters.
-	AuthorizedIpRanges []string `protobuf:"bytes,8,rep,name=authorized_ip_ranges,json=authorizedIpRanges,proto3" json:"authorized_ip_ranges,omitempty"`
-	// Disable Azure Active Directory integration for Kubernetes RBAC.
-	// By default, AKS clusters have Azure AD integration enabled (this field is false).
-	// Set to true to disable Azure AD RBAC integration.
-	DisableAzureAdRbac bool `protobuf:"varint,9,opt,name=disable_azure_ad_rbac,json=disableAzureAdRbac,proto3" json:"disable_azure_ad_rbac,omitempty"`
-	// System node pool configuration. Required for all clusters.
-	// System node pools run critical system pods (CoreDNS, metrics-server, etc.) and are tainted to prevent application workloads.
-	// For production, deploy across 3 availability zones with autoscaling enabled (min: 3, max: 5).
-	SystemNodePool *AzureAksClusterSystemNodePool `protobuf:"bytes,10,opt,name=system_node_pool,json=systemNodePool,proto3" json:"system_node_pool,omitempty"`
-	// User node pools for application workloads.
-	// Optional: if not specified, applications can run on system node pool (not recommended for production).
-	// For production, create dedicated user node pools with appropriate VM sizes and autoscaling configuration.
-	UserNodePools []*AzureAksClusterUserNodePool `protobuf:"bytes,11,rep,name=user_node_pools,json=userNodePools,proto3" json:"user_node_pools,omitempty"`
-	// Add-ons configuration for the AKS cluster.
-	// Enables Azure-managed add-ons like Container Insights, Key Vault CSI driver, Azure Policy, and Workload Identity.
-	Addons *AzureAksClusterAddonsConfig `protobuf:"bytes,12,opt,name=addons,proto3" json:"addons,omitempty"`
-	// Advanced networking configuration.
-	// Optional: most users should rely on defaults. Use this only if you need custom CIDRs or DNS servers.
-	AdvancedNetworking *AzureAksClusterAdvancedNetworking `protobuf:"bytes,13,opt,name=advanced_networking,json=advancedNetworking,proto3" json:"advanced_networking,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The Azure Resource Group in which to create the cluster.
+	// Can be a literal name or a reference to an AzureResourceGroup output.
+	// Changing the resource group replaces the cluster.
+	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
+	// The Azure region for the cluster's control plane and default node pool,
+	// e.g. "eastus", "westeurope". Changing the region replaces the cluster.
+	Region string `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
+	// The name of the managed cluster, unique within the resource group.
+	// 1-63 characters: alphanumerics, underscores, and hyphens; must start
+	// and end with an alphanumeric. Changing the name replaces the cluster.
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// DNS prefix for the cluster's public API-server FQDN
+	// (<prefix>-<hash>.hcp.<region>.azmk8s.io). 1-54 characters: letters,
+	// numbers, and hyphens; must begin and end with a letter or number.
+	// Leave unset to derive it from the cluster name -- the right call for
+	// nearly everyone. Mutually exclusive with dns_prefix_private_cluster.
+	// Changing it replaces the cluster.
+	DnsPrefix string `protobuf:"bytes,4,opt,name=dns_prefix,json=dnsPrefix,proto3" json:"dns_prefix,omitempty"`
+	// DNS prefix for the PRIVATE cluster's API-server record in its private
+	// DNS zone. Only valid for private clusters (private_cluster_enabled),
+	// and mutually exclusive with dns_prefix. Leave unset for private
+	// clusters too -- the modules derive a prefix from the cluster name.
+	// Changing it replaces the cluster.
+	DnsPrefixPrivateCluster string `protobuf:"bytes,5,opt,name=dns_prefix_private_cluster,json=dnsPrefixPrivateCluster,proto3" json:"dns_prefix_private_cluster,omitempty"`
+	// Kubernetes version for the control plane, e.g. "1.35" (minor-version
+	// aliases pick the latest GA patch) or an exact "1.35.2". Leave unset to
+	// provision the latest AKS-recommended GA version -- but PIN a version
+	// for production clusters so upgrades happen when you choose, not when
+	// you redeploy. Upgrades are in-place but can only move one minor
+	// version at a time; node pools must stay within two minors of the
+	// control plane.
+	KubernetesVersion string `protobuf:"bytes,6,opt,name=kubernetes_version,json=kubernetesVersion,proto3" json:"kubernetes_version,omitempty"`
+	// Control-plane pricing/support tier. Unspecified applies Azure's
+	// default (Free): no uptime SLA, 1000-node limit -- fine for dev/test.
+	// STANDARD adds the financially-backed 99.95% SLA (with availability
+	// zones) and 5000-node scale that production clusters need. PREMIUM
+	// additionally unlocks AKS Long Term Support. Updatable in place.
+	SkuTier AzureAksClusterSkuTier `protobuf:"varint,7,opt,name=sku_tier,json=skuTier,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSkuTier" json:"sku_tier,omitempty"`
+	// Kubernetes-version support plan. Unspecified applies Azure's default
+	// (KUBERNETES_OFFICIAL): versions supported per upstream community
+	// windows. AKS_LONG_TERM_SUPPORT extends a version's support to 2 years
+	// and requires the PREMIUM sku_tier.
+	SupportPlan AzureAksClusterSupportPlan `protobuf:"varint,8,opt,name=support_plan,json=supportPlan,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSupportPlan" json:"support_plan,omitempty"`
+	// The default (system) node pool Azure requires at cluster creation --
+	// the one pool whose lifecycle is genuinely coupled to the cluster's.
+	// It runs critical system pods (CoreDNS, metrics-server, konnectivity)
+	// and is always Linux in System mode, which is why it carries no
+	// os_type/mode/spot knobs. Add every other pool as a standalone
+	// AzureAksNodePool resource referencing this cluster.
+	DefaultNodePool *AzureAksClusterDefaultNodePool `protobuf:"bytes,9,opt,name=default_node_pool,json=defaultNodePool,proto3" json:"default_node_pool,omitempty"`
+	// The cluster's managed identity -- how the AKS control plane itself
+	// authenticates to Azure (to manage the node resource group, attach
+	// disks, create load balancers). Leave unset for a system-assigned
+	// identity, created and rotated by Azure -- right for most clusters.
+	// Configure USER_ASSIGNED (with identity_ids) when the cluster identity
+	// needs pre-provisioned grants -- e.g. Private DNS Zone Contributor on a
+	// BYO private zone, or Network Contributor on a BYO subnet -- so the
+	// grants exist before the cluster does.
+	Identity *AzureAksClusterIdentity `protobuf:"bytes,10,opt,name=identity,proto3" json:"identity,omitempty"`
+	// The kubelet identity -- the identity NODES use to pull images from
+	// Azure Container Registry and access other Azure resources. Leave
+	// unset to let AKS manage one. Setting it requires a USER_ASSIGNED
+	// cluster identity, and all three fields must be set together (the
+	// client id and object id of the same user-assigned identity whose ARM
+	// id is referenced). Changing any of them replaces the cluster.
+	KubeletIdentity *AzureAksClusterKubeletIdentity `protobuf:"bytes,11,opt,name=kubelet_identity,json=kubeletIdentity,proto3" json:"kubelet_identity,omitempty"`
+	// Whether the cluster publishes an OIDC issuer endpoint. Azure's
+	// provisioning default is off, but this spec defaults it ON: the issuer
+	// is the foundation of workload identity federation (an
+	// AzureFederatedIdentityCredential's `issuer` is exactly this cluster's
+	// oidc_issuer_url output), it costs nothing, and disabling it after
+	// enabling forces cluster replacement.
+	OidcIssuerEnabled *bool `protobuf:"varint,12,opt,name=oidc_issuer_enabled,json=oidcIssuerEnabled,proto3,oneof" json:"oidc_issuer_enabled,omitempty"`
+	// Whether to run the Azure Workload Identity webhook in the cluster,
+	// letting pods exchange Kubernetes service-account tokens for Azure AD
+	// tokens (secret-less access to Azure APIs). Requires the OIDC issuer.
+	// The full trust chain is: this cluster's oidc_issuer_url output → an
+	// AzureFederatedIdentityCredential on a user-assigned identity → Azure
+	// role assignments on that identity.
+	WorkloadIdentityEnabled bool `protobuf:"varint,13,opt,name=workload_identity_enabled,json=workloadIdentityEnabled,proto3" json:"workload_identity_enabled,omitempty"`
+	// Deploy as a PRIVATE cluster: the API server gets only a private IP in
+	// the cluster's VNet, reachable via VNet peering, VPN, or ExpressRoute.
+	// The hardened-enterprise posture; pair with private_dns_zone_id.
+	// Changing it replaces the cluster.
+	PrivateClusterEnabled bool `protobuf:"varint,14,opt,name=private_cluster_enabled,json=privateClusterEnabled,proto3" json:"private_cluster_enabled,omitempty"`
+	// For private clusters: the Private DNS zone hosting the API server's
+	// record. Referencing an AzurePrivateDnsZone (or a literal zone ARM id)
+	// requires the cluster identity to hold Private DNS Zone Contributor on
+	// it -- use a USER_ASSIGNED cluster identity so the grant can pre-exist.
+	// The literals "System" (AKS creates and manages the zone; the default)
+	// and "None" (public DNS resolving to the private IP) are also accepted.
+	// Changing it replaces the cluster.
+	PrivateDnsZoneId *v1.StringValueOrRef `protobuf:"bytes,15,opt,name=private_dns_zone_id,json=privateDnsZoneId,proto3" json:"private_dns_zone_id,omitempty"`
+	// For private clusters: whether to ALSO publish a public FQDN that
+	// resolves to the API server's private IP. Useful when private-network
+	// clients cannot use the private DNS zone (e.g. on-prem resolvers);
+	// the endpoint itself stays private either way.
+	PrivateClusterPublicFqdnEnabled bool `protobuf:"varint,16,opt,name=private_cluster_public_fqdn_enabled,json=privateClusterPublicFqdnEnabled,proto3" json:"private_cluster_public_fqdn_enabled,omitempty"`
+	// API-server access hardening for PUBLIC clusters: source-IP allowlist
+	// and API Server VNet Integration.
+	ApiServerAccessProfile *AzureAksClusterApiServerAccessProfile `protobuf:"bytes,17,opt,name=api_server_access_profile,json=apiServerAccessProfile,proto3" json:"api_server_access_profile,omitempty"`
+	// Whether Kubernetes Role-Based Access Control is enabled. Azure's
+	// default is true, and virtually nothing legitimate runs without RBAC;
+	// the field exists to mirror the provider surface. Disabling it forces
+	// cluster replacement.
+	RoleBasedAccessControlEnabled *bool `protobuf:"varint,18,opt,name=role_based_access_control_enabled,json=roleBasedAccessControlEnabled,proto3,oneof" json:"role_based_access_control_enabled,omitempty"`
+	// Disable Kubernetes local accounts (the certificate-based admin in
+	// kube_admin_config), forcing ALL access through Microsoft Entra ID.
+	// The production hardening posture -- requires
+	// azure_active_directory_role_based_access_control to be configured so
+	// someone can still get in.
+	LocalAccountDisabled bool `protobuf:"varint,19,opt,name=local_account_disabled,json=localAccountDisabled,proto3" json:"local_account_disabled,omitempty"`
+	// Microsoft Entra ID (Azure AD) integration for Kubernetes
+	// authentication and, optionally, authorization. Configure this for any
+	// cluster humans access: cluster admission via AAD group membership
+	// beats distributing client certificates.
+	AzureActiveDirectoryRoleBasedAccessControl *AzureAksClusterAadRbac `protobuf:"bytes,20,opt,name=azure_active_directory_role_based_access_control,json=azureActiveDirectoryRoleBasedAccessControl,proto3" json:"azure_active_directory_role_based_access_control,omitempty"`
+	// The cluster's network fabric: CNI plugin and mode, network policy
+	// engine, pod/service address spaces, outbound (egress) model, and the
+	// managed load-balancer / NAT-gateway profiles. Leave unset for the
+	// modern AKS default the modules apply: Azure CNI in overlay mode with
+	// a managed Standard load balancer. Most sub-fields replace the cluster
+	// when changed -- decide the network model up front.
+	NetworkProfile *AzureAksClusterNetworkProfile `protobuf:"bytes,21,opt,name=network_profile,json=networkProfile,proto3" json:"network_profile,omitempty"`
+	// Fine-tuning for the cluster autoscaler that scales node pools with
+	// auto_scaling_enabled. Unset fields keep Azure's defaults, which suit
+	// most clusters; the profile is cluster-wide (all pools share it).
+	AutoScalerProfile *AzureAksClusterAutoScalerProfile `protobuf:"bytes,22,opt,name=auto_scaler_profile,json=autoScalerProfile,proto3" json:"auto_scaler_profile,omitempty"`
+	// Automatic upgrade channel for the cluster's KUBERNETES VERSION.
+	// Unspecified means no automatic upgrades (Azure's default) -- pin
+	// kubernetes_version and upgrade deliberately. PATCH auto-applies patch
+	// releases of the pinned minor; STABLE tracks N-1 minor; RAPID tracks
+	// the newest; NODE_IMAGE only refreshes node images (pair with
+	// node_os_upgrade_channel NODE_IMAGE).
+	AutomaticUpgradeChannel AzureAksClusterUpgradeChannel `protobuf:"varint,23,opt,name=automatic_upgrade_channel,json=automaticUpgradeChannel,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUpgradeChannel" json:"automatic_upgrade_channel,omitempty"`
+	// Upgrade channel for the NODE OS IMAGE (security patches to the node
+	// OS, independent of Kubernetes version). Unspecified applies Azure's
+	// default (NODE_IMAGE): nodes are re-imaged as AKS publishes patched
+	// images -- the recommended posture. SECURITY_PATCH applies patches
+	// without re-imaging; UNMANAGED leaves patching to you; NONE disables.
+	NodeOsUpgradeChannel AzureAksClusterNodeOsUpgradeChannel `protobuf:"varint,24,opt,name=node_os_upgrade_channel,json=nodeOsUpgradeChannel,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeOsUpgradeChannel" json:"node_os_upgrade_channel,omitempty"`
+	// Dedicated maintenance window: WHEN Azure may perform routine cluster
+	// maintenance (control-plane updates it initiates). Prefer the two
+	// schedule-based windows below for upgrade operations; this legacy
+	// window shapes everything else.
+	MaintenanceWindow *AzureAksClusterMaintenanceWindow `protobuf:"bytes,25,opt,name=maintenance_window,json=maintenanceWindow,proto3" json:"maintenance_window,omitempty"`
+	// Schedule for AUTOMATIC KUBERNETES UPGRADES (the
+	// automatic_upgrade_channel work). Configure it whenever an upgrade
+	// channel is set so version bumps land in a window you chose.
+	MaintenanceWindowAutoUpgrade *AzureAksClusterMaintenanceWindowSchedule `protobuf:"bytes,26,opt,name=maintenance_window_auto_upgrade,json=maintenanceWindowAutoUpgrade,proto3" json:"maintenance_window_auto_upgrade,omitempty"`
+	// Schedule for NODE OS IMAGE maintenance (the node_os_upgrade_channel
+	// work). Configure it alongside NODE_IMAGE or SECURITY_PATCH channels
+	// so node re-imaging respects business hours.
+	MaintenanceWindowNodeOs *AzureAksClusterMaintenanceWindowSchedule `protobuf:"bytes,27,opt,name=maintenance_window_node_os,json=maintenanceWindowNodeOs,proto3" json:"maintenance_window_node_os,omitempty"`
+	// Container Insights: stream container logs, metrics, and Kubernetes
+	// events to a Log Analytics workspace -- the standard AKS observability
+	// add-on.
+	OmsAgent *AzureAksClusterOmsAgent `protobuf:"bytes,28,opt,name=oms_agent,json=omsAgent,proto3" json:"oms_agent,omitempty"`
+	// Azure Key Vault provider for the Secrets Store CSI driver: mount Key
+	// Vault secrets/keys/certificates into pods as volumes, with optional
+	// periodic rotation.
+	KeyVaultSecretsProvider *AzureAksClusterKeyVaultSecretsProvider `protobuf:"bytes,29,opt,name=key_vault_secrets_provider,json=keyVaultSecretsProvider,proto3" json:"key_vault_secrets_provider,omitempty"`
+	// Whether the Azure Policy add-on enforces policy-based governance
+	// (pod security baselines, allowed registries, resource limits) inside
+	// the cluster via OPA Gatekeeper. Recommended for governed estates.
+	AzurePolicyEnabled bool `protobuf:"varint,30,opt,name=azure_policy_enabled,json=azurePolicyEnabled,proto3" json:"azure_policy_enabled,omitempty"`
+	// Microsoft Defender for Containers: runtime threat detection streaming
+	// security events to a Log Analytics workspace.
+	MicrosoftDefender *AzureAksClusterMicrosoftDefender `protobuf:"bytes,31,opt,name=microsoft_defender,json=microsoftDefender,proto3" json:"microsoft_defender,omitempty"`
+	// Azure Monitor managed Prometheus metrics collection. Set (even empty)
+	// to enable the metrics profile; the two filter fields extend which
+	// Kubernetes annotations/labels become metric labels.
+	MonitorMetrics *AzureAksClusterMonitorMetrics `protobuf:"bytes,32,opt,name=monitor_metrics,json=monitorMetrics,proto3" json:"monitor_metrics,omitempty"`
+	// Application Gateway Ingress Controller (AGIC) add-on: program an
+	// Azure Application Gateway as the cluster's ingress. Reference an
+	// existing gateway by id, or have AKS create one from a subnet CIDR or
+	// subnet id. Exactly one of the three anchors must be set.
+	IngressApplicationGateway *AzureAksClusterIngressApplicationGateway `protobuf:"bytes,33,opt,name=ingress_application_gateway,json=ingressApplicationGateway,proto3" json:"ingress_application_gateway,omitempty"`
+	// Virtual nodes (serverless burst) via Azure Container Instances: the
+	// ACI connector schedules overflow pods into a dedicated subnet without
+	// provisioning VMs.
+	AciConnectorLinux *AzureAksClusterAciConnectorLinux `protobuf:"bytes,34,opt,name=aci_connector_linux,json=aciConnectorLinux,proto3" json:"aci_connector_linux,omitempty"`
+	// Confidential computing (Intel SGX) support: deploys the SGX device
+	// plugin, and optionally the quote-helper sidecar, for enclave
+	// workloads on DC-series node pools.
+	ConfidentialComputing *AzureAksClusterConfidentialComputing `protobuf:"bytes,35,opt,name=confidential_computing,json=confidentialComputing,proto3" json:"confidential_computing,omitempty"`
+	// Managed NGINX ingress (the "application routing" add-on): a
+	// production-supported NGINX ingress controller wired to Azure DNS
+	// zones for automatic record management.
+	WebAppRouting *AzureAksClusterWebAppRouting `protobuf:"bytes,36,opt,name=web_app_routing,json=webAppRouting,proto3" json:"web_app_routing,omitempty"`
+	// Managed Istio service mesh: Azure-operated Istio control plane with
+	// optional managed ingress gateways and a bring-your-own certificate
+	// authority from Key Vault.
+	ServiceMeshProfile *AzureAksClusterServiceMeshProfile `protobuf:"bytes,37,opt,name=service_mesh_profile,json=serviceMeshProfile,proto3" json:"service_mesh_profile,omitempty"`
+	// Which CSI storage drivers run in the cluster. Unset fields keep
+	// Azure's defaults (disk on, file on, snapshot controller on, blob
+	// OFF). Enable the blob driver for workloads mounting Blob Storage via
+	// NFS/FUSE.
+	StorageProfile *AzureAksClusterStorageProfile `protobuf:"bytes,38,opt,name=storage_profile,json=storageProfile,proto3" json:"storage_profile,omitempty"`
+	// Managed workload autoscalers: KEDA (event-driven pod autoscaling) and
+	// the Vertical Pod Autoscaler, both run by Azure instead of self-hosted.
+	WorkloadAutoscalerProfile *AzureAksClusterWorkloadAutoscalerProfile `protobuf:"bytes,39,opt,name=workload_autoscaler_profile,json=workloadAutoscalerProfile,proto3" json:"workload_autoscaler_profile,omitempty"`
+	// Key Management Service etcd encryption: envelope-encrypt Kubernetes
+	// secrets at rest in etcd with YOUR Key Vault key (customer-managed
+	// key), instead of Azure's platform keys.
+	KeyManagementService *AzureAksClusterKeyManagementService `protobuf:"bytes,40,opt,name=key_management_service,json=keyManagementService,proto3" json:"key_management_service,omitempty"`
+	// Corporate HTTP/HTTPS proxy configuration applied to nodes and pods --
+	// for enterprises whose egress must traverse an inspection proxy.
+	HttpProxyConfig *AzureAksClusterHttpProxyConfig `protobuf:"bytes,41,opt,name=http_proxy_config,json=httpProxyConfig,proto3" json:"http_proxy_config,omitempty"`
+	// SSH access configuration for Linux nodes. Set it to enable direct SSH
+	// (debugging via node IP); omit it and use `kubectl debug node` --
+	// AKS generates and manages keys either way.
+	LinuxProfile *AzureAksClusterLinuxProfile `protobuf:"bytes,42,opt,name=linux_profile,json=linuxProfile,proto3" json:"linux_profile,omitempty"`
+	// Windows node administrator credentials and licensing -- required
+	// before any Windows AzureAksNodePool can join this cluster.
+	WindowsProfile *AzureAksClusterWindowsProfile `protobuf:"bytes,43,opt,name=windows_profile,json=windowsProfile,proto3" json:"windows_profile,omitempty"`
+	// Whether Image Cleaner removes unused, vulnerable container images
+	// from nodes on an interval. A cheap hardening win for long-lived
+	// clusters.
+	ImageCleanerEnabled bool `protobuf:"varint,44,opt,name=image_cleaner_enabled,json=imageCleanerEnabled,proto3" json:"image_cleaner_enabled,omitempty"`
+	// Image Cleaner scan interval, in hours (24-2160). Only meaningful with
+	// image_cleaner_enabled; unset applies Azure's default interval.
+	ImageCleanerIntervalHours int32 `protobuf:"varint,45,opt,name=image_cleaner_interval_hours,json=imageCleanerIntervalHours,proto3" json:"image_cleaner_interval_hours,omitempty"`
+	// Whether Microsoft Cost Management shows namespace- and
+	// deployment-level cost breakdowns for this cluster. Requires STANDARD
+	// or PREMIUM sku_tier.
+	CostAnalysisEnabled bool `protobuf:"varint,46,opt,name=cost_analysis_enabled,json=costAnalysisEnabled,proto3" json:"cost_analysis_enabled,omitempty"`
+	// Whether `az aks command invoke` (run-command) is allowed -- executing
+	// commands inside the cluster through the Azure API without direct
+	// network reach. Azure's default is enabled; hardened environments turn
+	// it off to force all access through audited kubeconfig paths.
+	RunCommandEnabled *bool `protobuf:"varint,47,opt,name=run_command_enabled,json=runCommandEnabled,proto3,oneof" json:"run_command_enabled,omitempty"`
+	// A Disk Encryption Set for encrypting node OS disks and persistent
+	// volumes with a customer-managed key. A disk encryption set by ARM ID,
+	// or a reference to an AzureDiskEncryptionSet's output. Changing it
+	// replaces the cluster.
+	DiskEncryptionSetId *v1.StringValueOrRef `protobuf:"bytes,48,opt,name=disk_encryption_set_id,json=diskEncryptionSetId,proto3" json:"disk_encryption_set_id,omitempty"`
+	// Deploy the cluster into an Azure Extended Zone (edge location) close
+	// to end users, e.g. "losangeles". Leave unset for the standard region
+	// -- the overwhelmingly common case. Changing it replaces the cluster.
+	EdgeZone string `protobuf:"bytes,49,opt,name=edge_zone,json=edgeZone,proto3" json:"edge_zone,omitempty"`
+	// Name for the NODE resource group -- the Azure-managed group holding
+	// the cluster's infrastructure (VMSS instances, managed load balancer,
+	// managed public IPs). Must NOT already exist. Leave unset for Azure's
+	// default ("MC_<rg>_<cluster>_<region>"). Changing it replaces the
+	// cluster.
+	NodeResourceGroup string `protobuf:"bytes,50,opt,name=node_resource_group,json=nodeResourceGroup,proto3" json:"node_resource_group,omitempty"`
+	// Up to 10 base64-encoded CA certificates added to the trust store of
+	// every node -- for private registries or proxies signed by an internal
+	// CA. Requires custom CA trust (nodes re-image on change).
+	CustomCaTrustCertificatesBase64 []string `protobuf:"bytes,51,rep,name=custom_ca_trust_certificates_base64,json=customCaTrustCertificatesBase64,proto3" json:"custom_ca_trust_certificates_base64,omitempty"`
+	// Where nodes pull AKS bootstrap artifacts (system images) from.
+	// Unspecified pulls directly from the Microsoft Container Registry --
+	// fine whenever nodes have internet egress. Configure CACHE with an
+	// Azure Container Registry (ACR cache rules) for network-isolated
+	// clusters whose outbound_type is NONE or fully firewalled.
+	BootstrapProfile *AzureAksClusterBootstrapProfile `protobuf:"bytes,52,opt,name=bootstrap_profile,json=bootstrapProfile,proto3" json:"bootstrap_profile,omitempty"`
+	// Node auto-provisioning (Karpenter): let AKS create and remove
+	// right-sized node pools automatically from pending pod requirements,
+	// instead of you pre-planning pools. AUTO mode hands node management to
+	// the platform; leave unset for classic manual pool management.
+	NodeProvisioningProfile *AzureAksClusterNodeProvisioningProfile `protobuf:"bytes,53,opt,name=node_provisioning_profile,json=nodeProvisioningProfile,proto3" json:"node_provisioning_profile,omitempty"`
+	// Escape hatch for cluster upgrades: force an upgrade to proceed even
+	// through drain failures or API-deprecation checks, until an expiry
+	// timestamp. Use only to unblock a stuck upgrade, never as steady state.
+	UpgradeOverride *AzureAksClusterUpgradeOverride `protobuf:"bytes,54,opt,name=upgrade_override,json=upgradeOverride,proto3" json:"upgrade_override,omitempty"`
+	// Whether the AI toolchain operator (KAITO) manages large-model
+	// inference workloads on the cluster (GPU provisioning, model serving).
+	AiToolchainOperatorEnabled bool `protobuf:"varint,55,opt,name=ai_toolchain_operator_enabled,json=aiToolchainOperatorEnabled,proto3" json:"ai_toolchain_operator_enabled,omitempty"`
+	// Free-form tags applied to the cluster, merged over the
+	// Planton-derived resource tags (organization, environment, resource
+	// id); a user tag with the same key wins. Tags are Azure's governance
+	// surface -- Azure Policy enforces them and Microsoft Cost Management
+	// groups by them. Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,56,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AzureAksClusterSpec) Reset() {
@@ -265,13 +2424,6 @@ func (*AzureAksClusterSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AzureAksClusterSpec) GetRegion() string {
-	if x != nil {
-		return x.Region
-	}
-	return ""
-}
-
 func (x *AzureAksClusterSpec) GetResourceGroup() *v1.StringValueOrRef {
 	if x != nil {
 		return x.ResourceGroup
@@ -279,11 +2431,32 @@ func (x *AzureAksClusterSpec) GetResourceGroup() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureAksClusterSpec) GetVnetSubnetId() *v1.StringValueOrRef {
+func (x *AzureAksClusterSpec) GetRegion() string {
 	if x != nil {
-		return x.VnetSubnetId
+		return x.Region
 	}
-	return nil
+	return ""
+}
+
+func (x *AzureAksClusterSpec) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AzureAksClusterSpec) GetDnsPrefix() string {
+	if x != nil {
+		return x.DnsPrefix
+	}
+	return ""
+}
+
+func (x *AzureAksClusterSpec) GetDnsPrefixPrivateCluster() string {
+	if x != nil {
+		return x.DnsPrefixPrivateCluster
+	}
+	return ""
 }
 
 func (x *AzureAksClusterSpec) GetKubernetesVersion() string {
@@ -293,25 +2466,53 @@ func (x *AzureAksClusterSpec) GetKubernetesVersion() string {
 	return ""
 }
 
-func (x *AzureAksClusterSpec) GetControlPlaneSku() AzureAksClusterControlPlaneSku {
+func (x *AzureAksClusterSpec) GetSkuTier() AzureAksClusterSkuTier {
 	if x != nil {
-		return x.ControlPlaneSku
+		return x.SkuTier
 	}
-	return AzureAksClusterControlPlaneSku_STANDARD
+	return AzureAksClusterSkuTier_azure_aks_cluster_sku_tier_unspecified
 }
 
-func (x *AzureAksClusterSpec) GetNetworkPlugin() AzureAksClusterNetworkPlugin {
+func (x *AzureAksClusterSpec) GetSupportPlan() AzureAksClusterSupportPlan {
 	if x != nil {
-		return x.NetworkPlugin
+		return x.SupportPlan
 	}
-	return AzureAksClusterNetworkPlugin_AZURE_CNI
+	return AzureAksClusterSupportPlan_azure_aks_cluster_support_plan_unspecified
 }
 
-func (x *AzureAksClusterSpec) GetNetworkPluginMode() AzureAksClusterNetworkPluginMode {
+func (x *AzureAksClusterSpec) GetDefaultNodePool() *AzureAksClusterDefaultNodePool {
 	if x != nil {
-		return x.NetworkPluginMode
+		return x.DefaultNodePool
 	}
-	return AzureAksClusterNetworkPluginMode_OVERLAY
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetIdentity() *AzureAksClusterIdentity {
+	if x != nil {
+		return x.Identity
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetKubeletIdentity() *AzureAksClusterKubeletIdentity {
+	if x != nil {
+		return x.KubeletIdentity
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetOidcIssuerEnabled() bool {
+	if x != nil && x.OidcIssuerEnabled != nil {
+		return *x.OidcIssuerEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterSpec) GetWorkloadIdentityEnabled() bool {
+	if x != nil {
+		return x.WorkloadIdentityEnabled
+	}
+	return false
 }
 
 func (x *AzureAksClusterSpec) GetPrivateClusterEnabled() bool {
@@ -321,209 +2522,473 @@ func (x *AzureAksClusterSpec) GetPrivateClusterEnabled() bool {
 	return false
 }
 
-func (x *AzureAksClusterSpec) GetAuthorizedIpRanges() []string {
+func (x *AzureAksClusterSpec) GetPrivateDnsZoneId() *v1.StringValueOrRef {
 	if x != nil {
-		return x.AuthorizedIpRanges
+		return x.PrivateDnsZoneId
 	}
 	return nil
 }
 
-func (x *AzureAksClusterSpec) GetDisableAzureAdRbac() bool {
+func (x *AzureAksClusterSpec) GetPrivateClusterPublicFqdnEnabled() bool {
 	if x != nil {
-		return x.DisableAzureAdRbac
+		return x.PrivateClusterPublicFqdnEnabled
 	}
 	return false
 }
 
-func (x *AzureAksClusterSpec) GetSystemNodePool() *AzureAksClusterSystemNodePool {
+func (x *AzureAksClusterSpec) GetApiServerAccessProfile() *AzureAksClusterApiServerAccessProfile {
 	if x != nil {
-		return x.SystemNodePool
+		return x.ApiServerAccessProfile
 	}
 	return nil
 }
 
-func (x *AzureAksClusterSpec) GetUserNodePools() []*AzureAksClusterUserNodePool {
+func (x *AzureAksClusterSpec) GetRoleBasedAccessControlEnabled() bool {
+	if x != nil && x.RoleBasedAccessControlEnabled != nil {
+		return *x.RoleBasedAccessControlEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterSpec) GetLocalAccountDisabled() bool {
 	if x != nil {
-		return x.UserNodePools
+		return x.LocalAccountDisabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterSpec) GetAzureActiveDirectoryRoleBasedAccessControl() *AzureAksClusterAadRbac {
+	if x != nil {
+		return x.AzureActiveDirectoryRoleBasedAccessControl
 	}
 	return nil
 }
 
-func (x *AzureAksClusterSpec) GetAddons() *AzureAksClusterAddonsConfig {
+func (x *AzureAksClusterSpec) GetNetworkProfile() *AzureAksClusterNetworkProfile {
 	if x != nil {
-		return x.Addons
+		return x.NetworkProfile
 	}
 	return nil
 }
 
-func (x *AzureAksClusterSpec) GetAdvancedNetworking() *AzureAksClusterAdvancedNetworking {
+func (x *AzureAksClusterSpec) GetAutoScalerProfile() *AzureAksClusterAutoScalerProfile {
 	if x != nil {
-		return x.AdvancedNetworking
+		return x.AutoScalerProfile
 	}
 	return nil
 }
 
-// Autoscaling configuration for node pools.
-type AzureAksClusterAutoscalingConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Minimum number of nodes. For system pools, minimum should be 3 for high availability.
-	MinCount int32 `protobuf:"varint,1,opt,name=min_count,json=minCount,proto3" json:"min_count,omitempty"`
-	// Maximum number of nodes. Autoscaler will not scale beyond this limit.
-	MaxCount      int32 `protobuf:"varint,2,opt,name=max_count,json=maxCount,proto3" json:"max_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AzureAksClusterAutoscalingConfig) Reset() {
-	*x = AzureAksClusterAutoscalingConfig{}
-	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AzureAksClusterAutoscalingConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AzureAksClusterAutoscalingConfig) ProtoMessage() {}
-
-func (x *AzureAksClusterAutoscalingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[1]
+func (x *AzureAksClusterSpec) GetAutomaticUpgradeChannel() AzureAksClusterUpgradeChannel {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+		return x.AutomaticUpgradeChannel
 	}
-	return mi.MessageOf(x)
+	return AzureAksClusterUpgradeChannel_azure_aks_cluster_upgrade_channel_unspecified
 }
 
-// Deprecated: Use AzureAksClusterAutoscalingConfig.ProtoReflect.Descriptor instead.
-func (*AzureAksClusterAutoscalingConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *AzureAksClusterAutoscalingConfig) GetMinCount() int32 {
+func (x *AzureAksClusterSpec) GetNodeOsUpgradeChannel() AzureAksClusterNodeOsUpgradeChannel {
 	if x != nil {
-		return x.MinCount
+		return x.NodeOsUpgradeChannel
+	}
+	return AzureAksClusterNodeOsUpgradeChannel_azure_aks_cluster_node_os_upgrade_channel_unspecified
+}
+
+func (x *AzureAksClusterSpec) GetMaintenanceWindow() *AzureAksClusterMaintenanceWindow {
+	if x != nil {
+		return x.MaintenanceWindow
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetMaintenanceWindowAutoUpgrade() *AzureAksClusterMaintenanceWindowSchedule {
+	if x != nil {
+		return x.MaintenanceWindowAutoUpgrade
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetMaintenanceWindowNodeOs() *AzureAksClusterMaintenanceWindowSchedule {
+	if x != nil {
+		return x.MaintenanceWindowNodeOs
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetOmsAgent() *AzureAksClusterOmsAgent {
+	if x != nil {
+		return x.OmsAgent
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetKeyVaultSecretsProvider() *AzureAksClusterKeyVaultSecretsProvider {
+	if x != nil {
+		return x.KeyVaultSecretsProvider
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetAzurePolicyEnabled() bool {
+	if x != nil {
+		return x.AzurePolicyEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterSpec) GetMicrosoftDefender() *AzureAksClusterMicrosoftDefender {
+	if x != nil {
+		return x.MicrosoftDefender
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetMonitorMetrics() *AzureAksClusterMonitorMetrics {
+	if x != nil {
+		return x.MonitorMetrics
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetIngressApplicationGateway() *AzureAksClusterIngressApplicationGateway {
+	if x != nil {
+		return x.IngressApplicationGateway
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetAciConnectorLinux() *AzureAksClusterAciConnectorLinux {
+	if x != nil {
+		return x.AciConnectorLinux
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetConfidentialComputing() *AzureAksClusterConfidentialComputing {
+	if x != nil {
+		return x.ConfidentialComputing
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetWebAppRouting() *AzureAksClusterWebAppRouting {
+	if x != nil {
+		return x.WebAppRouting
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetServiceMeshProfile() *AzureAksClusterServiceMeshProfile {
+	if x != nil {
+		return x.ServiceMeshProfile
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetStorageProfile() *AzureAksClusterStorageProfile {
+	if x != nil {
+		return x.StorageProfile
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetWorkloadAutoscalerProfile() *AzureAksClusterWorkloadAutoscalerProfile {
+	if x != nil {
+		return x.WorkloadAutoscalerProfile
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetKeyManagementService() *AzureAksClusterKeyManagementService {
+	if x != nil {
+		return x.KeyManagementService
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetHttpProxyConfig() *AzureAksClusterHttpProxyConfig {
+	if x != nil {
+		return x.HttpProxyConfig
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetLinuxProfile() *AzureAksClusterLinuxProfile {
+	if x != nil {
+		return x.LinuxProfile
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetWindowsProfile() *AzureAksClusterWindowsProfile {
+	if x != nil {
+		return x.WindowsProfile
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetImageCleanerEnabled() bool {
+	if x != nil {
+		return x.ImageCleanerEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterSpec) GetImageCleanerIntervalHours() int32 {
+	if x != nil {
+		return x.ImageCleanerIntervalHours
 	}
 	return 0
 }
 
-func (x *AzureAksClusterAutoscalingConfig) GetMaxCount() int32 {
+func (x *AzureAksClusterSpec) GetCostAnalysisEnabled() bool {
 	if x != nil {
-		return x.MaxCount
+		return x.CostAnalysisEnabled
 	}
-	return 0
+	return false
 }
 
-// System node pool configuration.
-// System node pools run critical AKS components and should be isolated from application workloads.
-type AzureAksClusterSystemNodePool struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Azure VM size for system nodes (e.g., "Standard_D4s_v5").
-	// Minimum recommended: Standard_D2s_v3 for dev/test, Standard_D4s_v5 for production.
-	VmSize string `protobuf:"bytes,1,opt,name=vm_size,json=vmSize,proto3" json:"vm_size,omitempty"`
-	// Autoscaling configuration.
-	// Production minimum: 3 nodes for high availability.
-	Autoscaling *AzureAksClusterAutoscalingConfig `protobuf:"bytes,2,opt,name=autoscaling,proto3" json:"autoscaling,omitempty"`
-	// Availability zones for the node pool (e.g., ["1", "2", "3"]).
-	// For production, deploy across 3 zones for 99.95% SLA.
-	// For dev/test, single zone (["1"]) is acceptable.
-	AvailabilityZones []string `protobuf:"bytes,3,rep,name=availability_zones,json=availabilityZones,proto3" json:"availability_zones,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *AzureAksClusterSystemNodePool) Reset() {
-	*x = AzureAksClusterSystemNodePool{}
-	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AzureAksClusterSystemNodePool) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AzureAksClusterSystemNodePool) ProtoMessage() {}
-
-func (x *AzureAksClusterSystemNodePool) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+func (x *AzureAksClusterSpec) GetRunCommandEnabled() bool {
+	if x != nil && x.RunCommandEnabled != nil {
+		return *x.RunCommandEnabled
 	}
-	return mi.MessageOf(x)
+	return false
 }
 
-// Deprecated: Use AzureAksClusterSystemNodePool.ProtoReflect.Descriptor instead.
-func (*AzureAksClusterSystemNodePool) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *AzureAksClusterSystemNodePool) GetVmSize() string {
+func (x *AzureAksClusterSpec) GetDiskEncryptionSetId() *v1.StringValueOrRef {
 	if x != nil {
-		return x.VmSize
+		return x.DiskEncryptionSetId
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetEdgeZone() string {
+	if x != nil {
+		return x.EdgeZone
 	}
 	return ""
 }
 
-func (x *AzureAksClusterSystemNodePool) GetAutoscaling() *AzureAksClusterAutoscalingConfig {
+func (x *AzureAksClusterSpec) GetNodeResourceGroup() string {
 	if x != nil {
-		return x.Autoscaling
+		return x.NodeResourceGroup
+	}
+	return ""
+}
+
+func (x *AzureAksClusterSpec) GetCustomCaTrustCertificatesBase64() []string {
+	if x != nil {
+		return x.CustomCaTrustCertificatesBase64
 	}
 	return nil
 }
 
-func (x *AzureAksClusterSystemNodePool) GetAvailabilityZones() []string {
+func (x *AzureAksClusterSpec) GetBootstrapProfile() *AzureAksClusterBootstrapProfile {
 	if x != nil {
-		return x.AvailabilityZones
+		return x.BootstrapProfile
 	}
 	return nil
 }
 
-// User node pool configuration for application workloads.
-type AzureAksClusterUserNodePool struct {
+func (x *AzureAksClusterSpec) GetNodeProvisioningProfile() *AzureAksClusterNodeProvisioningProfile {
+	if x != nil {
+		return x.NodeProvisioningProfile
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetUpgradeOverride() *AzureAksClusterUpgradeOverride {
+	if x != nil {
+		return x.UpgradeOverride
+	}
+	return nil
+}
+
+func (x *AzureAksClusterSpec) GetAiToolchainOperatorEnabled() bool {
+	if x != nil {
+		return x.AiToolchainOperatorEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+// The default (system) node pool created with the cluster. Always Linux,
+// always System mode -- the pool that hosts cluster-critical pods. Its
+// field shape intentionally matches the standalone AzureAksNodePool kind
+// (minus spot/os_type/mode/taints, which Azure does not allow on the
+// default pool) so moving a workload pool out to its own resource is a
+// mechanical copy.
+type AzureAksClusterDefaultNodePool struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the user node pool (e.g., "general", "compute", "memory").
-	// Must be lowercase alphanumeric, max 12 characters.
+	// Agent-pool name: 1-12 lowercase letters and numbers, starting with a
+	// letter. Renaming normally replaces the pool -- set
+	// temporary_name_for_rotation to let AKS rotate through a stand-in pool
+	// instead of tearing the cluster's system pool down first.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Azure VM size for this node pool (e.g., "Standard_D8s_v5").
-	// Choose based on workload requirements (CPU vs memory intensive).
+	// Azure VM size for the pool's nodes, e.g. "Standard_D4s_v5". System
+	// pools need at least 2 vCPUs and 4 GiB memory. Changing the size
+	// rotates the pool (see temporary_name_for_rotation).
 	VmSize string `protobuf:"bytes,2,opt,name=vm_size,json=vmSize,proto3" json:"vm_size,omitempty"`
-	// Autoscaling configuration for the user node pool.
-	Autoscaling *AzureAksClusterAutoscalingConfig `protobuf:"bytes,3,opt,name=autoscaling,proto3" json:"autoscaling,omitempty"`
-	// Availability zones for the node pool (e.g., ["1", "2", "3"]).
-	// For production workloads, deploy across multiple zones.
-	AvailabilityZones []string `protobuf:"bytes,4,rep,name=availability_zones,json=availabilityZones,proto3" json:"availability_zones,omitempty"`
-	// Enable Azure Spot instances for this node pool.
-	// Spot instances provide 30-90% cost savings but can be evicted when Azure needs capacity.
-	// Only suitable for fault-tolerant, stateless workloads.
-	SpotEnabled   bool `protobuf:"varint,5,opt,name=spot_enabled,json=spotEnabled,proto3" json:"spot_enabled,omitempty"`
+	// Fixed node count (1-1000) when autoscaling is off, or the initial
+	// count when it is on. With autoscaling enabled, leave unset to let the
+	// autoscaler own the count from the start.
+	NodeCount int32 `protobuf:"varint,3,opt,name=node_count,json=nodeCount,proto3" json:"node_count,omitempty"`
+	// Whether the cluster autoscaler manages this pool's node count between
+	// min_count and max_count. Tune the cluster-wide behavior through the
+	// cluster's auto_scaler_profile.
+	AutoScalingEnabled bool `protobuf:"varint,4,opt,name=auto_scaling_enabled,json=autoScalingEnabled,proto3" json:"auto_scaling_enabled,omitempty"`
+	// Minimum node count for autoscaling (1-1000; the default pool cannot
+	// scale to zero -- it hosts the system pods). Requires
+	// auto_scaling_enabled.
+	MinCount int32 `protobuf:"varint,5,opt,name=min_count,json=minCount,proto3" json:"min_count,omitempty"`
+	// Maximum node count for autoscaling (1-1000). Requires
+	// auto_scaling_enabled.
+	MaxCount int32 `protobuf:"varint,6,opt,name=max_count,json=maxCount,proto3" json:"max_count,omitempty"`
+	// Maximum pods per node. Unset applies Azure's plugin-dependent default
+	// (250 for Azure CNI overlay, 30 for traditional Azure CNI). Set at
+	// pool creation; raising it later rotates the pool.
+	MaxPods int32 `protobuf:"varint,7,opt,name=max_pods,json=maxPods,proto3" json:"max_pods,omitempty"`
+	// Availability zones to spread nodes across, e.g. ["1", "2", "3"].
+	// Three-zone system pools are the production posture (and what the
+	// STANDARD tier's 99.95% SLA assumes). Leave empty for regions without
+	// zones. Changing zones rotates the pool.
+	Zones []string `protobuf:"bytes,8,rep,name=zones,proto3" json:"zones,omitempty"`
+	// The subnet nodes deploy into. Leave unset to let AKS create and
+	// manage its own network -- Azure's default and the simplest correct
+	// start. Reference an AzureSubnet to place nodes in YOUR network
+	// (required for private clusters, custom routing, or NSG control);
+	// the cluster identity then needs Network Contributor on it. Changing
+	// the subnet replaces the pool.
+	VnetSubnetId *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=vnet_subnet_id,json=vnetSubnetId,proto3" json:"vnet_subnet_id,omitempty"`
+	// A separate subnet for POD IPs (traditional Azure CNI with dynamic pod
+	// IP allocation). Only meaningful with a vnet_subnet_id and the
+	// non-overlay Azure CNI; overlay mode ignores it (pods use pod_cidr).
+	PodSubnetId *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=pod_subnet_id,json=podSubnetId,proto3" json:"pod_subnet_id,omitempty"`
+	// OS disk size in GiB. Unset applies Azure's VM-size-dependent default.
+	OsDiskSizeGb int32 `protobuf:"varint,11,opt,name=os_disk_size_gb,json=osDiskSizeGb,proto3" json:"os_disk_size_gb,omitempty"`
+	// OS disk placement. Unspecified applies Azure's default (MANAGED): a
+	// persistent managed disk. EPHEMERAL places the OS disk on node-local
+	// storage -- faster and free, the right choice whenever the VM size's
+	// cache disk fits the image; nodes are cattle, their OS disks need no
+	// durability.
+	OsDiskType AzureAksClusterOsDiskType `protobuf:"varint,12,opt,name=os_disk_type,json=osDiskType,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOsDiskType" json:"os_disk_type,omitempty"`
+	// Where kubelet state (image layers, emptyDir volumes) lives.
+	// Unspecified applies Azure's default (OS disk). TEMPORARY uses the
+	// VM's temp disk for higher IOPS on image-churn-heavy nodes.
+	KubeletDiskType AzureAksClusterKubeletDiskType `protobuf:"varint,13,opt,name=kubelet_disk_type,json=kubeletDiskType,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletDiskType" json:"kubelet_disk_type,omitempty"`
+	// Node OS image. Unspecified applies Azure's default Linux image
+	// (Ubuntu). AZURE_LINUX is Microsoft's own minimal, security-hardened
+	// distro -- smaller attack surface and faster boots; the direction AKS
+	// is heading. Version-pinned values (UBUNTU_2204/2404, AZURE_LINUX_3)
+	// pin the OS major independent of Kubernetes version.
+	OsSku AzureAksClusterOsSku `protobuf:"varint,14,opt,name=os_sku,json=osSku,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOsSku" json:"os_sku,omitempty"`
+	// Kubernetes version for the pool's nodes. Unset follows the control
+	// plane's version -- correct for the default pool in almost all cases.
+	OrchestratorVersion string `protobuf:"bytes,15,opt,name=orchestrator_version,json=orchestratorVersion,proto3" json:"orchestrator_version,omitempty"`
+	// Kubernetes labels applied to this pool's nodes, for scheduling
+	// (nodeSelector/affinity) against system-pool nodes.
+	NodeLabels map[string]string `protobuf:"bytes,16,rep,name=node_labels,json=nodeLabels,proto3" json:"node_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Whether the pool is tainted CriticalAddonsOnly=true:NoSchedule so
+	// ONLY system pods schedule here. The recommended posture once real
+	// workloads run in dedicated AzureAksNodePool resources: it stops app
+	// pods from starving CoreDNS.
+	OnlyCriticalAddonsEnabled bool `protobuf:"varint,17,opt,name=only_critical_addons_enabled,json=onlyCriticalAddonsEnabled,proto3" json:"only_critical_addons_enabled,omitempty"`
+	// Whether nodes get FIPS 140-2 validated OS images (compliance
+	// environments). Changing it rotates the pool.
+	FipsEnabled bool `protobuf:"varint,18,opt,name=fips_enabled,json=fipsEnabled,proto3" json:"fips_enabled,omitempty"`
+	// Whether host-based encryption is enabled: data on the node's temp
+	// disks and disk caches is encrypted at rest. Requires the
+	// EncryptionAtHost feature on the subscription. Changing it rotates the
+	// pool.
+	HostEncryptionEnabled bool `protobuf:"varint,19,opt,name=host_encryption_enabled,json=hostEncryptionEnabled,proto3" json:"host_encryption_enabled,omitempty"`
+	// Whether each node gets its own public IP -- niche direct-node-ingress
+	// patterns (game servers). Egress normally flows through the cluster
+	// load balancer or NAT gateway instead.
+	NodePublicIpEnabled bool `protobuf:"varint,20,opt,name=node_public_ip_enabled,json=nodePublicIpEnabled,proto3" json:"node_public_ip_enabled,omitempty"`
+	// Public IP prefix to allocate node public IPs from, so node IPs come
+	// from one known, allowlistable CIDR. Requires node_public_ip_enabled.
+	NodePublicIpPrefixId *v1.StringValueOrRef `protobuf:"bytes,21,opt,name=node_public_ip_prefix_id,json=nodePublicIpPrefixId,proto3" json:"node_public_ip_prefix_id,omitempty"`
+	// GPU Multi-Instance GPU (MIG) profile for A100 sizes, partitioning
+	// each physical GPU into isolated slices (e.g. "MIG1g" = 7 slices).
+	// Only for MIG-capable VM sizes. Changing it rotates the pool.
+	GpuInstance AzureAksClusterGpuInstance `protobuf:"varint,22,opt,name=gpu_instance,json=gpuInstance,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterGpuInstance" json:"gpu_instance,omitempty"`
+	// Whether AKS installs the NVIDIA GPU driver on GPU nodes. Unspecified
+	// applies Azure's default (install when the VM size has a GPU). NONE
+	// skips installation for teams that run the GPU operator themselves.
+	GpuDriver AzureAksClusterGpuDriver `protobuf:"varint,23,opt,name=gpu_driver,json=gpuDriver,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterGpuDriver" json:"gpu_driver,omitempty"`
+	// ARM id of a Proximity Placement Group to co-locate nodes for minimal
+	// inter-node latency (HPC). Plain ARM id (no Planton kind). Changing it
+	// rotates the pool.
+	ProximityPlacementGroupId string `protobuf:"bytes,24,opt,name=proximity_placement_group_id,json=proximityPlacementGroupId,proto3" json:"proximity_placement_group_id,omitempty"`
+	// ARM id of a Dedicated Host Group to place nodes on your isolated
+	// physical hosts (compliance isolation). Plain ARM id. Changing it
+	// rotates the pool.
+	HostGroupId string `protobuf:"bytes,25,opt,name=host_group_id,json=hostGroupId,proto3" json:"host_group_id,omitempty"`
+	// ARM id of a Capacity Reservation Group to draw guaranteed compute
+	// capacity from. Plain ARM id. Changing it rotates the pool.
+	CapacityReservationGroupId string `protobuf:"bytes,26,opt,name=capacity_reservation_group_id,json=capacityReservationGroupId,proto3" json:"capacity_reservation_group_id,omitempty"`
+	// What scale-down does with removed nodes. Unspecified applies Azure's
+	// default (DELETE): nodes are deleted and stop billing. DEALLOCATE
+	// stops them but keeps disks for faster scale-up at storage cost.
+	ScaleDownMode AzureAksClusterScaleDownMode `protobuf:"varint,27,opt,name=scale_down_mode,json=scaleDownMode,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterScaleDownMode" json:"scale_down_mode,omitempty"`
+	// ARM id of a node-pool snapshot to source this pool's configuration
+	// from (replicating a known-good pool config across clusters). Plain
+	// ARM id.
+	SnapshotId string `protobuf:"bytes,28,opt,name=snapshot_id,json=snapshotId,proto3" json:"snapshot_id,omitempty"`
+	// Container runtime class. Unspecified runs standard containers
+	// (OCIContainer, Azure's default). KATA_MSHV_VM_ISOLATION runs each pod
+	// in a lightweight utility VM for kernel isolation (requires supporting
+	// VM sizes).
+	WorkloadRuntime AzureAksClusterWorkloadRuntime `protobuf:"varint,29,opt,name=workload_runtime,json=workloadRuntime,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWorkloadRuntime" json:"workload_runtime,omitempty"`
+	// Whether nodes may use Ultra SSD (zone-pinned, highest-IOPS) data
+	// disks. Requires zones. Changing it rotates the pool.
+	UltraSsdEnabled bool `protobuf:"varint,30,opt,name=ultra_ssd_enabled,json=ultraSsdEnabled,proto3" json:"ultra_ssd_enabled,omitempty"`
+	// Stand-in pool name AKS uses to rotate this pool through otherwise
+	// replace-forcing changes (vm_size, os_disk_type, fips_enabled...):
+	// a temporary pool with this name carries the system pods while the
+	// real pool is rebuilt. Same format as name. Set it proactively on
+	// production clusters.
+	TemporaryNameForRotation string `protobuf:"bytes,31,opt,name=temporary_name_for_rotation,json=temporaryNameForRotation,proto3" json:"temporary_name_for_rotation,omitempty"`
+	// Kubelet tuning for this pool's nodes -- CPU manager policy, image GC
+	// thresholds, container log rotation, pid limits. Unset fields keep
+	// AKS defaults. Changing kubelet config rotates the pool.
+	KubeletConfig *AzureAksClusterKubeletConfig `protobuf:"bytes,32,opt,name=kubelet_config,json=kubeletConfig,proto3" json:"kubelet_config,omitempty"`
+	// Linux kernel and OS tuning -- sysctl values, transparent huge pages,
+	// swap file. Unset fields keep AKS defaults. Changing OS config rotates
+	// the pool.
+	LinuxOsConfig *AzureAksClusterLinuxOsConfig `protobuf:"bytes,33,opt,name=linux_os_config,json=linuxOsConfig,proto3" json:"linux_os_config,omitempty"`
+	// Node-level network hardening: allowed host ports, application
+	// security groups for nodes, and tags on node public IPs.
+	NodeNetworkProfile *AzureAksClusterNodeNetworkProfile `protobuf:"bytes,34,opt,name=node_network_profile,json=nodeNetworkProfile,proto3" json:"node_network_profile,omitempty"`
+	// How node upgrades roll through the pool: surge sizing, drain
+	// behavior, and soak time between nodes.
+	UpgradeSettings *AzureAksClusterDefaultNodePoolUpgradeSettings `protobuf:"bytes,35,opt,name=upgrade_settings,json=upgradeSettings,proto3" json:"upgrade_settings,omitempty"`
+	// Free-form tags applied to the pool's VM scale set, merged over the
+	// Planton-derived resource tags; a user tag with the same key wins.
+	Tags          map[string]string `protobuf:"bytes,36,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AzureAksClusterUserNodePool) Reset() {
-	*x = AzureAksClusterUserNodePool{}
-	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[3]
+func (x *AzureAksClusterDefaultNodePool) Reset() {
+	*x = AzureAksClusterDefaultNodePool{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureAksClusterUserNodePool) String() string {
+func (x *AzureAksClusterDefaultNodePool) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureAksClusterUserNodePool) ProtoMessage() {}
+func (*AzureAksClusterDefaultNodePool) ProtoMessage() {}
 
-func (x *AzureAksClusterUserNodePool) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[3]
+func (x *AzureAksClusterDefaultNodePool) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -534,87 +2999,568 @@ func (x *AzureAksClusterUserNodePool) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureAksClusterUserNodePool.ProtoReflect.Descriptor instead.
-func (*AzureAksClusterUserNodePool) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{3}
+// Deprecated: Use AzureAksClusterDefaultNodePool.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterDefaultNodePool) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AzureAksClusterUserNodePool) GetName() string {
+func (x *AzureAksClusterDefaultNodePool) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *AzureAksClusterUserNodePool) GetVmSize() string {
+func (x *AzureAksClusterDefaultNodePool) GetVmSize() string {
 	if x != nil {
 		return x.VmSize
 	}
 	return ""
 }
 
-func (x *AzureAksClusterUserNodePool) GetAutoscaling() *AzureAksClusterAutoscalingConfig {
+func (x *AzureAksClusterDefaultNodePool) GetNodeCount() int32 {
 	if x != nil {
-		return x.Autoscaling
+		return x.NodeCount
 	}
-	return nil
+	return 0
 }
 
-func (x *AzureAksClusterUserNodePool) GetAvailabilityZones() []string {
+func (x *AzureAksClusterDefaultNodePool) GetAutoScalingEnabled() bool {
 	if x != nil {
-		return x.AvailabilityZones
-	}
-	return nil
-}
-
-func (x *AzureAksClusterUserNodePool) GetSpotEnabled() bool {
-	if x != nil {
-		return x.SpotEnabled
+		return x.AutoScalingEnabled
 	}
 	return false
 }
 
-// Add-ons configuration for the AKS cluster.
-type AzureAksClusterAddonsConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Enable Azure Monitor Container Insights.
-	// Streams container logs, metrics, and Kubernetes events to Log Analytics.
-	// Requires log_analytics_workspace_id to be set in spec.
-	// Defaults to true if log_analytics_workspace_id is provided.
-	EnableContainerInsights bool `protobuf:"varint,1,opt,name=enable_container_insights,json=enableContainerInsights,proto3" json:"enable_container_insights,omitempty"`
-	// Enable Azure Key Vault CSI driver.
-	// Allows pods to mount secrets from Azure Key Vault as volumes.
-	// Recommended for production. Defaults to true.
-	EnableKeyVaultCsiDriver bool `protobuf:"varint,2,opt,name=enable_key_vault_csi_driver,json=enableKeyVaultCsiDriver,proto3" json:"enable_key_vault_csi_driver,omitempty"`
-	// Enable Azure Policy add-on.
-	// Enforces policy-based governance on the cluster (pod security standards, resource quotas, etc.).
-	// Recommended for production. Defaults to true.
-	EnableAzurePolicy bool `protobuf:"varint,3,opt,name=enable_azure_policy,json=enableAzurePolicy,proto3" json:"enable_azure_policy,omitempty"`
-	// Enable Azure AD Workload Identity.
-	// Allows pods to authenticate to Azure services using Kubernetes service accounts (secret-less authentication).
-	// Recommended for production. Defaults to true.
-	EnableWorkloadIdentity bool `protobuf:"varint,4,opt,name=enable_workload_identity,json=enableWorkloadIdentity,proto3" json:"enable_workload_identity,omitempty"`
-	// The Azure resource ID of a Log Analytics Workspace for Container Insights.
-	// Required if enable_container_insights is true.
-	LogAnalyticsWorkspaceId string `protobuf:"bytes,5,opt,name=log_analytics_workspace_id,json=logAnalyticsWorkspaceId,proto3" json:"log_analytics_workspace_id,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+func (x *AzureAksClusterDefaultNodePool) GetMinCount() int32 {
+	if x != nil {
+		return x.MinCount
+	}
+	return 0
 }
 
-func (x *AzureAksClusterAddonsConfig) Reset() {
-	*x = AzureAksClusterAddonsConfig{}
+func (x *AzureAksClusterDefaultNodePool) GetMaxCount() int32 {
+	if x != nil {
+		return x.MaxCount
+	}
+	return 0
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetMaxPods() int32 {
+	if x != nil {
+		return x.MaxPods
+	}
+	return 0
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetZones() []string {
+	if x != nil {
+		return x.Zones
+	}
+	return nil
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetVnetSubnetId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.VnetSubnetId
+	}
+	return nil
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetPodSubnetId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.PodSubnetId
+	}
+	return nil
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetOsDiskSizeGb() int32 {
+	if x != nil {
+		return x.OsDiskSizeGb
+	}
+	return 0
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetOsDiskType() AzureAksClusterOsDiskType {
+	if x != nil {
+		return x.OsDiskType
+	}
+	return AzureAksClusterOsDiskType_azure_aks_cluster_os_disk_type_unspecified
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetKubeletDiskType() AzureAksClusterKubeletDiskType {
+	if x != nil {
+		return x.KubeletDiskType
+	}
+	return AzureAksClusterKubeletDiskType_azure_aks_cluster_kubelet_disk_type_unspecified
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetOsSku() AzureAksClusterOsSku {
+	if x != nil {
+		return x.OsSku
+	}
+	return AzureAksClusterOsSku_azure_aks_cluster_os_sku_unspecified
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetOrchestratorVersion() string {
+	if x != nil {
+		return x.OrchestratorVersion
+	}
+	return ""
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetNodeLabels() map[string]string {
+	if x != nil {
+		return x.NodeLabels
+	}
+	return nil
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetOnlyCriticalAddonsEnabled() bool {
+	if x != nil {
+		return x.OnlyCriticalAddonsEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetFipsEnabled() bool {
+	if x != nil {
+		return x.FipsEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetHostEncryptionEnabled() bool {
+	if x != nil {
+		return x.HostEncryptionEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetNodePublicIpEnabled() bool {
+	if x != nil {
+		return x.NodePublicIpEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetNodePublicIpPrefixId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.NodePublicIpPrefixId
+	}
+	return nil
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetGpuInstance() AzureAksClusterGpuInstance {
+	if x != nil {
+		return x.GpuInstance
+	}
+	return AzureAksClusterGpuInstance_azure_aks_cluster_gpu_instance_unspecified
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetGpuDriver() AzureAksClusterGpuDriver {
+	if x != nil {
+		return x.GpuDriver
+	}
+	return AzureAksClusterGpuDriver_azure_aks_cluster_gpu_driver_unspecified
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetProximityPlacementGroupId() string {
+	if x != nil {
+		return x.ProximityPlacementGroupId
+	}
+	return ""
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetHostGroupId() string {
+	if x != nil {
+		return x.HostGroupId
+	}
+	return ""
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetCapacityReservationGroupId() string {
+	if x != nil {
+		return x.CapacityReservationGroupId
+	}
+	return ""
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetScaleDownMode() AzureAksClusterScaleDownMode {
+	if x != nil {
+		return x.ScaleDownMode
+	}
+	return AzureAksClusterScaleDownMode_azure_aks_cluster_scale_down_mode_unspecified
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetSnapshotId() string {
+	if x != nil {
+		return x.SnapshotId
+	}
+	return ""
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetWorkloadRuntime() AzureAksClusterWorkloadRuntime {
+	if x != nil {
+		return x.WorkloadRuntime
+	}
+	return AzureAksClusterWorkloadRuntime_azure_aks_cluster_workload_runtime_unspecified
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetUltraSsdEnabled() bool {
+	if x != nil {
+		return x.UltraSsdEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetTemporaryNameForRotation() string {
+	if x != nil {
+		return x.TemporaryNameForRotation
+	}
+	return ""
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetKubeletConfig() *AzureAksClusterKubeletConfig {
+	if x != nil {
+		return x.KubeletConfig
+	}
+	return nil
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetLinuxOsConfig() *AzureAksClusterLinuxOsConfig {
+	if x != nil {
+		return x.LinuxOsConfig
+	}
+	return nil
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetNodeNetworkProfile() *AzureAksClusterNodeNetworkProfile {
+	if x != nil {
+		return x.NodeNetworkProfile
+	}
+	return nil
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetUpgradeSettings() *AzureAksClusterDefaultNodePoolUpgradeSettings {
+	if x != nil {
+		return x.UpgradeSettings
+	}
+	return nil
+}
+
+func (x *AzureAksClusterDefaultNodePool) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+// Kubelet tuning for a node pool. Unset fields keep AKS defaults.
+type AzureAksClusterKubeletConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// CPU manager policy. Unspecified keeps AKS's default ("none").
+	// STATIC gives Guaranteed-QoS pods exclusive cores -- latency-sensitive
+	// workloads (trading, real-time media).
+	CpuManagerPolicy AzureAksClusterCpuManagerPolicy `protobuf:"varint,1,opt,name=cpu_manager_policy,json=cpuManagerPolicy,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterCpuManagerPolicy" json:"cpu_manager_policy,omitempty"`
+	// Whether CPU CFS quota enforcement applies to containers with CPU
+	// limits. Azure's default is true; disabling trades limit enforcement
+	// for throttling-sensitive latency.
+	CpuCfsQuotaEnabled *bool `protobuf:"varint,2,opt,name=cpu_cfs_quota_enabled,json=cpuCfsQuotaEnabled,proto3,oneof" json:"cpu_cfs_quota_enabled,omitempty"`
+	// CPU CFS quota period, e.g. "100ms" (the kubelet default). Shorter
+	// periods smooth throttling for latency-sensitive workloads.
+	CpuCfsQuotaPeriod string `protobuf:"bytes,3,opt,name=cpu_cfs_quota_period,json=cpuCfsQuotaPeriod,proto3" json:"cpu_cfs_quota_period,omitempty"`
+	// Disk usage percentage that triggers image garbage collection (0-100).
+	// Unset keeps the kubelet default (85).
+	ImageGcHighThreshold int32 `protobuf:"varint,4,opt,name=image_gc_high_threshold,json=imageGcHighThreshold,proto3" json:"image_gc_high_threshold,omitempty"`
+	// Disk usage percentage image GC frees down to (0-100). Unset keeps the
+	// kubelet default (80).
+	ImageGcLowThreshold int32 `protobuf:"varint,5,opt,name=image_gc_low_threshold,json=imageGcLowThreshold,proto3" json:"image_gc_low_threshold,omitempty"`
+	// NUMA topology alignment policy for pod resources. Unspecified keeps
+	// the kubelet default ("none").
+	TopologyManagerPolicy AzureAksClusterTopologyManagerPolicy `protobuf:"varint,6,opt,name=topology_manager_policy,json=topologyManagerPolicy,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTopologyManagerPolicy" json:"topology_manager_policy,omitempty"`
+	// Unsafe sysctls (or patterns like "net.*") pods may set via their
+	// security context. Empty means none -- the safe default.
+	AllowedUnsafeSysctls []string `protobuf:"bytes,7,rep,name=allowed_unsafe_sysctls,json=allowedUnsafeSysctls,proto3" json:"allowed_unsafe_sysctls,omitempty"`
+	// Maximum container log file size in MB before rotation.
+	ContainerLogMaxSizeMb int32 `protobuf:"varint,8,opt,name=container_log_max_size_mb,json=containerLogMaxSizeMb,proto3" json:"container_log_max_size_mb,omitempty"`
+	// Maximum rotated container log files kept per container (>= 2).
+	ContainerLogMaxFiles int32 `protobuf:"varint,9,opt,name=container_log_max_files,json=containerLogMaxFiles,proto3" json:"container_log_max_files,omitempty"`
+	// Maximum processes per pod. Unset keeps the kubelet default
+	// (unlimited, -1).
+	PodMaxPid     int32 `protobuf:"varint,10,opt,name=pod_max_pid,json=podMaxPid,proto3" json:"pod_max_pid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterKubeletConfig) Reset() {
+	*x = AzureAksClusterKubeletConfig{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterKubeletConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterKubeletConfig) ProtoMessage() {}
+
+func (x *AzureAksClusterKubeletConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterKubeletConfig.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterKubeletConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AzureAksClusterKubeletConfig) GetCpuManagerPolicy() AzureAksClusterCpuManagerPolicy {
+	if x != nil {
+		return x.CpuManagerPolicy
+	}
+	return AzureAksClusterCpuManagerPolicy_azure_aks_cluster_cpu_manager_policy_unspecified
+}
+
+func (x *AzureAksClusterKubeletConfig) GetCpuCfsQuotaEnabled() bool {
+	if x != nil && x.CpuCfsQuotaEnabled != nil {
+		return *x.CpuCfsQuotaEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterKubeletConfig) GetCpuCfsQuotaPeriod() string {
+	if x != nil {
+		return x.CpuCfsQuotaPeriod
+	}
+	return ""
+}
+
+func (x *AzureAksClusterKubeletConfig) GetImageGcHighThreshold() int32 {
+	if x != nil {
+		return x.ImageGcHighThreshold
+	}
+	return 0
+}
+
+func (x *AzureAksClusterKubeletConfig) GetImageGcLowThreshold() int32 {
+	if x != nil {
+		return x.ImageGcLowThreshold
+	}
+	return 0
+}
+
+func (x *AzureAksClusterKubeletConfig) GetTopologyManagerPolicy() AzureAksClusterTopologyManagerPolicy {
+	if x != nil {
+		return x.TopologyManagerPolicy
+	}
+	return AzureAksClusterTopologyManagerPolicy_azure_aks_cluster_topology_manager_policy_unspecified
+}
+
+func (x *AzureAksClusterKubeletConfig) GetAllowedUnsafeSysctls() []string {
+	if x != nil {
+		return x.AllowedUnsafeSysctls
+	}
+	return nil
+}
+
+func (x *AzureAksClusterKubeletConfig) GetContainerLogMaxSizeMb() int32 {
+	if x != nil {
+		return x.ContainerLogMaxSizeMb
+	}
+	return 0
+}
+
+func (x *AzureAksClusterKubeletConfig) GetContainerLogMaxFiles() int32 {
+	if x != nil {
+		return x.ContainerLogMaxFiles
+	}
+	return 0
+}
+
+func (x *AzureAksClusterKubeletConfig) GetPodMaxPid() int32 {
+	if x != nil {
+		return x.PodMaxPid
+	}
+	return 0
+}
+
+// Linux kernel and OS tuning for a node pool. Unset fields keep AKS
+// defaults.
+type AzureAksClusterLinuxOsConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Kernel sysctl overrides. Only the sysctls AKS allows are modeled;
+	// each carries the ARM-enforced range in its validation.
+	SysctlConfig *AzureAksClusterSysctlConfig `protobuf:"bytes,1,opt,name=sysctl_config,json=sysctlConfig,proto3" json:"sysctl_config,omitempty"`
+	// Transparent Huge Pages mode. Unspecified keeps the OS default
+	// ("always"). Databases with sparse access patterns often want
+	// MADVISE or NEVER.
+	TransparentHugePage AzureAksClusterTransparentHugePage `protobuf:"varint,2,opt,name=transparent_huge_page,json=transparentHugePage,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTransparentHugePage" json:"transparent_huge_page,omitempty"`
+	// Transparent Huge Pages defrag behavior. Unspecified keeps the OS
+	// default ("madvise").
+	TransparentHugePageDefrag AzureAksClusterTransparentHugePageDefrag `protobuf:"varint,3,opt,name=transparent_huge_page_defrag,json=transparentHugePageDefrag,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTransparentHugePageDefrag" json:"transparent_huge_page_defrag,omitempty"`
+	// Swap file size in MB on each node. Unset means no swap -- the
+	// Kubernetes-recommended default.
+	SwapFileSizeMb int32 `protobuf:"varint,4,opt,name=swap_file_size_mb,json=swapFileSizeMb,proto3" json:"swap_file_size_mb,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterLinuxOsConfig) Reset() {
+	*x = AzureAksClusterLinuxOsConfig{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterLinuxOsConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterLinuxOsConfig) ProtoMessage() {}
+
+func (x *AzureAksClusterLinuxOsConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterLinuxOsConfig.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterLinuxOsConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AzureAksClusterLinuxOsConfig) GetSysctlConfig() *AzureAksClusterSysctlConfig {
+	if x != nil {
+		return x.SysctlConfig
+	}
+	return nil
+}
+
+func (x *AzureAksClusterLinuxOsConfig) GetTransparentHugePage() AzureAksClusterTransparentHugePage {
+	if x != nil {
+		return x.TransparentHugePage
+	}
+	return AzureAksClusterTransparentHugePage_azure_aks_cluster_transparent_huge_page_unspecified
+}
+
+func (x *AzureAksClusterLinuxOsConfig) GetTransparentHugePageDefrag() AzureAksClusterTransparentHugePageDefrag {
+	if x != nil {
+		return x.TransparentHugePageDefrag
+	}
+	return AzureAksClusterTransparentHugePageDefrag_azure_aks_cluster_transparent_huge_page_defrag_unspecified
+}
+
+func (x *AzureAksClusterLinuxOsConfig) GetSwapFileSizeMb() int32 {
+	if x != nil {
+		return x.SwapFileSizeMb
+	}
+	return 0
+}
+
+// Kernel sysctl overrides AKS supports on Linux nodes. Every field is
+// optional; zero means "keep the AKS default". Ranges mirror ARM's
+// accepted bounds.
+type AzureAksClusterSysctlConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// fs.aio-max-nr (65536-6553500): max concurrent async I/O requests.
+	FsAioMaxNr int32 `protobuf:"varint,1,opt,name=fs_aio_max_nr,json=fsAioMaxNr,proto3" json:"fs_aio_max_nr,omitempty"`
+	// fs.file-max (8192-12000500): system-wide open file handle limit.
+	FsFileMax int32 `protobuf:"varint,2,opt,name=fs_file_max,json=fsFileMax,proto3" json:"fs_file_max,omitempty"`
+	// fs.inotify.max_user_watches (781250-2097152): inotify watch limit --
+	// raise for file-watching-heavy workloads (IDEs, log shippers).
+	FsInotifyMaxUserWatches int32 `protobuf:"varint,3,opt,name=fs_inotify_max_user_watches,json=fsInotifyMaxUserWatches,proto3" json:"fs_inotify_max_user_watches,omitempty"`
+	// fs.nr_open (8192-20000500): per-process open file limit.
+	FsNrOpen int32 `protobuf:"varint,4,opt,name=fs_nr_open,json=fsNrOpen,proto3" json:"fs_nr_open,omitempty"`
+	// kernel.threads-max (20-513785): system-wide thread limit.
+	KernelThreadsMax int32 `protobuf:"varint,5,opt,name=kernel_threads_max,json=kernelThreadsMax,proto3" json:"kernel_threads_max,omitempty"`
+	// net.core.netdev_max_backlog (1000-3240000): NIC ingress queue length.
+	NetCoreNetdevMaxBacklog int32 `protobuf:"varint,6,opt,name=net_core_netdev_max_backlog,json=netCoreNetdevMaxBacklog,proto3" json:"net_core_netdev_max_backlog,omitempty"`
+	// net.core.optmem_max (20480-4194304): per-socket ancillary buffer max.
+	NetCoreOptmemMax int32 `protobuf:"varint,7,opt,name=net_core_optmem_max,json=netCoreOptmemMax,proto3" json:"net_core_optmem_max,omitempty"`
+	// net.core.rmem_default (212992-134217728): default socket receive
+	// buffer.
+	NetCoreRmemDefault int32 `protobuf:"varint,8,opt,name=net_core_rmem_default,json=netCoreRmemDefault,proto3" json:"net_core_rmem_default,omitempty"`
+	// net.core.rmem_max (212992-134217728): max socket receive buffer.
+	NetCoreRmemMax int32 `protobuf:"varint,9,opt,name=net_core_rmem_max,json=netCoreRmemMax,proto3" json:"net_core_rmem_max,omitempty"`
+	// net.core.somaxconn (4096-3240000): listen backlog limit.
+	NetCoreSomaxconn int32 `protobuf:"varint,10,opt,name=net_core_somaxconn,json=netCoreSomaxconn,proto3" json:"net_core_somaxconn,omitempty"`
+	// net.core.wmem_default (212992-134217728): default socket send buffer.
+	NetCoreWmemDefault int32 `protobuf:"varint,11,opt,name=net_core_wmem_default,json=netCoreWmemDefault,proto3" json:"net_core_wmem_default,omitempty"`
+	// net.core.wmem_max (212992-134217728): max socket send buffer.
+	NetCoreWmemMax int32 `protobuf:"varint,12,opt,name=net_core_wmem_max,json=netCoreWmemMax,proto3" json:"net_core_wmem_max,omitempty"`
+	// net.ipv4.ip_local_port_range minimum (1024-60999).
+	NetIpv4IpLocalPortRangeMin int32 `protobuf:"varint,13,opt,name=net_ipv4_ip_local_port_range_min,json=netIpv4IpLocalPortRangeMin,proto3" json:"net_ipv4_ip_local_port_range_min,omitempty"`
+	// net.ipv4.ip_local_port_range maximum (32768-65535).
+	NetIpv4IpLocalPortRangeMax int32 `protobuf:"varint,14,opt,name=net_ipv4_ip_local_port_range_max,json=netIpv4IpLocalPortRangeMax,proto3" json:"net_ipv4_ip_local_port_range_max,omitempty"`
+	// net.ipv4.neigh.default.gc_thresh1 (128-80000): ARP cache soft floor.
+	NetIpv4NeighDefaultGcThresh1 int32 `protobuf:"varint,15,opt,name=net_ipv4_neigh_default_gc_thresh1,json=netIpv4NeighDefaultGcThresh1,proto3" json:"net_ipv4_neigh_default_gc_thresh1,omitempty"`
+	// net.ipv4.neigh.default.gc_thresh2 (512-90000): ARP cache soft ceiling.
+	NetIpv4NeighDefaultGcThresh2 int32 `protobuf:"varint,16,opt,name=net_ipv4_neigh_default_gc_thresh2,json=netIpv4NeighDefaultGcThresh2,proto3" json:"net_ipv4_neigh_default_gc_thresh2,omitempty"`
+	// net.ipv4.neigh.default.gc_thresh3 (1024-100000): ARP cache hard limit.
+	NetIpv4NeighDefaultGcThresh3 int32 `protobuf:"varint,17,opt,name=net_ipv4_neigh_default_gc_thresh3,json=netIpv4NeighDefaultGcThresh3,proto3" json:"net_ipv4_neigh_default_gc_thresh3,omitempty"`
+	// net.ipv4.tcp_fin_timeout (5-120): FIN-WAIT-2 hold seconds.
+	NetIpv4TcpFinTimeout int32 `protobuf:"varint,18,opt,name=net_ipv4_tcp_fin_timeout,json=netIpv4TcpFinTimeout,proto3" json:"net_ipv4_tcp_fin_timeout,omitempty"`
+	// net.ipv4.tcp_keepalive_intvl (10-90): keepalive probe interval.
+	NetIpv4TcpKeepaliveIntvl int32 `protobuf:"varint,19,opt,name=net_ipv4_tcp_keepalive_intvl,json=netIpv4TcpKeepaliveIntvl,proto3" json:"net_ipv4_tcp_keepalive_intvl,omitempty"`
+	// net.ipv4.tcp_keepalive_probes (1-15): unanswered probes before drop.
+	NetIpv4TcpKeepaliveProbes int32 `protobuf:"varint,20,opt,name=net_ipv4_tcp_keepalive_probes,json=netIpv4TcpKeepaliveProbes,proto3" json:"net_ipv4_tcp_keepalive_probes,omitempty"`
+	// net.ipv4.tcp_keepalive_time (30-432000): idle seconds before
+	// keepalives start.
+	NetIpv4TcpKeepaliveTime int32 `protobuf:"varint,21,opt,name=net_ipv4_tcp_keepalive_time,json=netIpv4TcpKeepaliveTime,proto3" json:"net_ipv4_tcp_keepalive_time,omitempty"`
+	// net.ipv4.tcp_max_syn_backlog (128-3240000): half-open connection
+	// queue.
+	NetIpv4TcpMaxSynBacklog int32 `protobuf:"varint,22,opt,name=net_ipv4_tcp_max_syn_backlog,json=netIpv4TcpMaxSynBacklog,proto3" json:"net_ipv4_tcp_max_syn_backlog,omitempty"`
+	// net.ipv4.tcp_max_tw_buckets (8000-1440000): TIME-WAIT socket cap.
+	NetIpv4TcpMaxTwBuckets int32 `protobuf:"varint,23,opt,name=net_ipv4_tcp_max_tw_buckets,json=netIpv4TcpMaxTwBuckets,proto3" json:"net_ipv4_tcp_max_tw_buckets,omitempty"`
+	// net.ipv4.tcp_tw_reuse: allow reusing TIME-WAIT sockets for new
+	// outbound connections.
+	NetIpv4TcpTwReuse bool `protobuf:"varint,24,opt,name=net_ipv4_tcp_tw_reuse,json=netIpv4TcpTwReuse,proto3" json:"net_ipv4_tcp_tw_reuse,omitempty"`
+	// net.netfilter.nf_conntrack_buckets (65536-524288): conntrack hash
+	// size.
+	NetNetfilterNfConntrackBuckets int32 `protobuf:"varint,25,opt,name=net_netfilter_nf_conntrack_buckets,json=netNetfilterNfConntrackBuckets,proto3" json:"net_netfilter_nf_conntrack_buckets,omitempty"`
+	// net.netfilter.nf_conntrack_max (131072-2097152): tracked connection
+	// cap -- raise for high-connection-count proxies.
+	NetNetfilterNfConntrackMax int32 `protobuf:"varint,26,opt,name=net_netfilter_nf_conntrack_max,json=netNetfilterNfConntrackMax,proto3" json:"net_netfilter_nf_conntrack_max,omitempty"`
+	// vm.max_map_count (65530-262144): memory-map areas per process --
+	// Elasticsearch famously needs 262144.
+	VmMaxMapCount int32 `protobuf:"varint,27,opt,name=vm_max_map_count,json=vmMaxMapCount,proto3" json:"vm_max_map_count,omitempty"`
+	// vm.swappiness (0-100): kernel swap eagerness.
+	VmSwappiness int32 `protobuf:"varint,28,opt,name=vm_swappiness,json=vmSwappiness,proto3" json:"vm_swappiness,omitempty"`
+	// vm.vfs_cache_pressure (0-100): dentry/inode cache reclaim pressure.
+	VmVfsCachePressure int32 `protobuf:"varint,29,opt,name=vm_vfs_cache_pressure,json=vmVfsCachePressure,proto3" json:"vm_vfs_cache_pressure,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterSysctlConfig) Reset() {
+	*x = AzureAksClusterSysctlConfig{}
 	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureAksClusterAddonsConfig) String() string {
+func (x *AzureAksClusterSysctlConfig) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureAksClusterAddonsConfig) ProtoMessage() {}
+func (*AzureAksClusterSysctlConfig) ProtoMessage() {}
 
-func (x *AzureAksClusterAddonsConfig) ProtoReflect() protoreflect.Message {
+func (x *AzureAksClusterSysctlConfig) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -626,71 +3572,1074 @@ func (x *AzureAksClusterAddonsConfig) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureAksClusterAddonsConfig.ProtoReflect.Descriptor instead.
-func (*AzureAksClusterAddonsConfig) Descriptor() ([]byte, []int) {
+// Deprecated: Use AzureAksClusterSysctlConfig.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterSysctlConfig) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *AzureAksClusterAddonsConfig) GetEnableContainerInsights() bool {
+func (x *AzureAksClusterSysctlConfig) GetFsAioMaxNr() int32 {
 	if x != nil {
-		return x.EnableContainerInsights
+		return x.FsAioMaxNr
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetFsFileMax() int32 {
+	if x != nil {
+		return x.FsFileMax
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetFsInotifyMaxUserWatches() int32 {
+	if x != nil {
+		return x.FsInotifyMaxUserWatches
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetFsNrOpen() int32 {
+	if x != nil {
+		return x.FsNrOpen
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetKernelThreadsMax() int32 {
+	if x != nil {
+		return x.KernelThreadsMax
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetCoreNetdevMaxBacklog() int32 {
+	if x != nil {
+		return x.NetCoreNetdevMaxBacklog
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetCoreOptmemMax() int32 {
+	if x != nil {
+		return x.NetCoreOptmemMax
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetCoreRmemDefault() int32 {
+	if x != nil {
+		return x.NetCoreRmemDefault
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetCoreRmemMax() int32 {
+	if x != nil {
+		return x.NetCoreRmemMax
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetCoreSomaxconn() int32 {
+	if x != nil {
+		return x.NetCoreSomaxconn
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetCoreWmemDefault() int32 {
+	if x != nil {
+		return x.NetCoreWmemDefault
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetCoreWmemMax() int32 {
+	if x != nil {
+		return x.NetCoreWmemMax
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetIpv4IpLocalPortRangeMin() int32 {
+	if x != nil {
+		return x.NetIpv4IpLocalPortRangeMin
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetIpv4IpLocalPortRangeMax() int32 {
+	if x != nil {
+		return x.NetIpv4IpLocalPortRangeMax
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetIpv4NeighDefaultGcThresh1() int32 {
+	if x != nil {
+		return x.NetIpv4NeighDefaultGcThresh1
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetIpv4NeighDefaultGcThresh2() int32 {
+	if x != nil {
+		return x.NetIpv4NeighDefaultGcThresh2
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetIpv4NeighDefaultGcThresh3() int32 {
+	if x != nil {
+		return x.NetIpv4NeighDefaultGcThresh3
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetIpv4TcpFinTimeout() int32 {
+	if x != nil {
+		return x.NetIpv4TcpFinTimeout
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetIpv4TcpKeepaliveIntvl() int32 {
+	if x != nil {
+		return x.NetIpv4TcpKeepaliveIntvl
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetIpv4TcpKeepaliveProbes() int32 {
+	if x != nil {
+		return x.NetIpv4TcpKeepaliveProbes
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetIpv4TcpKeepaliveTime() int32 {
+	if x != nil {
+		return x.NetIpv4TcpKeepaliveTime
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetIpv4TcpMaxSynBacklog() int32 {
+	if x != nil {
+		return x.NetIpv4TcpMaxSynBacklog
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetIpv4TcpMaxTwBuckets() int32 {
+	if x != nil {
+		return x.NetIpv4TcpMaxTwBuckets
+	}
+	return 0
+}
+
+func (x *AzureAksClusterSysctlConfig) GetNetIpv4TcpTwReuse() bool {
+	if x != nil {
+		return x.NetIpv4TcpTwReuse
 	}
 	return false
 }
 
-func (x *AzureAksClusterAddonsConfig) GetEnableKeyVaultCsiDriver() bool {
+func (x *AzureAksClusterSysctlConfig) GetNetNetfilterNfConntrackBuckets() int32 {
 	if x != nil {
-		return x.EnableKeyVaultCsiDriver
+		return x.NetNetfilterNfConntrackBuckets
 	}
-	return false
+	return 0
 }
 
-func (x *AzureAksClusterAddonsConfig) GetEnableAzurePolicy() bool {
+func (x *AzureAksClusterSysctlConfig) GetNetNetfilterNfConntrackMax() int32 {
 	if x != nil {
-		return x.EnableAzurePolicy
+		return x.NetNetfilterNfConntrackMax
 	}
-	return false
+	return 0
 }
 
-func (x *AzureAksClusterAddonsConfig) GetEnableWorkloadIdentity() bool {
+func (x *AzureAksClusterSysctlConfig) GetVmMaxMapCount() int32 {
 	if x != nil {
-		return x.EnableWorkloadIdentity
+		return x.VmMaxMapCount
 	}
-	return false
+	return 0
 }
 
-func (x *AzureAksClusterAddonsConfig) GetLogAnalyticsWorkspaceId() string {
+func (x *AzureAksClusterSysctlConfig) GetVmSwappiness() int32 {
 	if x != nil {
-		return x.LogAnalyticsWorkspaceId
+		return x.VmSwappiness
 	}
-	return ""
+	return 0
 }
 
-// Advanced networking configuration.
-// Optional: most users should rely on defaults.
-type AzureAksClusterAdvancedNetworking struct {
+func (x *AzureAksClusterSysctlConfig) GetVmVfsCachePressure() int32 {
+	if x != nil {
+		return x.VmVfsCachePressure
+	}
+	return 0
+}
+
+// Node-level network hardening for a pool.
+type AzureAksClusterNodeNetworkProfile struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Pod CIDR for Overlay mode (e.g., "10.244.0.0/16").
-	// Only applicable when network_plugin_mode is OVERLAY.
-	// Leave empty to use default (10.244.0.0/16).
-	PodCidr string `protobuf:"bytes,1,opt,name=pod_cidr,json=podCidr,proto3" json:"pod_cidr,omitempty"`
-	// Service CIDR for Kubernetes services (e.g., "10.0.0.0/16").
-	// Must not overlap with VNet, pod CIDR, or other networks.
-	// Leave empty to use default (10.0.0.0/16).
-	ServiceCidr string `protobuf:"bytes,2,opt,name=service_cidr,json=serviceCidr,proto3" json:"service_cidr,omitempty"`
-	// DNS service IP address (must be within service_cidr range).
-	// Leave empty to use default (10.0.0.10).
-	DnsServiceIp string `protobuf:"bytes,3,opt,name=dns_service_ip,json=dnsServiceIp,proto3" json:"dns_service_ip,omitempty"`
-	// Custom DNS servers for the VNet.
-	// Leave empty to use Azure-provided DNS.
-	CustomDnsServers []string `protobuf:"bytes,4,rep,name=custom_dns_servers,json=customDnsServers,proto3" json:"custom_dns_servers,omitempty"`
+	// Host port ranges pods may bind on the node -- each entry opens a
+	// port range/protocol in the node's network security rules.
+	AllowedHostPorts []*AzureAksClusterAllowedHostPorts `protobuf:"bytes,1,rep,name=allowed_host_ports,json=allowedHostPorts,proto3" json:"allowed_host_ports,omitempty"`
+	// ARM ids of Application Security Groups the pool's nodes join, so NSG
+	// rules can target "the AKS nodes" as a group. Plain ARM ids.
+	ApplicationSecurityGroupIds []string `protobuf:"bytes,2,rep,name=application_security_group_ids,json=applicationSecurityGroupIds,proto3" json:"application_security_group_ids,omitempty"`
+	// Azure tags applied to the node PUBLIC IPs (with
+	// node_public_ip_enabled), e.g. routing preference tags. Set at pool
+	// creation.
+	NodePublicIpTags map[string]string `protobuf:"bytes,3,rep,name=node_public_ip_tags,json=nodePublicIpTags,proto3" json:"node_public_ip_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
+func (x *AzureAksClusterNodeNetworkProfile) Reset() {
+	*x = AzureAksClusterNodeNetworkProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterNodeNetworkProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterNodeNetworkProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterNodeNetworkProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterNodeNetworkProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterNodeNetworkProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AzureAksClusterNodeNetworkProfile) GetAllowedHostPorts() []*AzureAksClusterAllowedHostPorts {
+	if x != nil {
+		return x.AllowedHostPorts
+	}
+	return nil
+}
+
+func (x *AzureAksClusterNodeNetworkProfile) GetApplicationSecurityGroupIds() []string {
+	if x != nil {
+		return x.ApplicationSecurityGroupIds
+	}
+	return nil
+}
+
+func (x *AzureAksClusterNodeNetworkProfile) GetNodePublicIpTags() map[string]string {
+	if x != nil {
+		return x.NodePublicIpTags
+	}
+	return nil
+}
+
+// A host port range pods may use on nodes.
+type AzureAksClusterAllowedHostPorts struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Start of the port range (1-65535).
+	PortStart int32 `protobuf:"varint,1,opt,name=port_start,json=portStart,proto3" json:"port_start,omitempty"`
+	// End of the port range (1-65535, >= port_start).
+	PortEnd int32 `protobuf:"varint,2,opt,name=port_end,json=portEnd,proto3" json:"port_end,omitempty"`
+	// Protocol for the range.
+	Protocol      AzureAksClusterHostPortProtocol `protobuf:"varint,3,opt,name=protocol,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterHostPortProtocol" json:"protocol,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterAllowedHostPorts) Reset() {
+	*x = AzureAksClusterAllowedHostPorts{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterAllowedHostPorts) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterAllowedHostPorts) ProtoMessage() {}
+
+func (x *AzureAksClusterAllowedHostPorts) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterAllowedHostPorts.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterAllowedHostPorts) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AzureAksClusterAllowedHostPorts) GetPortStart() int32 {
+	if x != nil {
+		return x.PortStart
+	}
+	return 0
+}
+
+func (x *AzureAksClusterAllowedHostPorts) GetPortEnd() int32 {
+	if x != nil {
+		return x.PortEnd
+	}
+	return 0
+}
+
+func (x *AzureAksClusterAllowedHostPorts) GetProtocol() AzureAksClusterHostPortProtocol {
+	if x != nil {
+		return x.Protocol
+	}
+	return AzureAksClusterHostPortProtocol_azure_aks_cluster_host_port_protocol_unspecified
+}
+
+// Upgrade rollout behavior for the default node pool. The default pool
+// requires max_surge (Azure's own contract -- system pods need surge
+// capacity during upgrades).
+type AzureAksClusterDefaultNodePoolUpgradeSettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Extra nodes added during an upgrade, as a count ("2") or percentage
+	// ("10%" -- AKS's recommended default). More surge = faster upgrades,
+	// more temporary cost.
+	MaxSurge string `protobuf:"bytes,1,opt,name=max_surge,json=maxSurge,proto3" json:"max_surge,omitempty"`
+	// Minutes to wait for a node to drain before giving up (honoring pod
+	// disruption budgets). Unset keeps Azure's default (30).
+	DrainTimeoutInMinutes int32 `protobuf:"varint,2,opt,name=drain_timeout_in_minutes,json=drainTimeoutInMinutes,proto3" json:"drain_timeout_in_minutes,omitempty"`
+	// Minutes to soak (wait) after each upgraded node before the next
+	// (0-30). Unset upgrades continuously.
+	NodeSoakDurationInMinutes int32 `protobuf:"varint,3,opt,name=node_soak_duration_in_minutes,json=nodeSoakDurationInMinutes,proto3" json:"node_soak_duration_in_minutes,omitempty"`
+	// What happens to a node that will not drain (PDB-blocked).
+	// Unspecified keeps Azure's default (the upgrade fails). CORDON
+	// quarantines the node and proceeds; SCHEDULE lets pods return to it.
+	UndrainableNodeBehavior AzureAksClusterUndrainableNodeBehavior `protobuf:"varint,4,opt,name=undrainable_node_behavior,json=undrainableNodeBehavior,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUndrainableNodeBehavior" json:"undrainable_node_behavior,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterDefaultNodePoolUpgradeSettings) Reset() {
+	*x = AzureAksClusterDefaultNodePoolUpgradeSettings{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterDefaultNodePoolUpgradeSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterDefaultNodePoolUpgradeSettings) ProtoMessage() {}
+
+func (x *AzureAksClusterDefaultNodePoolUpgradeSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterDefaultNodePoolUpgradeSettings.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterDefaultNodePoolUpgradeSettings) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AzureAksClusterDefaultNodePoolUpgradeSettings) GetMaxSurge() string {
+	if x != nil {
+		return x.MaxSurge
+	}
+	return ""
+}
+
+func (x *AzureAksClusterDefaultNodePoolUpgradeSettings) GetDrainTimeoutInMinutes() int32 {
+	if x != nil {
+		return x.DrainTimeoutInMinutes
+	}
+	return 0
+}
+
+func (x *AzureAksClusterDefaultNodePoolUpgradeSettings) GetNodeSoakDurationInMinutes() int32 {
+	if x != nil {
+		return x.NodeSoakDurationInMinutes
+	}
+	return 0
+}
+
+func (x *AzureAksClusterDefaultNodePoolUpgradeSettings) GetUndrainableNodeBehavior() AzureAksClusterUndrainableNodeBehavior {
+	if x != nil {
+		return x.UndrainableNodeBehavior
+	}
+	return AzureAksClusterUndrainableNodeBehavior_azure_aks_cluster_undrainable_node_behavior_unspecified
+}
+
+// The cluster's managed identity.
+type AzureAksClusterIdentity struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Identity flavor. Unspecified applies SYSTEM_ASSIGNED -- Azure creates
+	// and rotates the identity with the cluster.
+	Type AzureAksClusterIdentityType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentityType" json:"type,omitempty"`
+	// For USER_ASSIGNED: the user-assigned identities the control plane
+	// runs as (AKS uses the first). Reference AzureUserAssignedIdentity
+	// resources so grants (Private DNS Zone Contributor, Network
+	// Contributor) can be composed before cluster creation.
+	IdentityIds   []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=identity_ids,json=identityIds,proto3" json:"identity_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterIdentity) Reset() {
+	*x = AzureAksClusterIdentity{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterIdentity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterIdentity) ProtoMessage() {}
+
+func (x *AzureAksClusterIdentity) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterIdentity.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterIdentity) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AzureAksClusterIdentity) GetType() AzureAksClusterIdentityType {
+	if x != nil {
+		return x.Type
+	}
+	return AzureAksClusterIdentityType_azure_aks_cluster_identity_type_unspecified
+}
+
+func (x *AzureAksClusterIdentity) GetIdentityIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.IdentityIds
+	}
+	return nil
+}
+
+// The kubelet identity nodes use (image pulls, Azure resource access).
+// All three fields describe the SAME user-assigned identity and must be
+// set together; requires a USER_ASSIGNED cluster identity.
+type AzureAksClusterKubeletIdentity struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Client id of the kubelet's user-assigned identity.
+	ClientId string `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// Object (principal) id of the kubelet's user-assigned identity.
+	ObjectId string `protobuf:"bytes,2,opt,name=object_id,json=objectId,proto3" json:"object_id,omitempty"`
+	// ARM id of the kubelet's user-assigned identity.
+	UserAssignedIdentityId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=user_assigned_identity_id,json=userAssignedIdentityId,proto3" json:"user_assigned_identity_id,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterKubeletIdentity) Reset() {
+	*x = AzureAksClusterKubeletIdentity{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterKubeletIdentity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterKubeletIdentity) ProtoMessage() {}
+
+func (x *AzureAksClusterKubeletIdentity) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterKubeletIdentity.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterKubeletIdentity) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AzureAksClusterKubeletIdentity) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *AzureAksClusterKubeletIdentity) GetObjectId() string {
+	if x != nil {
+		return x.ObjectId
+	}
+	return ""
+}
+
+func (x *AzureAksClusterKubeletIdentity) GetUserAssignedIdentityId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.UserAssignedIdentityId
+	}
+	return nil
+}
+
+// API-server access hardening for public clusters.
+type AzureAksClusterApiServerAccessProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// CIDR blocks allowed to reach the public API server. Empty admits all
+	// source IPs -- set your office/VPN/CI ranges for any real cluster that
+	// is not private. Ignored for private clusters.
+	AuthorizedIpRanges []string `protobuf:"bytes,1,rep,name=authorized_ip_ranges,json=authorizedIpRanges,proto3" json:"authorized_ip_ranges,omitempty"`
+	// Whether API Server VNet Integration projects the API server into a
+	// delegated subnet in YOUR network -- API-server traffic stays private
+	// without full private-cluster mode.
+	VirtualNetworkIntegrationEnabled bool `protobuf:"varint,2,opt,name=virtual_network_integration_enabled,json=virtualNetworkIntegrationEnabled,proto3" json:"virtual_network_integration_enabled,omitempty"`
+	// The delegated subnet for API Server VNet Integration (delegation:
+	// Microsoft.ContainerService/managedClusters).
+	SubnetId      *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterApiServerAccessProfile) Reset() {
+	*x = AzureAksClusterApiServerAccessProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterApiServerAccessProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterApiServerAccessProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterApiServerAccessProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterApiServerAccessProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterApiServerAccessProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AzureAksClusterApiServerAccessProfile) GetAuthorizedIpRanges() []string {
+	if x != nil {
+		return x.AuthorizedIpRanges
+	}
+	return nil
+}
+
+func (x *AzureAksClusterApiServerAccessProfile) GetVirtualNetworkIntegrationEnabled() bool {
+	if x != nil {
+		return x.VirtualNetworkIntegrationEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterApiServerAccessProfile) GetSubnetId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SubnetId
+	}
+	return nil
+}
+
+// Microsoft Entra ID (Azure AD) integration for cluster access.
+type AzureAksClusterAadRbac struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Entra tenant to authenticate against. Leave unset to use the
+	// cluster's own tenant -- correct except for cross-tenant setups.
+	TenantId string `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// Whether AZURE RBAC (role assignments on the cluster's ARM scope) is
+	// the Kubernetes authorization source, replacing in-cluster
+	// RoleBindings. One control plane for who-can-do-what, managed like
+	// every other Azure grant (composable with AzureRoleAssignment).
+	AzureRbacEnabled bool `protobuf:"varint,2,opt,name=azure_rbac_enabled,json=azureRbacEnabled,proto3" json:"azure_rbac_enabled,omitempty"`
+	// Entra group object ids granted cluster-admin. The break-glass and
+	// platform-team entry point when azure_rbac_enabled is off (and a
+	// sensible baseline even when it is on).
+	AdminGroupObjectIds []string `protobuf:"bytes,3,rep,name=admin_group_object_ids,json=adminGroupObjectIds,proto3" json:"admin_group_object_ids,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterAadRbac) Reset() {
+	*x = AzureAksClusterAadRbac{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterAadRbac) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterAadRbac) ProtoMessage() {}
+
+func (x *AzureAksClusterAadRbac) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterAadRbac.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterAadRbac) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *AzureAksClusterAadRbac) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *AzureAksClusterAadRbac) GetAzureRbacEnabled() bool {
+	if x != nil {
+		return x.AzureRbacEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterAadRbac) GetAdminGroupObjectIds() []string {
+	if x != nil {
+		return x.AdminGroupObjectIds
+	}
+	return nil
+}
+
+// The cluster's network fabric. Sub-field combinations mirror Azure's own
+// contracts; nearly everything here replaces the cluster when changed.
+type AzureAksClusterNetworkProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// CNI plugin. Unspecified applies the modern AKS default the modules
+	// write explicitly: AZURE_CNI (with overlay mode unless a pod subnet
+	// says otherwise). KUBENET is deprecated (retires March 2028) and only
+	// kept for pre-existing estates; NONE brings your own CNI.
+	NetworkPlugin AzureAksClusterNetworkPlugin `protobuf:"varint,1,opt,name=network_plugin,json=networkPlugin,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPlugin" json:"network_plugin,omitempty"`
+	// Azure CNI addressing mode. Unspecified with AZURE_CNI applies OVERLAY
+	// -- pods get IPs from the private pod_cidr, not the VNet, eliminating
+	// VNet IP exhaustion. Leave truly unset (traditional mode) only when
+	// pods must be first-class VNet endpoints (pair with pod_subnet_id on
+	// the pools).
+	NetworkPluginMode AzureAksClusterNetworkPluginMode `protobuf:"varint,2,opt,name=network_plugin_mode,json=networkPluginMode,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginMode" json:"network_plugin_mode,omitempty"`
+	// Network policy engine enforcing Kubernetes NetworkPolicy objects.
+	// Unspecified means no enforcement -- policies are silently inert;
+	// enable one for any multi-tenant or zero-trust cluster. CILIUM
+	// requires the CILIUM data plane.
+	NetworkPolicy AzureAksClusterNetworkPolicy `protobuf:"varint,3,opt,name=network_policy,json=networkPolicy,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPolicy" json:"network_policy,omitempty"`
+	// Dataplane technology. Unspecified applies Azure's default (iptables-
+	// based Azure dataplane). CILIUM switches to eBPF -- higher throughput,
+	// lower latency, richer observability -- and pairs with (requires)
+	// AZURE_CNI; it is also the only dataplane for CILIUM network policy.
+	NetworkDataPlane AzureAksClusterNetworkDataPlane `protobuf:"varint,4,opt,name=network_data_plane,json=networkDataPlane,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkDataPlane" json:"network_data_plane,omitempty"`
+	// IP for Kubernetes DNS (kube-dns/CoreDNS service). Must sit inside
+	// service_cidr. Unset applies Azure's default (".10" of the service
+	// CIDR).
+	DnsServiceIp string `protobuf:"bytes,5,opt,name=dns_service_ip,json=dnsServiceIp,proto3" json:"dns_service_ip,omitempty"`
+	// CIDR for Kubernetes Services (ClusterIPs). Never routed outside the
+	// cluster but must not overlap the VNet or peered networks. Unset
+	// applies Azure's default (10.0.0.0/16).
+	ServiceCidr string `protobuf:"bytes,6,opt,name=service_cidr,json=serviceCidr,proto3" json:"service_cidr,omitempty"`
+	// Additional service CIDR for dual-stack (one IPv4 + one IPv6 block via
+	// service_cidrs takes precedence over service_cidr in ARM; model your
+	// dual-stack blocks here). Single-stack clusters use service_cidr.
+	ServiceCidrs []string `protobuf:"bytes,7,rep,name=service_cidrs,json=serviceCidrs,proto3" json:"service_cidrs,omitempty"`
+	// CIDR pods draw IPs from in OVERLAY (or kubenet) mode. Unset applies
+	// Azure's default (10.244.0.0/16). Irrelevant in traditional CNI mode
+	// (pods use subnet IPs).
+	PodCidr string `protobuf:"bytes,8,opt,name=pod_cidr,json=podCidr,proto3" json:"pod_cidr,omitempty"`
+	// Dual-stack pod CIDRs (one IPv4 + one IPv6). Single-stack clusters use
+	// pod_cidr.
+	PodCidrs []string `protobuf:"bytes,9,rep,name=pod_cidrs,json=podCidrs,proto3" json:"pod_cidrs,omitempty"`
+	// IP families for the cluster. Unset means IPv4-only. For dual-stack,
+	// list IPV4 then IPV6 and provide dual-stack pod_cidrs/service_cidrs.
+	IpVersions []AzureAksClusterIpVersion `protobuf:"varint,10,rep,packed,name=ip_versions,json=ipVersions,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIpVersion" json:"ip_versions,omitempty"`
+	// How cluster egress leaves Azure. Unspecified applies Azure's default
+	// (LOAD_BALANCER): SNAT through the managed Standard load balancer.
+	// MANAGED_NAT_GATEWAY swaps in an AKS-managed NAT gateway (better SNAT
+	// scaling); USER_ASSIGNED_NAT_GATEWAY uses the NAT gateway already
+	// attached to your BYO subnet (compose via AzureSubnet.nat_gateway_id);
+	// USER_DEFINED_ROUTING sends everything to your route table's next hop
+	// (the firewall-egress pattern -- requires a BYO subnet with an
+	// AzureRouteTable attached); NONE provisions no egress path at all
+	// (pair with bootstrap_profile CACHE so nodes can still pull system
+	// images).
+	OutboundType AzureAksClusterOutboundType `protobuf:"varint,11,opt,name=outbound_type,json=outboundType,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOutboundType" json:"outbound_type,omitempty"`
+	// Tuning for the managed STANDARD LOAD BALANCER egress path (outbound
+	// type LOAD_BALANCER): SNAT port allocation, outbound IP scaling or
+	// explicit outbound IPs.
+	LoadBalancerProfile *AzureAksClusterLoadBalancerProfile `protobuf:"bytes,12,opt,name=load_balancer_profile,json=loadBalancerProfile,proto3" json:"load_balancer_profile,omitempty"`
+	// Tuning for the MANAGED_NAT_GATEWAY egress path.
+	NatGatewayProfile *AzureAksClusterNatGatewayProfile `protobuf:"bytes,13,opt,name=nat_gateway_profile,json=natGatewayProfile,proto3" json:"nat_gateway_profile,omitempty"`
+	// Advanced Container Networking Services: OBSERVABILITY streams
+	// pod-level network flow metrics/logs; SECURITY adds FQDN-based egress
+	// filtering. Both require the CILIUM data plane.
+	AdvancedNetworking *AzureAksClusterAdvancedNetworking `protobuf:"bytes,14,opt,name=advanced_networking,json=advancedNetworking,proto3" json:"advanced_networking,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterNetworkProfile) Reset() {
+	*x = AzureAksClusterNetworkProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterNetworkProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterNetworkProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterNetworkProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterNetworkProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterNetworkProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AzureAksClusterNetworkProfile) GetNetworkPlugin() AzureAksClusterNetworkPlugin {
+	if x != nil {
+		return x.NetworkPlugin
+	}
+	return AzureAksClusterNetworkPlugin_azure_aks_cluster_network_plugin_unspecified
+}
+
+func (x *AzureAksClusterNetworkProfile) GetNetworkPluginMode() AzureAksClusterNetworkPluginMode {
+	if x != nil {
+		return x.NetworkPluginMode
+	}
+	return AzureAksClusterNetworkPluginMode_azure_aks_cluster_network_plugin_mode_unspecified
+}
+
+func (x *AzureAksClusterNetworkProfile) GetNetworkPolicy() AzureAksClusterNetworkPolicy {
+	if x != nil {
+		return x.NetworkPolicy
+	}
+	return AzureAksClusterNetworkPolicy_azure_aks_cluster_network_policy_unspecified
+}
+
+func (x *AzureAksClusterNetworkProfile) GetNetworkDataPlane() AzureAksClusterNetworkDataPlane {
+	if x != nil {
+		return x.NetworkDataPlane
+	}
+	return AzureAksClusterNetworkDataPlane_azure_aks_cluster_network_data_plane_unspecified
+}
+
+func (x *AzureAksClusterNetworkProfile) GetDnsServiceIp() string {
+	if x != nil {
+		return x.DnsServiceIp
+	}
+	return ""
+}
+
+func (x *AzureAksClusterNetworkProfile) GetServiceCidr() string {
+	if x != nil {
+		return x.ServiceCidr
+	}
+	return ""
+}
+
+func (x *AzureAksClusterNetworkProfile) GetServiceCidrs() []string {
+	if x != nil {
+		return x.ServiceCidrs
+	}
+	return nil
+}
+
+func (x *AzureAksClusterNetworkProfile) GetPodCidr() string {
+	if x != nil {
+		return x.PodCidr
+	}
+	return ""
+}
+
+func (x *AzureAksClusterNetworkProfile) GetPodCidrs() []string {
+	if x != nil {
+		return x.PodCidrs
+	}
+	return nil
+}
+
+func (x *AzureAksClusterNetworkProfile) GetIpVersions() []AzureAksClusterIpVersion {
+	if x != nil {
+		return x.IpVersions
+	}
+	return nil
+}
+
+func (x *AzureAksClusterNetworkProfile) GetOutboundType() AzureAksClusterOutboundType {
+	if x != nil {
+		return x.OutboundType
+	}
+	return AzureAksClusterOutboundType_azure_aks_cluster_outbound_type_unspecified
+}
+
+func (x *AzureAksClusterNetworkProfile) GetLoadBalancerProfile() *AzureAksClusterLoadBalancerProfile {
+	if x != nil {
+		return x.LoadBalancerProfile
+	}
+	return nil
+}
+
+func (x *AzureAksClusterNetworkProfile) GetNatGatewayProfile() *AzureAksClusterNatGatewayProfile {
+	if x != nil {
+		return x.NatGatewayProfile
+	}
+	return nil
+}
+
+func (x *AzureAksClusterNetworkProfile) GetAdvancedNetworking() *AzureAksClusterAdvancedNetworking {
+	if x != nil {
+		return x.AdvancedNetworking
+	}
+	return nil
+}
+
+// Managed Standard load balancer egress tuning. Choose ONE outbound-IP
+// strategy: managed counts (Azure allocates), explicit AzurePublicIpPrefix
+// references, or explicit AzurePublicIp references.
+type AzureAksClusterLoadBalancerProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// SNAT ports reserved per node (0-64000, multiples of 8). 0 (unset)
+	// lets Azure allocate dynamically by cluster size. Set explicitly for
+	// connection-heavy workloads hitting SNAT exhaustion.
+	OutboundPortsAllocated int32 `protobuf:"varint,1,opt,name=outbound_ports_allocated,json=outboundPortsAllocated,proto3" json:"outbound_ports_allocated,omitempty"`
+	// Minutes an idle outbound flow holds its SNAT port (4-100). Unset
+	// applies Azure's default (30).
+	IdleTimeoutInMinutes int32 `protobuf:"varint,2,opt,name=idle_timeout_in_minutes,json=idleTimeoutInMinutes,proto3" json:"idle_timeout_in_minutes,omitempty"`
+	// Number of Azure-managed outbound IPv4 addresses (1-100). More IPs =
+	// more SNAT ports. Mutually exclusive with the explicit-IP fields.
+	ManagedOutboundIpCount int32 `protobuf:"varint,3,opt,name=managed_outbound_ip_count,json=managedOutboundIpCount,proto3" json:"managed_outbound_ip_count,omitempty"`
+	// Number of Azure-managed outbound IPv6 addresses for dual-stack
+	// clusters (1-100).
+	ManagedOutboundIpv6Count int32 `protobuf:"varint,4,opt,name=managed_outbound_ipv6_count,json=managedOutboundIpv6Count,proto3" json:"managed_outbound_ipv6_count,omitempty"`
+	// Explicit public IP PREFIXES to SNAT from -- egress comes from known,
+	// allowlistable CIDRs. Mutually exclusive with managed counts and
+	// outbound_ip_address_ids.
+	OutboundIpPrefixIds []*v1.StringValueOrRef `protobuf:"bytes,5,rep,name=outbound_ip_prefix_ids,json=outboundIpPrefixIds,proto3" json:"outbound_ip_prefix_ids,omitempty"`
+	// Explicit public IP ADDRESSES to SNAT from. Mutually exclusive with
+	// managed counts and outbound_ip_prefix_ids.
+	OutboundIpAddressIds []*v1.StringValueOrRef `protobuf:"bytes,6,rep,name=outbound_ip_address_ids,json=outboundIpAddressIds,proto3" json:"outbound_ip_address_ids,omitempty"`
+	// How backend nodes register with the load balancer. Unspecified
+	// applies Azure's default (NODE_IP_CONFIGURATION -- VMSS NIC configs).
+	// NODE_IP registers node IPs directly.
+	BackendPoolType AzureAksClusterLoadBalancerBackendPoolType `protobuf:"varint,7,opt,name=backend_pool_type,json=backendPoolType,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerBackendPoolType" json:"backend_pool_type,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterLoadBalancerProfile) Reset() {
+	*x = AzureAksClusterLoadBalancerProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterLoadBalancerProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterLoadBalancerProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterLoadBalancerProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterLoadBalancerProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterLoadBalancerProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AzureAksClusterLoadBalancerProfile) GetOutboundPortsAllocated() int32 {
+	if x != nil {
+		return x.OutboundPortsAllocated
+	}
+	return 0
+}
+
+func (x *AzureAksClusterLoadBalancerProfile) GetIdleTimeoutInMinutes() int32 {
+	if x != nil {
+		return x.IdleTimeoutInMinutes
+	}
+	return 0
+}
+
+func (x *AzureAksClusterLoadBalancerProfile) GetManagedOutboundIpCount() int32 {
+	if x != nil {
+		return x.ManagedOutboundIpCount
+	}
+	return 0
+}
+
+func (x *AzureAksClusterLoadBalancerProfile) GetManagedOutboundIpv6Count() int32 {
+	if x != nil {
+		return x.ManagedOutboundIpv6Count
+	}
+	return 0
+}
+
+func (x *AzureAksClusterLoadBalancerProfile) GetOutboundIpPrefixIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.OutboundIpPrefixIds
+	}
+	return nil
+}
+
+func (x *AzureAksClusterLoadBalancerProfile) GetOutboundIpAddressIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.OutboundIpAddressIds
+	}
+	return nil
+}
+
+func (x *AzureAksClusterLoadBalancerProfile) GetBackendPoolType() AzureAksClusterLoadBalancerBackendPoolType {
+	if x != nil {
+		return x.BackendPoolType
+	}
+	return AzureAksClusterLoadBalancerBackendPoolType_azure_aks_cluster_load_balancer_backend_pool_type_unspecified
+}
+
+// Managed NAT gateway egress tuning (outbound type MANAGED_NAT_GATEWAY).
+type AzureAksClusterNatGatewayProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Minutes an idle outbound flow holds its SNAT port (4-120). Unset
+	// applies Azure's default (4).
+	IdleTimeoutInMinutes int32 `protobuf:"varint,1,opt,name=idle_timeout_in_minutes,json=idleTimeoutInMinutes,proto3" json:"idle_timeout_in_minutes,omitempty"`
+	// Number of managed outbound IPs on the NAT gateway (1-100).
+	ManagedOutboundIpCount int32 `protobuf:"varint,2,opt,name=managed_outbound_ip_count,json=managedOutboundIpCount,proto3" json:"managed_outbound_ip_count,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterNatGatewayProfile) Reset() {
+	*x = AzureAksClusterNatGatewayProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterNatGatewayProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterNatGatewayProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterNatGatewayProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterNatGatewayProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterNatGatewayProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AzureAksClusterNatGatewayProfile) GetIdleTimeoutInMinutes() int32 {
+	if x != nil {
+		return x.IdleTimeoutInMinutes
+	}
+	return 0
+}
+
+func (x *AzureAksClusterNatGatewayProfile) GetManagedOutboundIpCount() int32 {
+	if x != nil {
+		return x.ManagedOutboundIpCount
+	}
+	return 0
+}
+
+// Advanced Container Networking Services (requires the Cilium dataplane).
+type AzureAksClusterAdvancedNetworking struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Pod-level network observability: flow metrics and logs surfaced
+	// through Azure Monitor.
+	ObservabilityEnabled bool `protobuf:"varint,1,opt,name=observability_enabled,json=observabilityEnabled,proto3" json:"observability_enabled,omitempty"`
+	// FQDN-based egress policy filtering.
+	SecurityEnabled bool `protobuf:"varint,2,opt,name=security_enabled,json=securityEnabled,proto3" json:"security_enabled,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
 func (x *AzureAksClusterAdvancedNetworking) Reset() {
 	*x = AzureAksClusterAdvancedNetworking{}
-	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -702,7 +4651,7 @@ func (x *AzureAksClusterAdvancedNetworking) String() string {
 func (*AzureAksClusterAdvancedNetworking) ProtoMessage() {}
 
 func (x *AzureAksClusterAdvancedNetworking) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -715,91 +4664,2454 @@ func (x *AzureAksClusterAdvancedNetworking) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AzureAksClusterAdvancedNetworking.ProtoReflect.Descriptor instead.
 func (*AzureAksClusterAdvancedNetworking) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{15}
 }
 
-func (x *AzureAksClusterAdvancedNetworking) GetPodCidr() string {
+func (x *AzureAksClusterAdvancedNetworking) GetObservabilityEnabled() bool {
 	if x != nil {
-		return x.PodCidr
+		return x.ObservabilityEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterAdvancedNetworking) GetSecurityEnabled() bool {
+	if x != nil {
+		return x.SecurityEnabled
+	}
+	return false
+}
+
+// Cluster autoscaler tuning. Every field is optional; unset keeps Azure's
+// default (noted per field). Durations are strings like "10m" or "600s".
+type AzureAksClusterAutoScalerProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Treat node groups with identical instance types/labels as one when
+	// balancing scale-out. Azure default: false.
+	BalanceSimilarNodeGroups bool `protobuf:"varint,1,opt,name=balance_similar_node_groups,json=balanceSimilarNodeGroups,proto3" json:"balance_similar_node_groups,omitempty"`
+	// Allow evicting DaemonSet pods from EMPTY nodes at scale-down. Azure
+	// default: false.
+	DaemonsetEvictionForEmptyNodesEnabled bool `protobuf:"varint,2,opt,name=daemonset_eviction_for_empty_nodes_enabled,json=daemonsetEvictionForEmptyNodesEnabled,proto3" json:"daemonset_eviction_for_empty_nodes_enabled,omitempty"`
+	// Allow evicting DaemonSet pods from OCCUPIED nodes at scale-down.
+	// Azure default: true.
+	DaemonsetEvictionForOccupiedNodesEnabled *bool `protobuf:"varint,3,opt,name=daemonset_eviction_for_occupied_nodes_enabled,json=daemonsetEvictionForOccupiedNodesEnabled,proto3,oneof" json:"daemonset_eviction_for_occupied_nodes_enabled,omitempty"`
+	// Which node group grows on scale-out. Unspecified keeps Azure's
+	// default (RANDOM). LEAST_WASTE picks the best resource fit;
+	// PRIORITY follows your priority config; MOST_PODS maximizes scheduled
+	// pods.
+	Expander AzureAksClusterAutoscalerExpander `protobuf:"varint,4,opt,name=expander,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoscalerExpander" json:"expander,omitempty"`
+	// Ignore DaemonSet resource usage when computing node utilization.
+	// Azure default: false.
+	IgnoreDaemonsetsUtilizationEnabled bool `protobuf:"varint,5,opt,name=ignore_daemonsets_utilization_enabled,json=ignoreDaemonsetsUtilizationEnabled,proto3" json:"ignore_daemonsets_utilization_enabled,omitempty"`
+	// Seconds the autoscaler waits for graceful pod termination at
+	// scale-down. Azure default: 600.
+	MaxGracefulTerminationSec int32 `protobuf:"varint,6,opt,name=max_graceful_termination_sec,json=maxGracefulTerminationSec,proto3" json:"max_graceful_termination_sec,omitempty"`
+	// Longest a provisioning node may take before being abandoned, e.g.
+	// "15m" (Azure's default).
+	MaxNodeProvisioningTime string `protobuf:"bytes,7,opt,name=max_node_provisioning_time,json=maxNodeProvisioningTime,proto3" json:"max_node_provisioning_time,omitempty"`
+	// Max unready nodes tolerated before autoscaling pauses. Azure
+	// default: 3.
+	MaxUnreadyNodes int32 `protobuf:"varint,8,opt,name=max_unready_nodes,json=maxUnreadyNodes,proto3" json:"max_unready_nodes,omitempty"`
+	// Max unready percentage tolerated before autoscaling pauses (0-100).
+	// Azure default: 45.
+	MaxUnreadyPercentage int32 `protobuf:"varint,9,opt,name=max_unready_percentage,json=maxUnreadyPercentage,proto3" json:"max_unready_percentage,omitempty"`
+	// Delay before unschedulable pods trigger scale-up, e.g. "10s" (Azure's
+	// default "0s" scales immediately).
+	NewPodScaleUpDelay string `protobuf:"bytes,10,opt,name=new_pod_scale_up_delay,json=newPodScaleUpDelay,proto3" json:"new_pod_scale_up_delay,omitempty"`
+	// How often the autoscaler re-evaluates, e.g. "10s" (Azure's default).
+	ScanInterval string `protobuf:"bytes,11,opt,name=scan_interval,json=scanInterval,proto3" json:"scan_interval,omitempty"`
+	// Cool-down after a scale-UP before scale-down evaluation resumes, e.g.
+	// "10m" (Azure's default).
+	ScaleDownDelayAfterAdd string `protobuf:"bytes,12,opt,name=scale_down_delay_after_add,json=scaleDownDelayAfterAdd,proto3" json:"scale_down_delay_after_add,omitempty"`
+	// Cool-down after a node DELETION, e.g. "10s".
+	ScaleDownDelayAfterDelete string `protobuf:"bytes,13,opt,name=scale_down_delay_after_delete,json=scaleDownDelayAfterDelete,proto3" json:"scale_down_delay_after_delete,omitempty"`
+	// Cool-down after a scale-down FAILURE, e.g. "3m" (Azure's default).
+	ScaleDownDelayAfterFailure string `protobuf:"bytes,14,opt,name=scale_down_delay_after_failure,json=scaleDownDelayAfterFailure,proto3" json:"scale_down_delay_after_failure,omitempty"`
+	// How long a node must be unneeded before removal, e.g. "10m" (Azure's
+	// default).
+	ScaleDownUnneeded string `protobuf:"bytes,15,opt,name=scale_down_unneeded,json=scaleDownUnneeded,proto3" json:"scale_down_unneeded,omitempty"`
+	// How long an UNREADY node must be unneeded before removal, e.g. "20m"
+	// (Azure's default).
+	ScaleDownUnready string `protobuf:"bytes,16,opt,name=scale_down_unready,json=scaleDownUnready,proto3" json:"scale_down_unready,omitempty"`
+	// Utilization below which a node is scale-down eligible, as a fraction
+	// string, e.g. "0.5" (Azure's default).
+	ScaleDownUtilizationThreshold string `protobuf:"bytes,17,opt,name=scale_down_utilization_threshold,json=scaleDownUtilizationThreshold,proto3" json:"scale_down_utilization_threshold,omitempty"`
+	// Max empty nodes deleted in one pass. Azure default: 10.
+	EmptyBulkDeleteMax int32 `protobuf:"varint,18,opt,name=empty_bulk_delete_max,json=emptyBulkDeleteMax,proto3" json:"empty_bulk_delete_max,omitempty"`
+	// Skip scale-down for nodes whose pods use local storage. Azure
+	// default: false.
+	SkipNodesWithLocalStorage bool `protobuf:"varint,19,opt,name=skip_nodes_with_local_storage,json=skipNodesWithLocalStorage,proto3" json:"skip_nodes_with_local_storage,omitempty"`
+	// Skip scale-down for nodes running non-DaemonSet kube-system pods.
+	// Azure default: true.
+	SkipNodesWithSystemPods *bool `protobuf:"varint,20,opt,name=skip_nodes_with_system_pods,json=skipNodesWithSystemPods,proto3,oneof" json:"skip_nodes_with_system_pods,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterAutoScalerProfile) Reset() {
+	*x = AzureAksClusterAutoScalerProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterAutoScalerProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterAutoScalerProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterAutoScalerProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterAutoScalerProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterAutoScalerProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetBalanceSimilarNodeGroups() bool {
+	if x != nil {
+		return x.BalanceSimilarNodeGroups
+	}
+	return false
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetDaemonsetEvictionForEmptyNodesEnabled() bool {
+	if x != nil {
+		return x.DaemonsetEvictionForEmptyNodesEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetDaemonsetEvictionForOccupiedNodesEnabled() bool {
+	if x != nil && x.DaemonsetEvictionForOccupiedNodesEnabled != nil {
+		return *x.DaemonsetEvictionForOccupiedNodesEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetExpander() AzureAksClusterAutoscalerExpander {
+	if x != nil {
+		return x.Expander
+	}
+	return AzureAksClusterAutoscalerExpander_azure_aks_cluster_autoscaler_expander_unspecified
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetIgnoreDaemonsetsUtilizationEnabled() bool {
+	if x != nil {
+		return x.IgnoreDaemonsetsUtilizationEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetMaxGracefulTerminationSec() int32 {
+	if x != nil {
+		return x.MaxGracefulTerminationSec
+	}
+	return 0
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetMaxNodeProvisioningTime() string {
+	if x != nil {
+		return x.MaxNodeProvisioningTime
 	}
 	return ""
 }
 
-func (x *AzureAksClusterAdvancedNetworking) GetServiceCidr() string {
+func (x *AzureAksClusterAutoScalerProfile) GetMaxUnreadyNodes() int32 {
 	if x != nil {
-		return x.ServiceCidr
+		return x.MaxUnreadyNodes
+	}
+	return 0
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetMaxUnreadyPercentage() int32 {
+	if x != nil {
+		return x.MaxUnreadyPercentage
+	}
+	return 0
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetNewPodScaleUpDelay() string {
+	if x != nil {
+		return x.NewPodScaleUpDelay
 	}
 	return ""
 }
 
-func (x *AzureAksClusterAdvancedNetworking) GetDnsServiceIp() string {
+func (x *AzureAksClusterAutoScalerProfile) GetScanInterval() string {
 	if x != nil {
-		return x.DnsServiceIp
+		return x.ScanInterval
 	}
 	return ""
 }
 
-func (x *AzureAksClusterAdvancedNetworking) GetCustomDnsServers() []string {
+func (x *AzureAksClusterAutoScalerProfile) GetScaleDownDelayAfterAdd() string {
 	if x != nil {
-		return x.CustomDnsServers
+		return x.ScaleDownDelayAfterAdd
+	}
+	return ""
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetScaleDownDelayAfterDelete() string {
+	if x != nil {
+		return x.ScaleDownDelayAfterDelete
+	}
+	return ""
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetScaleDownDelayAfterFailure() string {
+	if x != nil {
+		return x.ScaleDownDelayAfterFailure
+	}
+	return ""
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetScaleDownUnneeded() string {
+	if x != nil {
+		return x.ScaleDownUnneeded
+	}
+	return ""
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetScaleDownUnready() string {
+	if x != nil {
+		return x.ScaleDownUnready
+	}
+	return ""
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetScaleDownUtilizationThreshold() string {
+	if x != nil {
+		return x.ScaleDownUtilizationThreshold
+	}
+	return ""
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetEmptyBulkDeleteMax() int32 {
+	if x != nil {
+		return x.EmptyBulkDeleteMax
+	}
+	return 0
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetSkipNodesWithLocalStorage() bool {
+	if x != nil {
+		return x.SkipNodesWithLocalStorage
+	}
+	return false
+}
+
+func (x *AzureAksClusterAutoScalerProfile) GetSkipNodesWithSystemPods() bool {
+	if x != nil && x.SkipNodesWithSystemPods != nil {
+		return *x.SkipNodesWithSystemPods
+	}
+	return false
+}
+
+// Legacy dedicated maintenance window: hour-of-week allowances and
+// blackout spans for routine Azure-initiated maintenance.
+type AzureAksClusterMaintenanceWindow struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Hours of specific weekdays when maintenance MAY run.
+	Allowed []*AzureAksClusterMaintenanceWindowAllowed `protobuf:"bytes,1,rep,name=allowed,proto3" json:"allowed,omitempty"`
+	// Absolute time spans when maintenance MUST NOT run (freeze windows).
+	NotAllowed    []*AzureAksClusterMaintenanceWindowNotAllowed `protobuf:"bytes,2,rep,name=not_allowed,json=notAllowed,proto3" json:"not_allowed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterMaintenanceWindow) Reset() {
+	*x = AzureAksClusterMaintenanceWindow{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterMaintenanceWindow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterMaintenanceWindow) ProtoMessage() {}
+
+func (x *AzureAksClusterMaintenanceWindow) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterMaintenanceWindow.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterMaintenanceWindow) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AzureAksClusterMaintenanceWindow) GetAllowed() []*AzureAksClusterMaintenanceWindowAllowed {
+	if x != nil {
+		return x.Allowed
 	}
 	return nil
+}
+
+func (x *AzureAksClusterMaintenanceWindow) GetNotAllowed() []*AzureAksClusterMaintenanceWindowNotAllowed {
+	if x != nil {
+		return x.NotAllowed
+	}
+	return nil
+}
+
+// An allowed maintenance slot: a weekday and its permitted hours.
+type AzureAksClusterMaintenanceWindowAllowed struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The weekday this allowance covers.
+	Day AzureAksClusterWeekDay `protobuf:"varint,1,opt,name=day,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekDay" json:"day,omitempty"`
+	// Permitted hours on that day, 0-23 (cluster-local UTC hours).
+	Hours         []int32 `protobuf:"varint,2,rep,packed,name=hours,proto3" json:"hours,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterMaintenanceWindowAllowed) Reset() {
+	*x = AzureAksClusterMaintenanceWindowAllowed{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterMaintenanceWindowAllowed) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterMaintenanceWindowAllowed) ProtoMessage() {}
+
+func (x *AzureAksClusterMaintenanceWindowAllowed) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterMaintenanceWindowAllowed.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterMaintenanceWindowAllowed) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *AzureAksClusterMaintenanceWindowAllowed) GetDay() AzureAksClusterWeekDay {
+	if x != nil {
+		return x.Day
+	}
+	return AzureAksClusterWeekDay_azure_aks_cluster_week_day_unspecified
+}
+
+func (x *AzureAksClusterMaintenanceWindowAllowed) GetHours() []int32 {
+	if x != nil {
+		return x.Hours
+	}
+	return nil
+}
+
+// A maintenance blackout span.
+type AzureAksClusterMaintenanceWindowNotAllowed struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Span start, RFC 3339, e.g. "2035-01-01T00:00:00Z".
+	Start string `protobuf:"bytes,1,opt,name=start,proto3" json:"start,omitempty"`
+	// Span end, RFC 3339.
+	End           string `protobuf:"bytes,2,opt,name=end,proto3" json:"end,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterMaintenanceWindowNotAllowed) Reset() {
+	*x = AzureAksClusterMaintenanceWindowNotAllowed{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterMaintenanceWindowNotAllowed) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterMaintenanceWindowNotAllowed) ProtoMessage() {}
+
+func (x *AzureAksClusterMaintenanceWindowNotAllowed) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterMaintenanceWindowNotAllowed.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterMaintenanceWindowNotAllowed) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AzureAksClusterMaintenanceWindowNotAllowed) GetStart() string {
+	if x != nil {
+		return x.Start
+	}
+	return ""
+}
+
+func (x *AzureAksClusterMaintenanceWindowNotAllowed) GetEnd() string {
+	if x != nil {
+		return x.End
+	}
+	return ""
+}
+
+// A recurring maintenance schedule -- shared by the auto-upgrade window
+// (Kubernetes version work) and the node-OS window (image/patch work).
+type AzureAksClusterMaintenanceWindowSchedule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How the schedule recurs. DAILY/WEEKLY use interval as
+	// days/weeks-between; the monthly frequencies pick a day via
+	// week_index+day_of_week (RELATIVE_MONTHLY) or day_of_month
+	// (ABSOLUTE_MONTHLY).
+	Frequency AzureAksClusterMaintenanceFrequency `protobuf:"varint,1,opt,name=frequency,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceFrequency" json:"frequency,omitempty"`
+	// Recurrence interval: every N days/weeks/months (>= 1).
+	Interval int32 `protobuf:"varint,2,opt,name=interval,proto3" json:"interval,omitempty"`
+	// Window length in hours (4-24). Azure needs at least 4 hours to make
+	// progress.
+	Duration int32 `protobuf:"varint,3,opt,name=duration,proto3" json:"duration,omitempty"`
+	// Weekday for WEEKLY and RELATIVE_MONTHLY schedules.
+	DayOfWeek AzureAksClusterWeekDay `protobuf:"varint,4,opt,name=day_of_week,json=dayOfWeek,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekDay" json:"day_of_week,omitempty"`
+	// Which occurrence of day_of_week for RELATIVE_MONTHLY (e.g. FIRST
+	// Tuesday).
+	WeekIndex AzureAksClusterWeekIndex `protobuf:"varint,5,opt,name=week_index,json=weekIndex,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekIndex" json:"week_index,omitempty"`
+	// Day of month (1-31) for ABSOLUTE_MONTHLY schedules.
+	DayOfMonth int32 `protobuf:"varint,6,opt,name=day_of_month,json=dayOfMonth,proto3" json:"day_of_month,omitempty"`
+	// Date the schedule takes effect, "yyyy-MM-dd". Unset starts
+	// immediately.
+	StartDate string `protobuf:"bytes,7,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	// Window start time-of-day, "HH:mm" (with utc_offset applied), e.g.
+	// "02:00".
+	StartTime string `protobuf:"bytes,8,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	// UTC offset for start_time, "+HH:mm" or "-HH:mm", e.g. "+05:30".
+	// Unset means UTC.
+	UtcOffset string `protobuf:"bytes,9,opt,name=utc_offset,json=utcOffset,proto3" json:"utc_offset,omitempty"`
+	// Blackout spans that override the recurrence (freezes).
+	NotAllowed    []*AzureAksClusterMaintenanceWindowNotAllowed `protobuf:"bytes,10,rep,name=not_allowed,json=notAllowed,proto3" json:"not_allowed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) Reset() {
+	*x = AzureAksClusterMaintenanceWindowSchedule{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterMaintenanceWindowSchedule) ProtoMessage() {}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterMaintenanceWindowSchedule.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterMaintenanceWindowSchedule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) GetFrequency() AzureAksClusterMaintenanceFrequency {
+	if x != nil {
+		return x.Frequency
+	}
+	return AzureAksClusterMaintenanceFrequency_azure_aks_cluster_maintenance_frequency_unspecified
+}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) GetInterval() int32 {
+	if x != nil {
+		return x.Interval
+	}
+	return 0
+}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) GetDuration() int32 {
+	if x != nil {
+		return x.Duration
+	}
+	return 0
+}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) GetDayOfWeek() AzureAksClusterWeekDay {
+	if x != nil {
+		return x.DayOfWeek
+	}
+	return AzureAksClusterWeekDay_azure_aks_cluster_week_day_unspecified
+}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) GetWeekIndex() AzureAksClusterWeekIndex {
+	if x != nil {
+		return x.WeekIndex
+	}
+	return AzureAksClusterWeekIndex_azure_aks_cluster_week_index_unspecified
+}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) GetDayOfMonth() int32 {
+	if x != nil {
+		return x.DayOfMonth
+	}
+	return 0
+}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) GetStartTime() string {
+	if x != nil {
+		return x.StartTime
+	}
+	return ""
+}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) GetUtcOffset() string {
+	if x != nil {
+		return x.UtcOffset
+	}
+	return ""
+}
+
+func (x *AzureAksClusterMaintenanceWindowSchedule) GetNotAllowed() []*AzureAksClusterMaintenanceWindowNotAllowed {
+	if x != nil {
+		return x.NotAllowed
+	}
+	return nil
+}
+
+// Container Insights (OMS agent) add-on.
+type AzureAksClusterOmsAgent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Log Analytics workspace logs and metrics stream to.
+	LogAnalyticsWorkspaceId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=log_analytics_workspace_id,json=logAnalyticsWorkspaceId,proto3" json:"log_analytics_workspace_id,omitempty"`
+	// Authenticate the agent with the cluster's managed identity instead
+	// of a workspace key -- the modern, secret-less mode; enable it on new
+	// clusters.
+	MsiAuthForMonitoringEnabled bool `protobuf:"varint,2,opt,name=msi_auth_for_monitoring_enabled,json=msiAuthForMonitoringEnabled,proto3" json:"msi_auth_for_monitoring_enabled,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterOmsAgent) Reset() {
+	*x = AzureAksClusterOmsAgent{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterOmsAgent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterOmsAgent) ProtoMessage() {}
+
+func (x *AzureAksClusterOmsAgent) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterOmsAgent.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterOmsAgent) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *AzureAksClusterOmsAgent) GetLogAnalyticsWorkspaceId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.LogAnalyticsWorkspaceId
+	}
+	return nil
+}
+
+func (x *AzureAksClusterOmsAgent) GetMsiAuthForMonitoringEnabled() bool {
+	if x != nil {
+		return x.MsiAuthForMonitoringEnabled
+	}
+	return false
+}
+
+// Azure Key Vault provider for the Secrets Store CSI driver.
+type AzureAksClusterKeyVaultSecretsProvider struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether mounted secrets re-sync from Key Vault on an interval.
+	// Without rotation, pods see updated secrets only on restart.
+	SecretRotationEnabled bool `protobuf:"varint,1,opt,name=secret_rotation_enabled,json=secretRotationEnabled,proto3" json:"secret_rotation_enabled,omitempty"`
+	// Poll interval for rotation, e.g. "2m" (Azure's default). Only
+	// meaningful with secret_rotation_enabled.
+	SecretRotationInterval string `protobuf:"bytes,2,opt,name=secret_rotation_interval,json=secretRotationInterval,proto3" json:"secret_rotation_interval,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterKeyVaultSecretsProvider) Reset() {
+	*x = AzureAksClusterKeyVaultSecretsProvider{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterKeyVaultSecretsProvider) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterKeyVaultSecretsProvider) ProtoMessage() {}
+
+func (x *AzureAksClusterKeyVaultSecretsProvider) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterKeyVaultSecretsProvider.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterKeyVaultSecretsProvider) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AzureAksClusterKeyVaultSecretsProvider) GetSecretRotationEnabled() bool {
+	if x != nil {
+		return x.SecretRotationEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterKeyVaultSecretsProvider) GetSecretRotationInterval() string {
+	if x != nil {
+		return x.SecretRotationInterval
+	}
+	return ""
+}
+
+// Microsoft Defender for Containers.
+type AzureAksClusterMicrosoftDefender struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Log Analytics workspace security events stream to.
+	LogAnalyticsWorkspaceId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=log_analytics_workspace_id,json=logAnalyticsWorkspaceId,proto3" json:"log_analytics_workspace_id,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterMicrosoftDefender) Reset() {
+	*x = AzureAksClusterMicrosoftDefender{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterMicrosoftDefender) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterMicrosoftDefender) ProtoMessage() {}
+
+func (x *AzureAksClusterMicrosoftDefender) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterMicrosoftDefender.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterMicrosoftDefender) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AzureAksClusterMicrosoftDefender) GetLogAnalyticsWorkspaceId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.LogAnalyticsWorkspaceId
+	}
+	return nil
+}
+
+// Azure Monitor managed Prometheus metrics.
+type AzureAksClusterMonitorMetrics struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Comma-separated Kubernetes ANNOTATION keys exported as metric labels.
+	AnnotationsAllowed string `protobuf:"bytes,1,opt,name=annotations_allowed,json=annotationsAllowed,proto3" json:"annotations_allowed,omitempty"`
+	// Comma-separated Kubernetes LABEL keys exported as metric labels.
+	LabelsAllowed string `protobuf:"bytes,2,opt,name=labels_allowed,json=labelsAllowed,proto3" json:"labels_allowed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterMonitorMetrics) Reset() {
+	*x = AzureAksClusterMonitorMetrics{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterMonitorMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterMonitorMetrics) ProtoMessage() {}
+
+func (x *AzureAksClusterMonitorMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterMonitorMetrics.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterMonitorMetrics) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *AzureAksClusterMonitorMetrics) GetAnnotationsAllowed() string {
+	if x != nil {
+		return x.AnnotationsAllowed
+	}
+	return ""
+}
+
+func (x *AzureAksClusterMonitorMetrics) GetLabelsAllowed() string {
+	if x != nil {
+		return x.LabelsAllowed
+	}
+	return ""
+}
+
+// Application Gateway Ingress Controller add-on. Anchor it with exactly
+// one of: an existing gateway (gateway_id), a new gateway in a new subnet
+// (subnet_cidr), or a new gateway in an existing subnet (subnet_id).
+type AzureAksClusterIngressApplicationGateway struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Existing Application Gateway AGIC programs. The gateway must be
+	// reachable from the cluster network (peered or same VNet).
+	GatewayId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=gateway_id,json=gatewayId,proto3" json:"gateway_id,omitempty"`
+	// Name for the AKS-created gateway (with subnet_cidr/subnet_id
+	// anchors). Unset lets AKS derive one.
+	GatewayName string `protobuf:"bytes,2,opt,name=gateway_name,json=gatewayName,proto3" json:"gateway_name,omitempty"`
+	// CIDR for a NEW subnet AKS creates in the cluster VNet to host a new
+	// gateway, e.g. "10.225.0.0/24" (at least /27).
+	SubnetCidr string `protobuf:"bytes,3,opt,name=subnet_cidr,json=subnetCidr,proto3" json:"subnet_cidr,omitempty"`
+	// Existing subnet to host the new gateway -- must be dedicated to it
+	// and at least /27.
+	SubnetId      *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterIngressApplicationGateway) Reset() {
+	*x = AzureAksClusterIngressApplicationGateway{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterIngressApplicationGateway) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterIngressApplicationGateway) ProtoMessage() {}
+
+func (x *AzureAksClusterIngressApplicationGateway) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterIngressApplicationGateway.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterIngressApplicationGateway) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *AzureAksClusterIngressApplicationGateway) GetGatewayId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.GatewayId
+	}
+	return nil
+}
+
+func (x *AzureAksClusterIngressApplicationGateway) GetGatewayName() string {
+	if x != nil {
+		return x.GatewayName
+	}
+	return ""
+}
+
+func (x *AzureAksClusterIngressApplicationGateway) GetSubnetCidr() string {
+	if x != nil {
+		return x.SubnetCidr
+	}
+	return ""
+}
+
+func (x *AzureAksClusterIngressApplicationGateway) GetSubnetId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SubnetId
+	}
+	return nil
+}
+
+// Virtual nodes (ACI connector) add-on.
+type AzureAksClusterAciConnectorLinux struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the subnet (in the cluster's VNet) delegated to ACI
+	// (delegation: Microsoft.ContainerInstance/containerGroups) where
+	// virtual-node pods run.
+	SubnetName    string `protobuf:"bytes,1,opt,name=subnet_name,json=subnetName,proto3" json:"subnet_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterAciConnectorLinux) Reset() {
+	*x = AzureAksClusterAciConnectorLinux{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterAciConnectorLinux) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterAciConnectorLinux) ProtoMessage() {}
+
+func (x *AzureAksClusterAciConnectorLinux) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterAciConnectorLinux.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterAciConnectorLinux) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *AzureAksClusterAciConnectorLinux) GetSubnetName() string {
+	if x != nil {
+		return x.SubnetName
+	}
+	return ""
+}
+
+// Confidential computing (Intel SGX) add-on.
+type AzureAksClusterConfidentialComputing struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether the SGX quote-helper sidecar runs for out-of-proc enclave
+	// attestation.
+	SgxQuoteHelperEnabled bool `protobuf:"varint,1,opt,name=sgx_quote_helper_enabled,json=sgxQuoteHelperEnabled,proto3" json:"sgx_quote_helper_enabled,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterConfidentialComputing) Reset() {
+	*x = AzureAksClusterConfidentialComputing{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterConfidentialComputing) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterConfidentialComputing) ProtoMessage() {}
+
+func (x *AzureAksClusterConfidentialComputing) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterConfidentialComputing.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterConfidentialComputing) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *AzureAksClusterConfidentialComputing) GetSgxQuoteHelperEnabled() bool {
+	if x != nil {
+		return x.SgxQuoteHelperEnabled
+	}
+	return false
+}
+
+// Managed NGINX ingress ("application routing") add-on.
+type AzureAksClusterWebAppRouting struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Azure DNS zones (public and/or private) the add-on manages records
+	// in as Ingress resources come and go. Empty enables the controller
+	// without DNS automation.
+	DnsZoneIds []*v1.StringValueOrRef `protobuf:"bytes,1,rep,name=dns_zone_ids,json=dnsZoneIds,proto3" json:"dns_zone_ids,omitempty"`
+	// Posture of the default NGINX controller. Unspecified applies Azure's
+	// default (ANNOTATION_CONTROLLED: per-Ingress annotations decide).
+	// INTERNAL/EXTERNAL pin the default controller's load balancer
+	// visibility; NGINX_NONE deploys no default controller.
+	DefaultNginxController AzureAksClusterNginxDefaultController `protobuf:"varint,2,opt,name=default_nginx_controller,json=defaultNginxController,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNginxDefaultController" json:"default_nginx_controller,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterWebAppRouting) Reset() {
+	*x = AzureAksClusterWebAppRouting{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterWebAppRouting) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterWebAppRouting) ProtoMessage() {}
+
+func (x *AzureAksClusterWebAppRouting) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterWebAppRouting.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterWebAppRouting) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *AzureAksClusterWebAppRouting) GetDnsZoneIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.DnsZoneIds
+	}
+	return nil
+}
+
+func (x *AzureAksClusterWebAppRouting) GetDefaultNginxController() AzureAksClusterNginxDefaultController {
+	if x != nil {
+		return x.DefaultNginxController
+	}
+	return AzureAksClusterNginxDefaultController_azure_aks_cluster_nginx_default_controller_unspecified
+}
+
+// Managed Istio service mesh.
+type AzureAksClusterServiceMeshProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Mesh mode -- ISTIO is the only supported value; the field exists for
+	// future modes.
+	Mode AzureAksClusterServiceMeshMode `protobuf:"varint,1,opt,name=mode,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshMode" json:"mode,omitempty"`
+	// Istio control-plane revisions in the cluster, e.g. ["asm-1-24"].
+	// Two entries only during a canary control-plane upgrade.
+	Revisions []string `protobuf:"bytes,2,rep,name=revisions,proto3" json:"revisions,omitempty"`
+	// Whether the managed INTERNAL (VNet-only) Istio ingress gateway runs.
+	InternalIngressGatewayEnabled bool `protobuf:"varint,3,opt,name=internal_ingress_gateway_enabled,json=internalIngressGatewayEnabled,proto3" json:"internal_ingress_gateway_enabled,omitempty"`
+	// Whether the managed EXTERNAL (public) Istio ingress gateway runs.
+	ExternalIngressGatewayEnabled bool `protobuf:"varint,4,opt,name=external_ingress_gateway_enabled,json=externalIngressGatewayEnabled,proto3" json:"external_ingress_gateway_enabled,omitempty"`
+	// Bring-your-own root certificate authority for mesh mTLS, sourced
+	// from Key Vault. Omit for Istio's self-signed CA.
+	CertificateAuthority *AzureAksClusterServiceMeshCertificateAuthority `protobuf:"bytes,5,opt,name=certificate_authority,json=certificateAuthority,proto3" json:"certificate_authority,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterServiceMeshProfile) Reset() {
+	*x = AzureAksClusterServiceMeshProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterServiceMeshProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterServiceMeshProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterServiceMeshProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterServiceMeshProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterServiceMeshProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *AzureAksClusterServiceMeshProfile) GetMode() AzureAksClusterServiceMeshMode {
+	if x != nil {
+		return x.Mode
+	}
+	return AzureAksClusterServiceMeshMode_azure_aks_cluster_service_mesh_mode_unspecified
+}
+
+func (x *AzureAksClusterServiceMeshProfile) GetRevisions() []string {
+	if x != nil {
+		return x.Revisions
+	}
+	return nil
+}
+
+func (x *AzureAksClusterServiceMeshProfile) GetInternalIngressGatewayEnabled() bool {
+	if x != nil {
+		return x.InternalIngressGatewayEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterServiceMeshProfile) GetExternalIngressGatewayEnabled() bool {
+	if x != nil {
+		return x.ExternalIngressGatewayEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterServiceMeshProfile) GetCertificateAuthority() *AzureAksClusterServiceMeshCertificateAuthority {
+	if x != nil {
+		return x.CertificateAuthority
+	}
+	return nil
+}
+
+// Plug-in CA for the managed Istio mesh, from Key Vault objects.
+type AzureAksClusterServiceMeshCertificateAuthority struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Key Vault holding the CA objects. The cluster identity needs
+	// get/list on its certificates and secrets.
+	KeyVaultId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=key_vault_id,json=keyVaultId,proto3" json:"key_vault_id,omitempty"`
+	// Key Vault object name of the root certificate.
+	RootCertObjectName string `protobuf:"bytes,2,opt,name=root_cert_object_name,json=rootCertObjectName,proto3" json:"root_cert_object_name,omitempty"`
+	// Key Vault object name of the certificate chain.
+	CertChainObjectName string `protobuf:"bytes,3,opt,name=cert_chain_object_name,json=certChainObjectName,proto3" json:"cert_chain_object_name,omitempty"`
+	// Key Vault object name of the intermediate certificate.
+	CertObjectName string `protobuf:"bytes,4,opt,name=cert_object_name,json=certObjectName,proto3" json:"cert_object_name,omitempty"`
+	// Key Vault object name of the intermediate's private key.
+	KeyObjectName string `protobuf:"bytes,5,opt,name=key_object_name,json=keyObjectName,proto3" json:"key_object_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterServiceMeshCertificateAuthority) Reset() {
+	*x = AzureAksClusterServiceMeshCertificateAuthority{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterServiceMeshCertificateAuthority) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterServiceMeshCertificateAuthority) ProtoMessage() {}
+
+func (x *AzureAksClusterServiceMeshCertificateAuthority) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterServiceMeshCertificateAuthority.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterServiceMeshCertificateAuthority) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *AzureAksClusterServiceMeshCertificateAuthority) GetKeyVaultId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KeyVaultId
+	}
+	return nil
+}
+
+func (x *AzureAksClusterServiceMeshCertificateAuthority) GetRootCertObjectName() string {
+	if x != nil {
+		return x.RootCertObjectName
+	}
+	return ""
+}
+
+func (x *AzureAksClusterServiceMeshCertificateAuthority) GetCertChainObjectName() string {
+	if x != nil {
+		return x.CertChainObjectName
+	}
+	return ""
+}
+
+func (x *AzureAksClusterServiceMeshCertificateAuthority) GetCertObjectName() string {
+	if x != nil {
+		return x.CertObjectName
+	}
+	return ""
+}
+
+func (x *AzureAksClusterServiceMeshCertificateAuthority) GetKeyObjectName() string {
+	if x != nil {
+		return x.KeyObjectName
+	}
+	return ""
+}
+
+// CSI storage driver toggles.
+type AzureAksClusterStorageProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Azure Blob CSI driver (NFS/FUSE blob mounts). Azure default: false.
+	BlobDriverEnabled bool `protobuf:"varint,1,opt,name=blob_driver_enabled,json=blobDriverEnabled,proto3" json:"blob_driver_enabled,omitempty"`
+	// Azure Disk CSI driver. Azure default: true -- most PVCs depend on it.
+	DiskDriverEnabled *bool `protobuf:"varint,2,opt,name=disk_driver_enabled,json=diskDriverEnabled,proto3,oneof" json:"disk_driver_enabled,omitempty"`
+	// Azure Files CSI driver. Azure default: true.
+	FileDriverEnabled *bool `protobuf:"varint,3,opt,name=file_driver_enabled,json=fileDriverEnabled,proto3,oneof" json:"file_driver_enabled,omitempty"`
+	// CSI snapshot controller. Azure default: true.
+	SnapshotControllerEnabled *bool `protobuf:"varint,4,opt,name=snapshot_controller_enabled,json=snapshotControllerEnabled,proto3,oneof" json:"snapshot_controller_enabled,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterStorageProfile) Reset() {
+	*x = AzureAksClusterStorageProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterStorageProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterStorageProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterStorageProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterStorageProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterStorageProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *AzureAksClusterStorageProfile) GetBlobDriverEnabled() bool {
+	if x != nil {
+		return x.BlobDriverEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterStorageProfile) GetDiskDriverEnabled() bool {
+	if x != nil && x.DiskDriverEnabled != nil {
+		return *x.DiskDriverEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterStorageProfile) GetFileDriverEnabled() bool {
+	if x != nil && x.FileDriverEnabled != nil {
+		return *x.FileDriverEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterStorageProfile) GetSnapshotControllerEnabled() bool {
+	if x != nil && x.SnapshotControllerEnabled != nil {
+		return *x.SnapshotControllerEnabled
+	}
+	return false
+}
+
+// Managed workload autoscalers.
+type AzureAksClusterWorkloadAutoscalerProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Azure-managed KEDA (event-driven autoscaling from queue depths,
+	// Kafka lag, custom metrics).
+	KedaEnabled bool `protobuf:"varint,1,opt,name=keda_enabled,json=kedaEnabled,proto3" json:"keda_enabled,omitempty"`
+	// Azure-managed Vertical Pod Autoscaler.
+	VerticalPodAutoscalerEnabled bool `protobuf:"varint,2,opt,name=vertical_pod_autoscaler_enabled,json=verticalPodAutoscalerEnabled,proto3" json:"vertical_pod_autoscaler_enabled,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterWorkloadAutoscalerProfile) Reset() {
+	*x = AzureAksClusterWorkloadAutoscalerProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterWorkloadAutoscalerProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterWorkloadAutoscalerProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterWorkloadAutoscalerProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterWorkloadAutoscalerProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterWorkloadAutoscalerProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *AzureAksClusterWorkloadAutoscalerProfile) GetKedaEnabled() bool {
+	if x != nil {
+		return x.KedaEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterWorkloadAutoscalerProfile) GetVerticalPodAutoscalerEnabled() bool {
+	if x != nil {
+		return x.VerticalPodAutoscalerEnabled
+	}
+	return false
+}
+
+// KMS etcd encryption with a customer-managed Key Vault key.
+type AzureAksClusterKeyManagementService struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// VERSIONED Key Vault key id used to envelope-encrypt Kubernetes
+	// secrets in etcd, e.g.
+	// https://myvault.vault.azure.net/keys/etcd-cmk/<version>.
+	// AKS pins a specific key version: rotate by updating to the new
+	// version's id. Defaults to referencing an AzureKeyVaultKey's key_id
+	// output (the versioned id) in composed environments. The cluster
+	// identity needs encrypt/decrypt on the key.
+	KeyVaultKeyId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=key_vault_key_id,json=keyVaultKeyId,proto3" json:"key_vault_key_id,omitempty"`
+	// Whether the Key Vault is reached over public network or private
+	// link. Unspecified applies Azure's default (PUBLIC).
+	KeyVaultNetworkAccess AzureAksClusterKeyVaultNetworkAccess `protobuf:"varint,2,opt,name=key_vault_network_access,json=keyVaultNetworkAccess,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultNetworkAccess" json:"key_vault_network_access,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterKeyManagementService) Reset() {
+	*x = AzureAksClusterKeyManagementService{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterKeyManagementService) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterKeyManagementService) ProtoMessage() {}
+
+func (x *AzureAksClusterKeyManagementService) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterKeyManagementService.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterKeyManagementService) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *AzureAksClusterKeyManagementService) GetKeyVaultKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KeyVaultKeyId
+	}
+	return nil
+}
+
+func (x *AzureAksClusterKeyManagementService) GetKeyVaultNetworkAccess() AzureAksClusterKeyVaultNetworkAccess {
+	if x != nil {
+		return x.KeyVaultNetworkAccess
+	}
+	return AzureAksClusterKeyVaultNetworkAccess_azure_aks_cluster_key_vault_network_access_unspecified
+}
+
+// Corporate HTTP/HTTPS proxy for nodes and pods.
+type AzureAksClusterHttpProxyConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Proxy URL for HTTP traffic, e.g. "http://proxy.corp.example:3128".
+	HttpProxy string `protobuf:"bytes,1,opt,name=http_proxy,json=httpProxy,proto3" json:"http_proxy,omitempty"`
+	// Proxy URL for HTTPS traffic.
+	HttpsProxy string `protobuf:"bytes,2,opt,name=https_proxy,json=httpsProxy,proto3" json:"https_proxy,omitempty"`
+	// Hosts/domains/CIDRs that bypass the proxy. AKS automatically adds
+	// the cluster-internal ranges.
+	NoProxy []string `protobuf:"bytes,3,rep,name=no_proxy,json=noProxy,proto3" json:"no_proxy,omitempty"`
+	// Base64-encoded CA certificate of a TLS-intercepting proxy, trusted
+	// by nodes. Marked sensitive: internal CA material identifies and
+	// impersonates the interception layer.
+	TrustedCa     string `protobuf:"bytes,4,opt,name=trusted_ca,json=trustedCa,proto3" json:"trusted_ca,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterHttpProxyConfig) Reset() {
+	*x = AzureAksClusterHttpProxyConfig{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterHttpProxyConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterHttpProxyConfig) ProtoMessage() {}
+
+func (x *AzureAksClusterHttpProxyConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterHttpProxyConfig.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterHttpProxyConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *AzureAksClusterHttpProxyConfig) GetHttpProxy() string {
+	if x != nil {
+		return x.HttpProxy
+	}
+	return ""
+}
+
+func (x *AzureAksClusterHttpProxyConfig) GetHttpsProxy() string {
+	if x != nil {
+		return x.HttpsProxy
+	}
+	return ""
+}
+
+func (x *AzureAksClusterHttpProxyConfig) GetNoProxy() []string {
+	if x != nil {
+		return x.NoProxy
+	}
+	return nil
+}
+
+func (x *AzureAksClusterHttpProxyConfig) GetTrustedCa() string {
+	if x != nil {
+		return x.TrustedCa
+	}
+	return ""
+}
+
+// SSH configuration for Linux nodes.
+type AzureAksClusterLinuxProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Admin username for SSH, beginning with a letter; letters, numbers,
+	// hyphens, and underscores.
+	AdminUsername string `protobuf:"bytes,1,opt,name=admin_username,json=adminUsername,proto3" json:"admin_username,omitempty"`
+	// SSH PUBLIC key (e.g. "ssh-rsa AAAA...") installed for the admin
+	// user. Public material -- the private half never leaves you.
+	SshPublicKey  string `protobuf:"bytes,2,opt,name=ssh_public_key,json=sshPublicKey,proto3" json:"ssh_public_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterLinuxProfile) Reset() {
+	*x = AzureAksClusterLinuxProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterLinuxProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterLinuxProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterLinuxProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterLinuxProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterLinuxProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *AzureAksClusterLinuxProfile) GetAdminUsername() string {
+	if x != nil {
+		return x.AdminUsername
+	}
+	return ""
+}
+
+func (x *AzureAksClusterLinuxProfile) GetSshPublicKey() string {
+	if x != nil {
+		return x.SshPublicKey
+	}
+	return ""
+}
+
+// Windows node credentials and licensing -- prerequisite for Windows
+// AzureAksNodePool resources.
+type AzureAksClusterWindowsProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Windows administrator username.
+	AdminUsername string `protobuf:"bytes,1,opt,name=admin_username,json=adminUsername,proto3" json:"admin_username,omitempty"`
+	// Windows administrator password, 8-123 characters with the usual
+	// complexity requirements.
+	AdminPassword string `protobuf:"bytes,2,opt,name=admin_password,json=adminPassword,proto3" json:"admin_password,omitempty"`
+	// License flavor. Set WINDOWS_SERVER to apply the Azure Hybrid Use
+	// Benefit (bring your own Windows Server licenses).
+	License AzureAksClusterWindowsLicense `protobuf:"varint,3,opt,name=license,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsLicense" json:"license,omitempty"`
+	// Group Managed Service Account (gMSA) support for Windows containers
+	// authenticating to Active Directory.
+	Gmsa          *AzureAksClusterWindowsGmsa `protobuf:"bytes,4,opt,name=gmsa,proto3" json:"gmsa,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterWindowsProfile) Reset() {
+	*x = AzureAksClusterWindowsProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterWindowsProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterWindowsProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterWindowsProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterWindowsProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterWindowsProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *AzureAksClusterWindowsProfile) GetAdminUsername() string {
+	if x != nil {
+		return x.AdminUsername
+	}
+	return ""
+}
+
+func (x *AzureAksClusterWindowsProfile) GetAdminPassword() string {
+	if x != nil {
+		return x.AdminPassword
+	}
+	return ""
+}
+
+func (x *AzureAksClusterWindowsProfile) GetLicense() AzureAksClusterWindowsLicense {
+	if x != nil {
+		return x.License
+	}
+	return AzureAksClusterWindowsLicense_azure_aks_cluster_windows_license_unspecified
+}
+
+func (x *AzureAksClusterWindowsProfile) GetGmsa() *AzureAksClusterWindowsGmsa {
+	if x != nil {
+		return x.Gmsa
+	}
+	return nil
+}
+
+// gMSA configuration for Windows pools.
+type AzureAksClusterWindowsGmsa struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// DNS server for the Active Directory domain. Set both fields, or
+	// leave both empty to inherit from the VNet DNS configuration.
+	DnsServer string `protobuf:"bytes,1,opt,name=dns_server,json=dnsServer,proto3" json:"dns_server,omitempty"`
+	// Root domain name for gMSA, e.g. "corp.example.com". Set with
+	// dns_server.
+	RootDomain    string `protobuf:"bytes,2,opt,name=root_domain,json=rootDomain,proto3" json:"root_domain,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterWindowsGmsa) Reset() {
+	*x = AzureAksClusterWindowsGmsa{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterWindowsGmsa) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterWindowsGmsa) ProtoMessage() {}
+
+func (x *AzureAksClusterWindowsGmsa) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterWindowsGmsa.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterWindowsGmsa) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *AzureAksClusterWindowsGmsa) GetDnsServer() string {
+	if x != nil {
+		return x.DnsServer
+	}
+	return ""
+}
+
+func (x *AzureAksClusterWindowsGmsa) GetRootDomain() string {
+	if x != nil {
+		return x.RootDomain
+	}
+	return ""
+}
+
+// Bootstrap artifact source for network-isolated clusters.
+type AzureAksClusterBootstrapProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Where nodes pull AKS system images. Unspecified applies Azure's
+	// default (DIRECT: Microsoft Container Registry over the internet).
+	ArtifactSource AzureAksClusterBootstrapArtifactSource `protobuf:"varint,1,opt,name=artifact_source,json=artifactSource,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapArtifactSource" json:"artifact_source,omitempty"`
+	// For CACHE: the Azure Container Registry (with ACR cache rules for
+	// MCR) nodes pull through.
+	ContainerRegistryId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=container_registry_id,json=containerRegistryId,proto3" json:"container_registry_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterBootstrapProfile) Reset() {
+	*x = AzureAksClusterBootstrapProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterBootstrapProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterBootstrapProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterBootstrapProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterBootstrapProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterBootstrapProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *AzureAksClusterBootstrapProfile) GetArtifactSource() AzureAksClusterBootstrapArtifactSource {
+	if x != nil {
+		return x.ArtifactSource
+	}
+	return AzureAksClusterBootstrapArtifactSource_azure_aks_cluster_bootstrap_artifact_source_unspecified
+}
+
+func (x *AzureAksClusterBootstrapProfile) GetContainerRegistryId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ContainerRegistryId
+	}
+	return nil
+}
+
+// Node auto-provisioning (Karpenter).
+type AzureAksClusterNodeProvisioningProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Provisioning mode. Unspecified applies Azure's default (MANUAL): you
+	// size and manage node pools. AUTO lets AKS create right-sized pools
+	// from pending pod requirements.
+	Mode AzureAksClusterNodeProvisioningMode `protobuf:"varint,1,opt,name=mode,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningMode" json:"mode,omitempty"`
+	// In AUTO mode: whether AKS seeds default system node pools.
+	// Unspecified applies Azure's default (NODE_POOLS_AUTO).
+	DefaultNodePools AzureAksClusterNodeProvisioningDefaultPools `protobuf:"varint,2,opt,name=default_node_pools,json=defaultNodePools,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningDefaultPools" json:"default_node_pools,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterNodeProvisioningProfile) Reset() {
+	*x = AzureAksClusterNodeProvisioningProfile{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterNodeProvisioningProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterNodeProvisioningProfile) ProtoMessage() {}
+
+func (x *AzureAksClusterNodeProvisioningProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterNodeProvisioningProfile.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterNodeProvisioningProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *AzureAksClusterNodeProvisioningProfile) GetMode() AzureAksClusterNodeProvisioningMode {
+	if x != nil {
+		return x.Mode
+	}
+	return AzureAksClusterNodeProvisioningMode_azure_aks_cluster_node_provisioning_mode_unspecified
+}
+
+func (x *AzureAksClusterNodeProvisioningProfile) GetDefaultNodePools() AzureAksClusterNodeProvisioningDefaultPools {
+	if x != nil {
+		return x.DefaultNodePools
+	}
+	return AzureAksClusterNodeProvisioningDefaultPools_azure_aks_cluster_node_provisioning_default_pools_unspecified
+}
+
+// Force-upgrade escape hatch.
+type AzureAksClusterUpgradeOverride struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether upgrades ignore drain failures and deprecated-API checks.
+	ForceUpgradeEnabled bool `protobuf:"varint,1,opt,name=force_upgrade_enabled,json=forceUpgradeEnabled,proto3" json:"force_upgrade_enabled,omitempty"`
+	// RFC 3339 timestamp the override stops applying, e.g.
+	// "2035-01-01T00:00:00Z". Always set one -- an unbounded force
+	// override is a standing foot-gun.
+	EffectiveUntil string `protobuf:"bytes,2,opt,name=effective_until,json=effectiveUntil,proto3" json:"effective_until,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AzureAksClusterUpgradeOverride) Reset() {
+	*x = AzureAksClusterUpgradeOverride{}
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureAksClusterUpgradeOverride) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureAksClusterUpgradeOverride) ProtoMessage() {}
+
+func (x *AzureAksClusterUpgradeOverride) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureAksClusterUpgradeOverride.ProtoReflect.Descriptor instead.
+func (*AzureAksClusterUpgradeOverride) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *AzureAksClusterUpgradeOverride) GetForceUpgradeEnabled() bool {
+	if x != nil {
+		return x.ForceUpgradeEnabled
+	}
+	return false
+}
+
+func (x *AzureAksClusterUpgradeOverride) GetEffectiveUntil() string {
+	if x != nil {
+		return x.EffectiveUntil
+	}
+	return ""
 }
 
 var File_dev_planton_provider_azure_azureakscluster_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8dev/planton/provider/azure/azureakscluster/v1/spec.proto\x12-dev.planton.provider.azure.azureakscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf8\v\n" +
-	"\x13AzureAksClusterSpec\x12\x1e\n" +
-	"\x06region\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x87\x01\n" +
-	"\x0evnet_subnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a\x1estatus.outputs.nodes_subnet_idR\fvnetSubnetId\x127\n" +
-	"\x12kubernetes_version\x18\x03 \x01(\tB\b\x92\xa6\x1d\x041.30R\x11kubernetesVersion\x12y\n" +
-	"\x11control_plane_sku\x18\x04 \x01(\x0e2M.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterControlPlaneSkuR\x0fcontrolPlaneSku\x12r\n" +
-	"\x0enetwork_plugin\x18\x05 \x01(\x0e2K.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginR\rnetworkPlugin\x12\x7f\n" +
-	"\x13network_plugin_mode\x18\x06 \x01(\x0e2O.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginModeR\x11networkPluginMode\x126\n" +
-	"\x17private_cluster_enabled\x18\a \x01(\bR\x15privateClusterEnabled\x12\xb7\x01\n" +
-	"\x14authorized_ip_ranges\x18\b \x03(\tB\x84\x01\xbaH\x80\x01\x92\x01}\"{ry2w^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}(?:\\/(?:3[0-2]|[12]?[0-9]))?$R\x12authorizedIpRanges\x121\n" +
-	"\x15disable_azure_ad_rbac\x18\t \x01(\bR\x12disableAzureAdRbac\x12~\n" +
-	"\x10system_node_pool\x18\n" +
-	" \x01(\v2L.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSystemNodePoolB\x06\xbaH\x03\xc8\x01\x01R\x0esystemNodePool\x12r\n" +
-	"\x0fuser_node_pools\x18\v \x03(\v2J.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUserNodePoolR\ruserNodePools\x12b\n" +
-	"\x06addons\x18\f \x01(\v2J.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAddonsConfigR\x06addons\x12\x81\x01\n" +
-	"\x13advanced_networking\x18\r \x01(\v2P.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAdvancedNetworkingR\x12advancedNetworking\"n\n" +
-	" AzureAksClusterAutoscalingConfig\x12$\n" +
-	"\tmin_count\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\bminCount\x12$\n" +
-	"\tmax_count\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\bmaxCount\"\x87\x02\n" +
-	"\x1dAzureAksClusterSystemNodePool\x122\n" +
-	"\avm_size\x18\x01 \x01(\tB\x19\xbaH\x03\xc8\x01\x01\x92\xa6\x1d\x0fStandard_D4s_v5R\x06vmSize\x12y\n" +
-	"\vautoscaling\x18\x02 \x01(\v2O.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoscalingConfigB\x06\xbaH\x03\xc8\x01\x01R\vautoscaling\x127\n" +
-	"\x12availability_zones\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x11availabilityZones\"\xc5\x02\n" +
-	"\x1bAzureAksClusterUserNodePool\x12.\n" +
-	"\x04name\x18\x01 \x01(\tB\x1a\xbaH\x17\xc8\x01\x01r\x122\x10^[a-z0-9]{1,12}$R\x04name\x12\x1f\n" +
-	"\avm_size\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06vmSize\x12y\n" +
-	"\vautoscaling\x18\x03 \x01(\v2O.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoscalingConfigB\x06\xbaH\x03\xc8\x01\x01R\vautoscaling\x127\n" +
-	"\x12availability_zones\x18\x04 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x11availabilityZones\x12!\n" +
-	"\fspot_enabled\x18\x05 \x01(\bR\vspotEnabled\"\xbe\x02\n" +
-	"\x1bAzureAksClusterAddonsConfig\x12:\n" +
-	"\x19enable_container_insights\x18\x01 \x01(\bR\x17enableContainerInsights\x12<\n" +
-	"\x1benable_key_vault_csi_driver\x18\x02 \x01(\bR\x17enableKeyVaultCsiDriver\x12.\n" +
-	"\x13enable_azure_policy\x18\x03 \x01(\bR\x11enableAzurePolicy\x128\n" +
-	"\x18enable_workload_identity\x18\x04 \x01(\bR\x16enableWorkloadIdentity\x12;\n" +
-	"\x1alog_analytics_workspace_id\x18\x05 \x01(\tR\x17logAnalyticsWorkspaceId\"\x86\x05\n" +
-	"!AzureAksClusterAdvancedNetworking\x12\x99\x01\n" +
-	"\bpod_cidr\x18\x01 \x01(\tB~\xbaH{ry2w^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}(?:\\/(?:3[0-2]|[12]?[0-9]))?$R\apodCidr\x12\xa1\x01\n" +
-	"\fservice_cidr\x18\x02 \x01(\tB~\xbaH{ry2w^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}(?:\\/(?:3[0-2]|[12]?[0-9]))?$R\vserviceCidr\x12\x88\x01\n" +
-	"\x0edns_service_ip\x18\x03 \x01(\tBb\xbaH_r]2[^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}$R\fdnsServiceIp\x12\x95\x01\n" +
-	"\x12custom_dns_servers\x18\x04 \x03(\tBg\xbaHd\x92\x01a\"_r]2[^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}$R\x10customDnsServers*8\n" +
-	"\x1eAzureAksClusterControlPlaneSku\x12\f\n" +
-	"\bSTANDARD\x10\x00\x12\b\n" +
-	"\x04FREE\x10\x01*:\n" +
-	"\x1cAzureAksClusterNetworkPlugin\x12\r\n" +
-	"\tAZURE_CNI\x10\x00\x12\v\n" +
-	"\aKUBENET\x10\x01*<\n" +
-	" AzureAksClusterNetworkPluginMode\x12\v\n" +
-	"\aOVERLAY\x10\x00\x12\v\n" +
-	"\aDYNAMIC\x10\x01B\xfc\x02\n" +
+	"8dev/planton/provider/azure/azureakscluster/v1/spec.proto\x12-dev.planton.provider.azure.azureakscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa7?\n" +
+	"\x13AzureAksClusterSpec\x12\x8c\x01\n" +
+	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x1e\n" +
+	"\x06region\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12\xf9\x01\n" +
+	"\x04name\x18\x03 \x01(\tB\xe4\x01\xbaH\xe0\x01\xba\x01\xd3\x01\n" +
+	"\x17aks_cluster_name_format\x12oAKS cluster names start and end with a letter or number and may contain alphanumerics, underscores, and hyphens\x1aGthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$')\xc8\x01\x01r\x04\x10\x01\x18?R\x04name\x12\x8a\x02\n" +
+	"\n" +
+	"dns_prefix\x18\x04 \x01(\tB\xea\x01\xbaH\xe6\x01\xba\x01\xe2\x01\n" +
+	"\x15aks_dns_prefix_format\x12|DNS prefixes begin and end with a letter or number, contain only letters, numbers, and hyphens, and are 1-54 characters long\x1aKthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9-]{0,52}[a-zA-Z0-9])?$')R\tdnsPrefix\x12;\n" +
+	"\x1adns_prefix_private_cluster\x18\x05 \x01(\tR\x17dnsPrefixPrivateCluster\x12-\n" +
+	"\x12kubernetes_version\x18\x06 \x01(\tR\x11kubernetesVersion\x12`\n" +
+	"\bsku_tier\x18\a \x01(\x0e2E.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSkuTierR\askuTier\x12l\n" +
+	"\fsupport_plan\x18\b \x01(\x0e2I.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSupportPlanR\vsupportPlan\x12\x81\x01\n" +
+	"\x11default_node_pool\x18\t \x01(\v2M.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePoolB\x06\xbaH\x03\xc8\x01\x01R\x0fdefaultNodePool\x12b\n" +
+	"\bidentity\x18\n" +
+	" \x01(\v2F.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentityR\bidentity\x12x\n" +
+	"\x10kubelet_identity\x18\v \x01(\v2M.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletIdentityR\x0fkubeletIdentity\x12=\n" +
+	"\x13oidc_issuer_enabled\x18\f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x11oidcIssuerEnabled\x88\x01\x01\x12:\n" +
+	"\x19workload_identity_enabled\x18\r \x01(\bR\x17workloadIdentityEnabled\x126\n" +
+	"\x17private_cluster_enabled\x18\x0e \x01(\bR\x15privateClusterEnabled\x12\x82\x01\n" +
+	"\x13private_dns_zone_id\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_idR\x10privateDnsZoneId\x12L\n" +
+	"#private_cluster_public_fqdn_enabled\x18\x10 \x01(\bR\x1fprivateClusterPublicFqdnEnabled\x12\x8f\x01\n" +
+	"\x19api_server_access_profile\x18\x11 \x01(\v2T.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterApiServerAccessProfileR\x16apiServerAccessProfile\x12W\n" +
+	"!role_based_access_control_enabled\x18\x12 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x1droleBasedAccessControlEnabled\x88\x01\x01\x124\n" +
+	"\x16local_account_disabled\x18\x13 \x01(\bR\x14localAccountDisabled\x12\xab\x01\n" +
+	"0azure_active_directory_role_based_access_control\x18\x14 \x01(\v2E.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAadRbacR*azureActiveDirectoryRoleBasedAccessControl\x12u\n" +
+	"\x0fnetwork_profile\x18\x15 \x01(\v2L.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfileR\x0enetworkProfile\x12\x7f\n" +
+	"\x13auto_scaler_profile\x18\x16 \x01(\v2O.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoScalerProfileR\x11autoScalerProfile\x12\x88\x01\n" +
+	"\x19automatic_upgrade_channel\x18\x17 \x01(\x0e2L.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUpgradeChannelR\x17automaticUpgradeChannel\x12\x89\x01\n" +
+	"\x17node_os_upgrade_channel\x18\x18 \x01(\x0e2R.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeOsUpgradeChannelR\x14nodeOsUpgradeChannel\x12~\n" +
+	"\x12maintenance_window\x18\x19 \x01(\v2O.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowR\x11maintenanceWindow\x12\x9e\x01\n" +
+	"\x1fmaintenance_window_auto_upgrade\x18\x1a \x01(\v2W.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowScheduleR\x1cmaintenanceWindowAutoUpgrade\x12\x94\x01\n" +
+	"\x1amaintenance_window_node_os\x18\x1b \x01(\v2W.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowScheduleR\x17maintenanceWindowNodeOs\x12c\n" +
+	"\toms_agent\x18\x1c \x01(\v2F.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOmsAgentR\bomsAgent\x12\x92\x01\n" +
+	"\x1akey_vault_secrets_provider\x18\x1d \x01(\v2U.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultSecretsProviderR\x17keyVaultSecretsProvider\x120\n" +
+	"\x14azure_policy_enabled\x18\x1e \x01(\bR\x12azurePolicyEnabled\x12~\n" +
+	"\x12microsoft_defender\x18\x1f \x01(\v2O.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMicrosoftDefenderR\x11microsoftDefender\x12u\n" +
+	"\x0fmonitor_metrics\x18  \x01(\v2L.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMonitorMetricsR\x0emonitorMetrics\x12\x97\x01\n" +
+	"\x1bingress_application_gateway\x18! \x01(\v2W.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIngressApplicationGatewayR\x19ingressApplicationGateway\x12\x7f\n" +
+	"\x13aci_connector_linux\x18\" \x01(\v2O.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAciConnectorLinuxR\x11aciConnectorLinux\x12\x8a\x01\n" +
+	"\x16confidential_computing\x18# \x01(\v2S.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterConfidentialComputingR\x15confidentialComputing\x12s\n" +
+	"\x0fweb_app_routing\x18$ \x01(\v2K.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWebAppRoutingR\rwebAppRouting\x12\x82\x01\n" +
+	"\x14service_mesh_profile\x18% \x01(\v2P.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshProfileR\x12serviceMeshProfile\x12u\n" +
+	"\x0fstorage_profile\x18& \x01(\v2L.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterStorageProfileR\x0estorageProfile\x12\x97\x01\n" +
+	"\x1bworkload_autoscaler_profile\x18' \x01(\v2W.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWorkloadAutoscalerProfileR\x19workloadAutoscalerProfile\x12\x88\x01\n" +
+	"\x16key_management_service\x18( \x01(\v2R.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyManagementServiceR\x14keyManagementService\x12y\n" +
+	"\x11http_proxy_config\x18) \x01(\v2M.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterHttpProxyConfigR\x0fhttpProxyConfig\x12o\n" +
+	"\rlinux_profile\x18* \x01(\v2J.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxProfileR\flinuxProfile\x12u\n" +
+	"\x0fwindows_profile\x18+ \x01(\v2L.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfileR\x0ewindowsProfile\x122\n" +
+	"\x15image_cleaner_enabled\x18, \x01(\bR\x13imageCleanerEnabled\x12\xd1\x01\n" +
+	"\x1cimage_cleaner_interval_hours\x18- \x01(\x05B\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
+	" aks_image_cleaner_interval_range\x128Image Cleaner interval must be between 24 and 2160 hours\x1a)this == 0 || (this >= 24 && this <= 2160)R\x19imageCleanerIntervalHours\x122\n" +
+	"\x15cost_analysis_enabled\x18. \x01(\bR\x13costAnalysisEnabled\x12=\n" +
+	"\x13run_command_enabled\x18/ \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x11runCommandEnabled\x88\x01\x01\x12\x97\x01\n" +
+	"\x16disk_encryption_set_id\x180 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12\x1b\n" +
+	"\tedge_zone\x181 \x01(\tR\bedgeZone\x12.\n" +
+	"\x13node_resource_group\x182 \x01(\tR\x11nodeResourceGroup\x12V\n" +
+	"#custom_ca_trust_certificates_base64\x183 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\n" +
+	"R\x1fcustomCaTrustCertificatesBase64\x12{\n" +
+	"\x11bootstrap_profile\x184 \x01(\v2N.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfileR\x10bootstrapProfile\x12\x91\x01\n" +
+	"\x19node_provisioning_profile\x185 \x01(\v2U.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfileR\x17nodeProvisioningProfile\x12x\n" +
+	"\x10upgrade_override\x186 \x01(\v2M.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUpgradeOverrideR\x0fupgradeOverride\x12A\n" +
+	"\x1dai_toolchain_operator_enabled\x187 \x01(\bR\x1aaiToolchainOperatorEnabled\x12`\n" +
+	"\x04tags\x188 \x03(\v2L.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe0\v\xbaH\xdc\v\x1a\xee\x01\n" +
+	"\x18aks_dns_prefix_exclusive\x12\x91\x01Set at most one of dns_prefix or dns_prefix_private_cluster -- a cluster has either a public API FQDN prefix or a private-zone prefix, never both\x1a>this.dns_prefix == '' || this.dns_prefix_private_cluster == ''\x1a\xc7\x01\n" +
+	"/aks_private_dns_prefix_requires_private_cluster\x12Mdns_prefix_private_cluster is only valid when private_cluster_enabled is true\x1aEthis.dns_prefix_private_cluster == '' || this.private_cluster_enabled\x1a\x80\x02\n" +
+	"#aks_workload_identity_requires_oidc\x12zworkload_identity_enabled requires the OIDC issuer -- leave oidc_issuer_enabled unset (defaults to true) or set it to true\x1a]!this.workload_identity_enabled || !has(this.oidc_issuer_enabled) || this.oidc_issuer_enabled\x1a\x95\x02\n" +
+	"&aks_local_account_disable_requires_aad\x12\x8e\x01Disabling local accounts requires azure_active_directory_role_based_access_control to be configured, or nobody can authenticate to the cluster\x1aZ!this.local_account_disabled || has(this.azure_active_directory_role_based_access_control)\x1a\xac\x01\n" +
+	"$aks_cost_analysis_requires_paid_tier\x12;cost_analysis_enabled requires sku_tier STANDARD or PREMIUM\x1aG!this.cost_analysis_enabled || this.sku_tier == 2 || this.sku_tier == 3\x1a\x8a\x01\n" +
+	"\x18aks_lts_requires_premium\x12@The AKS_LONG_TERM_SUPPORT support plan requires sku_tier PREMIUM\x1a,this.support_plan != 2 || this.sku_tier == 3\x1a\xc7\x01\n" +
+	"+aks_image_cleaner_interval_requires_enabled\x12Rimage_cleaner_interval_hours is only meaningful when image_cleaner_enabled is true\x1aDthis.image_cleaner_interval_hours == 0 || this.image_cleaner_enabledB\x16\n" +
+	"\x14_oidc_issuer_enabledB$\n" +
+	"\"_role_based_access_control_enabledB\x16\n" +
+	"\x14_run_command_enabled\"\xb6#\n" +
+	"\x1eAzureAksClusterDefaultNodePool\x12\xc3\x01\n" +
+	"\x04name\x18\x01 \x01(\tB\xae\x01\xbaH\xaa\x01\xba\x01\xa3\x01\n" +
+	"\x1caks_default_pool_name_format\x12NNode pool names are 1-12 lowercase letters and numbers and start with a letter\x1a3this == '' || this.matches('^[a-z][a-z0-9]{0,11}$')\xc8\x01\x01R\x04name\x122\n" +
+	"\avm_size\x18\x02 \x01(\tB\x19\xbaH\x03\xc8\x01\x01\x92\xa6\x1d\x0fStandard_D4s_v5R\x06vmSize\x12\x99\x01\n" +
+	"\n" +
+	"node_count\x18\x03 \x01(\x05Bz\xbaHw\xba\x01t\n" +
+	"!aks_default_pool_node_count_range\x12%node_count must be between 1 and 1000\x1a(this == 0 || (this >= 1 && this <= 1000)R\tnodeCount\x120\n" +
+	"\x14auto_scaling_enabled\x18\x04 \x01(\bR\x12autoScalingEnabled\x12\x95\x01\n" +
+	"\tmin_count\x18\x05 \x01(\x05Bx\xbaHu\xba\x01r\n" +
+	" aks_default_pool_min_count_range\x12$min_count must be between 1 and 1000\x1a(this == 0 || (this >= 1 && this <= 1000)R\bminCount\x12\x95\x01\n" +
+	"\tmax_count\x18\x06 \x01(\x05Bx\xbaHu\xba\x01r\n" +
+	" aks_default_pool_max_count_range\x12$max_count must be between 1 and 1000\x1a(this == 0 || (this >= 1 && this <= 1000)R\bmaxCount\x12\x19\n" +
+	"\bmax_pods\x18\a \x01(\x05R\amaxPods\x12)\n" +
+	"\x05zones\x18\b \x03(\tB\x13\xbaH\x10\x92\x01\r\"\vr\tR\x011R\x012R\x013R\x05zones\x12{\n" +
+	"\x0evnet_subnet_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\fvnetSubnetId\x12y\n" +
+	"\rpod_subnet_id\x18\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\vpodSubnetId\x12%\n" +
+	"\x0fos_disk_size_gb\x18\v \x01(\x05R\fosDiskSizeGb\x12j\n" +
+	"\fos_disk_type\x18\f \x01(\x0e2H.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOsDiskTypeR\n" +
+	"osDiskType\x12y\n" +
+	"\x11kubelet_disk_type\x18\r \x01(\x0e2M.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletDiskTypeR\x0fkubeletDiskType\x12Z\n" +
+	"\x06os_sku\x18\x0e \x01(\x0e2C.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOsSkuR\x05osSku\x121\n" +
+	"\x14orchestrator_version\x18\x0f \x01(\tR\x13orchestratorVersion\x12~\n" +
+	"\vnode_labels\x18\x10 \x03(\v2].dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.NodeLabelsEntryR\n" +
+	"nodeLabels\x12?\n" +
+	"\x1conly_critical_addons_enabled\x18\x11 \x01(\bR\x19onlyCriticalAddonsEnabled\x12!\n" +
+	"\ffips_enabled\x18\x12 \x01(\bR\vfipsEnabled\x126\n" +
+	"\x17host_encryption_enabled\x18\x13 \x01(\bR\x15hostEncryptionEnabled\x123\n" +
+	"\x16node_public_ip_enabled\x18\x14 \x01(\bR\x13nodePublicIpEnabled\x12\x97\x01\n" +
+	"\x18node_public_ip_prefix_id\x18\x15 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xa5\x03\x92\xd4a\"status.outputs.public_ip_prefix_idR\x14nodePublicIpPrefixId\x12l\n" +
+	"\fgpu_instance\x18\x16 \x01(\x0e2I.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterGpuInstanceR\vgpuInstance\x12f\n" +
+	"\n" +
+	"gpu_driver\x18\x17 \x01(\x0e2G.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterGpuDriverR\tgpuDriver\x12?\n" +
+	"\x1cproximity_placement_group_id\x18\x18 \x01(\tR\x19proximityPlacementGroupId\x12\"\n" +
+	"\rhost_group_id\x18\x19 \x01(\tR\vhostGroupId\x12A\n" +
+	"\x1dcapacity_reservation_group_id\x18\x1a \x01(\tR\x1acapacityReservationGroupId\x12s\n" +
+	"\x0fscale_down_mode\x18\x1b \x01(\x0e2K.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterScaleDownModeR\rscaleDownMode\x12\x1f\n" +
+	"\vsnapshot_id\x18\x1c \x01(\tR\n" +
+	"snapshotId\x12x\n" +
+	"\x10workload_runtime\x18\x1d \x01(\x0e2M.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWorkloadRuntimeR\x0fworkloadRuntime\x12*\n" +
+	"\x11ultra_ssd_enabled\x18\x1e \x01(\bR\x0fultraSsdEnabled\x12\xf0\x01\n" +
+	"\x1btemporary_name_for_rotation\x18\x1f \x01(\tB\xb0\x01\xbaH\xac\x01\xba\x01\xa8\x01\n" +
+	"!aks_default_pool_temp_name_format\x12NNode pool names are 1-12 lowercase letters and numbers and start with a letter\x1a3this == '' || this.matches('^[a-z][a-z0-9]{0,11}$')R\x18temporaryNameForRotation\x12r\n" +
+	"\x0ekubelet_config\x18  \x01(\v2K.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletConfigR\rkubeletConfig\x12s\n" +
+	"\x0flinux_os_config\x18! \x01(\v2K.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfigR\rlinuxOsConfig\x12\x82\x01\n" +
+	"\x14node_network_profile\x18\" \x01(\v2P.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfileR\x12nodeNetworkProfile\x12\x87\x01\n" +
+	"\x10upgrade_settings\x18# \x01(\v2\\.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePoolUpgradeSettingsR\x0fupgradeSettings\x12k\n" +
+	"\x04tags\x18$ \x03(\v2W.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.TagsEntryR\x04tags\x1a=\n" +
+	"\x0fNodeLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xcb\x06\xbaH\xc7\x06\x1a\x8f\x02\n" +
+	"#aks_default_pool_autoscaling_bounds\x12aWith auto_scaling_enabled, set min_count and max_count (min <= max); without it, leave both unset\x1a\x84\x01this.auto_scaling_enabled ? (this.min_count >= 1 && this.max_count >= this.min_count) : (this.min_count == 0 && this.max_count == 0)\x1a\xaf\x01\n" +
+	"%aks_default_pool_fixed_count_required\x12SSet node_count (1-1000) when autoscaling is disabled -- the pool needs a fixed size\x1a1this.auto_scaling_enabled || this.node_count >= 1\x1a\xb8\x01\n" +
+	"-aks_default_pool_ip_prefix_requires_public_ip\x12Cnode_public_ip_prefix_id requires node_public_ip_enabled to be true\x1aB!has(this.node_public_ip_prefix_id) || this.node_public_ip_enabled\x1a\xc5\x01\n" +
+	" aks_default_pool_os_sku_is_linux\x12\x8f\x01The default node pool is always Linux -- choose a Linux os_sku (Ubuntu or Azure Linux); Windows pools are standalone AzureAksNodePool resources\x1a\x0fthis.os_sku < 6\"\xe9\b\n" +
+	"\x1cAzureAksClusterKubeletConfig\x12|\n" +
+	"\x12cpu_manager_policy\x18\x01 \x01(\x0e2N.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterCpuManagerPolicyR\x10cpuManagerPolicy\x12@\n" +
+	"\x15cpu_cfs_quota_enabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x12cpuCfsQuotaEnabled\x88\x01\x01\x12/\n" +
+	"\x14cpu_cfs_quota_period\x18\x03 \x01(\tR\x11cpuCfsQuotaPeriod\x12\xad\x01\n" +
+	"\x17image_gc_high_threshold\x18\x04 \x01(\x05Bv\xbaHs\xba\x01p\n" +
+	"\x19aks_kubelet_gc_high_range\x129image_gc_high_threshold is a percentage between 0 and 100\x1a\x18this >= 0 && this <= 100R\x14imageGcHighThreshold\x12\xa9\x01\n" +
+	"\x16image_gc_low_threshold\x18\x05 \x01(\x05Bt\xbaHq\xba\x01n\n" +
+	"\x18aks_kubelet_gc_low_range\x128image_gc_low_threshold is a percentage between 0 and 100\x1a\x18this >= 0 && this <= 100R\x13imageGcLowThreshold\x12\x8b\x01\n" +
+	"\x17topology_manager_policy\x18\x06 \x01(\x0e2S.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTopologyManagerPolicyR\x15topologyManagerPolicy\x124\n" +
+	"\x16allowed_unsafe_sysctls\x18\a \x03(\tR\x14allowedUnsafeSysctls\x128\n" +
+	"\x19container_log_max_size_mb\x18\b \x01(\x05R\x15containerLogMaxSizeMb\x12\xc3\x01\n" +
+	"\x17container_log_max_files\x18\t \x01(\x05B\x8b\x01\xbaH\x87\x01\xba\x01\x83\x01\n" +
+	"\x19aks_kubelet_log_files_min\x12Ncontainer_log_max_files must be at least 2 (the active file plus one rotation)\x1a\x16this == 0 || this >= 2R\x14containerLogMaxFiles\x12\x1e\n" +
+	"\vpod_max_pid\x18\n" +
+	" \x01(\x05R\tpodMaxPidB\x18\n" +
+	"\x16_cpu_cfs_quota_enabled\"\xdd\x03\n" +
+	"\x1cAzureAksClusterLinuxOsConfig\x12o\n" +
+	"\rsysctl_config\x18\x01 \x01(\v2J.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSysctlConfigR\fsysctlConfig\x12\x85\x01\n" +
+	"\x15transparent_huge_page\x18\x02 \x01(\x0e2Q.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTransparentHugePageR\x13transparentHugePage\x12\x98\x01\n" +
+	"\x1ctransparent_huge_page_defrag\x18\x03 \x01(\x0e2W.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTransparentHugePageDefragR\x19transparentHugePageDefrag\x12)\n" +
+	"\x11swap_file_size_mb\x18\x04 \x01(\x05R\x0eswapFileSizeMb\"\xd6*\n" +
+	"\x1bAzureAksClusterSysctlConfig\x12\xa1\x01\n" +
+	"\rfs_aio_max_nr\x18\x01 \x01(\x05B~\xbaH{\xba\x01x\n" +
+	"\x14sysctl_fs_aio_max_nr\x12/fs_aio_max_nr must be between 65536 and 6553500\x1a/this == 0 || (this >= 65536 && this <= 6553500)R\n" +
+	"fsAioMaxNr\x12\x9a\x01\n" +
+	"\vfs_file_max\x18\x02 \x01(\x05Bz\xbaHw\xba\x01t\n" +
+	"\x12sysctl_fs_file_max\x12-fs_file_max must be between 8192 and 12000500\x1a/this == 0 || (this >= 8192 && this <= 12000500)R\tfsFileMax\x12\xd4\x01\n" +
+	"\x1bfs_inotify_max_user_watches\x18\x03 \x01(\x05B\x95\x01\xbaH\x91\x01\xba\x01\x8d\x01\n" +
+	"\x19sysctl_fs_inotify_watches\x12>fs_inotify_max_user_watches must be between 781250 and 2097152\x1a0this == 0 || (this >= 781250 && this <= 2097152)R\x17fsInotifyMaxUserWatches\x12\x96\x01\n" +
+	"\n" +
+	"fs_nr_open\x18\x04 \x01(\x05Bx\xbaHu\xba\x01r\n" +
+	"\x11sysctl_fs_nr_open\x12,fs_nr_open must be between 8192 and 20000500\x1a/this == 0 || (this >= 8192 && this <= 20000500)R\bfsNrOpen\x12\xaf\x01\n" +
+	"\x12kernel_threads_max\x18\x05 \x01(\x05B\x80\x01\xbaH}\xba\x01z\n" +
+	"\x19sysctl_kernel_threads_max\x120kernel_threads_max must be between 20 and 513785\x1a+this == 0 || (this >= 20 && this <= 513785)R\x10kernelThreadsMax\x12\xcc\x01\n" +
+	"\x1bnet_core_netdev_max_backlog\x18\x06 \x01(\x05B\x8d\x01\xbaH\x89\x01\xba\x01\x85\x01\n" +
+	"\x15sysctl_netdev_backlog\x12<net_core_netdev_max_backlog must be between 1000 and 3240000\x1a.this == 0 || (this >= 1000 && this <= 3240000)R\x17netCoreNetdevMaxBacklog\x12\xb1\x01\n" +
+	"\x13net_core_optmem_max\x18\a \x01(\x05B\x81\x01\xbaH~\xba\x01{\n" +
+	"\x11sysctl_optmem_max\x125net_core_optmem_max must be between 20480 and 4194304\x1a/this == 0 || (this >= 20480 && this <= 4194304)R\x10netCoreOptmemMax\x12\xc1\x01\n" +
+	"\x15net_core_rmem_default\x18\b \x01(\x05B\x8d\x01\xbaH\x89\x01\xba\x01\x85\x01\n" +
+	"\x13sysctl_rmem_default\x12:net_core_rmem_default must be between 212992 and 134217728\x1a2this == 0 || (this >= 212992 && this <= 134217728)R\x12netCoreRmemDefault\x12\xb0\x01\n" +
+	"\x11net_core_rmem_max\x18\t \x01(\x05B\x84\x01\xbaH\x80\x01\xba\x01}\n" +
+	"\x0fsysctl_rmem_max\x126net_core_rmem_max must be between 212992 and 134217728\x1a2this == 0 || (this >= 212992 && this <= 134217728)R\x0enetCoreRmemMax\x12\xab\x01\n" +
+	"\x12net_core_somaxconn\x18\n" +
+	" \x01(\x05B}\xbaHz\xba\x01w\n" +
+	"\x10sysctl_somaxconn\x123net_core_somaxconn must be between 4096 and 3240000\x1a.this == 0 || (this >= 4096 && this <= 3240000)R\x10netCoreSomaxconn\x12\xc1\x01\n" +
+	"\x15net_core_wmem_default\x18\v \x01(\x05B\x8d\x01\xbaH\x89\x01\xba\x01\x85\x01\n" +
+	"\x13sysctl_wmem_default\x12:net_core_wmem_default must be between 212992 and 134217728\x1a2this == 0 || (this >= 212992 && this <= 134217728)R\x12netCoreWmemDefault\x12\xb0\x01\n" +
+	"\x11net_core_wmem_max\x18\f \x01(\x05B\x84\x01\xbaH\x80\x01\xba\x01}\n" +
+	"\x0fsysctl_wmem_max\x126net_core_wmem_max must be between 212992 and 134217728\x1a2this == 0 || (this >= 212992 && this <= 134217728)R\x0enetCoreWmemMax\x12\xd5\x01\n" +
+	" net_ipv4_ip_local_port_range_min\x18\r \x01(\x05B\x8e\x01\xbaH\x8a\x01\xba\x01\x86\x01\n" +
+	"\x15sysctl_port_range_min\x12?net_ipv4_ip_local_port_range_min must be between 1024 and 60999\x1a,this == 0 || (this >= 1024 && this <= 60999)R\x1anetIpv4IpLocalPortRangeMin\x12\xd7\x01\n" +
+	" net_ipv4_ip_local_port_range_max\x18\x0e \x01(\x05B\x90\x01\xbaH\x8c\x01\xba\x01\x88\x01\n" +
+	"\x15sysctl_port_range_max\x12@net_ipv4_ip_local_port_range_max must be between 32768 and 65535\x1a-this == 0 || (this >= 32768 && this <= 65535)R\x1anetIpv4IpLocalPortRangeMax\x12\xd3\x01\n" +
+	"!net_ipv4_neigh_default_gc_thresh1\x18\x0f \x01(\x05B\x89\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +
+	"\x11sysctl_gc_thresh1\x12?net_ipv4_neigh_default_gc_thresh1 must be between 128 and 80000\x1a+this == 0 || (this >= 128 && this <= 80000)R\x1cnetIpv4NeighDefaultGcThresh1\x12\xd3\x01\n" +
+	"!net_ipv4_neigh_default_gc_thresh2\x18\x10 \x01(\x05B\x89\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +
+	"\x11sysctl_gc_thresh2\x12?net_ipv4_neigh_default_gc_thresh2 must be between 512 and 90000\x1a+this == 0 || (this >= 512 && this <= 90000)R\x1cnetIpv4NeighDefaultGcThresh2\x12\xd7\x01\n" +
+	"!net_ipv4_neigh_default_gc_thresh3\x18\x11 \x01(\x05B\x8d\x01\xbaH\x89\x01\xba\x01\x85\x01\n" +
+	"\x11sysctl_gc_thresh3\x12Anet_ipv4_neigh_default_gc_thresh3 must be between 1024 and 100000\x1a-this == 0 || (this >= 1024 && this <= 100000)R\x1cnetIpv4NeighDefaultGcThresh3\x12\xb3\x01\n" +
+	"\x18net_ipv4_tcp_fin_timeout\x18\x12 \x01(\x05B{\xbaHx\xba\x01u\n" +
+	"\x16sysctl_tcp_fin_timeout\x122net_ipv4_tcp_fin_timeout must be between 5 and 120\x1a'this == 0 || (this >= 5 && this <= 120)R\x14netIpv4TcpFinTimeout\x12\xc5\x01\n" +
+	"\x1cnet_ipv4_tcp_keepalive_intvl\x18\x13 \x01(\x05B\x84\x01\xbaH\x80\x01\xba\x01}\n" +
+	"\x1asysctl_tcp_keepalive_intvl\x126net_ipv4_tcp_keepalive_intvl must be between 10 and 90\x1a'this == 0 || (this >= 10 && this <= 90)R\x18netIpv4TcpKeepaliveIntvl\x12\xc7\x01\n" +
+	"\x1dnet_ipv4_tcp_keepalive_probes\x18\x14 \x01(\x05B\x84\x01\xbaH\x80\x01\xba\x01}\n" +
+	"\x1bsysctl_tcp_keepalive_probes\x126net_ipv4_tcp_keepalive_probes must be between 1 and 15\x1a&this == 0 || (this >= 1 && this <= 15)R\x19netIpv4TcpKeepaliveProbes\x12\xca\x01\n" +
+	"\x1bnet_ipv4_tcp_keepalive_time\x18\x15 \x01(\x05B\x8b\x01\xbaH\x87\x01\xba\x01\x83\x01\n" +
+	"\x19sysctl_tcp_keepalive_time\x129net_ipv4_tcp_keepalive_time must be between 30 and 432000\x1a+this == 0 || (this >= 30 && this <= 432000)R\x17netIpv4TcpKeepaliveTime\x12\xcd\x01\n" +
+	"\x1cnet_ipv4_tcp_max_syn_backlog\x18\x16 \x01(\x05B\x8d\x01\xbaH\x89\x01\xba\x01\x85\x01\n" +
+	"\x16sysctl_tcp_syn_backlog\x12<net_ipv4_tcp_max_syn_backlog must be between 128 and 3240000\x1a-this == 0 || (this >= 128 && this <= 3240000)R\x17netIpv4TcpMaxSynBacklog\x12\xcb\x01\n" +
+	"\x1bnet_ipv4_tcp_max_tw_buckets\x18\x17 \x01(\x05B\x8d\x01\xbaH\x89\x01\xba\x01\x85\x01\n" +
+	"\x15sysctl_tcp_tw_buckets\x12<net_ipv4_tcp_max_tw_buckets must be between 8000 and 1440000\x1a.this == 0 || (this >= 8000 && this <= 1440000)R\x16netIpv4TcpMaxTwBuckets\x120\n" +
+	"\x15net_ipv4_tcp_tw_reuse\x18\x18 \x01(\bR\x11netIpv4TcpTwReuse\x12\xe4\x01\n" +
+	"\"net_netfilter_nf_conntrack_buckets\x18\x19 \x01(\x05B\x97\x01\xbaH\x93\x01\xba\x01\x8f\x01\n" +
+	"\x18sysctl_conntrack_buckets\x12Cnet_netfilter_nf_conntrack_buckets must be between 65536 and 524288\x1a.this == 0 || (this >= 65536 && this <= 524288)R\x1enetNetfilterNfConntrackBuckets\x12\xd8\x01\n" +
+	"\x1enet_netfilter_nf_conntrack_max\x18\x1a \x01(\x05B\x93\x01\xbaH\x8f\x01\xba\x01\x8b\x01\n" +
+	"\x14sysctl_conntrack_max\x12Anet_netfilter_nf_conntrack_max must be between 131072 and 2097152\x1a0this == 0 || (this >= 131072 && this <= 2097152)R\x1anetNetfilterNfConntrackMax\x12\xac\x01\n" +
+	"\x10vm_max_map_count\x18\x1b \x01(\x05B\x82\x01\xbaH\x7f\xba\x01|\n" +
+	"\x17sysctl_vm_max_map_count\x121vm_max_map_count must be between 65530 and 262144\x1a.this == 0 || (this >= 65530 && this <= 262144)R\rvmMaxMapCount\x12\x84\x01\n" +
+	"\rvm_swappiness\x18\x1c \x01(\x05B_\xbaH\\\xba\x01Y\n" +
+	"\x14sysctl_vm_swappiness\x12'vm_swappiness must be between 0 and 100\x1a\x18this >= 0 && this <= 100R\fvmSwappiness\x12\x9f\x01\n" +
+	"\x15vm_vfs_cache_pressure\x18\x1d \x01(\x05Bl\xbaHi\xba\x01f\n" +
+	"\x19sysctl_vfs_cache_pressure\x12/vm_vfs_cache_pressure must be between 0 and 100\x1a\x18this >= 0 && this <= 100R\x12vmVfsCachePressure\"\xc3\x03\n" +
+	"!AzureAksClusterNodeNetworkProfile\x12|\n" +
+	"\x12allowed_host_ports\x18\x01 \x03(\v2N.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAllowedHostPortsR\x10allowedHostPorts\x12C\n" +
+	"\x1eapplication_security_group_ids\x18\x02 \x03(\tR\x1bapplicationSecurityGroupIds\x12\x95\x01\n" +
+	"\x13node_public_ip_tags\x18\x03 \x03(\v2f.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile.NodePublicIpTagsEntryR\x10nodePublicIpTags\x1aC\n" +
+	"\x15NodePublicIpTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb1\x03\n" +
+	"\x1fAzureAksClusterAllowedHostPorts\x12\x93\x01\n" +
+	"\n" +
+	"port_start\x18\x01 \x01(\x05Bt\xbaHq\xba\x01n\n" +
+	"\x19aks_host_port_start_range\x12&port_start must be between 1 and 65535\x1a)this == 0 || (this >= 1 && this <= 65535)R\tportStart\x12\x8b\x01\n" +
+	"\bport_end\x18\x02 \x01(\x05Bp\xbaHm\xba\x01j\n" +
+	"\x17aks_host_port_end_range\x12$port_end must be between 1 and 65535\x1a)this == 0 || (this >= 1 && this <= 65535)R\aportEnd\x12j\n" +
+	"\bprotocol\x18\x03 \x01(\x0e2N.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterHostPortProtocolR\bprotocol\"\xda\x03\n" +
+	"-AzureAksClusterDefaultNodePoolUpgradeSettings\x12#\n" +
+	"\tmax_surge\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bmaxSurge\x127\n" +
+	"\x18drain_timeout_in_minutes\x18\x02 \x01(\x05R\x15drainTimeoutInMinutes\x12\xb6\x01\n" +
+	"\x1dnode_soak_duration_in_minutes\x18\x03 \x01(\x05Bt\xbaHq\xba\x01n\n" +
+	"\x1baks_default_pool_soak_range\x126node_soak_duration_in_minutes must be between 0 and 30\x1a\x17this >= 0 && this <= 30R\x19nodeSoakDurationInMinutes\x12\x91\x01\n" +
+	"\x19undrainable_node_behavior\x18\x04 \x01(\x0e2U.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUndrainableNodeBehaviorR\x17undrainableNodeBehavior\"\xb3\x03\n" +
+	"\x17AzureAksClusterIdentity\x12^\n" +
+	"\x04type\x18\x01 \x01(\x0e2J.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentityTypeR\x04type\x12z\n" +
+	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xbb\x01\xbaH\xb7\x01\x1a\xb4\x01\n" +
+	"\x1baks_identity_ids_match_type\x12Fidentity_ids is required for USER_ASSIGNED and must be empty otherwise\x1aMthis.type == 2 ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\x85\x02\n" +
+	"\x1eAzureAksClusterKubeletIdentity\x12#\n" +
+	"\tclient_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bclientId\x12#\n" +
+	"\tobject_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bobjectId\x12\x98\x01\n" +
+	"\x19user_assigned_identity_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityId\"\xa4\x03\n" +
+	"%AzureAksClusterApiServerAccessProfile\x12\xb7\x01\n" +
+	"\x14authorized_ip_ranges\x18\x01 \x03(\tB\x84\x01\xbaH\x80\x01\x92\x01}\"{ry2w^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}(?:\\/(?:3[0-2]|[12]?[0-9]))?$R\x12authorizedIpRanges\x12M\n" +
+	"#virtual_network_integration_enabled\x18\x02 \x01(\bR virtualNetworkIntegrationEnabled\x12r\n" +
+	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\"\x9c\x03\n" +
+	"\x16AzureAksClusterAadRbac\x12\xc2\x01\n" +
+	"\ttenant_id\x18\x01 \x01(\tB\xa4\x01\xbaH\xa0\x01\xba\x01\x9c\x01\n" +
+	"\x13aks_aad_tenant_uuid\x12\x18tenant_id must be a UUID\x1akthis == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')R\btenantId\x12,\n" +
+	"\x12azure_rbac_enabled\x18\x02 \x01(\bR\x10azureRbacEnabled\x12\x8e\x01\n" +
+	"\x16admin_group_object_ids\x18\x03 \x03(\tBY\xbaHV\x92\x01S\"QrO2M^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$R\x13adminGroupObjectIds\"\x92\x10\n" +
+	"\x1dAzureAksClusterNetworkProfile\x12r\n" +
+	"\x0enetwork_plugin\x18\x01 \x01(\x0e2K.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginR\rnetworkPlugin\x12\x7f\n" +
+	"\x13network_plugin_mode\x18\x02 \x01(\x0e2O.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginModeR\x11networkPluginMode\x12r\n" +
+	"\x0enetwork_policy\x18\x03 \x01(\x0e2K.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPolicyR\rnetworkPolicy\x12|\n" +
+	"\x12network_data_plane\x18\x04 \x01(\x0e2N.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkDataPlaneR\x10networkDataPlane\x12\xfe\x01\n" +
+	"\x0edns_service_ip\x18\x05 \x01(\tB\xd7\x01\xbaH\xd3\x01\xba\x01\xcf\x01\n" +
+	"\x19aks_dns_service_ip_format\x126dns_service_ip must be an IPv4 address, e.g. 10.0.0.10\x1azthis == '' || this.matches('^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:[.](?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}$')R\fdnsServiceIp\x12!\n" +
+	"\fservice_cidr\x18\x06 \x01(\tR\vserviceCidr\x12#\n" +
+	"\rservice_cidrs\x18\a \x03(\tR\fserviceCidrs\x12\x19\n" +
+	"\bpod_cidr\x18\b \x01(\tR\apodCidr\x12\x1b\n" +
+	"\tpod_cidrs\x18\t \x03(\tR\bpodCidrs\x12h\n" +
+	"\vip_versions\x18\n" +
+	" \x03(\x0e2G.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIpVersionR\n" +
+	"ipVersions\x12o\n" +
+	"\routbound_type\x18\v \x01(\x0e2J.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOutboundTypeR\foutboundType\x12\x85\x01\n" +
+	"\x15load_balancer_profile\x18\f \x01(\v2Q.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfileR\x13loadBalancerProfile\x12\x7f\n" +
+	"\x13nat_gateway_profile\x18\r \x01(\v2O.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNatGatewayProfileR\x11natGatewayProfile\x12\x81\x01\n" +
+	"\x13advanced_networking\x18\x0e \x01(\v2P.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAdvancedNetworkingR\x12advancedNetworking:\xa0\x04\xbaH\x9c\x04\x1a\xa1\x01\n" +
+	"+aks_cilium_policy_requires_cilium_dataplane\x128CILIUM network policy requires network_data_plane CILIUM\x1a8this.network_policy != 3 || this.network_data_plane == 2\x1a\xd4\x01\n" +
+	"'aks_cilium_dataplane_requires_azure_cni\x12oThe CILIUM data plane requires the AZURE_CNI network plugin (leave network_plugin unset or set it to AZURE_CNI)\x1a8this.network_data_plane != 2 || this.network_plugin <= 1\x1a\x9e\x01\n" +
+	"\x1eaks_overlay_requires_azure_cni\x12AOVERLAY network_plugin_mode requires the AZURE_CNI network plugin\x1a9this.network_plugin_mode != 1 || this.network_plugin <= 1\"\xc2\f\n" +
+	"\"AzureAksClusterLoadBalancerProfile\x12\xaf\x01\n" +
+	"\x18outbound_ports_allocated\x18\x01 \x01(\x05Bu\xbaHr\xba\x01o\n" +
+	"\x1baks_lb_outbound_ports_range\x124outbound_ports_allocated must be between 0 and 64000\x1a\x1athis >= 0 && this <= 64000R\x16outboundPortsAllocated\x12\xb4\x01\n" +
+	"\x17idle_timeout_in_minutes\x18\x02 \x01(\x05B}\xbaHz\xba\x01w\n" +
+	"\x19aks_lb_idle_timeout_range\x121idle_timeout_in_minutes must be between 4 and 100\x1a'this == 0 || (this >= 4 && this <= 100)R\x14idleTimeoutInMinutes\x12\xc0\x01\n" +
+	"\x19managed_outbound_ip_count\x18\x03 \x01(\x05B\x84\x01\xbaH\x80\x01\xba\x01}\n" +
+	"\x1daks_lb_managed_ip_count_range\x123managed_outbound_ip_count must be between 1 and 100\x1a'this == 0 || (this >= 1 && this <= 100)R\x16managedOutboundIpCount\x12\xc9\x01\n" +
+	"\x1bmanaged_outbound_ipv6_count\x18\x04 \x01(\x05B\x89\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +
+	"\x1faks_lb_managed_ipv6_count_range\x125managed_outbound_ipv6_count must be between 1 and 100\x1a'this == 0 || (this >= 1 && this <= 100)R\x18managedOutboundIpv6Count\x12\x94\x01\n" +
+	"\x16outbound_ip_prefix_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xa5\x03\x92\xd4a\"status.outputs.public_ip_prefix_idR\x13outboundIpPrefixIds\x12\x8f\x01\n" +
+	"\x17outbound_ip_address_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x9d\x03\x92\xd4a\x1bstatus.outputs.public_ip_idR\x14outboundIpAddressIds\x12\x85\x01\n" +
+	"\x11backend_pool_type\x18\a \x01(\x0e2Y.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerBackendPoolTypeR\x0fbackendPoolType:\xf2\x02\xbaH\xee\x02\x1a\xeb\x02\n" +
+	"\x1faks_lb_one_outbound_ip_strategy\x12\x82\x01Choose one outbound IP strategy: managed counts, outbound_ip_prefix_ids, or outbound_ip_address_ids -- they are mutually exclusive\x1a\xc2\x01((this.managed_outbound_ip_count > 0 || this.managed_outbound_ipv6_count > 0) ? 1 : 0) + (this.outbound_ip_prefix_ids.size() > 0 ? 1 : 0) + (this.outbound_ip_address_ids.size() > 0 ? 1 : 0) <= 1\"\x9e\x03\n" +
+	" AzureAksClusterNatGatewayProfile\x12\xb5\x01\n" +
+	"\x17idle_timeout_in_minutes\x18\x01 \x01(\x05B~\xbaH{\xba\x01x\n" +
+	"\x1aaks_nat_idle_timeout_range\x121idle_timeout_in_minutes must be between 4 and 120\x1a'this == 0 || (this >= 4 && this <= 120)R\x14idleTimeoutInMinutes\x12\xc1\x01\n" +
+	"\x19managed_outbound_ip_count\x18\x02 \x01(\x05B\x85\x01\xbaH\x81\x01\xba\x01~\n" +
+	"\x1eaks_nat_managed_ip_count_range\x123managed_outbound_ip_count must be between 1 and 100\x1a'this == 0 || (this >= 1 && this <= 100)R\x16managedOutboundIpCount\"\x83\x01\n" +
+	"!AzureAksClusterAdvancedNetworking\x123\n" +
+	"\x15observability_enabled\x18\x01 \x01(\bR\x14observabilityEnabled\x12)\n" +
+	"\x10security_enabled\x18\x02 \x01(\bR\x0fsecurityEnabled\"\x93\f\n" +
+	" AzureAksClusterAutoScalerProfile\x12=\n" +
+	"\x1bbalance_similar_node_groups\x18\x01 \x01(\bR\x18balanceSimilarNodeGroups\x12Y\n" +
+	"*daemonset_eviction_for_empty_nodes_enabled\x18\x02 \x01(\bR%daemonsetEvictionForEmptyNodesEnabled\x12n\n" +
+	"-daemonset_eviction_for_occupied_nodes_enabled\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R(daemonsetEvictionForOccupiedNodesEnabled\x88\x01\x01\x12l\n" +
+	"\bexpander\x18\x04 \x01(\x0e2P.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoscalerExpanderR\bexpander\x12Q\n" +
+	"%ignore_daemonsets_utilization_enabled\x18\x05 \x01(\bR\"ignoreDaemonsetsUtilizationEnabled\x12?\n" +
+	"\x1cmax_graceful_termination_sec\x18\x06 \x01(\x05R\x19maxGracefulTerminationSec\x12;\n" +
+	"\x1amax_node_provisioning_time\x18\a \x01(\tR\x17maxNodeProvisioningTime\x12*\n" +
+	"\x11max_unready_nodes\x18\b \x01(\x05R\x0fmaxUnreadyNodes\x12\xa3\x01\n" +
+	"\x16max_unready_percentage\x18\t \x01(\x05Bm\xbaHj\xba\x01g\n" +
+	"\x19aks_cas_unready_pct_range\x120max_unready_percentage must be between 0 and 100\x1a\x18this >= 0 && this <= 100R\x14maxUnreadyPercentage\x122\n" +
+	"\x16new_pod_scale_up_delay\x18\n" +
+	" \x01(\tR\x12newPodScaleUpDelay\x12#\n" +
+	"\rscan_interval\x18\v \x01(\tR\fscanInterval\x12:\n" +
+	"\x1ascale_down_delay_after_add\x18\f \x01(\tR\x16scaleDownDelayAfterAdd\x12@\n" +
+	"\x1dscale_down_delay_after_delete\x18\r \x01(\tR\x19scaleDownDelayAfterDelete\x12B\n" +
+	"\x1escale_down_delay_after_failure\x18\x0e \x01(\tR\x1ascaleDownDelayAfterFailure\x12.\n" +
+	"\x13scale_down_unneeded\x18\x0f \x01(\tR\x11scaleDownUnneeded\x12,\n" +
+	"\x12scale_down_unready\x18\x10 \x01(\tR\x10scaleDownUnready\x12G\n" +
+	" scale_down_utilization_threshold\x18\x11 \x01(\tR\x1dscaleDownUtilizationThreshold\x121\n" +
+	"\x15empty_bulk_delete_max\x18\x12 \x01(\x05R\x12emptyBulkDeleteMax\x12@\n" +
+	"\x1dskip_nodes_with_local_storage\x18\x13 \x01(\bR\x19skipNodesWithLocalStorage\x12K\n" +
+	"\x1bskip_nodes_with_system_pods\x18\x14 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x17skipNodesWithSystemPods\x88\x01\x01B0\n" +
+	"._daemonset_eviction_for_occupied_nodes_enabledB\x1e\n" +
+	"\x1c_skip_nodes_with_system_pods\"\x90\x02\n" +
+	" AzureAksClusterMaintenanceWindow\x12p\n" +
+	"\aallowed\x18\x01 \x03(\v2V.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowAllowedR\aallowed\x12z\n" +
+	"\vnot_allowed\x18\x02 \x03(\v2Y.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowNotAllowedR\n" +
+	"notAllowed\"\xb4\x01\n" +
+	"'AzureAksClusterMaintenanceWindowAllowed\x12a\n" +
+	"\x03day\x18\x01 \x01(\x0e2E.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekDayB\b\xbaH\x05\x82\x01\x02\x10\x01R\x03day\x12&\n" +
+	"\x05hours\x18\x02 \x03(\x05B\x10\xbaH\r\x92\x01\n" +
+	"\b\x01\"\x06\x1a\x04\x18\x17(\x00R\x05hours\"d\n" +
+	"*AzureAksClusterMaintenanceWindowNotAllowed\x12\x1c\n" +
+	"\x05start\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05start\x12\x18\n" +
+	"\x03end\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03end\"\xe2\b\n" +
+	"(AzureAksClusterMaintenanceWindowSchedule\x12}\n" +
+	"\tfrequency\x18\x01 \x01(\x0e2R.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceFrequencyB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\tfrequency\x12&\n" +
+	"\binterval\x18\x02 \x01(\x05B\n" +
+	"\xbaH\a\xc8\x01\x01\x1a\x02(\x01R\binterval\x12(\n" +
+	"\bduration\x18\x03 \x01(\x05B\f\xbaH\t\xc8\x01\x01\x1a\x04\x18\x18(\x04R\bduration\x12e\n" +
+	"\vday_of_week\x18\x04 \x01(\x0e2E.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekDayR\tdayOfWeek\x12f\n" +
+	"\n" +
+	"week_index\x18\x05 \x01(\x0e2G.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekIndexR\tweekIndex\x12\x92\x01\n" +
+	"\fday_of_month\x18\x06 \x01(\x05Bp\xbaHm\xba\x01j\n" +
+	"\x19aks_mw_day_of_month_range\x12%day_of_month must be between 1 and 31\x1a&this == 0 || (this >= 1 && this <= 31)R\n" +
+	"dayOfMonth\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\a \x01(\tR\tstartDate\x12\xa9\x01\n" +
+	"\n" +
+	"start_time\x18\b \x01(\tB\x89\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +
+	"\x18aks_mw_start_time_format\x12&start_time must be HH:mm, e.g. \"02:00\"\x1a=this == '' || this.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')R\tstartTime\x12\xb9\x01\n" +
+	"\n" +
+	"utc_offset\x18\t \x01(\tB\x99\x01\xbaH\x95\x01\xba\x01\x91\x01\n" +
+	"\x18aks_mw_utc_offset_format\x122utc_offset must be +HH:mm or -HH:mm, e.g. \"-08:00\"\x1aAthis == '' || this.matches('^[+-]([01][0-9]|2[0-3]):[0-5][0-9]$')R\tutcOffset\x12z\n" +
+	"\vnot_allowed\x18\n" +
+	" \x03(\v2Y.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowNotAllowedR\n" +
+	"notAllowed\"\xfd\x01\n" +
+	"\x17AzureAksClusterOmsAgent\x12\x9b\x01\n" +
+	"\x1alog_analytics_workspace_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\x17logAnalyticsWorkspaceId\x12D\n" +
+	"\x1fmsi_auth_for_monitoring_enabled\x18\x02 \x01(\bR\x1bmsiAuthForMonitoringEnabled\"\xec\x01\n" +
+	"&AzureAksClusterKeyVaultSecretsProvider\x126\n" +
+	"\x17secret_rotation_enabled\x18\x01 \x01(\bR\x15secretRotationEnabled\x12\x89\x01\n" +
+	"\x18secret_rotation_interval\x18\x02 \x01(\tBO\xaa\xa6\x1dKRotation poll interval (e.g. 2m) -- operational timing, not secret materialR\x16secretRotationInterval\"\xc0\x01\n" +
+	" AzureAksClusterMicrosoftDefender\x12\x9b\x01\n" +
+	"\x1alog_analytics_workspace_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\x17logAnalyticsWorkspaceId\"w\n" +
+	"\x1dAzureAksClusterMonitorMetrics\x12/\n" +
+	"\x13annotations_allowed\x18\x01 \x01(\tR\x12annotationsAllowed\x12%\n" +
+	"\x0elabels_allowed\x18\x02 \x01(\tR\rlabelsAllowed\"\xd1\x04\n" +
+	"(AzureAksClusterIngressApplicationGateway\x12\x81\x01\n" +
+	"\n" +
+	"gateway_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xa0\x03\x92\xd4a%status.outputs.application_gateway_idR\tgatewayId\x12!\n" +
+	"\fgateway_name\x18\x02 \x01(\tR\vgatewayName\x12\x1f\n" +
+	"\vsubnet_cidr\x18\x03 \x01(\tR\n" +
+	"subnetCidr\x12r\n" +
+	"\tsubnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId:\xe8\x01\xbaH\xe4\x01\x1a\xe1\x01\n" +
+	"\x1baks_agic_exactly_one_anchor\x12ZSet exactly one of gateway_id, subnet_cidr, or subnet_id to anchor the Application Gateway\x1af(has(this.gateway_id) ? 1 : 0) + (this.subnet_cidr != '' ? 1 : 0) + (has(this.subnet_id) ? 1 : 0) == 1\"K\n" +
+	" AzureAksClusterAciConnectorLinux\x12'\n" +
+	"\vsubnet_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"subnetName\"_\n" +
+	"$AzureAksClusterConfidentialComputing\x127\n" +
+	"\x18sgx_quote_helper_enabled\x18\x01 \x01(\bR\x15sgxQuoteHelperEnabled\"\xa6\x02\n" +
+	"\x1cAzureAksClusterWebAppRouting\x12u\n" +
+	"\fdns_zone_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x94\x03\x92\xd4a\x16status.outputs.zone_idR\n" +
+	"dnsZoneIds\x12\x8e\x01\n" +
+	"\x18default_nginx_controller\x18\x02 \x01(\x0e2T.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNginxDefaultControllerR\x16defaultNginxController\"\xe4\x03\n" +
+	"!AzureAksClusterServiceMeshProfile\x12n\n" +
+	"\x04mode\x18\x01 \x01(\x0e2M.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshModeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x04mode\x12(\n" +
+	"\trevisions\x18\x02 \x03(\tB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x02R\trevisions\x12G\n" +
+	" internal_ingress_gateway_enabled\x18\x03 \x01(\bR\x1dinternalIngressGatewayEnabled\x12G\n" +
+	" external_ingress_gateway_enabled\x18\x04 \x01(\bR\x1dexternalIngressGatewayEnabled\x12\x92\x01\n" +
+	"\x15certificate_authority\x18\x05 \x01(\v2].dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthorityR\x14certificateAuthority\"\x8d\x03\n" +
+	".AzureAksClusterServiceMeshCertificateAuthority\x12\x80\x01\n" +
+	"\fkey_vault_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x1bstatus.outputs.key_vault_idR\n" +
+	"keyVaultId\x129\n" +
+	"\x15root_cert_object_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x12rootCertObjectName\x12;\n" +
+	"\x16cert_chain_object_name\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13certChainObjectName\x120\n" +
+	"\x10cert_object_name\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0ecertObjectName\x12.\n" +
+	"\x0fkey_object_name\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rkeyObjectName\"\xec\x02\n" +
+	"\x1dAzureAksClusterStorageProfile\x12.\n" +
+	"\x13blob_driver_enabled\x18\x01 \x01(\bR\x11blobDriverEnabled\x12=\n" +
+	"\x13disk_driver_enabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x11diskDriverEnabled\x88\x01\x01\x12=\n" +
+	"\x13file_driver_enabled\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x11fileDriverEnabled\x88\x01\x01\x12M\n" +
+	"\x1bsnapshot_controller_enabled\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x19snapshotControllerEnabled\x88\x01\x01B\x16\n" +
+	"\x14_disk_driver_enabledB\x16\n" +
+	"\x14_file_driver_enabledB\x1e\n" +
+	"\x1c_snapshot_controller_enabled\"\x94\x01\n" +
+	"(AzureAksClusterWorkloadAutoscalerProfile\x12!\n" +
+	"\fkeda_enabled\x18\x01 \x01(\bR\vkedaEnabled\x12E\n" +
+	"\x1fvertical_pod_autoscaler_enabled\x18\x02 \x01(\bR\x1cverticalPodAutoscalerEnabled\"\xb8\x02\n" +
+	"#AzureAksClusterKeyManagementService\x12\x81\x01\n" +
+	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x15status.outputs.key_idR\rkeyVaultKeyId\x12\x8c\x01\n" +
+	"\x18key_vault_network_access\x18\x02 \x01(\x0e2S.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultNetworkAccessR\x15keyVaultNetworkAccess\"\xa0\x01\n" +
+	"\x1eAzureAksClusterHttpProxyConfig\x12\x1d\n" +
+	"\n" +
+	"http_proxy\x18\x01 \x01(\tR\thttpProxy\x12\x1f\n" +
+	"\vhttps_proxy\x18\x02 \x01(\tR\n" +
+	"httpsProxy\x12\x19\n" +
+	"\bno_proxy\x18\x03 \x03(\tR\anoProxy\x12#\n" +
+	"\n" +
+	"trusted_ca\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\ttrustedCa\"\xbc\x02\n" +
+	"\x1bAzureAksClusterLinuxProfile\x12\xee\x01\n" +
+	"\x0eadmin_username\x18\x01 \x01(\tB\xc6\x01\xbaH\xc2\x01\xba\x01\xbb\x01\n" +
+	"\x1faks_linux_admin_username_format\x12`admin_username begins with a letter and contains only letters, numbers, underscores, and hyphens\x1a6this == '' || this.matches('^[A-Za-z][-A-Za-z0-9_]*$')\xc8\x01\x01R\radminUsername\x12,\n" +
+	"\x0essh_public_key\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fsshPublicKey\"\xce\x02\n" +
+	"\x1dAzureAksClusterWindowsProfile\x12-\n" +
+	"\x0eadmin_username\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\radminUsername\x127\n" +
+	"\x0eadmin_password\x18\x02 \x01(\tB\x10\xbaH\t\xc8\x01\x01r\x04\x10\b\x18{\xa0\xa6\x1d\x01R\radminPassword\x12f\n" +
+	"\alicense\x18\x03 \x01(\x0e2L.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsLicenseR\alicense\x12]\n" +
+	"\x04gmsa\x18\x04 \x01(\v2I.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsGmsaR\x04gmsa\"\x99\x02\n" +
+	"\x1aAzureAksClusterWindowsGmsa\x12\x1d\n" +
+	"\n" +
+	"dns_server\x18\x01 \x01(\tR\tdnsServer\x12\x1f\n" +
+	"\vroot_domain\x18\x02 \x01(\tR\n" +
+	"rootDomain:\xba\x01\xbaH\xb6\x01\x1a\xb3\x01\n" +
+	"\x18aks_gmsa_fields_together\x12bSet dns_server and root_domain together, or leave both empty to inherit the VNet DNS configuration\x1a3(this.dns_server == '') == (this.root_domain == '')\"\x99\x04\n" +
+	"\x1fAzureAksClusterBootstrapProfile\x12~\n" +
+	"\x0fartifact_source\x18\x01 \x01(\x0e2U.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapArtifactSourceR\x0eartifactSource\x12\x95\x01\n" +
+	"\x15container_registry_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\x93\x03\x92\xd4a$status.outputs.container_registry_idR\x13containerRegistryId:\xdd\x01\xbaH\xd9\x01\x1a\xd6\x01\n" +
+	"%aks_bootstrap_cache_requires_registry\x12oartifact_source CACHE requires container_registry_id (the ACR that caches Microsoft Container Registry content)\x1a<this.artifact_source != 2 || has(this.container_registry_id)\"\x9b\x02\n" +
+	"&AzureAksClusterNodeProvisioningProfile\x12f\n" +
+	"\x04mode\x18\x01 \x01(\x0e2R.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningModeR\x04mode\x12\x88\x01\n" +
+	"\x12default_node_pools\x18\x02 \x01(\x0e2Z.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningDefaultPoolsR\x10defaultNodePools\"\x85\x01\n" +
+	"\x1eAzureAksClusterUpgradeOverride\x12:\n" +
+	"\x15force_upgrade_enabled\x18\x01 \x01(\bB\x06\xbaH\x03\xc8\x01\x01R\x13forceUpgradeEnabled\x12'\n" +
+	"\x0feffective_until\x18\x02 \x01(\tR\x0eeffectiveUntil*i\n" +
+	"\x16AzureAksClusterSkuTier\x12*\n" +
+	"&azure_aks_cluster_sku_tier_unspecified\x10\x00\x12\b\n" +
+	"\x04FREE\x10\x01\x12\f\n" +
+	"\bSTANDARD\x10\x02\x12\v\n" +
+	"\aPREMIUM\x10\x03*\x80\x01\n" +
+	"\x1aAzureAksClusterSupportPlan\x12.\n" +
+	"*azure_aks_cluster_support_plan_unspecified\x10\x00\x12\x17\n" +
+	"\x13KUBERNETES_OFFICIAL\x10\x01\x12\x19\n" +
+	"\x15AKS_LONG_TERM_SUPPORT\x10\x02*g\n" +
+	"\x19AzureAksClusterOsDiskType\x12.\n" +
+	"*azure_aks_cluster_os_disk_type_unspecified\x10\x00\x12\v\n" +
+	"\aMANAGED\x10\x01\x12\r\n" +
+	"\tEPHEMERAL\x10\x02*l\n" +
+	"\x1eAzureAksClusterKubeletDiskType\x123\n" +
+	"/azure_aks_cluster_kubelet_disk_type_unspecified\x10\x00\x12\x06\n" +
+	"\x02OS\x10\x01\x12\r\n" +
+	"\tTEMPORARY\x10\x02*\xb6\x01\n" +
+	"\x14AzureAksClusterOsSku\x12(\n" +
+	"$azure_aks_cluster_os_sku_unspecified\x10\x00\x12\n" +
+	"\n" +
+	"\x06UBUNTU\x10\x01\x12\x0f\n" +
+	"\vUBUNTU_2204\x10\x02\x12\x0f\n" +
+	"\vUBUNTU_2404\x10\x03\x12\x0f\n" +
+	"\vAZURE_LINUX\x10\x04\x12\x11\n" +
+	"\rAZURE_LINUX_3\x10\x05\x12\x10\n" +
+	"\fWINDOWS_2019\x10\x06\x12\x10\n" +
+	"\fWINDOWS_2022\x10\a*\x83\x01\n" +
+	"\x1aAzureAksClusterGpuInstance\x12.\n" +
+	"*azure_aks_cluster_gpu_instance_unspecified\x10\x00\x12\t\n" +
+	"\x05MIG1G\x10\x01\x12\t\n" +
+	"\x05MIG2G\x10\x02\x12\t\n" +
+	"\x05MIG3G\x10\x03\x12\t\n" +
+	"\x05MIG4G\x10\x04\x12\t\n" +
+	"\x05MIG7G\x10\x05*_\n" +
+	"\x18AzureAksClusterGpuDriver\x12,\n" +
+	"(azure_aks_cluster_gpu_driver_unspecified\x10\x00\x12\v\n" +
+	"\aINSTALL\x10\x01\x12\b\n" +
+	"\x04NONE\x10\x02*m\n" +
+	"\x1cAzureAksClusterScaleDownMode\x121\n" +
+	"-azure_aks_cluster_scale_down_mode_unspecified\x10\x00\x12\n" +
+	"\n" +
+	"\x06DELETE\x10\x01\x12\x0e\n" +
+	"\n" +
+	"DEALLOCATE\x10\x02*\x83\x01\n" +
+	"\x1eAzureAksClusterWorkloadRuntime\x122\n" +
+	".azure_aks_cluster_workload_runtime_unspecified\x10\x00\x12\x11\n" +
+	"\rOCI_CONTAINER\x10\x01\x12\x1a\n" +
+	"\x16KATA_MSHV_VM_ISOLATION\x10\x02*\x85\x01\n" +
+	"\x1fAzureAksClusterCpuManagerPolicy\x124\n" +
+	"0azure_aks_cluster_cpu_manager_policy_unspecified\x10\x00\x12\x14\n" +
+	"\x10CPU_MANAGER_NONE\x10\x01\x12\x16\n" +
+	"\x12CPU_MANAGER_STATIC\x10\x02*\xab\x01\n" +
+	"$AzureAksClusterTopologyManagerPolicy\x129\n" +
+	"5azure_aks_cluster_topology_manager_policy_unspecified\x10\x00\x12\x11\n" +
+	"\rTOPOLOGY_NONE\x10\x01\x12\x0f\n" +
+	"\vBEST_EFFORT\x10\x02\x12\x0e\n" +
+	"\n" +
+	"RESTRICTED\x10\x03\x12\x14\n" +
+	"\x10SINGLE_NUMA_NODE\x10\x04*\x8d\x01\n" +
+	"\"AzureAksClusterTransparentHugePage\x127\n" +
+	"3azure_aks_cluster_transparent_huge_page_unspecified\x10\x00\x12\x0e\n" +
+	"\n" +
+	"THP_ALWAYS\x10\x01\x12\x0f\n" +
+	"\vTHP_MADVISE\x10\x02\x12\r\n" +
+	"\tTHP_NEVER\x10\x03*\xcf\x01\n" +
+	"(AzureAksClusterTransparentHugePageDefrag\x12>\n" +
+	":azure_aks_cluster_transparent_huge_page_defrag_unspecified\x10\x00\x12\x11\n" +
+	"\rDEFRAG_ALWAYS\x10\x01\x12\x10\n" +
+	"\fDEFRAG_DEFER\x10\x02\x12\x18\n" +
+	"\x14DEFRAG_DEFER_MADVISE\x10\x03\x12\x12\n" +
+	"\x0eDEFRAG_MADVISE\x10\x04\x12\x10\n" +
+	"\fDEFRAG_NEVER\x10\x05*i\n" +
+	"\x1fAzureAksClusterHostPortProtocol\x124\n" +
+	"0azure_aks_cluster_host_port_protocol_unspecified\x10\x00\x12\a\n" +
+	"\x03TCP\x10\x01\x12\a\n" +
+	"\x03UDP\x10\x02*\x7f\n" +
+	"&AzureAksClusterUndrainableNodeBehavior\x12;\n" +
+	"7azure_aks_cluster_undrainable_node_behavior_unspecified\x10\x00\x12\n" +
+	"\n" +
+	"\x06CORDON\x10\x01\x12\f\n" +
+	"\bSCHEDULE\x10\x02*v\n" +
+	"\x1bAzureAksClusterIdentityType\x12/\n" +
+	"+azure_aks_cluster_identity_type_unspecified\x10\x00\x12\x13\n" +
+	"\x0fSYSTEM_ASSIGNED\x10\x01\x12\x11\n" +
+	"\rUSER_ASSIGNED\x10\x02*\x85\x01\n" +
+	"\x1cAzureAksClusterNetworkPlugin\x120\n" +
+	",azure_aks_cluster_network_plugin_unspecified\x10\x00\x12\r\n" +
+	"\tAZURE_CNI\x10\x01\x12\v\n" +
+	"\aKUBENET\x10\x02\x12\x17\n" +
+	"\x13NETWORK_PLUGIN_NONE\x10\x03*f\n" +
+	" AzureAksClusterNetworkPluginMode\x125\n" +
+	"1azure_aks_cluster_network_plugin_mode_unspecified\x10\x00\x12\v\n" +
+	"\aOVERLAY\x10\x01*\x91\x01\n" +
+	"\x1cAzureAksClusterNetworkPolicy\x120\n" +
+	",azure_aks_cluster_network_policy_unspecified\x10\x00\x12\x18\n" +
+	"\x14NETWORK_POLICY_AZURE\x10\x01\x12\n" +
+	"\n" +
+	"\x06CALICO\x10\x02\x12\x19\n" +
+	"\x15NETWORK_POLICY_CILIUM\x10\x03*\x84\x01\n" +
+	"\x1fAzureAksClusterNetworkDataPlane\x124\n" +
+	"0azure_aks_cluster_network_data_plane_unspecified\x10\x00\x12\x14\n" +
+	"\x10DATA_PLANE_AZURE\x10\x01\x12\x15\n" +
+	"\x11DATA_PLANE_CILIUM\x10\x02*\\\n" +
+	"\x18AzureAksClusterIpVersion\x12,\n" +
+	"(azure_aks_cluster_ip_version_unspecified\x10\x00\x12\b\n" +
+	"\x04IPV4\x10\x01\x12\b\n" +
+	"\x04IPV6\x10\x02*\xc6\x01\n" +
+	"\x1bAzureAksClusterOutboundType\x12/\n" +
+	"+azure_aks_cluster_outbound_type_unspecified\x10\x00\x12\x11\n" +
+	"\rLOAD_BALANCER\x10\x01\x12\x17\n" +
+	"\x13MANAGED_NAT_GATEWAY\x10\x02\x12\x1d\n" +
+	"\x19USER_ASSIGNED_NAT_GATEWAY\x10\x03\x12\x18\n" +
+	"\x14USER_DEFINED_ROUTING\x10\x04\x12\x11\n" +
+	"\rOUTBOUND_NONE\x10\x05*\x97\x01\n" +
+	"*AzureAksClusterLoadBalancerBackendPoolType\x12A\n" +
+	"=azure_aks_cluster_load_balancer_backend_pool_type_unspecified\x10\x00\x12\x19\n" +
+	"\x15NODE_IP_CONFIGURATION\x10\x01\x12\v\n" +
+	"\aNODE_IP\x10\x02*\x94\x01\n" +
+	"!AzureAksClusterAutoscalerExpander\x125\n" +
+	"1azure_aks_cluster_autoscaler_expander_unspecified\x10\x00\x12\x0f\n" +
+	"\vLEAST_WASTE\x10\x01\x12\r\n" +
+	"\tMOST_PODS\x10\x02\x12\f\n" +
+	"\bPRIORITY\x10\x03\x12\n" +
+	"\n" +
+	"\x06RANDOM\x10\x04*\x84\x01\n" +
+	"\x1dAzureAksClusterUpgradeChannel\x121\n" +
+	"-azure_aks_cluster_upgrade_channel_unspecified\x10\x00\x12\t\n" +
+	"\x05PATCH\x10\x01\x12\n" +
+	"\n" +
+	"\x06STABLE\x10\x02\x12\t\n" +
+	"\x05RAPID\x10\x03\x12\x0e\n" +
+	"\n" +
+	"NODE_IMAGE\x10\x04*\xad\x01\n" +
+	"#AzureAksClusterNodeOsUpgradeChannel\x129\n" +
+	"5azure_aks_cluster_node_os_upgrade_channel_unspecified\x10\x00\x12\x16\n" +
+	"\x12NODE_OS_NODE_IMAGE\x10\x01\x12\x12\n" +
+	"\x0eSECURITY_PATCH\x10\x02\x12\r\n" +
+	"\tUNMANAGED\x10\x03\x12\x10\n" +
+	"\fNODE_OS_NONE\x10\x04*\xa0\x01\n" +
+	"\x16AzureAksClusterWeekDay\x12*\n" +
+	"&azure_aks_cluster_week_day_unspecified\x10\x00\x12\n" +
+	"\n" +
+	"\x06SUNDAY\x10\x01\x12\n" +
+	"\n" +
+	"\x06MONDAY\x10\x02\x12\v\n" +
+	"\aTUESDAY\x10\x03\x12\r\n" +
+	"\tWEDNESDAY\x10\x04\x12\f\n" +
+	"\bTHURSDAY\x10\x05\x12\n" +
+	"\n" +
+	"\x06FRIDAY\x10\x06\x12\f\n" +
+	"\bSATURDAY\x10\a*\xa1\x01\n" +
+	"#AzureAksClusterMaintenanceFrequency\x127\n" +
+	"3azure_aks_cluster_maintenance_frequency_unspecified\x10\x00\x12\t\n" +
+	"\x05DAILY\x10\x01\x12\n" +
+	"\n" +
+	"\x06WEEKLY\x10\x02\x12\x14\n" +
+	"\x10RELATIVE_MONTHLY\x10\x03\x12\x14\n" +
+	"\x10ABSOLUTE_MONTHLY\x10\x04*\x80\x01\n" +
+	"\x18AzureAksClusterWeekIndex\x12,\n" +
+	"(azure_aks_cluster_week_index_unspecified\x10\x00\x12\t\n" +
+	"\x05FIRST\x10\x01\x12\n" +
+	"\n" +
+	"\x06SECOND\x10\x02\x12\t\n" +
+	"\x05THIRD\x10\x03\x12\n" +
+	"\n" +
+	"\x06FOURTH\x10\x04\x12\b\n" +
+	"\x04LAST\x10\x05*\xaa\x01\n" +
+	"%AzureAksClusterNginxDefaultController\x12:\n" +
+	"6azure_aks_cluster_nginx_default_controller_unspecified\x10\x00\x12\x19\n" +
+	"\x15ANNOTATION_CONTROLLED\x10\x01\x12\f\n" +
+	"\bINTERNAL\x10\x02\x12\f\n" +
+	"\bEXTERNAL\x10\x03\x12\x0e\n" +
+	"\n" +
+	"NGINX_NONE\x10\x04*`\n" +
+	"\x1eAzureAksClusterServiceMeshMode\x123\n" +
+	"/azure_aks_cluster_service_mesh_mode_unspecified\x10\x00\x12\t\n" +
+	"\x05ISTIO\x10\x01*\x83\x01\n" +
+	"$AzureAksClusterKeyVaultNetworkAccess\x12:\n" +
+	"6azure_aks_cluster_key_vault_network_access_unspecified\x10\x00\x12\x0e\n" +
+	"\n" +
+	"KMS_PUBLIC\x10\x01\x12\x0f\n" +
+	"\vKMS_PRIVATE\x10\x02*f\n" +
+	"\x1dAzureAksClusterWindowsLicense\x121\n" +
+	"-azure_aks_cluster_windows_license_unspecified\x10\x00\x12\x12\n" +
+	"\x0eWINDOWS_SERVER\x10\x01*|\n" +
+	"&AzureAksClusterBootstrapArtifactSource\x12;\n" +
+	"7azure_aks_cluster_bootstrap_artifact_source_unspecified\x10\x00\x12\n" +
+	"\n" +
+	"\x06DIRECT\x10\x01\x12\t\n" +
+	"\x05CACHE\x10\x02*u\n" +
+	"#AzureAksClusterNodeProvisioningMode\x128\n" +
+	"4azure_aks_cluster_node_provisioning_mode_unspecified\x10\x00\x12\n" +
+	"\n" +
+	"\x06MANUAL\x10\x01\x12\b\n" +
+	"\x04AUTO\x10\x02*\x9a\x01\n" +
+	"+AzureAksClusterNodeProvisioningDefaultPools\x12A\n" +
+	"=azure_aks_cluster_node_provisioning_default_pools_unspecified\x10\x00\x12\x13\n" +
+	"\x0fNODE_POOLS_AUTO\x10\x01\x12\x13\n" +
+	"\x0fNODE_POOLS_NONE\x10\x02B\xfc\x02\n" +
 	"1com.dev.planton.provider.azure.azureakscluster.v1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureakscluster/v1;azureaksclusterv1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Azure.Azureakscluster.V1\xca\x02-Dev\\Planton\\Provider\\Azure\\Azureakscluster\\V1\xe2\x029Dev\\Planton\\Provider\\Azure\\Azureakscluster\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Azure::Azureakscluster::V1b\x06proto3"
 
 var (
@@ -814,37 +7126,200 @@ func file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP()
 	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 36)
+var file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
 var file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_goTypes = []any{
-	(AzureAksClusterControlPlaneSku)(0),       // 0: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterControlPlaneSku
-	(AzureAksClusterNetworkPlugin)(0),         // 1: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPlugin
-	(AzureAksClusterNetworkPluginMode)(0),     // 2: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginMode
-	(*AzureAksClusterSpec)(nil),               // 3: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec
-	(*AzureAksClusterAutoscalingConfig)(nil),  // 4: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoscalingConfig
-	(*AzureAksClusterSystemNodePool)(nil),     // 5: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSystemNodePool
-	(*AzureAksClusterUserNodePool)(nil),       // 6: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUserNodePool
-	(*AzureAksClusterAddonsConfig)(nil),       // 7: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAddonsConfig
-	(*AzureAksClusterAdvancedNetworking)(nil), // 8: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAdvancedNetworking
-	(*v1.StringValueOrRef)(nil),               // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureAksClusterSkuTier)(0),                            // 0: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSkuTier
+	(AzureAksClusterSupportPlan)(0),                        // 1: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSupportPlan
+	(AzureAksClusterOsDiskType)(0),                         // 2: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOsDiskType
+	(AzureAksClusterKubeletDiskType)(0),                    // 3: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletDiskType
+	(AzureAksClusterOsSku)(0),                              // 4: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOsSku
+	(AzureAksClusterGpuInstance)(0),                        // 5: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterGpuInstance
+	(AzureAksClusterGpuDriver)(0),                          // 6: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterGpuDriver
+	(AzureAksClusterScaleDownMode)(0),                      // 7: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterScaleDownMode
+	(AzureAksClusterWorkloadRuntime)(0),                    // 8: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWorkloadRuntime
+	(AzureAksClusterCpuManagerPolicy)(0),                   // 9: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterCpuManagerPolicy
+	(AzureAksClusterTopologyManagerPolicy)(0),              // 10: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTopologyManagerPolicy
+	(AzureAksClusterTransparentHugePage)(0),                // 11: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTransparentHugePage
+	(AzureAksClusterTransparentHugePageDefrag)(0),          // 12: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTransparentHugePageDefrag
+	(AzureAksClusterHostPortProtocol)(0),                   // 13: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterHostPortProtocol
+	(AzureAksClusterUndrainableNodeBehavior)(0),            // 14: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUndrainableNodeBehavior
+	(AzureAksClusterIdentityType)(0),                       // 15: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentityType
+	(AzureAksClusterNetworkPlugin)(0),                      // 16: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPlugin
+	(AzureAksClusterNetworkPluginMode)(0),                  // 17: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginMode
+	(AzureAksClusterNetworkPolicy)(0),                      // 18: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPolicy
+	(AzureAksClusterNetworkDataPlane)(0),                   // 19: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkDataPlane
+	(AzureAksClusterIpVersion)(0),                          // 20: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIpVersion
+	(AzureAksClusterOutboundType)(0),                       // 21: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOutboundType
+	(AzureAksClusterLoadBalancerBackendPoolType)(0),        // 22: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerBackendPoolType
+	(AzureAksClusterAutoscalerExpander)(0),                 // 23: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoscalerExpander
+	(AzureAksClusterUpgradeChannel)(0),                     // 24: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUpgradeChannel
+	(AzureAksClusterNodeOsUpgradeChannel)(0),               // 25: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeOsUpgradeChannel
+	(AzureAksClusterWeekDay)(0),                            // 26: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekDay
+	(AzureAksClusterMaintenanceFrequency)(0),               // 27: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceFrequency
+	(AzureAksClusterWeekIndex)(0),                          // 28: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekIndex
+	(AzureAksClusterNginxDefaultController)(0),             // 29: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNginxDefaultController
+	(AzureAksClusterServiceMeshMode)(0),                    // 30: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshMode
+	(AzureAksClusterKeyVaultNetworkAccess)(0),              // 31: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultNetworkAccess
+	(AzureAksClusterWindowsLicense)(0),                     // 32: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsLicense
+	(AzureAksClusterBootstrapArtifactSource)(0),            // 33: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapArtifactSource
+	(AzureAksClusterNodeProvisioningMode)(0),               // 34: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningMode
+	(AzureAksClusterNodeProvisioningDefaultPools)(0),       // 35: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningDefaultPools
+	(*AzureAksClusterSpec)(nil),                            // 36: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec
+	(*AzureAksClusterDefaultNodePool)(nil),                 // 37: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool
+	(*AzureAksClusterKubeletConfig)(nil),                   // 38: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletConfig
+	(*AzureAksClusterLinuxOsConfig)(nil),                   // 39: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig
+	(*AzureAksClusterSysctlConfig)(nil),                    // 40: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSysctlConfig
+	(*AzureAksClusterNodeNetworkProfile)(nil),              // 41: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile
+	(*AzureAksClusterAllowedHostPorts)(nil),                // 42: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAllowedHostPorts
+	(*AzureAksClusterDefaultNodePoolUpgradeSettings)(nil),  // 43: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePoolUpgradeSettings
+	(*AzureAksClusterIdentity)(nil),                        // 44: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentity
+	(*AzureAksClusterKubeletIdentity)(nil),                 // 45: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletIdentity
+	(*AzureAksClusterApiServerAccessProfile)(nil),          // 46: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterApiServerAccessProfile
+	(*AzureAksClusterAadRbac)(nil),                         // 47: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAadRbac
+	(*AzureAksClusterNetworkProfile)(nil),                  // 48: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile
+	(*AzureAksClusterLoadBalancerProfile)(nil),             // 49: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile
+	(*AzureAksClusterNatGatewayProfile)(nil),               // 50: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNatGatewayProfile
+	(*AzureAksClusterAdvancedNetworking)(nil),              // 51: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAdvancedNetworking
+	(*AzureAksClusterAutoScalerProfile)(nil),               // 52: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoScalerProfile
+	(*AzureAksClusterMaintenanceWindow)(nil),               // 53: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindow
+	(*AzureAksClusterMaintenanceWindowAllowed)(nil),        // 54: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowAllowed
+	(*AzureAksClusterMaintenanceWindowNotAllowed)(nil),     // 55: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowNotAllowed
+	(*AzureAksClusterMaintenanceWindowSchedule)(nil),       // 56: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule
+	(*AzureAksClusterOmsAgent)(nil),                        // 57: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOmsAgent
+	(*AzureAksClusterKeyVaultSecretsProvider)(nil),         // 58: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultSecretsProvider
+	(*AzureAksClusterMicrosoftDefender)(nil),               // 59: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMicrosoftDefender
+	(*AzureAksClusterMonitorMetrics)(nil),                  // 60: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMonitorMetrics
+	(*AzureAksClusterIngressApplicationGateway)(nil),       // 61: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIngressApplicationGateway
+	(*AzureAksClusterAciConnectorLinux)(nil),               // 62: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAciConnectorLinux
+	(*AzureAksClusterConfidentialComputing)(nil),           // 63: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterConfidentialComputing
+	(*AzureAksClusterWebAppRouting)(nil),                   // 64: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWebAppRouting
+	(*AzureAksClusterServiceMeshProfile)(nil),              // 65: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshProfile
+	(*AzureAksClusterServiceMeshCertificateAuthority)(nil), // 66: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthority
+	(*AzureAksClusterStorageProfile)(nil),                  // 67: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterStorageProfile
+	(*AzureAksClusterWorkloadAutoscalerProfile)(nil),       // 68: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWorkloadAutoscalerProfile
+	(*AzureAksClusterKeyManagementService)(nil),            // 69: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyManagementService
+	(*AzureAksClusterHttpProxyConfig)(nil),                 // 70: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterHttpProxyConfig
+	(*AzureAksClusterLinuxProfile)(nil),                    // 71: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxProfile
+	(*AzureAksClusterWindowsProfile)(nil),                  // 72: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile
+	(*AzureAksClusterWindowsGmsa)(nil),                     // 73: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsGmsa
+	(*AzureAksClusterBootstrapProfile)(nil),                // 74: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile
+	(*AzureAksClusterNodeProvisioningProfile)(nil),         // 75: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile
+	(*AzureAksClusterUpgradeOverride)(nil),                 // 76: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUpgradeOverride
+	nil,                                                    // 77: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.TagsEntry
+	nil,                                                    // 78: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.NodeLabelsEntry
+	nil,                                                    // 79: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.TagsEntry
+	nil,                                                    // 80: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile.NodePublicIpTagsEntry
+	(*v1.StringValueOrRef)(nil),                            // 81: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_depIdxs = []int32{
-	9,  // 0: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 1: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.vnet_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0,  // 2: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.control_plane_sku:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterControlPlaneSku
-	1,  // 3: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.network_plugin:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPlugin
-	2,  // 4: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.network_plugin_mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginMode
-	5,  // 5: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.system_node_pool:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSystemNodePool
-	6,  // 6: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.user_node_pools:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUserNodePool
-	7,  // 7: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.addons:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAddonsConfig
-	8,  // 8: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.advanced_networking:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAdvancedNetworking
-	4,  // 9: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSystemNodePool.autoscaling:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoscalingConfig
-	4,  // 10: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUserNodePool.autoscaling:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoscalingConfig
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	81,  // 0: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,   // 1: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.sku_tier:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSkuTier
+	1,   // 2: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.support_plan:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSupportPlan
+	37,  // 3: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.default_node_pool:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool
+	44,  // 4: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.identity:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentity
+	45,  // 5: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.kubelet_identity:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletIdentity
+	81,  // 6: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.private_dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	46,  // 7: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.api_server_access_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterApiServerAccessProfile
+	47,  // 8: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.azure_active_directory_role_based_access_control:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAadRbac
+	48,  // 9: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.network_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile
+	52,  // 10: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.auto_scaler_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoScalerProfile
+	24,  // 11: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.automatic_upgrade_channel:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUpgradeChannel
+	25,  // 12: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.node_os_upgrade_channel:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeOsUpgradeChannel
+	53,  // 13: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.maintenance_window:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindow
+	56,  // 14: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.maintenance_window_auto_upgrade:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule
+	56,  // 15: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.maintenance_window_node_os:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule
+	57,  // 16: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.oms_agent:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOmsAgent
+	58,  // 17: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.key_vault_secrets_provider:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultSecretsProvider
+	59,  // 18: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.microsoft_defender:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMicrosoftDefender
+	60,  // 19: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.monitor_metrics:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMonitorMetrics
+	61,  // 20: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.ingress_application_gateway:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIngressApplicationGateway
+	62,  // 21: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.aci_connector_linux:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAciConnectorLinux
+	63,  // 22: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.confidential_computing:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterConfidentialComputing
+	64,  // 23: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.web_app_routing:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWebAppRouting
+	65,  // 24: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.service_mesh_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshProfile
+	67,  // 25: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.storage_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterStorageProfile
+	68,  // 26: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.workload_autoscaler_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWorkloadAutoscalerProfile
+	69,  // 27: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.key_management_service:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyManagementService
+	70,  // 28: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.http_proxy_config:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterHttpProxyConfig
+	71,  // 29: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.linux_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxProfile
+	72,  // 30: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.windows_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile
+	81,  // 31: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.disk_encryption_set_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	74,  // 32: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.bootstrap_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile
+	75,  // 33: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.node_provisioning_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile
+	76,  // 34: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.upgrade_override:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUpgradeOverride
+	77,  // 35: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.tags:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSpec.TagsEntry
+	81,  // 36: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.vnet_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 37: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.pod_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,   // 38: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.os_disk_type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOsDiskType
+	3,   // 39: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.kubelet_disk_type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletDiskType
+	4,   // 40: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.os_sku:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOsSku
+	78,  // 41: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.node_labels:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.NodeLabelsEntry
+	81,  // 42: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.node_public_ip_prefix_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,   // 43: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.gpu_instance:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterGpuInstance
+	6,   // 44: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.gpu_driver:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterGpuDriver
+	7,   // 45: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.scale_down_mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterScaleDownMode
+	8,   // 46: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.workload_runtime:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWorkloadRuntime
+	38,  // 47: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.kubelet_config:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletConfig
+	39,  // 48: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.linux_os_config:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig
+	41,  // 49: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.node_network_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile
+	43,  // 50: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.upgrade_settings:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePoolUpgradeSettings
+	79,  // 51: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.tags:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePool.TagsEntry
+	9,   // 52: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletConfig.cpu_manager_policy:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterCpuManagerPolicy
+	10,  // 53: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletConfig.topology_manager_policy:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTopologyManagerPolicy
+	40,  // 54: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig.sysctl_config:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterSysctlConfig
+	11,  // 55: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig.transparent_huge_page:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTransparentHugePage
+	12,  // 56: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLinuxOsConfig.transparent_huge_page_defrag:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterTransparentHugePageDefrag
+	42,  // 57: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile.allowed_host_ports:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAllowedHostPorts
+	80,  // 58: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile.node_public_ip_tags:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeNetworkProfile.NodePublicIpTagsEntry
+	13,  // 59: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAllowedHostPorts.protocol:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterHostPortProtocol
+	14,  // 60: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterDefaultNodePoolUpgradeSettings.undrainable_node_behavior:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterUndrainableNodeBehavior
+	15,  // 61: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentity.type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentityType
+	81,  // 62: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 63: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletIdentity.user_assigned_identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 64: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterApiServerAccessProfile.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16,  // 65: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.network_plugin:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPlugin
+	17,  // 66: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.network_plugin_mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginMode
+	18,  // 67: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.network_policy:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPolicy
+	19,  // 68: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.network_data_plane:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkDataPlane
+	20,  // 69: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.ip_versions:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIpVersion
+	21,  // 70: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.outbound_type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOutboundType
+	49,  // 71: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.load_balancer_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile
+	50,  // 72: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.nat_gateway_profile:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNatGatewayProfile
+	51,  // 73: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkProfile.advanced_networking:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAdvancedNetworking
+	81,  // 74: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile.outbound_ip_prefix_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 75: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile.outbound_ip_address_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22,  // 76: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerProfile.backend_pool_type:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterLoadBalancerBackendPoolType
+	23,  // 77: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoScalerProfile.expander:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterAutoscalerExpander
+	54,  // 78: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindow.allowed:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowAllowed
+	55,  // 79: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindow.not_allowed:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowNotAllowed
+	26,  // 80: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowAllowed.day:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekDay
+	27,  // 81: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule.frequency:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceFrequency
+	26,  // 82: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule.day_of_week:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekDay
+	28,  // 83: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule.week_index:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWeekIndex
+	55,  // 84: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowSchedule.not_allowed:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMaintenanceWindowNotAllowed
+	81,  // 85: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterOmsAgent.log_analytics_workspace_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 86: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterMicrosoftDefender.log_analytics_workspace_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 87: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIngressApplicationGateway.gateway_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 88: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterIngressApplicationGateway.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 89: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWebAppRouting.dns_zone_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29,  // 90: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWebAppRouting.default_nginx_controller:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNginxDefaultController
+	30,  // 91: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshProfile.mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshMode
+	66,  // 92: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshProfile.certificate_authority:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthority
+	81,  // 93: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthority.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	81,  // 94: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyManagementService.key_vault_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	31,  // 95: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyManagementService.key_vault_network_access:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultNetworkAccess
+	32,  // 96: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile.license:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsLicense
+	73,  // 97: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile.gmsa:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsGmsa
+	33,  // 98: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile.artifact_source:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapArtifactSource
+	81,  // 99: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile.container_registry_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34,  // 100: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile.mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningMode
+	35,  // 101: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile.default_node_pools:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningDefaultPools
+	102, // [102:102] is the sub-list for method output_type
+	102, // [102:102] is the sub-list for method input_type
+	102, // [102:102] is the sub-list for extension type_name
+	102, // [102:102] is the sub-list for extension extendee
+	0,   // [0:102] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_init() }
@@ -852,13 +7327,17 @@ func file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_init() {
 	if File_dev_planton_provider_azure_azureakscluster_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[16].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_msgTypes[31].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   6,
+			NumEnums:      36,
+			NumMessages:   45,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

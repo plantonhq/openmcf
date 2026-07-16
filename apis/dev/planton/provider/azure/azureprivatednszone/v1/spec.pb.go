@@ -24,42 +24,40 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzurePrivateDnsZoneSpec** defines the configuration for creating an Azure
-// Private DNS Zone with a Virtual Network link.
+// **AzurePrivateDnsZoneSpec** defines the configuration for creating an
+// Azure Private DNS zone: name resolution inside virtual networks without
+// running a DNS server. Private DNS zones serve two primary scenarios:
 //
-// Azure Private DNS provides name resolution within a virtual network without
-// needing a custom DNS solution. Private DNS zones are used for two primary
-// scenarios:
+//  1. **Private Link DNS resolution** -- zones like
+//     "privatelink.postgres.database.azure.com" enable automatic DNS
+//     resolution for Azure Private Endpoints. When a private endpoint is
+//     created for an Azure PaaS service, its private IP is registered in the
+//     corresponding privatelink zone, so VNet-connected clients resolve the
+//     service's FQDN to its private IP instead of its public one.
 //
-//  1. **Private Link DNS resolution** -- Zones like "privatelink.postgres.database.azure.com"
-//     enable automatic DNS resolution for Azure Private Endpoints. When a private
-//     endpoint is created for an Azure PaaS service, its private IP is registered
-//     in the corresponding privatelink zone, allowing VNet-connected clients to
-//     resolve the service's FQDN to its private IP instead of its public IP.
+//  2. **Custom internal DNS** -- zones like "corp.internal" provide internal
+//     name resolution for VMs, containers, and other resources.
 //
-//  2. **Custom internal DNS** -- Zones like "contoso.internal" or "corp.local"
-//     provide internal name resolution for VMs, containers, and other resources
-//     within a VNet. When `registration_enabled` is true on the VNet link, Azure
-//     auto-registers A records for VMs in the linked VNet.
+// The zone is deliberately just the zone -- a global record container with
+// no reach of its own. Which networks can resolve it is declared through
+// AzurePrivateDnsZoneVirtualNetworkLink resources referencing this zone's
+// zone_id output: one link per network, added and removed without touching
+// the zone. A zone with no links answers nobody, so every deployment pairs
+// the zone with at least one link.
 //
-// This component bundles the private DNS zone with a single VNet link per DD03
-// (Composite Bundling Rules): a private DNS zone without a VNet link is unreachable
-// from the VNet and serves no purpose.
-//
-// **Note:** Private DNS zones are global Azure resources -- they have no region.
-// This is why this spec omits the `region` field that other Azure resources include.
-//
-// **Known limitation:** This component creates one VNet link per zone instance.
-// For hub-spoke topologies requiring links to multiple VNets, deploy separate
-// instances or use a future dedicated VNet link resource.
+// **Note:** Private DNS zones are global Azure resources -- they have no
+// region. This is why this spec omits the `region` field that other Azure
+// resources include.
 type AzurePrivateDnsZoneSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Group where the Private DNS Zone will be created.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
+	// The Azure resource group the private DNS zone will be created in.
+	// Can be a literal resource-group name or a reference to an
+	// AzureResourceGroup's name output.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// The name of the Private DNS Zone.
-	// Must be a valid DNS domain name. For Private Link scenarios, this must match
-	// the Azure-defined privatelink zone name for the target service.
+	// The name of the private DNS zone. Must be a valid DNS domain name;
+	// changing it replaces the zone and every record in it. For Private Link
+	// scenarios, this must match the Azure-defined privatelink zone name for
+	// the target service.
 	//
 	// Common Private Link zone names:
 	// - "privatelink.postgres.database.azure.com" -- PostgreSQL Flexible Server
@@ -70,28 +68,23 @@ type AzurePrivateDnsZoneSpec struct {
 	// - "privatelink.blob.core.windows.net" -- Azure Blob Storage
 	// - "privatelink.vaultcore.azure.net" -- Azure Key Vault
 	//
-	// For custom internal DNS, use any valid domain (e.g., "contoso.internal").
+	// For custom internal DNS, use any valid domain (e.g., "corp.internal").
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// The Azure Resource Manager ID of the Virtual Network to link to this zone.
-	// The VNet link enables DNS resolution of records in this zone from resources
-	// within the linked VNet. Without a VNet link, the zone is unreachable.
-	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name}
-	VnetId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=vnet_id,json=vnetId,proto3" json:"vnet_id,omitempty"`
-	// Whether to enable auto-registration of VM DNS records in the linked VNet.
-	//
-	// When true, Azure automatically creates and removes A records in this zone
-	// for virtual machines in the linked VNet. This is useful for custom internal
-	// DNS zones (e.g., "contoso.internal") where you want VMs to be automatically
-	// discoverable by hostname.
-	//
-	// For Private Link zones (e.g., "privatelink.postgres.database.azure.com"),
-	// this should remain false (the default). Private endpoint DNS records are
-	// managed by the private endpoint resource itself, not by auto-registration.
-	//
-	// Default: false
-	RegistrationEnabled *bool `protobuf:"varint,4,opt,name=registration_enabled,json=registrationEnabled,proto3,oneof" json:"registration_enabled,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Customize the zone's Start of Authority record. Nearly every
+	// deployment leaves this unset and takes Azure's defaults; set it only
+	// when operational tooling requires a specific contact email or
+	// negative-caching behavior. The SOA record is created with the zone and
+	// cannot be customized afterwards (changing this replaces the zone).
+	SoaRecord *AzurePrivateDnsZoneSoaRecord `protobuf:"bytes,3,opt,name=soa_record,json=soaRecord,proto3" json:"soa_record,omitempty"`
+	// Free-form tags applied to the zone, merged over the Planton-derived
+	// resource tags (organization, environment, resource id); a user tag
+	// with the same key wins. Tags are Azure's governance surface -- Azure
+	// Policy enforces them and Microsoft Cost Management groups by them --
+	// so carry your org's ownership/cost-center conventions here. Updatable
+	// in place.
+	Tags          map[string]string `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AzurePrivateDnsZoneSpec) Reset() {
@@ -138,32 +131,166 @@ func (x *AzurePrivateDnsZoneSpec) GetName() string {
 	return ""
 }
 
-func (x *AzurePrivateDnsZoneSpec) GetVnetId() *v1.StringValueOrRef {
+func (x *AzurePrivateDnsZoneSpec) GetSoaRecord() *AzurePrivateDnsZoneSoaRecord {
 	if x != nil {
-		return x.VnetId
+		return x.SoaRecord
 	}
 	return nil
 }
 
-func (x *AzurePrivateDnsZoneSpec) GetRegistrationEnabled() bool {
-	if x != nil && x.RegistrationEnabled != nil {
-		return *x.RegistrationEnabled
+func (x *AzurePrivateDnsZoneSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
 	}
-	return false
+	return nil
+}
+
+// Customization of the zone's Start of Authority (SOA) record. Field
+// defaults mirror what Azure creates when the block is omitted entirely.
+type AzurePrivateDnsZoneSoaRecord struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The email contact for the zone, in SOA host format (dots instead of
+	// "@", e.g. "azureprivatedns-host.microsoft.com" or
+	// "dnsadmin.contoso.com" for dnsadmin@contoso.com).
+	Email string `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	// Seconds a secondary considers the zone valid without a successful
+	// refresh. Azure's default is 2419200 (28 days).
+	ExpireTime *int64 `protobuf:"varint,2,opt,name=expire_time,json=expireTime,proto3,oneof" json:"expire_time,omitempty"`
+	// Negative-caching TTL: how long resolvers cache a "name does not
+	// exist" answer, in seconds. Azure's default is 10. The one field with
+	// real operational impact -- raising it slows how quickly newly-created
+	// records become visible to clients that asked before the record
+	// existed.
+	MinimumTtl *int64 `protobuf:"varint,3,opt,name=minimum_ttl,json=minimumTtl,proto3,oneof" json:"minimum_ttl,omitempty"`
+	// Seconds between secondary refresh attempts. Azure's default is 3600.
+	RefreshTime *int64 `protobuf:"varint,4,opt,name=refresh_time,json=refreshTime,proto3,oneof" json:"refresh_time,omitempty"`
+	// Seconds a secondary waits before retrying a failed refresh. Azure's
+	// default is 300.
+	RetryTime *int64 `protobuf:"varint,5,opt,name=retry_time,json=retryTime,proto3,oneof" json:"retry_time,omitempty"`
+	// TTL of the SOA record itself, in seconds. Azure's default is 3600.
+	Ttl *int64 `protobuf:"varint,6,opt,name=ttl,proto3,oneof" json:"ttl,omitempty"`
+	// Tags applied to the SOA record set (distinct from the zone's own
+	// tags). Rarely used; exists because ARM models record-set tags.
+	Tags          map[string]string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzurePrivateDnsZoneSoaRecord) Reset() {
+	*x = AzurePrivateDnsZoneSoaRecord{}
+	mi := &file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzurePrivateDnsZoneSoaRecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzurePrivateDnsZoneSoaRecord) ProtoMessage() {}
+
+func (x *AzurePrivateDnsZoneSoaRecord) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzurePrivateDnsZoneSoaRecord.ProtoReflect.Descriptor instead.
+func (*AzurePrivateDnsZoneSoaRecord) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AzurePrivateDnsZoneSoaRecord) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *AzurePrivateDnsZoneSoaRecord) GetExpireTime() int64 {
+	if x != nil && x.ExpireTime != nil {
+		return *x.ExpireTime
+	}
+	return 0
+}
+
+func (x *AzurePrivateDnsZoneSoaRecord) GetMinimumTtl() int64 {
+	if x != nil && x.MinimumTtl != nil {
+		return *x.MinimumTtl
+	}
+	return 0
+}
+
+func (x *AzurePrivateDnsZoneSoaRecord) GetRefreshTime() int64 {
+	if x != nil && x.RefreshTime != nil {
+		return *x.RefreshTime
+	}
+	return 0
+}
+
+func (x *AzurePrivateDnsZoneSoaRecord) GetRetryTime() int64 {
+	if x != nil && x.RetryTime != nil {
+		return *x.RetryTime
+	}
+	return 0
+}
+
+func (x *AzurePrivateDnsZoneSoaRecord) GetTtl() int64 {
+	if x != nil && x.Ttl != nil {
+		return *x.Ttl
+	}
+	return 0
+}
+
+func (x *AzurePrivateDnsZoneSoaRecord) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
 }
 
 var File_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/azure/azureprivatednszone/v1/spec.proto\x121dev.planton.provider.azure.azureprivatednszone.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf4\x04\n" +
+	"<dev/planton/provider/azure/azureprivatednszone/v1/spec.proto\x121dev.planton.provider.azure.azureprivatednszone.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb4\x05\n" +
 	"\x17AzurePrivateDnsZoneSpec\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xf9\x01\n" +
-	"\x04name\x18\x02 \x01(\tB\xe4\x01\xbaH\xe0\x01\xba\x01\xd9\x01\n" +
-	"\tzone_name\x12hZone name must be a valid DNS domain (e.g., privatelink.postgres.database.azure.com or contoso.internal)\x1abthis.matches('^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$')\xc8\x01\x01R\x04name\x12r\n" +
-	"\avnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a\x16status.outputs.vnet_idR\x06vnetId\x12A\n" +
-	"\x14registration_enabled\x18\x04 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x13registrationEnabled\x88\x01\x01B\x17\n" +
-	"\x15_registration_enabledB\x98\x03\n" +
+	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xf6\x01\n" +
+	"\x04name\x18\x02 \x01(\tB\xe1\x01\xbaH\xdd\x01\xba\x01\xd6\x01\n" +
+	"\tzone_name\x12eZone name must be a valid DNS domain (e.g., privatelink.postgres.database.azure.com or corp.internal)\x1abthis.matches('^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$')\xc8\x01\x01R\x04name\x12n\n" +
+	"\n" +
+	"soa_record\x18\x03 \x01(\v2O.dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSoaRecordR\tsoaRecord\x12h\n" +
+	"\x04tags\x18\x04 \x03(\v2T.dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xba\x04\n" +
+	"\x1cAzurePrivateDnsZoneSoaRecord\x12 \n" +
+	"\x05email\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05email\x128\n" +
+	"\vexpire_time\x18\x02 \x01(\x03B\x12\xbaH\x04\"\x02(\x00\x8a\xa6\x1d\a2419200H\x00R\n" +
+	"expireTime\x88\x01\x01\x123\n" +
+	"\vminimum_ttl\x18\x03 \x01(\x03B\r\xbaH\x04\"\x02(\x00\x8a\xa6\x1d\x0210H\x01R\n" +
+	"minimumTtl\x88\x01\x01\x127\n" +
+	"\frefresh_time\x18\x04 \x01(\x03B\x0f\xbaH\x04\"\x02(\x00\x8a\xa6\x1d\x043600H\x02R\vrefreshTime\x88\x01\x01\x122\n" +
+	"\n" +
+	"retry_time\x18\x05 \x01(\x03B\x0e\xbaH\x04\"\x02(\x00\x8a\xa6\x1d\x03300H\x03R\tretryTime\x88\x01\x01\x12,\n" +
+	"\x03ttl\x18\x06 \x01(\x03B\x15\xbaH\n" +
+	"\"\b\x18\xff\xff\xff\xff\a(\x00\x8a\xa6\x1d\x043600H\x04R\x03ttl\x88\x01\x01\x12m\n" +
+	"\x04tags\x18\a \x03(\v2Y.dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSoaRecord.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x0e\n" +
+	"\f_expire_timeB\x0e\n" +
+	"\f_minimum_ttlB\x0f\n" +
+	"\r_refresh_timeB\r\n" +
+	"\v_retry_timeB\x06\n" +
+	"\x04_ttlB\x98\x03\n" +
 	"5com.dev.planton.provider.azure.azureprivatednszone.v1B\tSpecProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureprivatednszone/v1;azureprivatednszonev1\xa2\x02\x05DPPAA\xaa\x021Dev.Planton.Provider.Azure.Azureprivatednszone.V1\xca\x021Dev\\Planton\\Provider\\Azure\\Azureprivatednszone\\V1\xe2\x02=Dev\\Planton\\Provider\\Azure\\Azureprivatednszone\\V1\\GPBMetadata\xea\x026Dev::Planton::Provider::Azure::Azureprivatednszone::V1b\x06proto3"
 
 var (
@@ -178,19 +305,24 @@ func file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_rawDescGZ
 	return file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_goTypes = []any{
-	(*AzurePrivateDnsZoneSpec)(nil), // 0: dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSpec
-	(*v1.StringValueOrRef)(nil),     // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AzurePrivateDnsZoneSpec)(nil),      // 0: dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSpec
+	(*AzurePrivateDnsZoneSoaRecord)(nil), // 1: dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSoaRecord
+	nil,                                  // 2: dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSpec.TagsEntry
+	nil,                                  // 3: dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSoaRecord.TagsEntry
+	(*v1.StringValueOrRef)(nil),          // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSpec.vnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	4, // 0: dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSpec.soa_record:type_name -> dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSoaRecord
+	2, // 2: dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSpec.tags:type_name -> dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSpec.TagsEntry
+	3, // 3: dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSoaRecord.tags:type_name -> dev.planton.provider.azure.azureprivatednszone.v1.AzurePrivateDnsZoneSoaRecord.TagsEntry
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_init() }
@@ -198,14 +330,14 @@ func file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_init() {
 	if File_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto != nil {
 		return
 	}
-	file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

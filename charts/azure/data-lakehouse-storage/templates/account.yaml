@@ -1,0 +1,104 @@
+# The lake's storage account: hierarchical namespace (ADLS Gen2) so
+# analytics engines get real directories, POSIX ACLs, and atomic
+# renames -- the abfss:// surface Spark, Databricks, and Synapse
+# expect. Zone-redundant replication: a zone outage is not a data-lake
+# outage.
+#
+# Data-protection posture, stated honestly: HNS accounts cannot carry
+# blob versioning (and therefore neither point-in-time restore) --
+# Azure's platform contract, enforced at the spec level. What a lake
+# gets instead: blob AND container soft delete (the recycle bin below)
+# plus the lifecycle economics in lifecycle_rules. Teach downstream
+# writers to treat raw data as immutable landings, not mutable state.
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageAccount
+metadata:
+  name: "{{ values.env }}-lakehouse-store"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-lakehouse"
+      fieldPath: status.outputs.resource_group_name
+  accountName: "{{ values.storage_account_name }}"
+  isHnsEnabled: true
+  replicationType: ZRS
+  # The account's own identity: with CMK enabled, the encryption scopes
+  # below use it to unwrap the zone key in the vault. Harmless when the
+  # toggle is off, and always-on keeps both toggle branches valid.
+  identity:
+    type: SYSTEM_ASSIGNED
+  # Entra-first data plane: portal and tools default to identity auth,
+  # and nothing in the lake is ever anonymously public. The shared key
+  # itself stays enabled because ADLS filesystem provisioning is a
+  # data-plane operation that authenticates with it -- see the README's
+  # day-2 hardening note for turning it off after initial provisioning.
+  defaultToOauthAuthentication: true
+  allowNestedItemsToBePublic: false
+  blobProperties:
+    # The recycle bin -- the HNS lake's accidental-deletion story
+    # (versioning does not exist here). Blob soft delete catches file
+    # deletions; container soft delete catches a whole zone being
+    # dropped.
+    deleteRetentionPolicy:
+      days: {{ values.soft_delete_days }}
+    containerDeleteRetentionPolicy:
+      days: {{ values.soft_delete_days }}
+  # The lake's storage economics, as policy instead of scripts. Rules
+  # match blobs by zone prefix ({filesystem}/{path} -- the filesystem
+  # is the first path segment from the account's perspective).
+  lifecycleRules:
+    # Raw landings are written once, read during processing, then kept
+    # as history: hot -> cool -> archive on a modification clock.
+    - name: raw-zone-tiering
+      filters:
+        blobTypes:
+          - BLOCK_BLOB
+        prefixMatch:
+          - raw/
+      actions:
+        baseBlob:
+          tierToCoolAfterDaysSinceModificationGreaterThan: {{ values.raw_cool_after_days }}
+          tierToArchiveAfterDaysSinceModificationGreaterThan: {{ values.raw_archive_after_days }}
+    # The sandbox is scratch space -- an expiry keeps experiments from
+    # silently becoming permanent infrastructure. Curated carries no
+    # rule: it is the zone consumers query, and it stays hot.
+    - name: sandbox-expiry
+      filters:
+        blobTypes:
+          - BLOCK_BLOB
+        prefixMatch:
+          - sandbox/
+      actions:
+        baseBlob:
+          deleteAfterDaysSinceModificationGreaterThan: {{ values.sandbox_ttl_days }}
+---
+# The audit trail: per-operation read/write/delete logs from the BLOB
+# SERVICE into the workspace. The target is the blob service's own ARM
+# id (the account-level id exposes only account metrics -- data-access
+# logs live on the service sub-resource).
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorDiagnosticSetting
+metadata:
+  name: "{{ values.env }}-lakehouse-audit"
+spec:
+  settingName: lake-data-access
+  targetResourceId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: "{{ values.env }}-lakehouse-store"
+      fieldPath: status.outputs.blob_service_id
+  logAnalyticsWorkspaceId:
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: "{{ values.env }}-lakehouse-logs"
+      fieldPath: status.outputs.workspace_id
+  # StorageRead + StorageWrite + StorageDelete -- every data-plane
+  # operation, with caller identity.
+  enabledLogs:
+    - categoryGroup: allLogs
+  # Transaction is the blob service's metric category (storage services
+  # do not expose an AllMetrics group).
+  enabledMetrics:
+    - category: Transaction

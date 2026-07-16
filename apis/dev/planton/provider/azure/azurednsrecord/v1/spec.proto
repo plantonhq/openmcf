@@ -6,126 +6,310 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
-// AzureDnsRecordSpec defines the configuration for creating a DNS record in an Azure DNS Zone.
-// This component creates individual DNS records (A, AAAA, CNAME, MX, TXT, etc.) within an existing zone.
+// **AzureDnsRecordSpec** defines one record set in an Azure public DNS
+// zone -- every value the zone answers for one (name, type) pair.
 //
-// Azure DNS records enable mapping domain names to IP addresses, other domains, or services.
-// Records are created within a DNS Zone that must already exist in an Azure Resource Group.
+// The record type is declared by which typed payload is present: set
+// exactly one of `a`, `aaaa`, `cname`, `mx`, `srv`, `caa`, `txt`, `ns`,
+// or `ptr`. Each payload carries the value shape DNS actually defines for
+// that type (MX entries are preference+exchange pairs, SRV entries are
+// priority/weight/port/target, CAA entries are flags/tag/value), so a
+// record can never be declared with a shape its type cannot hold.
+//
+// **Alias records**: A, AAAA, and CNAME payloads can point at an Azure
+// resource instead of carrying literal values (`target_resource_id`).
+// Azure then keeps the answer in sync with the resource -- when a Public
+// IP's address changes, the alias A record follows it automatically, with
+// no drift window and no stale-IP outage. Alias records also work at the
+// zone apex where CNAME is forbidden by DNS itself.
+//
+// **One record set per (name, type)**: Azure stores all values for a
+// (name, type) pair as one record set, so declare all of them in one
+// resource. A second AzureDnsRecord with the same name and type in the
+// same zone conflicts with this one rather than merging into it.
 message AzureDnsRecordSpec {
-  // Supported DNS record types for Azure DNS.
-  enum RecordType {
-    // Unspecified record type (invalid).
-    record_type_unspecified = 0;
-    // IPv4 address record.
-    A = 1;
-    // IPv6 address record.
-    AAAA = 2;
-    // Canonical name (alias) record.
-    CNAME = 3;
-    // Mail exchange record.
-    MX = 4;
-    // Text record (SPF, DKIM, verification, etc.).
-    TXT = 5;
-    // Service locator record.
-    SRV = 6;
-    // Nameserver record.
-    NS = 7;
-    // Pointer record (reverse DNS).
-    PTR = 8;
-    // Certificate Authority Authorization record.
-    CAA = 9;
-  }
-
-  // The Azure Resource Group where the DNS Record will be created.
-  // Can be a literal string or a reference to an AzureResourceGroup output.
+  // The Azure resource group the record's DNS zone lives in. Must address
+  // the SAME zone as zone_name -- Azure's management plane addresses
+  // record sets by (resource group, zone name, type, record name).
   dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
   ];
 
-  // The name of the DNS Zone where this record will be created.
-  // Can be provided as a literal value or referenced from an AzureDnsZone resource.
-  //
-  // When using value_from, the default kind is AzureDnsZone and the default field path
-  // is "status.outputs.zone_name", allowing you to wire this directly to a zone resource.
-  //
-  // Example literal: "example.com"
-  // Example value_from:
-  //   value_from:
-  //     name: my-azure-zone
+  // The name of the DNS zone this record is created in (e.g.
+  // "example.com"). Reference an AzureDnsZone's zone_name output, or pass
+  // the zone name of a zone managed outside Planton as a literal. Changing
+  // it replaces the record.
   dev.planton.shared.foreignkey.v1.StringValueOrRef zone_name = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureDnsZone,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_name"
   ];
 
-  // The DNS record type to create.
-  // Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA.
-  RecordType type = 3 [
+  // The record name, relative to the zone. Changing it replaces the
+  // record.
+  //   - "@" for the zone apex (example.com itself)
+  //   - "www" for www.example.com
+  //   - "api.v1" for api.v1.example.com
+  //   - "*" or "*.app" for wildcards
+  //   - underscore-led service names: "_dmarc", "_sip._tcp",
+  //     "asuid.myapp" (domain-verification records)
+  string name = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum.defined_only = true,
+    // Regex: "@", "*", or dot-separated labels of letters, digits,
+    // hyphens, and underscores (1-63 chars each), optionally led by a
+    // "*." wildcard label. Underscores are legal and load-bearing in DNS
+    // record names (SRV service names, DKIM/DMARC, verification records).
     (buf.validate.field).cel = {
-      id: "type.not_unspecified"
-      message: "type must be specified (cannot be record_type_unspecified)"
-      expression: "this != 0"
+      id: "azure_dns_record_name_format"
+      message: "Record name must be '@' for the zone apex, '*' (optionally '*.<name>') for wildcards, or dot-separated labels of lowercase letters, digits, hyphens, and underscores -- e.g. www, api.v1, _dmarc, _sip._tcp"
+      expression: "this == '@' || this == '*' || this.matches('^(\\\\*\\\\.)?[_a-z0-9](?:[_a-z0-9-]{0,61}[_a-z0-9])?(?:\\\\.[_a-z0-9](?:[_a-z0-9-]{0,61}[_a-z0-9])?)*$')"
     }
   ];
 
-  // The name of the DNS record (relative to the zone).
-  // Use "@" for zone apex (root domain) or specify a subdomain name.
-  // Examples:
-  //   - "@" for zone apex (example.com)
-  //   - "www" for subdomain (www.example.com)
-  //   - "api.v1" for nested subdomain (api.v1.example.com)
-  //   - "*" for wildcard (*.example.com)
-  string name = 4 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "name.valid_dns_label"
-      message: "name must be '@' for apex, '*' for wildcard, or a valid DNS label (lowercase alphanumeric with hyphens, dots allowed for nesting)"
-      expression: "this == '@' || this == '*' || this.matches('^[a-z0-9]([a-z0-9-\\\\.]*[a-z0-9])?$')"
-    }
-  ];
-
-  // The values/targets for the DNS record.
-  // Format depends on record type:
-  //   - A record: IPv4 addresses (e.g., ["192.0.2.1", "192.0.2.2"])
-  //   - AAAA record: IPv6 addresses (e.g., ["2001:db8::1"])
-  //   - CNAME record: Target hostname (e.g., ["target.example.com"])
-  //   - MX record: Mail server hostname (e.g., ["mail1.example.com", "mail2.example.com"])
-  //   - TXT record: Text values (e.g., ["v=spf1 include:_spf.google.com ~all"])
-  //   - NS record: Name server hostnames
-  //   - SRV record: Format "priority weight port target" (e.g., ["10 5 5060 sip.example.com"])
-  //   - CAA record: Format "flags tag value" (e.g., ["0 issue letsencrypt.org"])
-  // Multiple values create round-robin behavior for supported record types.
-  repeated string values = 5 [(buf.validate.field).repeated.min_items = 1];
-
-  // Time to live (TTL) for the DNS record in seconds.
-  // Determines how long resolvers should cache this record.
-  // Common values: 60 (1 min), 300 (5 min), 3600 (1 hour), 86400 (1 day).
-  // Default: 300 seconds (5 minutes).
-  optional int32 ttl_seconds = 6 [
+  // Time to live in seconds: how long resolvers may cache this record.
+  // Low TTLs (60-300) make changes visible quickly at the cost of more
+  // queries; long TTLs (3600+) suit stable records like MX. Azure has no
+  // server-side default -- Planton applies 300 (5 minutes) when unset.
+  optional int32 ttl_seconds = 4 [
     (dev.planton.shared.options.default) = "300",
     (buf.validate.field).int32 = {
-      gte: 1
+      gte: 0
       lte: 2147483647
     }
   ];
 
-  // MX record specific: Priority value for mail exchange records.
-  // Lower values indicate higher priority. Required for MX records.
-  // Common values: 10 (primary), 20 (secondary), 30 (tertiary).
-  // Only applicable when type is MX.
-  optional int32 mx_priority = 7 [(buf.validate.field).int32 = {
-    gte: 0
-    lte: 65535
-  }];
+  // Free-form tags applied to the record set (stored as ARM record-set
+  // metadata), merged over the Planton-derived resource tags; a user tag
+  // with the same key wins. Updatable in place.
+  map<string, string> tags = 5;
 
-  // Cross-field validation: mx_priority should only be set for MX records
+  // IPv4 address record. Set exactly one payload field on this spec.
+  AzureDnsARecord a = 6;
+
+  // IPv6 address record. Set exactly one payload field on this spec.
+  AzureDnsAaaaRecord aaaa = 7;
+
+  // Canonical-name (alias) record. Set exactly one payload field on this
+  // spec. DNS forbids CNAME at the zone apex -- use an alias A/AAAA
+  // record (target_resource_id) to point the apex at an Azure resource.
+  AzureDnsCnameRecord cname = 8;
+
+  // Mail-exchange entries: one per mail server, each with its own
+  // preference. Set exactly one payload field on this spec.
+  repeated AzureDnsMxEntry mx = 9;
+
+  // Service-locator entries (SIP, XMPP, LDAP, ...). The record NAME
+  // carries the service and protocol ("_sip._tcp"). Set exactly one
+  // payload field on this spec.
+  repeated AzureDnsSrvEntry srv = 10;
+
+  // Certificate-authority-authorization entries: which CAs may issue
+  // certificates for this name. Set exactly one payload field on this
+  // spec.
+  repeated AzureDnsCaaEntry caa = 11;
+
+  // Text values (SPF, DKIM, DMARC, domain verification). Each value may
+  // be up to 4096 characters -- Azure transparently splits long values
+  // into the 254-character strings DNS requires and reassembles them on
+  // read. Values are references or literals and may mix freely in one
+  // record set: reference another resource's output when the value is
+  // minted at deploy time (an AzureFrontDoorCustomDomain's
+  // validation_token published at `_dnsauth.<host>`), pass literals for
+  // everything hand-authored (SPF policies, DKIM keys). No kind dominates
+  // TXT values, so references declare their kind explicitly. Set exactly
+  // one payload field on this spec.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef txt = 12;
+
+  // Name-server hostnames, for delegating a CHILD subdomain to another
+  // zone's name servers (e.g. "team" NS records pointing at the
+  // team.example.com zone's assigned servers). The zone's own apex NS
+  // records are Azure-managed -- do not declare them. Set exactly one
+  // payload field on this spec.
+  repeated string ns = 13 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Pointer hostnames for reverse DNS (IP-to-name, in in-addr.arpa /
+  // ip6.arpa zones). Set exactly one payload field on this spec.
+  repeated string ptr = 14 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // The record type is whichever payload is present -- requiring exactly
+  // one keeps a record from being declared with two types (Azure stores
+  // each type as its own record set) or with none.
   option (buf.validate.message).cel = {
-    id: "spec.mx_priority_for_mx_records"
-    message: "mx_priority is only applicable for MX record type"
-    expression: "!has(this.mx_priority) || this.type == 4"
+    id: "azure_dns_record_exactly_one_payload"
+    message: "Set exactly one record payload -- a, aaaa, cname, mx, srv, caa, txt, ns, or ptr -- the payload determines the record type"
+    expression: "(has(this.a) ? 1 : 0) + (has(this.aaaa) ? 1 : 0) + (has(this.cname) ? 1 : 0) + (this.mx.size() > 0 ? 1 : 0) + (this.srv.size() > 0 ? 1 : 0) + (this.caa.size() > 0 ? 1 : 0) + (this.txt.size() > 0 ? 1 : 0) + (this.ns.size() > 0 ? 1 : 0) + (this.ptr.size() > 0 ? 1 : 0) == 1"
   };
+}
+
+// IPv4 address record: literal addresses XOR an Azure-resource alias.
+message AzureDnsARecord {
+  // The IPv4 addresses this name answers with. Multiple addresses
+  // round-robin. Mutually exclusive with target_resource_id.
+  repeated string addresses = 1 [(buf.validate.field).repeated.items.string.ipv4 = true];
+
+  // Alias target: the ARM ID of an Azure resource whose IPv4 address
+  // this record should track automatically (a Public IP, a Traffic
+  // Manager profile, another record set). Reference the resource's ARM-id
+  // output with an explicit valueFrom (e.g. an AzurePublicIp's
+  // public_ip_id) -- no kind dominates alias targets, so there is no
+  // default. Mutually exclusive with addresses.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_resource_id = 2;
+
+  option (buf.validate.message).cel = {
+    id: "azure_dns_a_record_addresses_xor_alias"
+    message: "Provide either literal IPv4 addresses or an alias target_resource_id, not both and not neither -- an alias record delegates its answer to the referenced Azure resource"
+    expression: "(this.addresses.size() > 0 ? 1 : 0) + (has(this.target_resource_id) ? 1 : 0) == 1"
+  };
+}
+
+// IPv6 address record: literal addresses XOR an Azure-resource alias.
+message AzureDnsAaaaRecord {
+  // The IPv6 addresses this name answers with (e.g. "2001:db8::1" --
+  // Azure normalizes the compressed form). Multiple addresses
+  // round-robin. Mutually exclusive with target_resource_id.
+  repeated string addresses = 1 [(buf.validate.field).repeated.items.string.ipv6 = true];
+
+  // Alias target: the ARM ID of an Azure resource whose IPv6 address this
+  // record should track automatically. Reference the resource's ARM-id
+  // output with an explicit valueFrom -- no kind dominates alias targets,
+  // so there is no default. Mutually exclusive with addresses.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_resource_id = 2;
+
+  option (buf.validate.message).cel = {
+    id: "azure_dns_aaaa_record_addresses_xor_alias"
+    message: "Provide either literal IPv6 addresses or an alias target_resource_id, not both and not neither -- an alias record delegates its answer to the referenced Azure resource"
+    expression: "(this.addresses.size() > 0 ? 1 : 0) + (has(this.target_resource_id) ? 1 : 0) == 1"
+  };
+}
+
+// Canonical-name record: one target hostname XOR an Azure-resource alias.
+message AzureDnsCnameRecord {
+  // The hostname this name is an alias for, at most 253 characters (e.g.
+  // "myapp.azurefd.net"). A trailing dot is optional -- Azure treats the
+  // value as fully qualified either way. A reference or a literal:
+  // reference another resource's hostname output when the target is
+  // minted at deploy time (an AzureFrontDoorEndpoint's hash-suffixed
+  // host_name), pass a literal for externally-known hostnames. No kind
+  // dominates CNAME targets, so references declare their kind explicitly.
+  // Mutually exclusive with target_resource_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef value = 1;
+
+  // Alias target: the ARM ID of an Azure resource this CNAME should
+  // track (a Traffic Manager profile, CDN endpoint, or Front Door
+  // endpoint). Reference the resource's ARM-id output with an explicit
+  // valueFrom -- no kind dominates alias targets, so there is no default.
+  // Mutually exclusive with value.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_resource_id = 2;
+
+  option (buf.validate.message).cel = {
+    id: "azure_dns_cname_record_value_xor_alias"
+    message: "Provide either the target hostname in value or an alias target_resource_id, not both and not neither -- a CNAME answers with exactly one canonical name"
+    expression: "(has(this.value) ? 1 : 0) + (has(this.target_resource_id) ? 1 : 0) == 1"
+  };
+}
+
+// One mail server in an MX record set.
+message AzureDnsMxEntry {
+  // Delivery preference: mail servers are tried lowest-preference first,
+  // equal preferences load-balance. Common convention: 10 primary, 20
+  // secondary. 0 is legal (and used by the "null MX" no-mail convention).
+  optional int32 preference = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 65535
+    }
+  ];
+
+  // The mail server hostname (e.g. "mail.example.com" or
+  // "aspmx.l.google.com").
+  string exchange = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253
+  ];
+}
+
+// One service endpoint in an SRV record set.
+message AzureDnsSrvEntry {
+  // Endpoint precedence: clients try lowest priority first. 0 is the
+  // conventional primary.
+  optional int32 priority = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 65535
+    }
+  ];
+
+  // Relative weight for load-balancing among endpoints of equal
+  // priority. 0 means "no preference" and is legal when only one
+  // endpoint exists at a priority.
+  optional int32 weight = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 65535
+    }
+  ];
+
+  // The TCP/UDP port the service listens on (e.g. 5060 for SIP).
+  optional int32 port = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 65535
+    }
+  ];
+
+  // The hostname providing the service (e.g. "sip.example.com"). Must be
+  // a hostname with its own A/AAAA record, never an IP address.
+  string target = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253
+  ];
+}
+
+// One certificate-authority authorization in a CAA record set.
+message AzureDnsCaaEntry {
+  // The CAA critical flag: 0 (the near-universal value) lets CAs ignore
+  // unrecognized tags; 128 tells CAs to refuse issuance if they do not
+  // understand the tag.
+  optional int32 flags = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 255
+    }
+  ];
+
+  // What this entry authorizes or configures.
+  AzureDnsCaaTag tag = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  // The tag's value: the CA domain for ISSUE/ISSUEWILD (e.g.
+  // "letsencrypt.org", or ";" to forbid issuance), a "mailto:" or https
+  // URL for IODEF, an email address for CONTACTEMAIL.
+  string value = 3 [(buf.validate.field).required = true];
+}
+
+// The property a CAA entry sets. These are the four tags Azure DNS
+// accepts (case-sensitive lowercase on the wire).
+enum AzureDnsCaaTag {
+  azure_dns_caa_tag_unspecified = 0;
+
+  // Authorize a CA to issue single-name certificates for this name.
+  ISSUE = 1;
+
+  // Authorize a CA to issue wildcard certificates for this name.
+  ISSUEWILD = 2;
+
+  // Where CAs report policy violations (a "mailto:" or https URL).
+  IODEF = 3;
+
+  // A contact address CAs may use to reach the domain holder.
+  CONTACTEMAIL = 4;
 }

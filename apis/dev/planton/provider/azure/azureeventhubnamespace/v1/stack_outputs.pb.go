@@ -7,6 +7,7 @@
 package azureeventhubnamespacev1
 
 import (
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -21,51 +22,63 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzureEventHubNamespaceStackOutputs** captures the outputs of provisioning
-// an Azure Event Hubs namespace with its event hubs and consumer groups.
+// **AzureEventHubNamespaceStackOutputs** captures the outputs of
+// provisioning an Azure Event Hubs namespace.
 //
-// The primary outputs are `namespace_id` for resource identification and
-// `primary_connection_string` / `primary_key` for authentication. The
-// `event_hub_ids` map provides individual entity resource IDs for downstream
-// references and monitoring.
+// `namespace_id` is the ARM identity every child kind references
+// (AzureEventHub, AzureEventHubAuthorizationRule, AzureEventHubSchemaGroup,
+// AzureEventHubDisasterRecoveryConfig,
+// AzureEventHubNamespaceCustomerManagedKey) and the scope for
+// namespace-wide data-plane role assignments.
 //
-// Applications connect to Event Hubs using the `primary_connection_string`
-// which includes the namespace endpoint and the SAS key from the default
-// `RootManageSharedAccessKey` authorization rule. This is the standard
-// authentication method for most streaming workloads.
-//
-// For production workloads requiring fine-grained access control, consider
-// creating per-event-hub authorization rules or using Azure AD (Entra ID)
-// RBAC-based authentication instead of the namespace-level SAS key.
+// The `default_*` outputs carry the root SAS rule's
+// (RootManageSharedAccessKey) credentials -- full manage rights over the
+// whole namespace. They exist for quick starts and break-glass use;
+// production workloads should mint least-privilege credentials with
+// AzureEventHubAuthorizationRule, or go keyless
+// (local_authentication_enabled false + Entra data-plane roles), which
+// makes these keys unusable.
 type AzureEventHubNamespaceStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Manager ID of the Event Hubs namespace.
+	// The Azure Resource Manager ID of the namespace.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.EventHub/namespaces/{name}
 	//
-	// Referenced by AzurePrivateEndpoint (private_connection_resource_id)
-	// for establishing private connectivity.
-	// Subresource name for private endpoint: ["namespace"].
+	// The parent reference for every Event Hubs child kind, the scope for
+	// namespace-wide data-plane RBAC, and the private-endpoint target
+	// (subresource name: "namespace").
 	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
-	// The name of the Event Hubs namespace.
+	// The namespace name -- what SDKs, connection strings, and the Kafka
+	// bootstrap address identify the namespace by. The AMQP/Kafka host is
+	// {namespace_name}.servicebus.windows.net (Event Hubs shares the
+	// Service Bus DNS zone).
 	NamespaceName string `protobuf:"bytes,2,opt,name=namespace_name,json=namespaceName,proto3" json:"namespace_name,omitempty"`
-	// The primary connection string from the default RootManageSharedAccessKey.
+	// The system-assigned identity's principal (object) ID -- grant this
+	// identity access on other resources (e.g. Storage for capture, Key
+	// Vault for CMK). Empty unless the identity block includes
+	// SYSTEM_ASSIGNED.
+	IdentityPrincipalId string `protobuf:"bytes,3,opt,name=identity_principal_id,json=identityPrincipalId,proto3" json:"identity_principal_id,omitempty"`
+	// The root SAS rule's primary connection string (full manage rights on
+	// the namespace). Secret-bearing: it embeds the primary key.
 	// Format: Endpoint=sb://{name}.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey={key}
-	//
-	// Ready-to-use connection string for Event Hubs SDKs, Kafka clients,
-	// and Azure Functions Event Hub triggers.
-	PrimaryConnectionString string `protobuf:"bytes,3,opt,name=primary_connection_string,json=primaryConnectionString,proto3" json:"primary_connection_string,omitempty"`
-	// The primary SAS key from the default RootManageSharedAccessKey.
-	// Used for manual SAS token generation or when connecting with
-	// libraries that accept key and key-name separately.
-	PrimaryKey string `protobuf:"bytes,4,opt,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
-	// Map of event hub names to their Azure Resource Manager IDs.
-	// Format: { "my-events": "/subscriptions/.../eventhubs/my-events" }
-	//
-	// Useful for downstream references, monitoring dashboards, and
-	// Azure Functions Event Hub trigger configuration.
-	EventHubIds   map[string]string `protobuf:"bytes,5,rep,name=event_hub_ids,json=eventHubIds,proto3" json:"event_hub_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DefaultPrimaryConnectionString string `protobuf:"bytes,4,opt,name=default_primary_connection_string,json=defaultPrimaryConnectionString,proto3" json:"default_primary_connection_string,omitempty"`
+	// The root SAS rule's secondary connection string -- the rotation
+	// partner: move clients here, regenerate the primary, move back.
+	DefaultSecondaryConnectionString string `protobuf:"bytes,5,opt,name=default_secondary_connection_string,json=defaultSecondaryConnectionString,proto3" json:"default_secondary_connection_string,omitempty"`
+	// The root SAS rule's primary key, for SDKs that take the key and key
+	// name separately or mint their own SAS tokens.
+	DefaultPrimaryKey string `protobuf:"bytes,6,opt,name=default_primary_key,json=defaultPrimaryKey,proto3" json:"default_primary_key,omitempty"`
+	// The root SAS rule's secondary key -- the rotation partner.
+	DefaultSecondaryKey string `protobuf:"bytes,7,opt,name=default_secondary_key,json=defaultSecondaryKey,proto3" json:"default_secondary_key,omitempty"`
+	// The root SAS rule's primary connection string addressing the geo-DR
+	// alias hostname instead of the namespace hostname. Only meaningful
+	// when the namespace carries an AzureEventHubDisasterRecoveryConfig
+	// pairing; empty otherwise. Clients configured with the alias keep
+	// working across a failover.
+	DefaultPrimaryConnectionStringAlias string `protobuf:"bytes,8,opt,name=default_primary_connection_string_alias,json=defaultPrimaryConnectionStringAlias,proto3" json:"default_primary_connection_string_alias,omitempty"`
+	// The secondary alias connection string -- the rotation partner.
+	DefaultSecondaryConnectionStringAlias string `protobuf:"bytes,9,opt,name=default_secondary_connection_string_alias,json=defaultSecondaryConnectionStringAlias,proto3" json:"default_secondary_connection_string_alias,omitempty"`
+	unknownFields                         protoimpl.UnknownFields
+	sizeCache                             protoimpl.SizeCache
 }
 
 func (x *AzureEventHubNamespaceStackOutputs) Reset() {
@@ -112,42 +125,70 @@ func (x *AzureEventHubNamespaceStackOutputs) GetNamespaceName() string {
 	return ""
 }
 
-func (x *AzureEventHubNamespaceStackOutputs) GetPrimaryConnectionString() string {
+func (x *AzureEventHubNamespaceStackOutputs) GetIdentityPrincipalId() string {
 	if x != nil {
-		return x.PrimaryConnectionString
+		return x.IdentityPrincipalId
 	}
 	return ""
 }
 
-func (x *AzureEventHubNamespaceStackOutputs) GetPrimaryKey() string {
+func (x *AzureEventHubNamespaceStackOutputs) GetDefaultPrimaryConnectionString() string {
 	if x != nil {
-		return x.PrimaryKey
+		return x.DefaultPrimaryConnectionString
 	}
 	return ""
 }
 
-func (x *AzureEventHubNamespaceStackOutputs) GetEventHubIds() map[string]string {
+func (x *AzureEventHubNamespaceStackOutputs) GetDefaultSecondaryConnectionString() string {
 	if x != nil {
-		return x.EventHubIds
+		return x.DefaultSecondaryConnectionString
 	}
-	return nil
+	return ""
+}
+
+func (x *AzureEventHubNamespaceStackOutputs) GetDefaultPrimaryKey() string {
+	if x != nil {
+		return x.DefaultPrimaryKey
+	}
+	return ""
+}
+
+func (x *AzureEventHubNamespaceStackOutputs) GetDefaultSecondaryKey() string {
+	if x != nil {
+		return x.DefaultSecondaryKey
+	}
+	return ""
+}
+
+func (x *AzureEventHubNamespaceStackOutputs) GetDefaultPrimaryConnectionStringAlias() string {
+	if x != nil {
+		return x.DefaultPrimaryConnectionStringAlias
+	}
+	return ""
+}
+
+func (x *AzureEventHubNamespaceStackOutputs) GetDefaultSecondaryConnectionStringAlias() string {
+	if x != nil {
+		return x.DefaultSecondaryConnectionStringAlias
+	}
+	return ""
 }
 
 var File_dev_planton_provider_azure_azureeventhubnamespace_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azureeventhubnamespace_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Hdev/planton/provider/azure/azureeventhubnamespace/v1/stack_outputs.proto\x124dev.planton.provider.azure.azureeventhubnamespace.v1\"\x9b\x03\n" +
+	"Hdev/planton/provider/azure/azureeventhubnamespace/v1/stack_outputs.proto\x124dev.planton.provider.azure.azureeventhubnamespace.v1\x1a(dev/planton/shared/options/options.proto\"\xf4\x04\n" +
 	"\"AzureEventHubNamespaceStackOutputs\x12!\n" +
 	"\fnamespace_id\x18\x01 \x01(\tR\vnamespaceId\x12%\n" +
-	"\x0enamespace_name\x18\x02 \x01(\tR\rnamespaceName\x12:\n" +
-	"\x19primary_connection_string\x18\x03 \x01(\tR\x17primaryConnectionString\x12\x1f\n" +
-	"\vprimary_key\x18\x04 \x01(\tR\n" +
-	"primaryKey\x12\x8d\x01\n" +
-	"\revent_hub_ids\x18\x05 \x03(\v2i.dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNamespaceStackOutputs.EventHubIdsEntryR\veventHubIds\x1a>\n" +
-	"\x10EventHubIdsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xb5\x03\n" +
+	"\x0enamespace_name\x18\x02 \x01(\tR\rnamespaceName\x122\n" +
+	"\x15identity_principal_id\x18\x03 \x01(\tR\x13identityPrincipalId\x12O\n" +
+	"!default_primary_connection_string\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\x1edefaultPrimaryConnectionString\x12S\n" +
+	"#default_secondary_connection_string\x18\x05 \x01(\tB\x04\xa0\xa6\x1d\x01R defaultSecondaryConnectionString\x124\n" +
+	"\x13default_primary_key\x18\x06 \x01(\tB\x04\xa0\xa6\x1d\x01R\x11defaultPrimaryKey\x128\n" +
+	"\x15default_secondary_key\x18\a \x01(\tB\x04\xa0\xa6\x1d\x01R\x13defaultSecondaryKey\x12Z\n" +
+	"'default_primary_connection_string_alias\x18\b \x01(\tB\x04\xa0\xa6\x1d\x01R#defaultPrimaryConnectionStringAlias\x12^\n" +
+	")default_secondary_connection_string_alias\x18\t \x01(\tB\x04\xa0\xa6\x1d\x01R%defaultSecondaryConnectionStringAliasB\xb5\x03\n" +
 	"8com.dev.planton.provider.azure.azureeventhubnamespace.v1B\x11StackOutputsProtoP\x01Zogithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubnamespace/v1;azureeventhubnamespacev1\xa2\x02\x05DPPAA\xaa\x024Dev.Planton.Provider.Azure.Azureeventhubnamespace.V1\xca\x024Dev\\Planton\\Provider\\Azure\\Azureeventhubnamespace\\V1\xe2\x02@Dev\\Planton\\Provider\\Azure\\Azureeventhubnamespace\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Azure::Azureeventhubnamespace::V1b\x06proto3"
 
 var (
@@ -162,18 +203,16 @@ func file_dev_planton_provider_azure_azureeventhubnamespace_v1_stack_outputs_pro
 	return file_dev_planton_provider_azure_azureeventhubnamespace_v1_stack_outputs_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azureeventhubnamespace_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_azure_azureeventhubnamespace_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_azure_azureeventhubnamespace_v1_stack_outputs_proto_goTypes = []any{
 	(*AzureEventHubNamespaceStackOutputs)(nil), // 0: dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNamespaceStackOutputs
-	nil, // 1: dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNamespaceStackOutputs.EventHubIdsEntry
 }
 var file_dev_planton_provider_azure_azureeventhubnamespace_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNamespaceStackOutputs.event_hub_ids:type_name -> dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNamespaceStackOutputs.EventHubIdsEntry
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azureeventhubnamespace_v1_stack_outputs_proto_init() }
@@ -187,7 +226,7 @@ func file_dev_planton_provider_azure_azureeventhubnamespace_v1_stack_outputs_pro
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azureeventhubnamespace_v1_stack_outputs_proto_rawDesc), len(file_dev_planton_provider_azure_azureeventhubnamespace_v1_stack_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

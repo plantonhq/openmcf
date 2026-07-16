@@ -21,15 +21,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AzureDnsRecordStackOutputs captures the outputs from provisioning an Azure DNS Record.
-// These outputs can be referenced by other resources for wiring infrastructure together.
+// **AzureDnsRecordStackOutputs** captures the outputs from provisioning an
+// Azure DNS record set.
 type AzureDnsRecordStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Manager ID of the DNS record.
-	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/dnsZones/{zone}/{type}/{name}
+	// The Azure Resource Manager ID of the record set.
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/dnsZones/{zone}/{TYPE}/{name}
+	// where {TYPE} is the record type (A, AAAA, CNAME, MX, SRV, CAA, TXT,
+	// NS, PTR).
 	RecordId string `protobuf:"bytes,1,opt,name=record_id,json=recordId,proto3" json:"record_id,omitempty"`
-	// The fully qualified domain name (FQDN) for this record.
-	// Example: "www.example.com" or "example.com" for apex records.
+	// The fully qualified domain name of the record set, with a trailing
+	// dot as DNS writes it (e.g. "www.example.com." -- the zone apex is the
+	// zone name itself).
 	Fqdn          string `protobuf:"bytes,2,opt,name=fqdn,proto3" json:"fqdn,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

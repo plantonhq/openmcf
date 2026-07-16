@@ -12,8 +12,8 @@ go_library(
     deps = [
         "//apis/dev/planton/provider/azure/azurestorageaccount/v1:azurestorageaccount",
         "//apis/dev/planton/shared/cloudresourcekind",
+        "//pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider",
         "@com_github_pkg_errors//:errors",
-        "@com_github_pulumi_pulumi_azure_sdk_v6//go/azure",
         "@com_github_pulumi_pulumi_azure_sdk_v6//go/azure/storage",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
     ],

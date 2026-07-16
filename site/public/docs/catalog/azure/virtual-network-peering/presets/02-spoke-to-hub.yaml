@@ -1,0 +1,22 @@
+# Spoke-side peering: written ON the spoke, pointing AT the hub.
+# The reciprocal of 01-hub-to-spoke. Deploy both for every spoke pair.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetworkPeering
+metadata:
+  name: my-spoke1-to-hub
+spec:
+  # Name within the spoke VNet's peering list -- reciprocal of the hub name.
+  name: spoke1-to-hub
+  # LOCAL side: this spoke network.
+  virtualNetworkId:
+    valueFrom:
+      name: <spoke-vnet-resource-name>
+  # REMOTE side: the hub network.
+  remoteVirtualNetworkId:
+    valueFrom:
+      name: <hub-vnet-resource-name>
+  # Use the hub's gateway for on-premises transit. Requires allowGatewayTransit:
+  # true on the hub-to-spoke peering. Only one peering per network may set
+  # this; the spoke must have no gateway; incompatible with global peering.
+  # Remove this field (default false) for peering-only connectivity.
+  useRemoteGateways: true

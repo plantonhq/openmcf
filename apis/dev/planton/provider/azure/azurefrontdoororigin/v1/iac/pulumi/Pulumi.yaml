@@ -1,0 +1,3 @@
+name: azure-front-door-origin
+runtime: go
+description: Pulumi program for Azure Front Door origin

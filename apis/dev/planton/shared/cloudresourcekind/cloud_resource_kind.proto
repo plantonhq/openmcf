@@ -1036,176 +1036,962 @@ enum CloudResourceKind {
     id_prefix: "azrg"
     container_kind: true
   }];
+  // AzureResourceGroup is the only required parent: the cluster is created
+  // inside a referenced resource group. Subnet is optional on the default
+  // node pool (AKS provisions managed networking when unset).
   AzureAksCluster = 401 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "aks"
     container_kind: true
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureAksCluster is a prerequisite because a node pool attaches to an
+  // existing cluster by ARM ID; the resource group chains transitively.
   AzureAksNodePool = 402 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "aksnp"
+    prerequisites: [AzureAksCluster]
   }];
+  // AzureResourceGroup is a prerequisite because a container registry is
+  // created inside a resource group.
   AzureContainerRegistry = 403 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "acr"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because the DNS zone is created
+  // inside a referenced resource group that must already exist.
   AzureDnsZone = 404 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azdns"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because a key vault is created
+  // inside a referenced resource group in composed environments.
   AzureKeyVault = 405 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azkv"
+    prerequisites: [AzureResourceGroup]
   }];
-  AzureVpc = 406 [(kind_meta) = {
+  // AzureResourceGroup is a prerequisite because a virtual network is created
+  // inside a referenced resource group in composed environments.
+  AzureVirtualNetwork = 406 [(kind_meta) = {
     provider: azure
     version: v1
-    id_prefix: "azvpc"
+    id_prefix: "azvnet"
     container_kind: true
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because a NAT gateway is created
+  // inside a referenced resource group in composed environments.
   AzureNatGateway = 407 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "aznat"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureNetworkInterface is a prerequisite because a virtual machine
+  // attaches at least one NIC (the subnet, network, and resource group
+  // chain transitively through the NIC's own prerequisites).
   AzureVirtualMachine = 408 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azvm"
+    prerequisites: [AzureNetworkInterface]
   }];
+  // AzureResourceGroup is a prerequisite because a storage account is
+  // created inside a referenced resource group in composed environments.
   AzureStorageAccount = 409 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azsa"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureDnsZone is a prerequisite because a record set is created inside
+  // a referenced zone (the resource group chains transitively through the
+  // zone). Public DNS zone names are not globally unique, so a shared
+  // zone fixture is safe to recreate across scenarios.
   AzureDnsRecord = 410 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azdrec"
+    prerequisites: [AzureDnsZone]
   }];
+  // AzureVirtualNetwork is a prerequisite because a subnet is an ARM child
+  // of a referenced network -- the network must exist before the subnet can
+  // be written. (The resource group arrives transitively through the
+  // network's own prerequisite declaration.)
   AzureSubnet = 411 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azsub"
+    prerequisites: [AzureVirtualNetwork]
   }];
+  // AzureResourceGroup is a prerequisite because a network security group is
+  // created inside a referenced resource group in composed environments.
   AzureNetworkSecurityGroup = 412 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "aznsg"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because a public IP is created
+  // inside a referenced resource group in composed environments.
   AzurePublicIp = 413 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azpip"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureSubnet is a prerequisite because a private endpoint draws its
+  // private IP from a referenced subnet (the virtual network and resource
+  // group chain transitively through the subnet's own prerequisite). The
+  // connection target is polymorphic and the DNS zones / ASGs are optional,
+  // so none of those are prerequisites.
   AzurePrivateEndpoint = 414 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azpe"
+    prerequisites: [AzureSubnet]
   }];
+  // AzureResourceGroup is a prerequisite because a private DNS zone is created
+  // inside a referenced resource group in composed environments.
   AzurePrivateDnsZone = 415 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azpdns"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureSubnet is a prerequisite because a gateway cannot exist without
+  // its dedicated gateway_ip_configuration subnet (the network and
+  // resource group chain transitively through the subnet's own
+  // prerequisites); public frontends additionally reference a public IP,
+  // but private-only gateways are legal, so it is not a registry
+  // prerequisite.
   AzureApplicationGateway = 416 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azagw"
+    prerequisites: [AzureSubnet]
   }];
+  // AzureResourceGroup is a prerequisite because a load balancer is
+  // created inside a referenced resource group (frontends additionally
+  // reference subnets or public IPs, but neither is universally
+  // required, so they are not registry prerequisites).
   AzureLoadBalancer = 417 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azlb"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because a route table is created
+  // inside a referenced resource group in composed environments.
+  AzureRouteTable = 418 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azrt"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzurePrivateDnsZone and AzureVirtualNetwork are prerequisites because a
+  // virtual network link is a child resource of a referenced zone and binds
+  // it to a referenced network -- both must exist before the link can be
+  // written. (The resource group arrives transitively through the zone's and
+  // network's own prerequisite declarations.)
+  AzurePrivateDnsZoneVirtualNetworkLink = 419 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azpdnslink"
+    prerequisites: [
+      AzurePrivateDnsZone,
+      AzureVirtualNetwork
+    ]
+  }];
+  // AzureVirtualNetwork is a prerequisite because a peering is an ARM child
+  // of its local network and binds it to a remote network -- the local
+  // network must exist before the peering can be written. (The resource
+  // group arrives transitively through the network's own prerequisite
+  // declaration.)
+  AzureVirtualNetworkPeering = 420 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azpeer"
+    prerequisites: [AzureVirtualNetwork]
+  }];
+  // AzureResourceGroup is a prerequisite because a public IP prefix is
+  // created inside a referenced resource group in composed environments.
+  AzurePublicIpPrefix = 421 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azpippfx"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureSubnet is a prerequisite because a network interface's IP
+  // configurations deploy into a subnet (the virtual network and resource
+  // group chain transitively through the subnet's own prerequisite).
+  AzureNetworkInterface = 422 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "aznic"
+    prerequisites: [AzureSubnet]
+  }];
+  // AzureResourceGroup is a prerequisite because a managed disk is created
+  // inside a resource group.
+  AzureManagedDisk = 423 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azdisk"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureSubnet is a prerequisite because every scale-set instance's
+  // network interface deploys into a subnet (the virtual network and
+  // resource group chain transitively through the subnet's own
+  // prerequisite).
+  AzureVirtualMachineScaleSet = 424 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azvmss"
+    prerequisites: [AzureSubnet]
+  }];
+  // AzureKeyVault is a prerequisite because a key is a data-plane object
+  // inside a referenced vault -- the vault must exist before the key can be
+  // written (the resource group chains transitively through the vault's own
+  // prerequisite).
+  AzureKeyVaultKey = 425 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azkvkey"
+    prerequisites: [AzureKeyVault]
+  }];
+  // AzureKeyVault is a prerequisite because a certificate is a data-plane
+  // object inside a referenced vault -- the vault must exist before the
+  // certificate can be enrolled or imported (the resource group chains
+  // transitively through the vault's own prerequisite).
+  AzureKeyVaultCertificate = 426 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azkvcert"
+    prerequisites: [AzureKeyVault]
+  }];
+  // AzureResourceGroup is a prerequisite because a WAF policy is created
+  // inside a referenced resource group; the Application Gateways that
+  // attach the policy reference it, never the reverse.
+  AzureWebApplicationFirewallPolicy = 427 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azwafpol"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureResourceGroup is a prerequisite because an application security
+  // group is created inside a referenced resource group; network
+  // interfaces, scale-set IP configurations, and NSG security rules
+  // reference the group, never the reverse.
+  AzureApplicationSecurityGroup = 428 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azasg"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureKeyVaultKey is a prerequisite because a disk encryption set wraps
+  // customer data with a referenced key -- the key (and its vault, which
+  // chains transitively) must exist before the set can resolve the key URL
+  // at create time.
+  AzureDiskEncryptionSet = 429 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azdes"
+    prerequisites: [AzureKeyVaultKey]
+  }];
+  // AzureResourceGroup is a prerequisite because a server is created inside
+  // a referenced resource group (VNet injection additionally references a
+  // delegated subnet and a private DNS zone, but neither is universally
+  // required, so they are not registry prerequisites).
   AzurePostgresqlFlexibleServer = 430 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azpg"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because the cache is created inside
+  // a referenced resource group (VNet injection additionally references a
+  // dedicated subnet, but only the Premium tier supports it, so it is not a
+  // registry prerequisite).
   AzureRedisCache = 431 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azred"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because the account is created
+  // inside a referenced resource group.
   AzureCosmosdbAccount = 432 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azcdb"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because the logical server is
+  // created inside a referenced resource group.
   AzureMssqlServer = 433 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azmsql"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because a server is created inside
+  // a referenced resource group (VNet injection additionally references a
+  // delegated subnet and a private DNS zone, but neither is universally
+  // required, so they are not registry prerequisites).
   AzureMysqlFlexibleServer = 434 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azmysql"
+    prerequisites: [AzureResourceGroup]
   }];
+  // The parent logical server is referenced via server_id, not auto-deployed:
+  // E2E scenarios declare their own server fixture (minimal-server.yaml or
+  // the pool-attach chain through AzureMssqlElasticPool) so sequential
+  // subtests never destroy and recreate the same globally unique server_name.
+  AzureMssqlDatabase = 435 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmsqldb"
+  }];
+  // AzureMssqlServer is a prerequisite because every elastic pool lives on
+  // a referenced logical server (the server's resource group is transitive).
+  AzureMssqlElasticPool = 436 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmsqlpool"
+    prerequisites: [AzureMssqlServer]
+  }];
+  // The target and linked caches are referenced via ARM ids, not
+  // auto-deployed: caches are the slowest-provisioning resources in the
+  // Azure catalog and their names are globally unique, so E2E scenarios
+  // declare their own cache fixtures instead of a registry prerequisite
+  // recreating a shared one per run.
+  AzureRedisLinkedServer = 437 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azredlink"
+  }];
+  // The parent cache is referenced via redis_cache_id, not auto-deployed:
+  // caches are the slowest-provisioning resources in the Azure catalog and
+  // their names are globally unique, so E2E scenarios declare their own
+  // cache fixtures instead of a registry prerequisite recreating a shared
+  // one per run.
+  AzureRedisCacheAccessPolicy = 438 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azredpol"
+  }];
+  // The parent cache is referenced via redis_cache_id, not auto-deployed:
+  // caches are the slowest-provisioning resources in the Azure catalog and
+  // their names are globally unique, so E2E scenarios declare their own
+  // cache fixtures instead of a registry prerequisite recreating a shared
+  // one per run.
+  AzureRedisCacheAccessPolicyAssignment = 439 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azredpola"
+  }];
+  // AzureResourceGroup is a prerequisite because the environment is created
+  // inside a referenced resource group that must already exist.
   AzureContainerAppEnvironment = 440 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azcae"
     container_kind: true
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureContainerAppEnvironment is a prerequisite because every app runs
+  // inside a referenced environment (the resource group arrives
+  // transitively through it).
   AzureContainerApp = 441 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azca"
+    prerequisites: [AzureContainerAppEnvironment]
   }];
+  // AzureResourceGroup is a prerequisite because the plan is created inside
+  // a referenced resource group that must already exist.
   AzureServicePlan = 442 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azsp"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureServicePlan is a prerequisite because a function app runs on a
+  // referenced plan (the resource group arrives transitively through the
+  // plan). The required storage account is deliberately NOT a registry
+  // prerequisite: storage-account names are globally unique, so scenarios
+  // bring their own scenario-local account fixtures.
   AzureFunctionApp = 443 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azfn"
+    prerequisites: [AzureServicePlan]
   }];
+  // AzureServicePlan is a prerequisite because a web app runs on a
+  // referenced plan (the resource group arrives transitively through the
+  // plan).
   AzureLinuxWebApp = 444 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azweb"
+    prerequisites: [AzureServicePlan]
   }];
+  // AzureContainerAppEnvironment is a prerequisite because a job runs
+  // inside a referenced environment (the resource group arrives
+  // transitively through it).
+  AzureContainerAppJob = 445 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcaj"
+    prerequisites: [AzureContainerAppEnvironment]
+  }];
+  // AzureContainerAppEnvironment is a prerequisite because the storage
+  // registration lives on a referenced environment. The Azure Files
+  // share and storage account are deliberately NOT registry
+  // prerequisites: storage-account names are globally unique, so
+  // scenarios bring their own scenario-local account + share fixtures.
+  AzureContainerAppEnvironmentStorage = 446 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcaes"
+    prerequisites: [AzureContainerAppEnvironment]
+  }];
+  // AzureContainerAppEnvironment is a prerequisite because the Dapr
+  // component is registered on a referenced environment.
+  AzureContainerAppEnvironmentDaprComponent = 447 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcadapr"
+    prerequisites: [AzureContainerAppEnvironment]
+  }];
+  // AzureContainerAppEnvironment is a prerequisite because the
+  // certificate is stored on a referenced environment.
+  AzureContainerAppEnvironmentCertificate = 448 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcacert"
+    prerequisites: [AzureContainerAppEnvironment]
+  }];
+  // AzureContainerAppEnvironment is a prerequisite because the managed
+  // certificate is provisioned on a referenced environment.
+  AzureContainerAppEnvironmentManagedCertificate = 449 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcamgcert"
+    prerequisites: [AzureContainerAppEnvironment]
+  }];
+  // AzureResourceGroup is a prerequisite because the workspace is created
+  // inside a referenced resource group that must already exist.
   AzureLogAnalyticsWorkspace = 450 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azlaw"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureLogAnalyticsWorkspace is a prerequisite because workspace-based
+  // Application Insights stores its telemetry in a referenced workspace
+  // (the resource group chains transitively through the workspace).
   AzureApplicationInsights = 451 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azai"
+    prerequisites: [AzureLogAnalyticsWorkspace]
   }];
+  // AzureLogAnalyticsWorkspace is a prerequisite because the setting's
+  // scenarios route a fixture workspace's telemetry (the workspace doubles
+  // as target and destination); the target itself is polymorphic.
+  AzureMonitorDiagnosticSetting = 452 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmondiag"
+    prerequisites: [AzureLogAnalyticsWorkspace]
+  }];
+  // AzureResourceGroup is a prerequisite because the action group is
+  // created inside a referenced resource group that must already exist.
+  AzureMonitorActionGroup = 453 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmonag"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureMonitorActionGroup is a prerequisite because a metric alert's
+  // actions fire into a referenced action group (the resource group chains
+  // transitively); alert scopes are polymorphic.
+  AzureMonitorMetricAlert = 454 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmalert"
+    prerequisites: [AzureMonitorActionGroup]
+  }];
+  // AzureLogAnalyticsWorkspace is a prerequisite because the rule queries a
+  // referenced workspace scope; AzureMonitorActionGroup because its action
+  // fires into a referenced action group.
+  AzureMonitorScheduledQueryAlert = 455 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsqalert"
+    prerequisites: [
+      AzureLogAnalyticsWorkspace,
+      AzureMonitorActionGroup
+    ]
+  }];
+  // AzureMonitorActionGroup is a prerequisite because an activity log
+  // alert's actions fire into a referenced action group (the resource
+  // group chains transitively). The alert itself is subscription-global
+  // and its scopes are polymorphic.
+  AzureMonitorActivityLogAlert = 456 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azactalert"
+    prerequisites: [AzureMonitorActionGroup]
+  }];
+  // AzureApplicationInsights is a prerequisite because a standard web test
+  // binds to a referenced Application Insights component (the resource
+  // group chains transitively through the component).
+  AzureApplicationInsightsStandardWebTest = 457 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azwebtest"
+    prerequisites: [AzureApplicationInsights]
+  }];
+  // AzureResourceGroup is a prerequisite because the identity is created
+  // inside a referenced resource group that must already exist.
   AzureUserAssignedIdentity = 460 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azid"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup and AzureUserAssignedIdentity are prerequisites because
+  // an assignment grants a role at a referenced scope (most commonly a resource
+  // group) to a referenced principal (most commonly a managed identity) -- both
+  // must exist before the grant can be written.
+  AzureRoleAssignment = 461 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azra"
+    prerequisites: [
+      AzureResourceGroup,
+      AzureUserAssignedIdentity
+    ]
+  }];
+  // AzureResourceGroup is a prerequisite because a custom role definition is
+  // created at a referenced scope, most commonly a resource group in composed
+  // environments -- the scope must exist before the definition can be written.
+  AzureRoleDefinition = 462 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azrd"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureUserAssignedIdentity is the prerequisite because a federated identity
+  // credential is a child resource of a referenced managed identity -- the
+  // identity must exist before the credential can be written on it. (The
+  // resource group arrives transitively through the identity's own
+  // prerequisite declaration.)
+  AzureFederatedIdentityCredential = 463 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfic"
+    prerequisites: [AzureUserAssignedIdentity]
+  }];
+  // AzureResourceGroup is a prerequisite because a Service Bus namespace is
+  // created inside a referenced resource group in composed environments.
+  // The namespace is the container every Service Bus messaging entity
+  // (queue, topic, subscription, authorization rule, geo-DR pairing)
+  // nests under. The child kinds deliberately declare NO registry
+  // prerequisite: namespace names are globally unique with a post-delete
+  // name hold, so E2E composes them with scenario-local namespace
+  // fixtures instead of a shared recreate-per-scenario prerequisite.
   AzureServiceBusNamespace = 470 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azsb"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because an Event Hub namespace is
+  // created inside a referenced resource group in composed environments.
+  // The namespace is the container every Event Hubs entity (event hub,
+  // consumer group, authorization rule, schema group, geo-DR pairing,
+  // customer-managed key) nests under. The child kinds deliberately
+  // declare NO registry prerequisite: namespace names are globally unique
+  // with a post-delete name hold, so E2E composes them with scenario-local
+  // namespace fixtures instead of a shared recreate-per-scenario
+  // prerequisite.
   AzureEventHubNamespace = 471 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azeh"
+    prerequisites: [AzureResourceGroup]
+  }];
+  AzureServiceBusQueue = 472 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsbque"
+  }];
+  AzureServiceBusTopic = 473 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsbtop"
+  }];
+  AzureServiceBusSubscription = 474 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsbsub"
+  }];
+  AzureServiceBusAuthorizationRule = 475 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsbauth"
+  }];
+  AzureServiceBusDisasterRecoveryConfig = 476 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsbdr"
+  }];
+  AzureEventHub = 477 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehub"
+  }];
+  AzureEventHubConsumerGroup = 478 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehcg"
+  }];
+  AzureEventHubAuthorizationRule = 479 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehauth"
   }];
 
-  // --- CDN ---
+  // --- CDN / Front Door ---
 
+  // AzureResourceGroup is a prerequisite because a Front Door profile is
+  // created inside a referenced resource group in composed environments.
+  // The profile is the container every Front Door delivery resource
+  // (endpoint, origin group, origin, route) nests under.
   AzureFrontDoorProfile = 480 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azfd"
+    container_kind: true
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureFrontDoorProfile is a prerequisite because an endpoint is an ARM
+  // child of a referenced profile -- the profile must exist before the
+  // endpoint can be written. (The resource group arrives transitively
+  // through the profile's own prerequisite declaration.)
+  AzureFrontDoorEndpoint = 481 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfde"
+    prerequisites: [AzureFrontDoorProfile]
+  }];
+  // AzureFrontDoorProfile is a prerequisite because an origin group is an
+  // ARM child of a referenced profile.
+  AzureFrontDoorOriginGroup = 482 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdog"
+    prerequisites: [AzureFrontDoorProfile]
+  }];
+  // AzureFrontDoorOriginGroup is a prerequisite because an origin is an
+  // ARM child of a referenced origin group (the profile and resource
+  // group chain transitively).
+  AzureFrontDoorOrigin = 483 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdo"
+    prerequisites: [AzureFrontDoorOriginGroup]
+  }];
+  // A route attaches to an endpoint (its ARM parent) and forwards to an
+  // origin group whose origins must exist before ARM accepts the route --
+  // so both the endpoint and the origin chain are genuine deploy-order
+  // prerequisites.
+  AzureFrontDoorRoute = 484 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdrt"
+    prerequisites: [
+      AzureFrontDoorEndpoint,
+      AzureFrontDoorOrigin
+    ]
+  }];
+  // AzureFrontDoorProfile is a prerequisite because a rule set is an ARM
+  // child of a referenced profile. The rules live inside the set (they
+  // form one ordered policy document); routes attach the set by ARM ID.
+  AzureFrontDoorRuleSet = 485 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdrs"
+    prerequisites: [AzureFrontDoorProfile]
+  }];
+  // AzureFrontDoorProfile is a prerequisite because a custom domain is an
+  // ARM child of a referenced profile. The DNS zone and (for
+  // bring-your-own certificates) the Front Door secret are optional
+  // references, not deploy-order prerequisites.
+  AzureFrontDoorCustomDomain = 486 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdcd"
+    prerequisites: [AzureFrontDoorProfile]
+  }];
+  // AzureFrontDoorSecret is a prerequisite-light kind: only the profile
+  // (its ARM parent) must exist. The Key Vault certificate it wraps is a
+  // reference resolved before the module runs; its vault chain is
+  // exercised through scenario-local fixtures in E2E.
+  AzureFrontDoorSecret = 487 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdsec"
+    prerequisites: [AzureFrontDoorProfile]
+  }];
+  // AzureResourceGroup is a prerequisite because the Front Door WAF
+  // policy is created inside a referenced resource group -- it is a
+  // GLOBAL resource, not a profile child (a different ARM type than the
+  // regional Application Gateway WAF policy). Security policies attach
+  // it to profiles; the policy itself depends on nothing else.
+  AzureFrontDoorFirewallPolicy = 488 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdwaf"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // A security policy is an ARM child of a profile that associates a
+  // referenced WAF policy with referenced domains -- so the endpoint
+  // (the default-domain association target; the profile arrives
+  // transitively through it) and the WAF policy are genuine
+  // deploy-order prerequisites.
+  AzureFrontDoorSecurityPolicy = 489 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdsecpol"
+    prerequisites: [
+      AzureFrontDoorEndpoint,
+      AzureFrontDoorFirewallPolicy
+    ]
+  }];
+  // --- Storage data services ---
+
+  // None of the storage data-service kinds declares a registry
+  // prerequisite on AzureStorageAccount: account names are GLOBALLY
+  // unique and Azure holds a just-deleted name, so a
+  // recreate-per-scenario fixture would hang -- their E2E scenarios
+  // declare scenario-local account fixtures instead. Deploy ordering in
+  // composed environments still flows from the storage_account_id
+  // reference itself.
+  AzureStorageContainer = 490 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsc"
+  }];
+  AzureStorageShare = 491 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azshare"
+  }];
+  AzureStorageQueue = 492 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsq"
+  }];
+  AzureStorageTable = 493 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azst"
+  }];
+  AzureStorageEncryptionScope = 494 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azses"
+  }];
+  AzureStorageDataLakeGen2Filesystem = 495 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azadlsfs"
+  }];
+  AzureStorageLocalUser = 496 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azslu"
+  }];
+  AzureStorageObjectReplication = 497 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsor"
+  }];
+
+  // --- Cosmos DB data services ---
+
+  // None of the Cosmos DB data-service kinds declares a registry
+  // prerequisite on AzureCosmosdbAccount: account names are GLOBALLY
+  // unique DNS labels, so a recreate-per-scenario fixture would risk
+  // name-reuse hangs -- their E2E scenarios declare scenario-local
+  // account fixtures instead. Deploy ordering in composed environments
+  // still flows from the cosmosdb_account_id / parent-database
+  // references themselves.
+  AzureCosmosdbSqlDatabase = 500 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcsqldb"
+  }];
+  AzureCosmosdbSqlContainer = 501 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcsqlct"
+  }];
+  AzureCosmosdbMongoDatabase = 502 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcmgodb"
+  }];
+  AzureCosmosdbMongoCollection = 503 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcmgocl"
+  }];
+  AzureCosmosdbSqlRoleDefinition = 504 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcsqlrdef"
+  }];
+  AzureCosmosdbSqlRoleAssignment = 505 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcsqlrasgn"
+  }];
+
+  // --- Azure Managed Redis (the Microsoft.Cache/redisEnterprise family) ---
+
+  // AzureResourceGroup is the cluster's only registry prerequisite: the
+  // cluster is created inside a referenced resource group. The
+  // geo-replication and access-policy-assignment children declare NO
+  // prerequisite on AzureManagedRedis: clusters are expensive,
+  // slow-provisioning parents, so their E2E scenarios declare
+  // scenario-local cluster fixtures instead of recreating a shared one
+  // per scenario. Deploy ordering in composed environments still flows
+  // from the managed_redis_id references themselves.
+  AzureManagedRedis = 510 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmredis"
+    prerequisites: [AzureResourceGroup]
+  }];
+  AzureManagedRedisGeoReplication = 511 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmredisgeo"
+  }];
+  AzureManagedRedisAccessPolicyAssignment = 512 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmredisgrant"
+  }];
+
+  // --- Event Hubs continuation (the messaging sub-band 470-479 is full;
+  // these kinds complete the Event Hubs family) ---
+
+  AzureEventHubDisasterRecoveryConfig = 520 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehdr"
+  }];
+  AzureEventHubSchemaGroup = 521 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehsg"
+  }];
+
+  // AzureResourceGroup is a prerequisite because a dedicated Event Hubs
+  // cluster is created inside a referenced resource group in composed
+  // environments. Note: clusters cannot be deleted for 4 hours after
+  // creation (Azure's moratorium), so E2E treats this kind as
+  // offline-gated.
+  AzureEventHubCluster = 522 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehclu"
+    prerequisites: [AzureResourceGroup]
+  }];
+  AzureEventHubNamespaceCustomerManagedKey = 523 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azehcmk"
+  }];
+
+  // --- Databases continuation (the databases sub-band 430-439 is full;
+  // this kind extends the SQL family) ---
+
+  // AzureMssqlServer is a prerequisite because a failover group is created
+  // on a referenced primary logical server and points at a partner server;
+  // the primary (and its resource group, which chains transitively) must
+  // exist before the group can be written.
+  AzureMssqlFailoverGroup = 524 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmsqlfog"
+    prerequisites: [AzureMssqlServer]
+  }];
+
+  // --- App-hosting continuation (the app-hosting sub-band 440-449 is
+  // full; this kind extends the Container Apps family) ---
+
+  // AzureContainerApp is a prerequisite because the domain binding lives
+  // in a referenced app's ingress configuration (the environment and
+  // resource group chain transitively through the app).
+  AzureContainerAppCustomDomain = 525 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcadom"
+    prerequisites: [AzureContainerApp]
+  }];
+
+  // --- Network security: the Azure Firewall family (530-539) ---
+
+  AzureFirewallPolicy = 530 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfwpol"
+    prerequisites: [AzureResourceGroup]
+  }];
+
+  // AzureFirewallPolicy is a prerequisite because a rule collection group
+  // is a child document of a referenced policy (the resource group chains
+  // transitively through the policy).
+  AzureFirewallPolicyRuleCollectionGroup = 531 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfwrcg"
+    prerequisites: [AzureFirewallPolicy]
+  }];
+
+  // AzureSubnet is a prerequisite because a VNet-deployed firewall's data
+  // path lives in a dedicated subnet that must be named exactly
+  // "AzureFirewallSubnet" (the virtual network and resource group chain
+  // transitively through the subnet). The E2E install profile publishes a
+  // fixture subnet with that exact name and a /26 prefix.
+  AzureFirewall = 532 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfw"
+    prerequisites: [AzureSubnet]
+  }];
+
+  AzureIpGroup = 533 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azipg"
+    prerequisites: [AzureResourceGroup]
   }];
 
   // 600–799: GCP resources

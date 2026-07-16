@@ -1,0 +1,11 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureApplicationSecurityGroup
+metadata:
+  name: test-application-security-group
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: web-tier
+  tags:
+    purpose: hack-test

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestorageshare.v1;
+
+// **AzureStorageShareStackOutputs** captures the outputs of provisioning
+// an Azure Files share.
+//
+// No URL output on purpose: the share's data-plane URL is the ACCOUNT's
+// file endpoint plus the share name, and only the account knows its real
+// endpoint (partitioned-DNS accounts use a different hostname than the
+// classic shared DNS). Compose mount paths from AzureStorageAccount's
+// primary_file_endpoint output + share_name.
+message AzureStorageShareStackOutputs {
+  // The Azure Resource Manager ID of the share -- the management-plane
+  // identity ARM reads and policy target.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{account}/fileServices/default/shares/{name}
+  string share_id = 1;
+
+  // The scope data-plane role assignments target for share-level file
+  // access (Storage File Data SMB Share Reader/Contributor/Elevated
+  // Contributor). Azure Files RBAC deliberately uses a DIFFERENT segment
+  // than the management ID -- .../fileServices/default/fileshares/{name}
+  // -- so this output exists precisely so grants never have to rewrite
+  // the management ID by hand.
+  string rbac_scope_id = 2;
+
+  // The share's name -- what mount commands, CSI volume definitions, and
+  // app settings reference within the account.
+  string share_name = 3;
+
+  // The name of the storage account the share lives in, parsed from the
+  // resolved account ID -- saves consumers a second reference when they
+  // need the account/share pair.
+  string storage_account_name = 4;
+}

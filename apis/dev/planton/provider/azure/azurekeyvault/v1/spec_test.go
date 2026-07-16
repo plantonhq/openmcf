@@ -15,160 +15,134 @@ func TestAzureKeyVaultSpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "AzureKeyVaultSpec Custom Validation Tests")
 }
 
+func validSpec() *AzureKeyVaultSpec {
+	return &AzureKeyVaultSpec{
+		Region:        "eastus",
+		ResourceGroup: stringRef("test-resource-group"),
+		VaultName:     "test-vault",
+	}
+}
+
+func vault(spec *AzureKeyVaultSpec) *AzureKeyVault {
+	return &AzureKeyVault{
+		ApiVersion: "azure.planton.dev/v1",
+		Kind:       "AzureKeyVault",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "test-key-vault",
+		},
+		Spec: spec,
+	}
+}
+
 var _ = ginkgo.Describe("AzureKeyVaultSpec Custom Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
 		ginkgo.Context("azure_key_vault", func() {
 
 			ginkgo.It("should not return a validation error for minimal valid fields", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-key-vault",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:        "eastus",
-						ResourceGroup: stringRef("test-resource-group"),
-					},
-				}
-				err := protovalidate.Validate(input)
+				err := protovalidate.Validate(vault(validSpec()))
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for production configuration with premium SKU", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "prod-key-vault",
-						Org:  "mycompany",
-						Env:  "production",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:                  "eastus",
-						ResourceGroup:           stringRef("prod-security-rg"),
-						Sku:                     AzureKeyVaultSku_PREMIUM.Enum(),
-						EnableRbacAuthorization: boolPtr(true),
-						EnablePurgeProtection:   boolPtr(true),
-						SoftDeleteRetentionDays: int32Ptr(90),
-						SecretNames:             []string{"database-password", "api-key", "jwt-secret"},
-					},
-				}
-				err := protovalidate.Validate(input)
+			ginkgo.It("should accept a production configuration with premium SKU and purge protection", func() {
+				spec := validSpec()
+				spec.Sku = AzureKeyVaultSku_PREMIUM
+				spec.RbacAuthorizationEnabled = boolPtr(true)
+				spec.PurgeProtectionEnabled = true
+				spec.SoftDeleteRetentionDays = int32Ptr(90)
+				err := protovalidate.Validate(vault(spec))
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with network ACLs configured", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-kv-with-network",
+			ginkgo.It("should accept a vault name at the length boundaries", func() {
+				spec := validSpec()
+				spec.VaultName = "abc"
+				gomega.Expect(protovalidate.Validate(vault(spec))).To(gomega.BeNil())
+				spec.VaultName = "a12345678901234567890123" // 24 chars
+				gomega.Expect(protovalidate.Validate(vault(spec))).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept network ACLs with DENY, bypass, IP rules and subnet references", func() {
+				spec := validSpec()
+				spec.NetworkAcls = &AzureKeyVaultNetworkAcls{
+					DefaultAction: AzureKeyVaultNetworkAclsDefaultAction_DENY,
+					Bypass:        AzureKeyVaultNetworkAclsBypass_AZURE_SERVICES,
+					IpRules:       []string{"203.0.113.0/24", "198.51.100.42"},
+					VirtualNetworkSubnetIds: []*foreignkeyv1.StringValueOrRef{
+						stringRef("/subscriptions/sub-123/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/subnet1"),
 					},
-					Spec: &AzureKeyVaultSpec{
-						Region:        "westus2",
-						ResourceGroup: stringRef("test-rg"),
-						NetworkAcls: &AzureKeyVaultNetworkAcls{
-							DefaultAction:       AzureKeyVaultNetworkAction_DENY.Enum(),
-							BypassAzureServices: boolPtr(true),
-							IpRules:             []string{"203.0.113.0/24", "198.51.100.42/32"},
-							VirtualNetworkSubnetIds: []string{
-								"/subscriptions/sub-123/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/subnet1",
-							},
+				}
+				err := protovalidate.Validate(vault(spec))
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept network ACLs allowing all traffic with bypass NONE", func() {
+				spec := validSpec()
+				spec.NetworkAcls = &AzureKeyVaultNetworkAcls{
+					DefaultAction: AzureKeyVaultNetworkAclsDefaultAction_ALLOW,
+					Bypass:        AzureKeyVaultNetworkAclsBypass_NONE,
+				}
+				err := protovalidate.Validate(vault(spec))
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a legacy access-policy vault", func() {
+				spec := validSpec()
+				spec.RbacAuthorizationEnabled = boolPtr(false)
+				spec.AccessPolicies = []*AzureKeyVaultAccessPolicy{
+					{
+						ObjectId: stringRef("00000000-0000-0000-0000-000000000001"),
+						KeyPermissions: []AzureKeyVaultKeyPermission{
+							AzureKeyVaultKeyPermission_KEY_GET,
+							AzureKeyVaultKeyPermission_KEY_UNWRAP_KEY,
+							AzureKeyVaultKeyPermission_KEY_WRAP_KEY,
+						},
+						SecretPermissions: []AzureKeyVaultSecretPermission{
+							AzureKeyVaultSecretPermission_SECRET_GET,
+						},
+						CertificatePermissions: []AzureKeyVaultCertificatePermission{
+							AzureKeyVaultCertificatePermission_CERTIFICATE_GET,
 						},
 					},
 				}
-				err := protovalidate.Validate(input)
+				err := protovalidate.Validate(vault(spec))
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with minimum soft delete retention days", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "dev-key-vault",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:                  "eastus",
-						ResourceGroup:           stringRef("dev-rg"),
-						SoftDeleteRetentionDays: int32Ptr(7),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with maximum soft delete retention days", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "prod-key-vault",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:                  "eastus",
-						ResourceGroup:           stringRef("prod-rg"),
-						SoftDeleteRetentionDays: int32Ptr(90),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with standard SKU", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "standard-kv",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:        "eastus",
-						ResourceGroup: stringRef("test-rg"),
-						Sku:           AzureKeyVaultSku_STANDARD.Enum(),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with empty secret names list", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "empty-secrets-kv",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:        "eastus",
-						ResourceGroup: stringRef("test-rg"),
-						SecretNames:   []string{},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with network ACLs allowing all traffic", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "open-kv",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:        "eastus",
-						ResourceGroup: stringRef("test-rg"),
-						NetworkAcls: &AzureKeyVaultNetworkAcls{
-							DefaultAction:       AzureKeyVaultNetworkAction_ALLOW.Enum(),
-							BypassAzureServices: boolPtr(false),
+			ginkgo.It("should accept an access policy with explicit tenant and application ids", func() {
+				spec := validSpec()
+				spec.AccessPolicies = []*AzureKeyVaultAccessPolicy{
+					{
+						ObjectId:      stringRef("00000000-0000-0000-0000-000000000001"),
+						TenantId:      strPtr("11111111-1111-1111-1111-111111111111"),
+						ApplicationId: strPtr("22222222-2222-2222-2222-222222222222"),
+						SecretPermissions: []AzureKeyVaultSecretPermission{
+							AzureKeyVaultSecretPermission_SECRET_GET,
+							AzureKeyVaultSecretPermission_SECRET_LIST,
 						},
 					},
 				}
-				err := protovalidate.Validate(input)
+				err := protovalidate.Validate(vault(spec))
 				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept the deployment-integration flags and user tags", func() {
+				spec := validSpec()
+				spec.EnabledForDeployment = true
+				spec.EnabledForDiskEncryption = true
+				spec.EnabledForTemplateDeployment = true
+				spec.PublicNetworkAccessEnabled = boolPtr(false)
+				spec.Tags = map[string]string{"team": "security", "cost-center": "1234"}
+				err := protovalidate.Validate(vault(spec))
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept soft delete retention at the bounds", func() {
+				spec := validSpec()
+				spec.SoftDeleteRetentionDays = int32Ptr(7)
+				gomega.Expect(protovalidate.Validate(vault(spec))).To(gomega.BeNil())
+				spec.SoftDeleteRetentionDays = int32Ptr(90)
+				gomega.Expect(protovalidate.Validate(vault(spec))).To(gomega.BeNil())
 			})
 		})
 	})
@@ -177,227 +151,162 @@ var _ = ginkgo.Describe("AzureKeyVaultSpec Custom Validation Tests", func() {
 		ginkgo.Context("azure_key_vault", func() {
 
 			ginkgo.It("should return a validation error when region is missing", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-key-vault",
-					},
-					Spec: &AzureKeyVaultSpec{
-						ResourceGroup: stringRef("test-resource-group"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when region is empty string", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-key-vault",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:        "",
-						ResourceGroup: stringRef("test-resource-group"),
-					},
-				}
-				err := protovalidate.Validate(input)
+				spec := validSpec()
+				spec.Region = ""
+				err := protovalidate.Validate(vault(spec))
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when resource_group is missing", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-key-vault",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region: "eastus",
-					},
-				}
-				err := protovalidate.Validate(input)
+				spec := validSpec()
+				spec.ResourceGroup = nil
+				err := protovalidate.Validate(vault(spec))
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when resource_group is nil", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-key-vault",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:        "eastus",
-						ResourceGroup: nil,
-					},
-				}
-				err := protovalidate.Validate(input)
+			ginkgo.It("should return a validation error when vault_name is missing", func() {
+				spec := validSpec()
+				spec.VaultName = ""
+				err := protovalidate.Validate(vault(spec))
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when soft_delete_retention_days is below minimum (< 7)", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "invalid-retention-kv",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:                  "eastus",
-						ResourceGroup:           stringRef("test-rg"),
-						SoftDeleteRetentionDays: int32Ptr(6),
-					},
-				}
-				err := protovalidate.Validate(input)
+			ginkgo.It("should return a validation error when vault_name is too short", func() {
+				spec := validSpec()
+				spec.VaultName = "ab"
+				err := protovalidate.Validate(vault(spec))
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when soft_delete_retention_days is above maximum (> 90)", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "invalid-retention-kv",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:                  "eastus",
-						ResourceGroup:           stringRef("test-rg"),
-						SoftDeleteRetentionDays: int32Ptr(91),
-					},
-				}
-				err := protovalidate.Validate(input)
+			ginkgo.It("should return a validation error when vault_name is too long", func() {
+				spec := validSpec()
+				spec.VaultName = "a123456789012345678901234" // 25 chars
+				err := protovalidate.Validate(vault(spec))
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when secret_names exceeds maximum (> 100)", func() {
-				// Create a list with 101 secret names
-				secretNames := make([]string, 101)
-				for i := 0; i < 101; i++ {
-					secretNames[i] = "secret-" + string(rune('a'+i%26))
-				}
+			ginkgo.It("should return a validation error when vault_name starts with a digit", func() {
+				spec := validSpec()
+				spec.VaultName = "1vault"
+				err := protovalidate.Validate(vault(spec))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
 
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "too-many-secrets-kv",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:        "eastus",
-						ResourceGroup: stringRef("test-rg"),
-						SecretNames:   secretNames,
-					},
+			ginkgo.It("should return a validation error when vault_name ends with a hyphen", func() {
+				spec := validSpec()
+				spec.VaultName = "vault-"
+				err := protovalidate.Validate(vault(spec))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when vault_name contains consecutive hyphens", func() {
+				spec := validSpec()
+				spec.VaultName = "my--vault"
+				err := protovalidate.Validate(vault(spec))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when vault_name contains invalid characters", func() {
+				spec := validSpec()
+				spec.VaultName = "my_vault"
+				err := protovalidate.Validate(vault(spec))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when soft_delete_retention_days is out of range", func() {
+				spec := validSpec()
+				spec.SoftDeleteRetentionDays = int32Ptr(6)
+				gomega.Expect(protovalidate.Validate(vault(spec))).ToNot(gomega.BeNil())
+				spec.SoftDeleteRetentionDays = int32Ptr(91)
+				gomega.Expect(protovalidate.Validate(vault(spec))).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when network ACLs omit default_action", func() {
+				spec := validSpec()
+				spec.NetworkAcls = &AzureKeyVaultNetworkAcls{
+					IpRules: []string{"203.0.113.0/24"},
 				}
-				err := protovalidate.Validate(input)
+				err := protovalidate.Validate(vault(spec))
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when network ACLs has too many IP rules (> 200)", func() {
-				// Create a list with 201 IP rules
 				ipRules := make([]string, 201)
 				for i := 0; i < 201; i++ {
 					ipRules[i] = "10.0.0.1/32"
 				}
-
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "too-many-ips-kv",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:        "eastus",
-						ResourceGroup: stringRef("test-rg"),
-						NetworkAcls: &AzureKeyVaultNetworkAcls{
-							IpRules: ipRules,
-						},
-					},
+				spec := validSpec()
+				spec.NetworkAcls = &AzureKeyVaultNetworkAcls{
+					DefaultAction: AzureKeyVaultNetworkAclsDefaultAction_DENY,
+					IpRules:       ipRules,
 				}
-				err := protovalidate.Validate(input)
+				err := protovalidate.Validate(vault(spec))
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when network ACLs has too many VNet subnet IDs (> 100)", func() {
-				// Create a list with 101 subnet IDs
-				subnetIds := make([]string, 101)
-				for i := 0; i < 101; i++ {
-					subnetIds[i] = "/subscriptions/sub-123/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/subnet1"
-				}
-
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "too-many-subnets-kv",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:        "eastus",
-						ResourceGroup: stringRef("test-rg"),
-						NetworkAcls: &AzureKeyVaultNetworkAcls{
-							VirtualNetworkSubnetIds: subnetIds,
+			ginkgo.It("should return a validation error when an access policy omits object_id", func() {
+				spec := validSpec()
+				spec.AccessPolicies = []*AzureKeyVaultAccessPolicy{
+					{
+						SecretPermissions: []AzureKeyVaultSecretPermission{
+							AzureKeyVaultSecretPermission_SECRET_GET,
 						},
 					},
 				}
-				err := protovalidate.Validate(input)
+				err := protovalidate.Validate(vault(spec))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when an access policy carries an unspecified permission", func() {
+				spec := validSpec()
+				spec.AccessPolicies = []*AzureKeyVaultAccessPolicy{
+					{
+						ObjectId: stringRef("00000000-0000-0000-0000-000000000001"),
+						KeyPermissions: []AzureKeyVaultKeyPermission{
+							AzureKeyVaultKeyPermission_azure_key_vault_key_permission_unspecified,
+						},
+					},
+				}
+				err := protovalidate.Validate(vault(spec))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when an access policy tenant_id is not a UUID", func() {
+				spec := validSpec()
+				spec.AccessPolicies = []*AzureKeyVaultAccessPolicy{
+					{
+						ObjectId: stringRef("00000000-0000-0000-0000-000000000001"),
+						TenantId: strPtr("not-a-uuid"),
+					},
+				}
+				err := protovalidate.Validate(vault(spec))
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when api_version is incorrect", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "wrong.version/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-key-vault",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:        "eastus",
-						ResourceGroup: stringRef("test-rg"),
-					},
-				}
+				input := vault(validSpec())
+				input.ApiVersion = "wrong.version/v1"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when kind is incorrect", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "WrongKind",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-key-vault",
-					},
-					Spec: &AzureKeyVaultSpec{
-						Region:        "eastus",
-						ResourceGroup: stringRef("test-rg"),
-					},
-				}
+				input := vault(validSpec())
+				input.Kind = "WrongKind"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when metadata is missing", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Spec: &AzureKeyVaultSpec{
-						Region:        "eastus",
-						ResourceGroup: stringRef("test-rg"),
-					},
-				}
+				input := vault(validSpec())
+				input.Metadata = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when spec is missing", func() {
-				input := &AzureKeyVault{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureKeyVault",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-key-vault",
-					},
-				}
+				input := vault(validSpec())
+				input.Spec = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
@@ -412,6 +321,10 @@ func boolPtr(b bool) *bool {
 
 func int32Ptr(i int32) *int32 {
 	return &i
+}
+
+func strPtr(s string) *string {
+	return &s
 }
 
 func stringRef(s string) *foreignkeyv1.StringValueOrRef {

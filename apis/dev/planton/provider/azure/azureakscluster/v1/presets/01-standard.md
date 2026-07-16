@@ -1,22 +1,22 @@
 # Standard Production AKS Cluster
 
-This preset deploys a production-ready AKS cluster with a public API endpoint, Azure CNI Overlay networking, a 3-zone system node pool, a general-purpose user node pool with autoscaling, and all recommended addons enabled. This is the standard configuration for most production Kubernetes workloads on Azure.
+This preset deploys a production-ready AKS cluster with a public API endpoint, Azure CNI Overlay networking, a 3-zone autoscaling system pool tainted for system pods only, and the recommended add-ons (Container Insights via OMS agent, Key Vault secrets provider with rotation, Azure Policy, workload identity). Application workloads run in separately-deployed `AzureAksNodePool` resources.
 
 ## When to Use
 
-- Production Kubernetes clusters that need a public API endpoint with optional IP restrictions
-- Standard web, API, and microservice workloads running on Azure CNI Overlay
-- Teams that want Azure-managed addons (Container Insights, Key Vault CSI, Azure Policy, Workload Identity) out of the box
-- Clusters requiring 99.95% uptime SLA with availability zone distribution
+- Production Kubernetes clusters that need a public API endpoint
+- Standard web, API, and microservice workloads on Azure CNI Overlay
+- Teams that want Azure-managed add-ons out of the box
+- Clusters requiring the 99.95% uptime SLA with availability-zone distribution
 
 ## Key Configuration Choices
 
-- **Standard SKU** (`controlPlaneSku: STANDARD`) -- Financially-backed 99.95% uptime SLA with availability zones; costs ~$73/month
-- **Azure CNI Overlay** (`networkPlugin: AZURE_CNI`, `networkPluginMode: OVERLAY`) -- Pods get private CIDR IPs (10.244.0.0/16), avoiding VNet IP exhaustion while retaining full VNet integration
-- **Public endpoint** (`privateClusterEnabled: false`) -- API server is publicly accessible; restrict with `authorizedIpRanges` if needed
-- **System node pool** (`vmSize: Standard_D4s_v5`, 3-5 nodes, 3 zones) -- Dedicated to system components (CoreDNS, metrics-server); isolated from application workloads
-- **User node pool** (`vmSize: Standard_D8s_v5`, 2-10 nodes, 3 zones) -- General-purpose pool for application workloads with autoscaling
-- **All addons enabled** -- Container Insights for observability, Key Vault CSI for secrets, Azure Policy for governance, Workload Identity for credential-free auth
+- **Standard tier** (`skuTier: STANDARD`) -- financially-backed 99.95% uptime SLA with availability zones
+- **Azure CNI Overlay** (`networkProfile.networkPlugin: AZURE_CNI`, `networkPluginMode: OVERLAY`) -- pods get private-CIDR IPs, avoiding VNet IP exhaustion while retaining VNet integration
+- **Public endpoint** (`privateClusterEnabled: false`) -- restrict with `apiServerAccessProfile.authorizedIpRanges` if needed
+- **System pool isolated** (`defaultNodePool` with `onlyCriticalAddonsEnabled: true`, autoscaling 3-5 across 3 zones) -- CoreDNS and metrics-server never compete with app pods; workload pools are separate `AzureAksNodePool` resources
+- **Managed networking** -- no subnet reference; AKS provisions its own network (reference an `AzureSubnet` on the default pool for BYO networking)
+- **Monitoring + governance on** -- OMS agent with managed-identity auth, Key Vault CSI with secret rotation, Azure Policy, workload identity
 
 ## Placeholders to Replace
 
@@ -24,9 +24,9 @@ This preset deploys a production-ready AKS cluster with a public API endpoint, A
 | --- | --- | --- |
 | `<azure-region>` | Azure region (e.g., `eastus`, `westeurope`) | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<nodes-subnet-id>` | ARM resource ID of the subnet for cluster nodes | Azure portal or `AzureVpc` status outputs (`nodesSubnetId`) |
-| `<log-analytics-workspace-id>` | ARM resource ID of the Log Analytics workspace | Azure portal or `AzureLogAnalyticsWorkspace` status outputs |
+| `<log-analytics-workspace-id>` | ARM ID of the Log Analytics workspace | Azure portal or `AzureLogAnalyticsWorkspace` status outputs |
 
 ## Related Presets
 
-- **02-private** -- Use instead when the API server must not be publicly accessible (VPN/ExpressRoute-only access)
+- **02-private** -- Use instead when the API server must not be publicly accessible
+- **03-hardened-enterprise** -- Use instead for compliance environments needing AAD RBAC, authorized ranges, Defender, and host encryption

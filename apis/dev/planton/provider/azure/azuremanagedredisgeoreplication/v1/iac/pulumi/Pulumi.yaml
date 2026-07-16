@@ -1,0 +1,3 @@
+name: azure-managed-redis-geo-replication
+runtime: go
+description: Pulumi program for Azure Managed Redis active geo-replication group membership

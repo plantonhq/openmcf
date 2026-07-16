@@ -1,0 +1,32 @@
+# Minimal AzureFrontDoorOrigin scenario: an origin on the fixture group
+# exercising the host-header override, non-default ports, priority/weight,
+# and explicit certificate-name checking. The backend hostname is not
+# dereferenced at provision time, so a stable public name suffices.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorOrigin
+metadata:
+  name: planton-oss-e2e-azurefrontdoororigin-smoke
+  id: planton-oss-e2e-azurefrontdoororigin-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoororigin
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  originGroupId:
+    valueFrom:
+      name: planton-oss-e2e-fd-og-prereq
+  originName: e2e-primary-smoke
+  hostName:
+    value: example.com
+  certificateNameCheckEnabled: true
+  originHostHeader:
+    value: example.com
+  httpPort: 8080
+  httpsPort: 8443
+  priority: 2
+  weight: 750

@@ -8,6 +8,7 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAzureApplicationInsightsSpec(t *testing.T) {
@@ -15,596 +16,184 @@ func TestAzureApplicationInsightsSpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "AzureApplicationInsightsSpec Validation Tests")
 }
 
+// buildValidAppInsights returns a minimal valid resource; tests mutate copies
+// of it to probe individual rules.
+func buildValidAppInsights() *AzureApplicationInsights {
+	return &AzureApplicationInsights{
+		ApiVersion: "azure.planton.dev/v1",
+		Kind:       "AzureApplicationInsights",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "test-appinsights",
+		},
+		Spec: &AzureApplicationInsightsSpec{
+			Region: "eastus",
+			ResourceGroup: &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+					Value: "test-resource-group",
+				},
+			},
+			ApplicationInsightsName: "test-appinsights",
+			WorkspaceId: &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+					Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/test-law",
+				},
+			},
+		},
+	}
+}
+
 var _ = ginkgo.Describe("AzureApplicationInsightsSpec Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("azure_application_insights", func() {
 
-			ginkgo.It("should not return a validation error for minimal valid fields", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-resource-group",
-							},
-						},
-						Name: "test-app-insights",
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.OperationalInsights/workspaces/test-law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should not return a validation error for minimal valid fields", func() {
+			err := protovalidate.Validate(buildValidAppInsights())
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for production configuration", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "prod-ai",
-						Org:  "mycompany",
-						Env:  "production",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "westeurope",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "prod-monitoring-rg",
-							},
-						},
-						Name:            "prod-platform-ai",
-						ApplicationType: strPtr("web"),
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.OperationalInsights/workspaces/prod-law",
-							},
-						},
-						RetentionInDays:    int32Ptr(90),
-						DailyDataCapInGb:   float64Ptr(100.0),
-						SamplingPercentage: float64Ptr(50.0),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept a full production configuration", func() {
+			input := buildValidAppInsights()
+			input.Metadata.Org = "mycompany"
+			input.Metadata.Env = "production"
+			input.Spec.ApplicationType = AzureApplicationInsightsApplicationType_WEB
+			input.Spec.RetentionInDays = proto.Int32(365)
+			input.Spec.DailyDataCapInGb = proto.Float64(50)
+			input.Spec.DailyDataCapNotificationsEnabled = proto.Bool(true)
+			input.Spec.SamplingPercentage = proto.Float64(50)
+			input.Spec.IpMaskingEnabled = proto.Bool(true)
+			input.Spec.LocalAuthenticationEnabled = proto.Bool(false)
+			input.Spec.InternetIngestionEnabled = proto.Bool(false)
+			input.Spec.InternetQueryEnabled = proto.Bool(false)
+			input.Spec.ForceCustomerStorageForProfiler = true
+			input.Spec.Tags = map[string]string{"cost-center": "platform"}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with application_type java", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "java-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name:            "java-app-insights",
-						ApplicationType: strPtr("java"),
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept every application type", func() {
+			input := buildValidAppInsights()
+			for _, appType := range []AzureApplicationInsightsApplicationType{
+				AzureApplicationInsightsApplicationType_WEB,
+				AzureApplicationInsightsApplicationType_JAVA,
+				AzureApplicationInsightsApplicationType_NODE_JS,
+				AzureApplicationInsightsApplicationType_OTHER,
+				AzureApplicationInsightsApplicationType_IOS,
+				AzureApplicationInsightsApplicationType_PHONE,
+				AzureApplicationInsightsApplicationType_STORE,
+				AzureApplicationInsightsApplicationType_MOBILE_CENTER,
+			} {
+				input.Spec.ApplicationType = appType
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			}
+		})
 
-			ginkgo.It("should not return a validation error with application_type Node.JS", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "node-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name:            "node-app-insights",
-						ApplicationType: strPtr("Node.JS"),
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept every allowed retention value", func() {
+			input := buildValidAppInsights()
+			for _, days := range []int32{30, 60, 90, 120, 180, 270, 365, 550, 730} {
+				input.Spec.RetentionInDays = proto.Int32(days)
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			}
+		})
 
-			ginkgo.It("should not return a validation error with application_type other", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "other-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name:            "other-app-insights",
-						ApplicationType: strPtr("other"),
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept sampling percentage boundaries", func() {
+			input := buildValidAppInsights()
+			input.Spec.SamplingPercentage = proto.Float64(0)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			input.Spec.SamplingPercentage = proto.Float64(100)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with all retention_in_days allowed values", func() {
-				allowedValues := []int32{30, 60, 90, 120, 180, 270, 365, 550, 730}
-				for _, days := range allowedValues {
-					d := days
-					input := &AzureApplicationInsights{
-						ApiVersion: "azure.planton.dev/v1",
-						Kind:       "AzureApplicationInsights",
-						Metadata: &shared.CloudResourceMetadata{
-							Name: "retention-test-ai",
-						},
-						Spec: &AzureApplicationInsightsSpec{
-							Region: "eastus",
-							ResourceGroup: &foreignkeyv1.StringValueOrRef{
-								LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-									Value: "test-rg",
-								},
-							},
-							Name:            "retention-ai",
-							RetentionInDays: &d,
-							WorkspaceId: &foreignkeyv1.StringValueOrRef{
-								LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-									Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-								},
-							},
-						},
-					}
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).To(gomega.BeNil())
-				}
-			})
+		ginkgo.It("should accept a zero daily data cap", func() {
+			input := buildValidAppInsights()
+			input.Spec.DailyDataCapInGb = proto.Float64(0)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with zero daily_data_cap_in_gb", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "zero-cap-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name:             "zero-cap-ai",
-						DailyDataCapInGb: float64Ptr(0),
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with fractional daily_data_cap_in_gb", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "fractional-cap-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name:             "fractional-cap-ai",
-						DailyDataCapInGb: float64Ptr(0.5),
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with sampling_percentage at boundaries", func() {
-				for _, pct := range []float64{0, 50, 100} {
-					p := pct
-					input := &AzureApplicationInsights{
-						ApiVersion: "azure.planton.dev/v1",
-						Kind:       "AzureApplicationInsights",
-						Metadata: &shared.CloudResourceMetadata{
-							Name: "sampling-ai",
-						},
-						Spec: &AzureApplicationInsightsSpec{
-							Region: "eastus",
-							ResourceGroup: &foreignkeyv1.StringValueOrRef{
-								LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-									Value: "test-rg",
-								},
-							},
-							Name:               "sampling-ai",
-							SamplingPercentage: &p,
-							WorkspaceId: &foreignkeyv1.StringValueOrRef{
-								LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-									Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-								},
-							},
-						},
-					}
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).To(gomega.BeNil())
-				}
-			})
+		ginkgo.It("should accept a workspace reference by valueFrom", func() {
+			input := buildValidAppInsights()
+			input.Spec.WorkspaceId = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+					ValueFrom: &foreignkeyv1.ValueFromRef{Name: "platform-law"},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("azure_application_insights", func() {
 
-			ginkgo.It("should return a validation error when region is missing", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "test-ai",
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a missing region", func() {
+			input := buildValidAppInsights()
+			input.Spec.Region = ""
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when resource_group is missing", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						Name:   "test-ai",
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a missing resource group", func() {
+			input := buildValidAppInsights()
+			input.Spec.ResourceGroup = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when name is missing", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a missing name", func() {
+			input := buildValidAppInsights()
+			input.Spec.ApplicationInsightsName = ""
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when workspace_id is missing", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "test-ai",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a name longer than 260 characters", func() {
+			input := buildValidAppInsights()
+			name := make([]byte, 261)
+			for i := range name {
+				name[i] = 'a'
+			}
+			input.Spec.ApplicationInsightsName = string(name)
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error for invalid application_type", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name:            "test-ai",
-						ApplicationType: strPtr("invalid-type"),
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a missing workspace reference", func() {
+			input := buildValidAppInsights()
+			input.Spec.WorkspaceId = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error for disallowed retention_in_days value", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name:            "test-ai",
-						RetentionInDays: int32Ptr(45), // not in allowed list
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject an undefined application type enum number", func() {
+			input := buildValidAppInsights()
+			input.Spec.ApplicationType = AzureApplicationInsightsApplicationType(99)
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when daily_data_cap_in_gb is negative", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name:             "test-ai",
-						DailyDataCapInGb: float64Ptr(-1),
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a retention value outside Azure's fixed set", func() {
+			input := buildValidAppInsights()
+			input.Spec.RetentionInDays = proto.Int32(45)
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when sampling_percentage exceeds 100", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name:               "test-ai",
-						SamplingPercentage: float64Ptr(101),
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a negative daily data cap", func() {
+			input := buildValidAppInsights()
+			input.Spec.DailyDataCapInGb = proto.Float64(-1)
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when sampling_percentage is negative", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name:               "test-ai",
-						SamplingPercentage: float64Ptr(-1),
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a sampling percentage above 100", func() {
+			input := buildValidAppInsights()
+			input.Spec.SamplingPercentage = proto.Float64(100.5)
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when api_version is incorrect", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "wrong.version/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "test-ai",
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when kind is incorrect", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "WrongKind",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "test-ai",
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when metadata is missing", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Spec: &AzureApplicationInsightsSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "test-ai",
-						WorkspaceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/law",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when spec is missing", func() {
-				input := &AzureApplicationInsights{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureApplicationInsights",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ai",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a negative sampling percentage", func() {
+			input := buildValidAppInsights()
+			input.Spec.SamplingPercentage = proto.Float64(-5)
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 	})
 })
-
-// Helper functions for pointer types
-func strPtr(s string) *string {
-	return &s
-}
-
-func int32Ptr(i int32) *int32 {
-	return &i
-}
-
-func float64Ptr(f float64) *float64 {
-	return &f
-}

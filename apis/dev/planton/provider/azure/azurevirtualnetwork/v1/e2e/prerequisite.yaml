@@ -1,0 +1,32 @@
+# AzureVirtualNetwork install profile used as a prerequisite by composed
+# components (declared via prerequisites: [AzureVirtualNetwork] in the kind
+# registry). The E2E harness deploys this document (via the network's Pulumi
+# module) after its own prerequisite (the fixture resource group, whose name
+# the resource_group reference below addresses), and captures its outputs --
+# virtual_network_id in particular -- for dependents' references to resolve
+# against (the private-DNS-zone virtual-network-link component binds a zone
+# to this network). The network is a bare fixture: anything a consumer needs
+# attached to it, the consumer's own scenario provisions -- a component never
+# mutates a resource it merely references.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: planton-oss-e2e-azure-fixture-vnet
+  id: planton-oss-e2e-azure-fixture-vnet
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevirtualnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azure-fixture-vnet
+  addressSpaces:
+    - "10.240.0.0/16"

@@ -21,16 +21,37 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// **AzureContainerRegistryStackOutputs** captures the outputs of
+// provisioning an Azure Container Registry.
 type AzureContainerRegistryStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The registry's login server URL (hostname for pulling/pushing images).
-	// Example: "myregistry.azurecr.io"
-	RegistryLoginServer string `protobuf:"bytes,1,opt,name=registry_login_server,json=registryLoginServer,proto3" json:"registry_login_server,omitempty"`
-	// The Azure Resource Manager ID of the container registry.
-	// This is the unique identifier in the Azure portal for this resource.
-	RegistryResourceId string `protobuf:"bytes,2,opt,name=registry_resource_id,json=registryResourceId,proto3" json:"registry_resource_id,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The Azure Resource Manager ID of the registry. This is the primary
+	// output: AzureAksCluster's container_registry_id references it to wire
+	// image pulls, and role assignments (AcrPull/AcrPush) scope to it.
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.ContainerRegistry/registries/{name}
+	ContainerRegistryId string `protobuf:"bytes,1,opt,name=container_registry_id,json=containerRegistryId,proto3" json:"container_registry_id,omitempty"`
+	// The name of the registry.
+	ContainerRegistryName string `protobuf:"bytes,2,opt,name=container_registry_name,json=containerRegistryName,proto3" json:"container_registry_name,omitempty"`
+	// The registry's login server -- the hostname images are tagged with and
+	// pulled from, e.g. "myregistry.azurecr.io".
+	LoginServer string `protobuf:"bytes,3,opt,name=login_server,json=loginServer,proto3" json:"login_server,omitempty"`
+	// The admin account's username (the registry name), populated only when
+	// admin_user_enabled is true.
+	AdminUsername string `protobuf:"bytes,4,opt,name=admin_username,json=adminUsername,proto3" json:"admin_username,omitempty"`
+	// One of the admin account's two rotatable passwords, populated only
+	// when admin_user_enabled is true. Static credential material -- prefer
+	// Entra-based authentication wherever the consumer supports it.
+	AdminPassword string `protobuf:"bytes,5,opt,name=admin_password,json=adminPassword,proto3" json:"admin_password,omitempty"`
+	// The principal (object) ID of the registry's system-assigned identity,
+	// populated only when the identity type includes SYSTEM_ASSIGNED. Grant
+	// this principal roles to let the registry act on other resources.
+	SystemAssignedIdentityPrincipalId string `protobuf:"bytes,6,opt,name=system_assigned_identity_principal_id,json=systemAssignedIdentityPrincipalId,proto3" json:"system_assigned_identity_principal_id,omitempty"`
+	// The dedicated regional data-endpoint hostnames (home region plus each
+	// geo-replication), populated only when data_endpoint_enabled is true --
+	// the exact hostnames an egress firewall must allowlist.
+	DataEndpointHostNames []string `protobuf:"bytes,7,rep,name=data_endpoint_host_names,json=dataEndpointHostNames,proto3" json:"data_endpoint_host_names,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *AzureContainerRegistryStackOutputs) Reset() {
@@ -63,28 +84,68 @@ func (*AzureContainerRegistryStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurecontainerregistry_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AzureContainerRegistryStackOutputs) GetRegistryLoginServer() string {
+func (x *AzureContainerRegistryStackOutputs) GetContainerRegistryId() string {
 	if x != nil {
-		return x.RegistryLoginServer
+		return x.ContainerRegistryId
 	}
 	return ""
 }
 
-func (x *AzureContainerRegistryStackOutputs) GetRegistryResourceId() string {
+func (x *AzureContainerRegistryStackOutputs) GetContainerRegistryName() string {
 	if x != nil {
-		return x.RegistryResourceId
+		return x.ContainerRegistryName
 	}
 	return ""
+}
+
+func (x *AzureContainerRegistryStackOutputs) GetLoginServer() string {
+	if x != nil {
+		return x.LoginServer
+	}
+	return ""
+}
+
+func (x *AzureContainerRegistryStackOutputs) GetAdminUsername() string {
+	if x != nil {
+		return x.AdminUsername
+	}
+	return ""
+}
+
+func (x *AzureContainerRegistryStackOutputs) GetAdminPassword() string {
+	if x != nil {
+		return x.AdminPassword
+	}
+	return ""
+}
+
+func (x *AzureContainerRegistryStackOutputs) GetSystemAssignedIdentityPrincipalId() string {
+	if x != nil {
+		return x.SystemAssignedIdentityPrincipalId
+	}
+	return ""
+}
+
+func (x *AzureContainerRegistryStackOutputs) GetDataEndpointHostNames() []string {
+	if x != nil {
+		return x.DataEndpointHostNames
+	}
+	return nil
 }
 
 var File_dev_planton_provider_azure_azurecontainerregistry_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurecontainerregistry_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Hdev/planton/provider/azure/azurecontainerregistry/v1/stack_outputs.proto\x124dev.planton.provider.azure.azurecontainerregistry.v1\"\x8a\x01\n" +
+	"Hdev/planton/provider/azure/azurecontainerregistry/v1/stack_outputs.proto\x124dev.planton.provider.azure.azurecontainerregistry.v1\"\x8c\x03\n" +
 	"\"AzureContainerRegistryStackOutputs\x122\n" +
-	"\x15registry_login_server\x18\x01 \x01(\tR\x13registryLoginServer\x120\n" +
-	"\x14registry_resource_id\x18\x02 \x01(\tR\x12registryResourceIdB\xb5\x03\n" +
+	"\x15container_registry_id\x18\x01 \x01(\tR\x13containerRegistryId\x126\n" +
+	"\x17container_registry_name\x18\x02 \x01(\tR\x15containerRegistryName\x12!\n" +
+	"\flogin_server\x18\x03 \x01(\tR\vloginServer\x12%\n" +
+	"\x0eadmin_username\x18\x04 \x01(\tR\radminUsername\x12%\n" +
+	"\x0eadmin_password\x18\x05 \x01(\tR\radminPassword\x12P\n" +
+	"%system_assigned_identity_principal_id\x18\x06 \x01(\tR!systemAssignedIdentityPrincipalId\x127\n" +
+	"\x18data_endpoint_host_names\x18\a \x03(\tR\x15dataEndpointHostNamesB\xb5\x03\n" +
 	"8com.dev.planton.provider.azure.azurecontainerregistry.v1B\x11StackOutputsProtoP\x01Zogithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecontainerregistry/v1;azurecontainerregistryv1\xa2\x02\x05DPPAA\xaa\x024Dev.Planton.Provider.Azure.Azurecontainerregistry.V1\xca\x024Dev\\Planton\\Provider\\Azure\\Azurecontainerregistry\\V1\xe2\x02@Dev\\Planton\\Provider\\Azure\\Azurecontainerregistry\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Azure::Azurecontainerregistry::V1b\x06proto3"
 
 var (

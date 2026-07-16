@@ -71,6 +71,13 @@ NOTES
   `sensitive = true` on the Terraform output. Never apply this exception to material the
   MODULE generates (keys/PEMs the module creates do not belong in outputs at all).
 - Keep field names stable; other modules/tests reference these outputs downstream.
+- Export the ids of IMPLICIT sub-resources that other kinds target, constructed from
+  the parent's id when the provider offers no readback -- ARM/cloud APIs often hang
+  capabilities off a sub-resource nothing materializes explicitly (e.g. a storage
+  account's `blobServices/default`, where diagnostic settings must point to capture
+  data-access logs, while the account-level id exposes only account metrics). A
+  consumer that cannot reach the real telemetry/grant scope by reference is a
+  composition gap identical to a missing output.
 - Map-typed outputs (`map<string, string>`, e.g. per-subnet mount-target IDs) are
   first-class: both engines emit them as nested objects, the flattener dot-flattens
   each entry (`field.some-key = value`), and the transformer routes the remaining

@@ -16,434 +16,445 @@ func TestAzureRedisCacheSpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "AzureRedisCacheSpec Validation Tests")
 }
 
-// helper to create a minimal valid spec (Standard tier, capacity 1)
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+func int32Ptr(v int32) *int32 { return &v }
+
+func boolPtr(v bool) *bool { return &v }
+
+func stringPtr(v string) *string { return &v }
+
+const subnetId = "/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/redis"
+
+// minimal valid spec: a Standard-tier cache (sku unspecified = STANDARD).
 func minimalSpec() *AzureRedisCache {
 	return &AzureRedisCache{
 		ApiVersion: "azure.planton.dev/v1",
 		Kind:       "AzureRedisCache",
 		Metadata: &shared.CloudResourceMetadata{
-			Name: "test-redis",
+			Name: "test-cache",
 		},
 		Spec: &AzureRedisCacheSpec{
-			Region: "eastus",
-			ResourceGroup: &foreignkeyv1.StringValueOrRef{
-				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-					Value: "my-rg",
-				},
-			},
-			Name:     "myapp-redis",
-			Capacity: 1,
+			Region:        "eastus",
+			ResourceGroup: literal("test-rg"),
+			CacheName:     "planton-test-cache",
 		},
 	}
+}
+
+// premiumSpec returns a valid PREMIUM-tier baseline (capacity P1).
+func premiumSpec() *AzureRedisCache {
+	input := minimalSpec()
+	input.Spec.SkuName = AzureRedisCacheSku_PREMIUM
+	input.Spec.Capacity = 1
+	return input
 }
 
 var _ = ginkgo.Describe("AzureRedisCacheSpec Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("azure_redis_cache", func() {
 
-			ginkgo.It("should not return a validation error for a minimal Standard cache", func() {
-				input := minimalSpec()
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept a minimal Standard cache", func() {
+			gomega.Expect(protovalidate.Validate(minimalSpec())).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for a Basic cache with capacity 0", func() {
-				sku := "Basic"
+		ginkgo.It("should accept every explicit tier at a legal capacity", func() {
+			for _, sku := range []AzureRedisCacheSku{AzureRedisCacheSku_BASIC, AzureRedisCacheSku_STANDARD} {
 				input := minimalSpec()
-				input.Spec.SkuName = &sku
-				input.Spec.Capacity = 0
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+				input.Spec.SkuName = sku
+				input.Spec.Capacity = 6
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil(), "sku %v must be accepted", sku)
+			}
+			gomega.Expect(protovalidate.Validate(premiumSpec())).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for a Premium cache", func() {
-				sku := "Premium"
-				shards := int32(2)
-				input := minimalSpec()
-				input.Spec.SkuName = &sku
-				input.Spec.Capacity = 1
-				input.Spec.ShardCount = &shards
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a Premium cache with VNet injection", func() {
-				sku := "Premium"
-				input := minimalSpec()
-				input.Spec.SkuName = &sku
-				input.Spec.Capacity = 1
-				input.Spec.SubnetId = &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-						Value: "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/redis-subnet",
+		ginkgo.It("should accept a resource group reference", func() {
+			input := minimalSpec()
+			input.Spec.ResourceGroup = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+					ValueFrom: &foreignkeyv1.ValueFromRef{
+						Kind:      cloudresourcekind.CloudResourceKind_AzureResourceGroup,
+						Name:      "app-rg",
+						FieldPath: "status.outputs.resource_group_name",
 					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for a cache with firewall rules", func() {
+		ginkgo.It("should accept single-label and hyphenated cache names", func() {
+			for _, name := range []string{"c", "cache1", "my-app-cache", "0cache"} {
 				input := minimalSpec()
-				input.Spec.FirewallRules = []*AzureRedisFirewallRule{
-					{Name: "allow_office", StartIp: "203.0.113.0", EndIp: "203.0.113.255"},
-					{Name: "allow_azure", StartIp: "0.0.0.0", EndIp: "0.0.0.0"},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+				input.Spec.CacheName = name
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil(), "name %q must be accepted", name)
+			}
+		})
 
-			ginkgo.It("should not return a validation error for a cache with patch schedules", func() {
-				startHour := int32(3)
+		ginkgo.It("should accept a VNet-injected Premium cache with a static IP", func() {
+			input := premiumSpec()
+			input.Spec.SubnetId = literal(subnetId)
+			input.Spec.PrivateStaticIpAddress = stringPtr("10.0.1.10")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept clustering on Premium", func() {
+			input := premiumSpec()
+			input.Spec.ShardCount = int32Ptr(3)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept extra replicas on Premium", func() {
+			input := premiumSpec()
+			input.Spec.ReplicasPerPrimary = int32Ptr(2)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept zones and tags", func() {
+			input := minimalSpec()
+			input.Spec.Zones = []string{"1", "2"}
+			input.Spec.Tags = map[string]string{"cost-center": "platform"}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept disabling access keys once Entra auth is on", func() {
+			input := minimalSpec()
+			input.Spec.AccessKeysAuthenticationEnabled = boolPtr(false)
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				ActiveDirectoryAuthenticationEnabled: true,
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept disabling Redis authentication on a VNet-injected cache", func() {
+			input := premiumSpec()
+			input.Spec.SubnetId = literal(subnetId)
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				AuthenticationEnabled: boolPtr(false),
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept memory dials on Standard", func() {
+			input := minimalSpec()
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				MaxmemoryReserved:              int32Ptr(50),
+				MaxmemoryDelta:                 int32Ptr(50),
+				MaxfragmentationmemoryReserved: int32Ptr(50),
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept RDB persistence on Premium with a connection string", func() {
+			input := premiumSpec()
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				RdbBackupEnabled:           true,
+				RdbBackupFrequency:         int32Ptr(60),
+				RdbBackupMaxSnapshotCount:  int32Ptr(1),
+				RdbStorageConnectionString: "DefaultEndpointsProtocol=https;AccountName=x;AccountKey=y",
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept RDB persistence via managed identity without a connection string", func() {
+			input := premiumSpec()
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				RdbBackupEnabled:                    true,
+				DataPersistenceAuthenticationMethod: AzureRedisCachePersistenceAuthMethod_MANAGED_IDENTITY,
+			}
+			input.Spec.Identity = &AzureRedisCacheIdentity{
+				Type: AzureRedisCacheIdentityType_SYSTEM_ASSIGNED,
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept AOF persistence on Premium", func() {
+			input := premiumSpec()
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				AofBackupEnabled:             true,
+				AofStorageConnectionString_0: "DefaultEndpointsProtocol=https;AccountName=x;AccountKey=y",
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a user-assigned identity with entries", func() {
+			input := minimalSpec()
+			input.Spec.Identity = &AzureRedisCacheIdentity{
+				Type:                    AzureRedisCacheIdentityType_USER_ASSIGNED,
+				UserAssignedIdentityIds: []*foreignkeyv1.StringValueOrRef{literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uai")},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept patch schedules with explicit windows", func() {
+			input := minimalSpec()
+			input.Spec.PatchSchedules = []*AzureRedisCachePatchSchedule{
+				{
+					DayOfWeek:         AzureRedisCachePatchScheduleDay_SUNDAY,
+					StartHourUtc:      int32Ptr(2),
+					MaintenanceWindow: stringPtr("PT6H30M"),
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept firewall rules with valid names and IPv4 ranges", func() {
+			input := minimalSpec()
+			input.Spec.FirewallRules = []*AzureRedisCacheFirewallRule{
+				{Name: "office_range", StartIp: "203.0.113.0", EndIp: "203.0.113.255"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept every documented eviction policy", func() {
+			for _, policy := range []string{"allkeys-lfu", "allkeys-lru", "allkeys-random", "noeviction", "volatile-lfu", "volatile-lru", "volatile-random", "volatile-ttl"} {
 				input := minimalSpec()
-				input.Spec.PatchSchedules = []*AzureRedisPatchSchedule{
-					{DayOfWeek: "Saturday", StartHourUtc: &startHour},
+				input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+					MaxmemoryPolicy: stringPtr(policy),
 				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a cache with zones", func() {
-				input := minimalSpec()
-				input.Spec.Zones = []string{"1", "2"}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for each valid SKU name", func() {
-				skus := []string{"Basic", "Standard", "Premium"}
-				for _, s := range skus {
-					sku := s
-					input := minimalSpec()
-					input.Spec.SkuName = &sku
-					if sku == "Premium" {
-						input.Spec.Capacity = 1
-					}
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).To(gomega.BeNil())
-				}
-			})
-
-			ginkgo.It("should not return a validation error for each valid redis version", func() {
-				versions := []string{"4", "6"}
-				for _, v := range versions {
-					ver := v
-					input := minimalSpec()
-					input.Spec.RedisVersion = &ver
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).To(gomega.BeNil())
-				}
-			})
-
-			ginkgo.It("should not return a validation error for each valid maxmemory policy", func() {
-				policies := []string{
-					"allkeys-lfu", "allkeys-lru", "allkeys-random",
-					"noeviction", "volatile-lfu", "volatile-lru",
-					"volatile-random", "volatile-ttl",
-				}
-				for _, p := range policies {
-					policy := p
-					input := minimalSpec()
-					input.Spec.MaxmemoryPolicy = &policy
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).To(gomega.BeNil())
-				}
-			})
-
-			ginkgo.It("should not return a validation error for each valid TLS version", func() {
-				versions := []string{"1.0", "1.1", "1.2"}
-				for _, v := range versions {
-					ver := v
-					input := minimalSpec()
-					input.Spec.MinimumTlsVersion = &ver
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).To(gomega.BeNil())
-				}
-			})
-
-			ginkgo.It("should not return a validation error for each valid patch schedule day", func() {
-				days := []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Everyday", "Weekend"}
-				for _, d := range days {
-					day := d
-					input := minimalSpec()
-					input.Spec.PatchSchedules = []*AzureRedisPatchSchedule{
-						{DayOfWeek: day},
-					}
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).To(gomega.BeNil())
-				}
-			})
-
-			ginkgo.It("should not return a validation error with all optional fields set", func() {
-				sku := "Premium"
-				version := "6"
-				shards := int32(3)
-				nonSsl := true
-				tls := "1.2"
-				publicAccess := false
-				policy := "allkeys-lru"
-				startHour := int32(2)
-				window := "PT3H"
-				input := minimalSpec()
-				input.Metadata.Org = "mycompany"
-				input.Metadata.Env = "production"
-				input.Spec.SkuName = &sku
-				input.Spec.Capacity = 2
-				input.Spec.RedisVersion = &version
-				input.Spec.SubnetId = &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-						Value: "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/redis",
-					},
-				}
-				input.Spec.Zones = []string{"1", "2", "3"}
-				input.Spec.ShardCount = &shards
-				input.Spec.NonSslPortEnabled = &nonSsl
-				input.Spec.MinimumTlsVersion = &tls
-				input.Spec.PublicNetworkAccessEnabled = &publicAccess
-				input.Spec.MaxmemoryPolicy = &policy
-				input.Spec.PatchSchedules = []*AzureRedisPatchSchedule{
-					{DayOfWeek: "Saturday", StartHourUtc: &startHour, MaintenanceWindow: &window},
-					{DayOfWeek: "Sunday", StartHourUtc: &startHour},
-				}
-				input.Spec.FirewallRules = []*AzureRedisFirewallRule{
-					{Name: "allow_vpn", StartIp: "10.0.0.1", EndIp: "10.0.0.1"},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with valueFrom reference for resource_group", func() {
-				input := minimalSpec()
-				input.Spec.ResourceGroup = &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-						ValueFrom: &foreignkeyv1.ValueFromRef{
-							Kind:      cloudresourcekind.CloudResourceKind_AzureResourceGroup,
-							Name:      "shared-rg",
-							FieldPath: "status.outputs.resource_group_name",
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with valueFrom reference for subnet_id", func() {
-				sku := "Premium"
-				input := minimalSpec()
-				input.Spec.SkuName = &sku
-				input.Spec.Capacity = 1
-				input.Spec.SubnetId = &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-						ValueFrom: &foreignkeyv1.ValueFromRef{
-							Kind:      cloudresourcekind.CloudResourceKind_AzureSubnet,
-							Name:      "redis-subnet",
-							FieldPath: "status.outputs.subnet_id",
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil(), "policy %q must be accepted", policy)
+			}
 		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("azure_redis_cache", func() {
 
-			ginkgo.It("should return a validation error when region is missing", func() {
+		ginkgo.It("should reject a missing region", func() {
+			input := minimalSpec()
+			input.Spec.Region = ""
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a missing resource group", func() {
+			input := minimalSpec()
+			input.Spec.ResourceGroup = nil
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject names that break the DNS-label rules", func() {
+			for _, name := range []string{"", "-cache", "cache-", "my--cache", "my_cache", "MY CACHE"} {
 				input := minimalSpec()
-				input.Spec.Region = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+				input.Spec.CacheName = name
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil(), "name %q must be rejected", name)
+			}
+		})
 
-			ginkgo.It("should return a validation error when resource_group is missing", func() {
+		ginkgo.It("should reject a name longer than 63 characters", func() {
+			input := minimalSpec()
+			input.Spec.CacheName = "a123456789b123456789c123456789d123456789e123456789f123456789g123"
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an undefined sku enum value", func() {
+			input := minimalSpec()
+			input.Spec.SkuName = AzureRedisCacheSku(99)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject Premium capacity outside P1-P5", func() {
+			for _, capacity := range []int32{0, 6} {
+				input := premiumSpec()
+				input.Spec.Capacity = capacity
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil(), "capacity %d must be rejected on Premium", capacity)
+			}
+		})
+
+		ginkgo.It("should reject capacity above the C-family range", func() {
+			input := minimalSpec()
+			input.Spec.Capacity = 7
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an unsupported redis version", func() {
+			input := minimalSpec()
+			input.Spec.RedisVersion = stringPtr("5")
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject VNet injection outside Premium", func() {
+			input := minimalSpec()
+			input.Spec.SubnetId = literal(subnetId)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a static IP without VNet injection", func() {
+			input := premiumSpec()
+			input.Spec.PrivateStaticIpAddress = stringPtr("10.0.1.10")
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a malformed static IP", func() {
+			input := premiumSpec()
+			input.Spec.SubnetId = literal(subnetId)
+			input.Spec.PrivateStaticIpAddress = stringPtr("not-an-ip")
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject clustering outside Premium", func() {
+			input := minimalSpec()
+			input.Spec.ShardCount = int32Ptr(2)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject extra replicas outside Premium", func() {
+			input := minimalSpec()
+			input.Spec.ReplicasPerPrimary = int32Ptr(2)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject combining clustering with extra replicas", func() {
+			input := premiumSpec()
+			input.Spec.ShardCount = int32Ptr(2)
+			input.Spec.ReplicasPerPrimary = int32Ptr(2)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a zone outside 1-3", func() {
+			input := minimalSpec()
+			input.Spec.Zones = []string{"4"}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject disabling access keys without Entra auth", func() {
+			input := minimalSpec()
+			input.Spec.AccessKeysAuthenticationEnabled = boolPtr(false)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject disabling Redis authentication without VNet injection", func() {
+			input := minimalSpec()
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				AuthenticationEnabled: boolPtr(false),
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject memory dials on the Basic tier", func() {
+			input := minimalSpec()
+			input.Spec.SkuName = AzureRedisCacheSku_BASIC
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				MaxmemoryReserved: int32Ptr(50),
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid eviction policy", func() {
+			input := minimalSpec()
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				MaxmemoryPolicy: stringPtr("evict-everything"),
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject RDB persistence outside Premium", func() {
+			input := minimalSpec()
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				RdbBackupEnabled:           true,
+				RdbStorageConnectionString: "conn",
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject RDB persistence without a connection string under SAS auth", func() {
+			input := premiumSpec()
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				RdbBackupEnabled: true,
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid RDB backup frequency", func() {
+			input := premiumSpec()
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				RdbBackupEnabled:           true,
+				RdbBackupFrequency:         int32Ptr(45),
+				RdbStorageConnectionString: "conn",
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject AOF persistence outside Premium", func() {
+			input := minimalSpec()
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				AofBackupEnabled: true,
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject MANAGED_IDENTITY persistence auth without an identity block", func() {
+			input := premiumSpec()
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				DataPersistenceAuthenticationMethod: AzureRedisCachePersistenceAuthMethod_MANAGED_IDENTITY,
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a malformed storage account subscription id", func() {
+			input := premiumSpec()
+			input.Spec.RedisConfiguration = &AzureRedisCacheConfiguration{
+				StorageAccountSubscriptionId: stringPtr("not-a-uuid"),
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a system-assigned identity carrying user-assigned entries", func() {
+			input := minimalSpec()
+			input.Spec.Identity = &AzureRedisCacheIdentity{
+				Type:                    AzureRedisCacheIdentityType_SYSTEM_ASSIGNED,
+				UserAssignedIdentityIds: []*foreignkeyv1.StringValueOrRef{literal("/subscriptions/s/id")},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a user-assigned identity without entries", func() {
+			input := minimalSpec()
+			input.Spec.Identity = &AzureRedisCacheIdentity{
+				Type: AzureRedisCacheIdentityType_USER_ASSIGNED,
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an unspecified patch-schedule day", func() {
+			input := minimalSpec()
+			input.Spec.PatchSchedules = []*AzureRedisCachePatchSchedule{{}}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a start hour outside 0-23", func() {
+			input := minimalSpec()
+			input.Spec.PatchSchedules = []*AzureRedisCachePatchSchedule{
+				{DayOfWeek: AzureRedisCachePatchScheduleDay_MONDAY, StartHourUtc: int32Ptr(24)},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject malformed maintenance windows", func() {
+			for _, window := range []string{"PT", "5H", "P1D", "five hours"} {
 				input := minimalSpec()
-				input.Spec.ResourceGroup = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when name is missing", func() {
-				input := minimalSpec()
-				input.Spec.Name = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when name exceeds 63 characters", func() {
-				tooLong := "a"
-				for len(tooLong) < 64 {
-					tooLong += "b"
+				input.Spec.PatchSchedules = []*AzureRedisCachePatchSchedule{
+					{DayOfWeek: AzureRedisCachePatchScheduleDay_MONDAY, MaintenanceWindow: stringPtr(window)},
 				}
-				input := minimalSpec()
-				input.Spec.Name = tooLong
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil(), "window %q must be rejected", window)
+			}
+		})
 
-			ginkgo.It("should return a validation error when name starts with a number", func() {
-				input := minimalSpec()
-				input.Spec.Name = "1-invalid"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject firewall rule names with hyphens", func() {
+			input := minimalSpec()
+			input.Spec.FirewallRules = []*AzureRedisCacheFirewallRule{
+				{Name: "office-range", StartIp: "203.0.113.0", EndIp: "203.0.113.255"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when name contains uppercase", func() {
-				input := minimalSpec()
-				input.Spec.Name = "Invalid-Name"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when sku_name is invalid", func() {
-				invalidSku := "Enterprise"
-				input := minimalSpec()
-				input.Spec.SkuName = &invalidSku
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when capacity exceeds maximum", func() {
-				input := minimalSpec()
-				input.Spec.Capacity = 7
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when capacity is negative", func() {
-				input := minimalSpec()
-				input.Spec.Capacity = -1
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when redis_version is invalid", func() {
-				invalidVersion := "5"
-				input := minimalSpec()
-				input.Spec.RedisVersion = &invalidVersion
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when maxmemory_policy is invalid", func() {
-				invalidPolicy := "random-eviction"
-				input := minimalSpec()
-				input.Spec.MaxmemoryPolicy = &invalidPolicy
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when minimum_tls_version is invalid", func() {
-				invalidTls := "1.3"
-				input := minimalSpec()
-				input.Spec.MinimumTlsVersion = &invalidTls
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when shard_count exceeds maximum", func() {
-				shards := int32(11)
-				input := minimalSpec()
-				input.Spec.ShardCount = &shards
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when shard_count is zero", func() {
-				shards := int32(0)
-				input := minimalSpec()
-				input.Spec.ShardCount = &shards
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when patch schedule day is invalid", func() {
-				input := minimalSpec()
-				input.Spec.PatchSchedules = []*AzureRedisPatchSchedule{
-					{DayOfWeek: "Funday"},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when patch schedule start_hour exceeds 23", func() {
-				startHour := int32(25)
-				input := minimalSpec()
-				input.Spec.PatchSchedules = []*AzureRedisPatchSchedule{
-					{DayOfWeek: "Monday", StartHourUtc: &startHour},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when firewall rule name contains hyphens", func() {
-				input := minimalSpec()
-				input.Spec.FirewallRules = []*AzureRedisFirewallRule{
-					{Name: "allow-office", StartIp: "0.0.0.0", EndIp: "0.0.0.0"},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when firewall rule name is empty", func() {
-				input := minimalSpec()
-				input.Spec.FirewallRules = []*AzureRedisFirewallRule{
-					{Name: "", StartIp: "0.0.0.0", EndIp: "0.0.0.0"},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when firewall rule start_ip is empty", func() {
-				input := minimalSpec()
-				input.Spec.FirewallRules = []*AzureRedisFirewallRule{
-					{Name: "bad_rule", StartIp: "", EndIp: "0.0.0.0"},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when firewall rule end_ip is empty", func() {
-				input := minimalSpec()
-				input.Spec.FirewallRules = []*AzureRedisFirewallRule{
-					{Name: "bad_rule", StartIp: "0.0.0.0", EndIp: ""},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when metadata is missing", func() {
-				input := minimalSpec()
-				input.Metadata = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when spec is missing", func() {
-				input := &AzureRedisCache{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureRedisCache",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-redis",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when api_version is incorrect", func() {
-				input := minimalSpec()
-				input.ApiVersion = "wrong.version/v1"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when kind is incorrect", func() {
-				input := minimalSpec()
-				input.Kind = "WrongKind"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject firewall rules with malformed addresses", func() {
+			input := minimalSpec()
+			input.Spec.FirewallRules = []*AzureRedisCacheFirewallRule{
+				{Name: "bad_rule", StartIp: "203.0.113.0", EndIp: "not-an-ip"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 	})
 })

@@ -1,0 +1,18 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRedisLinkedServer
+metadata:
+  name: my-cache-external-link
+spec:
+  # The primary cache managed in THIS manifest set.
+  targetRedisCacheId:
+    valueFrom:
+      kind: AzureRedisCache
+      name: <primary-cache-resource-name>
+      fieldPath: status.outputs.redis_cache_id
+  # A secondary cache managed elsewhere (another team, another manifest
+  # set): pass its ARM id and region as literals.
+  linkedRedisCacheId:
+    value: <linkedRedisCacheArmId>
+  linkedRedisCacheLocation:
+    value: <linkedRedisCacheRegion>
+  serverRole: SECONDARY

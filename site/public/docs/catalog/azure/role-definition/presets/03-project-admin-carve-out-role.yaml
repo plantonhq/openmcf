@@ -1,0 +1,30 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleDefinition
+metadata:
+  name: my-project-admin-role
+spec:
+  name: <org-prefix>-project-admin
+  scope:
+    value: <subscription-arm-id>
+  description: Manage all project resources but never RBAC, policy, or locks
+  permissions:
+    - actions:
+        - "*"
+      notActions:
+        # Carve-outs trim THIS role's wildcard grant (they are not deny
+        # rules): the role manages everything except the authorization
+        # plane itself.
+        - Microsoft.Authorization/roleAssignments/write
+        - Microsoft.Authorization/roleAssignments/delete
+        - Microsoft.Authorization/roleDefinitions/write
+        - Microsoft.Authorization/roleDefinitions/delete
+        - Microsoft.Authorization/policyAssignments/write
+        - Microsoft.Authorization/policyAssignments/delete
+        - Microsoft.Authorization/locks/write
+        - Microsoft.Authorization/locks/delete
+  # Pre-authorize where this role may ever be granted: only inside the two
+  # project resource groups, even though the definition lives at
+  # subscription scope so both groups can share it.
+  assignableScopes:
+    - value: <project-resource-group-arm-id>
+    - value: <project-staging-resource-group-arm-id>

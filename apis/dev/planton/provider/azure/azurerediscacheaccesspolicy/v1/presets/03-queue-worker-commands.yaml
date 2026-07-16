@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRedisCacheAccessPolicy
+metadata:
+  name: my-queue-worker-policy
+spec:
+  redisCacheId:
+    valueFrom:
+      kind: AzureRedisCache
+      name: <cache-resource-name>
+      fieldPath: status.outputs.redis_cache_id
+  policyName: <policyName>
+  # Exactly the commands a list-based queue worker touches -- nothing
+  # else exists for this identity, not even reads outside the queue.
+  permissions: "+lpush +rpush +lpop +rpop +blpop +brpop +llen +@connection ~<queueKey>"

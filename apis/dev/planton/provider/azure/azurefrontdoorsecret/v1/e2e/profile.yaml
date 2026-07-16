@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurefrontdoorsecret
+spec:
+  # The scenario composes fixture RG -> Front Door profile (registry
+  # prerequisite) -> Key Vault + self-signed certificate (scenario
+  # extra fixture) -> the secret. The harness Setup pre-grants Front
+  # Door's service principal "Key Vault Secrets User" at the
+  # subscription scope (one-time bootstrap).
+  #
+  # Live-confirmed (2026-07-08, both engines): Azure rejects the fixture's
+  # self-signed certificate -- BadRequest "The certificate chain includes
+  # an invalid number of certificates. The number of certificates should
+  # be at least 2." What the run proved before content rejection: the full
+  # fixture chain deploys, the AFD service-principal grant authorizes the
+  # vault read (no access-denied), the module create is well-formed, and
+  # teardown incl. the vault purge runs clean. Unblocking: import a
+  # CA-issued certificate (full chain) into the fixture vault and re-run.
+  tier: 1
+  status: deferred
+  deferred_reason: "Front Door BYO TLS requires a CA-issued chain (>=2 certs); fixture self-signed cert rejected by ARM on both engines"
+  validated_provisioners: []
+  limitations:
+    - "Self-signed Key Vault certificate (issuer Self) produces a single-cert chain; Front Door requires leaf + intermediate"
+    - "Fixture chain, AFD SP grant, module wiring, and teardown all live-proven; only certificate content rejected"
+  timeout_minutes: 60

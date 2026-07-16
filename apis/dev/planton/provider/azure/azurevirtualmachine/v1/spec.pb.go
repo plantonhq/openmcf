@@ -24,331 +24,1044 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Caching mode for the OS disk.
-type AzureVirtualMachineOsDisk_DiskCaching int32
+// Host-caching modes for a disk.
+type AzureVirtualMachineDiskCaching int32
 
 const (
-	AzureVirtualMachineOsDisk_disk_caching_unspecified AzureVirtualMachineOsDisk_DiskCaching = 0
-	AzureVirtualMachineOsDisk_none                     AzureVirtualMachineOsDisk_DiskCaching = 1
-	AzureVirtualMachineOsDisk_read_only                AzureVirtualMachineOsDisk_DiskCaching = 2
-	AzureVirtualMachineOsDisk_read_write               AzureVirtualMachineOsDisk_DiskCaching = 3
+	// Not specified -- invalid; caching is an explicit choice per disk.
+	AzureVirtualMachineDiskCaching_azure_virtual_machine_disk_caching_unspecified AzureVirtualMachineDiskCaching = 0
+	// No host caching: right for write-heavy disks and required for
+	// disks larger than 4 TiB.
+	AzureVirtualMachineDiskCaching_NONE AzureVirtualMachineDiskCaching = 1
+	// Read caching only: high-IOPS workloads re-reading hot data.
+	AzureVirtualMachineDiskCaching_READ_ONLY AzureVirtualMachineDiskCaching = 2
+	// Read/write caching: the general-purpose OS-disk mode.
+	AzureVirtualMachineDiskCaching_READ_WRITE AzureVirtualMachineDiskCaching = 3
 )
 
-// Enum value maps for AzureVirtualMachineOsDisk_DiskCaching.
+// Enum value maps for AzureVirtualMachineDiskCaching.
 var (
-	AzureVirtualMachineOsDisk_DiskCaching_name = map[int32]string{
-		0: "disk_caching_unspecified",
-		1: "none",
-		2: "read_only",
-		3: "read_write",
+	AzureVirtualMachineDiskCaching_name = map[int32]string{
+		0: "azure_virtual_machine_disk_caching_unspecified",
+		1: "NONE",
+		2: "READ_ONLY",
+		3: "READ_WRITE",
 	}
-	AzureVirtualMachineOsDisk_DiskCaching_value = map[string]int32{
-		"disk_caching_unspecified": 0,
-		"none":                     1,
-		"read_only":                2,
-		"read_write":               3,
+	AzureVirtualMachineDiskCaching_value = map[string]int32{
+		"azure_virtual_machine_disk_caching_unspecified": 0,
+		"NONE":       1,
+		"READ_ONLY":  2,
+		"READ_WRITE": 3,
 	}
 )
 
-func (x AzureVirtualMachineOsDisk_DiskCaching) Enum() *AzureVirtualMachineOsDisk_DiskCaching {
-	p := new(AzureVirtualMachineOsDisk_DiskCaching)
+func (x AzureVirtualMachineDiskCaching) Enum() *AzureVirtualMachineDiskCaching {
+	p := new(AzureVirtualMachineDiskCaching)
 	*p = x
 	return p
 }
 
-func (x AzureVirtualMachineOsDisk_DiskCaching) String() string {
+func (x AzureVirtualMachineDiskCaching) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureVirtualMachineOsDisk_DiskCaching) Descriptor() protoreflect.EnumDescriptor {
+func (AzureVirtualMachineDiskCaching) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[0].Descriptor()
 }
 
-func (AzureVirtualMachineOsDisk_DiskCaching) Type() protoreflect.EnumType {
+func (AzureVirtualMachineDiskCaching) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[0]
 }
 
-func (x AzureVirtualMachineOsDisk_DiskCaching) Number() protoreflect.EnumNumber {
+func (x AzureVirtualMachineDiskCaching) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureVirtualMachineOsDisk_DiskCaching.Descriptor instead.
-func (AzureVirtualMachineOsDisk_DiskCaching) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{2, 0}
+// Deprecated: Use AzureVirtualMachineDiskCaching.Descriptor instead.
+func (AzureVirtualMachineDiskCaching) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-// Storage account type for the OS disk.
-type AzureVirtualMachineOsDisk_DiskStorageType int32
+// Storage SKUs valid for OS disks (PremiumV2/Ultra are data-disk-only).
+type AzureVirtualMachineOsDiskStorageAccountType int32
 
 const (
-	AzureVirtualMachineOsDisk_disk_storage_type_unspecified AzureVirtualMachineOsDisk_DiskStorageType = 0
-	AzureVirtualMachineOsDisk_standard_lrs                  AzureVirtualMachineOsDisk_DiskStorageType = 1 // Standard HDD
-	AzureVirtualMachineOsDisk_standard_ssd_lrs              AzureVirtualMachineOsDisk_DiskStorageType = 2 // Standard SSD
-	AzureVirtualMachineOsDisk_premium_lrs                   AzureVirtualMachineOsDisk_DiskStorageType = 3 // Premium SSD
-	AzureVirtualMachineOsDisk_premium_zrs                   AzureVirtualMachineOsDisk_DiskStorageType = 4 // Premium SSD with zone-redundant storage
+	// Not specified -- invalid; the SKU is an explicit choice.
+	AzureVirtualMachineOsDiskStorageAccountType_azure_virtual_machine_os_disk_storage_account_type_unspecified AzureVirtualMachineOsDiskStorageAccountType = 0
+	// HDD -- dev/test only.
+	AzureVirtualMachineOsDiskStorageAccountType_STANDARD_LRS AzureVirtualMachineOsDiskStorageAccountType = 1
+	// Standard SSD, locally redundant.
+	AzureVirtualMachineOsDiskStorageAccountType_STANDARD_SSD_LRS AzureVirtualMachineOsDiskStorageAccountType = 2
+	// Premium SSD, locally redundant -- the production default.
+	AzureVirtualMachineOsDiskStorageAccountType_PREMIUM_LRS AzureVirtualMachineOsDiskStorageAccountType = 3
+	// Standard SSD, zone redundant (conflicts with zone-pinning the VM).
+	AzureVirtualMachineOsDiskStorageAccountType_STANDARD_SSD_ZRS AzureVirtualMachineOsDiskStorageAccountType = 4
+	// Premium SSD, zone redundant (conflicts with zone-pinning the VM).
+	AzureVirtualMachineOsDiskStorageAccountType_PREMIUM_ZRS AzureVirtualMachineOsDiskStorageAccountType = 5
 )
 
-// Enum value maps for AzureVirtualMachineOsDisk_DiskStorageType.
+// Enum value maps for AzureVirtualMachineOsDiskStorageAccountType.
 var (
-	AzureVirtualMachineOsDisk_DiskStorageType_name = map[int32]string{
-		0: "disk_storage_type_unspecified",
-		1: "standard_lrs",
-		2: "standard_ssd_lrs",
-		3: "premium_lrs",
-		4: "premium_zrs",
+	AzureVirtualMachineOsDiskStorageAccountType_name = map[int32]string{
+		0: "azure_virtual_machine_os_disk_storage_account_type_unspecified",
+		1: "STANDARD_LRS",
+		2: "STANDARD_SSD_LRS",
+		3: "PREMIUM_LRS",
+		4: "STANDARD_SSD_ZRS",
+		5: "PREMIUM_ZRS",
 	}
-	AzureVirtualMachineOsDisk_DiskStorageType_value = map[string]int32{
-		"disk_storage_type_unspecified": 0,
-		"standard_lrs":                  1,
-		"standard_ssd_lrs":              2,
-		"premium_lrs":                   3,
-		"premium_zrs":                   4,
+	AzureVirtualMachineOsDiskStorageAccountType_value = map[string]int32{
+		"azure_virtual_machine_os_disk_storage_account_type_unspecified": 0,
+		"STANDARD_LRS":     1,
+		"STANDARD_SSD_LRS": 2,
+		"PREMIUM_LRS":      3,
+		"STANDARD_SSD_ZRS": 4,
+		"PREMIUM_ZRS":      5,
 	}
 )
 
-func (x AzureVirtualMachineOsDisk_DiskStorageType) Enum() *AzureVirtualMachineOsDisk_DiskStorageType {
-	p := new(AzureVirtualMachineOsDisk_DiskStorageType)
+func (x AzureVirtualMachineOsDiskStorageAccountType) Enum() *AzureVirtualMachineOsDiskStorageAccountType {
+	p := new(AzureVirtualMachineOsDiskStorageAccountType)
 	*p = x
 	return p
 }
 
-func (x AzureVirtualMachineOsDisk_DiskStorageType) String() string {
+func (x AzureVirtualMachineOsDiskStorageAccountType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureVirtualMachineOsDisk_DiskStorageType) Descriptor() protoreflect.EnumDescriptor {
+func (AzureVirtualMachineOsDiskStorageAccountType) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[1].Descriptor()
 }
 
-func (AzureVirtualMachineOsDisk_DiskStorageType) Type() protoreflect.EnumType {
+func (AzureVirtualMachineOsDiskStorageAccountType) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[1]
 }
 
-func (x AzureVirtualMachineOsDisk_DiskStorageType) Number() protoreflect.EnumNumber {
+func (x AzureVirtualMachineOsDiskStorageAccountType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureVirtualMachineOsDisk_DiskStorageType.Descriptor instead.
-func (AzureVirtualMachineOsDisk_DiskStorageType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{2, 1}
+// Deprecated: Use AzureVirtualMachineOsDiskStorageAccountType.Descriptor instead.
+func (AzureVirtualMachineOsDiskStorageAccountType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-// Public IP SKU (Basic or Standard).
-type AzureVirtualMachineNetworkConfig_PublicIpSku int32
+// Ephemeral OS disk placement targets.
+type AzureVirtualMachineDiffDiskPlacement int32
 
 const (
-	AzureVirtualMachineNetworkConfig_public_ip_sku_unspecified AzureVirtualMachineNetworkConfig_PublicIpSku = 0
-	AzureVirtualMachineNetworkConfig_basic                     AzureVirtualMachineNetworkConfig_PublicIpSku = 1
-	AzureVirtualMachineNetworkConfig_standard                  AzureVirtualMachineNetworkConfig_PublicIpSku = 2
+	// Not specified: Azure's default (the cache disk when big enough).
+	AzureVirtualMachineDiffDiskPlacement_azure_virtual_machine_diff_disk_placement_unspecified AzureVirtualMachineDiffDiskPlacement = 0
+	// The VM size's cache disk.
+	AzureVirtualMachineDiffDiskPlacement_CACHE_DISK AzureVirtualMachineDiffDiskPlacement = 1
+	// The VM size's temp/resource disk.
+	AzureVirtualMachineDiffDiskPlacement_RESOURCE_DISK AzureVirtualMachineDiffDiskPlacement = 2
+	// The VM size's local NVMe disks.
+	AzureVirtualMachineDiffDiskPlacement_NVME_DISK AzureVirtualMachineDiffDiskPlacement = 3
 )
 
-// Enum value maps for AzureVirtualMachineNetworkConfig_PublicIpSku.
+// Enum value maps for AzureVirtualMachineDiffDiskPlacement.
 var (
-	AzureVirtualMachineNetworkConfig_PublicIpSku_name = map[int32]string{
-		0: "public_ip_sku_unspecified",
-		1: "basic",
-		2: "standard",
+	AzureVirtualMachineDiffDiskPlacement_name = map[int32]string{
+		0: "azure_virtual_machine_diff_disk_placement_unspecified",
+		1: "CACHE_DISK",
+		2: "RESOURCE_DISK",
+		3: "NVME_DISK",
 	}
-	AzureVirtualMachineNetworkConfig_PublicIpSku_value = map[string]int32{
-		"public_ip_sku_unspecified": 0,
-		"basic":                     1,
-		"standard":                  2,
+	AzureVirtualMachineDiffDiskPlacement_value = map[string]int32{
+		"azure_virtual_machine_diff_disk_placement_unspecified": 0,
+		"CACHE_DISK":    1,
+		"RESOURCE_DISK": 2,
+		"NVME_DISK":     3,
 	}
 )
 
-func (x AzureVirtualMachineNetworkConfig_PublicIpSku) Enum() *AzureVirtualMachineNetworkConfig_PublicIpSku {
-	p := new(AzureVirtualMachineNetworkConfig_PublicIpSku)
+func (x AzureVirtualMachineDiffDiskPlacement) Enum() *AzureVirtualMachineDiffDiskPlacement {
+	p := new(AzureVirtualMachineDiffDiskPlacement)
 	*p = x
 	return p
 }
 
-func (x AzureVirtualMachineNetworkConfig_PublicIpSku) String() string {
+func (x AzureVirtualMachineDiffDiskPlacement) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureVirtualMachineNetworkConfig_PublicIpSku) Descriptor() protoreflect.EnumDescriptor {
+func (AzureVirtualMachineDiffDiskPlacement) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[2].Descriptor()
 }
 
-func (AzureVirtualMachineNetworkConfig_PublicIpSku) Type() protoreflect.EnumType {
+func (AzureVirtualMachineDiffDiskPlacement) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[2]
 }
 
-func (x AzureVirtualMachineNetworkConfig_PublicIpSku) Number() protoreflect.EnumNumber {
+func (x AzureVirtualMachineDiffDiskPlacement) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureVirtualMachineNetworkConfig_PublicIpSku.Descriptor instead.
-func (AzureVirtualMachineNetworkConfig_PublicIpSku) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{4, 0}
+// Deprecated: Use AzureVirtualMachineDiffDiskPlacement.Descriptor instead.
+func (AzureVirtualMachineDiffDiskPlacement) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-// Static or dynamic allocation for public IP.
-type AzureVirtualMachineNetworkConfig_PublicIpAllocation int32
+// Confidential-VM guest-state encryption modes.
+type AzureVirtualMachineSecurityEncryptionType int32
 
 const (
-	AzureVirtualMachineNetworkConfig_public_ip_allocation_unspecified AzureVirtualMachineNetworkConfig_PublicIpAllocation = 0
-	AzureVirtualMachineNetworkConfig_public_dynamic                   AzureVirtualMachineNetworkConfig_PublicIpAllocation = 1
-	AzureVirtualMachineNetworkConfig_public_static                    AzureVirtualMachineNetworkConfig_PublicIpAllocation = 2
+	// Not specified: not a confidential VM.
+	AzureVirtualMachineSecurityEncryptionType_azure_virtual_machine_security_encryption_type_unspecified AzureVirtualMachineSecurityEncryptionType = 0
+	// Only the VM guest state is encrypted.
+	AzureVirtualMachineSecurityEncryptionType_VM_GUEST_STATE_ONLY AzureVirtualMachineSecurityEncryptionType = 1
+	// The OS disk and guest state are encrypted (requires secure boot).
+	AzureVirtualMachineSecurityEncryptionType_DISK_WITH_VM_GUEST_STATE AzureVirtualMachineSecurityEncryptionType = 2
 )
 
-// Enum value maps for AzureVirtualMachineNetworkConfig_PublicIpAllocation.
+// Enum value maps for AzureVirtualMachineSecurityEncryptionType.
 var (
-	AzureVirtualMachineNetworkConfig_PublicIpAllocation_name = map[int32]string{
-		0: "public_ip_allocation_unspecified",
-		1: "public_dynamic",
-		2: "public_static",
+	AzureVirtualMachineSecurityEncryptionType_name = map[int32]string{
+		0: "azure_virtual_machine_security_encryption_type_unspecified",
+		1: "VM_GUEST_STATE_ONLY",
+		2: "DISK_WITH_VM_GUEST_STATE",
 	}
-	AzureVirtualMachineNetworkConfig_PublicIpAllocation_value = map[string]int32{
-		"public_ip_allocation_unspecified": 0,
-		"public_dynamic":                   1,
-		"public_static":                    2,
+	AzureVirtualMachineSecurityEncryptionType_value = map[string]int32{
+		"azure_virtual_machine_security_encryption_type_unspecified": 0,
+		"VM_GUEST_STATE_ONLY":      1,
+		"DISK_WITH_VM_GUEST_STATE": 2,
 	}
 )
 
-func (x AzureVirtualMachineNetworkConfig_PublicIpAllocation) Enum() *AzureVirtualMachineNetworkConfig_PublicIpAllocation {
-	p := new(AzureVirtualMachineNetworkConfig_PublicIpAllocation)
+func (x AzureVirtualMachineSecurityEncryptionType) Enum() *AzureVirtualMachineSecurityEncryptionType {
+	p := new(AzureVirtualMachineSecurityEncryptionType)
 	*p = x
 	return p
 }
 
-func (x AzureVirtualMachineNetworkConfig_PublicIpAllocation) String() string {
+func (x AzureVirtualMachineSecurityEncryptionType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureVirtualMachineNetworkConfig_PublicIpAllocation) Descriptor() protoreflect.EnumDescriptor {
+func (AzureVirtualMachineSecurityEncryptionType) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[3].Descriptor()
 }
 
-func (AzureVirtualMachineNetworkConfig_PublicIpAllocation) Type() protoreflect.EnumType {
+func (AzureVirtualMachineSecurityEncryptionType) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[3]
 }
 
-func (x AzureVirtualMachineNetworkConfig_PublicIpAllocation) Number() protoreflect.EnumNumber {
+func (x AzureVirtualMachineSecurityEncryptionType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureVirtualMachineNetworkConfig_PublicIpAllocation.Descriptor instead.
-func (AzureVirtualMachineNetworkConfig_PublicIpAllocation) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{4, 1}
+// Deprecated: Use AzureVirtualMachineSecurityEncryptionType.Descriptor instead.
+func (AzureVirtualMachineSecurityEncryptionType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-// Private IP address allocation method.
-type AzureVirtualMachineNetworkConfig_PrivateIpAllocation int32
+// The VM's managed-identity flavor.
+type AzureVirtualMachineIdentityType int32
 
 const (
-	AzureVirtualMachineNetworkConfig_private_ip_allocation_unspecified AzureVirtualMachineNetworkConfig_PrivateIpAllocation = 0
-	AzureVirtualMachineNetworkConfig_private_dynamic                   AzureVirtualMachineNetworkConfig_PrivateIpAllocation = 1
-	AzureVirtualMachineNetworkConfig_private_static                    AzureVirtualMachineNetworkConfig_PrivateIpAllocation = 2
+	// Not specified: the VM has no managed identity.
+	AzureVirtualMachineIdentityType_azure_virtual_machine_identity_type_unspecified AzureVirtualMachineIdentityType = 0
+	// Azure-managed identity created with the VM.
+	AzureVirtualMachineIdentityType_SYSTEM_ASSIGNED AzureVirtualMachineIdentityType = 1
+	// Bring-your-own user-assigned identities (set identity_ids).
+	AzureVirtualMachineIdentityType_USER_ASSIGNED AzureVirtualMachineIdentityType = 2
+	// Both a system-assigned identity and the listed user-assigned ones.
+	AzureVirtualMachineIdentityType_SYSTEM_AND_USER_ASSIGNED AzureVirtualMachineIdentityType = 3
 )
 
-// Enum value maps for AzureVirtualMachineNetworkConfig_PrivateIpAllocation.
+// Enum value maps for AzureVirtualMachineIdentityType.
 var (
-	AzureVirtualMachineNetworkConfig_PrivateIpAllocation_name = map[int32]string{
-		0: "private_ip_allocation_unspecified",
-		1: "private_dynamic",
-		2: "private_static",
+	AzureVirtualMachineIdentityType_name = map[int32]string{
+		0: "azure_virtual_machine_identity_type_unspecified",
+		1: "SYSTEM_ASSIGNED",
+		2: "USER_ASSIGNED",
+		3: "SYSTEM_AND_USER_ASSIGNED",
 	}
-	AzureVirtualMachineNetworkConfig_PrivateIpAllocation_value = map[string]int32{
-		"private_ip_allocation_unspecified": 0,
-		"private_dynamic":                   1,
-		"private_static":                    2,
+	AzureVirtualMachineIdentityType_value = map[string]int32{
+		"azure_virtual_machine_identity_type_unspecified": 0,
+		"SYSTEM_ASSIGNED":          1,
+		"USER_ASSIGNED":            2,
+		"SYSTEM_AND_USER_ASSIGNED": 3,
 	}
 )
 
-func (x AzureVirtualMachineNetworkConfig_PrivateIpAllocation) Enum() *AzureVirtualMachineNetworkConfig_PrivateIpAllocation {
-	p := new(AzureVirtualMachineNetworkConfig_PrivateIpAllocation)
+func (x AzureVirtualMachineIdentityType) Enum() *AzureVirtualMachineIdentityType {
+	p := new(AzureVirtualMachineIdentityType)
 	*p = x
 	return p
 }
 
-func (x AzureVirtualMachineNetworkConfig_PrivateIpAllocation) String() string {
+func (x AzureVirtualMachineIdentityType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureVirtualMachineNetworkConfig_PrivateIpAllocation) Descriptor() protoreflect.EnumDescriptor {
+func (AzureVirtualMachineIdentityType) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[4].Descriptor()
 }
 
-func (AzureVirtualMachineNetworkConfig_PrivateIpAllocation) Type() protoreflect.EnumType {
+func (AzureVirtualMachineIdentityType) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[4]
 }
 
-func (x AzureVirtualMachineNetworkConfig_PrivateIpAllocation) Number() protoreflect.EnumNumber {
+func (x AzureVirtualMachineIdentityType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureVirtualMachineNetworkConfig_PrivateIpAllocation.Descriptor instead.
-func (AzureVirtualMachineNetworkConfig_PrivateIpAllocation) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{4, 2}
+// Deprecated: Use AzureVirtualMachineIdentityType.Descriptor instead.
+func (AzureVirtualMachineIdentityType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-// AzureVirtualMachineSpec defines the configuration for deploying an Azure Virtual Machine (VM).
-// This message specifies the parameters to create and manage VM instances in an Azure subscription,
-// including machine size, OS image, network configuration, and optional features like
-// managed identities, boot diagnostics, and availability zones.
-// Follows the 80/20 principle: exposes the 20% of configurations that 80% of users need.
+// What happens when Azure evicts a spot VM.
+type AzureVirtualMachineEvictionPolicy int32
+
+const (
+	// Not specified -- invalid; eviction behavior is an explicit choice.
+	AzureVirtualMachineEvictionPolicy_azure_virtual_machine_eviction_policy_unspecified AzureVirtualMachineEvictionPolicy = 0
+	// Stop the VM (billing stops, disks persist, restartable later).
+	AzureVirtualMachineEvictionPolicy_DEALLOCATE AzureVirtualMachineEvictionPolicy = 1
+	// Delete the VM and its disks.
+	AzureVirtualMachineEvictionPolicy_DELETE AzureVirtualMachineEvictionPolicy = 2
+)
+
+// Enum value maps for AzureVirtualMachineEvictionPolicy.
+var (
+	AzureVirtualMachineEvictionPolicy_name = map[int32]string{
+		0: "azure_virtual_machine_eviction_policy_unspecified",
+		1: "DEALLOCATE",
+		2: "DELETE",
+	}
+	AzureVirtualMachineEvictionPolicy_value = map[string]int32{
+		"azure_virtual_machine_eviction_policy_unspecified": 0,
+		"DEALLOCATE": 1,
+		"DELETE":     2,
+	}
+)
+
+func (x AzureVirtualMachineEvictionPolicy) Enum() *AzureVirtualMachineEvictionPolicy {
+	p := new(AzureVirtualMachineEvictionPolicy)
+	*p = x
+	return p
+}
+
+func (x AzureVirtualMachineEvictionPolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureVirtualMachineEvictionPolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[5].Descriptor()
+}
+
+func (AzureVirtualMachineEvictionPolicy) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[5]
+}
+
+func (x AzureVirtualMachineEvictionPolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureVirtualMachineEvictionPolicy.Descriptor instead.
+func (AzureVirtualMachineEvictionPolicy) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+// Linux patch modes (ARM's Linux vocabulary).
+type AzureVirtualMachineLinuxPatchMode int32
+
+const (
+	// Not specified: Azure's default (ImageDefault).
+	AzureVirtualMachineLinuxPatchMode_azure_virtual_machine_linux_patch_mode_unspecified AzureVirtualMachineLinuxPatchMode = 0
+	// The image's own update configuration governs patching.
+	AzureVirtualMachineLinuxPatchMode_LINUX_IMAGE_DEFAULT AzureVirtualMachineLinuxPatchMode = 1
+	// Azure Update Manager orchestrates patching.
+	AzureVirtualMachineLinuxPatchMode_LINUX_AUTOMATIC_BY_PLATFORM AzureVirtualMachineLinuxPatchMode = 2
+)
+
+// Enum value maps for AzureVirtualMachineLinuxPatchMode.
+var (
+	AzureVirtualMachineLinuxPatchMode_name = map[int32]string{
+		0: "azure_virtual_machine_linux_patch_mode_unspecified",
+		1: "LINUX_IMAGE_DEFAULT",
+		2: "LINUX_AUTOMATIC_BY_PLATFORM",
+	}
+	AzureVirtualMachineLinuxPatchMode_value = map[string]int32{
+		"azure_virtual_machine_linux_patch_mode_unspecified": 0,
+		"LINUX_IMAGE_DEFAULT":                                1,
+		"LINUX_AUTOMATIC_BY_PLATFORM":                        2,
+	}
+)
+
+func (x AzureVirtualMachineLinuxPatchMode) Enum() *AzureVirtualMachineLinuxPatchMode {
+	p := new(AzureVirtualMachineLinuxPatchMode)
+	*p = x
+	return p
+}
+
+func (x AzureVirtualMachineLinuxPatchMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureVirtualMachineLinuxPatchMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[6].Descriptor()
+}
+
+func (AzureVirtualMachineLinuxPatchMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[6]
+}
+
+func (x AzureVirtualMachineLinuxPatchMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureVirtualMachineLinuxPatchMode.Descriptor instead.
+func (AzureVirtualMachineLinuxPatchMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+// Windows patch modes (ARM's Windows vocabulary).
+type AzureVirtualMachineWindowsPatchMode int32
+
+const (
+	// Not specified: Azure's default (AutomaticByOS).
+	AzureVirtualMachineWindowsPatchMode_azure_virtual_machine_windows_patch_mode_unspecified AzureVirtualMachineWindowsPatchMode = 0
+	// Windows Update is fully manual.
+	AzureVirtualMachineWindowsPatchMode_MANUAL AzureVirtualMachineWindowsPatchMode = 1
+	// Windows Update as configured in the image (Azure's default).
+	AzureVirtualMachineWindowsPatchMode_AUTOMATIC_BY_OS AzureVirtualMachineWindowsPatchMode = 2
+	// Azure Update Manager orchestrates patching (prerequisite for
+	// hotpatching and reboot control).
+	AzureVirtualMachineWindowsPatchMode_WINDOWS_AUTOMATIC_BY_PLATFORM AzureVirtualMachineWindowsPatchMode = 3
+)
+
+// Enum value maps for AzureVirtualMachineWindowsPatchMode.
+var (
+	AzureVirtualMachineWindowsPatchMode_name = map[int32]string{
+		0: "azure_virtual_machine_windows_patch_mode_unspecified",
+		1: "MANUAL",
+		2: "AUTOMATIC_BY_OS",
+		3: "WINDOWS_AUTOMATIC_BY_PLATFORM",
+	}
+	AzureVirtualMachineWindowsPatchMode_value = map[string]int32{
+		"azure_virtual_machine_windows_patch_mode_unspecified": 0,
+		"MANUAL":                        1,
+		"AUTOMATIC_BY_OS":               2,
+		"WINDOWS_AUTOMATIC_BY_PLATFORM": 3,
+	}
+)
+
+func (x AzureVirtualMachineWindowsPatchMode) Enum() *AzureVirtualMachineWindowsPatchMode {
+	p := new(AzureVirtualMachineWindowsPatchMode)
+	*p = x
+	return p
+}
+
+func (x AzureVirtualMachineWindowsPatchMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureVirtualMachineWindowsPatchMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[7].Descriptor()
+}
+
+func (AzureVirtualMachineWindowsPatchMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[7]
+}
+
+func (x AzureVirtualMachineWindowsPatchMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureVirtualMachineWindowsPatchMode.Descriptor instead.
+func (AzureVirtualMachineWindowsPatchMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+// Patch assessment modes.
+type AzureVirtualMachinePatchAssessmentMode int32
+
+const (
+	// Not specified: Azure's default (ImageDefault).
+	AzureVirtualMachinePatchAssessmentMode_azure_virtual_machine_patch_assessment_mode_unspecified AzureVirtualMachinePatchAssessmentMode = 0
+	// The image's own assessment behavior.
+	AzureVirtualMachinePatchAssessmentMode_ASSESSMENT_IMAGE_DEFAULT AzureVirtualMachinePatchAssessmentMode = 1
+	// Azure assesses pending patches daily.
+	AzureVirtualMachinePatchAssessmentMode_ASSESSMENT_AUTOMATIC_BY_PLATFORM AzureVirtualMachinePatchAssessmentMode = 2
+)
+
+// Enum value maps for AzureVirtualMachinePatchAssessmentMode.
+var (
+	AzureVirtualMachinePatchAssessmentMode_name = map[int32]string{
+		0: "azure_virtual_machine_patch_assessment_mode_unspecified",
+		1: "ASSESSMENT_IMAGE_DEFAULT",
+		2: "ASSESSMENT_AUTOMATIC_BY_PLATFORM",
+	}
+	AzureVirtualMachinePatchAssessmentMode_value = map[string]int32{
+		"azure_virtual_machine_patch_assessment_mode_unspecified": 0,
+		"ASSESSMENT_IMAGE_DEFAULT":                                1,
+		"ASSESSMENT_AUTOMATIC_BY_PLATFORM":                        2,
+	}
+)
+
+func (x AzureVirtualMachinePatchAssessmentMode) Enum() *AzureVirtualMachinePatchAssessmentMode {
+	p := new(AzureVirtualMachinePatchAssessmentMode)
+	*p = x
+	return p
+}
+
+func (x AzureVirtualMachinePatchAssessmentMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureVirtualMachinePatchAssessmentMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[8].Descriptor()
+}
+
+func (AzureVirtualMachinePatchAssessmentMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[8]
+}
+
+func (x AzureVirtualMachinePatchAssessmentMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureVirtualMachinePatchAssessmentMode.Descriptor instead.
+func (AzureVirtualMachinePatchAssessmentMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+// When platform patching may reboot the VM.
+type AzureVirtualMachineRebootSetting int32
+
+const (
+	// Not specified: no reboot preference expressed.
+	AzureVirtualMachineRebootSetting_azure_virtual_machine_reboot_setting_unspecified AzureVirtualMachineRebootSetting = 0
+	// Always reboot after patching.
+	AzureVirtualMachineRebootSetting_ALWAYS AzureVirtualMachineRebootSetting = 1
+	// Reboot only when a patch requires it.
+	AzureVirtualMachineRebootSetting_IF_REQUIRED AzureVirtualMachineRebootSetting = 2
+	// Never reboot (patches needing one wait for a manual reboot).
+	AzureVirtualMachineRebootSetting_NEVER AzureVirtualMachineRebootSetting = 3
+)
+
+// Enum value maps for AzureVirtualMachineRebootSetting.
+var (
+	AzureVirtualMachineRebootSetting_name = map[int32]string{
+		0: "azure_virtual_machine_reboot_setting_unspecified",
+		1: "ALWAYS",
+		2: "IF_REQUIRED",
+		3: "NEVER",
+	}
+	AzureVirtualMachineRebootSetting_value = map[string]int32{
+		"azure_virtual_machine_reboot_setting_unspecified": 0,
+		"ALWAYS":      1,
+		"IF_REQUIRED": 2,
+		"NEVER":       3,
+	}
+)
+
+func (x AzureVirtualMachineRebootSetting) Enum() *AzureVirtualMachineRebootSetting {
+	p := new(AzureVirtualMachineRebootSetting)
+	*p = x
+	return p
+}
+
+func (x AzureVirtualMachineRebootSetting) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureVirtualMachineRebootSetting) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[9].Descriptor()
+}
+
+func (AzureVirtualMachineRebootSetting) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[9]
+}
+
+func (x AzureVirtualMachineRebootSetting) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureVirtualMachineRebootSetting.Descriptor instead.
+func (AzureVirtualMachineRebootSetting) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+// Bring-your-own-subscription licensing for commercial Linux distros.
+type AzureVirtualMachineLinuxLicenseType int32
+
+const (
+	// Not specified: regular pay-as-you-go image billing.
+	AzureVirtualMachineLinuxLicenseType_azure_virtual_machine_linux_license_type_unspecified AzureVirtualMachineLinuxLicenseType = 0
+	// Red Hat bring-your-own-subscription.
+	AzureVirtualMachineLinuxLicenseType_RHEL_BYOS AzureVirtualMachineLinuxLicenseType = 1
+	// Red Hat base pay-as-you-go conversion.
+	AzureVirtualMachineLinuxLicenseType_RHEL_BASE AzureVirtualMachineLinuxLicenseType = 2
+	// Red Hat Extended Update Support.
+	AzureVirtualMachineLinuxLicenseType_RHEL_EUS AzureVirtualMachineLinuxLicenseType = 3
+	// Red Hat for SAP Applications.
+	AzureVirtualMachineLinuxLicenseType_RHEL_SAPAPPS AzureVirtualMachineLinuxLicenseType = 4
+	// Red Hat for SAP with High Availability.
+	AzureVirtualMachineLinuxLicenseType_RHEL_SAPHA AzureVirtualMachineLinuxLicenseType = 5
+	// Red Hat base for SAP Applications.
+	AzureVirtualMachineLinuxLicenseType_RHEL_BASESAPAPPS AzureVirtualMachineLinuxLicenseType = 6
+	// Red Hat base for SAP with HA.
+	AzureVirtualMachineLinuxLicenseType_RHEL_BASESAPHA AzureVirtualMachineLinuxLicenseType = 7
+	// SUSE bring-your-own-subscription.
+	AzureVirtualMachineLinuxLicenseType_SLES_BYOS AzureVirtualMachineLinuxLicenseType = 8
+	// SUSE for SAP.
+	AzureVirtualMachineLinuxLicenseType_SLES_SAP AzureVirtualMachineLinuxLicenseType = 9
+	// SUSE for HPC.
+	AzureVirtualMachineLinuxLicenseType_SLES_HPC AzureVirtualMachineLinuxLicenseType = 10
+	// Ubuntu Pro attach.
+	AzureVirtualMachineLinuxLicenseType_UBUNTU_PRO AzureVirtualMachineLinuxLicenseType = 11
+)
+
+// Enum value maps for AzureVirtualMachineLinuxLicenseType.
+var (
+	AzureVirtualMachineLinuxLicenseType_name = map[int32]string{
+		0:  "azure_virtual_machine_linux_license_type_unspecified",
+		1:  "RHEL_BYOS",
+		2:  "RHEL_BASE",
+		3:  "RHEL_EUS",
+		4:  "RHEL_SAPAPPS",
+		5:  "RHEL_SAPHA",
+		6:  "RHEL_BASESAPAPPS",
+		7:  "RHEL_BASESAPHA",
+		8:  "SLES_BYOS",
+		9:  "SLES_SAP",
+		10: "SLES_HPC",
+		11: "UBUNTU_PRO",
+	}
+	AzureVirtualMachineLinuxLicenseType_value = map[string]int32{
+		"azure_virtual_machine_linux_license_type_unspecified": 0,
+		"RHEL_BYOS":        1,
+		"RHEL_BASE":        2,
+		"RHEL_EUS":         3,
+		"RHEL_SAPAPPS":     4,
+		"RHEL_SAPHA":       5,
+		"RHEL_BASESAPAPPS": 6,
+		"RHEL_BASESAPHA":   7,
+		"SLES_BYOS":        8,
+		"SLES_SAP":         9,
+		"SLES_HPC":         10,
+		"UBUNTU_PRO":       11,
+	}
+)
+
+func (x AzureVirtualMachineLinuxLicenseType) Enum() *AzureVirtualMachineLinuxLicenseType {
+	p := new(AzureVirtualMachineLinuxLicenseType)
+	*p = x
+	return p
+}
+
+func (x AzureVirtualMachineLinuxLicenseType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureVirtualMachineLinuxLicenseType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[10].Descriptor()
+}
+
+func (AzureVirtualMachineLinuxLicenseType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[10]
+}
+
+func (x AzureVirtualMachineLinuxLicenseType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureVirtualMachineLinuxLicenseType.Descriptor instead.
+func (AzureVirtualMachineLinuxLicenseType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+// Azure Hybrid Benefit licensing for Windows.
+type AzureVirtualMachineWindowsLicenseType int32
+
+const (
+	// Not specified: regular pay-as-you-go image billing.
+	AzureVirtualMachineWindowsLicenseType_azure_virtual_machine_windows_license_type_unspecified AzureVirtualMachineWindowsLicenseType = 0
+	// Explicitly no benefit (ARM's literal None).
+	AzureVirtualMachineWindowsLicenseType_WINDOWS_LICENSE_NONE AzureVirtualMachineWindowsLicenseType = 1
+	// Bring a Windows Client license.
+	AzureVirtualMachineWindowsLicenseType_WINDOWS_CLIENT AzureVirtualMachineWindowsLicenseType = 2
+	// Bring a Windows Server license.
+	AzureVirtualMachineWindowsLicenseType_WINDOWS_SERVER AzureVirtualMachineWindowsLicenseType = 3
+)
+
+// Enum value maps for AzureVirtualMachineWindowsLicenseType.
+var (
+	AzureVirtualMachineWindowsLicenseType_name = map[int32]string{
+		0: "azure_virtual_machine_windows_license_type_unspecified",
+		1: "WINDOWS_LICENSE_NONE",
+		2: "WINDOWS_CLIENT",
+		3: "WINDOWS_SERVER",
+	}
+	AzureVirtualMachineWindowsLicenseType_value = map[string]int32{
+		"azure_virtual_machine_windows_license_type_unspecified": 0,
+		"WINDOWS_LICENSE_NONE": 1,
+		"WINDOWS_CLIENT":       2,
+		"WINDOWS_SERVER":       3,
+	}
+)
+
+func (x AzureVirtualMachineWindowsLicenseType) Enum() *AzureVirtualMachineWindowsLicenseType {
+	p := new(AzureVirtualMachineWindowsLicenseType)
+	*p = x
+	return p
+}
+
+func (x AzureVirtualMachineWindowsLicenseType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureVirtualMachineWindowsLicenseType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[11].Descriptor()
+}
+
+func (AzureVirtualMachineWindowsLicenseType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[11]
+}
+
+func (x AzureVirtualMachineWindowsLicenseType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureVirtualMachineWindowsLicenseType.Descriptor instead.
+func (AzureVirtualMachineWindowsLicenseType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+// WinRM listener protocols.
+type AzureVirtualMachineWinrmProtocol int32
+
+const (
+	// Not specified -- invalid; the protocol is an explicit choice.
+	AzureVirtualMachineWinrmProtocol_azure_virtual_machine_winrm_protocol_unspecified AzureVirtualMachineWinrmProtocol = 0
+	// Unencrypted HTTP (port 5985) -- VNet-internal management only.
+	AzureVirtualMachineWinrmProtocol_HTTP AzureVirtualMachineWinrmProtocol = 1
+	// TLS (port 5986); requires certificate_url.
+	AzureVirtualMachineWinrmProtocol_HTTPS AzureVirtualMachineWinrmProtocol = 2
+)
+
+// Enum value maps for AzureVirtualMachineWinrmProtocol.
+var (
+	AzureVirtualMachineWinrmProtocol_name = map[int32]string{
+		0: "azure_virtual_machine_winrm_protocol_unspecified",
+		1: "HTTP",
+		2: "HTTPS",
+	}
+	AzureVirtualMachineWinrmProtocol_value = map[string]int32{
+		"azure_virtual_machine_winrm_protocol_unspecified": 0,
+		"HTTP":  1,
+		"HTTPS": 2,
+	}
+)
+
+func (x AzureVirtualMachineWinrmProtocol) Enum() *AzureVirtualMachineWinrmProtocol {
+	p := new(AzureVirtualMachineWinrmProtocol)
+	*p = x
+	return p
+}
+
+func (x AzureVirtualMachineWinrmProtocol) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureVirtualMachineWinrmProtocol) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[12].Descriptor()
+}
+
+func (AzureVirtualMachineWinrmProtocol) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[12]
+}
+
+func (x AzureVirtualMachineWinrmProtocol) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureVirtualMachineWinrmProtocol.Descriptor instead.
+func (AzureVirtualMachineWinrmProtocol) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+// Windows unattend.xml setup passes.
+type AzureVirtualMachineUnattendSetting int32
+
+const (
+	// Not specified -- invalid; the pass is an explicit choice.
+	AzureVirtualMachineUnattendSetting_azure_virtual_machine_unattend_setting_unspecified AzureVirtualMachineUnattendSetting = 0
+	// Automatic logon configuration (carries credentials).
+	AzureVirtualMachineUnattendSetting_AUTO_LOGON AzureVirtualMachineUnattendSetting = 1
+	// Commands run at first logon.
+	AzureVirtualMachineUnattendSetting_FIRST_LOGON_COMMANDS AzureVirtualMachineUnattendSetting = 2
+)
+
+// Enum value maps for AzureVirtualMachineUnattendSetting.
+var (
+	AzureVirtualMachineUnattendSetting_name = map[int32]string{
+		0: "azure_virtual_machine_unattend_setting_unspecified",
+		1: "AUTO_LOGON",
+		2: "FIRST_LOGON_COMMANDS",
+	}
+	AzureVirtualMachineUnattendSetting_value = map[string]int32{
+		"azure_virtual_machine_unattend_setting_unspecified": 0,
+		"AUTO_LOGON":           1,
+		"FIRST_LOGON_COMMANDS": 2,
+	}
+)
+
+func (x AzureVirtualMachineUnattendSetting) Enum() *AzureVirtualMachineUnattendSetting {
+	p := new(AzureVirtualMachineUnattendSetting)
+	*p = x
+	return p
+}
+
+func (x AzureVirtualMachineUnattendSetting) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureVirtualMachineUnattendSetting) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[13].Descriptor()
+}
+
+func (AzureVirtualMachineUnattendSetting) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[13]
+}
+
+func (x AzureVirtualMachineUnattendSetting) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureVirtualMachineUnattendSetting.Descriptor instead.
+func (AzureVirtualMachineUnattendSetting) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+// The disk controller presented to the OS.
+type AzureVirtualMachineDiskControllerType int32
+
+const (
+	// Not specified: Azure's default for the size/image (SCSI today).
+	AzureVirtualMachineDiskControllerType_azure_virtual_machine_disk_controller_type_unspecified AzureVirtualMachineDiskControllerType = 0
+	// The default, universally supported controller.
+	AzureVirtualMachineDiskControllerType_SCSI AzureVirtualMachineDiskControllerType = 1
+	// Higher disk throughput; needs a supported size and a Gen2 image.
+	AzureVirtualMachineDiskControllerType_NVME AzureVirtualMachineDiskControllerType = 2
+)
+
+// Enum value maps for AzureVirtualMachineDiskControllerType.
+var (
+	AzureVirtualMachineDiskControllerType_name = map[int32]string{
+		0: "azure_virtual_machine_disk_controller_type_unspecified",
+		1: "SCSI",
+		2: "NVME",
+	}
+	AzureVirtualMachineDiskControllerType_value = map[string]int32{
+		"azure_virtual_machine_disk_controller_type_unspecified": 0,
+		"SCSI": 1,
+		"NVME": 2,
+	}
+)
+
+func (x AzureVirtualMachineDiskControllerType) Enum() *AzureVirtualMachineDiskControllerType {
+	p := new(AzureVirtualMachineDiskControllerType)
+	*p = x
+	return p
+}
+
+func (x AzureVirtualMachineDiskControllerType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureVirtualMachineDiskControllerType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[14].Descriptor()
+}
+
+func (AzureVirtualMachineDiskControllerType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes[14]
+}
+
+func (x AzureVirtualMachineDiskControllerType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureVirtualMachineDiskControllerType.Descriptor instead.
+func (AzureVirtualMachineDiskControllerType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+// **AzureVirtualMachineSpec** defines the configuration for creating an
+// Azure Virtual Machine: the compute instance itself -- its size, image,
+// OS profile, disks, identity, placement, and security posture.
+//
+// The VM is deliberately just the machine. Everything it composes with is
+// referenced, never created here -- matching Azure's own model, where a
+// VM is a compute shell wired to first-class resources:
+//   - Its network presence is one or more referenced AzureNetworkInterface
+//     resources (network_interface_ids; a VM can carry several -- management
+//   - data planes, appliance arms). Public IPs, NSG filtering, and subnet
+//     placement all live on the NIC.
+//   - Its data volumes are referenced AzureManagedDisk resources attached
+//     with a LUN and caching mode (data_disk_attachments) -- the data
+//     outlives the machine, and a shared disk can attach to several VMs.
+//   - Its identities are referenced AzureUserAssignedIdentity resources;
+//     grants are composed with AzureRoleAssignment against the identity or
+//     the VM's own system-assigned principal.
+//
+// Only the OS disk is inline (os_disk): it is born and dies with the VM
+// by definition -- unless the VM boots from an EXISTING referenced OS
+// disk (os_managed_disk_id), the disk-swap/golden-disk recovery path.
+//
+// The OS choice is explicit: os_profile carries exactly one of `linux` or
+// `windows`, each with its own authentication contract (SSH-first for
+// Linux, password + WinRM/unattend for Windows) and its own patch-mode
+// vocabulary -- mirroring ARM's own per-OS surfaces.
 type AzureVirtualMachineSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Azure region where the Virtual Machine will be deployed (e.g., "eastus", "westus2", "westeurope").
-	// This is required as VMs are regional resources.
+	// The Azure region the VM runs in, e.g. "eastus". Must match the region
+	// of every referenced NIC and disk. Changing the region replaces the
+	// VM.
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// The Azure Resource Group where the Virtual Machine will be created.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
+	// The Azure resource group the VM will be created in. Can be a literal
+	// resource-group name or a reference to an AzureResourceGroup's name
+	// output.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// The Azure VM size determining vCPU count, memory, and capabilities.
-	// Examples: "Standard_D2s_v3" (2 vCPUs, 8 GiB RAM), "Standard_D4s_v5" (4 vCPUs, 16 GiB RAM).
-	VmSize *string `protobuf:"bytes,3,opt,name=vm_size,json=vmSize,proto3,oneof" json:"vm_size,omitempty"`
-	// The Azure resource ID of the subnet where this VM will be attached.
-	// This should reference a subnet within an existing Virtual Network (VNet).
-	// Can be a literal value or a reference to an AzureVpc resource's subnet output.
-	SubnetId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
-	// Operating system image configuration for the VM.
-	Image *AzureVirtualMachineImage `protobuf:"bytes,5,opt,name=image,proto3" json:"image,omitempty"`
-	// OS disk configuration for the VM.
-	OsDisk *AzureVirtualMachineOsDisk `protobuf:"bytes,6,opt,name=os_disk,json=osDisk,proto3" json:"os_disk,omitempty"`
-	// Additional data disks to attach to the VM.
-	DataDisks []*AzureVirtualMachineDataDisk `protobuf:"bytes,7,rep,name=data_disks,json=dataDisks,proto3" json:"data_disks,omitempty"`
-	// Admin username for the VM (Linux: SSH user, Windows: Administrator name).
-	// Must be a valid username according to Azure requirements.
-	AdminUsername *string `protobuf:"bytes,8,opt,name=admin_username,json=adminUsername,proto3,oneof" json:"admin_username,omitempty"`
-	// SSH public key for Linux VMs. Required for Linux VMs when password authentication is disabled.
-	// Format: "ssh-rsa AAAAB3NzaC1yc2E... user@host"
-	SshPublicKey string `protobuf:"bytes,9,opt,name=ssh_public_key,json=sshPublicKey,proto3" json:"ssh_public_key,omitempty"`
-	// Admin password for Windows VMs or Linux VMs with password authentication enabled.
-	// For production, prefer SSH keys for Linux VMs.
-	// Can be a literal value or a reference to an AzureKeyVault secret.
-	AdminPassword *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=admin_password,json=adminPassword,proto3" json:"admin_password,omitempty"`
-	// Network interface configuration for the VM.
-	Network *AzureVirtualMachineNetworkConfig `protobuf:"bytes,11,opt,name=network,proto3" json:"network,omitempty"`
-	// Availability zone for the VM (e.g., "1", "2", "3").
-	// Leave empty for no zone (regional placement).
-	// For production workloads, deploy VMs across multiple zones.
-	AvailabilityZone string `protobuf:"bytes,12,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
-	// Enable boot diagnostics for the VM.
-	// Boot diagnostics captures serial console output and screenshots to help diagnose boot issues.
-	EnableBootDiagnostics *bool `protobuf:"varint,13,opt,name=enable_boot_diagnostics,json=enableBootDiagnostics,proto3,oneof" json:"enable_boot_diagnostics,omitempty"`
-	// Enable system-assigned managed identity for the VM.
-	// Managed identities allow the VM to authenticate to Azure services without storing credentials.
-	EnableSystemAssignedIdentity bool `protobuf:"varint,14,opt,name=enable_system_assigned_identity,json=enableSystemAssignedIdentity,proto3" json:"enable_system_assigned_identity,omitempty"`
-	// User-assigned managed identity resource IDs to attach to the VM.
-	// These are pre-created managed identities that can be shared across multiple resources.
-	UserAssignedIdentityIds []string `protobuf:"bytes,15,rep,name=user_assigned_identity_ids,json=userAssignedIdentityIds,proto3" json:"user_assigned_identity_ids,omitempty"`
-	// Custom data (cloud-init) script to execute on first boot.
-	// For Linux VMs, this is typically a cloud-init script.
-	// For Windows VMs, this can be a PowerShell script.
-	// Maximum size: 64 KB (base64 encoded).
-	CustomData string `protobuf:"bytes,16,opt,name=custom_data,json=customData,proto3" json:"custom_data,omitempty"`
-	// Tags to apply to the VM and related resources.
-	// Tags are key-value pairs for Azure resource organization and cost tracking.
-	Tags map[string]string `protobuf:"bytes,17,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Enable spot pricing for the VM (significantly reduced cost, can be evicted).
-	// Spot VMs are suitable for fault-tolerant, interruptible workloads.
-	IsSpotInstance bool `protobuf:"varint,18,opt,name=is_spot_instance,json=isSpotInstance,proto3" json:"is_spot_instance,omitempty"`
-	// Maximum price per hour for Spot VMs (in USD).
-	// Set to -1 to use the on-demand price as the maximum.
-	// Only applicable when is_spot_instance is true.
-	SpotMaxPrice  float64 `protobuf:"fixed64,19,opt,name=spot_max_price,json=spotMaxPrice,proto3" json:"spot_max_price,omitempty"`
+	// The name of the VM, unique within the resource group. 1-64 characters
+	// for Linux, 1-15 for Windows (ARM's limits; the OS's computer name
+	// defaults to this, which is where the Windows limit bites). Changing
+	// the name replaces the VM.
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// The VM size (SKU), e.g. "Standard_D2s_v3", "Standard_B2s". The size
+	// determines vCPUs, memory, temp-disk, accelerated-networking and
+	// ultra-disk support, and hourly cost. Resizing updates in place but
+	// reboots the VM (and may deallocate it when moving size families).
+	Size string `protobuf:"bytes,4,opt,name=size,proto3" json:"size,omitempty"`
+	// The network interfaces attached to the VM, by ARM ID -- at least one;
+	// the FIRST is the primary. References first-class
+	// AzureNetworkInterface resources: subnet placement, public IPs, NSG
+	// filtering, and (in Azure's model) load-balancer pool membership all
+	// live NIC-side. Multiple NICs serve appliances and split
+	// management/data planes; the VM size caps how many.
+	NetworkInterfaceIds []*v1.StringValueOrRef `protobuf:"bytes,5,rep,name=network_interface_ids,json=networkInterfaceIds,proto3" json:"network_interface_ids,omitempty"`
+	// The operating-system profile: exactly one of `linux` or `windows`,
+	// carrying the OS's authentication and OS-specific management surface.
+	// When the VM boots from an existing OS disk (os_managed_disk_id), the
+	// chosen profile still selects the OS but must carry NO authentication
+	// fields -- the disk already contains its users.
+	OsProfile *AzureVirtualMachineOsProfile `protobuf:"bytes,6,opt,name=os_profile,json=osProfile,proto3" json:"os_profile,omitempty"`
+	// The OS disk created with the VM. Always required: it describes the
+	// disk's caching and storage even when the VM boots from an existing
+	// disk. The OS disk is the one deliberately inline disk -- data volumes
+	// are first-class AzureManagedDisk resources (data_disk_attachments).
+	OsDisk *AzureVirtualMachineOsDisk `protobuf:"bytes,7,opt,name=os_disk,json=osDisk,proto3" json:"os_disk,omitempty"`
+	// Marketplace/platform image to boot from, by its four coordinates
+	// (publisher/offer/sku/version). Exactly one image source: this,
+	// source_image_id, or os_managed_disk_id.
+	SourceImageReference *AzureVirtualMachineSourceImageReference `protobuf:"bytes,8,opt,name=source_image_reference,json=sourceImageReference,proto3" json:"source_image_reference,omitempty"`
+	// A custom or gallery image to boot from, by ARM ID (a managed image,
+	// or a Shared Image Gallery image/version -- community and direct
+	// shared gallery IDs included). Exactly one image source. Fixed at
+	// creation.
+	SourceImageId string `protobuf:"bytes,9,opt,name=source_image_id,json=sourceImageId,proto3" json:"source_image_id,omitempty"`
+	// An EXISTING OS disk to boot from, by ARM ID -- the disk-swap /
+	// golden-disk path. References a first-class AzureManagedDisk that
+	// already carries an operating system. The os_profile must then carry
+	// no authentication fields (the disk has its users), and patching stays
+	// at the image default. Exactly one image source. Fixed at creation.
+	OsManagedDiskId *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=os_managed_disk_id,json=osManagedDiskId,proto3" json:"os_managed_disk_id,omitempty"`
+	// Data disks attached to the VM. Each entry references a first-class
+	// AzureManagedDisk by ARM ID and mounts it at a LUN with a caching
+	// mode -- realized as attachment resources on both engines, so the
+	// disk (and its data) outlives the VM. Disks can be attached and
+	// detached in place.
+	DataDiskAttachments []*AzureVirtualMachineDataDiskAttachment `protobuf:"bytes,11,rep,name=data_disk_attachments,json=dataDiskAttachments,proto3" json:"data_disk_attachments,omitempty"`
+	// The VM's managed identity: how the workload authenticates to Azure
+	// services without stored credentials. Grants are composed with
+	// AzureRoleAssignment against the system-assigned principal (surfaced
+	// in the outputs) or the referenced user-assigned identities.
+	Identity *AzureVirtualMachineIdentity `protobuf:"bytes,12,opt,name=identity,proto3" json:"identity,omitempty"`
+	// Run the VM on spot capacity: deeply discounted, evictable when Azure
+	// needs the capacity back. Presence makes the VM a spot instance;
+	// absence is a regular on-demand VM. For interruption-tolerant
+	// workloads only. Fixed at creation.
+	Spot *AzureVirtualMachineSpot `protobuf:"bytes,13,opt,name=spot,proto3" json:"spot,omitempty"`
+	// Where the VM runs relative to Azure's fault machinery: availability
+	// zone, availability set, proximity placement, dedicated hosts,
+	// capacity reservations, or a Flexible scale set. Leave unset for
+	// regional placement with no constraints.
+	Availability *AzureVirtualMachineAvailability `protobuf:"bytes,14,opt,name=availability,proto3" json:"availability,omitempty"`
+	// The trusted-launch / encryption security posture. Leave unset for a
+	// standard VM; production fleets on Gen2 images should enable secure
+	// boot + vTPM (trusted launch).
+	Security *AzureVirtualMachineSecurity `protobuf:"bytes,15,opt,name=security,proto3" json:"security,omitempty"`
+	// OS patch orchestration shared across both OSes (the per-OS patch
+	// MODE lives in the linux/windows profile, because ARM's mode
+	// vocabularies differ per OS).
+	Patching *AzureVirtualMachinePatching `protobuf:"bytes,16,opt,name=patching,proto3" json:"patching,omitempty"`
+	// Boot diagnostics: serial console output and boot screenshots, the
+	// first tool for debugging a VM that will not boot. Presence enables
+	// it; an empty message uses Azure's managed storage (the right
+	// default), or point storage_account_uri at your own storage account.
+	BootDiagnostics *AzureVirtualMachineBootDiagnostics `protobuf:"bytes,17,opt,name=boot_diagnostics,json=bootDiagnostics,proto3" json:"boot_diagnostics,omitempty"`
+	// VM Applications (gallery applications) installed onto the VM at
+	// deployment -- versioned application packages from an Azure Compute
+	// Gallery, ordered by `order`. Up to 100.
+	GalleryApplications []*AzureVirtualMachineGalleryApplication `protobuf:"bytes,18,rep,name=gallery_applications,json=galleryApplications,proto3" json:"gallery_applications,omitempty"`
+	// Emits a scheduled event before the VM is terminated, giving the
+	// workload up to 15 minutes to drain. Presence enables it.
+	TerminationNotification *AzureVirtualMachineTerminationNotification `protobuf:"bytes,19,opt,name=termination_notification,json=terminationNotification,proto3" json:"termination_notification,omitempty"`
+	// Emits a scheduled event before a platform-initiated OS image
+	// upgrade. Presence enables it.
+	OsImageNotification *AzureVirtualMachineOsImageNotification `protobuf:"bytes,20,opt,name=os_image_notification,json=osImageNotification,proto3" json:"os_image_notification,omitempty"`
+	// The marketplace plan for images that require purchase-plan
+	// acceptance (third-party marketplace images). Leave unset for
+	// platform and custom images. Fixed at creation.
+	Plan *AzureVirtualMachinePlan `protobuf:"bytes,21,opt,name=plan,proto3" json:"plan,omitempty"`
+	// Cloud-init / provisioning data, base64-encoded, delivered once at
+	// first boot. May embed bootstrap secrets, so it is treated as secret
+	// material. Fixed at creation (changing it replaces the VM).
+	CustomData string `protobuf:"bytes,22,opt,name=custom_data,json=customData,proto3" json:"custom_data,omitempty"`
+	// Arbitrary machine-readable data, base64-encoded, retrievable from
+	// inside the VM via the Instance Metadata Service at any time --
+	// unlike custom_data it is UPDATABLE in place and readable back, so
+	// never put secrets here.
+	UserData string `protobuf:"bytes,23,opt,name=user_data,json=userData,proto3" json:"user_data,omitempty"`
+	// How long ALL extensions on the VM may collectively take to provision,
+	// as an ISO 8601 duration between PT15M and PT2H. Unset applies Azure's
+	// default (PT1H30M).
+	ExtensionsTimeBudget string `protobuf:"bytes,24,opt,name=extensions_time_budget,json=extensionsTimeBudget,proto3" json:"extensions_time_budget,omitempty"`
+	// Whether the Azure VM agent is provisioned. Azure's default is true;
+	// false is for appliance images that ship without an agent -- it
+	// disables extensions and most platform management, and is fixed at
+	// creation.
+	ProvisionVmAgent *bool `protobuf:"varint,25,opt,name=provision_vm_agent,json=provisionVmAgent,proto3,oneof" json:"provision_vm_agent,omitempty"`
+	// Whether extension operations are allowed on the VM. Azure's default
+	// is true; false hard-locks the VM against any extension install.
+	AllowExtensionOperations *bool `protobuf:"varint,26,opt,name=allow_extension_operations,json=allowExtensionOperations,proto3,oneof" json:"allow_extension_operations,omitempty"`
+	// The disk controller the VM presents to the OS. Unspecified applies
+	// Azure's default for the size/image (SCSI today). NVME requires a
+	// supported size + Gen2 image and delivers higher disk throughput.
+	DiskControllerType AzureVirtualMachineDiskControllerType `protobuf:"varint,27,opt,name=disk_controller_type,json=diskControllerType,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiskControllerType" json:"disk_controller_type,omitempty"`
+	// Niche capability toggles: Ultra SSD attachability and hibernation
+	// support.
+	AdditionalCapabilities *AzureVirtualMachineAdditionalCapabilities `protobuf:"bytes,28,opt,name=additional_capabilities,json=additionalCapabilities,proto3" json:"additional_capabilities,omitempty"`
+	// Certificates from Key Vault installed onto the VM at provisioning
+	// time. Each entry names a vault and the certificate secret URLs to
+	// install (Windows VMs also name the certificate store).
+	Secrets []*AzureVirtualMachineSecret `protobuf:"bytes,29,rep,name=secrets,proto3" json:"secrets,omitempty"`
+	// The Azure Edge Zone the VM is deployed in, for edge-computing
+	// workloads. Leave unset for regular regional deployment. Fixed at
+	// creation.
+	EdgeZone string `protobuf:"bytes,30,opt,name=edge_zone,json=edgeZone,proto3" json:"edge_zone,omitempty"`
+	// Free-form tags applied to the VM, merged over the Planton-derived
+	// resource tags (organization, environment, resource id); a user tag
+	// with the same key wins. Tags are Azure's governance surface -- Azure
+	// Policy enforces them and Microsoft Cost Management groups by them.
+	// Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,31,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -397,23 +1110,30 @@ func (x *AzureVirtualMachineSpec) GetResourceGroup() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureVirtualMachineSpec) GetVmSize() string {
-	if x != nil && x.VmSize != nil {
-		return *x.VmSize
+func (x *AzureVirtualMachineSpec) GetName() string {
+	if x != nil {
+		return x.Name
 	}
 	return ""
 }
 
-func (x *AzureVirtualMachineSpec) GetSubnetId() *v1.StringValueOrRef {
+func (x *AzureVirtualMachineSpec) GetSize() string {
 	if x != nil {
-		return x.SubnetId
+		return x.Size
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineSpec) GetNetworkInterfaceIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.NetworkInterfaceIds
 	}
 	return nil
 }
 
-func (x *AzureVirtualMachineSpec) GetImage() *AzureVirtualMachineImage {
+func (x *AzureVirtualMachineSpec) GetOsProfile() *AzureVirtualMachineOsProfile {
 	if x != nil {
-		return x.Image
+		return x.OsProfile
 	}
 	return nil
 }
@@ -425,65 +1145,100 @@ func (x *AzureVirtualMachineSpec) GetOsDisk() *AzureVirtualMachineOsDisk {
 	return nil
 }
 
-func (x *AzureVirtualMachineSpec) GetDataDisks() []*AzureVirtualMachineDataDisk {
+func (x *AzureVirtualMachineSpec) GetSourceImageReference() *AzureVirtualMachineSourceImageReference {
 	if x != nil {
-		return x.DataDisks
+		return x.SourceImageReference
 	}
 	return nil
 }
 
-func (x *AzureVirtualMachineSpec) GetAdminUsername() string {
-	if x != nil && x.AdminUsername != nil {
-		return *x.AdminUsername
+func (x *AzureVirtualMachineSpec) GetSourceImageId() string {
+	if x != nil {
+		return x.SourceImageId
 	}
 	return ""
 }
 
-func (x *AzureVirtualMachineSpec) GetSshPublicKey() string {
+func (x *AzureVirtualMachineSpec) GetOsManagedDiskId() *v1.StringValueOrRef {
 	if x != nil {
-		return x.SshPublicKey
-	}
-	return ""
-}
-
-func (x *AzureVirtualMachineSpec) GetAdminPassword() *v1.StringValueOrRef {
-	if x != nil {
-		return x.AdminPassword
+		return x.OsManagedDiskId
 	}
 	return nil
 }
 
-func (x *AzureVirtualMachineSpec) GetNetwork() *AzureVirtualMachineNetworkConfig {
+func (x *AzureVirtualMachineSpec) GetDataDiskAttachments() []*AzureVirtualMachineDataDiskAttachment {
 	if x != nil {
-		return x.Network
+		return x.DataDiskAttachments
 	}
 	return nil
 }
 
-func (x *AzureVirtualMachineSpec) GetAvailabilityZone() string {
+func (x *AzureVirtualMachineSpec) GetIdentity() *AzureVirtualMachineIdentity {
 	if x != nil {
-		return x.AvailabilityZone
+		return x.Identity
 	}
-	return ""
+	return nil
 }
 
-func (x *AzureVirtualMachineSpec) GetEnableBootDiagnostics() bool {
-	if x != nil && x.EnableBootDiagnostics != nil {
-		return *x.EnableBootDiagnostics
+func (x *AzureVirtualMachineSpec) GetSpot() *AzureVirtualMachineSpot {
+	if x != nil {
+		return x.Spot
 	}
-	return false
+	return nil
 }
 
-func (x *AzureVirtualMachineSpec) GetEnableSystemAssignedIdentity() bool {
+func (x *AzureVirtualMachineSpec) GetAvailability() *AzureVirtualMachineAvailability {
 	if x != nil {
-		return x.EnableSystemAssignedIdentity
+		return x.Availability
 	}
-	return false
+	return nil
 }
 
-func (x *AzureVirtualMachineSpec) GetUserAssignedIdentityIds() []string {
+func (x *AzureVirtualMachineSpec) GetSecurity() *AzureVirtualMachineSecurity {
 	if x != nil {
-		return x.UserAssignedIdentityIds
+		return x.Security
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineSpec) GetPatching() *AzureVirtualMachinePatching {
+	if x != nil {
+		return x.Patching
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineSpec) GetBootDiagnostics() *AzureVirtualMachineBootDiagnostics {
+	if x != nil {
+		return x.BootDiagnostics
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineSpec) GetGalleryApplications() []*AzureVirtualMachineGalleryApplication {
+	if x != nil {
+		return x.GalleryApplications
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineSpec) GetTerminationNotification() *AzureVirtualMachineTerminationNotification {
+	if x != nil {
+		return x.TerminationNotification
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineSpec) GetOsImageNotification() *AzureVirtualMachineOsImageNotification {
+	if x != nil {
+		return x.OsImageNotification
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineSpec) GetPlan() *AzureVirtualMachinePlan {
+	if x != nil {
+		return x.Plan
 	}
 	return nil
 }
@@ -495,6 +1250,62 @@ func (x *AzureVirtualMachineSpec) GetCustomData() string {
 	return ""
 }
 
+func (x *AzureVirtualMachineSpec) GetUserData() string {
+	if x != nil {
+		return x.UserData
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineSpec) GetExtensionsTimeBudget() string {
+	if x != nil {
+		return x.ExtensionsTimeBudget
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineSpec) GetProvisionVmAgent() bool {
+	if x != nil && x.ProvisionVmAgent != nil {
+		return *x.ProvisionVmAgent
+	}
+	return false
+}
+
+func (x *AzureVirtualMachineSpec) GetAllowExtensionOperations() bool {
+	if x != nil && x.AllowExtensionOperations != nil {
+		return *x.AllowExtensionOperations
+	}
+	return false
+}
+
+func (x *AzureVirtualMachineSpec) GetDiskControllerType() AzureVirtualMachineDiskControllerType {
+	if x != nil {
+		return x.DiskControllerType
+	}
+	return AzureVirtualMachineDiskControllerType_azure_virtual_machine_disk_controller_type_unspecified
+}
+
+func (x *AzureVirtualMachineSpec) GetAdditionalCapabilities() *AzureVirtualMachineAdditionalCapabilities {
+	if x != nil {
+		return x.AdditionalCapabilities
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineSpec) GetSecrets() []*AzureVirtualMachineSecret {
+	if x != nil {
+		return x.Secrets
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineSpec) GetEdgeZone() string {
+	if x != nil {
+		return x.EdgeZone
+	}
+	return ""
+}
+
 func (x *AzureVirtualMachineSpec) GetTags() map[string]string {
 	if x != nil {
 		return x.Tags
@@ -502,56 +1313,36 @@ func (x *AzureVirtualMachineSpec) GetTags() map[string]string {
 	return nil
 }
 
-func (x *AzureVirtualMachineSpec) GetIsSpotInstance() bool {
-	if x != nil {
-		return x.IsSpotInstance
-	}
-	return false
-}
-
-func (x *AzureVirtualMachineSpec) GetSpotMaxPrice() float64 {
-	if x != nil {
-		return x.SpotMaxPrice
-	}
-	return 0
-}
-
-// AzureVirtualMachineImage defines the OS image configuration for the VM.
-type AzureVirtualMachineImage struct {
+// The operating-system profile: exactly one OS, its authentication, and
+// its OS-specific management surface.
+type AzureVirtualMachineOsProfile struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Image publisher (e.g., "Canonical", "MicrosoftWindowsServer", "RedHat").
-	// Required when using marketplace images, not needed for custom images.
-	Publisher string `protobuf:"bytes,1,opt,name=publisher,proto3" json:"publisher,omitempty"`
-	// Image offer (e.g., "0001-com-ubuntu-server-jammy", "WindowsServer", "RHEL").
-	// Required when using marketplace images, not needed for custom images.
-	Offer string `protobuf:"bytes,2,opt,name=offer,proto3" json:"offer,omitempty"`
-	// Image SKU (e.g., "22_04-lts-gen2", "2022-datacenter-g2", "8-lvm-gen2").
-	// Required when using marketplace images, not needed for custom images.
-	Sku string `protobuf:"bytes,3,opt,name=sku,proto3" json:"sku,omitempty"`
-	// Image version (e.g., "latest", "22.04.202301100").
-	// Use "latest" for auto-updates or a specific version for stability.
-	Version *string `protobuf:"bytes,4,opt,name=version,proto3,oneof" json:"version,omitempty"`
-	// Custom image ID (Azure resource ID of a custom or shared image).
-	// If specified, publisher/offer/sku/version are ignored.
-	CustomImageId string `protobuf:"bytes,5,opt,name=custom_image_id,json=customImageId,proto3" json:"custom_image_id,omitempty"`
+	// The OS hostname (computer name). Unset defaults to the VM's name --
+	// set it only when the hostname must differ (e.g. a VM name longer
+	// than Windows' 15-character computer-name limit). Fixed at creation.
+	ComputerName string `protobuf:"bytes,1,opt,name=computer_name,json=computerName,proto3" json:"computer_name,omitempty"`
+	// Linux configuration. Exactly one of linux/windows.
+	Linux *AzureVirtualMachineLinuxProfile `protobuf:"bytes,2,opt,name=linux,proto3" json:"linux,omitempty"`
+	// Windows configuration. Exactly one of linux/windows.
+	Windows       *AzureVirtualMachineWindowsProfile `protobuf:"bytes,3,opt,name=windows,proto3" json:"windows,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AzureVirtualMachineImage) Reset() {
-	*x = AzureVirtualMachineImage{}
+func (x *AzureVirtualMachineOsProfile) Reset() {
+	*x = AzureVirtualMachineOsProfile{}
 	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureVirtualMachineImage) String() string {
+func (x *AzureVirtualMachineOsProfile) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureVirtualMachineImage) ProtoMessage() {}
+func (*AzureVirtualMachineOsProfile) ProtoMessage() {}
 
-func (x *AzureVirtualMachineImage) ProtoReflect() protoreflect.Message {
+func (x *AzureVirtualMachineOsProfile) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -563,68 +1354,493 @@ func (x *AzureVirtualMachineImage) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureVirtualMachineImage.ProtoReflect.Descriptor instead.
-func (*AzureVirtualMachineImage) Descriptor() ([]byte, []int) {
+// Deprecated: Use AzureVirtualMachineOsProfile.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineOsProfile) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AzureVirtualMachineImage) GetPublisher() string {
+func (x *AzureVirtualMachineOsProfile) GetComputerName() string {
 	if x != nil {
-		return x.Publisher
+		return x.ComputerName
 	}
 	return ""
 }
 
-func (x *AzureVirtualMachineImage) GetOffer() string {
+func (x *AzureVirtualMachineOsProfile) GetLinux() *AzureVirtualMachineLinuxProfile {
 	if x != nil {
-		return x.Offer
+		return x.Linux
 	}
-	return ""
+	return nil
 }
 
-func (x *AzureVirtualMachineImage) GetSku() string {
+func (x *AzureVirtualMachineOsProfile) GetWindows() *AzureVirtualMachineWindowsProfile {
 	if x != nil {
-		return x.Sku
+		return x.Windows
 	}
-	return ""
+	return nil
 }
 
-func (x *AzureVirtualMachineImage) GetVersion() string {
-	if x != nil && x.Version != nil {
-		return *x.Version
-	}
-	return ""
+// Linux authentication and management: SSH-first, password optional.
+type AzureVirtualMachineLinuxProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The admin account's username. Required when booting from an image;
+	// must stay empty when booting from an existing OS disk. Fixed at
+	// creation.
+	AdminUsername string `protobuf:"bytes,1,opt,name=admin_username,json=adminUsername,proto3" json:"admin_username,omitempty"`
+	// SSH public keys installed for the admin account -- the production
+	// authentication path. Each key's username defaults to admin_username.
+	SshPublicKeys []*AzureVirtualMachineSshPublicKey `protobuf:"bytes,2,rep,name=ssh_public_keys,json=sshPublicKeys,proto3" json:"ssh_public_keys,omitempty"`
+	// The admin account's password. Only meaningful when
+	// disable_password_authentication is explicitly false; SSH keys are
+	// the production path. Can be a literal or a reference to a secret
+	// (e.g. a Config Manager entry). Fixed at creation.
+	AdminPassword *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=admin_password,json=adminPassword,proto3" json:"admin_password,omitempty"`
+	// Whether SSH password authentication is disabled. Azure's default is
+	// true (keys only) -- the right posture; setting false requires
+	// admin_password. Fixed at creation.
+	DisablePasswordAuthentication *bool `protobuf:"varint,4,opt,name=disable_password_authentication,json=disablePasswordAuthentication,proto3,oneof" json:"disable_password_authentication,omitempty"`
+	// How the OS is patched. Unspecified applies Azure's default
+	// (IMAGE_DEFAULT: whatever the image's own update configuration does).
+	// AUTOMATIC_BY_PLATFORM hands patch orchestration to Azure Update
+	// Manager and unlocks patching.reboot_setting and safe scheduled
+	// patching.
+	PatchMode AzureVirtualMachineLinuxPatchMode `protobuf:"varint,5,opt,name=patch_mode,json=patchMode,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxPatchMode" json:"patch_mode,omitempty"`
+	// Bring-your-own-subscription licensing for commercial distros (Red
+	// Hat, SUSE, Ubuntu Pro). Leave unspecified for regular pay-as-you-go
+	// images.
+	LicenseType   AzureVirtualMachineLinuxLicenseType `protobuf:"varint,6,opt,name=license_type,json=licenseType,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxLicenseType" json:"license_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AzureVirtualMachineImage) GetCustomImageId() string {
+func (x *AzureVirtualMachineLinuxProfile) Reset() {
+	*x = AzureVirtualMachineLinuxProfile{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineLinuxProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineLinuxProfile) ProtoMessage() {}
+
+func (x *AzureVirtualMachineLinuxProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[2]
 	if x != nil {
-		return x.CustomImageId
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineLinuxProfile.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineLinuxProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AzureVirtualMachineLinuxProfile) GetAdminUsername() string {
+	if x != nil {
+		return x.AdminUsername
 	}
 	return ""
 }
 
-// AzureVirtualMachineOsDisk defines the OS disk configuration.
+func (x *AzureVirtualMachineLinuxProfile) GetSshPublicKeys() []*AzureVirtualMachineSshPublicKey {
+	if x != nil {
+		return x.SshPublicKeys
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineLinuxProfile) GetAdminPassword() *v1.StringValueOrRef {
+	if x != nil {
+		return x.AdminPassword
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineLinuxProfile) GetDisablePasswordAuthentication() bool {
+	if x != nil && x.DisablePasswordAuthentication != nil {
+		return *x.DisablePasswordAuthentication
+	}
+	return false
+}
+
+func (x *AzureVirtualMachineLinuxProfile) GetPatchMode() AzureVirtualMachineLinuxPatchMode {
+	if x != nil {
+		return x.PatchMode
+	}
+	return AzureVirtualMachineLinuxPatchMode_azure_virtual_machine_linux_patch_mode_unspecified
+}
+
+func (x *AzureVirtualMachineLinuxProfile) GetLicenseType() AzureVirtualMachineLinuxLicenseType {
+	if x != nil {
+		return x.LicenseType
+	}
+	return AzureVirtualMachineLinuxLicenseType_azure_virtual_machine_linux_license_type_unspecified
+}
+
+// One SSH public key installed onto a Linux VM.
+type AzureVirtualMachineSshPublicKey struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The OpenSSH-format public key (at least 2048-bit RSA or an Ed25519
+	// key), e.g. "ssh-ed25519 AAAA...". Public material -- not a secret.
+	PublicKey string `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	// The account the key is installed for. Unset defaults to the
+	// profile's admin_username -- the common case.
+	Username      string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineSshPublicKey) Reset() {
+	*x = AzureVirtualMachineSshPublicKey{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineSshPublicKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineSshPublicKey) ProtoMessage() {}
+
+func (x *AzureVirtualMachineSshPublicKey) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineSshPublicKey.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineSshPublicKey) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AzureVirtualMachineSshPublicKey) GetPublicKey() string {
+	if x != nil {
+		return x.PublicKey
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineSshPublicKey) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+// Windows authentication and management.
+type AzureVirtualMachineWindowsProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The admin account's username. Required when booting from an image;
+	// must stay empty when booting from an existing OS disk. Fixed at
+	// creation.
+	AdminUsername string `protobuf:"bytes,1,opt,name=admin_username,json=adminUsername,proto3" json:"admin_username,omitempty"`
+	// The admin account's password (8-123 characters, 3 of 4 complexity
+	// classes -- ARM enforces). Can be a literal or a reference to a
+	// secret (e.g. a Config Manager entry). Fixed at creation.
+	AdminPassword *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=admin_password,json=adminPassword,proto3" json:"admin_password,omitempty"`
+	// How the OS is patched. Unspecified applies Azure's default
+	// (AUTOMATIC_BY_OS: Windows Update as configured in the image).
+	// AUTOMATIC_BY_PLATFORM hands orchestration to Azure Update Manager
+	// and is a prerequisite for hotpatching and patching.reboot_setting.
+	PatchMode AzureVirtualMachineWindowsPatchMode `protobuf:"varint,3,opt,name=patch_mode,json=patchMode,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsPatchMode" json:"patch_mode,omitempty"`
+	// Whether Windows Update's automatic updates are enabled. Azure's
+	// default is true. Fixed at creation.
+	AutomaticUpdatesEnabled *bool `protobuf:"varint,4,opt,name=automatic_updates_enabled,json=automaticUpdatesEnabled,proto3,oneof" json:"automatic_updates_enabled,omitempty"`
+	// Hotpatching: security updates applied without reboots, on supported
+	// Windows Server Azure Edition images only. Requires patch_mode
+	// AUTOMATIC_BY_PLATFORM.
+	HotpatchingEnabled bool `protobuf:"varint,5,opt,name=hotpatching_enabled,json=hotpatchingEnabled,proto3" json:"hotpatching_enabled,omitempty"`
+	// The Windows time zone, e.g. "Pacific Standard Time". Unset uses
+	// UTC. Fixed at creation.
+	Timezone string `protobuf:"bytes,6,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	// WinRM remote-management listeners. HTTPS listeners reference the
+	// certificate by its Key Vault secret URL.
+	WinrmListeners []*AzureVirtualMachineWinrmListener `protobuf:"bytes,7,rep,name=winrm_listeners,json=winrmListeners,proto3" json:"winrm_listeners,omitempty"`
+	// Raw unattend.xml fragments injected into Windows setup (AutoLogon /
+	// FirstLogonCommands) for pre-agent bootstrap. The content may embed
+	// credentials, so it is treated as secret material. Fixed at creation.
+	AdditionalUnattendContents []*AzureVirtualMachineAdditionalUnattendContent `protobuf:"bytes,8,rep,name=additional_unattend_contents,json=additionalUnattendContents,proto3" json:"additional_unattend_contents,omitempty"`
+	// Azure Hybrid Benefit: bring an existing Windows license instead of
+	// paying the image's Windows price. Unspecified means no benefit
+	// (regular pay-as-you-go). Updatable in place.
+	LicenseType   AzureVirtualMachineWindowsLicenseType `protobuf:"varint,9,opt,name=license_type,json=licenseType,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsLicenseType" json:"license_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineWindowsProfile) Reset() {
+	*x = AzureVirtualMachineWindowsProfile{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineWindowsProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineWindowsProfile) ProtoMessage() {}
+
+func (x *AzureVirtualMachineWindowsProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineWindowsProfile.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineWindowsProfile) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AzureVirtualMachineWindowsProfile) GetAdminUsername() string {
+	if x != nil {
+		return x.AdminUsername
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineWindowsProfile) GetAdminPassword() *v1.StringValueOrRef {
+	if x != nil {
+		return x.AdminPassword
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineWindowsProfile) GetPatchMode() AzureVirtualMachineWindowsPatchMode {
+	if x != nil {
+		return x.PatchMode
+	}
+	return AzureVirtualMachineWindowsPatchMode_azure_virtual_machine_windows_patch_mode_unspecified
+}
+
+func (x *AzureVirtualMachineWindowsProfile) GetAutomaticUpdatesEnabled() bool {
+	if x != nil && x.AutomaticUpdatesEnabled != nil {
+		return *x.AutomaticUpdatesEnabled
+	}
+	return false
+}
+
+func (x *AzureVirtualMachineWindowsProfile) GetHotpatchingEnabled() bool {
+	if x != nil {
+		return x.HotpatchingEnabled
+	}
+	return false
+}
+
+func (x *AzureVirtualMachineWindowsProfile) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineWindowsProfile) GetWinrmListeners() []*AzureVirtualMachineWinrmListener {
+	if x != nil {
+		return x.WinrmListeners
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineWindowsProfile) GetAdditionalUnattendContents() []*AzureVirtualMachineAdditionalUnattendContent {
+	if x != nil {
+		return x.AdditionalUnattendContents
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineWindowsProfile) GetLicenseType() AzureVirtualMachineWindowsLicenseType {
+	if x != nil {
+		return x.LicenseType
+	}
+	return AzureVirtualMachineWindowsLicenseType_azure_virtual_machine_windows_license_type_unspecified
+}
+
+// One WinRM listener.
+type AzureVirtualMachineWinrmListener struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The listener protocol. HTTPS requires certificate_url.
+	Protocol AzureVirtualMachineWinrmProtocol `protobuf:"varint,1,opt,name=protocol,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWinrmProtocol" json:"protocol,omitempty"`
+	// For HTTPS: the Key Vault secret URL of the listener's certificate,
+	// e.g. "https://{vault}.vault.azure.net/secrets/{name}/{version}". The
+	// vault must be enabled for deployment.
+	CertificateUrl string `protobuf:"bytes,2,opt,name=certificate_url,json=certificateUrl,proto3" json:"certificate_url,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineWinrmListener) Reset() {
+	*x = AzureVirtualMachineWinrmListener{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineWinrmListener) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineWinrmListener) ProtoMessage() {}
+
+func (x *AzureVirtualMachineWinrmListener) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineWinrmListener.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineWinrmListener) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AzureVirtualMachineWinrmListener) GetProtocol() AzureVirtualMachineWinrmProtocol {
+	if x != nil {
+		return x.Protocol
+	}
+	return AzureVirtualMachineWinrmProtocol_azure_virtual_machine_winrm_protocol_unspecified
+}
+
+func (x *AzureVirtualMachineWinrmListener) GetCertificateUrl() string {
+	if x != nil {
+		return x.CertificateUrl
+	}
+	return ""
+}
+
+// One unattend.xml fragment for Windows setup.
+type AzureVirtualMachineAdditionalUnattendContent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Which setup pass the fragment configures.
+	Setting AzureVirtualMachineUnattendSetting `protobuf:"varint,1,opt,name=setting,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineUnattendSetting" json:"setting,omitempty"`
+	// The raw XML fragment. May embed credentials (AutoLogon carries the
+	// admin password), so it is treated as secret material.
+	Content       string `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineAdditionalUnattendContent) Reset() {
+	*x = AzureVirtualMachineAdditionalUnattendContent{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineAdditionalUnattendContent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineAdditionalUnattendContent) ProtoMessage() {}
+
+func (x *AzureVirtualMachineAdditionalUnattendContent) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineAdditionalUnattendContent.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineAdditionalUnattendContent) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AzureVirtualMachineAdditionalUnattendContent) GetSetting() AzureVirtualMachineUnattendSetting {
+	if x != nil {
+		return x.Setting
+	}
+	return AzureVirtualMachineUnattendSetting_azure_virtual_machine_unattend_setting_unspecified
+}
+
+func (x *AzureVirtualMachineAdditionalUnattendContent) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+// The OS disk created (or described) with the VM.
 type AzureVirtualMachineOsDisk struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Size of the OS disk in GB.
-	// If not specified, uses the default size from the image.
-	SizeGb int32 `protobuf:"varint,1,opt,name=size_gb,json=sizeGb,proto3" json:"size_gb,omitempty"`
-	// Storage account type for the OS disk.
-	StorageType *AzureVirtualMachineOsDisk_DiskStorageType `protobuf:"varint,2,opt,name=storage_type,json=storageType,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk_DiskStorageType,oneof" json:"storage_type,omitempty"`
-	// Caching mode for the OS disk.
-	Caching *AzureVirtualMachineOsDisk_DiskCaching `protobuf:"varint,3,opt,name=caching,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk_DiskCaching,oneof" json:"caching,omitempty"`
-	// Whether to delete the OS disk when the VM is deleted.
-	DeleteWithVm *bool `protobuf:"varint,4,opt,name=delete_with_vm,json=deleteWithVm,proto3,oneof" json:"delete_with_vm,omitempty"`
-	// Azure Key Vault disk encryption set ID for customer-managed key encryption.
-	// Can be a literal value or a reference to an AzureKeyVault resource.
-	DiskEncryptionSetId *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=disk_encryption_set_id,json=diskEncryptionSetId,proto3" json:"disk_encryption_set_id,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// The host-caching mode. READ_WRITE is right for general OS disks;
+	// READ_ONLY suits high-IOPS workloads that re-read hot data; NONE for
+	// write-heavy disks where caching only adds latency.
+	Caching AzureVirtualMachineDiskCaching `protobuf:"varint,1,opt,name=caching,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiskCaching" json:"caching,omitempty"`
+	// The disk's storage SKU. PREMIUM_LRS is the production default (and
+	// required for single-VM SLAs); the ZRS variants survive a zone outage
+	// but forbid zone-pinning the VM. OS disks cannot use PremiumV2/Ultra.
+	// Changing it replaces the disk.
+	StorageAccountType AzureVirtualMachineOsDiskStorageAccountType `protobuf:"varint,2,opt,name=storage_account_type,json=storageAccountType,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDiskStorageAccountType" json:"storage_account_type,omitempty"`
+	// The OS disk's size in GiB (up to 4095 for OS disks). Unset inherits
+	// the image's size -- correct for almost everything; grow it only when
+	// the OS volume itself (not data -- use data disks) needs room. Can
+	// only increase.
+	DiskSizeGb *int32 `protobuf:"varint,3,opt,name=disk_size_gb,json=diskSizeGb,proto3,oneof" json:"disk_size_gb,omitempty"`
+	// An explicit name for the OS disk resource. Unset lets Azure derive
+	// one from the VM name. Changing it replaces the disk.
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	// Ephemeral OS disk: the OS disk lives on the VM's local cache/temp/
+	// NVMe storage instead of remote storage -- free, fast, and WIPED on
+	// every stop/deallocate. For stateless, image-driven fleets only.
+	// Presence makes the OS disk ephemeral. Fixed at creation.
+	DiffDiskSettings *AzureVirtualMachineDiffDiskSettings `protobuf:"bytes,5,opt,name=diff_disk_settings,json=diffDiskSettings,proto3" json:"diff_disk_settings,omitempty"`
+	// Customer-managed-key encryption: the disk encryption set encrypting
+	// the OS disk. A disk encryption set by ARM ID, or a reference to an
+	// AzureDiskEncryptionSet's output. Conflicts with
+	// secure_vm_disk_encryption_set_id.
+	DiskEncryptionSetId *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=disk_encryption_set_id,json=diskEncryptionSetId,proto3" json:"disk_encryption_set_id,omitempty"`
+	// For confidential VMs with customer-key guest-state encryption: the
+	// disk encryption set for the VMGuestState blob. A disk encryption set
+	// by ARM ID, or a reference to an AzureDiskEncryptionSet's output.
+	// Requires security_encryption_type; conflicts with
+	// disk_encryption_set_id. Fixed at creation.
+	SecureVmDiskEncryptionSetId *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=secure_vm_disk_encryption_set_id,json=secureVmDiskEncryptionSetId,proto3" json:"secure_vm_disk_encryption_set_id,omitempty"`
+	// Confidential-VM encryption of the VM guest state: VM_GUEST_STATE_ONLY
+	// encrypts just the guest-state blob; DISK_WITH_VM_GUEST_STATE also
+	// encrypts the OS disk (and requires security.secure_boot_enabled).
+	// Both require security.vtpm_enabled and a confidential-capable size.
+	// Fixed at creation.
+	SecurityEncryptionType AzureVirtualMachineSecurityEncryptionType `protobuf:"varint,8,opt,name=security_encryption_type,json=securityEncryptionType,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecurityEncryptionType" json:"security_encryption_type,omitempty"`
+	// Write Accelerator for M-series VMs with Premium disks and caching
+	// NONE -- sub-millisecond write latency for database logs.
+	WriteAcceleratorEnabled bool `protobuf:"varint,9,opt,name=write_accelerator_enabled,json=writeAcceleratorEnabled,proto3" json:"write_accelerator_enabled,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *AzureVirtualMachineOsDisk) Reset() {
 	*x = AzureVirtualMachineOsDisk{}
-	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -636,7 +1852,7 @@ func (x *AzureVirtualMachineOsDisk) String() string {
 func (*AzureVirtualMachineOsDisk) ProtoMessage() {}
 
 func (x *AzureVirtualMachineOsDisk) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -649,35 +1865,42 @@ func (x *AzureVirtualMachineOsDisk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AzureVirtualMachineOsDisk.ProtoReflect.Descriptor instead.
 func (*AzureVirtualMachineOsDisk) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *AzureVirtualMachineOsDisk) GetSizeGb() int32 {
+func (x *AzureVirtualMachineOsDisk) GetCaching() AzureVirtualMachineDiskCaching {
 	if x != nil {
-		return x.SizeGb
+		return x.Caching
+	}
+	return AzureVirtualMachineDiskCaching_azure_virtual_machine_disk_caching_unspecified
+}
+
+func (x *AzureVirtualMachineOsDisk) GetStorageAccountType() AzureVirtualMachineOsDiskStorageAccountType {
+	if x != nil {
+		return x.StorageAccountType
+	}
+	return AzureVirtualMachineOsDiskStorageAccountType_azure_virtual_machine_os_disk_storage_account_type_unspecified
+}
+
+func (x *AzureVirtualMachineOsDisk) GetDiskSizeGb() int32 {
+	if x != nil && x.DiskSizeGb != nil {
+		return *x.DiskSizeGb
 	}
 	return 0
 }
 
-func (x *AzureVirtualMachineOsDisk) GetStorageType() AzureVirtualMachineOsDisk_DiskStorageType {
-	if x != nil && x.StorageType != nil {
-		return *x.StorageType
+func (x *AzureVirtualMachineOsDisk) GetName() string {
+	if x != nil {
+		return x.Name
 	}
-	return AzureVirtualMachineOsDisk_disk_storage_type_unspecified
+	return ""
 }
 
-func (x *AzureVirtualMachineOsDisk) GetCaching() AzureVirtualMachineOsDisk_DiskCaching {
-	if x != nil && x.Caching != nil {
-		return *x.Caching
+func (x *AzureVirtualMachineOsDisk) GetDiffDiskSettings() *AzureVirtualMachineDiffDiskSettings {
+	if x != nil {
+		return x.DiffDiskSettings
 	}
-	return AzureVirtualMachineOsDisk_disk_caching_unspecified
-}
-
-func (x *AzureVirtualMachineOsDisk) GetDeleteWithVm() bool {
-	if x != nil && x.DeleteWithVm != nil {
-		return *x.DeleteWithVm
-	}
-	return false
+	return nil
 }
 
 func (x *AzureVirtualMachineOsDisk) GetDiskEncryptionSetId() *v1.StringValueOrRef {
@@ -687,41 +1910,52 @@ func (x *AzureVirtualMachineOsDisk) GetDiskEncryptionSetId() *v1.StringValueOrRe
 	return nil
 }
 
-// AzureVirtualMachineDataDisk defines an additional data disk configuration.
-type AzureVirtualMachineDataDisk struct {
+func (x *AzureVirtualMachineOsDisk) GetSecureVmDiskEncryptionSetId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SecureVmDiskEncryptionSetId
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineOsDisk) GetSecurityEncryptionType() AzureVirtualMachineSecurityEncryptionType {
+	if x != nil {
+		return x.SecurityEncryptionType
+	}
+	return AzureVirtualMachineSecurityEncryptionType_azure_virtual_machine_security_encryption_type_unspecified
+}
+
+func (x *AzureVirtualMachineOsDisk) GetWriteAcceleratorEnabled() bool {
+	if x != nil {
+		return x.WriteAcceleratorEnabled
+	}
+	return false
+}
+
+// Ephemeral OS disk placement.
+type AzureVirtualMachineDiffDiskSettings struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the data disk.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Size of the data disk in GB.
-	SizeGb int32 `protobuf:"varint,2,opt,name=size_gb,json=sizeGb,proto3" json:"size_gb,omitempty"`
-	// Storage account type for the data disk.
-	StorageType *AzureVirtualMachineOsDisk_DiskStorageType `protobuf:"varint,3,opt,name=storage_type,json=storageType,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk_DiskStorageType,oneof" json:"storage_type,omitempty"`
-	// Caching mode for the data disk.
-	Caching *AzureVirtualMachineOsDisk_DiskCaching `protobuf:"varint,4,opt,name=caching,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk_DiskCaching,oneof" json:"caching,omitempty"`
-	// Logical Unit Number (LUN) for the data disk.
-	// Each data disk must have a unique LUN (0-63).
-	Lun int32 `protobuf:"varint,5,opt,name=lun,proto3" json:"lun,omitempty"`
-	// Whether to delete the data disk when the VM is deleted.
-	DeleteWithVm  *bool `protobuf:"varint,6,opt,name=delete_with_vm,json=deleteWithVm,proto3,oneof" json:"delete_with_vm,omitempty"`
+	// Which local storage hosts the ephemeral OS disk. Unspecified applies
+	// Azure's default (CACHE_DISK when the size's cache is big enough).
+	Placement     AzureVirtualMachineDiffDiskPlacement `protobuf:"varint,1,opt,name=placement,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiffDiskPlacement" json:"placement,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AzureVirtualMachineDataDisk) Reset() {
-	*x = AzureVirtualMachineDataDisk{}
-	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[3]
+func (x *AzureVirtualMachineDiffDiskSettings) Reset() {
+	*x = AzureVirtualMachineDiffDiskSettings{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureVirtualMachineDataDisk) String() string {
+func (x *AzureVirtualMachineDiffDiskSettings) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureVirtualMachineDataDisk) ProtoMessage() {}
+func (*AzureVirtualMachineDiffDiskSettings) ProtoMessage() {}
 
-func (x *AzureVirtualMachineDataDisk) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[3]
+func (x *AzureVirtualMachineDiffDiskSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -732,95 +1966,894 @@ func (x *AzureVirtualMachineDataDisk) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureVirtualMachineDataDisk.ProtoReflect.Descriptor instead.
-func (*AzureVirtualMachineDataDisk) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{3}
+// Deprecated: Use AzureVirtualMachineDiffDiskSettings.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineDiffDiskSettings) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *AzureVirtualMachineDataDisk) GetName() string {
+func (x *AzureVirtualMachineDiffDiskSettings) GetPlacement() AzureVirtualMachineDiffDiskPlacement {
+	if x != nil {
+		return x.Placement
+	}
+	return AzureVirtualMachineDiffDiskPlacement_azure_virtual_machine_diff_disk_placement_unspecified
+}
+
+// Marketplace/platform image coordinates.
+type AzureVirtualMachineSourceImageReference struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The image publisher, e.g. "Canonical". Fixed at creation.
+	Publisher string `protobuf:"bytes,1,opt,name=publisher,proto3" json:"publisher,omitempty"`
+	// The image offer, e.g. "ubuntu-24_04-lts". Fixed at creation.
+	Offer string `protobuf:"bytes,2,opt,name=offer,proto3" json:"offer,omitempty"`
+	// The image SKU, e.g. "server". Fixed at creation.
+	Sku string `protobuf:"bytes,3,opt,name=sku,proto3" json:"sku,omitempty"`
+	// The image version, e.g. "latest" or a pinned "24.04.202506100".
+	// "latest" resolves at CREATION only -- the VM does not follow new
+	// image releases afterward. Fixed at creation.
+	Version       string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineSourceImageReference) Reset() {
+	*x = AzureVirtualMachineSourceImageReference{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineSourceImageReference) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineSourceImageReference) ProtoMessage() {}
+
+func (x *AzureVirtualMachineSourceImageReference) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineSourceImageReference.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineSourceImageReference) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AzureVirtualMachineSourceImageReference) GetPublisher() string {
+	if x != nil {
+		return x.Publisher
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineSourceImageReference) GetOffer() string {
+	if x != nil {
+		return x.Offer
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineSourceImageReference) GetSku() string {
+	if x != nil {
+		return x.Sku
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineSourceImageReference) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+// One data-disk attachment: a referenced first-class disk mounted at a
+// LUN.
+type AzureVirtualMachineDataDiskAttachment struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The managed disk to attach, by ARM ID. References a first-class
+	// AzureManagedDisk so the data outlives the VM.
+	ManagedDiskId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=managed_disk_id,json=managedDiskId,proto3" json:"managed_disk_id,omitempty"`
+	// The logical unit number the disk mounts at (0-63), unique per VM --
+	// the stable identity the OS addresses the disk by (
+	// /dev/disk/azure/scsi1/lun{n}). Keep LUNs stable across changes.
+	// Explicit presence (optional + required) so LUN 0 -- the most common
+	// -- survives proto-JSON serialization, which drops plain zero values.
+	Lun *int32 `protobuf:"varint,2,opt,name=lun,proto3,oneof" json:"lun,omitempty"`
+	// The host-caching mode. READ_ONLY suits read-heavy data; NONE is
+	// required for disks larger than 4 TiB and right for write-heavy
+	// volumes (database logs).
+	Caching AzureVirtualMachineDiskCaching `protobuf:"varint,3,opt,name=caching,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiskCaching" json:"caching,omitempty"`
+	// Write Accelerator for this attachment (M-series + Premium + caching
+	// NONE).
+	WriteAcceleratorEnabled bool `protobuf:"varint,4,opt,name=write_accelerator_enabled,json=writeAcceleratorEnabled,proto3" json:"write_accelerator_enabled,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineDataDiskAttachment) Reset() {
+	*x = AzureVirtualMachineDataDiskAttachment{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineDataDiskAttachment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineDataDiskAttachment) ProtoMessage() {}
+
+func (x *AzureVirtualMachineDataDiskAttachment) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineDataDiskAttachment.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineDataDiskAttachment) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AzureVirtualMachineDataDiskAttachment) GetManagedDiskId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ManagedDiskId
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineDataDiskAttachment) GetLun() int32 {
+	if x != nil && x.Lun != nil {
+		return *x.Lun
+	}
+	return 0
+}
+
+func (x *AzureVirtualMachineDataDiskAttachment) GetCaching() AzureVirtualMachineDiskCaching {
+	if x != nil {
+		return x.Caching
+	}
+	return AzureVirtualMachineDiskCaching_azure_virtual_machine_disk_caching_unspecified
+}
+
+func (x *AzureVirtualMachineDataDiskAttachment) GetWriteAcceleratorEnabled() bool {
+	if x != nil {
+		return x.WriteAcceleratorEnabled
+	}
+	return false
+}
+
+// The VM's managed identity.
+type AzureVirtualMachineIdentity struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+	// with the VM (its principal surfaces in the outputs for
+	// AzureRoleAssignment grants); USER_ASSIGNED brings identities you
+	// manage and share across resources; SYSTEM_AND_USER_ASSIGNED carries
+	// both.
+	Type AzureVirtualMachineIdentityType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineIdentityType" json:"type,omitempty"`
+	// For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+	// identities attached to the VM, by ARM ID. Reference
+	// AzureUserAssignedIdentity resources so grants can be composed before
+	// the VM exists.
+	IdentityIds   []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=identity_ids,json=identityIds,proto3" json:"identity_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineIdentity) Reset() {
+	*x = AzureVirtualMachineIdentity{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineIdentity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineIdentity) ProtoMessage() {}
+
+func (x *AzureVirtualMachineIdentity) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineIdentity.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineIdentity) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *AzureVirtualMachineIdentity) GetType() AzureVirtualMachineIdentityType {
+	if x != nil {
+		return x.Type
+	}
+	return AzureVirtualMachineIdentityType_azure_virtual_machine_identity_type_unspecified
+}
+
+func (x *AzureVirtualMachineIdentity) GetIdentityIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.IdentityIds
+	}
+	return nil
+}
+
+// Spot (evictable, discounted) capacity settings. Presence makes the VM
+// a spot instance.
+type AzureVirtualMachineSpot struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What happens when Azure evicts the VM: DEALLOCATE stops it (compute
+	// billing stops, disks persist, it can restart later); DELETE removes
+	// it and its disks. Fixed at creation.
+	EvictionPolicy AzureVirtualMachineEvictionPolicy `protobuf:"varint,1,opt,name=eviction_policy,json=evictionPolicy,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineEvictionPolicy" json:"eviction_policy,omitempty"`
+	// The maximum hourly price in US dollars, or -1 (the default) to pay
+	// up to the on-demand price and never be evicted on price. Set a cap
+	// only when cost predictability beats availability.
+	MaxBidPrice   *float64 `protobuf:"fixed64,2,opt,name=max_bid_price,json=maxBidPrice,proto3,oneof" json:"max_bid_price,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineSpot) Reset() {
+	*x = AzureVirtualMachineSpot{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineSpot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineSpot) ProtoMessage() {}
+
+func (x *AzureVirtualMachineSpot) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineSpot.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineSpot) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AzureVirtualMachineSpot) GetEvictionPolicy() AzureVirtualMachineEvictionPolicy {
+	if x != nil {
+		return x.EvictionPolicy
+	}
+	return AzureVirtualMachineEvictionPolicy_azure_virtual_machine_eviction_policy_unspecified
+}
+
+func (x *AzureVirtualMachineSpot) GetMaxBidPrice() float64 {
+	if x != nil && x.MaxBidPrice != nil {
+		return *x.MaxBidPrice
+	}
+	return 0
+}
+
+// Placement relative to Azure's fault machinery. At most one placement
+// strategy: a zone, an availability set, or a Flexible scale set.
+type AzureVirtualMachineAvailability struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The availability zone to pin the VM to ("1", "2", or "3"). Zonal
+	// placement is the modern resilience unit -- NICs' public IPs and
+	// zonal disks must match the zone. Conflicts with availability_set_id.
+	// Fixed at creation.
+	Zone string `protobuf:"bytes,1,opt,name=zone,proto3" json:"zone,omitempty"`
+	// The classic pre-zones fault/update-domain grouping, by ARM ID.
+	// Prefer zones in zoned regions. Plain ARM ID: availability sets are
+	// not modeled as a Planton kind. Conflicts with zone and
+	// capacity_reservation_group_id. Fixed at creation.
+	AvailabilitySetId string `protobuf:"bytes,2,opt,name=availability_set_id,json=availabilitySetId,proto3" json:"availability_set_id,omitempty"`
+	// Co-locates the VM with its group for minimal inter-VM latency
+	// (HPC/low-latency clusters), by ARM ID. Plain ARM ID.
+	ProximityPlacementGroupId string `protobuf:"bytes,3,opt,name=proximity_placement_group_id,json=proximityPlacementGroupId,proto3" json:"proximity_placement_group_id,omitempty"`
+	// Consumes reserved capacity from a capacity reservation group, by ARM
+	// ID -- guaranteed capacity for burst/DR events. Conflicts with
+	// availability_set_id and proximity_placement_group_id.
+	CapacityReservationGroupId string `protobuf:"bytes,4,opt,name=capacity_reservation_group_id,json=capacityReservationGroupId,proto3" json:"capacity_reservation_group_id,omitempty"`
+	// Pins the VM to a specific dedicated host, by ARM ID (single-tenant
+	// physical isolation). Conflicts with dedicated_host_group_id.
+	DedicatedHostId string `protobuf:"bytes,5,opt,name=dedicated_host_id,json=dedicatedHostId,proto3" json:"dedicated_host_id,omitempty"`
+	// Lets Azure pick a host within a dedicated host group, by ARM ID.
+	// Conflicts with dedicated_host_id.
+	DedicatedHostGroupId string `protobuf:"bytes,6,opt,name=dedicated_host_group_id,json=dedicatedHostGroupId,proto3" json:"dedicated_host_group_id,omitempty"`
+	// Attaches the VM to a FLEXIBLE-orchestration scale set, by ARM ID --
+	// scale-set-managed fault spreading for an individually-managed VM.
+	// Can be a literal ARM ID or a reference to an
+	// AzureVirtualMachineScaleSet's scale_set_id output (the set must be
+	// FLEXIBLE -- UNIFORM sets do not accept attached VMs). Fixed at
+	// creation.
+	VirtualMachineScaleSetId *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=virtual_machine_scale_set_id,json=virtualMachineScaleSetId,proto3" json:"virtual_machine_scale_set_id,omitempty"`
+	// The fault domain to pin the VM to within virtual_machine_scale_set_id
+	// (requires it). Unset lets Azure choose. Fixed at creation.
+	PlatformFaultDomain *int32 `protobuf:"varint,8,opt,name=platform_fault_domain,json=platformFaultDomain,proto3,oneof" json:"platform_fault_domain,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineAvailability) Reset() {
+	*x = AzureVirtualMachineAvailability{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineAvailability) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineAvailability) ProtoMessage() {}
+
+func (x *AzureVirtualMachineAvailability) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineAvailability.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineAvailability) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AzureVirtualMachineAvailability) GetZone() string {
+	if x != nil {
+		return x.Zone
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineAvailability) GetAvailabilitySetId() string {
+	if x != nil {
+		return x.AvailabilitySetId
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineAvailability) GetProximityPlacementGroupId() string {
+	if x != nil {
+		return x.ProximityPlacementGroupId
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineAvailability) GetCapacityReservationGroupId() string {
+	if x != nil {
+		return x.CapacityReservationGroupId
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineAvailability) GetDedicatedHostId() string {
+	if x != nil {
+		return x.DedicatedHostId
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineAvailability) GetDedicatedHostGroupId() string {
+	if x != nil {
+		return x.DedicatedHostGroupId
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineAvailability) GetVirtualMachineScaleSetId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.VirtualMachineScaleSetId
+	}
+	return nil
+}
+
+func (x *AzureVirtualMachineAvailability) GetPlatformFaultDomain() int32 {
+	if x != nil && x.PlatformFaultDomain != nil {
+		return *x.PlatformFaultDomain
+	}
+	return 0
+}
+
+// Trusted-launch / encryption posture.
+type AzureVirtualMachineSecurity struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// UEFI secure boot: only signed boot components load. With
+	// vtpm_enabled this is "trusted launch" -- the right posture for
+	// production Gen2 images. Fixed at creation.
+	SecureBootEnabled bool `protobuf:"varint,1,opt,name=secure_boot_enabled,json=secureBootEnabled,proto3" json:"secure_boot_enabled,omitempty"`
+	// Virtual TPM: measured boot and attestation; required for
+	// confidential-VM guest-state encryption. Fixed at creation.
+	VtpmEnabled bool `protobuf:"varint,2,opt,name=vtpm_enabled,json=vtpmEnabled,proto3" json:"vtpm_enabled,omitempty"`
+	// Encryption at host: data is encrypted on the compute host itself, so
+	// temp disks and disk caches are covered too (the gap platform
+	// encryption leaves). The subscription must have the EncryptionAtHost
+	// feature registered.
+	EncryptionAtHostEnabled bool `protobuf:"varint,3,opt,name=encryption_at_host_enabled,json=encryptionAtHostEnabled,proto3" json:"encryption_at_host_enabled,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineSecurity) Reset() {
+	*x = AzureVirtualMachineSecurity{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineSecurity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineSecurity) ProtoMessage() {}
+
+func (x *AzureVirtualMachineSecurity) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineSecurity.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineSecurity) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AzureVirtualMachineSecurity) GetSecureBootEnabled() bool {
+	if x != nil {
+		return x.SecureBootEnabled
+	}
+	return false
+}
+
+func (x *AzureVirtualMachineSecurity) GetVtpmEnabled() bool {
+	if x != nil {
+		return x.VtpmEnabled
+	}
+	return false
+}
+
+func (x *AzureVirtualMachineSecurity) GetEncryptionAtHostEnabled() bool {
+	if x != nil {
+		return x.EncryptionAtHostEnabled
+	}
+	return false
+}
+
+// OS patch orchestration shared across both OSes (the per-OS patch MODE
+// lives in the linux/windows profile).
+type AzureVirtualMachinePatching struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How patch assessment runs. Unspecified applies Azure's default
+	// (IMAGE_DEFAULT); AUTOMATIC_BY_PLATFORM has Azure assess pending
+	// patches daily.
+	AssessmentMode AzureVirtualMachinePatchAssessmentMode `protobuf:"varint,1,opt,name=assessment_mode,json=assessmentMode,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatchAssessmentMode" json:"assessment_mode,omitempty"`
+	// When platform patching may reboot the VM. Requires the OS profile's
+	// patch_mode to be AUTOMATIC_BY_PLATFORM.
+	RebootSetting AzureVirtualMachineRebootSetting `protobuf:"varint,2,opt,name=reboot_setting,json=rebootSetting,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineRebootSetting" json:"reboot_setting,omitempty"`
+	// Allows customer-scheduled platform patching to bypass certain
+	// platform safety checks. Requires patch_mode AUTOMATIC_BY_PLATFORM.
+	BypassPlatformSafetyChecksOnUserScheduleEnabled bool `protobuf:"varint,3,opt,name=bypass_platform_safety_checks_on_user_schedule_enabled,json=bypassPlatformSafetyChecksOnUserScheduleEnabled,proto3" json:"bypass_platform_safety_checks_on_user_schedule_enabled,omitempty"`
+	unknownFields                                   protoimpl.UnknownFields
+	sizeCache                                       protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachinePatching) Reset() {
+	*x = AzureVirtualMachinePatching{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachinePatching) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachinePatching) ProtoMessage() {}
+
+func (x *AzureVirtualMachinePatching) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachinePatching.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachinePatching) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AzureVirtualMachinePatching) GetAssessmentMode() AzureVirtualMachinePatchAssessmentMode {
+	if x != nil {
+		return x.AssessmentMode
+	}
+	return AzureVirtualMachinePatchAssessmentMode_azure_virtual_machine_patch_assessment_mode_unspecified
+}
+
+func (x *AzureVirtualMachinePatching) GetRebootSetting() AzureVirtualMachineRebootSetting {
+	if x != nil {
+		return x.RebootSetting
+	}
+	return AzureVirtualMachineRebootSetting_azure_virtual_machine_reboot_setting_unspecified
+}
+
+func (x *AzureVirtualMachinePatching) GetBypassPlatformSafetyChecksOnUserScheduleEnabled() bool {
+	if x != nil {
+		return x.BypassPlatformSafetyChecksOnUserScheduleEnabled
+	}
+	return false
+}
+
+// Boot diagnostics. Presence enables it.
+type AzureVirtualMachineBootDiagnostics struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The storage account to write console logs/screenshots to, by blob
+	// endpoint URI. Empty uses Azure's MANAGED storage -- the right
+	// default (no storage account to operate).
+	StorageAccountUri string `protobuf:"bytes,1,opt,name=storage_account_uri,json=storageAccountUri,proto3" json:"storage_account_uri,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineBootDiagnostics) Reset() {
+	*x = AzureVirtualMachineBootDiagnostics{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineBootDiagnostics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineBootDiagnostics) ProtoMessage() {}
+
+func (x *AzureVirtualMachineBootDiagnostics) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineBootDiagnostics.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineBootDiagnostics) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AzureVirtualMachineBootDiagnostics) GetStorageAccountUri() string {
+	if x != nil {
+		return x.StorageAccountUri
+	}
+	return ""
+}
+
+// One VM Application (gallery application) installed at deployment.
+type AzureVirtualMachineGalleryApplication struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The gallery application VERSION's ARM ID.
+	// Format: .../galleries/{g}/applications/{app}/versions/{v}
+	VersionId string `protobuf:"bytes,1,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	// Installation order across the VM's applications (lower installs
+	// first); 0 leaves ordering to Azure.
+	Order *int32 `protobuf:"varint,2,opt,name=order,proto3,oneof" json:"order,omitempty"`
+	// A free-form tag passed to the application's install script.
+	Tag string `protobuf:"bytes,3,opt,name=tag,proto3" json:"tag,omitempty"`
+	// A per-VM configuration blob overriding the version's default
+	// configuration, by URI.
+	ConfigurationBlobUri string `protobuf:"bytes,4,opt,name=configuration_blob_uri,json=configurationBlobUri,proto3" json:"configuration_blob_uri,omitempty"`
+	// Whether the VM automatically picks up new versions of the
+	// application.
+	AutomaticUpgradeEnabled bool `protobuf:"varint,5,opt,name=automatic_upgrade_enabled,json=automaticUpgradeEnabled,proto3" json:"automatic_upgrade_enabled,omitempty"`
+	// Whether a failed application deployment fails the whole VM
+	// deployment (Azure's default treats it as best-effort).
+	TreatFailureAsDeploymentFailureEnabled bool `protobuf:"varint,6,opt,name=treat_failure_as_deployment_failure_enabled,json=treatFailureAsDeploymentFailureEnabled,proto3" json:"treat_failure_as_deployment_failure_enabled,omitempty"`
+	unknownFields                          protoimpl.UnknownFields
+	sizeCache                              protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineGalleryApplication) Reset() {
+	*x = AzureVirtualMachineGalleryApplication{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineGalleryApplication) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineGalleryApplication) ProtoMessage() {}
+
+func (x *AzureVirtualMachineGalleryApplication) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineGalleryApplication.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineGalleryApplication) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AzureVirtualMachineGalleryApplication) GetVersionId() string {
+	if x != nil {
+		return x.VersionId
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineGalleryApplication) GetOrder() int32 {
+	if x != nil && x.Order != nil {
+		return *x.Order
+	}
+	return 0
+}
+
+func (x *AzureVirtualMachineGalleryApplication) GetTag() string {
+	if x != nil {
+		return x.Tag
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineGalleryApplication) GetConfigurationBlobUri() string {
+	if x != nil {
+		return x.ConfigurationBlobUri
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineGalleryApplication) GetAutomaticUpgradeEnabled() bool {
+	if x != nil {
+		return x.AutomaticUpgradeEnabled
+	}
+	return false
+}
+
+func (x *AzureVirtualMachineGalleryApplication) GetTreatFailureAsDeploymentFailureEnabled() bool {
+	if x != nil {
+		return x.TreatFailureAsDeploymentFailureEnabled
+	}
+	return false
+}
+
+// Pre-termination scheduled event. Presence enables it.
+type AzureVirtualMachineTerminationNotification struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How long before termination the event fires, as an ISO 8601
+	// duration between PT5M and PT15M. Empty applies Azure's default
+	// (PT5M).
+	Timeout       string `protobuf:"bytes,1,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineTerminationNotification) Reset() {
+	*x = AzureVirtualMachineTerminationNotification{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineTerminationNotification) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineTerminationNotification) ProtoMessage() {}
+
+func (x *AzureVirtualMachineTerminationNotification) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineTerminationNotification.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineTerminationNotification) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *AzureVirtualMachineTerminationNotification) GetTimeout() string {
+	if x != nil {
+		return x.Timeout
+	}
+	return ""
+}
+
+// Pre-OS-image-upgrade scheduled event. Presence enables it.
+type AzureVirtualMachineOsImageNotification struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How long before the upgrade the event fires. Azure only supports
+	// PT15M; empty applies it.
+	Timeout       string `protobuf:"bytes,1,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineOsImageNotification) Reset() {
+	*x = AzureVirtualMachineOsImageNotification{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineOsImageNotification) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineOsImageNotification) ProtoMessage() {}
+
+func (x *AzureVirtualMachineOsImageNotification) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineOsImageNotification.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineOsImageNotification) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AzureVirtualMachineOsImageNotification) GetTimeout() string {
+	if x != nil {
+		return x.Timeout
+	}
+	return ""
+}
+
+// A marketplace purchase plan (third-party images only).
+type AzureVirtualMachinePlan struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The plan name (the image SKU's plan id). Fixed at creation.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The product (offer id). Fixed at creation.
+	Product string `protobuf:"bytes,2,opt,name=product,proto3" json:"product,omitempty"`
+	// The publisher id. Fixed at creation.
+	Publisher     string `protobuf:"bytes,3,opt,name=publisher,proto3" json:"publisher,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachinePlan) Reset() {
+	*x = AzureVirtualMachinePlan{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachinePlan) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachinePlan) ProtoMessage() {}
+
+func (x *AzureVirtualMachinePlan) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachinePlan.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachinePlan) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AzureVirtualMachinePlan) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *AzureVirtualMachineDataDisk) GetSizeGb() int32 {
+func (x *AzureVirtualMachinePlan) GetProduct() string {
 	if x != nil {
-		return x.SizeGb
+		return x.Product
 	}
-	return 0
+	return ""
 }
 
-func (x *AzureVirtualMachineDataDisk) GetStorageType() AzureVirtualMachineOsDisk_DiskStorageType {
-	if x != nil && x.StorageType != nil {
-		return *x.StorageType
-	}
-	return AzureVirtualMachineOsDisk_disk_storage_type_unspecified
-}
-
-func (x *AzureVirtualMachineDataDisk) GetCaching() AzureVirtualMachineOsDisk_DiskCaching {
-	if x != nil && x.Caching != nil {
-		return *x.Caching
-	}
-	return AzureVirtualMachineOsDisk_disk_caching_unspecified
-}
-
-func (x *AzureVirtualMachineDataDisk) GetLun() int32 {
+func (x *AzureVirtualMachinePlan) GetPublisher() string {
 	if x != nil {
-		return x.Lun
+		return x.Publisher
 	}
-	return 0
+	return ""
 }
 
-func (x *AzureVirtualMachineDataDisk) GetDeleteWithVm() bool {
-	if x != nil && x.DeleteWithVm != nil {
-		return *x.DeleteWithVm
-	}
-	return false
-}
-
-// AzureVirtualMachineNetworkConfig defines network-related settings.
-type AzureVirtualMachineNetworkConfig struct {
+// Niche capability toggles.
+type AzureVirtualMachineAdditionalCapabilities struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Enable a public IP address for the VM.
-	// Set to true for VMs that need direct internet access.
-	// For production, prefer private IPs with NAT Gateway or Azure Bastion.
-	EnablePublicIp bool `protobuf:"varint,1,opt,name=enable_public_ip,json=enablePublicIp,proto3" json:"enable_public_ip,omitempty"`
-	// SKU for the public IP (if enabled).
-	// Standard is required for availability zones.
-	PublicIpSku *AzureVirtualMachineNetworkConfig_PublicIpSku `protobuf:"varint,2,opt,name=public_ip_sku,json=publicIpSku,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig_PublicIpSku,oneof" json:"public_ip_sku,omitempty"`
-	// Allocation method for the public IP.
-	PublicIpAllocation *AzureVirtualMachineNetworkConfig_PublicIpAllocation `protobuf:"varint,3,opt,name=public_ip_allocation,json=publicIpAllocation,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig_PublicIpAllocation,oneof" json:"public_ip_allocation,omitempty"`
-	// Network Security Group (NSG) ID to associate with the VM's network interface.
-	// Can be a literal Azure resource ID or a reference to another resource.
-	NetworkSecurityGroupId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=network_security_group_id,json=networkSecurityGroupId,proto3" json:"network_security_group_id,omitempty"`
-	// Enable accelerated networking for improved network performance.
-	// Requires a compatible VM size (most D-series and above support this).
-	EnableAcceleratedNetworking *bool `protobuf:"varint,5,opt,name=enable_accelerated_networking,json=enableAcceleratedNetworking,proto3,oneof" json:"enable_accelerated_networking,omitempty"`
-	// Allocation method for the private IP.
-	PrivateIpAllocation *AzureVirtualMachineNetworkConfig_PrivateIpAllocation `protobuf:"varint,6,opt,name=private_ip_allocation,json=privateIpAllocation,proto3,enum=dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig_PrivateIpAllocation,oneof" json:"private_ip_allocation,omitempty"`
-	// Static private IP address (required when private_ip_allocation is static).
-	// Must be within the subnet's address range.
-	PrivateIpAddress string `protobuf:"bytes,7,opt,name=private_ip_address,json=privateIpAddress,proto3" json:"private_ip_address,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Whether Ultra SSD data disks can attach to this VM (requires zonal
+	// placement and a supported size).
+	UltraSsdEnabled bool `protobuf:"varint,1,opt,name=ultra_ssd_enabled,json=ultraSsdEnabled,proto3" json:"ultra_ssd_enabled,omitempty"`
+	// Whether the VM supports hibernation (suspend-to-disk; the OS state
+	// persists across deallocation).
+	HibernationEnabled bool `protobuf:"varint,2,opt,name=hibernation_enabled,json=hibernationEnabled,proto3" json:"hibernation_enabled,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
-func (x *AzureVirtualMachineNetworkConfig) Reset() {
-	*x = AzureVirtualMachineNetworkConfig{}
-	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[4]
+func (x *AzureVirtualMachineAdditionalCapabilities) Reset() {
+	*x = AzureVirtualMachineAdditionalCapabilities{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureVirtualMachineNetworkConfig) String() string {
+func (x *AzureVirtualMachineAdditionalCapabilities) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureVirtualMachineNetworkConfig) ProtoMessage() {}
+func (*AzureVirtualMachineAdditionalCapabilities) ProtoMessage() {}
 
-func (x *AzureVirtualMachineNetworkConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[4]
+func (x *AzureVirtualMachineAdditionalCapabilities) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -831,56 +2864,136 @@ func (x *AzureVirtualMachineNetworkConfig) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureVirtualMachineNetworkConfig.ProtoReflect.Descriptor instead.
-func (*AzureVirtualMachineNetworkConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{4}
+// Deprecated: Use AzureVirtualMachineAdditionalCapabilities.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineAdditionalCapabilities) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{21}
 }
 
-func (x *AzureVirtualMachineNetworkConfig) GetEnablePublicIp() bool {
+func (x *AzureVirtualMachineAdditionalCapabilities) GetUltraSsdEnabled() bool {
 	if x != nil {
-		return x.EnablePublicIp
+		return x.UltraSsdEnabled
 	}
 	return false
 }
 
-func (x *AzureVirtualMachineNetworkConfig) GetPublicIpSku() AzureVirtualMachineNetworkConfig_PublicIpSku {
-	if x != nil && x.PublicIpSku != nil {
-		return *x.PublicIpSku
-	}
-	return AzureVirtualMachineNetworkConfig_public_ip_sku_unspecified
-}
-
-func (x *AzureVirtualMachineNetworkConfig) GetPublicIpAllocation() AzureVirtualMachineNetworkConfig_PublicIpAllocation {
-	if x != nil && x.PublicIpAllocation != nil {
-		return *x.PublicIpAllocation
-	}
-	return AzureVirtualMachineNetworkConfig_public_ip_allocation_unspecified
-}
-
-func (x *AzureVirtualMachineNetworkConfig) GetNetworkSecurityGroupId() *v1.StringValueOrRef {
+func (x *AzureVirtualMachineAdditionalCapabilities) GetHibernationEnabled() bool {
 	if x != nil {
-		return x.NetworkSecurityGroupId
+		return x.HibernationEnabled
+	}
+	return false
+}
+
+// Certificates from a Key Vault installed at provisioning time.
+type AzureVirtualMachineSecret struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The vault holding the certificates, by ARM ID. Can be a literal or a
+	// reference to an AzureKeyVault's id output. The vault must be enabled
+	// for deployment.
+	KeyVaultId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=key_vault_id,json=keyVaultId,proto3" json:"key_vault_id,omitempty"`
+	// The certificates to install from the vault.
+	Certificates  []*AzureVirtualMachineSecretCertificate `protobuf:"bytes,2,rep,name=certificates,proto3" json:"certificates,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineSecret) Reset() {
+	*x = AzureVirtualMachineSecret{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineSecret) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineSecret) ProtoMessage() {}
+
+func (x *AzureVirtualMachineSecret) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineSecret.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineSecret) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AzureVirtualMachineSecret) GetKeyVaultId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KeyVaultId
 	}
 	return nil
 }
 
-func (x *AzureVirtualMachineNetworkConfig) GetEnableAcceleratedNetworking() bool {
-	if x != nil && x.EnableAcceleratedNetworking != nil {
-		return *x.EnableAcceleratedNetworking
-	}
-	return false
-}
-
-func (x *AzureVirtualMachineNetworkConfig) GetPrivateIpAllocation() AzureVirtualMachineNetworkConfig_PrivateIpAllocation {
-	if x != nil && x.PrivateIpAllocation != nil {
-		return *x.PrivateIpAllocation
-	}
-	return AzureVirtualMachineNetworkConfig_private_ip_allocation_unspecified
-}
-
-func (x *AzureVirtualMachineNetworkConfig) GetPrivateIpAddress() string {
+func (x *AzureVirtualMachineSecret) GetCertificates() []*AzureVirtualMachineSecretCertificate {
 	if x != nil {
-		return x.PrivateIpAddress
+		return x.Certificates
+	}
+	return nil
+}
+
+// One certificate installed from a Key Vault.
+type AzureVirtualMachineSecretCertificate struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The certificate's Key Vault secret URL (versioned), e.g.
+	// "https://{vault}.vault.azure.net/secrets/{name}/{version}".
+	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	// For WINDOWS VMs: the certificate store to install into (e.g. "My").
+	// Must stay empty on Linux, where certificates land under
+	// /var/lib/waagent.
+	Store         string `protobuf:"bytes,2,opt,name=store,proto3" json:"store,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureVirtualMachineSecretCertificate) Reset() {
+	*x = AzureVirtualMachineSecretCertificate{}
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureVirtualMachineSecretCertificate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureVirtualMachineSecretCertificate) ProtoMessage() {}
+
+func (x *AzureVirtualMachineSecretCertificate) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureVirtualMachineSecretCertificate.ProtoReflect.Descriptor instead.
+func (*AzureVirtualMachineSecretCertificate) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AzureVirtualMachineSecretCertificate) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *AzureVirtualMachineSecretCertificate) GetStore() string {
+	if x != nil {
+		return x.Store
 	}
 	return ""
 }
@@ -889,108 +3002,271 @@ var File_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto protorefle
 
 const file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/azure/azurevirtualmachine/v1/spec.proto\x121dev.planton.provider.azure.azurevirtualmachine.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa6\x10\n" +
+	"<dev/planton/provider/azure/azurevirtualmachine/v1/spec.proto\x121dev.planton.provider.azure.azurevirtualmachine.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfd0\n" +
 	"\x17AzureVirtualMachineSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x128\n" +
-	"\avm_size\x18\x03 \x01(\tB\x1a\xbaH\x04r\x02\x10\x01\x92\xa6\x1d\x0fStandard_D2s_v3H\x00R\x06vmSize\x88\x01\x01\x12~\n" +
-	"\tsubnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a\x1estatus.outputs.nodes_subnet_idR\bsubnetId\x12i\n" +
-	"\x05image\x18\x05 \x01(\v2K.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineImageB\x06\xbaH\x03\xc8\x01\x01R\x05image\x12e\n" +
-	"\aos_disk\x18\x06 \x01(\v2L.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDiskR\x06osDisk\x12m\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12 \n" +
+	"\x04name\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18@R\x04name\x12\x1e\n" +
+	"\x04size\x18\x04 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04size\x12\x9c\x01\n" +
+	"\x15network_interface_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xa6\x03\x92\xd4a#status.outputs.network_interface_idR\x13networkInterfaceIds\x12v\n" +
 	"\n" +
-	"data_disks\x18\a \x03(\v2N.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDataDiskR\tdataDisks\x12B\n" +
-	"\x0eadmin_username\x18\b \x01(\tB\x16\xbaH\x06r\x04\x10\x01\x18@\x8a\xa6\x1d\tazureuserH\x01R\radminUsername\x88\x01\x01\x12$\n" +
-	"\x0essh_public_key\x18\t \x01(\tR\fsshPublicKey\x12\x80\x01\n" +
-	"\x0eadmin_password\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xa0\xa6\x1d\x01\x88\xd4a\x95\x03\x92\xd4a\x18status.outputs.vault_uriR\radminPassword\x12m\n" +
-	"\anetwork\x18\v \x01(\v2S.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfigR\anetwork\x12=\n" +
-	"\x11availability_zone\x18\f \x01(\tB\x10\xbaH\rr\vR\x00R\x011R\x012R\x013R\x10availabilityZone\x12E\n" +
-	"\x17enable_boot_diagnostics\x18\r \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x15enableBootDiagnostics\x88\x01\x01\x12E\n" +
-	"\x1fenable_system_assigned_identity\x18\x0e \x01(\bR\x1cenableSystemAssignedIdentity\x12;\n" +
-	"\x1auser_assigned_identity_ids\x18\x0f \x03(\tR\x17userAssignedIdentityIds\x12*\n" +
-	"\vcustom_data\x18\x10 \x01(\tB\t\xbaH\x06r\x04(\x80\x80\x04R\n" +
-	"customData\x12h\n" +
-	"\x04tags\x18\x11 \x03(\v2T.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.TagsEntryR\x04tags\x12(\n" +
-	"\x10is_spot_instance\x18\x12 \x01(\bR\x0eisSpotInstance\x124\n" +
-	"\x0espot_max_price\x18\x13 \x01(\x01B\x0e\xbaH\v\x12\t)\x00\x00\x00\x00\x00\x00\xf0\xbfR\fspotMaxPrice\x1a7\n" +
+	"os_profile\x18\x06 \x01(\v2O.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsProfileB\x06\xbaH\x03\xc8\x01\x01R\tosProfile\x12m\n" +
+	"\aos_disk\x18\a \x01(\v2L.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDiskB\x06\xbaH\x03\xc8\x01\x01R\x06osDisk\x12\x90\x01\n" +
+	"\x16source_image_reference\x18\b \x01(\v2Z.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSourceImageReferenceR\x14sourceImageReference\x12&\n" +
+	"\x0fsource_image_id\x18\t \x01(\tR\rsourceImageId\x12\x80\x01\n" +
+	"\x12os_managed_disk_id\x18\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xa7\x03\x92\xd4a\x16status.outputs.disk_idR\x0fosManagedDiskId\x12\x8c\x01\n" +
+	"\x15data_disk_attachments\x18\v \x03(\v2X.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDataDiskAttachmentR\x13dataDiskAttachments\x12j\n" +
+	"\bidentity\x18\f \x01(\v2N.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineIdentityR\bidentity\x12^\n" +
+	"\x04spot\x18\r \x01(\v2J.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpotR\x04spot\x12v\n" +
+	"\favailability\x18\x0e \x01(\v2R.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineAvailabilityR\favailability\x12j\n" +
+	"\bsecurity\x18\x0f \x01(\v2N.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecurityR\bsecurity\x12j\n" +
+	"\bpatching\x18\x10 \x01(\v2N.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatchingR\bpatching\x12\x80\x01\n" +
+	"\x10boot_diagnostics\x18\x11 \x01(\v2U.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineBootDiagnosticsR\x0fbootDiagnostics\x12\x95\x01\n" +
+	"\x14gallery_applications\x18\x12 \x03(\v2X.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineGalleryApplicationB\b\xbaH\x05\x92\x01\x02\x10dR\x13galleryApplications\x12\x98\x01\n" +
+	"\x18termination_notification\x18\x13 \x01(\v2].dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineTerminationNotificationR\x17terminationNotification\x12\x8d\x01\n" +
+	"\x15os_image_notification\x18\x14 \x01(\v2Y.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsImageNotificationR\x13osImageNotification\x12^\n" +
+	"\x04plan\x18\x15 \x01(\v2J.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePlanR\x04plan\x12.\n" +
+	"\vcustom_data\x18\x16 \x01(\tB\r\xbaH\x06r\x04(\x80\x80\x04\xa0\xa6\x1d\x01R\n" +
+	"customData\x12&\n" +
+	"\tuser_data\x18\x17 \x01(\tB\t\xbaH\x06r\x04(\x80\x80\x04R\buserData\x124\n" +
+	"\x16extensions_time_budget\x18\x18 \x01(\tR\x14extensionsTimeBudget\x12;\n" +
+	"\x12provision_vm_agent\x18\x19 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x10provisionVmAgent\x88\x01\x01\x12K\n" +
+	"\x1aallow_extension_operations\x18\x1a \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x18allowExtensionOperations\x88\x01\x01\x12\x8a\x01\n" +
+	"\x14disk_controller_type\x18\x1b \x01(\x0e2X.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiskControllerTypeR\x12diskControllerType\x12\x95\x01\n" +
+	"\x17additional_capabilities\x18\x1c \x01(\v2\\.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineAdditionalCapabilitiesR\x16additionalCapabilities\x12f\n" +
+	"\asecrets\x18\x1d \x03(\v2L.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecretR\asecrets\x12\x1b\n" +
+	"\tedge_zone\x18\x1e \x01(\tR\bedgeZone\x12h\n" +
+	"\x04tags\x18\x1f \x03(\v2T.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x8c\x03\xbaH\x88\x03\x1a\xe9\x01\n" +
-	"\rauth_required\x12NEither ssh_public_key or admin_password must be provided for VM authentication\x1a\x87\x01this.ssh_public_key != '' || (has(this.admin_password.value) && this.admin_password.value != '') || has(this.admin_password.value_from)\x1a\x99\x01\n" +
-	"!spot_price_requires_spot_instance\x12?spot_max_price should only be set when is_spot_instance is true\x1a3this.spot_max_price == 0.0 || this.is_spot_instanceB\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xbc\x17\xbaH\xb8\x17\x1a\xc5\x02\n" +
+	"\x1bvm_image_source_exactly_one\x12\xa4\x01set exactly one image source: source_image_reference (marketplace/platform), source_image_id (custom/gallery), or os_managed_disk_id (boot from an existing OS disk)\x1a\x7f(has(this.source_image_reference) ? 1 : 0) + (this.source_image_id != '' ? 1 : 0) + (has(this.os_managed_disk_id) ? 1 : 0) == 1\x1a\xb7\x04\n" +
+	"\x16vm_linux_auth_required\x12\xba\x01a Linux VM booting from an image requires admin_username and at least one credential -- SSH keys when password authentication is disabled (the default), admin_password when it is enabled\x1a\xdf\x02has(this.os_managed_disk_id) || !has(this.os_profile) || !has(this.os_profile.linux) || (this.os_profile.linux.admin_username != '' && ((!has(this.os_profile.linux.disable_password_authentication) || this.os_profile.linux.disable_password_authentication) ? this.os_profile.linux.ssh_public_keys.size() > 0 : has(this.os_profile.linux.admin_password)))\x1a\xa3\x02\n" +
+	"\x18vm_windows_auth_required\x12Ma Windows VM booting from an image requires admin_username and admin_password\x1a\xb7\x01has(this.os_managed_disk_id) || !has(this.os_profile) || !has(this.os_profile.windows) || (this.os_profile.windows.admin_username != '' && has(this.os_profile.windows.admin_password))\x1a\xb5\x04\n" +
+	"\x1evm_boot_from_disk_forbids_auth\x12\x85\x01a VM booting from an existing OS disk (os_managed_disk_id) must carry no authentication fields -- the disk already contains its users\x1a\x8a\x03!has(this.os_managed_disk_id) || ((!has(this.os_profile) || !has(this.os_profile.linux) || (this.os_profile.linux.admin_username == '' && !has(this.os_profile.linux.admin_password) && this.os_profile.linux.ssh_public_keys.size() == 0)) && (!has(this.os_profile) || !has(this.os_profile.windows) || (this.os_profile.windows.admin_username == '' && !has(this.os_profile.windows.admin_password))))\x1a\xf2\x02\n" +
+	")vm_reboot_setting_needs_platform_patching\x12Xpatching.reboot_setting requires the OS profile's patch_mode to be AUTOMATIC_BY_PLATFORM\x1a\xea\x01!has(this.patching) || this.patching.reboot_setting == 0 || (has(this.os_profile) && ((has(this.os_profile.linux) && this.os_profile.linux.patch_mode == 2) || (has(this.os_profile.windows) && this.os_profile.windows.patch_mode == 3)))\x1a\xc5\x03\n" +
+	"/vm_bypass_safety_checks_needs_platform_patching\x12\x80\x01patching.bypass_platform_safety_checks_on_user_schedule_enabled requires the OS profile's patch_mode to be AUTOMATIC_BY_PLATFORM\x1a\x8e\x02!has(this.patching) || !this.patching.bypass_platform_safety_checks_on_user_schedule_enabled || (has(this.os_profile) && ((has(this.os_profile.linux) && this.os_profile.linux.patch_mode == 2) || (has(this.os_profile.windows) && this.os_profile.windows.patch_mode == 3)))\x1a\x98\x03\n" +
+	"4vm_guest_state_encryption_needs_secure_boot_and_vtpm\x12\x91\x01os_disk.security_encryption_type requires security.vtpm_enabled (and DISK_WITH_VM_GUEST_STATE additionally requires security.secure_boot_enabled)\x1a\xcb\x01!has(this.os_disk) || this.os_disk.security_encryption_type == 0 || (has(this.security) && this.security.vtpm_enabled && (this.os_disk.security_encryption_type != 2 || this.security.secure_boot_enabled))B\x15\n" +
+	"\x13_provision_vm_agentB\x1d\n" +
+	"\x1b_allow_extension_operations\"\x8b\x03\n" +
+	"\x1cAzureVirtualMachineOsProfile\x12#\n" +
+	"\rcomputer_name\x18\x01 \x01(\tR\fcomputerName\x12h\n" +
+	"\x05linux\x18\x02 \x01(\v2R.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxProfileR\x05linux\x12n\n" +
+	"\awindows\x18\x03 \x01(\v2T.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsProfileR\awindows:l\xbaHi\x1ag\n" +
+	"\x11vm_os_exactly_one\x12,set exactly one OS profile: linux or windows\x1a$has(this.linux) != has(this.windows)\"\x99\x05\n" +
+	"\x1fAzureVirtualMachineLinuxProfile\x12.\n" +
+	"\x0eadmin_username\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18@R\radminUsername\x12z\n" +
+	"\x0fssh_public_keys\x18\x02 \x03(\v2R.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSshPublicKeyR\rsshPublicKeys\x12_\n" +
+	"\x0eadmin_password\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\radminPassword\x12U\n" +
+	"\x1fdisable_password_authentication\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x1ddisablePasswordAuthentication\x88\x01\x01\x12s\n" +
 	"\n" +
-	"\b_vm_sizeB\x11\n" +
-	"\x0f_admin_usernameB\x1a\n" +
-	"\x18_enable_boot_diagnostics\"\x99\x03\n" +
-	"\x18AzureVirtualMachineImage\x12\x1c\n" +
-	"\tpublisher\x18\x01 \x01(\tR\tpublisher\x12\x14\n" +
-	"\x05offer\x18\x02 \x01(\tR\x05offer\x12\x10\n" +
-	"\x03sku\x18\x03 \x01(\tR\x03sku\x120\n" +
-	"\aversion\x18\x04 \x01(\tB\x11\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\x06latestH\x00R\aversion\x88\x01\x01\x12&\n" +
-	"\x0fcustom_image_id\x18\x05 \x01(\tR\rcustomImageId:\xd0\x01\xbaH\xcc\x01\x1a\xc9\x01\n" +
-	"\x15image_source_required\x12TEither marketplace image (publisher, offer, sku) or custom_image_id must be provided\x1aZ(this.publisher != '' && this.offer != '' && this.sku != '') || this.custom_image_id != ''B\n" +
+	"patch_mode\x18\x05 \x01(\x0e2T.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxPatchModeR\tpatchMode\x12y\n" +
+	"\flicense_type\x18\x06 \x01(\x0e2V.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxLicenseTypeR\vlicenseTypeB\"\n" +
+	" _disable_password_authentication\"d\n" +
+	"\x1fAzureVirtualMachineSshPublicKey\x12%\n" +
 	"\n" +
-	"\b_version\"\xba\x06\n" +
-	"\x19AzureVirtualMachineOsDisk\x12$\n" +
-	"\asize_gb\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x01(\x00R\x06sizeGb\x12\x9d\x01\n" +
-	"\fstorage_type\x18\x02 \x01(\x0e2\\.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.DiskStorageTypeB\x17\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\vpremium_lrsH\x00R\vstorageType\x88\x01\x01\x12\x8f\x01\n" +
-	"\acaching\x18\x03 \x01(\x0e2X.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.DiskCachingB\x16\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\n" +
-	"read_writeH\x01R\acaching\x88\x01\x01\x123\n" +
-	"\x0edelete_with_vm\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\fdeleteWithVm\x88\x01\x01\x12\x89\x01\n" +
-	"\x16disk_encryption_set_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\x95\x03\x92\xd4a\x17status.outputs.vault_idR\x13diskEncryptionSetId\"T\n" +
-	"\vDiskCaching\x12\x1c\n" +
-	"\x18disk_caching_unspecified\x10\x00\x12\b\n" +
-	"\x04none\x10\x01\x12\r\n" +
-	"\tread_only\x10\x02\x12\x0e\n" +
+	"public_key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tpublicKey\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\"\xa4\b\n" +
+	"!AzureVirtualMachineWindowsProfile\x12.\n" +
+	"\x0eadmin_username\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18\x14R\radminUsername\x12_\n" +
+	"\x0eadmin_password\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\radminPassword\x12u\n" +
 	"\n" +
-	"read_write\x10\x03\"~\n" +
-	"\x0fDiskStorageType\x12!\n" +
-	"\x1ddisk_storage_type_unspecified\x10\x00\x12\x10\n" +
-	"\fstandard_lrs\x10\x01\x12\x14\n" +
-	"\x10standard_ssd_lrs\x10\x02\x12\x0f\n" +
-	"\vpremium_lrs\x10\x03\x12\x0f\n" +
-	"\vpremium_zrs\x10\x04B\x0f\n" +
-	"\r_storage_typeB\n" +
+	"patch_mode\x18\x03 \x01(\x0e2V.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsPatchModeR\tpatchMode\x12I\n" +
+	"\x19automatic_updates_enabled\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x17automaticUpdatesEnabled\x88\x01\x01\x12/\n" +
+	"\x13hotpatching_enabled\x18\x05 \x01(\bR\x12hotpatchingEnabled\x12\x1a\n" +
+	"\btimezone\x18\x06 \x01(\tR\btimezone\x12|\n" +
+	"\x0fwinrm_listeners\x18\a \x03(\v2S.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWinrmListenerR\x0ewinrmListeners\x12\xa1\x01\n" +
+	"\x1cadditional_unattend_contents\x18\b \x03(\v2_.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineAdditionalUnattendContentR\x1aadditionalUnattendContents\x12{\n" +
+	"\flicense_type\x18\t \x01(\x0e2X.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsLicenseTypeR\vlicenseType:\xa1\x01\xbaH\x9d\x01\x1a\x9a\x01\n" +
+	"&vm_hotpatching_needs_platform_patching\x12=hotpatching_enabled requires patch_mode AUTOMATIC_BY_PLATFORM\x1a1!this.hotpatching_enabled || this.patch_mode == 3B\x1c\n" +
+	"\x1a_automatic_updates_enabled\"\xee\x02\n" +
+	" AzureVirtualMachineWinrmListener\x12w\n" +
+	"\bprotocol\x18\x01 \x01(\x0e2S.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWinrmProtocolB\x06\xbaH\x03\xc8\x01\x01R\bprotocol\x12'\n" +
+	"\x0fcertificate_url\x18\x02 \x01(\tR\x0ecertificateUrl:\xa7\x01\xbaH\xa3\x01\x1a\xa0\x01\n" +
+	" vm_winrm_https_needs_certificate\x12Fan HTTPS WinRM listener requires certificate_url (and HTTP forbids it)\x1a4(this.protocol == 2) == (this.certificate_url != '')\"\xcd\x01\n" +
+	",AzureVirtualMachineAdditionalUnattendContent\x12w\n" +
+	"\asetting\x18\x01 \x01(\x0e2U.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineUnattendSettingB\x06\xbaH\x03\xc8\x01\x01R\asetting\x12$\n" +
+	"\acontent\x18\x02 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\acontent\"\xc2\v\n" +
+	"\x19AzureVirtualMachineOsDisk\x12s\n" +
+	"\acaching\x18\x01 \x01(\x0e2Q.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiskCachingB\x06\xbaH\x03\xc8\x01\x01R\acaching\x12\x98\x01\n" +
+	"\x14storage_account_type\x18\x02 \x01(\x0e2^.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDiskStorageAccountTypeB\x06\xbaH\x03\xc8\x01\x01R\x12storageAccountType\x121\n" +
+	"\fdisk_size_gb\x18\x03 \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xff\x1f(\x01H\x00R\n" +
+	"diskSizeGb\x88\x01\x01\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12\x84\x01\n" +
+	"\x12diff_disk_settings\x18\x05 \x01(\v2V.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiffDiskSettingsR\x10diffDiskSettings\x12\x97\x01\n" +
+	"\x16disk_encryption_set_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12\xa9\x01\n" +
+	" secure_vm_disk_encryption_set_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x1bsecureVmDiskEncryptionSetId\x12\x96\x01\n" +
+	"\x18security_encryption_type\x18\b \x01(\x0e2\\.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecurityEncryptionTypeR\x16securityEncryptionType\x12:\n" +
+	"\x19write_accelerator_enabled\x18\t \x01(\bR\x17writeAcceleratorEnabled:\x9a\x03\xbaH\x96\x03\x1a\xcc\x01\n" +
+	"#vm_os_disk_encryption_sets_conflict\x12Rdisk_encryption_set_id and secure_vm_disk_encryption_set_id are mutually exclusive\x1aQ!(has(this.disk_encryption_set_id) && has(this.secure_vm_disk_encryption_set_id))\x1a\xc4\x01\n" +
+	"+vm_os_disk_secure_set_needs_encryption_type\x12Bsecure_vm_disk_encryption_set_id requires security_encryption_type\x1aQ!has(this.secure_vm_disk_encryption_set_id) || this.security_encryption_type != 0B\x0f\n" +
+	"\r_disk_size_gb\"\x9c\x01\n" +
+	"#AzureVirtualMachineDiffDiskSettings\x12u\n" +
+	"\tplacement\x18\x01 \x01(\x0e2W.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiffDiskPlacementR\tplacement\"\xa9\x01\n" +
+	"'AzureVirtualMachineSourceImageReference\x12$\n" +
+	"\tpublisher\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tpublisher\x12\x1c\n" +
+	"\x05offer\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05offer\x12\x18\n" +
+	"\x03sku\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03sku\x12 \n" +
+	"\aversion\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aversion\"\x89\x03\n" +
+	"%AzureVirtualMachineDataDiskAttachment\x12\x81\x01\n" +
+	"\x0fmanaged_disk_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xa7\x03\x92\xd4a\x16status.outputs.disk_idR\rmanagedDiskId\x12#\n" +
+	"\x03lun\x18\x02 \x01(\x05B\f\xbaH\t\xc8\x01\x01\x1a\x04\x18?(\x00H\x00R\x03lun\x88\x01\x01\x12s\n" +
+	"\acaching\x18\x03 \x01(\x0e2Q.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiskCachingB\x06\xbaH\x03\xc8\x01\x01R\acaching\x12:\n" +
+	"\x19write_accelerator_enabled\x18\x04 \x01(\bR\x17writeAcceleratorEnabledB\x06\n" +
+	"\x04_lun\"\x81\x04\n" +
+	"\x1bAzureVirtualMachineIdentity\x12n\n" +
+	"\x04type\x18\x01 \x01(\x0e2R.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineIdentityTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12z\n" +
+	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xf5\x01\xbaH\xf1\x01\x1a\xee\x01\n" +
+	"\x1avm_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\xec\x01\n" +
+	"\x17AzureVirtualMachineSpot\x12\x85\x01\n" +
+	"\x0feviction_policy\x18\x01 \x01(\x0e2T.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineEvictionPolicyB\x06\xbaH\x03\xc8\x01\x01R\x0eevictionPolicy\x127\n" +
+	"\rmax_bid_price\x18\x02 \x01(\x01B\x0e\xbaH\v\x12\t)\x00\x00\x00\x00\x00\x00\xf0\xbfH\x00R\vmaxBidPrice\x88\x01\x01B\x10\n" +
+	"\x0e_max_bid_price\"\x91\v\n" +
+	"\x1fAzureVirtualMachineAvailability\x12$\n" +
+	"\x04zone\x18\x01 \x01(\tB\x10\xbaH\rr\vR\x00R\x011R\x012R\x013R\x04zone\x12.\n" +
+	"\x13availability_set_id\x18\x02 \x01(\tR\x11availabilitySetId\x12?\n" +
+	"\x1cproximity_placement_group_id\x18\x03 \x01(\tR\x19proximityPlacementGroupId\x12A\n" +
+	"\x1dcapacity_reservation_group_id\x18\x04 \x01(\tR\x1acapacityReservationGroupId\x12*\n" +
+	"\x11dedicated_host_id\x18\x05 \x01(\tR\x0fdedicatedHostId\x125\n" +
+	"\x17dedicated_host_group_id\x18\x06 \x01(\tR\x14dedicatedHostGroupId\x12\x98\x01\n" +
+	"\x1cvirtual_machine_scale_set_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xa8\x03\x92\xd4a\x1bstatus.outputs.scale_set_idR\x18virtualMachineScaleSetId\x12@\n" +
+	"\x15platform_fault_domain\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x13platformFaultDomain\x88\x01\x01:\xb9\x06\xbaH\xb5\x06\x1a\xa1\x01\n" +
+	"\"vm_zone_conflicts_availability_set\x12Hzone and availability_set_id are mutually exclusive placement strategies\x1a1this.zone == '' || this.availability_set_id == ''\x1a\xd7\x01\n" +
+	"\x1bvm_dedicated_host_exclusive\x12tdedicated_host_id and dedicated_host_group_id are mutually exclusive (pin a host or let Azure pick within the group)\x1aBthis.dedicated_host_id == '' || this.dedicated_host_group_id == ''\x1a\x87\x02\n" +
+	"!vm_capacity_reservation_conflicts\x12icapacity_reservation_group_id cannot be combined with availability_set_id or proximity_placement_group_id\x1awthis.capacity_reservation_group_id == '' || (this.availability_set_id == '' && this.proximity_placement_group_id == '')\x1a\xaa\x01\n" +
+	"\x1fvm_fault_domain_needs_scale_set\x12;platform_fault_domain requires virtual_machine_scale_set_id\x1aJ!has(this.platform_fault_domain) || has(this.virtual_machine_scale_set_id)B\x18\n" +
+	"\x16_platform_fault_domain\"\xad\x01\n" +
+	"\x1bAzureVirtualMachineSecurity\x12.\n" +
+	"\x13secure_boot_enabled\x18\x01 \x01(\bR\x11secureBootEnabled\x12!\n" +
+	"\fvtpm_enabled\x18\x02 \x01(\bR\vvtpmEnabled\x12;\n" +
+	"\x1aencryption_at_host_enabled\x18\x03 \x01(\bR\x17encryptionAtHostEnabled\"\x8f\x03\n" +
+	"\x1bAzureVirtualMachinePatching\x12\x82\x01\n" +
+	"\x0fassessment_mode\x18\x01 \x01(\x0e2Y.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatchAssessmentModeR\x0eassessmentMode\x12z\n" +
+	"\x0ereboot_setting\x18\x02 \x01(\x0e2S.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineRebootSettingR\rrebootSetting\x12o\n" +
+	"6bypass_platform_safety_checks_on_user_schedule_enabled\x18\x03 \x01(\bR/bypassPlatformSafetyChecksOnUserScheduleEnabled\"T\n" +
+	"\"AzureVirtualMachineBootDiagnostics\x12.\n" +
+	"\x13storage_account_uri\x18\x01 \x01(\tR\x11storageAccountUri\"\xe3\x02\n" +
+	"%AzureVirtualMachineGalleryApplication\x12%\n" +
 	"\n" +
-	"\b_cachingB\x11\n" +
-	"\x0f_delete_with_vm\"\x9b\x04\n" +
-	"\x1bAzureVirtualMachineDataDisk\x12 \n" +
-	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12'\n" +
-	"\asize_gb\x18\x02 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x01(\x01R\x06sizeGb\x12\x9d\x01\n" +
-	"\fstorage_type\x18\x03 \x01(\x0e2\\.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.DiskStorageTypeB\x17\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\vpremium_lrsH\x00R\vstorageType\x88\x01\x01\x12\x8e\x01\n" +
-	"\acaching\x18\x04 \x01(\x0e2X.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.DiskCachingB\x15\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\tread_onlyH\x01R\acaching\x88\x01\x01\x12\x1b\n" +
-	"\x03lun\x18\x05 \x01(\x05B\t\xbaH\x06\x1a\x04\x18?(\x00R\x03lun\x123\n" +
-	"\x0edelete_with_vm\x18\x06 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\fdeleteWithVm\x88\x01\x01B\x0f\n" +
-	"\r_storage_typeB\n" +
+	"version_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tversionId\x12(\n" +
+	"\x05order\x18\x02 \x01(\x05B\r\xbaH\n" +
+	"\x1a\b\x18\xff\xff\xff\xff\a(\x00H\x00R\x05order\x88\x01\x01\x12\x10\n" +
+	"\x03tag\x18\x03 \x01(\tR\x03tag\x124\n" +
+	"\x16configuration_blob_uri\x18\x04 \x01(\tR\x14configurationBlobUri\x12:\n" +
+	"\x19automatic_upgrade_enabled\x18\x05 \x01(\bR\x17automaticUpgradeEnabled\x12[\n" +
+	"+treat_failure_as_deployment_failure_enabled\x18\x06 \x01(\bR&treatFailureAsDeploymentFailureEnabledB\b\n" +
+	"\x06_order\"F\n" +
+	"*AzureVirtualMachineTerminationNotification\x12\x18\n" +
+	"\atimeout\x18\x01 \x01(\tR\atimeout\"B\n" +
+	"&AzureVirtualMachineOsImageNotification\x12\x18\n" +
+	"\atimeout\x18\x01 \x01(\tR\atimeout\"}\n" +
+	"\x17AzureVirtualMachinePlan\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12 \n" +
+	"\aproduct\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aproduct\x12$\n" +
+	"\tpublisher\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tpublisher\"\x88\x01\n" +
+	")AzureVirtualMachineAdditionalCapabilities\x12*\n" +
+	"\x11ultra_ssd_enabled\x18\x01 \x01(\bR\x0fultraSsdEnabled\x12/\n" +
+	"\x13hibernation_enabled\x18\x02 \x01(\bR\x12hibernationEnabled\"\xa6\x02\n" +
+	"\x19AzureVirtualMachineSecret\x12\x80\x01\n" +
+	"\fkey_vault_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x1bstatus.outputs.key_vault_idR\n" +
+	"keyVaultId\x12\x85\x01\n" +
+	"\fcertificates\x18\x02 \x03(\v2W.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecretCertificateB\b\xbaH\x05\x92\x01\x02\b\x01R\fcertificates\"V\n" +
+	"$AzureVirtualMachineSecretCertificate\x12\x18\n" +
+	"\x03url\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03url\x12\x14\n" +
+	"\x05store\x18\x02 \x01(\tR\x05store*}\n" +
+	"\x1eAzureVirtualMachineDiskCaching\x122\n" +
+	".azure_virtual_machine_disk_caching_unspecified\x10\x00\x12\b\n" +
+	"\x04NONE\x10\x01\x12\r\n" +
+	"\tREAD_ONLY\x10\x02\x12\x0e\n" +
 	"\n" +
-	"\b_cachingB\x11\n" +
-	"\x0f_delete_with_vm\"\xa9\v\n" +
-	" AzureVirtualMachineNetworkConfig\x12(\n" +
-	"\x10enable_public_ip\x18\x01 \x01(\bR\x0eenablePublicIp\x12\x9e\x01\n" +
-	"\rpublic_ip_sku\x18\x02 \x01(\x0e2_.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PublicIpSkuB\x14\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\bstandardH\x00R\vpublicIpSku\x88\x01\x01\x12\xb8\x01\n" +
-	"\x14public_ip_allocation\x18\x03 \x01(\x0e2f.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PublicIpAllocationB\x19\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\rpublic_staticH\x01R\x12publicIpAllocation\x88\x01\x01\x12m\n" +
-	"\x19network_security_group_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x16networkSecurityGroupId\x12Q\n" +
-	"\x1denable_accelerated_networking\x18\x05 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x1benableAcceleratedNetworking\x88\x01\x01\x12\xbd\x01\n" +
-	"\x15private_ip_allocation\x18\x06 \x01(\x0e2g.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PrivateIpAllocationB\x1b\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x0fprivate_dynamicH\x03R\x13privateIpAllocation\x88\x01\x01\x12,\n" +
-	"\x12private_ip_address\x18\a \x01(\tR\x10privateIpAddress\"E\n" +
-	"\vPublicIpSku\x12\x1d\n" +
-	"\x19public_ip_sku_unspecified\x10\x00\x12\t\n" +
-	"\x05basic\x10\x01\x12\f\n" +
-	"\bstandard\x10\x02\"a\n" +
-	"\x12PublicIpAllocation\x12$\n" +
-	" public_ip_allocation_unspecified\x10\x00\x12\x12\n" +
-	"\x0epublic_dynamic\x10\x01\x12\x11\n" +
-	"\rpublic_static\x10\x02\"e\n" +
-	"\x13PrivateIpAllocation\x12%\n" +
-	"!private_ip_allocation_unspecified\x10\x00\x12\x13\n" +
-	"\x0fprivate_dynamic\x10\x01\x12\x12\n" +
-	"\x0eprivate_static\x10\x02:\xd6\x01\xbaH\xd2\x01\x1a\xcf\x01\n" +
-	"\x1astatic_ip_requires_address\x12Kprivate_ip_address must be set when private_ip_allocation is private_static\x1ad!has(this.private_ip_allocation) || this.private_ip_allocation != 2 || this.private_ip_address != ''B\x10\n" +
-	"\x0e_public_ip_skuB\x17\n" +
-	"\x15_public_ip_allocationB \n" +
-	"\x1e_enable_accelerated_networkingB\x18\n" +
-	"\x16_private_ip_allocationB\x98\x03\n" +
+	"READ_WRITE\x10\x03*\xd1\x01\n" +
+	"+AzureVirtualMachineOsDiskStorageAccountType\x12B\n" +
+	">azure_virtual_machine_os_disk_storage_account_type_unspecified\x10\x00\x12\x10\n" +
+	"\fSTANDARD_LRS\x10\x01\x12\x14\n" +
+	"\x10STANDARD_SSD_LRS\x10\x02\x12\x0f\n" +
+	"\vPREMIUM_LRS\x10\x03\x12\x14\n" +
+	"\x10STANDARD_SSD_ZRS\x10\x04\x12\x0f\n" +
+	"\vPREMIUM_ZRS\x10\x05*\x93\x01\n" +
+	"$AzureVirtualMachineDiffDiskPlacement\x129\n" +
+	"5azure_virtual_machine_diff_disk_placement_unspecified\x10\x00\x12\x0e\n" +
+	"\n" +
+	"CACHE_DISK\x10\x01\x12\x11\n" +
+	"\rRESOURCE_DISK\x10\x02\x12\r\n" +
+	"\tNVME_DISK\x10\x03*\xa2\x01\n" +
+	")AzureVirtualMachineSecurityEncryptionType\x12>\n" +
+	":azure_virtual_machine_security_encryption_type_unspecified\x10\x00\x12\x17\n" +
+	"\x13VM_GUEST_STATE_ONLY\x10\x01\x12\x1c\n" +
+	"\x18DISK_WITH_VM_GUEST_STATE\x10\x02*\x9c\x01\n" +
+	"\x1fAzureVirtualMachineIdentityType\x123\n" +
+	"/azure_virtual_machine_identity_type_unspecified\x10\x00\x12\x13\n" +
+	"\x0fSYSTEM_ASSIGNED\x10\x01\x12\x11\n" +
+	"\rUSER_ASSIGNED\x10\x02\x12\x1c\n" +
+	"\x18SYSTEM_AND_USER_ASSIGNED\x10\x03*v\n" +
+	"!AzureVirtualMachineEvictionPolicy\x125\n" +
+	"1azure_virtual_machine_eviction_policy_unspecified\x10\x00\x12\x0e\n" +
+	"\n" +
+	"DEALLOCATE\x10\x01\x12\n" +
+	"\n" +
+	"\x06DELETE\x10\x02*\x95\x01\n" +
+	"!AzureVirtualMachineLinuxPatchMode\x126\n" +
+	"2azure_virtual_machine_linux_patch_mode_unspecified\x10\x00\x12\x17\n" +
+	"\x13LINUX_IMAGE_DEFAULT\x10\x01\x12\x1f\n" +
+	"\x1bLINUX_AUTOMATIC_BY_PLATFORM\x10\x02*\xa3\x01\n" +
+	"#AzureVirtualMachineWindowsPatchMode\x128\n" +
+	"4azure_virtual_machine_windows_patch_mode_unspecified\x10\x00\x12\n" +
+	"\n" +
+	"\x06MANUAL\x10\x01\x12\x13\n" +
+	"\x0fAUTOMATIC_BY_OS\x10\x02\x12!\n" +
+	"\x1dWINDOWS_AUTOMATIC_BY_PLATFORM\x10\x03*\xa9\x01\n" +
+	"&AzureVirtualMachinePatchAssessmentMode\x12;\n" +
+	"7azure_virtual_machine_patch_assessment_mode_unspecified\x10\x00\x12\x1c\n" +
+	"\x18ASSESSMENT_IMAGE_DEFAULT\x10\x01\x12$\n" +
+	" ASSESSMENT_AUTOMATIC_BY_PLATFORM\x10\x02*\x80\x01\n" +
+	" AzureVirtualMachineRebootSetting\x124\n" +
+	"0azure_virtual_machine_reboot_setting_unspecified\x10\x00\x12\n" +
+	"\n" +
+	"\x06ALWAYS\x10\x01\x12\x0f\n" +
+	"\vIF_REQUIRED\x10\x02\x12\t\n" +
+	"\x05NEVER\x10\x03*\x92\x02\n" +
+	"#AzureVirtualMachineLinuxLicenseType\x128\n" +
+	"4azure_virtual_machine_linux_license_type_unspecified\x10\x00\x12\r\n" +
+	"\tRHEL_BYOS\x10\x01\x12\r\n" +
+	"\tRHEL_BASE\x10\x02\x12\f\n" +
+	"\bRHEL_EUS\x10\x03\x12\x10\n" +
+	"\fRHEL_SAPAPPS\x10\x04\x12\x0e\n" +
+	"\n" +
+	"RHEL_SAPHA\x10\x05\x12\x14\n" +
+	"\x10RHEL_BASESAPAPPS\x10\x06\x12\x12\n" +
+	"\x0eRHEL_BASESAPHA\x10\a\x12\r\n" +
+	"\tSLES_BYOS\x10\b\x12\f\n" +
+	"\bSLES_SAP\x10\t\x12\f\n" +
+	"\bSLES_HPC\x10\n" +
+	"\x12\x0e\n" +
+	"\n" +
+	"UBUNTU_PRO\x10\v*\xa5\x01\n" +
+	"%AzureVirtualMachineWindowsLicenseType\x12:\n" +
+	"6azure_virtual_machine_windows_license_type_unspecified\x10\x00\x12\x18\n" +
+	"\x14WINDOWS_LICENSE_NONE\x10\x01\x12\x12\n" +
+	"\x0eWINDOWS_CLIENT\x10\x02\x12\x12\n" +
+	"\x0eWINDOWS_SERVER\x10\x03*m\n" +
+	" AzureVirtualMachineWinrmProtocol\x124\n" +
+	"0azure_virtual_machine_winrm_protocol_unspecified\x10\x00\x12\b\n" +
+	"\x04HTTP\x10\x01\x12\t\n" +
+	"\x05HTTPS\x10\x02*\x86\x01\n" +
+	"\"AzureVirtualMachineUnattendSetting\x126\n" +
+	"2azure_virtual_machine_unattend_setting_unspecified\x10\x00\x12\x0e\n" +
+	"\n" +
+	"AUTO_LOGON\x10\x01\x12\x18\n" +
+	"\x14FIRST_LOGON_COMMANDS\x10\x02*w\n" +
+	"%AzureVirtualMachineDiskControllerType\x12:\n" +
+	"6azure_virtual_machine_disk_controller_type_unspecified\x10\x00\x12\b\n" +
+	"\x04SCSI\x10\x01\x12\b\n" +
+	"\x04NVME\x10\x02B\x98\x03\n" +
 	"5com.dev.planton.provider.azure.azurevirtualmachine.v1B\tSpecProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualmachine/v1;azurevirtualmachinev1\xa2\x02\x05DPPAA\xaa\x021Dev.Planton.Provider.Azure.Azurevirtualmachine.V1\xca\x021Dev\\Planton\\Provider\\Azure\\Azurevirtualmachine\\V1\xe2\x02=Dev\\Planton\\Provider\\Azure\\Azurevirtualmachine\\V1\\GPBMetadata\xea\x026Dev::Planton::Provider::Azure::Azurevirtualmachine::V1b\x06proto3"
 
 var (
@@ -1005,45 +3281,108 @@ func file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescGZ
 	return file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 15)
+var file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_goTypes = []any{
-	(AzureVirtualMachineOsDisk_DiskCaching)(0),                // 0: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.DiskCaching
-	(AzureVirtualMachineOsDisk_DiskStorageType)(0),            // 1: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.DiskStorageType
-	(AzureVirtualMachineNetworkConfig_PublicIpSku)(0),         // 2: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PublicIpSku
-	(AzureVirtualMachineNetworkConfig_PublicIpAllocation)(0),  // 3: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PublicIpAllocation
-	(AzureVirtualMachineNetworkConfig_PrivateIpAllocation)(0), // 4: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PrivateIpAllocation
-	(*AzureVirtualMachineSpec)(nil),                           // 5: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec
-	(*AzureVirtualMachineImage)(nil),                          // 6: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineImage
-	(*AzureVirtualMachineOsDisk)(nil),                         // 7: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk
-	(*AzureVirtualMachineDataDisk)(nil),                       // 8: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDataDisk
-	(*AzureVirtualMachineNetworkConfig)(nil),                  // 9: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig
-	nil,                                                       // 10: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.TagsEntry
-	(*v1.StringValueOrRef)(nil),                               // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureVirtualMachineDiskCaching)(0),                  // 0: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiskCaching
+	(AzureVirtualMachineOsDiskStorageAccountType)(0),     // 1: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDiskStorageAccountType
+	(AzureVirtualMachineDiffDiskPlacement)(0),            // 2: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiffDiskPlacement
+	(AzureVirtualMachineSecurityEncryptionType)(0),       // 3: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecurityEncryptionType
+	(AzureVirtualMachineIdentityType)(0),                 // 4: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineIdentityType
+	(AzureVirtualMachineEvictionPolicy)(0),               // 5: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineEvictionPolicy
+	(AzureVirtualMachineLinuxPatchMode)(0),               // 6: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxPatchMode
+	(AzureVirtualMachineWindowsPatchMode)(0),             // 7: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsPatchMode
+	(AzureVirtualMachinePatchAssessmentMode)(0),          // 8: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatchAssessmentMode
+	(AzureVirtualMachineRebootSetting)(0),                // 9: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineRebootSetting
+	(AzureVirtualMachineLinuxLicenseType)(0),             // 10: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxLicenseType
+	(AzureVirtualMachineWindowsLicenseType)(0),           // 11: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsLicenseType
+	(AzureVirtualMachineWinrmProtocol)(0),                // 12: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWinrmProtocol
+	(AzureVirtualMachineUnattendSetting)(0),              // 13: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineUnattendSetting
+	(AzureVirtualMachineDiskControllerType)(0),           // 14: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiskControllerType
+	(*AzureVirtualMachineSpec)(nil),                      // 15: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec
+	(*AzureVirtualMachineOsProfile)(nil),                 // 16: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsProfile
+	(*AzureVirtualMachineLinuxProfile)(nil),              // 17: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxProfile
+	(*AzureVirtualMachineSshPublicKey)(nil),              // 18: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSshPublicKey
+	(*AzureVirtualMachineWindowsProfile)(nil),            // 19: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsProfile
+	(*AzureVirtualMachineWinrmListener)(nil),             // 20: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWinrmListener
+	(*AzureVirtualMachineAdditionalUnattendContent)(nil), // 21: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineAdditionalUnattendContent
+	(*AzureVirtualMachineOsDisk)(nil),                    // 22: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk
+	(*AzureVirtualMachineDiffDiskSettings)(nil),          // 23: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiffDiskSettings
+	(*AzureVirtualMachineSourceImageReference)(nil),      // 24: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSourceImageReference
+	(*AzureVirtualMachineDataDiskAttachment)(nil),        // 25: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDataDiskAttachment
+	(*AzureVirtualMachineIdentity)(nil),                  // 26: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineIdentity
+	(*AzureVirtualMachineSpot)(nil),                      // 27: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpot
+	(*AzureVirtualMachineAvailability)(nil),              // 28: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineAvailability
+	(*AzureVirtualMachineSecurity)(nil),                  // 29: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecurity
+	(*AzureVirtualMachinePatching)(nil),                  // 30: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatching
+	(*AzureVirtualMachineBootDiagnostics)(nil),           // 31: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineBootDiagnostics
+	(*AzureVirtualMachineGalleryApplication)(nil),        // 32: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineGalleryApplication
+	(*AzureVirtualMachineTerminationNotification)(nil),   // 33: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineTerminationNotification
+	(*AzureVirtualMachineOsImageNotification)(nil),       // 34: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsImageNotification
+	(*AzureVirtualMachinePlan)(nil),                      // 35: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePlan
+	(*AzureVirtualMachineAdditionalCapabilities)(nil),    // 36: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineAdditionalCapabilities
+	(*AzureVirtualMachineSecret)(nil),                    // 37: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecret
+	(*AzureVirtualMachineSecretCertificate)(nil),         // 38: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecretCertificate
+	nil,                         // 39: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 40: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_depIdxs = []int32{
-	11, // 0: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // 1: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 2: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.image:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineImage
-	7,  // 3: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.os_disk:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk
-	8,  // 4: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.data_disks:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDataDisk
-	11, // 5: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.admin_password:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 6: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.network:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig
-	10, // 7: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.tags:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.TagsEntry
-	1,  // 8: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.storage_type:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.DiskStorageType
-	0,  // 9: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.caching:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.DiskCaching
-	11, // 10: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.disk_encryption_set_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 11: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDataDisk.storage_type:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.DiskStorageType
-	0,  // 12: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDataDisk.caching:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.DiskCaching
-	2,  // 13: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.public_ip_sku:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PublicIpSku
-	3,  // 14: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.public_ip_allocation:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PublicIpAllocation
-	11, // 15: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.network_security_group_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 16: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.private_ip_allocation:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PrivateIpAllocation
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	40, // 0: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	40, // 1: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.network_interface_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 2: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.os_profile:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsProfile
+	22, // 3: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.os_disk:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk
+	24, // 4: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.source_image_reference:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSourceImageReference
+	40, // 5: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.os_managed_disk_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 6: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.data_disk_attachments:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDataDiskAttachment
+	26, // 7: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.identity:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineIdentity
+	27, // 8: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.spot:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpot
+	28, // 9: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.availability:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineAvailability
+	29, // 10: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.security:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecurity
+	30, // 11: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.patching:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatching
+	31, // 12: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.boot_diagnostics:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineBootDiagnostics
+	32, // 13: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.gallery_applications:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineGalleryApplication
+	33, // 14: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.termination_notification:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineTerminationNotification
+	34, // 15: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.os_image_notification:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsImageNotification
+	35, // 16: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.plan:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePlan
+	14, // 17: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.disk_controller_type:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiskControllerType
+	36, // 18: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.additional_capabilities:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineAdditionalCapabilities
+	37, // 19: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.secrets:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecret
+	39, // 20: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.tags:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpec.TagsEntry
+	17, // 21: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsProfile.linux:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxProfile
+	19, // 22: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsProfile.windows:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsProfile
+	18, // 23: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxProfile.ssh_public_keys:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSshPublicKey
+	40, // 24: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxProfile.admin_password:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 25: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxProfile.patch_mode:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxPatchMode
+	10, // 26: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxProfile.license_type:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineLinuxLicenseType
+	40, // 27: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsProfile.admin_password:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 28: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsProfile.patch_mode:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsPatchMode
+	20, // 29: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsProfile.winrm_listeners:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWinrmListener
+	21, // 30: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsProfile.additional_unattend_contents:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineAdditionalUnattendContent
+	11, // 31: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsProfile.license_type:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWindowsLicenseType
+	12, // 32: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWinrmListener.protocol:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineWinrmProtocol
+	13, // 33: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineAdditionalUnattendContent.setting:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineUnattendSetting
+	0,  // 34: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.caching:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiskCaching
+	1,  // 35: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.storage_account_type:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDiskStorageAccountType
+	23, // 36: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.diff_disk_settings:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiffDiskSettings
+	40, // 37: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.disk_encryption_set_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	40, // 38: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.secure_vm_disk_encryption_set_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 39: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDisk.security_encryption_type:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecurityEncryptionType
+	2,  // 40: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiffDiskSettings.placement:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiffDiskPlacement
+	40, // 41: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDataDiskAttachment.managed_disk_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 42: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDataDiskAttachment.caching:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineDiskCaching
+	4,  // 43: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineIdentity.type:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineIdentityType
+	40, // 44: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 45: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpot.eviction_policy:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineEvictionPolicy
+	40, // 46: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineAvailability.virtual_machine_scale_set_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 47: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatching.assessment_mode:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatchAssessmentMode
+	9,  // 48: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatching.reboot_setting:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineRebootSetting
+	40, // 49: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecret.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	38, // 50: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecret.certificates:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecretCertificate
+	51, // [51:51] is the sub-list for method output_type
+	51, // [51:51] is the sub-list for method input_type
+	51, // [51:51] is the sub-list for extension type_name
+	51, // [51:51] is the sub-list for extension extendee
+	0,  // [0:51] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_init() }
@@ -1052,17 +3391,20 @@ func file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_init() {
 		return
 	}
 	file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
 	file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[10].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[12].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_msgTypes[17].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDesc)),
-			NumEnums:      5,
-			NumMessages:   6,
+			NumEnums:      15,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

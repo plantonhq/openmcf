@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuremanagedredisgeoreplication
+spec:
+  # The scenario deploys the fixture resource group, two scenario-local
+  # BALANCED_B3 Managed Redis clusters in different regions (the
+  # geo-replication SKU floor) declaring the same geo-replication group
+  # name, and the group resource under test linking them; the state-aware
+  # verifier reads the managing database's linkedDatabases to prove the
+  # link, and the destroy force-unlinks.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision: honest live proof needs TWO
+    BALANCED_B3 clusters (the geo-replication SKU floor) in different
+    regions, each provisioning and deleting in tens of minutes -- the
+    most expensive fixture pair in the Azure suite, for a link/unlink
+    seam the offline gate fully renders. The component stands on its
+    green offline gate; the scenario runs unchanged once a live window
+    is approved.
+  validated_provisioners: []
+  timeout_minutes: 150

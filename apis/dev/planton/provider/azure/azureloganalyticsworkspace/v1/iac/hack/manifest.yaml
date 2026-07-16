@@ -1,3 +1,7 @@
+# Offline-plan test manifest. Exercises the deep seams: the
+# CapacityReservation sku with its commitment tier, the security and
+# network posture flags at non-default values, a user-assigned identity,
+# a default DCR, and user tags.
 apiVersion: azure.planton.dev/v1
 kind: AzureLogAnalyticsWorkspace
 metadata:
@@ -6,8 +10,23 @@ metadata:
   env: dev
 spec:
   region: eastus
-  resource_group: test-rg
-  name: test-workspace
-  sku: PerGB2018
-  retention_in_days: 30
-  daily_quota_gb: -1
+  resourceGroup:
+    value: test-rg
+  workspaceName: test-workspace
+  sku: CAPACITY_RESERVATION
+  reservationCapacityInGbPerDay: 100
+  retentionInDays: 90
+  dailyQuotaGb: 50
+  identity:
+    type: USER_ASSIGNED
+    userAssignedIdentityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-uai
+  localAuthenticationEnabled: false
+  internetIngestionEnabled: false
+  internetQueryEnabled: false
+  allowResourceOnlyPermissions: false
+  cmkForQueryForced: true
+  immediateDataPurgeOn30DaysEnabled: true
+  dataCollectionRuleId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Insights/dataCollectionRules/test-dcr
+  tags:
+    cost-center: platform

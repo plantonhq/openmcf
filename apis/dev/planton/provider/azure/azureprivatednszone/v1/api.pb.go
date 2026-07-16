@@ -23,21 +23,24 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AzurePrivateDnsZone is the top-level API resource for an Azure Private DNS Zone.
-// Private DNS zones provide DNS resolution within a virtual network, enabling
-// Private Link connectivity for Azure PaaS services and custom internal DNS
-// for VM hostname resolution.
+// AzurePrivateDnsZone is the top-level API resource for an Azure Private DNS
+// zone: name resolution inside virtual networks, enabling Private Link
+// connectivity for Azure PaaS services and custom internal DNS for VM
+// hostname resolution. It is modeled as a first-class composable resource so
+// the zone and its network attachments
+// (AzurePrivateDnsZoneVirtualNetworkLink) are independent nodes in an
+// environment's graph -- one zone serves many networks.
 type AzurePrivateDnsZone struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// api-version
+	// API version identifier. Must be "azure.planton.dev/v1".
 	ApiVersion string `protobuf:"bytes,1,opt,name=api_version,json=apiVersion,proto3" json:"api_version,omitempty"`
-	// resource-kind
+	// Resource kind. Must be "AzurePrivateDnsZone".
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
-	// metadata
+	// Standard Planton metadata (name, org, env, labels, tags).
 	Metadata *shared.CloudResourceMetadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	// spec
+	// Private DNS zone specification.
 	Spec *AzurePrivateDnsZoneSpec `protobuf:"bytes,4,opt,name=spec,proto3" json:"spec,omitempty"`
-	// status
+	// Deployment status containing stack outputs. Populated after deployment.
 	Status        *AzurePrivateDnsZoneStatus `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -108,10 +111,10 @@ func (x *AzurePrivateDnsZone) GetStatus() *AzurePrivateDnsZoneStatus {
 	return nil
 }
 
-// AzurePrivateDnsZoneStatus holds the deployment status and outputs.
+// AzurePrivateDnsZoneStatus holds the deployment outputs.
 type AzurePrivateDnsZoneStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// stack-outputs
+	// Stack outputs from the IaC deployment.
 	Outputs       *AzurePrivateDnsZoneStackOutputs `protobuf:"bytes,1,opt,name=outputs,proto3" json:"outputs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

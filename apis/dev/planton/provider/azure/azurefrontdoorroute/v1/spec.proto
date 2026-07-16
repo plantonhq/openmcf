@@ -1,0 +1,266 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurefrontdoorroute.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// **AzureFrontDoorRouteSpec** defines the configuration for creating a
+// route inside an Azure Front Door endpoint -- the rule that connects
+// client traffic arriving at the endpoint to an origin group, by URL
+// pattern, with protocol and edge-caching behavior.
+//
+// A route is the traffic-serving edge of the Front Door graph: endpoint
+// (entry hostname) -> route (match + policy) -> origin group (backend
+// pool) -> origins (backends). Routes are many-per-endpoint with
+// independent lifecycles (one endpoint commonly serves "/api/*" and
+// "/static/*" from different backends), which is why the route is a
+// first-class kind referencing the endpoint rather than a list folded
+// into it.
+//
+// **ForceNew fields**: `endpoint_id`, `route_name` -- both fix the
+// route's ARM identity at creation.
+message AzureFrontDoorRouteSpec {
+  // The Front Door endpoint the route attaches to, by ARM ID. References
+  // an AzureFrontDoorEndpoint's endpoint_id output so the endpoint and
+  // its routes compose in one manifest set. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef endpoint_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorEndpoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.endpoint_id"
+  ];
+
+  // The route's name -- unique within the endpoint.
+  //
+  // 2-90 characters; letters, digits, and hyphens; must start and end
+  // with a letter or digit.
+  //
+  // **ForceNew**: changing the name replaces the route.
+  string route_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 2,
+    (buf.validate.field).string.max_len = 90,
+    (buf.validate.field).cel = {
+      id: "front_door_route_name_format"
+      message: "route_name must be 2-90 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens"
+      expression: "this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,88}[a-zA-Z0-9]$')"
+    }
+  ];
+
+  // The origin group that answers requests matched by this route, by ARM
+  // ID. References an AzureFrontDoorOriginGroup's origin_group_id
+  // output. Updatable in place (repointing a route is how traffic moves
+  // between backend pools).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef origin_group_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorOriginGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.origin_group_id"
+  ];
+
+  // The origins this route depends on, by ARM ID -- each references an
+  // AzureFrontDoorOrigin's origin_id output. Azure never receives these
+  // (membership is defined by the origin group); they exist purely to
+  // sequence deployment and teardown, because ARM rejects a route whose
+  // origin group has no origins yet. List the group's origins here when
+  // deploying the whole chain in one manifest set; omit when the origins
+  // already exist.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef origin_ids = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorOrigin,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.origin_id"
+  ];
+
+  // The rule sets whose delivery policies apply to traffic on this
+  // route, by ARM ID -- each references an AzureFrontDoorRuleSet's
+  // rule_set_id output. Rule sets and the route must live in the same
+  // profile. Order here does not matter: WITHIN a set, rules run by
+  // their own order; ACROSS sets, Azure evaluates all attached sets'
+  // rules together. One rule set is commonly attached to many routes --
+  // that sharing is why the policy is its own kind.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef rule_set_ids = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorRuleSet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.rule_set_id"
+  ];
+
+  // The URL path patterns this route matches, e.g. "/*" (everything),
+  // "/api/*", "/images/*". At least one; every pattern starts with "/".
+  // Route matching picks the most specific pattern across the
+  // endpoint's routes, so "/api/*" on one route and "/*" on another
+  // cleanly split API and catch-all traffic.
+  repeated string patterns_to_match = 6 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      cel: {
+        id: "front_door_route_pattern_format"
+        message: "each pattern must start with '/'"
+        expression: "this.startsWith('/')"
+      }
+    }
+  }];
+
+  // The client-facing protocols the route accepts: HTTP, HTTPS, or both.
+  // At least one. Serving both with https_redirect_enabled (the
+  // default) is the standard production posture -- HTTP arrives only to
+  // be redirected.
+  repeated AzureFrontDoorRouteProtocol supported_protocols = 7 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 2
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+
+  // The protocol Front Door uses toward the ORIGIN (independent of what
+  // the client used). Unspecified deploys MATCH_REQUEST -- mirror the
+  // client's protocol. HTTPS_ONLY keeps the origin leg encrypted even
+  // for HTTP clients; HTTP_ONLY is for origins without TLS (pair it
+  // with Private Link rather than sending plaintext over the internet).
+  AzureFrontDoorRouteForwardingProtocol forwarding_protocol = 8 [(buf.validate.field).enum.defined_only = true];
+
+  // Redirect HTTP requests to HTTPS at the edge (301). Default true.
+  // Requires the route to accept BOTH protocols -- the redirect needs
+  // HTTP to arrive and HTTPS to land on.
+  optional bool https_redirect_enabled = 9 [(dev.planton.shared.options.default) = "true"];
+
+  // The custom domains this route serves, by ARM ID -- each references
+  // an AzureFrontDoorCustomDomain's custom_domain_id output. The route
+  // side owns the domain attachment (a domain lists no routes); every
+  // referenced domain must belong to the route's profile and should be
+  // DNS-validated before traffic can flow. Empty means the route serves
+  // only the endpoint's generated *.azurefd.net hostname.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef custom_domain_ids = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorCustomDomain,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.custom_domain_id"
+  ];
+
+  // Serve this route on the endpoint's generated *.azurefd.net
+  // hostname. Default true. Disabling requires at least one custom
+  // domain in custom_domain_ids -- otherwise the route would serve no
+  // hostname at all. Disable it for production routes that should only
+  // answer on their custom domains.
+  optional bool link_to_default_domain = 11 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether the route matches traffic. Disabling stops matching without
+  // deleting the route's configuration. Default true.
+  optional bool enabled = 12 [(dev.planton.shared.options.default) = "true"];
+
+  // A path prepended on the ORIGIN side before forwarding, e.g.
+  // "/site1". A request for "/page.html" on a route with origin_path
+  // "/site1" fetches "/site1/page.html" from the origin -- how one
+  // backend hosts many routes' content in subdirectories. Unset
+  // forwards the client path unchanged.
+  optional string origin_path = 13 [(buf.validate.field).string.min_len = 1];
+
+  // Cache matched responses at Front Door's edge locations. Omit the
+  // block to disable caching entirely (every request hits the origin) --
+  // Azure treats the ABSENCE of cache settings as caching off, so this
+  // is a real switch, not a defaults bundle.
+  AzureFrontDoorRouteCache cache = 14;
+
+  option (buf.validate.message).cel = {
+    id: "front_door_route_https_redirect_needs_both_protocols"
+    message: "https_redirect_enabled requires supported_protocols to include both HTTP and HTTPS (the redirect needs HTTP to arrive and HTTPS to land on); either list both or disable the redirect"
+    expression: "(has(this.https_redirect_enabled) && !this.https_redirect_enabled) || (this.supported_protocols.exists(p, p == 1) && this.supported_protocols.exists(p, p == 2))"
+  };
+  option (buf.validate.message).cel = {
+    id: "front_door_route_default_domain_or_custom_domains"
+    message: "link_to_default_domain can only be disabled when the route serves at least one custom domain -- otherwise it would answer on no hostname at all"
+    expression: "(!has(this.link_to_default_domain) || this.link_to_default_domain) || this.custom_domain_ids.size() > 0"
+  };
+}
+
+// A client-facing protocol a route accepts.
+enum AzureFrontDoorRouteProtocol {
+  // Not specified -- invalid; list HTTP and/or HTTPS explicitly.
+  azure_front_door_route_protocol_unspecified = 0;
+
+  // Plain HTTP (port 80 at the edge).
+  HTTP = 1;
+
+  // TLS (port 443 at the edge, Front Door's managed edge certificate on
+  // the default domain).
+  HTTPS = 2;
+}
+
+// The protocol Front Door uses toward the origin.
+enum AzureFrontDoorRouteForwardingProtocol {
+  // Not specified -- deploys MATCH_REQUEST, Azure's default.
+  azure_front_door_route_forwarding_protocol_unspecified = 0;
+
+  // Mirror the client's protocol on the origin leg.
+  MATCH_REQUEST = 1;
+
+  // Always connect to the origin over plain HTTP.
+  HTTP_ONLY = 2;
+
+  // Always connect to the origin over TLS -- the right choice when the
+  // origin has a certificate, regardless of the client protocol.
+  HTTPS_ONLY = 3;
+}
+
+// AzureFrontDoorRouteCache configures edge caching for a route: what
+// makes a cache key and whether responses are compressed at the edge.
+message AzureFrontDoorRouteCache {
+  // How query strings participate in the cache key. Unspecified deploys
+  // IGNORE_QUERY_STRING (all variants share one entry -- right for
+  // static assets). USE_QUERY_STRING keys every variant separately;
+  // the *_SPECIFIED behaviors include or exclude only the names listed
+  // in query_strings.
+  AzureFrontDoorRouteQueryStringCachingBehavior query_string_caching_behavior = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // The query-string parameter NAMES the *_SPECIFIED behaviors operate
+  // on (Azure ignores this list for the other two behaviors). Names
+  // must not contain commas -- Azure transports the list as a
+  // comma-separated string.
+  repeated string query_strings = 2 [(buf.validate.field).repeated.items = {
+    cel: {
+      id: "front_door_route_cache_query_string_no_comma"
+      message: "query string names must not contain commas"
+      expression: "!this.contains(',')"
+    }
+  }];
+
+  // Compress eligible responses (gzip/brotli) at the edge before
+  // delivering to clients. Default false. Azure only compresses
+  // responses between 1 KiB and 8 MiB whose content type is listed in
+  // content_types_to_compress.
+  optional bool compression_enabled = 3 [(dev.planton.shared.options.default) = "false"];
+
+  // The MIME types eligible for edge compression (only meaningful with
+  // compression_enabled). Values must come from Azure's supported list
+  // -- text, JSON, XML, JavaScript, SVG, and font types; binary media
+  // (images, video, archives) is already compressed and not eligible.
+  repeated string content_types_to_compress = 4 [(buf.validate.field).repeated.items = {
+    cel: {
+      id: "front_door_route_cache_content_type_supported"
+      message: "content type is not in Azure Front Door's supported compression list (text/*, application JSON/XML/JavaScript, fonts, and SVG variants)"
+      expression: "this in ['application/eot', 'application/font', 'application/font-sfnt', 'application/javascript', 'application/json', 'application/opentype', 'application/otf', 'application/pkcs7-mime', 'application/truetype', 'application/ttf', 'application/vnd.ms-fontobject', 'application/xhtml+xml', 'application/xml', 'application/xml+rss', 'application/x-font-opentype', 'application/x-font-truetype', 'application/x-font-ttf', 'application/x-httpd-cgi', 'application/x-mpegurl', 'application/x-opentype', 'application/x-otf', 'application/x-perl', 'application/x-ttf', 'application/x-javascript', 'font/eot', 'font/ttf', 'font/otf', 'font/opentype', 'image/svg+xml', 'text/css', 'text/csv', 'text/html', 'text/javascript', 'text/js', 'text/plain', 'text/richtext', 'text/tab-separated-values', 'text/xml', 'text/x-script', 'text/x-component', 'text/x-java-source']"
+    }
+  }];
+}
+
+// How query strings participate in the route's cache key.
+enum AzureFrontDoorRouteQueryStringCachingBehavior {
+  // Not specified -- deploys IGNORE_QUERY_STRING, Azure's default.
+  azure_front_door_route_query_string_caching_behavior_unspecified = 0;
+
+  // Strip query strings from the cache key: every variant of a URL
+  // shares one cached entry. Right for static assets.
+  IGNORE_QUERY_STRING = 1;
+
+  // Key the cache on the full query string: each variant caches
+  // separately. Right for query-driven dynamic content.
+  USE_QUERY_STRING = 2;
+
+  // Ignore ONLY the parameters named in query_strings when building the
+  // cache key (e.g. drop tracking parameters like utm_source).
+  IGNORE_SPECIFIED_QUERY_STRINGS = 3;
+
+  // Include ONLY the parameters named in query_strings in the cache key
+  // (e.g. key on page= but nothing else).
+  INCLUDE_SPECIFIED_QUERY_STRINGS = 4;
+}

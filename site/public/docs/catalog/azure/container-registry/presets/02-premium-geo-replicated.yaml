@@ -6,8 +6,11 @@ spec:
   region: <azure-region>
   resourceGroup:
     value: "<your-resource-group-name>"
-  registryName: <youruniquename>
+  registryName: yourregistry123  # REPLACE: globally unique, 5-50 lowercase alphanumerics
   sku: PREMIUM
   adminUserEnabled: false
-  geoReplicationRegions:
-    - <secondary-azure-region>
+  zoneRedundancyEnabled: true
+  retentionPolicyInDays: 30  # purge untagged manifests after a month of CI churn
+  georeplications:
+    - location: <secondary-azure-region>
+      zoneRedundancyEnabled: true

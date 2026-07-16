@@ -443,3 +443,82 @@ func TestResolveDependencies_TransitiveDeployOrder(t *testing.T) {
 		}
 	}
 }
+
+// writeAzureScenario creates a real, loadable KRM scenario manifest of the
+// given Azure kind (optionally carrying the e2e-prerequisites annotation)
+// under a fake repo root and returns its absolute path.
+func writeAzureScenario(t *testing.T, repoRoot, relPath, kind, prereqs string) string {
+	t.Helper()
+	content := "apiVersion: azure.planton.dev/v1\nkind: " + kind + "\nmetadata:\n  name: scenario-under-test\n"
+	if prereqs != "" {
+		content += "  annotations:\n    planton.dev/e2e-prerequisites: \"" + prereqs + "\"\n"
+	}
+	full := filepath.Join(repoRoot, relPath)
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		t.Fatalf("mkdir for %s: %v", relPath, err)
+	}
+	if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
+		t.Fatalf("write %s: %v", relPath, err)
+	}
+	return full
+}
+
+// A manifest-path entry deploys as an EXTRA INSTANCE of its declared kind even
+// when the registry chain already deploys that kind, and its own transitive
+// prerequisites are deduplicated against the chain -- the seam that lets a
+// scenario compose a second instance (e.g. a virtual-network peering's remote
+// network) without polluting any kind's install profile.
+func TestResolveDependencies_PathEntryExtraInstance(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azurevirtualnetwork/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureprivatednszone/v1/e2e/prerequisite.yaml")
+	remoteRel := "apis/dev/planton/provider/azure/azurevirtualnetworkpeering/v1/e2e/fixtures/remote-network.yaml"
+	remoteAbs := writeAzureScenario(t, repoRoot, remoteRel, "AzureVirtualNetwork", "")
+	scenario := writeAzureScenario(t, repoRoot, "scenario.yaml", "AzurePrivateDnsZoneVirtualNetworkLink", remoteRel)
+
+	deps, err := ResolveDependencies(repoRoot, "azure", "azureprivatednszonevirtualnetworklink", scenario)
+	if err != nil {
+		t.Fatalf("ResolveDependencies: %v", err)
+	}
+	got := make([]string, len(deps))
+	for i, d := range deps {
+		got[i] = d.KindSlug
+	}
+	want := []string{"azureresourcegroup", "azureprivatednszone", "azurevirtualnetwork", "azurevirtualnetwork"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("dependency order = %v, want %v", got, want)
+	}
+	if deps[3].ManifestPath != remoteAbs {
+		t.Errorf("extra instance manifest = %q, want %q", deps[3].ManifestPath, remoteAbs)
+	}
+}
+
+// A path entry pointing at a file that does not exist fails resolution loudly
+// instead of deploying a partial fixture chain.
+func TestResolveDependencies_PathEntryMissingFileErrors(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1/e2e/prerequisite.yaml")
+	scenario := writeAzureScenario(t, repoRoot, "scenario.yaml", "AzureRouteTable", "apis/does/not/exist.yaml")
+
+	if _, err := ResolveDependencies(repoRoot, "azure", "azureroutetable", scenario); err == nil {
+		t.Fatal("expected an error for a missing path entry, got nil")
+	}
+}
+
+// A manifest-path entry on an INSTALL manifest (not a scenario) is rejected:
+// install-manifest edges must be kind names so the graph can dedup them.
+func TestResolveDependencies_InstallManifestPathEntryErrors(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1/e2e/prerequisite.yaml")
+	// The virtual network's install profile illegally declares a path entry.
+	writeAzureScenario(t, repoRoot,
+		"apis/dev/planton/provider/azure/azurevirtualnetwork/v1/e2e/prerequisite.yaml",
+		"AzureVirtualNetwork", "apis/some/fixture.yaml")
+	scenario := writeAzureScenario(t, repoRoot, "scenario.yaml", "AzureSubnet", "")
+
+	_, err := ResolveDependencies(repoRoot, "azure", "azuresubnet", scenario)
+	if err == nil || !strings.Contains(err.Error(), "path entries are only valid on scenario manifests") {
+		t.Fatalf("expected the install-manifest path-entry rejection, got %v", err)
+	}
+}

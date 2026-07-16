@@ -21,28 +21,36 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzureSubnetStackOutputs** captures the outputs of provisioning an Azure Subnet.
+// **AzureSubnetStackOutputs** captures the outputs of provisioning an Azure
+// Subnet.
 //
-// These outputs are critical for infra chart composition. The `subnet_id` output is
-// the single most referenced Azure output in Planton -- it is consumed by 11 downstream
-// resource types including AzureAksCluster, AzureContainerAppEnvironment,
-// AzurePostgresqlFlexibleServer, AzureMysqlFlexibleServer, AzureRedisCache,
-// AzurePrivateEndpoint, AzureApplicationGateway, AzureLoadBalancer,
-// AzureVirtualMachine, AzureFunctionApp, and AzureLinuxWebApp.
+// The `subnet_id` output is the single most referenced Azure output in
+// Planton -- every resource that deploys into a network segment (AKS
+// clusters, container app environments, flexible database servers, private
+// endpoints, load balancers, application gateways, VMs, function and web
+// apps) consumes it via StringValueOrRef.
 type AzureSubnetStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Azure Resource Manager ID of the subnet.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{vnet}/subnets/{name}
-	// This is the primary output referenced by downstream resources via StringValueOrRef.
+	// This is the primary output referenced by downstream resources.
 	SubnetId string `protobuf:"bytes,1,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
-	// The name of the subnet within the VNet.
+	// The name of the subnet within its virtual network.
 	SubnetName string `protobuf:"bytes,2,opt,name=subnet_name,json=subnetName,proto3" json:"subnet_name,omitempty"`
-	// The IPv4 CIDR block assigned to this subnet.
-	// Echoed from the spec for convenience -- useful in NSG rules, firewall rules,
-	// and network planning where downstream resources need to know the subnet's address range.
-	AddressPrefix string `protobuf:"bytes,3,opt,name=address_prefix,json=addressPrefix,proto3" json:"address_prefix,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The CIDR blocks actually assigned to the subnet. For self-managed
+	// subnets this echoes address_prefixes; for IPAM-allocated subnets it
+	// carries the ranges the Network Manager pool provisioned. Useful in NSG
+	// rules, firewall rules, and network planning downstream.
+	AddressPrefixes []string `protobuf:"bytes,3,rep,name=address_prefixes,json=addressPrefixes,proto3" json:"address_prefixes,omitempty"`
+	// The name of the parent virtual network, derived from the referenced
+	// network's ARM ID -- exported so charts can compose sibling resources
+	// without re-parsing the ID.
+	VirtualNetworkName string `protobuf:"bytes,4,opt,name=virtual_network_name,json=virtualNetworkName,proto3" json:"virtual_network_name,omitempty"`
+	// The name of the resource group the subnet (and its parent network)
+	// lives in, derived from the referenced network's ARM ID.
+	ResourceGroupName string `protobuf:"bytes,5,opt,name=resource_group_name,json=resourceGroupName,proto3" json:"resource_group_name,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *AzureSubnetStackOutputs) Reset() {
@@ -89,9 +97,23 @@ func (x *AzureSubnetStackOutputs) GetSubnetName() string {
 	return ""
 }
 
-func (x *AzureSubnetStackOutputs) GetAddressPrefix() string {
+func (x *AzureSubnetStackOutputs) GetAddressPrefixes() []string {
 	if x != nil {
-		return x.AddressPrefix
+		return x.AddressPrefixes
+	}
+	return nil
+}
+
+func (x *AzureSubnetStackOutputs) GetVirtualNetworkName() string {
+	if x != nil {
+		return x.VirtualNetworkName
+	}
+	return ""
+}
+
+func (x *AzureSubnetStackOutputs) GetResourceGroupName() string {
+	if x != nil {
+		return x.ResourceGroupName
 	}
 	return ""
 }
@@ -100,12 +122,14 @@ var File_dev_planton_provider_azure_azuresubnet_v1_stack_outputs_proto protorefl
 
 const file_dev_planton_provider_azure_azuresubnet_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/azure/azuresubnet/v1/stack_outputs.proto\x12)dev.planton.provider.azure.azuresubnet.v1\"~\n" +
+	"=dev/planton/provider/azure/azuresubnet/v1/stack_outputs.proto\x12)dev.planton.provider.azure.azuresubnet.v1\"\xe4\x01\n" +
 	"\x17AzureSubnetStackOutputs\x12\x1b\n" +
 	"\tsubnet_id\x18\x01 \x01(\tR\bsubnetId\x12\x1f\n" +
 	"\vsubnet_name\x18\x02 \x01(\tR\n" +
-	"subnetName\x12%\n" +
-	"\x0eaddress_prefix\x18\x03 \x01(\tR\raddressPrefixB\xe8\x02\n" +
+	"subnetName\x12)\n" +
+	"\x10address_prefixes\x18\x03 \x03(\tR\x0faddressPrefixes\x120\n" +
+	"\x14virtual_network_name\x18\x04 \x01(\tR\x12virtualNetworkName\x12.\n" +
+	"\x13resource_group_name\x18\x05 \x01(\tR\x11resourceGroupNameB\xe8\x02\n" +
 	"-com.dev.planton.provider.azure.azuresubnet.v1B\x11StackOutputsProtoP\x01ZYgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azuresubnet/v1;azuresubnetv1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Azure.Azuresubnet.V1\xca\x02)Dev\\Planton\\Provider\\Azure\\Azuresubnet\\V1\xe2\x025Dev\\Planton\\Provider\\Azure\\Azuresubnet\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Azure::Azuresubnet::V1b\x06proto3"
 
 var (

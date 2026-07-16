@@ -15,10 +15,10 @@ Deploys an Azure Network Security Group (NSG) with priority-ordered security rul
 When you deploy an AzureNetworkSecurityGroup resource, Planton provisions:
 
 - **Network Security Group** — a `network.NetworkSecurityGroup` resource in the specified region and resource group, acting as a stateful firewall for associated subnets or NICs
-- **Security Rules** — a separate `network.NetworkSecurityRule` resource for each entry in `securityRules`, providing per-rule lifecycle management and explicit state tracking
-- **Azure Tags** — resource metadata tags applied to the NSG for tracking and governance
+- **Security Rules** — one security rule per entry in `securityRules`, managed as part of the NSG; rules update in place and take effect immediately for everything the group guards
+- **Azure Tags** — Planton-derived resource tags (organization, environment, resource id) merged with any user-supplied `tags`, applied to the NSG for tracking and governance
 
-The component does not create subnet-to-NSG associations. Association is handled separately via `azurerm_subnet_network_security_group_association`, keeping the NSG lifecycle independent of any particular subnet or NIC.
+The component does not create subnet-to-NSG associations. A subnet declares which NSG guards it (AzureSubnet's `networkSecurityGroupId`), keeping the NSG lifecycle independent of any particular subnet or NIC.
 
 Azure automatically creates implicit default rules in every NSG (priorities 65000-65500) that allow VNet-to-VNet traffic, allow Azure Load Balancer probes, and deny all other inbound traffic. User-defined rules (priorities 100-4096) are evaluated before these defaults.
 
@@ -44,14 +44,15 @@ metadata:
     pulumi.planton.dev/stack.name: dev.AzureNetworkSecurityGroup.my-nsg
 spec:
   region: eastus
-  resourceGroup: my-rg
+  resourceGroup:
+    value: my-rg
   name: my-nsg
   securityRules:
     - name: allow-https-inbound
       priority: 100
-      direction: Inbound
-      access: Allow
-      protocol: Tcp
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       destinationPortRange: "443"
 ```
 
@@ -77,7 +78,8 @@ This creates an NSG with a single rule allowing inbound HTTPS traffic from any s
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `securityRules` | `AzureSecurityRule[]` | `[]` | Security rules defining allowed or denied traffic flows. Rules are evaluated in priority order (lowest number first). An NSG with no rules relies on Azure defaults: allow VNet-to-VNet, allow load balancer probes, deny all other inbound, allow all outbound. |
+| `securityRules` | `AzureNetworkSecurityGroupRule[]` | `[]` | Security rules defining allowed or denied traffic flows. Rules are evaluated in priority order (lowest number first). An NSG with no rules relies on Azure defaults: allow VNet-to-VNet, allow load balancer probes, deny all other inbound, allow all outbound. |
+| `tags` | `map<string, string>` | `{}` | Free-form tags applied to the NSG, merged over the Planton-derived resource tags (organization, environment, resource id); a user tag with the same key wins. |
 
 ### Security Rule Fields
 
@@ -88,15 +90,21 @@ Each entry in `securityRules` supports the following fields:
 | `name` | `string` | — | Yes | Unique name within the NSG. Use descriptive names like `allow-https-inbound`. 1-80 characters. |
 | `description` | `string` | — | No | Human-readable description of the rule's purpose. Maximum 140 characters. |
 | `priority` | `int` | — | Yes | Evaluation priority. Lower numbers are evaluated first. Range: 100-4096. Use increments of 10 or 100 to leave room for future rules. |
-| `direction` | `string` | — | Yes | Traffic direction. Values: `Inbound`, `Outbound`. |
-| `access` | `string` | — | Yes | Access decision when the rule matches. Values: `Allow`, `Deny`. |
-| `protocol` | `string` | — | Yes | Network protocol. Values: `Tcp`, `Udp`, `Icmp`, `*` (any). |
-| `sourcePortRange` | `string` | `*` | No | Source port, range (`1024-65535`), or `*` for any. Most rules use `*` since source ports are typically ephemeral. |
-| `destinationPortRange` | `string` | — | Yes | Destination port, range (`1024-65535`), or `*` for any. Examples: `22` (SSH), `80` (HTTP), `443` (HTTPS). |
-| `sourceAddressPrefix` | `string` | `*` | No | Source CIDR, IP, Azure service tag (`VirtualNetwork`, `Internet`), or `*`. Ignored if `sourceAddressPrefixes` is set. |
-| `destinationAddressPrefix` | `string` | `*` | No | Destination CIDR, IP, Azure service tag, or `*`. Ignored if `destinationAddressPrefixes` is set. |
-| `sourceAddressPrefixes` | `string[]` | `[]` | No | Multiple source CIDRs or IPs. Takes precedence over `sourceAddressPrefix` when non-empty. Service tags are not supported in this field. |
-| `destinationAddressPrefixes` | `string[]` | `[]` | No | Multiple destination CIDRs or IPs. Takes precedence over `destinationAddressPrefix` when non-empty. Service tags are not supported in this field. |
+| `direction` | `enum` | — | Yes | Traffic direction. Values: `INBOUND`, `OUTBOUND`. |
+| `access` | `enum` | — | Yes | Access decision when the rule matches. Values: `ALLOW`, `DENY`. |
+| `protocol` | `enum` | — | Yes | Network protocol. Values: `ANY`, `TCP`, `UDP`, `ICMP`, `AH`, `ESP`. |
+| `sourcePortRange` | `string` | — | No | Source port (`443`), range (`1024-65535`), or `*` for any. Unset means any — the right choice for most rules, since source ports are typically ephemeral. Never combined with `sourcePortRanges`. |
+| `sourcePortRanges` | `string[]` | `[]` | No | Multiple source ports/ranges in one rule. Never combined with `sourcePortRange`. |
+| `destinationPortRange` | `string` | — | Yes* | Destination port, range (`1024-65535`), or `*` for any. Examples: `22` (SSH), `80` (HTTP), `443` (HTTPS). Exactly one of `destinationPortRange` or `destinationPortRanges` must be set. |
+| `destinationPortRanges` | `string[]` | `[]` | Yes* | Multiple destination ports/ranges in one rule (e.g. `["80", "443"]`). Exactly one of `destinationPortRange` or `destinationPortRanges` must be set. |
+| `sourceAddressPrefix` | `string` | — | No | Source CIDR, IP, Azure service tag (`VirtualNetwork`, `Internet`), or `*`. Service tags and `*` only work in this singular form. At most one source addressing style may be set; all unset means any. |
+| `sourceAddressPrefixes` | `string[]` | `[]` | No | Multiple source CIDRs or IPs. Service tags are not supported in this field. At most one source addressing style may be set. |
+| `sourceApplicationSecurityGroupIds` | `string[]` | `[]` | No | Source as application security group membership — plain ARM IDs, up to 10. At most one source addressing style may be set. |
+| `destinationAddressPrefix` | `string` | — | No | Destination CIDR, IP, Azure service tag, or `*`. Service tags and `*` only work in this singular form. At most one destination addressing style may be set; all unset means any. |
+| `destinationAddressPrefixes` | `string[]` | `[]` | No | Multiple destination CIDRs or IPs. Service tags are not supported in this field. At most one destination addressing style may be set. |
+| `destinationApplicationSecurityGroupIds` | `string[]` | `[]` | No | Destination as application security group membership — plain ARM IDs, up to 10. At most one destination addressing style may be set. |
+
+\* Exactly one of `destinationPortRange` or `destinationPortRanges` is required per rule (use `"*"` for any port).
 
 ## Examples
 
@@ -116,14 +124,15 @@ metadata:
     pulumi.planton.dev/stack.name: dev.AzureNetworkSecurityGroup.web-nsg
 spec:
   region: eastus
-  resourceGroup: dev-rg
+  resourceGroup:
+    value: dev-rg
   name: web-nsg
   securityRules:
     - name: allow-https-inbound
       priority: 100
-      direction: Inbound
-      access: Allow
-      protocol: Tcp
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       destinationPortRange: "443"
 ```
 
@@ -143,28 +152,29 @@ metadata:
     pulumi.planton.dev/stack.name: prod.AzureNetworkSecurityGroup.web-tier-nsg
 spec:
   region: eastus
-  resourceGroup: prod-rg
+  resourceGroup:
+    value: prod-rg
   name: web-tier-nsg
   securityRules:
     - name: allow-https-inbound
       priority: 100
-      direction: Inbound
-      access: Allow
-      protocol: Tcp
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       destinationPortRange: "443"
       sourceAddressPrefix: Internet
     - name: allow-http-inbound
       priority: 200
-      direction: Inbound
-      access: Allow
-      protocol: Tcp
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       destinationPortRange: "80"
       sourceAddressPrefix: Internet
     - name: deny-all-inbound
       priority: 4096
-      direction: Inbound
-      access: Deny
-      protocol: "*"
+      direction: INBOUND
+      access: DENY
+      protocol: ANY
       destinationPortRange: "*"
       description: Explicit deny-all as a safety net
 ```
@@ -185,30 +195,31 @@ metadata:
     pulumi.planton.dev/stack.name: prod.AzureNetworkSecurityGroup.app-tier-nsg
 spec:
   region: eastus
-  resourceGroup: prod-rg
+  resourceGroup:
+    value: prod-rg
   name: app-tier-nsg
   securityRules:
     - name: allow-web-to-app
       priority: 100
-      direction: Inbound
-      access: Allow
-      protocol: Tcp
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       destinationPortRange: "8080"
       sourceAddressPrefix: "10.0.1.0/24"
       description: Allow traffic from web tier subnet
     - name: allow-ssh-from-bastion
       priority: 200
-      direction: Inbound
-      access: Allow
-      protocol: Tcp
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       destinationPortRange: "22"
       sourceAddressPrefix: "10.0.255.4"
       description: Allow SSH from bastion host
     - name: deny-all-inbound
       priority: 4096
-      direction: Inbound
-      access: Deny
-      protocol: "*"
+      direction: INBOUND
+      access: DENY
+      protocol: ANY
       destinationPortRange: "*"
 ```
 
@@ -228,14 +239,15 @@ metadata:
     pulumi.planton.dev/stack.name: prod.AzureNetworkSecurityGroup.data-tier-nsg
 spec:
   region: westeurope
-  resourceGroup: prod-rg
+  resourceGroup:
+    value: prod-rg
   name: data-tier-nsg
   securityRules:
     - name: allow-postgres-from-app-subnets
       priority: 100
-      direction: Inbound
-      access: Allow
-      protocol: Tcp
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       destinationPortRange: "5432"
       sourceAddressPrefixes:
         - "10.0.2.0/24"
@@ -244,15 +256,15 @@ spec:
       description: Allow PostgreSQL from all app subnets
     - name: deny-all-inbound
       priority: 4096
-      direction: Inbound
-      access: Deny
-      protocol: "*"
+      direction: INBOUND
+      access: DENY
+      protocol: ANY
       destinationPortRange: "*"
     - name: deny-internet-outbound
       priority: 4096
-      direction: Outbound
-      access: Deny
-      protocol: "*"
+      direction: OUTBOUND
+      access: DENY
+      protocol: ANY
       destinationPortRange: "*"
       destinationAddressPrefix: Internet
       description: Prevent data tier from reaching the internet
@@ -283,9 +295,9 @@ spec:
   securityRules:
     - name: allow-https-inbound
       priority: 100
-      direction: Inbound
-      access: Allow
-      protocol: Tcp
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       destinationPortRange: "443"
 ```
 
@@ -295,12 +307,12 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `nsg_id` | `string` | Azure Resource Manager ID of the Network Security Group. Format: `/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/networkSecurityGroups/{name}`. Used by infra charts for subnet-NSG association. |
-| `nsg_name` | `string` | Name of the Network Security Group |
+| `network_security_group_id` | `string` | Azure Resource Manager ID of the Network Security Group. Format: `/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/networkSecurityGroups/{name}`. Referenced by AzureSubnet's `networkSecurityGroupId` to attach the group to a subnet. |
+| `network_security_group_name` | `string` | Name of the Network Security Group |
 
 ## Related Components
 
 - [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group for NSG placement
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) — provides the virtual network and subnets that NSGs are associated with
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) — provides the virtual network and subnets that NSGs are associated with
 - [AzureSubnet](/docs/catalog/azure/subnet) — NSGs are associated with subnets to filter traffic at the subnet level
 - [AzureAksCluster](/docs/catalog/azure/aks-cluster) — AKS node pool subnets often require NSGs for controlling cluster traffic

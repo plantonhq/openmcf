@@ -1,0 +1,33 @@
+# Minimal AzureApplicationInsights scenario: a workspace-based component
+# wired to the fixture workspace (registry prerequisite), exercising the
+# WEB application type, the retention and sampling dials, and user tags.
+# Proves the workspace FK seam end to end -- the binding that classic-mode
+# retirement made mandatory.
+apiVersion: azure.planton.dev/v1
+kind: AzureApplicationInsights
+metadata:
+  name: planton-oss-e2e-azureai-smoke
+  id: planton-oss-e2e-azureai-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureapplicationinsights
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  applicationInsightsName: planton-oss-e2e-ai-smoke
+  applicationType: WEB
+  workspaceId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-law
+  retentionInDays: 30
+  samplingPercentage: 100
+  tags:
+    purpose: e2e-smoke

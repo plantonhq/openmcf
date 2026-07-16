@@ -1,21 +1,21 @@
 # Azure Private DNS Zone
 
-Deploys an Azure Private DNS Zone with a Virtual Network link for internal name resolution. The component supports both Private Link DNS scenarios (resolving Azure PaaS service private endpoints) and custom internal DNS zones for VM hostname discovery within a VNet.
+Creates an Azure Private DNS zone -- name resolution inside virtual networks without running a DNS server. Powers both Private Link scenarios (resolving Azure PaaS private endpoints via the `privatelink.*` zones) and custom internal DNS (`corp.internal`).
 
 ## What Gets Created
 
 When you deploy an AzurePrivateDnsZone resource, Planton provisions:
 
-- **Private DNS Zone** — a `privatedns.Zone` resource in the specified resource group. Private DNS zones are global Azure resources with no region parameter.
-- **Virtual Network Link** — a `privatedns.ZoneVirtualNetworkLink` that connects the zone to a VNet, enabling DNS resolution of zone records from resources within the linked VNet. Without this link the zone is unreachable.
-- **Azure Tags** — resource metadata tags applied to both the zone and the VNet link for tracking and governance
+- **Private DNS Zone** — an `azurerm_private_dns_zone` in the specified resource group. Private DNS zones are global Azure resources with no region parameter.
+
+The zone is deliberately just the zone. Which networks can resolve it is declared through `AzurePrivateDnsZoneVirtualNetworkLink` resources referencing this zone's `zone_id` output -- one link per network, added and removed without touching the zone. A zone with no links answers nobody, so pair the zone with at least one link.
 
 ## Prerequisites
 
 - **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure Resource Group** where the zone will be created (can reference an AzureResourceGroup resource)
-- **A Virtual Network** to link to the zone (can reference an AzureVpc resource)
+- **A resource group** to create the zone in (an `AzureResourceGroup` in composed environments)
 - **Zone name planning** — for Private Link scenarios, the zone name must match the Azure-defined privatelink zone name for the target service (e.g., `privatelink.postgres.database.azure.com` for PostgreSQL Flexible Server)
+- **Private DNS write rights**: `Microsoft.Network/privateDnsZones/write` (Private DNS Zone Contributor, Contributor, or Owner)
 
 ## Quick Start
 
@@ -25,16 +25,16 @@ Create a file `private-dns-zone.yaml`:
 apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZone
 metadata:
-  name: my-zone
+  name: postgres-privatelink-zone
   annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzurePrivateDnsZone.my-zone
+    pulumi.planton.dev/stack.name: prod.AzurePrivateDnsZone.postgres-privatelink-zone
 spec:
-  resourceGroup: my-rg
+  resourceGroup:
+    value: network-rg
   name: privatelink.postgres.database.azure.com
-  vnetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet
 ```
 
 Deploy:
@@ -43,7 +43,7 @@ Deploy:
 planton apply -f private-dns-zone.yaml
 ```
 
-This creates a Private DNS Zone for PostgreSQL Private Link resolution, linked to the specified VNet with auto-registration disabled.
+Then make it resolvable from a network with an `AzurePrivateDnsZoneVirtualNetworkLink` referencing this zone.
 
 ## Configuration Reference
 
@@ -51,125 +51,86 @@ This creates a Private DNS Zone for PostgreSQL Private Link resolution, linked t
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `name` | `string` | DNS zone name. For Private Link, must match the Azure-defined privatelink zone name for the target service (e.g., `privatelink.postgres.database.azure.com`). For custom internal DNS, use any valid domain (e.g., `contoso.internal`). | Required, must be a valid DNS domain name |
-| `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `vnetId` | `StringValueOrRef` | Azure Resource Manager ID of the Virtual Network to link. Format: `/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name}`. Can reference an AzureVpc resource via `valueFrom`. | Required |
+| `resourceGroup` | `StringValueOrRef` | Resource group name. Defaults to referencing an `AzureResourceGroup`'s name output. | Required |
+| `name` | `string` | DNS zone name. For Private Link, must match the Azure-defined privatelink zone name for the target service; for custom internal DNS, any valid domain. Renaming replaces the zone and every record in it. | Required, valid DNS domain |
 
 ### Optional Fields
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `registrationEnabled` | `bool` | `false` | Enables auto-registration of VM DNS records in the linked VNet. When true, Azure automatically creates and removes A records for VMs in the linked VNet. Useful for custom internal DNS zones. Should remain false for Private Link zones, where DNS records are managed by the private endpoint resource. |
+| Field | Type | Description |
+|-------|------|-------------|
+| `soaRecord` | `object` | Customize the zone's Start of Authority record: `email` (SOA host format, dots instead of `@`) plus `expireTime`, `minimumTtl` (negative-caching TTL -- the one timer with real operational impact), `refreshTime`, `retryTime`, `ttl`, and record `tags`. Written at creation; changing it replaces the zone. Nearly every deployment leaves this unset. |
+| `tags` | `map(string)` | User tags, merged over Planton-derived tags (user wins on collision). |
 
 ## Examples
 
 ### Private Link Zone for PostgreSQL
 
-A Private DNS Zone for resolving PostgreSQL Flexible Server private endpoints:
-
 ```yaml
 apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZone
 metadata:
-  name: postgres-dns
+  name: postgres-privatelink-zone
   annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePrivateDnsZone.postgres-dns
-spec:
-  resourceGroup: prod-rg
-  name: privatelink.postgres.database.azure.com
-  vnetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet
-```
-
-### Private Link Zone for Key Vault
-
-A Private DNS Zone enabling private connectivity to Azure Key Vault:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzurePrivateDnsZone
-metadata:
-  name: keyvault-dns
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePrivateDnsZone.keyvault-dns
-spec:
-  resourceGroup: prod-rg
-  name: privatelink.vaultcore.azure.net
-  vnetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet
-```
-
-### Custom Internal DNS with Auto-Registration
-
-An internal DNS zone for VM hostname discovery with auto-registration enabled:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzurePrivateDnsZone
-metadata:
-  name: internal-dns
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzurePrivateDnsZone.internal-dns
-spec:
-  resourceGroup: dev-rg
-  name: contoso.internal
-  vnetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dev-rg/providers/Microsoft.Network/virtualNetworks/dev-vnet
-  registrationEnabled: true
-```
-
-### Private Link Zone for Blob Storage
-
-A Private DNS Zone for resolving Azure Blob Storage private endpoints:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzurePrivateDnsZone
-metadata:
-  name: blob-dns
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePrivateDnsZone.blob-dns
-spec:
-  resourceGroup: prod-rg
-  name: privatelink.blob.core.windows.net
-  vnetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet
-```
-
-### Using Foreign Key References
-
-Reference Planton-managed resources instead of hardcoding IDs:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzurePrivateDnsZone
-metadata:
-  name: ref-dns
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePrivateDnsZone.ref-dns
+    pulumi.planton.dev/stack.name: prod.AzurePrivateDnsZone.postgres-privatelink-zone
 spec:
   resourceGroup:
     valueFrom:
-      kind: AzureResourceGroup
-      name: my-rg
-      field: status.outputs.resource_group_name
+      name: network-rg
   name: privatelink.postgres.database.azure.com
-  vnetId:
+```
+
+### Custom Internal Zone with SOA Tuning
+
+```yaml
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZone
+metadata:
+  name: corp-internal-zone
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: my-org
+    pulumi.planton.dev/project: my-project
+    pulumi.planton.dev/stack.name: prod.AzurePrivateDnsZone.corp-internal-zone
+spec:
+  resourceGroup:
     valueFrom:
-      kind: AzureVpc
-      name: my-vpc
-      field: status.outputs.vnet_id
+      name: network-rg
+  name: corp.internal
+  soaRecord:
+    email: dnsadmin.mycompany.com
+    minimumTtl: 30
+  tags:
+    cost-center: platform
+```
+
+### The Composed Trio: Network + Zone + Link
+
+```yaml
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZone
+metadata:
+  name: redis-privatelink-zone
+spec:
+  resourceGroup:
+    valueFrom:
+      name: network-rg
+  name: privatelink.redis.cache.windows.net
+---
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZoneVirtualNetworkLink
+metadata:
+  name: redis-zone-hub-link
+spec:
+  name: hub-vnet
+  privateDnsZoneId:
+    valueFrom:
+      name: redis-privatelink-zone
+  virtualNetworkId:
+    valueFrom:
+      name: hub-network
 ```
 
 ## Stack Outputs
@@ -178,13 +139,13 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `zone_id` | `string` | Azure Resource Manager ID of the Private DNS Zone. Format: `/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/privateDnsZones/{name}`. Referenced by downstream resources via `StringValueOrRef`. |
-| `zone_name` | `string` | Name of the Private DNS Zone (e.g., `privatelink.postgres.database.azure.com`). |
+| `zone_id` | `string` | Full ARM ID of the zone -- the join key for links, private endpoints, and databases |
+| `zone_name` | `string` | The zone's DNS name as deployed |
+| `resource_group_name` | `string` | The zone's resource group |
 
 ## Related Components
 
-- [AzureResourceGroup](/docs/catalog/azure/azureresourcegroup) — provides the resource group for zone placement
-- [AzureVpc](/docs/catalog/azure/azurevpc) — provides the Virtual Network to link to the zone
-- [AzurePostgresqlFlexibleServer](/docs/catalog/azure/azurepostgresqlflexibleserver) — references `zone_id` for VNet-integrated deployment with private DNS resolution
-- [AzureMysqlFlexibleServer](/docs/catalog/azure/azuremysqlflexibleserver) — references `zone_id` for VNet-integrated deployment with private DNS resolution
-- [AzurePrivateEndpoint](/docs/catalog/azure/azureprivateendpoint) — references `zone_id` for DNS zone group registration, enabling private endpoint FQDN resolution
+- [AzurePrivateDnsZoneVirtualNetworkLink](/docs/catalog/azure/private-dns-zone-virtual-network-link) — makes this zone resolvable from a virtual network
+- [AzurePrivateEndpoint](/docs/catalog/azure/private-endpoint) — registers PaaS private-IP records in privatelink zones
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) — the network the zone gets linked to
+- [AzurePostgresqlFlexibleServer](/docs/catalog/azure/postgresql-flexible-server) — consumes the zone for VNet-integrated deployment

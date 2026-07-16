@@ -1,12 +1,16 @@
 locals {
-  # Derive a stable resource ID
   resource_id = (
     var.metadata.id != null && var.metadata.id != ""
     ? var.metadata.id
     : var.metadata.name
   )
 
-  # Base tags for Azure resources
+  # PARITY-EXCEPTION: resource_kind here is the family-wide snake-case
+  # literal and resource_id falls back to metadata.name, while the Pulumi
+  # module emits the lowered CloudResourceKind enum string and omits
+  # resource_id when metadata.id is empty. Output-neutral (tags never feed
+  # stack outputs); aligning the two shapes is a family-wide convention
+  # change, not a per-kind fix.
   base_tags = {
     "resource"      = "true"
     "resource_id"   = local.resource_id
@@ -14,19 +18,93 @@ locals {
     "resource_name" = var.metadata.name
   }
 
-  # Organization tag only if var.metadata.org is non-empty
   org_tag = (
     var.metadata.org != null && var.metadata.org != ""
   ) ? { "organization" = var.metadata.org } : {}
 
-  # Environment tag only if var.metadata.env is non-empty
   env_tag = (
     var.metadata.env != null && var.metadata.env != ""
   ) ? { "environment" = var.metadata.env } : {}
 
-  # Merge base, org, and environment tags
-  final_tags = merge(local.base_tags, local.org_tag, local.env_tag)
+  # Metadata-derived tags first, then the user's spec tags merged over
+  # them: user tags deliberately win so an org's governance conventions
+  # (cost center, owner) can override the derived values where they
+  # collide.
+  final_tags = merge(local.base_tags, local.org_tag, local.env_tag, var.spec.tags)
 
-  # Determine if VNet integration is enabled
-  is_vnet_integrated = var.spec.delegated_subnet_id != null && var.spec.delegated_subnet_id != ""
+  # The spec's enums arrive as FULL proto value names (the tfvars wire
+  # format never strips prefixes); each map below carries the complete
+  # verbatim vocabulary for its enum, mapped to ARM's values. A missing
+  # entry would silently drop the setting, so the maps are exhaustive by
+  # construction.
+  create_mode_map = {
+    "DEFAULT"               = "Default"
+    "POINT_IN_TIME_RESTORE" = "PointInTimeRestore"
+    "REPLICA"               = "Replica"
+    "GEO_RESTORE"           = "GeoRestore"
+  }
+
+  ha_mode_map = {
+    "ZONE_REDUNDANT" = "ZoneRedundant"
+    "SAME_ZONE"      = "SameZone"
+  }
+
+  public_network_access_map = {
+    "ENABLED"  = "Enabled"
+    "DISABLED" = "Disabled"
+  }
+
+  # Unspecified create_mode means a fresh (DEFAULT) server. azurerm treats
+  # an omitted create_mode the same way, so unset maps to null rather than
+  # materializing "Default" -- keeping the plan free of a no-op diff.
+  create_mode = (
+    var.spec.create_mode == null || var.spec.create_mode == "" ? null :
+    local.create_mode_map[var.spec.create_mode]
+  )
+
+  is_default_mode = local.create_mode == null || local.create_mode == "Default"
+
+  # version and sku_name are inherited from the source on replicas and
+  # restores; sending them would fight the service, so they are only
+  # forwarded for a fresh server (version) or when explicitly set (sku --
+  # a replica may legitimately override its compute).
+  version = local.is_default_mode ? coalesce(var.spec.version, "8.0.21") : null
+
+  sku_name = var.spec.sku_name == null || var.spec.sku_name == "" ? null : var.spec.sku_name
+
+  # Credentials are sent only when non-empty: replicas and restores
+  # inherit them from the source, and azurerm rejects empty strings.
+  administrator_login = (
+    var.spec.administrator_login == null || var.spec.administrator_login == "" ? null :
+    var.spec.administrator_login
+  )
+
+  administrator_password = (
+    var.spec.administrator_password == null || var.spec.administrator_password == "" ? null :
+    var.spec.administrator_password
+  )
+
+  # replication_role can never be part of a create call (Azure rejects
+  # it); azurerm applies it as a day-2 update, which is exactly how a
+  # replica is promoted: flip the field on the existing replica and apply.
+  replication_role = (
+    var.spec.replication_role == null || var.spec.replication_role == "" ? null : "None"
+  )
+
+  # Unset public_network_access maps to null so Azure derives the value
+  # (Enabled for a public server, Disabled when VNet-injected) instead of
+  # the module guessing and fighting the service.
+  public_network_access = (
+    var.spec.public_network_access == null || var.spec.public_network_access == "" ? null :
+    local.public_network_access_map[var.spec.public_network_access]
+  )
+
+  # The Entra tenant for the AAD administrator grant: the spec's explicit
+  # tenant wins, otherwise the deploying credential's tenant -- the
+  # correct value for virtually every deployment.
+  aad_tenant_id = (
+    var.spec.aad_administrator != null && var.spec.aad_administrator.tenant_id != null && var.spec.aad_administrator.tenant_id != ""
+    ? var.spec.aad_administrator.tenant_id
+    : data.azurerm_client_config.current.tenant_id
+  )
 }

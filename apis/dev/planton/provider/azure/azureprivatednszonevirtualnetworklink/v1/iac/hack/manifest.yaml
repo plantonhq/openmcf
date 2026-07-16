@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZoneVirtualNetworkLink
+metadata:
+  name: test-link
+  org: test-org
+  env: dev
+spec:
+  name: hub-vnet
+  privateDnsZoneId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/privateDnsZones/corp.internal
+  virtualNetworkId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/hub
+  registrationEnabled: true
+  tags:
+    cost-center: platform
+    owner: network-team

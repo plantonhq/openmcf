@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorSecurityPolicy
+metadata:
+  name: test-front-door-security-policy
+spec:
+  profileId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cdn/profiles/test-frontdoor
+  securityPolicyName: edge-waf-attach
+  firewallPolicyId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/frontDoorWebApplicationFirewallPolicies/testedgewaf
+  # A mixed list: the endpoint's default *.azurefd.net hostname plus a
+  # custom domain -- exercises both accepted ID shapes.
+  domainIds:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cdn/profiles/test-frontdoor/afdEndpoints/web
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cdn/profiles/test-frontdoor/customDomains/www-example-com

@@ -119,7 +119,7 @@ The update --fill-gaps scenario will run appropriate forge flow rules to create:
 - Missing proto files (if any)
 - Missing IaC modules (Pulumi or Terraform)
 - Missing documentation (research, user-facing, examples)
-- Missing supporting files (manifests, debug scripts, overviews)
+- Missing supporting files (manifests, overviews)
 
 **Validation (Execute in Sequence):**
 - After proto file creation/changes: Run `make protos` to regenerate Go stubs

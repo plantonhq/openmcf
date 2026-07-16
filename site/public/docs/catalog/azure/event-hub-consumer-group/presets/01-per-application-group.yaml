@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHubConsumerGroup
+metadata:
+  name: my-analytics-consumer
+spec:
+  eventHubId:
+    valueFrom:
+      kind: AzureEventHub
+      name: my-telemetry-stream
+      fieldPath: status.outputs.event_hub_id
+  # One group per consuming application -- offsets never collide.
+  consumerGroupName: analytics
+  # Record whose cursor this is; operators see it in the portal.
+  userMetadata: "owner=data-platform; app=stream-analytics"

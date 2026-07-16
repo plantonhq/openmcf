@@ -5,7 +5,7 @@ metadata:
 spec:
   resourceGroup:
     value: "<your-resource-group-name>"
-  name: my-enterprise-api
+  containerAppName: my-enterprise-api
   containerAppEnvironmentId:
     value: "<container-app-environment-id>"
   containers:
@@ -19,7 +19,7 @@ spec:
         - name: DB_CONNECTION
           secretName: db-conn
       livenessProbe:
-        transport: HTTP
+        transport: HTTP_GET
         port: 8080
         path: /healthz
         initialDelayInSeconds: 10
@@ -27,7 +27,7 @@ spec:
         timeoutSeconds: 5
         failureCountThreshold: 3
       readinessProbe:
-        transport: HTTP
+        transport: HTTP_GET
         port: 8080
         path: /ready
         intervalSeconds: 5
@@ -35,7 +35,7 @@ spec:
         successCountThreshold: 2
         failureCountThreshold: 3
       startupProbe:
-        transport: HTTP
+        transport: HTTP_GET
         port: 8080
         path: /healthz
         intervalSeconds: 3
@@ -56,21 +56,22 @@ spec:
     - server: mycompany.azurecr.io
       identity: "<your-user-assigned-identity-id>"
   identity:
-    type: UserAssigned
-    identityIds:
+    type: USER_ASSIGNED
+    userAssignedIdentityIds:
       - value: "<your-user-assigned-identity-id>"
   ingress:
     externalEnabled: true
     targetPort: 8080
+    # Azure evaluates the list as one allowlist (or one denylist) -- every
+    # rule must share the same action; traffic outside an allowlist is
+    # implicitly denied.
     ipSecurityRestrictions:
       - name: allow-office
-        action: Allow
+        action: ALLOW
         ipAddressRange: 203.0.113.0/24
         description: Corporate office CIDR
-      - name: deny-all
-        action: Deny
-        ipAddressRange: 0.0.0.0/0
-        description: Deny all other traffic
     trafficWeight:
       - latestRevision: true
         percentage: 100
+  tags:
+    environment: production

@@ -1,0 +1,145 @@
+# Spoke 1: an isolated workload network whose only paths are the hub
+# peering (to reach the firewall) and its own subnets. Everything leaving
+# the spoke -- internet, other spokes, on-premises -- transits the hub
+# firewall, so the spoke's blast radius is exactly what the policy allows.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-vnet"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-network-foundation"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-vnet"
+  addressSpaces:
+    - "{{ values.spoke_1_vnet_cidr }}"
+  {% if values.spoke_dns_servers %}
+  # Custom resolvers -- set to the firewall's private IP when its DNS
+  # proxy is on, so workloads and firewall resolve names identically.
+  dnsServers:
+    {% for server in values.spoke_dns_servers.split(',') %}
+    - "{{ server.strip() }}"
+    {% endfor %}
+  {% endif %}
+---
+# The spoke's NSG: east-west filtering INSIDE the spoke, complementing the
+# firewall's north-south control. It ships without rules on purpose --
+# Azure's implicit defaults already allow VNet-internal traffic and deny
+# inbound from the internet, and no public IPs exist here. The group is
+# the governance anchor workload rules attach to as the spoke fills up.
+apiVersion: azure.planton.dev/v1
+kind: AzureNetworkSecurityGroup
+metadata:
+  name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-nsg"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-network-foundation"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-nsg"
+---
+# The route table that makes the firewall unavoidable: the default route
+# hands every packet leaving the subnet to the firewall's private IP --
+# referenced from the firewall's own output, so the route always follows
+# the firewall. BGP propagation is disabled: without that, a default route
+# advertised from on-premises (over a future ExpressRoute/VPN) could
+# silently bypass the firewall.
+apiVersion: azure.planton.dev/v1
+kind: AzureRouteTable
+metadata:
+  name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-egress"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-network-foundation"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-egress"
+  routes:
+    - name: default-via-firewall
+      addressPrefix: "0.0.0.0/0"
+      nextHopType: VIRTUAL_APPLIANCE
+      nextHopInIpAddress:
+        valueFrom:
+          kind: AzureFirewall
+          name: "{{ values.env }}-hub-firewall"
+          fieldPath: status.outputs.private_ip_address
+  bgpRoutePropagationEnabled: false
+---
+# The spoke's workload subnet, wired to the route table (forced egress)
+# and the NSG (east-west filtering). Implicit outbound access is off:
+# the ONLY way out is the declared route through the firewall. Additional
+# workload subnets follow this same three-line pattern.
+apiVersion: azure.planton.dev/v1
+kind: AzureSubnet
+metadata:
+  name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-workload-subnet"
+spec:
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  name: workload
+  addressPrefixes:
+    - "{{ values.spoke_1_workload_subnet_cidr }}"
+  defaultOutboundAccessEnabled: false
+  routeTableId:
+    valueFrom:
+      kind: AzureRouteTable
+      name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-egress"
+      fieldPath: status.outputs.route_table_id
+  networkSecurityGroupId:
+    valueFrom:
+      kind: AzureNetworkSecurityGroup
+      name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-nsg"
+      fieldPath: status.outputs.network_security_group_id
+---
+# Peering, hub side. One resource per direction is Azure's own model;
+# connectivity exists only when both directions are up. Forwarded traffic
+# is allowed on BOTH directions because the firewall relays flows that
+# originate in OTHER networks (spoke-to-spoke, and later on-premises) --
+# with the flag off, the receiving side silently drops exactly those
+# relayed packets.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetworkPeering
+metadata:
+  name: "{{ values.env }}-peer-hub-to-{{ values.spoke_1_name }}"
+spec:
+  name: "hub-to-{{ values.spoke_1_name }}"
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-hub-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  remoteVirtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  allowForwardedTraffic: true
+---
+# Peering, spoke side.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetworkPeering
+metadata:
+  name: "{{ values.env }}-peer-{{ values.spoke_1_name }}-to-hub"
+spec:
+  name: "{{ values.spoke_1_name }}-to-hub"
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  remoteVirtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-hub-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  allowForwardedTraffic: true

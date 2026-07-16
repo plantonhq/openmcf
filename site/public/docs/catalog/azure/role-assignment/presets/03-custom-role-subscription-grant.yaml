@@ -1,0 +1,12 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: my-custom-role-grant
+spec:
+  scope:
+    value: /subscriptions/<subscription-id>
+  roleDefinitionId: /subscriptions/<subscription-id>/providers/Microsoft.Authorization/roleDefinitions/<role-definition-guid>
+  principalId:
+    value: <principal-object-id>
+  principalType: GROUP
+  description: <why-this-grant-exists>

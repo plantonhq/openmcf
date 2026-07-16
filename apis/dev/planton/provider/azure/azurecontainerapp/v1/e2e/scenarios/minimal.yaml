@@ -1,0 +1,51 @@
+# Minimal AzureContainerApp scenario: a public quickstart container on
+# the fixture environment (registry prerequisite) -- proving the
+# environment FK seam, the container template (cpu/memory/env), external
+# HTTP ingress with the latest-revision traffic weight, an HTTP scale
+# rule, scale-to-zero replica bounds, and user tags. The composed chain
+# is RG -> environment -> app across three kinds. App names are
+# environment-scoped, so sequential engine runs recreate the same name
+# safely.
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerApp
+metadata:
+  name: planton-oss-e2e-azureca-smoke
+  id: planton-oss-e2e-azureca-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecontainerapp
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  containerAppName: planton-oss-e2e-ca-smoke
+  containerAppEnvironmentId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-cae
+  containers:
+    - name: web
+      image: mcr.microsoft.com/k8se/quickstart:latest
+      cpu: 0.25
+      memory: "0.5Gi"
+      env:
+        - name: APP_MODE
+          value: e2e
+  minReplicas: 0
+  maxReplicas: 2
+  httpScaleRules:
+    - name: http-concurrency
+      concurrentRequests: "50"
+  ingress:
+    externalEnabled: true
+    targetPort: 80
+    trafficWeight:
+      - latestRevision: true
+        percentage: 100
+  tags:
+    e2e-suite: azure

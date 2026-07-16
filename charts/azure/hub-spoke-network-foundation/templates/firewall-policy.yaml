@@ -1,0 +1,175 @@
+# IP Groups: named, reusable address sets the firewall rules reference by
+# id instead of repeating CIDR literals. One group per spoke -- rules can
+# then target "the app spoke" or "every workload spoke" as a policy
+# statement, and a spoke's address plan changes in exactly one place.
+apiVersion: azure.planton.dev/v1
+kind: AzureIpGroup
+metadata:
+  name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-addresses"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-network-foundation"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-addresses"
+  cidrs:
+    - "{{ values.spoke_1_vnet_cidr }}"
+{% if values.spoke_2_enabled | bool %}
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureIpGroup
+metadata:
+  name: "{{ values.env }}-spoke-{{ values.spoke_2_name }}-addresses"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-network-foundation"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-spoke-{{ values.spoke_2_name }}-addresses"
+  cidrs:
+    - "{{ values.spoke_2_vnet_cidr }}"
+{% endif %}
+---
+# The firewall policy: WHAT the firewall enforces, authored separately from
+# WHERE it runs (the firewall instance). Rules live in rule collection
+# group children so each team's rules deploy independently; this policy
+# carries the estate-wide inspection posture.
+apiVersion: azure.planton.dev/v1
+kind: AzureFirewallPolicy
+metadata:
+  name: "{{ values.env }}-firewall-policy"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-network-foundation"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-firewall-policy"
+  # The policy's tier must match the firewall's -- both render from the
+  # same parameter so they can never disagree.
+  sku: "{{ values.firewall_tier }}"
+  threatIntelligenceMode: "{{ values.threat_intelligence_mode }}"
+  {% if values.dns_proxy_enabled | bool %}
+  # DNS proxy: the firewall resolves DNS for clients that point at its
+  # private IP, guaranteeing the firewall and its clients see identical
+  # answers -- the prerequisite for FQDN-based NETWORK rules. Point spoke
+  # DNS at the firewall (spoke_dns_servers) to complete the loop.
+  dns:
+    proxyEnabled: true
+  {% endif %}
+  {% if values.firewall_tier == "PREMIUM" %}
+  # Premium tier: IDPS signature inspection starts in ALERT so the estate
+  # observes real traffic before enforcing -- flip to IDPS_DENY once the
+  # alert stream is reviewed. TLS inspection additionally needs a CA
+  # certificate in Key Vault and a user-assigned identity on this policy;
+  # both are post-deploy additions to this resource.
+  intrusionDetection:
+    mode: IDPS_ALERT
+  {% endif %}
+  # Policy analytics: rule-hit and traffic analysis in the foundation's
+  # workspace -- the data that answers "which rule allowed this flow" and
+  # "what would break if I tightened it".
+  insights:
+    enabled: true
+    defaultLogAnalyticsWorkspaceId:
+      valueFrom:
+        kind: AzureLogAnalyticsWorkspace
+        name: "{{ values.env }}-network-logs"
+        fieldPath: status.outputs.workspace_id
+    retentionInDays: {{ values.log_retention_days }}
+---
+# The platform's baseline egress rules. Groups are evaluated by priority;
+# 200 leaves room for an emergency-block group in front. Workload teams
+# extend the estate by deploying ADDITIONAL rule collection groups against
+# this policy -- never by editing this one.
+apiVersion: azure.planton.dev/v1
+kind: AzureFirewallPolicyRuleCollectionGroup
+metadata:
+  name: "{{ values.env }}-platform-baseline-rules"
+spec:
+  firewallPolicyId:
+    valueFrom:
+      kind: AzureFirewallPolicy
+      name: "{{ values.env }}-firewall-policy"
+      fieldPath: status.outputs.firewall_policy_id
+  name: platform-baseline
+  priority: 200
+  networkRuleCollections:
+    - name: platform-dependencies
+      priority: 100
+      action: ALLOW
+      rules:
+        # Azure Monitor's service tag covers the ingestion endpoints
+        # monitoring agents ship telemetry to -- allowed by tag so the
+        # rule tracks Microsoft's endpoint changes automatically.
+        - name: azure-monitor
+          description: Workload telemetry to Azure Monitor ingestion endpoints
+          protocols: [TCP]
+          sourceIpGroups:
+            - valueFrom:
+                kind: AzureIpGroup
+                name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-addresses"
+                fieldPath: status.outputs.ip_group_id
+            {% if values.spoke_2_enabled | bool %}
+            - valueFrom:
+                kind: AzureIpGroup
+                name: "{{ values.env }}-spoke-{{ values.spoke_2_name }}-addresses"
+                fieldPath: status.outputs.ip_group_id
+            {% endif %}
+          destinationAddresses: ["AzureMonitor"]
+          destinationPorts: ["443"]
+        # Time sync must work before anything else does; NTP to any
+        # responder is the standard baseline concession (the protocol
+        # carries no payload worth exfiltrating).
+        - name: ntp
+          description: Time synchronization from workload spokes
+          protocols: [UDP]
+          sourceIpGroups:
+            - valueFrom:
+                kind: AzureIpGroup
+                name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-addresses"
+                fieldPath: status.outputs.ip_group_id
+            {% if values.spoke_2_enabled | bool %}
+            - valueFrom:
+                kind: AzureIpGroup
+                name: "{{ values.env }}-spoke-{{ values.spoke_2_name }}-addresses"
+                fieldPath: status.outputs.ip_group_id
+            {% endif %}
+          destinationAddresses: ["*"]
+          destinationPorts: ["123"]
+  applicationRuleCollections:
+    - name: curated-web-egress
+      priority: 100
+      action: ALLOW
+      rules:
+        # The curated FQDN allowlist -- SNI-matched, so it works without
+        # TLS termination or DNS proxying. Everything not listed here (or
+        # in a team's own rule collection group) is dropped and logged:
+        # deny-by-default is the foundation's core promise.
+        - name: allowed-package-repositories
+          description: HTTP/HTTPS egress to the platform's curated FQDN allowlist
+          protocols:
+            - type: HTTP
+              port: 80
+            - type: HTTPS
+              port: 443
+          sourceIpGroups:
+            - valueFrom:
+                kind: AzureIpGroup
+                name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-addresses"
+                fieldPath: status.outputs.ip_group_id
+            {% if values.spoke_2_enabled | bool %}
+            - valueFrom:
+                kind: AzureIpGroup
+                name: "{{ values.env }}-spoke-{{ values.spoke_2_name }}-addresses"
+                fieldPath: status.outputs.ip_group_id
+            {% endif %}
+          destinationFqdns:
+            {% for fqdn in values.allowed_egress_fqdns.split(',') %}
+            - "{{ fqdn.strip() }}"
+            {% endfor %}

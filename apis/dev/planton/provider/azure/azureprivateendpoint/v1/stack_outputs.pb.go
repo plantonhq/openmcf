@@ -21,33 +21,23 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzurePrivateEndpointStackOutputs** captures the outputs of provisioning an
-// Azure Private Endpoint.
-//
-// The primary output is `private_endpoint_id` (the Azure resource ID) and
-// `private_ip_address` (the private IP allocated from the subnet). These enable:
-//
-// - Downstream resources to reference the endpoint
-// - DNS configuration to map FQDNs to the private IP
-// - Network troubleshooting by inspecting the allocated IP
-//
-// AzurePrivateEndpoint is a leaf resource in the infra chart DAG -- nothing
-// currently references it downstream. However, the outputs are essential for
-// operational visibility and potential future consumers.
+// **AzurePrivateEndpointStackOutputs** captures the outputs of provisioning
+// an Azure Private Endpoint.
 type AzurePrivateEndpointStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Manager ID of the Private Endpoint.
+	// The Azure Resource Manager ID of the private endpoint.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/privateEndpoints/{name}
 	PrivateEndpointId string `protobuf:"bytes,1,opt,name=private_endpoint_id,json=privateEndpointId,proto3" json:"private_endpoint_id,omitempty"`
-	// The private IP address allocated to the Private Endpoint from the subnet.
-	// This is the IP address that the target service's FQDN should resolve to
-	// within the VNet. If a DNS zone group is configured, this IP is automatically
-	// registered as an A-record in the corresponding private DNS zone.
-	PrivateIpAddress string `protobuf:"bytes,2,opt,name=private_ip_address,json=privateIpAddress,proto3" json:"private_ip_address,omitempty"`
-	// The Azure Resource Manager ID of the network interface created for this
-	// Private Endpoint. The NIC is automatically provisioned by Azure and attached
-	// to the subnet. Useful for advanced networking diagnostics.
-	NetworkInterfaceId string `protobuf:"bytes,3,opt,name=network_interface_id,json=networkInterfaceId,proto3" json:"network_interface_id,omitempty"`
+	// The name of the private endpoint resource.
+	PrivateEndpointName string `protobuf:"bytes,2,opt,name=private_endpoint_name,json=privateEndpointName,proto3" json:"private_endpoint_name,omitempty"`
+	// The private IP address allocated to the endpoint from the subnet. This
+	// is the IP the target service's FQDN resolves to inside the VNet; when a
+	// DNS zone group is configured, it is registered as an A record in each
+	// referenced private DNS zone automatically.
+	PrivateIpAddress string `protobuf:"bytes,3,opt,name=private_ip_address,json=privateIpAddress,proto3" json:"private_ip_address,omitempty"`
+	// The Azure Resource Manager ID of the network interface Azure created for
+	// this endpoint and attached to the subnet. Useful for diagnostics.
+	NetworkInterfaceId string `protobuf:"bytes,4,opt,name=network_interface_id,json=networkInterfaceId,proto3" json:"network_interface_id,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -89,6 +79,13 @@ func (x *AzurePrivateEndpointStackOutputs) GetPrivateEndpointId() string {
 	return ""
 }
 
+func (x *AzurePrivateEndpointStackOutputs) GetPrivateEndpointName() string {
+	if x != nil {
+		return x.PrivateEndpointName
+	}
+	return ""
+}
+
 func (x *AzurePrivateEndpointStackOutputs) GetPrivateIpAddress() string {
 	if x != nil {
 		return x.PrivateIpAddress
@@ -107,11 +104,12 @@ var File_dev_planton_provider_azure_azureprivateendpoint_v1_stack_outputs_proto 
 
 const file_dev_planton_provider_azure_azureprivateendpoint_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/azure/azureprivateendpoint/v1/stack_outputs.proto\x122dev.planton.provider.azure.azureprivateendpoint.v1\"\xb2\x01\n" +
+	"Fdev/planton/provider/azure/azureprivateendpoint/v1/stack_outputs.proto\x122dev.planton.provider.azure.azureprivateendpoint.v1\"\xe6\x01\n" +
 	" AzurePrivateEndpointStackOutputs\x12.\n" +
-	"\x13private_endpoint_id\x18\x01 \x01(\tR\x11privateEndpointId\x12,\n" +
-	"\x12private_ip_address\x18\x02 \x01(\tR\x10privateIpAddress\x120\n" +
-	"\x14network_interface_id\x18\x03 \x01(\tR\x12networkInterfaceIdB\xa7\x03\n" +
+	"\x13private_endpoint_id\x18\x01 \x01(\tR\x11privateEndpointId\x122\n" +
+	"\x15private_endpoint_name\x18\x02 \x01(\tR\x13privateEndpointName\x12,\n" +
+	"\x12private_ip_address\x18\x03 \x01(\tR\x10privateIpAddress\x120\n" +
+	"\x14network_interface_id\x18\x04 \x01(\tR\x12networkInterfaceIdB\xa7\x03\n" +
 	"6com.dev.planton.provider.azure.azureprivateendpoint.v1B\x11StackOutputsProtoP\x01Zkgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureprivateendpoint/v1;azureprivateendpointv1\xa2\x02\x05DPPAA\xaa\x022Dev.Planton.Provider.Azure.Azureprivateendpoint.V1\xca\x022Dev\\Planton\\Provider\\Azure\\Azureprivateendpoint\\V1\xe2\x02>Dev\\Planton\\Provider\\Azure\\Azureprivateendpoint\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Azure::Azureprivateendpoint::V1b\x06proto3"
 
 var (

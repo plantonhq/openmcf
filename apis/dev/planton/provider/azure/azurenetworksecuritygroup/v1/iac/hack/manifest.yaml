@@ -4,18 +4,32 @@ metadata:
   name: test-nsg
 spec:
   region: eastus
-  resource_group: test-rg
+  resourceGroup:
+    value: test-rg
   name: test-nsg
-  security_rules:
+  securityRules:
     - name: allow-https
       priority: 100
-      direction: Inbound
-      access: Allow
-      protocol: Tcp
-      destination_port_range: "443"
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
+      destinationPortRange: "443"
+    - name: allow-web-multi
+      priority: 200
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
+      destinationPortRanges:
+        - "80"
+        - "8080"
+      sourceAddressPrefixes:
+        - "10.1.0.0/16"
+        - "10.2.0.0/16"
     - name: deny-all-inbound
       priority: 4096
-      direction: Inbound
-      access: Deny
-      protocol: "*"
-      destination_port_range: "*"
+      direction: INBOUND
+      access: DENY
+      protocol: ANY
+      destinationPortRange: "*"
+  tags:
+    purpose: hack-test

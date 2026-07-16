@@ -1,6 +1,6 @@
 # AzureContainerAppEnvironment Pulumi Module
 
-This directory contains the Pulumi IaC implementation for the `AzureContainerAppEnvironment` component.
+The Pulumi (Go) implementation of the `AzureContainerAppEnvironment` component.
 
 ## Structure
 
@@ -9,12 +9,9 @@ pulumi/
 ├── main.go          # Entrypoint (loads stack input, calls module)
 ├── Pulumi.yaml      # Pulumi project configuration
 ├── Makefile         # Build/test targets
-├── debug.sh         # Debug build script
-├── README.md        # This file
-├── overview.md      # Architecture overview
 └── module/
-    ├── main.go      # Resource creation (containerapp.Environment)
-    ├── locals.go    # Local variable initialization
+    ├── main.go      # Environment + optional custom-domain association
+    ├── locals.go    # Tag merge + enum wire-value maps
     └── outputs.go   # Output key constants
 ```
 
@@ -23,18 +20,16 @@ pulumi/
 | Resource | Pulumi Type | Condition |
 |----------|-------------|-----------|
 | Container App Environment | `containerapp.Environment` | Always |
+| Custom DNS suffix | `containerapp.EnvironmentCustomDomain` | `spec.custom_domain` set |
+
+## Behavior Notes
+
+- The Azure provider comes from the shared `pulumiazureprovider.Get` builder, which resolves static client-secret, keyless web-identity, or ambient credentials from the stack input.
+- Enum wire maps are spelled out row by row in `locals.go` so a vocabulary drift fails at preview time.
+- The system-assigned identity's principal id is exported empty when no system identity exists, keeping the output shape constant.
 
 ## Build
 
 ```bash
-make build    # Compile module and entrypoint
-make test     # Run module tests
-make deps     # Tidy Go modules
-```
-
-## Debug
-
-```bash
-./debug.sh                           # Uses default manifest
-./debug.sh path/to/manifest.yaml     # Uses custom manifest
+make build
 ```

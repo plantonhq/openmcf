@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurefrontdoorcustomdomain
+spec:
+  # The harness deploys the fixture resource group and the fixture Front
+  # Door profile (registry prerequisite), creates a managed-certificate
+  # custom domain (which lands in the pending-validation state -- Azure
+  # never blocks creation on DNS proof), verifies it via the ARM API and
+  # its validation_token output, destroys it, and verifies it is gone --
+  # on both provisioners. Expect ~21 min per engine (the profile
+  # fixture's ~18-min deletion dominates).
+  #
+  # Recorded exclusion: COMPLETING domain validation (and therefore the
+  # route-attach seam, which requires a validated domain) needs a real
+  # delegated DNS zone to publish the TXT challenge in; the test
+  # subscription owns none. The pending-validation create/destroy cycle
+  # plus the offline gate (spec CELs, tofu plan rendering every TLS
+  # seam, outputs conformance) is the honest boundary of automated proof
+  # for this kind. Observed runs 22-24 min per engine; all four outputs
+  # incl. the validation_token challenge populated on both.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 45

@@ -1,0 +1,31 @@
+# Dedicated AzureCosmosdbAccount for the SQL database scenario only.
+# Account names are globally unique in Azure, so each scenario that
+# creates and destroys its own parent account carries a distinct name --
+# reusing a name across sequential subtests hits Azure's post-delete
+# reservation and the recreate hangs.
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbAccount
+metadata:
+  name: planton-oss-e2e-cosmossqldb-fixture-account
+  id: planton-oss-e2e-cosmossqldb-fixture-account
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecosmosdbaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: westus3
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  accountName: pltnosse2ecossqldb
+  kind: GLOBAL_DOCUMENT_DB
+  consistencyPolicy:
+    consistencyLevel: SESSION
+  geoLocations:
+    - location: westus3
+      failoverPriority: 0

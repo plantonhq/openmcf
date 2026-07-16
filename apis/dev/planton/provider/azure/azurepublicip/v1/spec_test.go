@@ -15,238 +15,107 @@ func TestAzurePublicIpSpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "AzurePublicIpSpec Validation Tests")
 }
 
+// literal builds a StringValueOrRef carrying a literal value.
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+// ref builds a StringValueOrRef carrying a value_from reference.
+func ref(name string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{Name: name},
+		},
+	}
+}
+
+// validResource returns a minimal valid AzurePublicIp that individual cases
+// then mutate into the shape under test.
+func validResource() *AzurePublicIp {
+	return &AzurePublicIp{
+		ApiVersion: "azure.planton.dev/v1",
+		Kind:       "AzurePublicIp",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "test-public-ip",
+		},
+		Spec: &AzurePublicIpSpec{
+			Region:        "eastus",
+			ResourceGroup: literal("test-rg"),
+			Name:          "prod-frontend",
+		},
+	}
+}
+
 var _ = ginkgo.Describe("AzurePublicIpSpec Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
 		ginkgo.Context("azure_public_ip", func() {
 
 			ginkgo.It("should not return a validation error for minimal valid fields", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "my-public-ip",
-					},
-				}
+				err := protovalidate.Validate(validResource())
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept the resource group as a reference", func() {
+				input := validResource()
+				input.Spec.ResourceGroup = ref("platform-rg")
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with full metadata", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "prod-pip",
-						Org:  "mycompany",
-						Env:  "production",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "westeurope",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "prod-network-rg",
-							},
-						},
-						Name: "prod-gateway-pip",
-					},
-				}
+			ginkgo.It("should accept a zone-redundant standard address", func() {
+				input := validResource()
+				input.Spec.Sku = AzurePublicIpSku_STANDARD
+				input.Spec.Zones = []string{"1", "2", "3"}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with domain_name_label", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name:            "my-public-ip",
-						DomainNameLabel: "myapp-gateway",
-					},
-				}
+			ginkgo.It("should accept an IPv6 address", func() {
+				input := validResource()
+				input.Spec.IpVersion = AzurePublicIpIpVersion_IPV6
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with zone-redundant zones", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name:  "my-public-ip",
-						Zones: []string{"1", "2", "3"},
-					},
-				}
+			ginkgo.It("should accept a global-tier frontend on the standard SKU", func() {
+				input := validResource()
+				input.Spec.Sku = AzurePublicIpSku_STANDARD
+				input.Spec.SkuTier = AzurePublicIpSkuTier_GLOBAL
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with single zone", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name:  "my-public-ip",
-						Zones: []string{"1"},
-					},
-				}
+			ginkgo.It("should accept allocation from a public IP prefix", func() {
+				input := validResource()
+				input.Spec.PublicIpPrefixId = ref("prod-egress-prefix")
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with idle_timeout_in_minutes at minimum", func() {
-				minTimeout := int32(4)
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name:                 "my-public-ip",
-						IdleTimeoutInMinutes: &minTimeout,
-					},
-				}
+			ginkgo.It("should accept a DNS label with a reuse scope", func() {
+				input := validResource()
+				input.Spec.DomainNameLabel = "prod-gateway"
+				input.Spec.DomainNameLabelScope = AzurePublicIpDomainNameLabelScope_TENANT_REUSE
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with idle_timeout_in_minutes at maximum", func() {
-				maxTimeout := int32(30)
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name:                 "my-public-ip",
-						IdleTimeoutInMinutes: &maxTimeout,
-					},
-				}
+			ginkgo.It("should accept dedicated DDoS protection with a plan", func() {
+				input := validResource()
+				input.Spec.DdosProtectionMode = AzurePublicIpDdosProtectionMode_ENABLED
+				input.Spec.DdosProtectionPlanId = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/ddosProtectionPlans/shield"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with all fields populated", func() {
-				timeout := int32(10)
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "prod-pip",
-						Org:  "mycompany",
-						Env:  "production",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "prod-network-rg",
-							},
-						},
-						Name:                 "prod-gateway-pip",
-						DomainNameLabel:      "prod-gateway",
-						Zones:                []string{"1", "2", "3"},
-						IdleTimeoutInMinutes: &timeout,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with maximum length name", func() {
-				// Azure allows up to 80 characters for Public IP names
-				longName := ""
-				for len(longName) < 80 {
-					longName += "a"
-				}
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "long-name-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: longName,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with domain_name_label at minimum length", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name:            "my-public-ip",
-						DomainNameLabel: "ab1",
-					},
-				}
+			ginkgo.It("should accept ip_tags, reverse_fqdn, and user tags", func() {
+				input := validResource()
+				input.Spec.IpTags = map[string]string{"RoutingPreference": "Internet"}
+				input.Spec.ReverseFqdn = "mail.example.com"
+				input.Spec.Tags = map[string]string{"cost-center": "networking"}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -256,310 +125,102 @@ var _ = ginkgo.Describe("AzurePublicIpSpec Validation Tests", func() {
 	ginkgo.Describe("When invalid input is passed", func() {
 		ginkgo.Context("azure_public_ip", func() {
 
-			ginkgo.It("should return a validation error when name is missing", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when name is empty string", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
 			ginkgo.It("should return a validation error when region is missing", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "my-public-ip",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when region is empty string", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "my-public-ip",
-					},
-				}
+				input := validResource()
+				input.Spec.Region = ""
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when resource_group is missing", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						Name:   "my-public-ip",
-					},
-				}
+				input := validResource()
+				input.Spec.ResourceGroup = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when name exceeds maximum length", func() {
-				// Azure limit is 80 characters
-				tooLongName := ""
-				for len(tooLongName) < 81 {
-					tooLongName += "a"
-				}
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: tooLongName,
-					},
-				}
+			ginkgo.It("should return a validation error when name is missing", func() {
+				input := validResource()
+				input.Spec.Name = ""
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when domain_name_label starts with a digit", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name:            "my-public-ip",
-						DomainNameLabel: "1invalid-label",
-					},
-				}
+			ginkgo.It("should return a validation error when name ends with a period", func() {
+				input := validResource()
+				input.Spec.Name = "bad."
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when domain_name_label contains uppercase", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name:            "my-public-ip",
-						DomainNameLabel: "MyInvalidLabel",
-					},
-				}
+			ginkgo.It("should return a validation error for a StandardV2 global-tier address", func() {
+				input := validResource()
+				input.Spec.Sku = AzurePublicIpSku_STANDARD_V2
+				input.Spec.SkuTier = AzurePublicIpSkuTier_GLOBAL
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when domain_name_label ends with a hyphen", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name:            "my-public-ip",
-						DomainNameLabel: "invalid-label-",
-					},
-				}
+			ginkgo.It("should return a validation error for an invalid zone value", func() {
+				input := validResource()
+				input.Spec.Zones = []string{"4"}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when idle_timeout_in_minutes is below minimum", func() {
-				belowMin := int32(3)
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name:                 "my-public-ip",
-						IdleTimeoutInMinutes: &belowMin,
-					},
-				}
+			ginkgo.It("should return a validation error for a malformed domain name label", func() {
+				input := validResource()
+				input.Spec.DomainNameLabel = "Bad-Label"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when idle_timeout_in_minutes is above maximum", func() {
-				aboveMax := int32(31)
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name:                 "my-public-ip",
-						IdleTimeoutInMinutes: &aboveMax,
-					},
-				}
+			ginkgo.It("should return a validation error when a label scope is set without a label", func() {
+				input := validResource()
+				input.Spec.DomainNameLabelScope = AzurePublicIpDomainNameLabelScope_NO_REUSE
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when a DDoS plan is set without the enabled mode", func() {
+				input := validResource()
+				input.Spec.DdosProtectionPlanId = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/ddosProtectionPlans/shield"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when idle timeout is out of range", func() {
+				input := validResource()
+				timeout := int32(31)
+				input.Spec.IdleTimeoutInMinutes = &timeout
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when api_version is incorrect", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "wrong.version/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "my-public-ip",
-					},
-				}
+				input := validResource()
+				input.ApiVersion = "wrong.version/v1"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when kind is incorrect", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "WrongKind",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "my-public-ip",
-					},
-				}
+				input := validResource()
+				input.Kind = "WrongKind"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when metadata is missing", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Spec: &AzurePublicIpSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "my-public-ip",
-					},
-				}
+				input := validResource()
+				input.Metadata = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when spec is missing", func() {
-				input := &AzurePublicIp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePublicIp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pip",
-					},
-				}
+				input := validResource()
+				input.Spec = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

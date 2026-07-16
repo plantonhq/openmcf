@@ -1,0 +1,108 @@
+# The event topic: services publish domain events once; subscriptions
+# fan them out. Publishers never know who consumes -- adding a consumer
+# is a new subscription, never a producer change.
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusTopic
+metadata:
+  name: "{{ values.env }}-{{ values.events_topic_name }}-topic"
+spec:
+  namespaceId:
+    valueFrom:
+      kind: AzureServiceBusNamespace
+      name: "{{ values.env }}-bus"
+      fieldPath: status.outputs.namespace_id
+  topicName: "{{ values.events_topic_name }}"
+---
+# The filtered subscription: receives ONLY events matching the SQL
+# filter, evaluated broker-side against message user properties -- the
+# consumer never spends cycles discarding traffic it doesn't want.
+#
+# Service Bus auto-creates a hidden $Default catch-all rule on every
+# subscription; declaring rules here ADDS to it, and the platform
+# removes the catch-all once custom rules exist, so this subscription
+# receives exactly what the filter admits.
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusSubscription
+metadata:
+  name: "{{ values.env }}-{{ values.filtered_subscription_name }}-sub"
+spec:
+  topicId:
+    valueFrom:
+      kind: AzureServiceBusTopic
+      name: "{{ values.env }}-{{ values.events_topic_name }}-topic"
+      fieldPath: status.outputs.topic_id
+  subscriptionName: "{{ values.filtered_subscription_name }}"
+  # Required by Azure with no server default: attempts before the
+  # message dead-letters. Ten absorbs transient consumer failures.
+  maxDeliveryCount: 10
+  deadLetteringOnMessageExpiration: true
+  # Messages whose properties break the SQL filter's evaluation (a type
+  # mismatch, a missing property in an expression that needs one) also
+  # park in the DLQ instead of silently dropping -- the spec's default,
+  # stated here because filter debugging depends on it.
+  deadLetteringOnFilterEvaluationError: true
+  defaultMessageTtl: P14D
+  lockDuration: PT1M
+  rules:
+    - ruleName: "{{ values.filtered_subscription_name }}-filter"
+      filterType: SQL_FILTER
+      sqlFilter: "{{ values.filter_expression }}"
+---
+# The audit subscription: an unconditional copy of every event, for the
+# consumer that must see everything (an event store, a compliance
+# archive, an analytics forwarder). The 1=1 SQL rule is the declared
+# form of a catch-all -- the auto-created $Default rule cannot be
+# declared by name, so the always-true filter states the intent
+# explicitly.
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusSubscription
+metadata:
+  name: "{{ values.env }}-{{ values.events_topic_name }}-audit-sub"
+spec:
+  topicId:
+    valueFrom:
+      kind: AzureServiceBusTopic
+      name: "{{ values.env }}-{{ values.events_topic_name }}-topic"
+      fieldPath: status.outputs.topic_id
+  subscriptionName: audit
+  maxDeliveryCount: 10
+  deadLetteringOnMessageExpiration: true
+  # The audit trail tolerates lag but not loss: a week longer than the
+  # working subscriptions before anything expires.
+  defaultMessageTtl: P21D
+  lockDuration: PT1M
+  rules:
+    - ruleName: catch-all
+      filterType: SQL_FILTER
+      sqlFilter: 1=1
+---
+# Send-only credential for event publishers, scoped to the topic.
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusAuthorizationRule
+metadata:
+  name: "{{ values.env }}-{{ values.events_topic_name }}-send"
+spec:
+  ruleName: "{{ values.events_topic_name }}-send"
+  topicId:
+    valueFrom:
+      kind: AzureServiceBusTopic
+      name: "{{ values.env }}-{{ values.events_topic_name }}-topic"
+      fieldPath: status.outputs.topic_id
+  send: true
+---
+# Listen-only credential for subscribers. Service Bus scopes SAS rules
+# to the topic (never to an individual subscription), so every
+# subscriber shares this credential and is isolated by its
+# subscription's filter, not by key.
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusAuthorizationRule
+metadata:
+  name: "{{ values.env }}-{{ values.events_topic_name }}-listen"
+spec:
+  ruleName: "{{ values.events_topic_name }}-listen"
+  topicId:
+    valueFrom:
+      kind: AzureServiceBusTopic
+      name: "{{ values.env }}-{{ values.events_topic_name }}-topic"
+      fieldPath: status.outputs.topic_id
+  listen: true

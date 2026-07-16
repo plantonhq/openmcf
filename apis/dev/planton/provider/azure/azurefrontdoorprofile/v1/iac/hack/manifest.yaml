@@ -1,47 +1,22 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorProfile
 metadata:
-  name: test-frontdoor
+  name: test-front-door-profile
 spec:
-  resource_group: test-rg
-  name: test-fd
-  sku: Standard_AzureFrontDoor
-  response_timeout_seconds: 120
-  endpoints:
-    - name: test-endpoint
-      enabled: true
-  origin_groups:
-    - name: test-origin-group
-      session_affinity_enabled: true
-      load_balancing:
-        sample_size: 4
-        successful_samples_required: 3
-        additional_latency_in_milliseconds: 50
-      health_probe:
-        protocol: Https
-        path: /
-        request_type: HEAD
-        interval_in_seconds: 30
-      origins:
-        - name: test-origin
-          host_name: test-backend.azurewebsites.net
-          origin_host_header: test-backend.azurewebsites.net
-          certificate_name_check_enabled: true
-          http_port: 80
-          https_port: 443
-          priority: 1
-          weight: 500
-          enabled: true
-  routes:
-    - name: test-route
-      endpoint_name: test-endpoint
-      origin_group_name: test-origin-group
-      patterns_to_match:
-        - "/*"
-      supported_protocols:
-        - Http
-        - Https
-      forwarding_protocol: MatchRequest
-      https_redirect_enabled: true
-      link_to_default_domain: true
-      enabled: true
+  resourceGroup:
+    value: test-rg
+  profileName: test-frontdoor
+  # Exercises the Premium tier (Private Link origins and managed WAF
+  # rules are Premium-only; the sku is ForceNew and cannot downgrade).
+  sku: PREMIUM
+  responseTimeoutSeconds: 60
+  # Exercises the identity seam: a system-assigned identity for keyless
+  # Key Vault certificate access.
+  identity:
+    type: SYSTEM_ASSIGNED
+  # Exercises log scrubbing (presence enables it).
+  logScrubbingVariables:
+    - REQUEST_IP_ADDRESS
+    - REQUEST_URI
+  tags:
+    cost-center: platform

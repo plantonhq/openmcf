@@ -148,7 +148,6 @@ Audit evaluates **9 categories** against the ideal state:
 
 **Helpers:**
 - [ ] `iac/hack/manifest.yaml` exists
-- [ ] `iac/pulumi/debug.sh` exists
 
 ### 9. Nice to Have (20%)
 

@@ -3,12 +3,11 @@ kind: AzureSubnet
 metadata:
   name: my-general-subnet
 spec:
-  resourceGroup:
-    value: "<your-resource-group-name>"
-  vnetId:
+  virtualNetworkId:
     value: "<vnet-resource-id>"
   name: general
-  addressPrefix: 10.0.1.0/24
+  addressPrefixes:
+    - 10.0.1.0/24
   serviceEndpoints:
     - Microsoft.Storage
     - Microsoft.KeyVault

@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureeventhubschemagroup
+spec:
+  # The harness deploys the fixture resource group and a SCENARIO-LOCAL
+  # STANDARD Event Hubs namespace (the schema registry requires
+  # STANDARD+; namespace names are globally unique, so scenario-local),
+  # creates an Avro schema group with BACKWARD compatibility, verifies it
+  # via the ARM API, destroys it, and verifies it is gone -- on both
+  # provisioners. Schema groups create in seconds.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

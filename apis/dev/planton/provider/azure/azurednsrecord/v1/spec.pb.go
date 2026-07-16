@@ -24,143 +24,156 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Supported DNS record types for Azure DNS.
-type AzureDnsRecordSpec_RecordType int32
+// The property a CAA entry sets. These are the four tags Azure DNS
+// accepts (case-sensitive lowercase on the wire).
+type AzureDnsCaaTag int32
 
 const (
-	// Unspecified record type (invalid).
-	AzureDnsRecordSpec_record_type_unspecified AzureDnsRecordSpec_RecordType = 0
-	// IPv4 address record.
-	AzureDnsRecordSpec_A AzureDnsRecordSpec_RecordType = 1
-	// IPv6 address record.
-	AzureDnsRecordSpec_AAAA AzureDnsRecordSpec_RecordType = 2
-	// Canonical name (alias) record.
-	AzureDnsRecordSpec_CNAME AzureDnsRecordSpec_RecordType = 3
-	// Mail exchange record.
-	AzureDnsRecordSpec_MX AzureDnsRecordSpec_RecordType = 4
-	// Text record (SPF, DKIM, verification, etc.).
-	AzureDnsRecordSpec_TXT AzureDnsRecordSpec_RecordType = 5
-	// Service locator record.
-	AzureDnsRecordSpec_SRV AzureDnsRecordSpec_RecordType = 6
-	// Nameserver record.
-	AzureDnsRecordSpec_NS AzureDnsRecordSpec_RecordType = 7
-	// Pointer record (reverse DNS).
-	AzureDnsRecordSpec_PTR AzureDnsRecordSpec_RecordType = 8
-	// Certificate Authority Authorization record.
-	AzureDnsRecordSpec_CAA AzureDnsRecordSpec_RecordType = 9
+	AzureDnsCaaTag_azure_dns_caa_tag_unspecified AzureDnsCaaTag = 0
+	// Authorize a CA to issue single-name certificates for this name.
+	AzureDnsCaaTag_ISSUE AzureDnsCaaTag = 1
+	// Authorize a CA to issue wildcard certificates for this name.
+	AzureDnsCaaTag_ISSUEWILD AzureDnsCaaTag = 2
+	// Where CAs report policy violations (a "mailto:" or https URL).
+	AzureDnsCaaTag_IODEF AzureDnsCaaTag = 3
+	// A contact address CAs may use to reach the domain holder.
+	AzureDnsCaaTag_CONTACTEMAIL AzureDnsCaaTag = 4
 )
 
-// Enum value maps for AzureDnsRecordSpec_RecordType.
+// Enum value maps for AzureDnsCaaTag.
 var (
-	AzureDnsRecordSpec_RecordType_name = map[int32]string{
-		0: "record_type_unspecified",
-		1: "A",
-		2: "AAAA",
-		3: "CNAME",
-		4: "MX",
-		5: "TXT",
-		6: "SRV",
-		7: "NS",
-		8: "PTR",
-		9: "CAA",
+	AzureDnsCaaTag_name = map[int32]string{
+		0: "azure_dns_caa_tag_unspecified",
+		1: "ISSUE",
+		2: "ISSUEWILD",
+		3: "IODEF",
+		4: "CONTACTEMAIL",
 	}
-	AzureDnsRecordSpec_RecordType_value = map[string]int32{
-		"record_type_unspecified": 0,
-		"A":                       1,
-		"AAAA":                    2,
-		"CNAME":                   3,
-		"MX":                      4,
-		"TXT":                     5,
-		"SRV":                     6,
-		"NS":                      7,
-		"PTR":                     8,
-		"CAA":                     9,
+	AzureDnsCaaTag_value = map[string]int32{
+		"azure_dns_caa_tag_unspecified": 0,
+		"ISSUE":                         1,
+		"ISSUEWILD":                     2,
+		"IODEF":                         3,
+		"CONTACTEMAIL":                  4,
 	}
 )
 
-func (x AzureDnsRecordSpec_RecordType) Enum() *AzureDnsRecordSpec_RecordType {
-	p := new(AzureDnsRecordSpec_RecordType)
+func (x AzureDnsCaaTag) Enum() *AzureDnsCaaTag {
+	p := new(AzureDnsCaaTag)
 	*p = x
 	return p
 }
 
-func (x AzureDnsRecordSpec_RecordType) String() string {
+func (x AzureDnsCaaTag) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureDnsRecordSpec_RecordType) Descriptor() protoreflect.EnumDescriptor {
+func (AzureDnsCaaTag) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_enumTypes[0].Descriptor()
 }
 
-func (AzureDnsRecordSpec_RecordType) Type() protoreflect.EnumType {
+func (AzureDnsCaaTag) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_enumTypes[0]
 }
 
-func (x AzureDnsRecordSpec_RecordType) Number() protoreflect.EnumNumber {
+func (x AzureDnsCaaTag) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureDnsRecordSpec_RecordType.Descriptor instead.
-func (AzureDnsRecordSpec_RecordType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDescGZIP(), []int{0, 0}
+// Deprecated: Use AzureDnsCaaTag.Descriptor instead.
+func (AzureDnsCaaTag) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-// AzureDnsRecordSpec defines the configuration for creating a DNS record in an Azure DNS Zone.
-// This component creates individual DNS records (A, AAAA, CNAME, MX, TXT, etc.) within an existing zone.
+// **AzureDnsRecordSpec** defines one record set in an Azure public DNS
+// zone -- every value the zone answers for one (name, type) pair.
 //
-// Azure DNS records enable mapping domain names to IP addresses, other domains, or services.
-// Records are created within a DNS Zone that must already exist in an Azure Resource Group.
+// The record type is declared by which typed payload is present: set
+// exactly one of `a`, `aaaa`, `cname`, `mx`, `srv`, `caa`, `txt`, `ns`,
+// or `ptr`. Each payload carries the value shape DNS actually defines for
+// that type (MX entries are preference+exchange pairs, SRV entries are
+// priority/weight/port/target, CAA entries are flags/tag/value), so a
+// record can never be declared with a shape its type cannot hold.
+//
+// **Alias records**: A, AAAA, and CNAME payloads can point at an Azure
+// resource instead of carrying literal values (`target_resource_id`).
+// Azure then keeps the answer in sync with the resource -- when a Public
+// IP's address changes, the alias A record follows it automatically, with
+// no drift window and no stale-IP outage. Alias records also work at the
+// zone apex where CNAME is forbidden by DNS itself.
+//
+// **One record set per (name, type)**: Azure stores all values for a
+// (name, type) pair as one record set, so declare all of them in one
+// resource. A second AzureDnsRecord with the same name and type in the
+// same zone conflicts with this one rather than merging into it.
 type AzureDnsRecordSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Group where the DNS Record will be created.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
+	// The Azure resource group the record's DNS zone lives in. Must address
+	// the SAME zone as zone_name -- Azure's management plane addresses
+	// record sets by (resource group, zone name, type, record name).
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// The name of the DNS Zone where this record will be created.
-	// Can be provided as a literal value or referenced from an AzureDnsZone resource.
-	//
-	// When using value_from, the default kind is AzureDnsZone and the default field path
-	// is "status.outputs.zone_name", allowing you to wire this directly to a zone resource.
-	//
-	// Example literal: "example.com"
-	// Example value_from:
-	//
-	//	value_from:
-	//	  name: my-azure-zone
+	// The name of the DNS zone this record is created in (e.g.
+	// "example.com"). Reference an AzureDnsZone's zone_name output, or pass
+	// the zone name of a zone managed outside Planton as a literal. Changing
+	// it replaces the record.
 	ZoneName *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=zone_name,json=zoneName,proto3" json:"zone_name,omitempty"`
-	// The DNS record type to create.
-	// Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA.
-	Type AzureDnsRecordSpec_RecordType `protobuf:"varint,3,opt,name=type,proto3,enum=dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec_RecordType" json:"type,omitempty"`
-	// The name of the DNS record (relative to the zone).
-	// Use "@" for zone apex (root domain) or specify a subdomain name.
-	// Examples:
-	//   - "@" for zone apex (example.com)
-	//   - "www" for subdomain (www.example.com)
-	//   - "api.v1" for nested subdomain (api.v1.example.com)
-	//   - "*" for wildcard (*.example.com)
-	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	// The values/targets for the DNS record.
-	// Format depends on record type:
-	//   - A record: IPv4 addresses (e.g., ["192.0.2.1", "192.0.2.2"])
-	//   - AAAA record: IPv6 addresses (e.g., ["2001:db8::1"])
-	//   - CNAME record: Target hostname (e.g., ["target.example.com"])
-	//   - MX record: Mail server hostname (e.g., ["mail1.example.com", "mail2.example.com"])
-	//   - TXT record: Text values (e.g., ["v=spf1 include:_spf.google.com ~all"])
-	//   - NS record: Name server hostnames
-	//   - SRV record: Format "priority weight port target" (e.g., ["10 5 5060 sip.example.com"])
-	//   - CAA record: Format "flags tag value" (e.g., ["0 issue letsencrypt.org"])
-	//
-	// Multiple values create round-robin behavior for supported record types.
-	Values []string `protobuf:"bytes,5,rep,name=values,proto3" json:"values,omitempty"`
-	// Time to live (TTL) for the DNS record in seconds.
-	// Determines how long resolvers should cache this record.
-	// Common values: 60 (1 min), 300 (5 min), 3600 (1 hour), 86400 (1 day).
-	// Default: 300 seconds (5 minutes).
-	TtlSeconds *int32 `protobuf:"varint,6,opt,name=ttl_seconds,json=ttlSeconds,proto3,oneof" json:"ttl_seconds,omitempty"`
-	// MX record specific: Priority value for mail exchange records.
-	// Lower values indicate higher priority. Required for MX records.
-	// Common values: 10 (primary), 20 (secondary), 30 (tertiary).
-	// Only applicable when type is MX.
-	MxPriority    *int32 `protobuf:"varint,7,opt,name=mx_priority,json=mxPriority,proto3,oneof" json:"mx_priority,omitempty"`
+	// The record name, relative to the zone. Changing it replaces the
+	// record.
+	//   - "@" for the zone apex (example.com itself)
+	//   - "www" for www.example.com
+	//   - "api.v1" for api.v1.example.com
+	//   - "*" or "*.app" for wildcards
+	//   - underscore-led service names: "_dmarc", "_sip._tcp",
+	//     "asuid.myapp" (domain-verification records)
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Time to live in seconds: how long resolvers may cache this record.
+	// Low TTLs (60-300) make changes visible quickly at the cost of more
+	// queries; long TTLs (3600+) suit stable records like MX. Azure has no
+	// server-side default -- Planton applies 300 (5 minutes) when unset.
+	TtlSeconds *int32 `protobuf:"varint,4,opt,name=ttl_seconds,json=ttlSeconds,proto3,oneof" json:"ttl_seconds,omitempty"`
+	// Free-form tags applied to the record set (stored as ARM record-set
+	// metadata), merged over the Planton-derived resource tags; a user tag
+	// with the same key wins. Updatable in place.
+	Tags map[string]string `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// IPv4 address record. Set exactly one payload field on this spec.
+	A *AzureDnsARecord `protobuf:"bytes,6,opt,name=a,proto3" json:"a,omitempty"`
+	// IPv6 address record. Set exactly one payload field on this spec.
+	Aaaa *AzureDnsAaaaRecord `protobuf:"bytes,7,opt,name=aaaa,proto3" json:"aaaa,omitempty"`
+	// Canonical-name (alias) record. Set exactly one payload field on this
+	// spec. DNS forbids CNAME at the zone apex -- use an alias A/AAAA
+	// record (target_resource_id) to point the apex at an Azure resource.
+	Cname *AzureDnsCnameRecord `protobuf:"bytes,8,opt,name=cname,proto3" json:"cname,omitempty"`
+	// Mail-exchange entries: one per mail server, each with its own
+	// preference. Set exactly one payload field on this spec.
+	Mx []*AzureDnsMxEntry `protobuf:"bytes,9,rep,name=mx,proto3" json:"mx,omitempty"`
+	// Service-locator entries (SIP, XMPP, LDAP, ...). The record NAME
+	// carries the service and protocol ("_sip._tcp"). Set exactly one
+	// payload field on this spec.
+	Srv []*AzureDnsSrvEntry `protobuf:"bytes,10,rep,name=srv,proto3" json:"srv,omitempty"`
+	// Certificate-authority-authorization entries: which CAs may issue
+	// certificates for this name. Set exactly one payload field on this
+	// spec.
+	Caa []*AzureDnsCaaEntry `protobuf:"bytes,11,rep,name=caa,proto3" json:"caa,omitempty"`
+	// Text values (SPF, DKIM, DMARC, domain verification). Each value may
+	// be up to 4096 characters -- Azure transparently splits long values
+	// into the 254-character strings DNS requires and reassembles them on
+	// read. Values are references or literals and may mix freely in one
+	// record set: reference another resource's output when the value is
+	// minted at deploy time (an AzureFrontDoorCustomDomain's
+	// validation_token published at `_dnsauth.<host>`), pass literals for
+	// everything hand-authored (SPF policies, DKIM keys). No kind dominates
+	// TXT values, so references declare their kind explicitly. Set exactly
+	// one payload field on this spec.
+	Txt []*v1.StringValueOrRef `protobuf:"bytes,12,rep,name=txt,proto3" json:"txt,omitempty"`
+	// Name-server hostnames, for delegating a CHILD subdomain to another
+	// zone's name servers (e.g. "team" NS records pointing at the
+	// team.example.com zone's assigned servers). The zone's own apex NS
+	// records are Azure-managed -- do not declare them. Set exactly one
+	// payload field on this spec.
+	Ns []string `protobuf:"bytes,13,rep,name=ns,proto3" json:"ns,omitempty"`
+	// Pointer hostnames for reverse DNS (IP-to-name, in in-addr.arpa /
+	// ip6.arpa zones). Set exactly one payload field on this spec.
+	Ptr           []string `protobuf:"bytes,14,rep,name=ptr,proto3" json:"ptr,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -209,25 +222,11 @@ func (x *AzureDnsRecordSpec) GetZoneName() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureDnsRecordSpec) GetType() AzureDnsRecordSpec_RecordType {
-	if x != nil {
-		return x.Type
-	}
-	return AzureDnsRecordSpec_record_type_unspecified
-}
-
 func (x *AzureDnsRecordSpec) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
-}
-
-func (x *AzureDnsRecordSpec) GetValues() []string {
-	if x != nil {
-		return x.Values
-	}
-	return nil
 }
 
 func (x *AzureDnsRecordSpec) GetTtlSeconds() int32 {
@@ -237,46 +236,534 @@ func (x *AzureDnsRecordSpec) GetTtlSeconds() int32 {
 	return 0
 }
 
-func (x *AzureDnsRecordSpec) GetMxPriority() int32 {
-	if x != nil && x.MxPriority != nil {
-		return *x.MxPriority
+func (x *AzureDnsRecordSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *AzureDnsRecordSpec) GetA() *AzureDnsARecord {
+	if x != nil {
+		return x.A
+	}
+	return nil
+}
+
+func (x *AzureDnsRecordSpec) GetAaaa() *AzureDnsAaaaRecord {
+	if x != nil {
+		return x.Aaaa
+	}
+	return nil
+}
+
+func (x *AzureDnsRecordSpec) GetCname() *AzureDnsCnameRecord {
+	if x != nil {
+		return x.Cname
+	}
+	return nil
+}
+
+func (x *AzureDnsRecordSpec) GetMx() []*AzureDnsMxEntry {
+	if x != nil {
+		return x.Mx
+	}
+	return nil
+}
+
+func (x *AzureDnsRecordSpec) GetSrv() []*AzureDnsSrvEntry {
+	if x != nil {
+		return x.Srv
+	}
+	return nil
+}
+
+func (x *AzureDnsRecordSpec) GetCaa() []*AzureDnsCaaEntry {
+	if x != nil {
+		return x.Caa
+	}
+	return nil
+}
+
+func (x *AzureDnsRecordSpec) GetTxt() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.Txt
+	}
+	return nil
+}
+
+func (x *AzureDnsRecordSpec) GetNs() []string {
+	if x != nil {
+		return x.Ns
+	}
+	return nil
+}
+
+func (x *AzureDnsRecordSpec) GetPtr() []string {
+	if x != nil {
+		return x.Ptr
+	}
+	return nil
+}
+
+// IPv4 address record: literal addresses XOR an Azure-resource alias.
+type AzureDnsARecord struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The IPv4 addresses this name answers with. Multiple addresses
+	// round-robin. Mutually exclusive with target_resource_id.
+	Addresses []string `protobuf:"bytes,1,rep,name=addresses,proto3" json:"addresses,omitempty"`
+	// Alias target: the ARM ID of an Azure resource whose IPv4 address
+	// this record should track automatically (a Public IP, a Traffic
+	// Manager profile, another record set). Reference the resource's ARM-id
+	// output with an explicit valueFrom (e.g. an AzurePublicIp's
+	// public_ip_id) -- no kind dominates alias targets, so there is no
+	// default. Mutually exclusive with addresses.
+	TargetResourceId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=target_resource_id,json=targetResourceId,proto3" json:"target_resource_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AzureDnsARecord) Reset() {
+	*x = AzureDnsARecord{}
+	mi := &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureDnsARecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureDnsARecord) ProtoMessage() {}
+
+func (x *AzureDnsARecord) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureDnsARecord.ProtoReflect.Descriptor instead.
+func (*AzureDnsARecord) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AzureDnsARecord) GetAddresses() []string {
+	if x != nil {
+		return x.Addresses
+	}
+	return nil
+}
+
+func (x *AzureDnsARecord) GetTargetResourceId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.TargetResourceId
+	}
+	return nil
+}
+
+// IPv6 address record: literal addresses XOR an Azure-resource alias.
+type AzureDnsAaaaRecord struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The IPv6 addresses this name answers with (e.g. "2001:db8::1" --
+	// Azure normalizes the compressed form). Multiple addresses
+	// round-robin. Mutually exclusive with target_resource_id.
+	Addresses []string `protobuf:"bytes,1,rep,name=addresses,proto3" json:"addresses,omitempty"`
+	// Alias target: the ARM ID of an Azure resource whose IPv6 address this
+	// record should track automatically. Reference the resource's ARM-id
+	// output with an explicit valueFrom -- no kind dominates alias targets,
+	// so there is no default. Mutually exclusive with addresses.
+	TargetResourceId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=target_resource_id,json=targetResourceId,proto3" json:"target_resource_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AzureDnsAaaaRecord) Reset() {
+	*x = AzureDnsAaaaRecord{}
+	mi := &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureDnsAaaaRecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureDnsAaaaRecord) ProtoMessage() {}
+
+func (x *AzureDnsAaaaRecord) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureDnsAaaaRecord.ProtoReflect.Descriptor instead.
+func (*AzureDnsAaaaRecord) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AzureDnsAaaaRecord) GetAddresses() []string {
+	if x != nil {
+		return x.Addresses
+	}
+	return nil
+}
+
+func (x *AzureDnsAaaaRecord) GetTargetResourceId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.TargetResourceId
+	}
+	return nil
+}
+
+// Canonical-name record: one target hostname XOR an Azure-resource alias.
+type AzureDnsCnameRecord struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The hostname this name is an alias for, at most 253 characters (e.g.
+	// "myapp.azurefd.net"). A trailing dot is optional -- Azure treats the
+	// value as fully qualified either way. A reference or a literal:
+	// reference another resource's hostname output when the target is
+	// minted at deploy time (an AzureFrontDoorEndpoint's hash-suffixed
+	// host_name), pass a literal for externally-known hostnames. No kind
+	// dominates CNAME targets, so references declare their kind explicitly.
+	// Mutually exclusive with target_resource_id.
+	Value *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	// Alias target: the ARM ID of an Azure resource this CNAME should
+	// track (a Traffic Manager profile, CDN endpoint, or Front Door
+	// endpoint). Reference the resource's ARM-id output with an explicit
+	// valueFrom -- no kind dominates alias targets, so there is no default.
+	// Mutually exclusive with value.
+	TargetResourceId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=target_resource_id,json=targetResourceId,proto3" json:"target_resource_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AzureDnsCnameRecord) Reset() {
+	*x = AzureDnsCnameRecord{}
+	mi := &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureDnsCnameRecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureDnsCnameRecord) ProtoMessage() {}
+
+func (x *AzureDnsCnameRecord) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureDnsCnameRecord.ProtoReflect.Descriptor instead.
+func (*AzureDnsCnameRecord) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AzureDnsCnameRecord) GetValue() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+func (x *AzureDnsCnameRecord) GetTargetResourceId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.TargetResourceId
+	}
+	return nil
+}
+
+// One mail server in an MX record set.
+type AzureDnsMxEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Delivery preference: mail servers are tried lowest-preference first,
+	// equal preferences load-balance. Common convention: 10 primary, 20
+	// secondary. 0 is legal (and used by the "null MX" no-mail convention).
+	Preference *int32 `protobuf:"varint,1,opt,name=preference,proto3,oneof" json:"preference,omitempty"`
+	// The mail server hostname (e.g. "mail.example.com" or
+	// "aspmx.l.google.com").
+	Exchange      string `protobuf:"bytes,2,opt,name=exchange,proto3" json:"exchange,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureDnsMxEntry) Reset() {
+	*x = AzureDnsMxEntry{}
+	mi := &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureDnsMxEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureDnsMxEntry) ProtoMessage() {}
+
+func (x *AzureDnsMxEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureDnsMxEntry.ProtoReflect.Descriptor instead.
+func (*AzureDnsMxEntry) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AzureDnsMxEntry) GetPreference() int32 {
+	if x != nil && x.Preference != nil {
+		return *x.Preference
 	}
 	return 0
+}
+
+func (x *AzureDnsMxEntry) GetExchange() string {
+	if x != nil {
+		return x.Exchange
+	}
+	return ""
+}
+
+// One service endpoint in an SRV record set.
+type AzureDnsSrvEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Endpoint precedence: clients try lowest priority first. 0 is the
+	// conventional primary.
+	Priority *int32 `protobuf:"varint,1,opt,name=priority,proto3,oneof" json:"priority,omitempty"`
+	// Relative weight for load-balancing among endpoints of equal
+	// priority. 0 means "no preference" and is legal when only one
+	// endpoint exists at a priority.
+	Weight *int32 `protobuf:"varint,2,opt,name=weight,proto3,oneof" json:"weight,omitempty"`
+	// The TCP/UDP port the service listens on (e.g. 5060 for SIP).
+	Port *int32 `protobuf:"varint,3,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	// The hostname providing the service (e.g. "sip.example.com"). Must be
+	// a hostname with its own A/AAAA record, never an IP address.
+	Target        string `protobuf:"bytes,4,opt,name=target,proto3" json:"target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureDnsSrvEntry) Reset() {
+	*x = AzureDnsSrvEntry{}
+	mi := &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureDnsSrvEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureDnsSrvEntry) ProtoMessage() {}
+
+func (x *AzureDnsSrvEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureDnsSrvEntry.ProtoReflect.Descriptor instead.
+func (*AzureDnsSrvEntry) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AzureDnsSrvEntry) GetPriority() int32 {
+	if x != nil && x.Priority != nil {
+		return *x.Priority
+	}
+	return 0
+}
+
+func (x *AzureDnsSrvEntry) GetWeight() int32 {
+	if x != nil && x.Weight != nil {
+		return *x.Weight
+	}
+	return 0
+}
+
+func (x *AzureDnsSrvEntry) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+func (x *AzureDnsSrvEntry) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+// One certificate-authority authorization in a CAA record set.
+type AzureDnsCaaEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The CAA critical flag: 0 (the near-universal value) lets CAs ignore
+	// unrecognized tags; 128 tells CAs to refuse issuance if they do not
+	// understand the tag.
+	Flags *int32 `protobuf:"varint,1,opt,name=flags,proto3,oneof" json:"flags,omitempty"`
+	// What this entry authorizes or configures.
+	Tag AzureDnsCaaTag `protobuf:"varint,2,opt,name=tag,proto3,enum=dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCaaTag" json:"tag,omitempty"`
+	// The tag's value: the CA domain for ISSUE/ISSUEWILD (e.g.
+	// "letsencrypt.org", or ";" to forbid issuance), a "mailto:" or https
+	// URL for IODEF, an email address for CONTACTEMAIL.
+	Value         string `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureDnsCaaEntry) Reset() {
+	*x = AzureDnsCaaEntry{}
+	mi := &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureDnsCaaEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureDnsCaaEntry) ProtoMessage() {}
+
+func (x *AzureDnsCaaEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureDnsCaaEntry.ProtoReflect.Descriptor instead.
+func (*AzureDnsCaaEntry) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AzureDnsCaaEntry) GetFlags() int32 {
+	if x != nil && x.Flags != nil {
+		return *x.Flags
+	}
+	return 0
+}
+
+func (x *AzureDnsCaaEntry) GetTag() AzureDnsCaaTag {
+	if x != nil {
+		return x.Tag
+	}
+	return AzureDnsCaaTag_azure_dns_caa_tag_unspecified
+}
+
+func (x *AzureDnsCaaEntry) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
 }
 
 var File_dev_planton_provider_azure_azurednsrecord_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7dev/planton/provider/azure/azurednsrecord/v1/spec.proto\x12,dev.planton.provider.azure.azurednsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xae\t\n" +
+	"7dev/planton/provider/azure/azurednsrecord/v1/spec.proto\x12,dev.planton.provider.azure.azurednsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd3\x0f\n" +
 	"\x12AzureDnsRecordSpec\x12\x8c\x01\n" +
 	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12x\n" +
-	"\tzone_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x94\x03\x92\xd4a\x18status.outputs.zone_nameR\bzoneName\x12\xcc\x01\n" +
-	"\x04type\x18\x03 \x01(\x0e2K.dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.RecordTypeBk\xbaHh\xba\x01]\n" +
-	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x8c\x02\n" +
-	"\x04name\x18\x04 \x01(\tB\xf7\x01\xbaH\xf3\x01\xba\x01\xec\x01\n" +
-	"\x14name.valid_dns_label\x12\x81\x01name must be '@' for apex, '*' for wildcard, or a valid DNS label (lowercase alphanumeric with hyphens, dots allowed for nesting)\x1aPthis == '@' || this == '*' || this.matches('^[a-z0-9]([a-z0-9-\\\\.]*[a-z0-9])?$')\xc8\x01\x01R\x04name\x12 \n" +
-	"\x06values\x18\x05 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06values\x12:\n" +
-	"\vttl_seconds\x18\x06 \x01(\x05B\x14\xbaH\n" +
-	"\x1a\b\x18\xff\xff\xff\xff\a(\x01\x8a\xa6\x1d\x03300H\x00R\n" +
-	"ttlSeconds\x88\x01\x01\x121\n" +
-	"\vmx_priority\x18\a \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00H\x01R\n" +
-	"mxPriority\x88\x01\x01\"y\n" +
+	"\tzone_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x94\x03\x92\xd4a\x18status.outputs.zone_nameR\bzoneName\x12\x9e\x03\n" +
+	"\x04name\x18\x03 \x01(\tB\x89\x03\xbaH\x85\x03\xba\x01\xfe\x02\n" +
+	"\x1cazure_dns_record_name_format\x12\xcb\x01Record name must be '@' for the zone apex, '*' (optionally '*.<name>') for wildcards, or dot-separated labels of lowercase letters, digits, hyphens, and underscores -- e.g. www, api.v1, _dmarc, _sip._tcp\x1a\x8f\x01this == '@' || this == '*' || this.matches('^(\\\\*\\\\.)?[_a-z0-9](?:[_a-z0-9-]{0,61}[_a-z0-9])?(?:\\\\.[_a-z0-9](?:[_a-z0-9-]{0,61}[_a-z0-9])?)*$')\xc8\x01\x01R\x04name\x12:\n" +
+	"\vttl_seconds\x18\x04 \x01(\x05B\x14\xbaH\n" +
+	"\x1a\b\x18\xff\xff\xff\xff\a(\x00\x8a\xa6\x1d\x03300H\x00R\n" +
+	"ttlSeconds\x88\x01\x01\x12^\n" +
+	"\x04tags\x18\x05 \x03(\v2J.dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.TagsEntryR\x04tags\x12K\n" +
+	"\x01a\x18\x06 \x01(\v2=.dev.planton.provider.azure.azurednsrecord.v1.AzureDnsARecordR\x01a\x12T\n" +
+	"\x04aaaa\x18\a \x01(\v2@.dev.planton.provider.azure.azurednsrecord.v1.AzureDnsAaaaRecordR\x04aaaa\x12W\n" +
+	"\x05cname\x18\b \x01(\v2A.dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCnameRecordR\x05cname\x12M\n" +
+	"\x02mx\x18\t \x03(\v2=.dev.planton.provider.azure.azurednsrecord.v1.AzureDnsMxEntryR\x02mx\x12P\n" +
+	"\x03srv\x18\n" +
+	" \x03(\v2>.dev.planton.provider.azure.azurednsrecord.v1.AzureDnsSrvEntryR\x03srv\x12P\n" +
+	"\x03caa\x18\v \x03(\v2>.dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCaaEntryR\x03caa\x12D\n" +
+	"\x03txt\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x03txt\x12\x1c\n" +
+	"\x02ns\x18\r \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x02ns\x12\x1e\n" +
+	"\x03ptr\x18\x0e \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x03ptr\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xba\x03\xbaH\xb6\x03\x1a\xb3\x03\n" +
+	"$azure_dns_record_exactly_one_payload\x12ySet exactly one record payload -- a, aaaa, cname, mx, srv, caa, txt, ns, or ptr -- the payload determines the record type\x1a\x8f\x02(has(this.a) ? 1 : 0) + (has(this.aaaa) ? 1 : 0) + (has(this.cname) ? 1 : 0) + (this.mx.size() > 0 ? 1 : 0) + (this.srv.size() > 0 ? 1 : 0) + (this.caa.size() > 0 ? 1 : 0) + (this.txt.size() > 0 ? 1 : 0) + (this.ns.size() > 0 ? 1 : 0) + (this.ptr.size() > 0 ? 1 : 0) == 1B\x0e\n" +
+	"\f_ttl_seconds\"\xce\x03\n" +
+	"\x0fAzureDnsARecord\x12*\n" +
+	"\taddresses\x18\x01 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02x\x01R\taddresses\x12`\n" +
+	"\x12target_resource_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x10targetResourceId:\xac\x02\xbaH\xa8\x02\x1a\xa5\x02\n" +
+	"&azure_dns_a_record_addresses_xor_alias\x12\xa7\x01Provide either literal IPv4 addresses or an alias target_resource_id, not both and not neither -- an alias record delegates its answer to the referenced Azure resource\x1aQ(this.addresses.size() > 0 ? 1 : 0) + (has(this.target_resource_id) ? 1 : 0) == 1\"\xd5\x03\n" +
+	"\x12AzureDnsAaaaRecord\x12+\n" +
+	"\taddresses\x18\x01 \x03(\tB\r\xbaH\n" +
+	"\x92\x01\a\"\x05r\x03\x80\x01\x01R\taddresses\x12`\n" +
+	"\x12target_resource_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x10targetResourceId:\xaf\x02\xbaH\xab\x02\x1a\xa8\x02\n" +
+	")azure_dns_aaaa_record_addresses_xor_alias\x12\xa7\x01Provide either literal IPv6 addresses or an alias target_resource_id, not both and not neither -- an alias record delegates its answer to the referenced Azure resource\x1aQ(this.addresses.size() > 0 ? 1 : 0) + (has(this.target_resource_id) ? 1 : 0) == 1\"\xd6\x03\n" +
+	"\x13AzureDnsCnameRecord\x12H\n" +
+	"\x05value\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x05value\x12`\n" +
+	"\x12target_resource_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x10targetResourceId:\x92\x02\xbaH\x8e\x02\x1a\x8b\x02\n" +
+	"&azure_dns_cname_record_value_xor_alias\x12\x97\x01Provide either the target hostname in value or an alias target_resource_id, not both and not neither -- a CNAME answers with exactly one canonical name\x1aG(has(this.value) ? 1 : 0) + (has(this.target_resource_id) ? 1 : 0) == 1\"~\n" +
+	"\x0fAzureDnsMxEntry\x123\n" +
 	"\n" +
-	"RecordType\x12\x1b\n" +
-	"\x17record_type_unspecified\x10\x00\x12\x05\n" +
-	"\x01A\x10\x01\x12\b\n" +
-	"\x04AAAA\x10\x02\x12\t\n" +
-	"\x05CNAME\x10\x03\x12\x06\n" +
-	"\x02MX\x10\x04\x12\a\n" +
-	"\x03TXT\x10\x05\x12\a\n" +
-	"\x03SRV\x10\x06\x12\x06\n" +
-	"\x02NS\x10\a\x12\a\n" +
-	"\x03PTR\x10\b\x12\a\n" +
-	"\x03CAA\x10\t:\x84\x01\xbaH\x80\x01\x1a~\n" +
-	"\x1fspec.mx_priority_for_mx_records\x121mx_priority is only applicable for MX record type\x1a(!has(this.mx_priority) || this.type == 4B\x0e\n" +
-	"\f_ttl_secondsB\x0e\n" +
-	"\f_mx_priorityB\xf5\x02\n" +
+	"preference\x18\x01 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x00H\x00R\n" +
+	"preference\x88\x01\x01\x12'\n" +
+	"\bexchange\x18\x02 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xfd\x01R\bexchangeB\r\n" +
+	"\v_preference\"\xdf\x01\n" +
+	"\x10AzureDnsSrvEntry\x12/\n" +
+	"\bpriority\x18\x01 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x00H\x00R\bpriority\x88\x01\x01\x12+\n" +
+	"\x06weight\x18\x02 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x00H\x01R\x06weight\x88\x01\x01\x12'\n" +
+	"\x04port\x18\x03 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x00H\x02R\x04port\x88\x01\x01\x12#\n" +
+	"\x06target\x18\x04 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xfd\x01R\x06targetB\v\n" +
+	"\t_priorityB\t\n" +
+	"\a_weightB\a\n" +
+	"\x05_port\"\xc1\x01\n" +
+	"\x10AzureDnsCaaEntry\x12(\n" +
+	"\x05flags\x18\x01 \x01(\x05B\r\xbaH\n" +
+	"\xc8\x01\x01\x1a\x05\x18\xff\x01(\x00H\x00R\x05flags\x88\x01\x01\x12[\n" +
+	"\x03tag\x18\x02 \x01(\x0e2<.dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCaaTagB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x03tag\x12\x1c\n" +
+	"\x05value\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05valueB\b\n" +
+	"\x06_flags*j\n" +
+	"\x0eAzureDnsCaaTag\x12!\n" +
+	"\x1dazure_dns_caa_tag_unspecified\x10\x00\x12\t\n" +
+	"\x05ISSUE\x10\x01\x12\r\n" +
+	"\tISSUEWILD\x10\x02\x12\t\n" +
+	"\x05IODEF\x10\x03\x12\x10\n" +
+	"\fCONTACTEMAIL\x10\x04B\xf5\x02\n" +
 	"0com.dev.planton.provider.azure.azurednsrecord.v1B\tSpecProtoP\x01Z_github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurednsrecord/v1;azurednsrecordv1\xa2\x02\x05DPPAA\xaa\x02,Dev.Planton.Provider.Azure.Azurednsrecord.V1\xca\x02,Dev\\Planton\\Provider\\Azure\\Azurednsrecord\\V1\xe2\x028Dev\\Planton\\Provider\\Azure\\Azurednsrecord\\V1\\GPBMetadata\xea\x021Dev::Planton::Provider::Azure::Azurednsrecord::V1b\x06proto3"
 
 var (
@@ -292,21 +779,40 @@ func file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDescGZIP() 
 }
 
 var file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_goTypes = []any{
-	(AzureDnsRecordSpec_RecordType)(0), // 0: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.RecordType
-	(*AzureDnsRecordSpec)(nil),         // 1: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec
-	(*v1.StringValueOrRef)(nil),        // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureDnsCaaTag)(0),         // 0: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCaaTag
+	(*AzureDnsRecordSpec)(nil),  // 1: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec
+	(*AzureDnsARecord)(nil),     // 2: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsARecord
+	(*AzureDnsAaaaRecord)(nil),  // 3: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsAaaaRecord
+	(*AzureDnsCnameRecord)(nil), // 4: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCnameRecord
+	(*AzureDnsMxEntry)(nil),     // 5: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsMxEntry
+	(*AzureDnsSrvEntry)(nil),    // 6: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsSrvEntry
+	(*AzureDnsCaaEntry)(nil),    // 7: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCaaEntry
+	nil,                         // 8: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 1: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.zone_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0, // 2: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.type:type_name -> dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.RecordType
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	9,  // 0: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 1: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.zone_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 2: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.tags:type_name -> dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.TagsEntry
+	2,  // 3: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.a:type_name -> dev.planton.provider.azure.azurednsrecord.v1.AzureDnsARecord
+	3,  // 4: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.aaaa:type_name -> dev.planton.provider.azure.azurednsrecord.v1.AzureDnsAaaaRecord
+	4,  // 5: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.cname:type_name -> dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCnameRecord
+	5,  // 6: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.mx:type_name -> dev.planton.provider.azure.azurednsrecord.v1.AzureDnsMxEntry
+	6,  // 7: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.srv:type_name -> dev.planton.provider.azure.azurednsrecord.v1.AzureDnsSrvEntry
+	7,  // 8: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.caa:type_name -> dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCaaEntry
+	9,  // 9: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.txt:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 10: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsARecord.target_resource_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 11: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsAaaaRecord.target_resource_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 12: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCnameRecord.value:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 13: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCnameRecord.target_resource_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 14: dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCaaEntry.tag:type_name -> dev.planton.provider.azure.azurednsrecord.v1.AzureDnsCaaTag
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_init() }
@@ -315,13 +821,16 @@ func file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_init() {
 		return
 	}
 	file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   1,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,17 +1,16 @@
 # AzureContainerAppEnvironment Terraform Module
 
-This directory contains the Terraform IaC implementation for the `AzureContainerAppEnvironment` component.
+The Terraform/OpenTofu implementation of the `AzureContainerAppEnvironment` component.
 
 ## Structure
 
 ```
 tf/
-├── main.tf          # Container App Environment resource definition
+├── main.tf          # Environment + optional custom-domain association
 ├── variables.tf     # Input variables (metadata + spec)
-├── outputs.tf       # Output values
-├── locals.tf        # Local computations (tags, logs_destination)
-├── provider.tf      # Azure provider configuration
-└── README.md        # This file
+├── outputs.tf       # Stack outputs
+├── locals.tf        # Tag merge + enum wire-value maps
+└── provider.tf      # Empty azurerm provider (credentials injected as ARM_* env)
 ```
 
 ## Resources Created
@@ -19,44 +18,22 @@ tf/
 | Resource | Type | Condition |
 |----------|------|-----------|
 | Container App Environment | `azurerm_container_app_environment` | Always |
+| Custom DNS suffix | `azurerm_container_app_environment_custom_domain` | `spec.custom_domain` set |
 
-## Usage
+## Behavior Notes
 
-```hcl
-module "container_app_env" {
-  source = "./path/to/module"
+- Enum vocabularies (logs destination, public network access, workload profile SKUs, identity types) arrive as the spec enum's name strings and are mapped to ARM wire values in `locals.tf` -- a vocabulary drift fails at plan time rather than deploying something wrong.
+- `logs_destination` unset with a workspace deploys `log-analytics` (azurerm's own legacy inference), unset without one omits the property (streaming-only).
+- User `spec.tags` merge over the metadata-derived tags; user tags win on key collision.
 
-  metadata = {
-    name = "my-env"
-    org  = "mycompany"
-    env  = "production"
-  }
+## Validation
 
-  spec = {
-    region                     = "eastus"
-    resource_group             = "my-rg"
-    name                       = "my-apps-env"
-    infrastructure_subnet_id   = "/subscriptions/.../subnets/apps"
-    log_analytics_workspace_id = "/subscriptions/.../workspaces/law"
-    zone_redundancy_enabled    = true
-    workload_profiles = [
-      {
-        name                  = "general"
-        workload_profile_type = "D4"
-        minimum_count         = 2
-        maximum_count         = 8
-      }
-    ]
-  }
-}
+```bash
+tofu init -backend=false && tofu validate
 ```
 
-## Outputs
+The full offline proof runs through the CLI against `iac/hack/manifest.yaml`:
 
-| Output | Description |
-|--------|-------------|
-| `environment_id` | ARM resource ID of the Container App Environment |
-| `default_domain` | Default domain for apps in this environment |
-| `static_ip_address` | Static IP address of the environment |
-| `platform_reserved_cidr` | Reserved IP range for platform infrastructure |
-| `platform_reserved_dns_ip_address` | Internal DNS server IP |
+```bash
+planton tofu plan --manifest ../hack/manifest.yaml --module-dir .
+```

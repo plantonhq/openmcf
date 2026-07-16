@@ -1,0 +1,19 @@
+# Offline-plan manifest: a fully-dialed topic exercising the size
+# ladder, duplicate detection with its window, publish ordering, and the
+# gate-state enum mapping.
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusTopic
+metadata:
+  name: test-sb-topic
+spec:
+  namespaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ServiceBus/namespaces/hack-servicebus-ns
+  topicName: billing/invoices
+  maxSizeInMegabytes: 4096
+  requiresDuplicateDetection: true
+  duplicateDetectionHistoryTimeWindow: PT1M
+  defaultMessageTtl: P30D
+  autoDeleteOnIdle: PT10M
+  batchedOperationsEnabled: true
+  supportOrdering: true
+  status: DISABLED

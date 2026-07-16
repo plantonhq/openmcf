@@ -1,0 +1,33 @@
+# AzureNetworkInterface install profile used as a fixture by scenarios
+# whose kind declares AzureNetworkInterface in its registry prerequisites
+# (the virtual machine chain). The harness deploys this document (via the
+# NIC's Pulumi module) after the fixture subnet chain and captures its
+# outputs -- network_interface_id in particular -- for the attaching
+# scenario's reference to resolve against. The fixture is a plain dynamic
+# IPv4 NIC in the fixture subnet: no public IP, no NSG -- the NIC's own
+# scenario proves the optional seams.
+apiVersion: azure.planton.dev/v1
+kind: AzureNetworkInterface
+metadata:
+  name: planton-oss-e2e-azure-fixture-nic
+  id: planton-oss-e2e-azure-fixture-nic
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurenetworkinterface
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azure-fixture-nic
+  ipConfigurations:
+    - name: primary
+      subnetId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-subnet

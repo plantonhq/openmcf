@@ -215,11 +215,17 @@ func setMapEntry(
 
 // handleMapField parses a JSON string into a proto map field.
 // The JSON value is expected to be a JSON object like {"key": "value"}.
+// An empty value represents an empty map (the flattener emits
+// "field_name: \"\"" for empty maps, mirroring empty repeated fields).
 func handleMapField(
 	msg protoreflect.Message,
 	fd protoreflect.FieldDescriptor,
 	jsonValue string,
 ) error {
+	if jsonValue == "" {
+		return nil
+	}
+
 	var parsed map[string]interface{}
 	if err := json.Unmarshal([]byte(jsonValue), &parsed); err != nil {
 		return fmt.Errorf("map field %q: failed to parse JSON: %w", fd.Name(), err)

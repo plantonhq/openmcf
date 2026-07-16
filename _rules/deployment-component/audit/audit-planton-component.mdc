@@ -148,6 +148,27 @@ For each category, check files and record results. Use the following structure t
 
 **Critical:** A component with failing tests is considered incomplete. Test execution is mandatory for production-readiness.
 
+**Apply-Time Validator Source-Diff (mandatory, scored as part of Proto Files):**
+
+A 100% schema walk is NOT sufficient evidence of completeness. Terraform providers
+enforce real contracts OUTSIDE the schema -- in `CustomizeDiff` functions, in
+Create/Update bodies (unconditional checks, cross-field pairings, SKU gates that
+fetch a referenced resource), and in dedicated `Validate*` helpers -- and a spec that
+only mirrors the schema silently misses them. For every audited component:
+
+- [ ] Open the provider resource's source (`internal/services/<service>/<resource>_resource.go`)
+      and read the Create/Update functions, every `CustomizeDiff`, and every
+      `ValidateFunc`/`validate.*` helper the schema references
+- [ ] For each apply-time contract found, confirm the spec either (a) front-loads it
+      as a field/message CEL when it is statically checkable, or (b) documents it on
+      the field and in `docs/README.md` when it is not (cross-resource contracts,
+      cross-update contracts like downgrade blocks)
+- [ ] Confirm no spec CEL INVENTS a rule the provider and its API do not enforce
+      (an invented rule is a defect equal to a missing one)
+- [ ] Record the sweep's findings in the audit report under an
+      "Apply-Time Validator Source-Diff" section -- "nothing beyond the schema" is a
+      finding and must be stated explicitly
+
 **Scoring:** Each sub-category scored independently
 
 #### Category 4: IaC Modules - Pulumi (Critical - 13.32% total)
@@ -283,7 +304,6 @@ Open `iac/pulumi/module/*.go` and `iac/tf/*.tf` and compare each dimension from
 
 **Helper Files (3.33%):**
 - [ ] `iac/hack/manifest.yaml` exists
-- [ ] `iac/pulumi/debug.sh` exists
 
 **Scoring:** Each sub-category scored independently
 
@@ -336,6 +356,11 @@ RUNS it, it never re-derives the token list.
 ```bash
 planton secret-coverage --output json
 ```
+
+An installed `planton` binary elsewhere on PATH may be a different CLI without the
+analyzer commands (`secret-coverage`, `validate-refs`, `validate-outputs`). This
+repo's root module IS the CLI that carries them — when in doubt, run from the repo
+root as `go run . secret-coverage --output json` (a targeted single-binary compile).
 
 The JSON `gaps[]` entries are `"<Kind>:<spec.field.path>"` ids. Filter to THIS component's kind:
 

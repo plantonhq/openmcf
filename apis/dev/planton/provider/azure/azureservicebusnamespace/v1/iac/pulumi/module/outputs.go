@@ -1,11 +1,12 @@
 package module
 
 const (
-	OpNamespaceId             = "namespace_id"
-	OpNamespaceName           = "namespace_name"
-	OpEndpoint                = "endpoint"
-	OpPrimaryConnectionString = "primary_connection_string"
-	OpPrimaryKey              = "primary_key"
-	OpQueueIds                = "queue_ids"
-	OpTopicIds                = "topic_ids"
+	OpNamespaceId                      = "namespace_id"
+	OpNamespaceName                    = "namespace_name"
+	OpEndpoint                         = "endpoint"
+	OpIdentityPrincipalId              = "identity_principal_id"
+	OpDefaultPrimaryConnectionString   = "default_primary_connection_string"
+	OpDefaultSecondaryConnectionString = "default_secondary_connection_string"
+	OpDefaultPrimaryKey                = "default_primary_key"
+	OpDefaultSecondaryKey              = "default_secondary_key"
 )

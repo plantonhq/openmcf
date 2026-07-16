@@ -1,0 +1,29 @@
+# Minimal AzureRedisCacheAccessPolicy scenario: a prefix-scoped
+# read-only policy on a scenario-local Entra-enabled cache -- proving
+# the custom-policy surface end to end (create, ARM verify, destroy,
+# verify-gone).
+#
+# The cache is a scenario-local extra fixture, not a registry
+# prerequisite: cache names are globally unique and each scenario owns
+# its own.
+apiVersion: azure.planton.dev/v1
+kind: AzureRedisCacheAccessPolicy
+metadata:
+  name: planton-oss-e2e-azurerediscacheaccesspolicy-smoke
+  id: planton-oss-e2e-azurerediscacheaccesspolicy-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurerediscacheaccesspolicy
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azurerediscacheaccesspolicy/v1/e2e/minimal-cache.yaml"
+  tags:
+    - planton-e2e
+spec:
+  redisCacheId:
+    valueFrom:
+      name: planton-oss-e2e-redispol-fixture-cache
+  policyName: e2e-app-read-only
+  permissions: "+@read +@connection ~app:*"

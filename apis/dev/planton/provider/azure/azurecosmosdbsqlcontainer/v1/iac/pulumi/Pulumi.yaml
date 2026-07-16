@@ -1,0 +1,3 @@
+name: azure-cosmosdb-sql-container
+runtime: go
+description: Pulumi program for Azure Cosmos DB SQL container

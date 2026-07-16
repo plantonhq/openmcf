@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureapplicationinsightsstandardwebtest.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azureapplicationinsightsstandardwebtest/v1/spec.proto";
+import "dev/planton/provider/azure/azureapplicationinsightsstandardwebtest/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureApplicationInsightsStandardWebTest is the top-level API resource for
+// an Application Insights Standard Web Test: a synthetic availability
+// monitor that requests a URL from one or more Azure regions on a schedule
+// and records the endpoint's health into an Application Insights component.
+message AzureApplicationInsightsStandardWebTest {
+  // API version identifier. Must be "azure.planton.dev/v1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1'];
+
+  // Resource kind. Must be "AzureApplicationInsightsStandardWebTest".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureApplicationInsightsStandardWebTest'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Standard web test specification.
+  AzureApplicationInsightsStandardWebTestSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureApplicationInsightsStandardWebTestStatus status = 5;
+}
+
+// AzureApplicationInsightsStandardWebTestStatus holds the deployment outputs.
+message AzureApplicationInsightsStandardWebTestStatus {
+  // Stack outputs from the IaC deployment.
+  AzureApplicationInsightsStandardWebTestStackOutputs outputs = 1;
+}

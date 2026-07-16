@@ -246,7 +246,6 @@ apis/dev/planton/provider/gcp/gcpcertmanagercert/v1/
     │   ├── main.go
     │   ├── Pulumi.yaml
     │   ├── Makefile
-    │   ├── debug.sh
     │   ├── README.md
     │   ├── overview.md
     │   └── module/
@@ -539,7 +538,6 @@ func TestGcpCertManagerCertSpec_Validation(t *testing.T) {
   - `build` - Compiles the Go code
   - `install-pulumi-plugins` - Installs required Pulumi provider plugins
   - `test` - Runs the module against test manifests
-- [ ] **debug.sh** - Debugging helper script for local testing
 - [ ] **README.md** - Pulumi-specific usage guide
 - [ ] **overview.md** - Module architecture and design decisions
 
@@ -760,11 +758,6 @@ variable "alternate_domain_names" {
   - Resource relationships
   - Data flow
 
-- [ ] **debug.sh** - Debugging helper script:
-  - Sets up environment for local testing
-  - Exports manifest as environment variable
-  - Runs Pulumi commands with proper configuration
-
 #### 8.3 Terraform Supporting Files
 
 **Location:** `v1/iac/tf/`
@@ -863,7 +856,7 @@ These significantly improve quality and usability:
 11. ✅ User-facing README (v1/README.md) (13.09%)
 13. ✅ Pulumi supporting documentation (README, overview) (5.05%)
 14. ✅ Terraform supporting documentation (README) (2.52%)
-15. ✅ Supporting files (hack manifest, debug scripts) (2.52%)
+15. ✅ Supporting files (hack manifest) (2.52%)
 16. ✅ Presets with companion documentation (v1/presets/) (5.00%)
 
 ### Nice to Have (Polish - 10%)

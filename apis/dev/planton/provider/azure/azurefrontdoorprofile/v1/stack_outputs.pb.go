@@ -21,47 +21,35 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzureFrontDoorProfileStackOutputs** captures the outputs of provisioning
-// an Azure Front Door profile with its endpoints, origin groups, origins,
-// and routes.
+// **AzureFrontDoorProfileStackOutputs** captures the outputs of
+// provisioning an Azure Front Door profile.
 //
-// The primary outputs are `profile_id` for resource identification and
-// `endpoint_hostnames` for DNS configuration. The `endpoint_ids` map
-// provides individual endpoint resource IDs for downstream references.
-//
-// Clients reach applications through the endpoint hostnames (*.azurefd.net).
-// To use a custom domain, create a CNAME DNS record pointing to the
-// endpoint hostname.
-//
-// For example, to route `cdn.example.com` to the Front Door endpoint:
-// - Create AzureDnsRecord: CNAME `cdn.example.com` -> `{endpoint}.azurefd.net`
-// - Add the custom domain to the profile (future: AzureFrontDoorCustomDomain)
+// The profile is the container; delivery resources compose against it by
+// reference: AzureFrontDoorEndpoint, AzureFrontDoorOriginGroup, and (via
+// those) AzureFrontDoorOrigin and AzureFrontDoorRoute all consume
+// `profile_id`. Client-facing hostnames live on the ENDPOINT kind's
+// outputs, not here.
 type AzureFrontDoorProfileStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Manager ID of the Front Door profile.
+	// The Azure Resource Manager ID of the Front Door profile -- what
+	// AzureFrontDoorEndpoint and AzureFrontDoorOriginGroup reference as
+	// their parent.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Cdn/profiles/{name}
 	ProfileId string `protobuf:"bytes,1,opt,name=profile_id,json=profileId,proto3" json:"profile_id,omitempty"`
-	// The name of the Front Door profile.
+	// The profile's name -- the namespace every child resource is nested
+	// under in ARM.
 	ProfileName string `protobuf:"bytes,2,opt,name=profile_name,json=profileName,proto3" json:"profile_name,omitempty"`
-	// The Front Door resource GUID.
-	// A unique identifier assigned by Azure's Front Door service.
-	// Different from the ARM resource ID.
+	// The Front Door service's own GUID for this profile (distinct from
+	// the ARM resource ID). Azure asks for it when validating traffic
+	// ownership -- e.g. the apex-domain "afdverify" DNS record.
 	ResourceGuid string `protobuf:"bytes,3,opt,name=resource_guid,json=resourceGuid,proto3" json:"resource_guid,omitempty"`
-	// Map of endpoint names to their Azure Resource Manager IDs.
-	// Format: { "my-endpoint": "/subscriptions/.../afdEndpoints/my-endpoint" }
-	//
-	// Useful for downstream references, monitoring, and diagnostics.
-	EndpointIds map[string]string `protobuf:"bytes,4,rep,name=endpoint_ids,json=endpointIds,proto3" json:"endpoint_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Map of endpoint names to their generated hostnames.
-	// Format: { "my-endpoint": "my-endpoint-abc123.z01.azurefd.net" }
-	//
-	// These are the public-facing hostnames that clients connect to.
-	// Use these values as CNAME targets for custom domain DNS records.
-	//
-	// Referenced by AzureDnsRecord for DNS configuration.
-	EndpointHostnames map[string]string `protobuf:"bytes,5,rep,name=endpoint_hostnames,json=endpointHostnames,proto3" json:"endpoint_hostnames,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The object (principal) ID of the profile's system-assigned managed
+	// identity -- the principal to grant Key Vault access to for
+	// bring-your-own TLS certificates. Empty when the identity block is
+	// absent or user-assigned only.
+	IdentityPrincipalId string `protobuf:"bytes,4,opt,name=identity_principal_id,json=identityPrincipalId,proto3" json:"identity_principal_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AzureFrontDoorProfileStackOutputs) Reset() {
@@ -115,38 +103,24 @@ func (x *AzureFrontDoorProfileStackOutputs) GetResourceGuid() string {
 	return ""
 }
 
-func (x *AzureFrontDoorProfileStackOutputs) GetEndpointIds() map[string]string {
+func (x *AzureFrontDoorProfileStackOutputs) GetIdentityPrincipalId() string {
 	if x != nil {
-		return x.EndpointIds
+		return x.IdentityPrincipalId
 	}
-	return nil
-}
-
-func (x *AzureFrontDoorProfileStackOutputs) GetEndpointHostnames() map[string]string {
-	if x != nil {
-		return x.EndpointHostnames
-	}
-	return nil
+	return ""
 }
 
 var File_dev_planton_provider_azure_azurefrontdoorprofile_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurefrontdoorprofile_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/azure/azurefrontdoorprofile/v1/stack_outputs.proto\x123dev.planton.provider.azure.azurefrontdoorprofile.v1\"\xbc\x04\n" +
+	"Gdev/planton/provider/azure/azurefrontdoorprofile/v1/stack_outputs.proto\x123dev.planton.provider.azure.azurefrontdoorprofile.v1\"\xbe\x01\n" +
 	"!AzureFrontDoorProfileStackOutputs\x12\x1d\n" +
 	"\n" +
 	"profile_id\x18\x01 \x01(\tR\tprofileId\x12!\n" +
 	"\fprofile_name\x18\x02 \x01(\tR\vprofileName\x12#\n" +
-	"\rresource_guid\x18\x03 \x01(\tR\fresourceGuid\x12\x8a\x01\n" +
-	"\fendpoint_ids\x18\x04 \x03(\v2g.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileStackOutputs.EndpointIdsEntryR\vendpointIds\x12\x9c\x01\n" +
-	"\x12endpoint_hostnames\x18\x05 \x03(\v2m.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileStackOutputs.EndpointHostnamesEntryR\x11endpointHostnames\x1a>\n" +
-	"\x10EndpointIdsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aD\n" +
-	"\x16EndpointHostnamesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xae\x03\n" +
+	"\rresource_guid\x18\x03 \x01(\tR\fresourceGuid\x122\n" +
+	"\x15identity_principal_id\x18\x04 \x01(\tR\x13identityPrincipalIdB\xae\x03\n" +
 	"7com.dev.planton.provider.azure.azurefrontdoorprofile.v1B\x11StackOutputsProtoP\x01Zmgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorprofile/v1;azurefrontdoorprofilev1\xa2\x02\x05DPPAA\xaa\x023Dev.Planton.Provider.Azure.Azurefrontdoorprofile.V1\xca\x023Dev\\Planton\\Provider\\Azure\\Azurefrontdoorprofile\\V1\xe2\x02?Dev\\Planton\\Provider\\Azure\\Azurefrontdoorprofile\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Azure::Azurefrontdoorprofile::V1b\x06proto3"
 
 var (
@@ -161,20 +135,16 @@ func file_dev_planton_provider_azure_azurefrontdoorprofile_v1_stack_outputs_prot
 	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_stack_outputs_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurefrontdoorprofile_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_provider_azure_azurefrontdoorprofile_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_azure_azurefrontdoorprofile_v1_stack_outputs_proto_goTypes = []any{
 	(*AzureFrontDoorProfileStackOutputs)(nil), // 0: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileStackOutputs
-	nil, // 1: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileStackOutputs.EndpointIdsEntry
-	nil, // 2: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileStackOutputs.EndpointHostnamesEntry
 }
 var file_dev_planton_provider_azure_azurefrontdoorprofile_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileStackOutputs.endpoint_ids:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileStackOutputs.EndpointIdsEntry
-	2, // 1: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileStackOutputs.endpoint_hostnames:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileStackOutputs.EndpointHostnamesEntry
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurefrontdoorprofile_v1_stack_outputs_proto_init() }
@@ -188,7 +158,7 @@ func file_dev_planton_provider_azure_azurefrontdoorprofile_v1_stack_outputs_prot
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurefrontdoorprofile_v1_stack_outputs_proto_rawDesc), len(file_dev_planton_provider_azure_azurefrontdoorprofile_v1_stack_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

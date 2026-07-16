@@ -23,7 +23,12 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// azure-storage-account
+// AzureStorageAccount is the top-level API resource for an Azure Storage
+// Account -- the multi-service storage primitive fronting Blob, Files,
+// Queues, Tables, and Data Lake Storage Gen2 behind one globally-unique DNS
+// name. Blob containers are first-class AzureStorageContainer resources
+// referencing this account's storage_account_id output; app-hosting kinds
+// (Function App, Linux Web App) bind to its name and access-key outputs.
 type AzureStorageAccount struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version
@@ -105,7 +110,7 @@ func (x *AzureStorageAccount) GetStatus() *AzureStorageAccountStatus {
 	return nil
 }
 
-// azure-storage-account status
+// AzureStorageAccountStatus holds the deployment status and outputs.
 type AzureStorageAccountStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// stack-outputs

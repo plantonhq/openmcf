@@ -4,26 +4,28 @@ metadata:
   name: my-container-fn
 spec:
   region: eastus
-  resource_group:
+  resourceGroup:
     value: "<your-resource-group-name>"
-  name: my-container-fn
-  service_plan_id:
+  functionAppName: my-container-fn
+  servicePlanId:
     value: "<your-elastic-premium-plan-id>"
-  storage_account_name:
+  storageAccountName:
     value: "<your-storage-account-name>"
-  storage_account_access_key:
+  storageAccountAccessKey:
     value: "<your-storage-access-key>"
-  https_only: true
+  httpsOnly: true
   identity:
-    type: SystemAssigned
-  site_config:
-    application_stack:
+    type: SYSTEM_ASSIGNED
+  siteConfig:
+    applicationStack:
       docker:
-        registry_url: https://<your-registry>.azurecr.io
-        image_name: <your-org>/<your-function-app>
-        image_tag: latest
-    container_registry_use_managed_identity: true
-    health_check_path: /api/health
-    always_on: true
-    minimum_tls_version: "1.2"
-    ftps_state: Disabled
+        registryUrl: https://<your-registry>.azurecr.io
+        imageName: <your-org>/<your-function-app>
+        imageTag: latest
+    # Managed-identity image pulls: no registry password to manage.
+    # Grant the app's identity AcrPull on the registry.
+    containerRegistryUseManagedIdentity: true
+    healthCheckPath: /api/health
+    alwaysOn: true
+    minimumTlsVersion: TLS_1_2
+    ftpsState: DISABLED

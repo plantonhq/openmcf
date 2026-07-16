@@ -7,6 +7,7 @@
 package azureservicebusnamespacev1
 
 import (
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -21,60 +22,54 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzureServiceBusNamespaceStackOutputs** captures the outputs of provisioning
-// an Azure Service Bus namespace with its queues and topics.
+// **AzureServiceBusNamespaceStackOutputs** captures the outputs of
+// provisioning an Azure Service Bus namespace.
 //
-// The primary outputs are `namespace_id` for resource identification,
-// `endpoint` for SDK connectivity, and `primary_connection_string` /
-// `primary_key` for authentication. The `queue_ids` and `topic_ids` maps
-// provide individual entity resource IDs for downstream references.
+// `namespace_id` is the ARM identity every child kind references
+// (AzureServiceBusQueue, AzureServiceBusTopic,
+// AzureServiceBusAuthorizationRule, AzureServiceBusDisasterRecoveryConfig)
+// and the scope for namespace-wide data-plane role assignments. `endpoint`
+// is what SDKs connect to.
 //
-// Applications connect to Service Bus using the `primary_connection_string`
-// which includes the namespace endpoint and the SAS key from the default
-// `RootManageSharedAccessKey` authorization rule. This is the standard
-// authentication method for most workloads.
-//
-// For production workloads, consider using Azure AD (Entra ID) RBAC-based
-// authentication instead of SAS keys. The connection string is still useful
-// for quick setup and development.
+// The four `default_primary_*`/`default_secondary_*` outputs carry the root
+// SAS rule's (RootManageSharedAccessKey) credentials -- full manage rights
+// over the whole namespace. They exist for quick starts and break-glass
+// use; production workloads should mint least-privilege credentials with
+// AzureServiceBusAuthorizationRule, or go keyless (local_auth_enabled
+// false + Entra data-plane roles), which makes these keys unusable.
 type AzureServiceBusNamespaceStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Manager ID of the Service Bus namespace.
+	// The Azure Resource Manager ID of the namespace.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.ServiceBus/namespaces/{name}
 	//
-	// Referenced by AzurePrivateEndpoint (private_connection_resource_id)
-	// for establishing private connectivity.
-	// Subresource name for private endpoint: ["namespace"].
+	// The parent reference for every Service Bus child kind, the scope for
+	// namespace-wide data-plane RBAC, and the private-endpoint target
+	// (subresource name: "namespace").
 	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
-	// The name of the Service Bus namespace.
+	// The namespace name -- what SDKs and connection strings identify the
+	// namespace by.
 	NamespaceName string `protobuf:"bytes,2,opt,name=namespace_name,json=namespaceName,proto3" json:"namespace_name,omitempty"`
 	// The Service Bus endpoint URL.
 	// Format: https://{name}.servicebus.windows.net:443/
-	//
-	// Used by Service Bus SDKs to connect to the namespace.
 	Endpoint string `protobuf:"bytes,3,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	// The primary connection string from the default RootManageSharedAccessKey.
+	// The system-assigned identity's principal (object) ID -- grant this
+	// identity access on other resources (e.g. Key Vault for CMK). Empty
+	// unless the identity block includes SYSTEM_ASSIGNED.
+	IdentityPrincipalId string `protobuf:"bytes,4,opt,name=identity_principal_id,json=identityPrincipalId,proto3" json:"identity_principal_id,omitempty"`
+	// The root SAS rule's primary connection string (full manage rights on
+	// the namespace). Secret-bearing: it embeds the primary key.
 	// Format: Endpoint=sb://{name}.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey={key}
-	//
-	// Ready-to-use connection string for Service Bus SDKs.
-	// Includes the endpoint, key name, and key value.
-	PrimaryConnectionString string `protobuf:"bytes,4,opt,name=primary_connection_string,json=primaryConnectionString,proto3" json:"primary_connection_string,omitempty"`
-	// The primary SAS key from the default RootManageSharedAccessKey.
-	// Used for manual SAS token generation or when connecting with
-	// libraries that accept key and key-name separately.
-	PrimaryKey string `protobuf:"bytes,5,opt,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
-	// Map of queue names to their Azure Resource Manager IDs.
-	// Format: { "my-queue": "/subscriptions/.../queues/my-queue" }
-	//
-	// Useful for downstream references and monitoring dashboards.
-	QueueIds map[string]string `protobuf:"bytes,6,rep,name=queue_ids,json=queueIds,proto3" json:"queue_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Map of topic names to their Azure Resource Manager IDs.
-	// Format: { "my-topic": "/subscriptions/.../topics/my-topic" }
-	//
-	// Useful for downstream references and monitoring dashboards.
-	TopicIds      map[string]string `protobuf:"bytes,7,rep,name=topic_ids,json=topicIds,proto3" json:"topic_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DefaultPrimaryConnectionString string `protobuf:"bytes,5,opt,name=default_primary_connection_string,json=defaultPrimaryConnectionString,proto3" json:"default_primary_connection_string,omitempty"`
+	// The root SAS rule's secondary connection string -- the rotation
+	// partner: move clients here, regenerate the primary, move back.
+	DefaultSecondaryConnectionString string `protobuf:"bytes,6,opt,name=default_secondary_connection_string,json=defaultSecondaryConnectionString,proto3" json:"default_secondary_connection_string,omitempty"`
+	// The root SAS rule's primary key, for SDKs that take the key and key
+	// name separately or mint their own SAS tokens.
+	DefaultPrimaryKey string `protobuf:"bytes,7,opt,name=default_primary_key,json=defaultPrimaryKey,proto3" json:"default_primary_key,omitempty"`
+	// The root SAS rule's secondary key -- the rotation partner.
+	DefaultSecondaryKey string `protobuf:"bytes,8,opt,name=default_secondary_key,json=defaultSecondaryKey,proto3" json:"default_secondary_key,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AzureServiceBusNamespaceStackOutputs) Reset() {
@@ -128,54 +123,55 @@ func (x *AzureServiceBusNamespaceStackOutputs) GetEndpoint() string {
 	return ""
 }
 
-func (x *AzureServiceBusNamespaceStackOutputs) GetPrimaryConnectionString() string {
+func (x *AzureServiceBusNamespaceStackOutputs) GetIdentityPrincipalId() string {
 	if x != nil {
-		return x.PrimaryConnectionString
+		return x.IdentityPrincipalId
 	}
 	return ""
 }
 
-func (x *AzureServiceBusNamespaceStackOutputs) GetPrimaryKey() string {
+func (x *AzureServiceBusNamespaceStackOutputs) GetDefaultPrimaryConnectionString() string {
 	if x != nil {
-		return x.PrimaryKey
+		return x.DefaultPrimaryConnectionString
 	}
 	return ""
 }
 
-func (x *AzureServiceBusNamespaceStackOutputs) GetQueueIds() map[string]string {
+func (x *AzureServiceBusNamespaceStackOutputs) GetDefaultSecondaryConnectionString() string {
 	if x != nil {
-		return x.QueueIds
+		return x.DefaultSecondaryConnectionString
 	}
-	return nil
+	return ""
 }
 
-func (x *AzureServiceBusNamespaceStackOutputs) GetTopicIds() map[string]string {
+func (x *AzureServiceBusNamespaceStackOutputs) GetDefaultPrimaryKey() string {
 	if x != nil {
-		return x.TopicIds
+		return x.DefaultPrimaryKey
 	}
-	return nil
+	return ""
+}
+
+func (x *AzureServiceBusNamespaceStackOutputs) GetDefaultSecondaryKey() string {
+	if x != nil {
+		return x.DefaultSecondaryKey
+	}
+	return ""
 }
 
 var File_dev_planton_provider_azure_azureservicebusnamespace_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azureservicebusnamespace_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Jdev/planton/provider/azure/azureservicebusnamespace/v1/stack_outputs.proto\x126dev.planton.provider.azure.azureservicebusnamespace.v1\"\xf7\x04\n" +
+	"Jdev/planton/provider/azure/azureservicebusnamespace/v1/stack_outputs.proto\x126dev.planton.provider.azure.azureservicebusnamespace.v1\x1a(dev/planton/shared/options/options.proto\"\xd6\x03\n" +
 	"$AzureServiceBusNamespaceStackOutputs\x12!\n" +
 	"\fnamespace_id\x18\x01 \x01(\tR\vnamespaceId\x12%\n" +
 	"\x0enamespace_name\x18\x02 \x01(\tR\rnamespaceName\x12\x1a\n" +
-	"\bendpoint\x18\x03 \x01(\tR\bendpoint\x12:\n" +
-	"\x19primary_connection_string\x18\x04 \x01(\tR\x17primaryConnectionString\x12\x1f\n" +
-	"\vprimary_key\x18\x05 \x01(\tR\n" +
-	"primaryKey\x12\x87\x01\n" +
-	"\tqueue_ids\x18\x06 \x03(\v2j.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceStackOutputs.QueueIdsEntryR\bqueueIds\x12\x87\x01\n" +
-	"\ttopic_ids\x18\a \x03(\v2j.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceStackOutputs.TopicIdsEntryR\btopicIds\x1a;\n" +
-	"\rQueueIdsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a;\n" +
-	"\rTopicIdsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xc3\x03\n" +
+	"\bendpoint\x18\x03 \x01(\tR\bendpoint\x122\n" +
+	"\x15identity_principal_id\x18\x04 \x01(\tR\x13identityPrincipalId\x12O\n" +
+	"!default_primary_connection_string\x18\x05 \x01(\tB\x04\xa0\xa6\x1d\x01R\x1edefaultPrimaryConnectionString\x12S\n" +
+	"#default_secondary_connection_string\x18\x06 \x01(\tB\x04\xa0\xa6\x1d\x01R defaultSecondaryConnectionString\x124\n" +
+	"\x13default_primary_key\x18\a \x01(\tB\x04\xa0\xa6\x1d\x01R\x11defaultPrimaryKey\x128\n" +
+	"\x15default_secondary_key\x18\b \x01(\tB\x04\xa0\xa6\x1d\x01R\x13defaultSecondaryKeyB\xc3\x03\n" +
 	":com.dev.planton.provider.azure.azureservicebusnamespace.v1B\x11StackOutputsProtoP\x01Zsgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureservicebusnamespace/v1;azureservicebusnamespacev1\xa2\x02\x05DPPAA\xaa\x026Dev.Planton.Provider.Azure.Azureservicebusnamespace.V1\xca\x026Dev\\Planton\\Provider\\Azure\\Azureservicebusnamespace\\V1\xe2\x02BDev\\Planton\\Provider\\Azure\\Azureservicebusnamespace\\V1\\GPBMetadata\xea\x02;Dev::Planton::Provider::Azure::Azureservicebusnamespace::V1b\x06proto3"
 
 var (
@@ -190,20 +186,16 @@ func file_dev_planton_provider_azure_azureservicebusnamespace_v1_stack_outputs_p
 	return file_dev_planton_provider_azure_azureservicebusnamespace_v1_stack_outputs_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azureservicebusnamespace_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_provider_azure_azureservicebusnamespace_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_azure_azureservicebusnamespace_v1_stack_outputs_proto_goTypes = []any{
 	(*AzureServiceBusNamespaceStackOutputs)(nil), // 0: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceStackOutputs
-	nil, // 1: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceStackOutputs.QueueIdsEntry
-	nil, // 2: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceStackOutputs.TopicIdsEntry
 }
 var file_dev_planton_provider_azure_azureservicebusnamespace_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceStackOutputs.queue_ids:type_name -> dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceStackOutputs.QueueIdsEntry
-	2, // 1: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceStackOutputs.topic_ids:type_name -> dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceStackOutputs.TopicIdsEntry
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azureservicebusnamespace_v1_stack_outputs_proto_init() }
@@ -217,7 +209,7 @@ func file_dev_planton_provider_azure_azureservicebusnamespace_v1_stack_outputs_p
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azureservicebusnamespace_v1_stack_outputs_proto_rawDesc), len(file_dev_planton_provider_azure_azureservicebusnamespace_v1_stack_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

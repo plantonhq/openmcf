@@ -1,0 +1,72 @@
+# The database network. VNet injection is decided at server creation
+# and cannot be retrofitted -- the server gets a private address in the
+# delegated subnet and NO public endpoint, ever.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: "{{ values.env }}-postgres-vnet"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-ha-postgres"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-postgres-vnet"
+  addressSpaces:
+    - "{{ values.vnet_cidr }}"
+---
+# The delegated subnet: dedicated to flexible servers by Azure's
+# delegation contract (nothing else can occupy it). Both the primary
+# and the optional replica live here.
+apiVersion: azure.planton.dev/v1
+kind: AzureSubnet
+metadata:
+  name: "{{ values.env }}-postgres-subnet"
+spec:
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-postgres-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  name: postgres
+  addressPrefixes:
+    - "{{ values.db_subnet_cidr }}"
+  delegations:
+    - name: postgres-delegation
+      serviceName: Microsoft.DBforPostgreSQL/flexibleServers
+---
+# Private DNS for the injected server's hostname -- clients resolve the
+# server's FQDN to its private address through this zone. The zone name
+# is Azure's required suffix for flexible-server injection.
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZone
+metadata:
+  name: "{{ values.env }}-postgres-dns"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-ha-postgres"
+      fieldPath: status.outputs.resource_group_name
+  name: privatelink.postgres.database.azure.com
+---
+# Link the zone to the VNet so resolution works from inside it. Peered
+# application VNets add their own links -- see the README's day-2 notes.
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZoneVirtualNetworkLink
+metadata:
+  name: "{{ values.env }}-postgres-dns-link"
+spec:
+  name: "{{ values.env }}-postgres-link"
+  privateDnsZoneId:
+    valueFrom:
+      kind: AzurePrivateDnsZone
+      name: "{{ values.env }}-postgres-dns"
+      fieldPath: status.outputs.zone_id
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-postgres-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  registrationEnabled: false

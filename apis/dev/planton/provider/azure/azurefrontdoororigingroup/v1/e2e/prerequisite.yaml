@@ -1,0 +1,26 @@
+# AzureFrontDoorOriginGroup install profile used as a prerequisite by
+# composed components (AzureFrontDoorOrigin, and transitively
+# AzureFrontDoorRoute, declared via prerequisites in the kind registry).
+# The harness deploys this group after the fixture profile, then resolves
+# the dependents' origin_group_id references against its origin_group_id
+# output. No health probe: the fixture backs single-origin scenarios
+# where probing only adds origin load.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorOriginGroup
+metadata:
+  name: planton-oss-e2e-fd-og-prereq
+  id: planton-oss-e2e-fd-og-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoororigingroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  profileId:
+    valueFrom:
+      name: planton-oss-e2e-fd-profile-prereq
+  originGroupName: e2e-backends-prereq

@@ -1,0 +1,25 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureApplicationInsightsStandardWebTest
+metadata:
+  name: my-content-web-test
+spec:
+  resourceGroup:
+    value: <resource-group-name>
+  name: api-content-check
+  region: eastus
+  applicationInsightsId:
+    valueFrom:
+      name: <application-insights>
+  frequency: 300
+  request:
+    url: <https://your-api/status>
+    httpVerb: GET
+  validationRules:
+    expectedStatusCode: 200
+    content:
+      contentMatch: '"status":"ok"'
+      ignoreCase: false
+      passIfTextFound: true
+  geoLocations:
+    - us-tx-sn1-azr
+  description: Verifies the status endpoint returns the expected healthy payload

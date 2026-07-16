@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurefrontdoororigin
+spec:
+  # The harness deploys the fixture resource group, the fixture Front
+  # Door profile, and the fixture origin group (registry prerequisites,
+  # transitively), creates the origin, verifies it via the ARM API,
+  # destroys it, and verifies it is gone -- on both provisioners.
+  # Observed runs ~22-23 min per engine, dominated by the profile
+  # fixture's ~18-min deletion.
+  # Private Link is not exercised live: it requires a Premium profile
+  # plus a target resource with a manual connection approval, which
+  # breaks the create-and-destroy automation pattern; the seam is proven
+  # by spec CELs, tofu plan rendering, and the hack manifest.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 45

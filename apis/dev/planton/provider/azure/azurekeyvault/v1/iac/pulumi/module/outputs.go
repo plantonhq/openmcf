@@ -1,10 +1,9 @@
 package module
 
 const (
-	OpVaultId       = "vault_id"
-	OpVaultName     = "vault_name"
-	OpVaultUri      = "vault_uri"
-	OpSecretIdMap   = "secret_id_map"
-	OpRegion        = "region"
-	OpResourceGroup = "resource_group"
+	OpKeyVaultId        = "key_vault_id"
+	OpKeyVaultName      = "key_vault_name"
+	OpVaultUri          = "vault_uri"
+	OpTenantId          = "tenant_id"
+	OpResourceGroupName = "resource_group_name"
 )

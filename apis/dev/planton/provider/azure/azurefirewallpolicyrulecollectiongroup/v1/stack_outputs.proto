@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurefirewallpolicyrulecollectiongroup.v1;
+
+// **AzureFirewallPolicyRuleCollectionGroupStackOutputs** captures the
+// outputs of provisioning a firewall policy rule collection group.
+message AzureFirewallPolicyRuleCollectionGroupStackOutputs {
+  // The Azure Resource Manager ID of the rule collection group.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/firewallPolicies/{policy}/ruleCollectionGroups/{name}
+  string rule_collection_group_id = 1;
+
+  // The name of the rule collection group resource.
+  string rule_collection_group_name = 2;
+}

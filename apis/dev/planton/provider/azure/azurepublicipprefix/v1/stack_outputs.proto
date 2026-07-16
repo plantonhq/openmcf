@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurepublicipprefix.v1;
+
+// **AzurePublicIpPrefixStackOutputs** captures the outputs of provisioning
+// an Azure Public IP Prefix.
+message AzurePublicIpPrefixStackOutputs {
+  // The Azure Resource Manager ID of the prefix. Referenced by
+  // AzurePublicIp (public_ip_prefix_id) to allocate addresses from the
+  // range, and by AzureNatGateway (public_ip_prefix_ids) to associate the
+  // whole range for outbound SNAT.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/publicIPPrefixes/{name}
+  string public_ip_prefix_id = 1;
+
+  // The actual reserved CIDR range, e.g. "20.42.0.16/28" -- the value
+  // partners and firewalls allowlist. Known only after creation (Azure
+  // assigns the range).
+  string ip_prefix = 2;
+
+  // The name of the prefix resource.
+  string public_ip_prefix_name = 3;
+}

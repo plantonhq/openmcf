@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurefirewallpolicy
+spec:
+  # The harness deploys the fixture resource group (registry prerequisite),
+  # creates a STANDARD policy exercising the tier-legal surface (threat
+  # intelligence deny + allowlist, DNS proxy with custom upstreams, SQL
+  # redirect, SNAT ranges, tags), verifies it via the ARM API (generic
+  # GetByID on the policy's ARM id), destroys it, and verifies it is gone
+  # -- on both provisioners. The policy is a fast control-plane document
+  # (~1-2 min each way). Premium features (IDPS, TLS inspection) are
+  # spec-gated to the PREMIUM tier and carry Key Vault + identity + CA
+  # certificate prerequisites; the offline gate (spec tests + full tofu
+  # plan rendering the Premium seams) covers their translation.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

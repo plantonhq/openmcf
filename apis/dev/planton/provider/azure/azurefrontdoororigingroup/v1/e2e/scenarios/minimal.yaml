@@ -1,0 +1,33 @@
+# Minimal AzureFrontDoorOriginGroup scenario: a group on the fixture
+# profile exercising explicit load-balancing dials, an HTTPS health
+# probe, session affinity off, and a non-default traffic-restore ramp.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorOriginGroup
+metadata:
+  name: planton-oss-e2e-azurefrontdoororigingroup-smoke
+  id: planton-oss-e2e-azurefrontdoororigingroup-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoororigingroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  profileId:
+    valueFrom:
+      name: planton-oss-e2e-fd-profile-prereq
+  originGroupName: e2e-backends-smoke
+  loadBalancing:
+    sampleSize: 6
+    successfulSamplesRequired: 4
+    additionalLatencyInMilliseconds: 100
+  healthProbe:
+    protocol: HTTPS
+    intervalInSeconds: 60
+    requestType: GET
+    path: /healthz
+  sessionAffinityEnabled: false
+  restoreTrafficTimeToHealedOrNewEndpointInMinutes: 5

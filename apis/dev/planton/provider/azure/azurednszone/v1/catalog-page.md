@@ -1,237 +1,66 @@
 # Azure DNS Zone
 
-Deploys an Azure DNS Zone with an optional set of pre-populated DNS records. The component creates the zone in a specified resource group and supports A, AAAA, CNAME, MX, TXT, NS, CAA, SRV, and PTR record types, each with configurable TTL.
+Creates an Azure public DNS zone -- an internet-facing, authoritative DNS zone hosted on Azure's global anycast name-server fleet.
 
 ## What Gets Created
 
 When you deploy an AzureDnsZone resource, Planton provisions:
 
-- **DNS Zone** -- a `dns.Zone` resource in the specified resource group, representing the authoritative zone for the given domain name
-- **DNS Records** -- one Azure DNS record resource per entry in `records`, created as the appropriate type (`dns.ARecord`, `dns.AaaaRecord`, `dns.CNameRecord`, `dns.MxRecord`, `dns.TxtRecord`, `dns.NsRecord`, `dns.CaaRecord`, `dns.SrvRecord`, `dns.PtrRecord`)
-- **Azure Tags** -- resource metadata tags applied to the zone and all records for tracking and governance
+- **Public DNS zone** -- an `azurerm_dns_zone` in the referenced resource group, with optional Start of Authority customization and governance tags
+
+Records are separate resources: declare them with [Azure DNS Record](/docs/catalog/azure/azurednsrecord), one per record set, referencing this zone.
 
 ## Prerequisites
 
 - **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure Resource Group** where the DNS zone will be created (can reference an AzureResourceGroup resource)
-- **Domain ownership** -- you must own or control the domain to point its NS records at the Azure-assigned name servers after deployment
+- **An AzureResourceGroup** for the zone's ARM lifecycle (referenced through `resourceGroup`)
+- **A registered domain** (at any registrar) if the zone should answer the internet -- creating the zone alone does not make it authoritative
 
 ## Quick Start
 
-Create a file `dnszone.yaml`:
+Create a file `zone.yaml`:
 
 ```yaml
 apiVersion: azure.planton.dev/v1
 kind: AzureDnsZone
 metadata:
-  name: my-zone
+  name: example-com
   annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureDnsZone.my-zone
-spec:
-  zoneName: example.com
-  resourceGroup: my-rg
-```
-
-Deploy:
-
-```shell
-planton apply -f dnszone.yaml
-```
-
-This creates an empty DNS zone for `example.com`. After deployment, update your domain registrar to use the name servers returned in `status.outputs.nameservers`.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `zoneName` | `string` | DNS zone name (e.g., `example.com`). Do not include a trailing dot. | Required. Must match a valid DNS domain pattern. |
-| `resourceGroup` | `StringValueOrRef` | Azure Resource Group name where the zone will be created. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `records` | `AzureDnsRecord[]` | `[]` | DNS records to pre-populate in the zone. If omitted, the zone is created empty. |
-| `records[].recordType` | `enum` | -- | DNS record type. Values: `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `NS`, `CAA`, `SRV`, `PTR`. |
-| `records[].name` | `string` | -- | Record name. Use a fully qualified domain name ending with a dot (e.g., `www.example.com.`) or a relative name within the zone (e.g., `www`). Use `@` for the zone root. |
-| `records[].values` | `string[]` | -- | Record values. IP addresses for A/AAAA, hostnames for CNAME (trailing dot), mail exchangers for MX, etc. Minimum 1 entry. |
-| `records[].ttlSeconds` | `int` | `60` | Time To Live for the record, in seconds. |
-
-## Examples
-
-### Empty Zone
-
-A minimal zone with no records, useful when DNS records are managed by an external system:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureDnsZone
-metadata:
-  name: empty-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureDnsZone.empty-zone
-spec:
-  zoneName: example.com
-  resourceGroup: dev-rg
-```
-
-### Zone with A and CNAME Records
-
-A zone that maps the apex domain and `www` subdomain to IP addresses and an alias:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureDnsZone
-metadata:
-  name: web-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureDnsZone.web-zone
-spec:
-  zoneName: example.com
-  resourceGroup: prod-rg
-  records:
-    - recordType: A
-      name: example.com.
-      values:
-        - "203.0.113.10"
-        - "203.0.113.11"
-      ttlSeconds: 300
-    - recordType: CNAME
-      name: www.example.com.
-      values:
-        - "example.com."
-      ttlSeconds: 3600
-```
-
-### Zone with MX and TXT Records for Email
-
-A zone configured for email delivery with MX records and an SPF TXT record:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureDnsZone
-metadata:
-  name: mail-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureDnsZone.mail-zone
-spec:
-  zoneName: example.com
-  resourceGroup: prod-rg
-  records:
-    - recordType: MX
-      name: example.com.
-      values:
-        - "mail1.example.com."
-        - "mail2.example.com."
-      ttlSeconds: 3600
-    - recordType: TXT
-      name: example.com.
-      values:
-        - "v=spf1 include:_spf.example.com ~all"
-      ttlSeconds: 3600
-```
-
-### Zone with Mixed Record Types
-
-A comprehensive zone with A, AAAA, CNAME, CAA, and NS records:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureDnsZone
-metadata:
-  name: full-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureDnsZone.full-zone
-spec:
-  zoneName: example.com
-  resourceGroup: prod-rg
-  records:
-    - recordType: A
-      name: example.com.
-      values:
-        - "203.0.113.10"
-      ttlSeconds: 300
-    - recordType: AAAA
-      name: example.com.
-      values:
-        - "2001:db8::1"
-      ttlSeconds: 300
-    - recordType: CNAME
-      name: cdn.example.com.
-      values:
-        - "example.azureedge.net."
-      ttlSeconds: 3600
-    - recordType: CAA
-      name: example.com.
-      values:
-        - "letsencrypt.org"
-      ttlSeconds: 3600
-    - recordType: NS
-      name: subdomain.example.com.
-      values:
-        - "ns1.delegated.example.com."
-        - "ns2.delegated.example.com."
-      ttlSeconds: 86400
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed resource group instead of hardcoding the name:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureDnsZone
-metadata:
-  name: ref-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureDnsZone.ref-zone
+    pulumi.planton.dev/stack.name: dev.AzureDnsZone.example-com
 spec:
   zoneName: example.com
   resourceGroup:
     valueFrom:
       kind: AzureResourceGroup
       name: my-rg
-      field: status.outputs.resource_group_name
-  records:
-    - recordType: A
-      name: example.com.
-      values:
-        - "203.0.113.10"
-      ttlSeconds: 300
+      fieldPath: status.outputs.resource_group_name
+  tags:
+    team: platform
 ```
 
-## Stack Outputs
+Deploy:
 
-After deployment, the following outputs are available in `status.outputs`:
+```shell
+planton apply -f zone.yaml
+```
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `zoneId` | `string` | Azure Resource Manager ID of the DNS zone |
-| `zoneName` | `string` | DNS zone name |
-| `nameservers` | `string[]` | Name server addresses assigned to the DNS zone by Azure. Update your domain registrar to delegate to these name servers. |
+After deployment, update your domain registrar to use the four name servers in `status.outputs.name_servers` -- that delegation is what makes the zone authoritative. For a subdomain zone (team.example.com), publish those name servers as an NS record in the parent zone instead.
 
-## Related Components
+## Key Outputs
 
-- [AzureResourceGroup](/docs/catalog/azure/azureresourcegroup) -- provides the resource group where the DNS zone is created
-- [AzureDnsRecord](/docs/catalog/azure/azurednsrecord) -- manages individual DNS records as standalone resources outside of the zone spec
-- [AzureVpc](/docs/catalog/azure/azurevpc) -- provides the virtual network that services resolved by this zone may run in
+| Output | Purpose |
+|--------|---------|
+| `zone_id` | The zone's ARM ID -- referenced by Front Door custom domains and AKS web-app routing |
+| `zone_name` | What Azure DNS Record resources reference to address record sets |
+| `resource_group_name` | Pairs with `zone_name` for management-plane addressing |
+| `name_servers` | The four name servers to configure at the registrar |
+| `max_number_of_record_sets` | The zone's record-set capacity limit |
+
+## Related Resources
+
+- [Azure DNS Record](/docs/catalog/azure/azurednsrecord) -- the record sets declared in the zone
+- [Azure Private DNS Zone](/docs/catalog/azure/azureprivatednszone) -- name resolution inside virtual networks
+- [Azure Front Door Custom Domain](/docs/catalog/azure/azurefrontdoorcustomdomain) -- watches the zone for its validation records

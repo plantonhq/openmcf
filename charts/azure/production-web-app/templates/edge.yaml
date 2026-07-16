@@ -1,0 +1,139 @@
+# The global edge: Front Door profile, endpoint, origin, route, and WAF.
+# The origin hostname references the web app's default_hostname output so
+# the backend tracks deploy-time allocation.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorProfile
+metadata:
+  name: "{{ values.env }}-web-fd"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.resource_group_name
+  profileName: "{{ values.env }}-web-fd"
+  sku: STANDARD
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorEndpoint
+metadata:
+  name: "{{ values.env }}-web-fd-endpoint"
+spec:
+  profileId:
+    valueFrom:
+      kind: AzureFrontDoorProfile
+      name: "{{ values.env }}-web-fd"
+      fieldPath: status.outputs.profile_id
+  endpointName: "{{ values.env }}-web"
+  enabled: true
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorOriginGroup
+metadata:
+  name: "{{ values.env }}-web-origin-group"
+spec:
+  profileId:
+    valueFrom:
+      kind: AzureFrontDoorProfile
+      name: "{{ values.env }}-web-fd"
+      fieldPath: status.outputs.profile_id
+  originGroupName: web-backend
+  loadBalancing:
+    sampleSize: 4
+    successfulSamplesRequired: 3
+    additionalLatencyInMilliseconds: 50
+  healthProbe:
+    protocol: HTTPS
+    intervalInSeconds: 30
+    requestType: HEAD
+    path: /
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorOrigin
+metadata:
+  name: "{{ values.env }}-web-origin"
+spec:
+  originGroupId:
+    valueFrom:
+      kind: AzureFrontDoorOriginGroup
+      name: "{{ values.env }}-web-origin-group"
+      fieldPath: status.outputs.origin_group_id
+  originName: web-app
+  hostName:
+    valueFrom:
+      kind: AzureLinuxWebApp
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.default_hostname
+  certificateNameCheckEnabled: true
+  httpsPort: 443
+  priority: 1
+  weight: 500
+  enabled: true
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorRoute
+metadata:
+  name: "{{ values.env }}-web-route"
+spec:
+  endpointId:
+    valueFrom:
+      kind: AzureFrontDoorEndpoint
+      name: "{{ values.env }}-web-fd-endpoint"
+      fieldPath: status.outputs.endpoint_id
+  routeName: default
+  originGroupId:
+    valueFrom:
+      kind: AzureFrontDoorOriginGroup
+      name: "{{ values.env }}-web-origin-group"
+      fieldPath: status.outputs.origin_group_id
+  originIds:
+    - valueFrom:
+        kind: AzureFrontDoorOrigin
+        name: "{{ values.env }}-web-origin"
+        fieldPath: status.outputs.origin_id
+  patternsToMatch:
+    - "/*"
+  supportedProtocols:
+    - HTTP
+    - HTTPS
+  forwardingProtocol: HTTPS_ONLY
+  httpsRedirectEnabled: true
+  linkToDefaultDomain: true
+  enabled: true
+---
+# The WAF policy: PREVENTION mode blocks malicious traffic at the edge.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorFirewallPolicy
+metadata:
+  name: "{{ values.env }}-web-waf"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.resource_group_name
+  policyName: "{{ values.env }}webwaf"
+  sku: STANDARD
+  mode: {{ values.front_door_waf_mode }}
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorSecurityPolicy
+metadata:
+  name: "{{ values.env }}-web-waf-attach"
+spec:
+  profileId:
+    valueFrom:
+      kind: AzureFrontDoorProfile
+      name: "{{ values.env }}-web-fd"
+      fieldPath: status.outputs.profile_id
+  securityPolicyName: waf-on-endpoint
+  firewallPolicyId:
+    valueFrom:
+      kind: AzureFrontDoorFirewallPolicy
+      name: "{{ values.env }}-web-waf"
+      fieldPath: status.outputs.firewall_policy_id
+  domainIds:
+    - valueFrom:
+        kind: AzureFrontDoorEndpoint
+        name: "{{ values.env }}-web-fd-endpoint"
+        fieldPath: status.outputs.endpoint_id

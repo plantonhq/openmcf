@@ -12,7 +12,7 @@ This preset creates a Network Security Group for bastion or jump-host subnets, a
 
 - **SSH from trusted IPs** (`priority: 100, destinationPortRange: "22"`) -- Linux remote access restricted to your office, VPN, or CI/CD runner IP ranges
 - **RDP from trusted IPs** (`priority: 110, destinationPortRange: "3389"`) -- Windows remote access with the same IP restriction. Remove if only Linux bastion hosts are used
-- **Deny all internet** (`priority: 4000, access: Deny`) -- Explicit catch-all deny for any internet traffic not matching SSH/RDP rules
+- **Deny all internet** (`priority: 4000, access: DENY`) -- Explicit catch-all deny for any internet traffic not matching SSH/RDP rules
 - **Trusted CIDR restriction** -- Replace `<your-trusted-cidr>` with your office IP range (e.g., `203.0.113.0/24`) or VPN gateway CIDR. Never use `*` or `Internet` for bastion access
 
 ## Placeholders to Replace

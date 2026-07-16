@@ -1,0 +1,66 @@
+# The storage account behind the shared Azure Files volume. SMB mounts
+# authenticate with the account key (the one place Azure Files offers no
+# identity-based alternative for Container Apps volumes), so shared key
+# access stays enabled -- the key travels by reference into the
+# environment storage registration below and never appears in a
+# manifest.
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageAccount
+metadata:
+  name: "{{ values.env }}-capps-storage"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-container-apps"
+      fieldPath: status.outputs.resource_group_name
+  accountName: "{{ values.storage_account_name }}"
+---
+# The SMB file share the worker mounts. Standard tier bills for used
+# capacity only; the quota is a cap, not a pre-provision.
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageShare
+metadata:
+  name: "{{ values.env }}-capps-share"
+spec:
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: "{{ values.env }}-capps-storage"
+      fieldPath: status.outputs.storage_account_id
+  shareName: shared-data
+  quotaGb: {{ values.shared_volume_quota_gb }}
+---
+# Registers the share on the environment so apps can declare AZURE_FILE
+# volumes against it. Every field is a reference: the share name, the
+# account name, and the (sensitive) account key all track the resources
+# above -- rotate the key or rebuild the account and the registration
+# follows.
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppEnvironmentStorage
+metadata:
+  name: "{{ values.env }}-capps-shared-volume"
+spec:
+  containerAppEnvironmentId:
+    valueFrom:
+      kind: AzureContainerAppEnvironment
+      name: "{{ values.env }}-capps"
+      fieldPath: status.outputs.environment_id
+  storageName: shared-data
+  shareName:
+    valueFrom:
+      kind: AzureStorageShare
+      name: "{{ values.env }}-capps-share"
+      fieldPath: status.outputs.share_name
+  accessMode: READ_WRITE
+  accountName:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: "{{ values.env }}-capps-storage"
+      fieldPath: status.outputs.storage_account_name
+  accessKey:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: "{{ values.env }}-capps-storage"
+      fieldPath: status.outputs.primary_access_key

@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureManagedDisk
+metadata:
+  name: my-managed-disk
+spec:
+  region: <azure-region>
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: workload-data  # REPLACE: name the DATA, not the VM
+  storageAccountType: PREMIUM_V2_LRS
+  createOption: EMPTY
+  diskSizeGb: 128
+  zone: "1"
+  diskIopsReadWrite: 8000   # dialed independently of size
+  diskMbpsReadWrite: 300

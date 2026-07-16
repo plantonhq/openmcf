@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azuremanageddisk.v1;
+
+// **AzureManagedDiskStackOutputs** captures the outputs of provisioning an
+// Azure Managed Disk.
+message AzureManagedDiskStackOutputs {
+  // The Azure Resource Manager ID of the disk. This is the primary
+  // output: AzureVirtualMachine's data_disk_attachments references it to
+  // attach the disk.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/disks/{name}
+  string disk_id = 1;
+
+  // The name of the disk.
+  string disk_name = 2;
+
+  // The disk's ACTUAL size in GiB -- inherited from the source for
+  // COPY/FROM_IMAGE disks that omitted disk_size_gb, so downstream
+  // capacity planning reads the real value.
+  int32 disk_size_gb = 3;
+}

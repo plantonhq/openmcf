@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurefrontdoorsecret.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureFrontDoorSecretSpec** defines the configuration for creating a
+// secret inside an Azure Front Door (Standard/Premium) profile -- the
+// bring-your-own TLS certificate node. A secret wraps a Key Vault
+// certificate so custom domains can terminate TLS with it: the domain's
+// tls.secret_id references this secret, and this secret references the
+// AzureKeyVaultCertificate that actually holds the key material.
+//
+// The secret is a first-class resource (not a field on the domain)
+// because one certificate -- typically a wildcard or multi-SAN cert --
+// serves many custom domains, and rotating it must be a single
+// operation, not a per-domain edit.
+//
+// **The whole resource is immutable**: Azure exposes no update on Front
+// Door secrets, so changing ANY field replaces the secret. That is safe
+// in practice -- certificate ROTATION happens inside Key Vault (new
+// certificate versions), not by editing the secret, when the reference
+// is versionless (see key_vault_certificate_id).
+//
+// **Operational prerequisite (one-time, per tenant)**: Front Door reads
+// Key Vault with its own service principal (the "Microsoft.AzureFrontDoor-Cdn"
+// enterprise application). That principal must be granted read access to
+// the vault's certificates and secrets -- e.g. the "Key Vault Secrets
+// User" role on an RBAC-mode vault -- before a secret can deploy. This
+// is a grant on YOUR vault to Microsoft's principal; no module can
+// create the principal itself.
+//
+// **Certificate content requirement**: Azure rejects SELF-SIGNED
+// certificates ("the certificate chain includes an invalid number of
+// certificates") -- the wrapped certificate must be CA-issued with a
+// complete chain (leaf plus issuer, at least two certificates). Use a
+// Key Vault certificate enrolled through a CA integration or an
+// imported PKCS#12 that carries its full chain.
+message AzureFrontDoorSecretSpec {
+  // The Front Door profile the secret lives in, by ARM ID. References
+  // an AzureFrontDoorProfile's profile_id output so the profile and its
+  // secrets compose in one manifest set. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef profile_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorProfile,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.profile_id"
+  ];
+
+  // The secret's name -- unique within the profile. Custom domains
+  // reference the secret by ARM ID (see the secret_id output), so the
+  // name is mostly a human-facing label in the portal.
+  //
+  // 2-260 characters; letters, digits, and hyphens; must start and end
+  // with a letter or digit.
+  string secret_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "front_door_secret_name_format"
+      message: "secret_name must be 2-260 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens"
+      expression: "this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,258}[a-zA-Z0-9]$')"
+    }
+  ];
+
+  // The Key Vault CERTIFICATE the secret wraps, by its Key Vault
+  // certificate identifier (a vault data-plane URL, not an ARM ID).
+  // References an AzureKeyVaultCertificate's versionless_id output --
+  // the versionless form (no trailing version segment) tells Front Door
+  // to follow the certificate's LATEST version, so Key Vault rotation
+  // and auto-renewal propagate to every domain using this secret
+  // without redeploying anything. Reference the versioned certificate_id
+  // output instead only when a domain must pin one exact certificate
+  // version (rotation then requires replacing this secret).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_certificate_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+}

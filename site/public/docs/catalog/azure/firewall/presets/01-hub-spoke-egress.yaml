@@ -1,0 +1,29 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFirewall
+metadata:
+  name: hub-egress-fw
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: <resource-group-name>
+  name: hub-egress-fw
+  skuName: AZFW_VNET
+  skuTier: STANDARD
+  ipConfigurations:
+    - name: primary
+      subnetId:
+        valueFrom:
+          name: <firewall-subnet-name>
+      publicIpAddressId:
+        valueFrom:
+          name: <firewall-pip-name>
+  firewallPolicyId:
+    valueFrom:
+      name: <firewall-policy-name>
+  zones:
+    - "1"
+    - "2"
+    - "3"
+  tags:
+    cost-center: <cost-center>

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azuremanagedredisgeoreplication.v1;
+
+// **AzureManagedRedisGeoReplicationStackOutputs** captures the outputs of
+// linking Managed Redis instances into an active geo-replication group.
+message AzureManagedRedisGeoReplicationStackOutputs {
+  // The group's resource ID -- the ARM ID of the managing Managed Redis
+  // cluster (the group has no ARM object of its own; membership lives
+  // on every member's default database).
+  string geo_replication_id = 1;
+}

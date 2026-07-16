@@ -22,7 +22,7 @@ When you run forge, you get a fully-implemented deployment component:
 ### IaC Modules - Pulumi
 - ✅ Module files: `main.go`, `locals.go`, `outputs.go`, resource-specific files
 - ✅ Entrypoint: `main.go`, `Pulumi.yaml`, `Makefile`
-- ✅ Documentation: `README.md`, `debug.sh`
+- ✅ Documentation: `README.md`
 - ✅ E2E tested and validated
 
 ### IaC Modules - Terraform

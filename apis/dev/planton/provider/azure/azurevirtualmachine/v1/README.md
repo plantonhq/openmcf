@@ -1,91 +1,91 @@
-# Azure Virtual Machine
-
-Deploy Azure Virtual Machines using Planton's declarative approach with cross-references to other Azure resources.
+# AzureVirtualMachine
 
 ## Overview
 
-The AzureVirtualMachine component provides a streamlined way to deploy and manage Azure Virtual Machines with best-practice defaults. It supports both Linux and Windows VMs, with options for SSH key or password authentication, managed identities, data disks, and spot instances.
+`AzureVirtualMachine` provisions an Azure Virtual Machine: the compute
+instance itself — its size, image, OS profile, OS disk, identity,
+placement, and security posture.
 
-## Purpose
+The VM is deliberately just the machine. Everything it composes with is
+referenced, never created here — matching Azure's own model, where a VM
+is a compute shell wired to first-class resources:
 
-This component simplifies Azure VM deployment by:
-- Providing sensible defaults for common configurations
-- Supporting cross-references to other Azure resources (VNets, Key Vaults)
-- Enabling both marketplace and custom images
-- Integrating managed identities for secure Azure service access
-- Supporting cost optimization through spot instances
+- **Network presence** is one or more referenced `AzureNetworkInterface`
+  resources (`network_interface_ids`, at least one; the first is
+  primary). Public IPs, NSG filtering, and subnet placement all live on
+  the NIC.
+- **Data volumes** are referenced `AzureManagedDisk` resources mounted at
+  a LUN with a caching mode (`data_disk_attachments`) — the data outlives
+  the machine.
+- **Identities** are referenced `AzureUserAssignedIdentity` resources or
+  the VM's own system-assigned principal (surfaced in the outputs);
+  grants are composed with `AzureRoleAssignment`.
+
+Only the OS disk is inline: it is born and dies with the VM by
+definition — unless the VM boots from an existing referenced OS disk
+(`os_managed_disk_id`), the disk-swap/golden-disk path, in which case the
+OS profile carries no authentication fields (the disk already contains
+its users; spec-level validation enforces the pairing).
 
 ## Key Features
 
-- **Network Integration**: Reference subnets from AzureVpc resources using cross-references
-- **Flexible Authentication**: SSH keys for Linux, passwords for Windows (or both)
-- **Managed Identities**: System-assigned and user-assigned identity support
-- **Disk Options**: Configure OS disk and attach additional data disks
-- **Availability Zones**: Deploy to specific zones for high availability
-- **Spot Instances**: Reduce costs with spot pricing for fault-tolerant workloads
-- **Boot Diagnostics**: Debug boot issues with serial console access
+- **Explicit OS choice** — `os_profile` carries exactly one of `linux`
+  or `windows`, each with its own authentication contract (SSH-first for
+  Linux with password auth disabled by default; password + WinRM/unattend
+  for Windows) and its own patch-mode vocabulary, mirroring ARM's
+  separate per-OS surfaces. The module deploys the matching ARM resource.
+- **Exactly one image source** — marketplace coordinates
+  (`source_image_reference`; `latest` resolves at creation only), a
+  custom/gallery image ID (`source_image_id`), or an existing OS disk
+  (`os_managed_disk_id`).
+- **Full compute surface** — spot capacity (eviction policy + max bid),
+  placement (zone XOR availability set, proximity placement, capacity
+  reservations, dedicated hosts, Flexible-VMSS attach), trusted launch
+  (secure boot + vTPM), encryption at host, confidential-VM guest-state
+  encryption, platform patch orchestration, boot diagnostics (managed
+  storage by default), gallery applications, scheduled-event
+  notifications, marketplace plans, per-OS license types (Azure Hybrid
+  Benefit / Linux BYOS), Key Vault certificate installation, NVMe disk
+  controller, Ultra-SSD/hibernation capabilities, and edge zones.
+- **`custom_data` vs `user_data` handled honestly** — cloud-init
+  `custom_data` is secret material, delivered once at first boot;
+  `user_data` is IMDS-readable and updatable, never secret.
+- **Composable** — prerequisites are `AzureResourceGroup` and
+  `AzureNetworkInterface`; disks, identities, and vault certificates are
+  optional referenced seams.
 
-## Example Usage
+## Prerequisites
 
-### Basic Linux VM with SSH
+| Kind | Why |
+|------|-----|
+| `AzureResourceGroup` | The VM is created inside a referenced resource group |
+| `AzureNetworkInterface` | At least one referenced NIC gives the VM its network presence |
 
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureVirtualMachine
-metadata:
-  name: web-server
-spec:
-  region: eastus
-  resource_group: my-resource-group
-  vm_size: Standard_D2s_v3
-  subnet_id:
-    value_from:
-      kind: AzureVpc
-      name: my-vpc
-      field_path: status.outputs.nodes_subnet_id
-  image:
-    publisher: Canonical
-    offer: 0001-com-ubuntu-server-jammy
-    sku: 22_04-lts-gen2
-  ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2E... user@host"
-  enable_boot_diagnostics: true
-```
+Optional referenced kinds: `AzureManagedDisk` (data disks or an existing
+OS disk), `AzureUserAssignedIdentity` (user-assigned identity),
+`AzureKeyVault` (certificate installation).
 
-### Windows VM with Password
+## Stack Outputs
 
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureVirtualMachine
-metadata:
-  name: windows-server
-spec:
-  region: westus2
-  resource_group: my-resource-group
-  vm_size: Standard_D4s_v5
-  subnet_id:
-    value: "/subscriptions/.../subnets/default"
-  image:
-    publisher: MicrosoftWindowsServer
-    offer: WindowsServer
-    sku: 2022-datacenter-g2
-  admin_password:
-    value_from:
-      kind: AzureKeyVault
-      name: my-vault
-      field_path: status.outputs.vault_uri
-  availability_zone: "1"
-```
+| Output | Description |
+|--------|-------------|
+| `vm_id` | ARM ID of the VM (what role assignments, diagnostics, and backup scope to) |
+| `vm_name` | VM name within the resource group |
+| `virtual_machine_guid` | The 128-bit GUID Azure assigns the VM (licensing/inventory key) |
+| `private_ip_address` | Primary private IP across the attached NICs (convenience echo) |
+| `public_ip_address` | Primary public IP across the attached NICs (empty for private-only VMs) |
+| `computer_name` | The OS hostname the VM booted with |
+| `system_assigned_identity_principal_id` | Principal ID of the system-assigned identity (when enabled) — what `AzureRoleAssignment` grants reference |
 
-## Deploy
+## Related Resources
 
-```bash
-planton pulumi up --manifest vm.yaml
-```
-
-## Best Practices
-
-- Use SSH keys for Linux VMs (more secure than passwords)
-- Enable managed identities instead of storing credentials
-- Deploy to availability zones for production workloads
-- Use spot instances for dev/test and fault-tolerant workloads
-- Configure network security groups to restrict access
+- **`AzureNetworkInterface`** — the VM's network presence: subnet
+  placement, public IPs, NSG filtering, accelerated networking
+- **`AzureManagedDisk`** — first-class data volumes that outlive the VM,
+  and the golden-disk boot source
+- **`AzureUserAssignedIdentity`** — shareable managed identities attached
+  via `identity.identity_ids`
+- **`AzureRoleAssignment`** — grants against the VM's system-assigned
+  principal or its user-assigned identities
+- **`AzureKeyVault`** — certificates installed onto the VM at
+  provisioning time (`secrets`)

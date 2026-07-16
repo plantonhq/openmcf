@@ -4,23 +4,24 @@ metadata:
   name: my-node-api
 spec:
   region: eastus
-  resource_group:
+  resourceGroup:
     value: "<your-resource-group-name>"
-  name: my-node-api
-  service_plan_id:
+  webAppName: my-node-api
+  servicePlanId:
     value: "<your-service-plan-id>"
-  application_insights_connection_string:
+  applicationInsightsConnectionString:
     value: "<your-app-insights-connection-string>"
-  https_only: true
-  app_settings:
+  httpsOnly: true
+  appSettings:
     NODE_ENV: production
-  site_config:
-    application_stack:
-      node_version: "22-lts"
-    health_check_path: /health
-    http2_enabled: true
-    minimum_tls_version: "1.2"
-    ftps_state: Disabled
+  siteConfig:
+    applicationStack:
+      nodeVersion: "22-lts"
+    healthCheckPath: /health
+    http2Enabled: true
+    # TLS_1_2 is the spec default -- stated here for clarity.
+    minimumTlsVersion: TLS_1_2
+    ftpsState: DISABLED
     cors:
-      allowed_origins:
+      allowedOrigins:
         - https://myapp.example.com

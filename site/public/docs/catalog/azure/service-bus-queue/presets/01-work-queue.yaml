@@ -1,0 +1,18 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusQueue
+metadata:
+  name: my-work-queue
+spec:
+  namespaceId:
+    valueFrom:
+      kind: AzureServiceBusNamespace
+      name: my-app-bus
+      fieldPath: status.outputs.namespace_id
+  queueName: orders
+  # Poison messages quarantine after 5 attempts instead of Azure's 10 --
+  # faster detection for typical worker fleets.
+  maxDeliveryCount: 5
+  # Expired messages stay inspectable in the dead-letter sub-queue
+  # instead of vanishing.
+  deadLetteringOnMessageExpiration: true
+  defaultMessageTtl: P14D

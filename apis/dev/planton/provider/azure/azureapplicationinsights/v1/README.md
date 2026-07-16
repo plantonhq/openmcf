@@ -3,94 +3,75 @@
 ## Overview
 
 `AzureApplicationInsights` provisions an Azure Application Insights resource --
-Azure's Application Performance Management (APM) service. It provides deep
-observability into web applications, APIs, and microservices by tracking request
+Azure's Application Performance Management (APM) service. It tracks request
 rates, response times, failure rates, dependency calls, exceptions, and custom
-telemetry.
+telemetry for any instrumented application.
 
-Application Insights is the standard APM layer in Azure, consumed by:
-
-- **Azure Function Apps** -- serverless function monitoring
-- **Azure Web Apps** -- web application monitoring
-- **Azure Container Apps** -- containerized application monitoring
-- **Any application** instrumented with the Application Insights SDK or OpenTelemetry
-
-This component creates workspace-based Application Insights only. Classic
-(non-workspace) Application Insights is deprecated by Microsoft and is not supported.
+This component models workspace-based Application Insights only: telemetry is
+stored in a referenced `AzureLogAnalyticsWorkspace`. Classic (non-workspace)
+mode was retired by Azure in February 2024, so the workspace binding is
+required here -- and once set on a resource it can be repointed but never
+removed.
 
 ## Key Features
 
-- **StringValueOrRef resource_group** -- references an `AzureResourceGroup` output,
-  enabling proper dependency wiring in infra charts
-- **StringValueOrRef workspace_id** -- references an `AzureLogAnalyticsWorkspace`
-  output, enforcing the modern workspace-based architecture
-- **Telemetry sampling** -- configurable sampling percentage (0-100%) for cost control
-- **Daily data cap** -- prevent cost overruns with configurable daily ingestion limits
-- **Flexible retention** -- choose from 9 Azure-supported retention periods (30-730 days)
-- **Provider-authentic application types** -- `"web"`, `"java"`, `"Node.JS"`, `"other"`
-  passed directly to Azure with no conversion
+- **Full application-type vocabulary** -- all eight Azure kinds (web, java,
+  Node.JS, other, ios, phone, store, MobileCenter) as a closed enum with
+  case-exact wire mapping (an unmatched raw string would be silently treated
+  as ASP.NET by Azure)
+- **Cost controls** -- daily data cap with notification toggle, sampling
+  percentage, fixed-set retention (30-730 days)
+- **Security posture** -- Entra-only ingestion (`local_authentication_enabled:
+  false`), private-link-only ingestion and query paths
+- **Privacy** -- client IP masking (Azure's default, GDPR-friendly), BYO
+  storage for profiler artifacts
+- **Governance tags** -- user tags merged over the Planton-derived metadata tags
 
 ## When to Use
 
-- Before deploying Function Apps, Web Apps, or Container Apps that need APM
-- As the monitoring layer in function-app-environment, web-app-environment, and
-  container-apps-environment infra charts
-- When you need application-level telemetry beyond infrastructure metrics
-- When building end-to-end observability with Log Analytics Workspace + App Insights
+- APM for anything deployed on `AzureFunctionApp`, `AzureLinuxWebApp`, or
+  `AzureContainerApp` -- those kinds reference this resource's
+  `connection_string` output
+- OpenTelemetry-instrumented workloads exporting to Azure Monitor
+- Availability (web-test) monitoring feeding `AzureMonitorMetricAlert`
 
-## Spec Fields
+## Spec Highlights
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `region` | string | Yes | - | Azure region |
-| `resource_group` | StringValueOrRef | Yes | - | Resource group (literal or valueFrom) |
-| `name` | string | Yes | - | Resource name (1-260 chars) |
-| `application_type` | string | No | web | Application type: web, java, Node.JS, other |
-| `workspace_id` | StringValueOrRef | Yes | - | Log Analytics Workspace ID (literal or valueFrom) |
-| `retention_in_days` | int32 | No | 90 | Data retention (30/60/90/120/180/270/365/550/730) |
-| `daily_data_cap_in_gb` | double | No | 100 | Daily ingestion cap in GB |
-| `sampling_percentage` | double | No | 100 | Telemetry sampling rate (0-100%) |
+| `region` | string | Yes | - | Azure region (match the monitored app) |
+| `resource_group` | StringValueOrRef | Yes | - | Resource group |
+| `application_insights_name` | string | Yes | - | Resource name (1-260 chars; ForceNew) |
+| `application_type` | enum | No | WEB | The 8-value Azure vocabulary (ForceNew) |
+| `workspace_id` | StringValueOrRef | Yes | - | The Log Analytics Workspace storing telemetry |
+| `retention_in_days` | int32 | No | 90 | One of Azure's fixed values (30...730) |
+| `daily_data_cap_in_gb` | double | No | 100 | Ingestion stops at the cap until next UTC day |
+| `daily_data_cap_notifications_enabled` | bool | No | true | Email when the cap is hit |
+| `sampling_percentage` | double | No | 100 | Telemetry sampling (0-100) |
+| `ip_masking_enabled` | bool | No | true | Mask client IPs to 0.0.0.0 |
+| `local_authentication_enabled` | bool | No | true | Instrumentation-key ingestion allowed |
+| `internet_ingestion_enabled` / `internet_query_enabled` | bool | No | true | Public paths (false = AMPLS-only) |
+| `force_customer_storage_for_profiler` | bool | No | false | BYO storage for profiler artifacts |
+| `tags` | map | No | - | User tags |
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `app_insights_id` | Azure Resource Manager ID |
-| `instrumentation_key` | Classic instrumentation key (sensitive) |
-| `connection_string` | SDK connection string (sensitive, recommended) |
-| `app_id` | Application ID for API access |
+| `application_insights_id` | ARM resource ID (referenced by web-test metric alerts and diagnostic settings) |
+| `application_insights_name` | Resource name |
+| `instrumentation_key` | Classic SDK key (secret-bearing; prefer the connection string) |
+| `connection_string` | The SDK configuration string -- the seam app kinds reference (secret-bearing) |
+| `app_id` | The REST-API query identifier |
 
-## Quick Example
+## Composition
 
 ```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureApplicationInsights
-metadata:
-  name: platform-ai
-  org: mycompany
-  env: production
-spec:
-  region: eastus
-  resource_group:
-    valueFrom:
-      kind: AzureResourceGroup
-      name: platform-rg
-      fieldPath: status.outputs.resource_group_name
-  name: prod-platform-ai
-  application_type: web
-  workspace_id:
-    valueFrom:
-      kind: AzureLogAnalyticsWorkspace
-      name: platform-law
-      fieldPath: status.outputs.workspace_id
-  retention_in_days: 90
-  sampling_percentage: 50
+applicationInsightsConnectionString:
+  valueFrom:
+    kind: AzureApplicationInsights
+    name: my-web-app-insights
+    fieldPath: status.outputs.connection_string
 ```
 
-## Downstream Resources
-
-Resources that reference this Application Insights:
-
-- **AzureFunctionApp** -- `application_insights_connection_string` via StringValueOrRef
-- **AzureLinuxWebApp** -- `application_insights_connection_string` via StringValueOrRef
-- **AzureContainerApp** -- connection string passed as environment variable
+See `presets/` for the standard and production-sampled starting points.

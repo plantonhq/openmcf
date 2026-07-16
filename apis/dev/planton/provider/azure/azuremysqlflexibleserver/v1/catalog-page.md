@@ -1,22 +1,25 @@
 # Azure MySQL Flexible Server
 
-Deploys an Azure Database for MySQL Flexible Server with configurable compute tier, storage, high availability, backup retention, and network access mode. The component optionally creates named databases and firewall rules on the server.
+Creates an Azure Database for MySQL Flexible Server -- Azure's managed MySQL with per-server compute and storage sizing, zone-redundant high availability, a Microsoft Entra administrator, customer-managed-key encryption, read replicas, and point-in-time restore. Databases, firewall rules, server parameters, and the Entra administrator are declared on the server and managed with it.
 
 ## What Gets Created
 
 When you deploy an AzureMysqlFlexibleServer resource, Planton provisions:
 
-- **MySQL Flexible Server** — a `mysql.FlexibleServer` resource in the specified region and resource group, configured with the chosen SKU, MySQL version, storage size, backup retention, and high availability settings
-- **Network Access** — public access with firewall rules when no delegated subnet is provided, or private VNet access when `delegatedSubnetId` is set (public access is automatically disabled)
-- **Databases** — a `mysql.FlexibleDatabase` resource for each entry in `databases`, each with its own charset and collation
-- **Firewall Rules** — a `mysql.FlexibleServerFirewallRule` resource for each entry in `firewallRules`, controlling IP-based access in public access mode
-- **Azure Tags** — resource metadata tags applied to the server for tracking and governance
+- **MySQL Flexible Server** -- an `azurerm_mysql_flexible_server` in the specified region and resource group, with your chosen compute SKU, storage profile (size, IOPS or elastic scaling, auto-grow), version, availability posture, networking, identities, and encryption
+- **Databases** -- an `azurerm_mysql_flexible_database` for each entry in `databases`, each with its own charset and collation
+- **Firewall Rules** -- an `azurerm_mysql_flexible_server_firewall_rule` for each entry in `firewallRules`, allowlisting IPv4 ranges on the public endpoint
+- **Server Parameters** -- an `azurerm_mysql_flexible_server_configuration` for each `serverParameters` entry, applied as user overrides on Azure's per-SKU defaults
+- **Entra Administrator** -- an `azurerm_mysql_flexible_server_active_directory_administrator` for the single `aadAdministrator` (MySQL supports exactly one), backed by a user-assigned identity attached to the server
+
+A read replica or a restored server is simply another AzureMysqlFlexibleServer whose `createMode` and `sourceServerId` reference the source.
 
 ## Prerequisites
 
 - **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure Resource Group** where the server will be created (can reference an AzureResourceGroup resource)
-- **Network planning** — if using private VNet access, a subnet delegated to `Microsoft.DBforMySQL/flexibleServers` and optionally a private DNS zone for name resolution
+- **A resource group** to create the server in (an `AzureResourceGroup` in composed environments)
+- **For VNet injection**: a subnet delegated to `Microsoft.DBforMySQL/flexibleServers` with no other resources, plus a private DNS zone for the server's name
+- **For CMK encryption or the Entra administrator**: a user-assigned identity attached via `userAssignedIdentityIds` (with wrap/unwrap access on the Key Vault key for CMK)
 
 ## Quick Start
 
@@ -34,12 +37,15 @@ metadata:
     pulumi.planton.dev/stack.name: dev.AzureMysqlFlexibleServer.my-mysql
 spec:
   region: eastus
-  resourceGroup: my-rg
-  name: my-mysql
-  administratorLogin: myadmin
-  administratorPassword: "Ch@ngeMe123!"
+  resourceGroup:
+    value: my-rg
+  serverName: myorg-dev-mysql
+  administratorLogin: mysqladmin
+  administratorPassword:
+    value: "Ch@ngeMe1234!"
   skuName: B_Standard_B1ms
-  storageSizeGb: 20
+  databases:
+    - name: myapp
 ```
 
 Deploy:
@@ -48,7 +54,7 @@ Deploy:
 planton apply -f mysql.yaml
 ```
 
-This creates a Burstable-tier MySQL 8.0.21 server with 20 GB storage, auto-grow enabled, 7-day backup retention, and public access with no firewall rules (all connections blocked until rules are added).
+This creates a Burstable MySQL 8.0.21 server with Azure's default 20 GiB auto-growing storage and 7-day backups, public access, and one application database. Read `status.outputs.fqdn` to build the connection string.
 
 ## Configuration Reference
 
@@ -56,210 +62,136 @@ This creates a Burstable-tier MySQL 8.0.21 server with 20 GB storage, auto-grow 
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `region` | `string` | Azure region for the server (e.g., `eastus`, `westeurope`). Must match the VNet region if using VNet integration. | Required, minimum length 1 |
-| `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `name` | `string` | Globally unique server name. Forms the hostname: `{name}.mysql.database.azure.com`. Lowercase letters, numbers, and hyphens only. **ForceNew**: changing this destroys and recreates the server. | Required, 3–63 characters, must start and end with a letter or number |
-| `administratorLogin` | `string` | Administrator login name. Cannot be reserved names such as `admin`, `root`, or `azure_superuser`. **ForceNew**: changing this destroys and recreates the server. | Required, 1–32 characters |
-| `administratorPassword` | `StringValueOrRef` | Administrator password. Must contain characters from at least three of: uppercase, lowercase, digits, special characters. Can reference another resource's output via `valueFrom`. | Required, 8–128 characters |
-| `skuName` | `string` | Compute tier and size. Format: `{TIER}_Standard_{SIZE}`. Tiers: `B` (Burstable), `GP` (General Purpose), `MO` (Memory Optimized). Examples: `B_Standard_B1ms`, `GP_Standard_D2ds_v4`, `MO_Standard_E2ds_v4`. | Required, minimum length 1 |
-| `storageSizeGb` | `int32` | Storage size in gigabytes. Cannot be downgraded after creation. | Required, minimum 20 |
+| `region` | `string` | Azure region. Changing it replaces the server. | Required |
+| `resourceGroup` | `StringValueOrRef` | Resource group name. Defaults to referencing an `AzureResourceGroup`'s name output. | Required |
+| `serverName` | `string` | GLOBALLY unique -- becomes `{name}.mysql.database.azure.com`. Changing it replaces the server. | Required, 3-63 lowercase letters/digits/hyphens |
+| `skuName` | `string` | Compute SKU, `{TIER}_Standard_{SIZE}` (`B_`/`GP_`/`MO_`). Required for a fresh server; a replica left unset inherits the source's. | Pattern-validated |
+
+`administratorLogin` + `administratorPassword` are required for a fresh server; replicas and restores inherit them from the source. MySQL always keeps password auth on -- it cannot be disabled.
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `version` | `string` | `8.0.21` | MySQL version. Valid values: `5.7` (legacy, approaching EOL), `8.0.21` (recommended), `8.4` (latest GA). |
-| `autoGrowEnabled` | `bool` | `true` | Automatically increase storage when free storage falls below a threshold. |
-| `delegatedSubnetId` | `StringValueOrRef` | — | Subnet ID delegated to `Microsoft.DBforMySQL/flexibleServers`. When set, enables private VNet access and disables public access. Can reference an AzureSubnet resource via `valueFrom`. **ForceNew**: changing this destroys and recreates the server. |
-| `privateDnsZoneId` | `StringValueOrRef` | — | Private DNS zone ID for server name resolution within the VNet. Typically `privatelink.mysql.database.azure.com`. Can reference an AzurePrivateDnsZone resource via `valueFrom`. **ForceNew**: changing this destroys and recreates the server. |
-| `zone` | `string` | — | Availability zone for the primary server. Valid values: `1`, `2`, `3`. If omitted, Azure selects automatically. |
-| `highAvailability.mode` | `string` | — | HA mode. `ZoneRedundant` places the standby in a different zone (recommended for production). `SameZone` places the standby in the same zone. Burstable SKUs do not support HA. |
-| `highAvailability.standbyAvailabilityZone` | `string` | — | Availability zone for the standby. Must differ from `zone` when using `ZoneRedundant`. |
-| `backupRetentionDays` | `int32` | `7` | Number of days to retain automatic backups for point-in-time restore. Range: 1–35. |
-| `geoRedundantBackupEnabled` | `bool` | `false` | Replicate backups to a paired Azure region for cross-region disaster recovery. **ForceNew**: changing this destroys and recreates the server. |
-| `databases` | `list` | `[]` | Databases to create on the server. Each entry has: `name` (required), `charset` (default `utf8mb4`), `collation` (default `utf8mb4_0900_ai_ci`). |
-| `firewallRules` | `list` | `[]` | Firewall rules for public access mode. Each entry has: `name` (required), `startIpAddress` (required), `endIpAddress` (required). Use `0.0.0.0`/`0.0.0.0` to allow all Azure services. |
+| `createMode` | `enum` | `DEFAULT` | `DEFAULT`, `REPLICA`, `POINT_IN_TIME_RESTORE`, `GEO_RESTORE`. Fixed at creation. |
+| `sourceServerId` | `StringValueOrRef` | -- | The source server for replica/restore modes; references another server's `server_id` output. |
+| `pointInTimeRestoreTimeInUtc` | `string` | -- | RFC-3339 restore instant (POINT_IN_TIME_RESTORE only; GEO_RESTORE takes no timestamp). |
+| `replicationRole` | `enum` | -- | `NONE` promotes a replica to a standalone primary (irreversible, day-2 only). |
+| `version` | `string` | `"8.0.21"` | MySQL version: `"5.7"`, `"8.0.21"`, `"8.4"`. Upgrades go 5.7 to 8.0.21 in place; downgrades replace the server. |
+| `storage` | `object` | Azure defaults | `sizeGb` (20-16384, grows only), `iops` (360-48000) XOR `ioScalingEnabled`, `autoGrowEnabled` (default true), `logOnDiskEnabled`. |
+| `zone` | `string` | Azure picks | Primary availability zone (`"1"`/`"2"`/`"3"`). |
+| `highAvailability` | `object` | -- | `mode` (`ZONE_REDUNDANT`/`SAME_ZONE`) + optional `standbyAvailabilityZone`. Not supported on Burstable SKUs or replicas. |
+| `maintenanceWindow` | `object` | system-managed | Weekly patching window (`dayOfWeek`/`startHour`/`startMinute`). |
+| `backupRetentionDays` | `int32` | `7` | 1-35 days -- the point-in-time restore horizon. |
+| `geoRedundantBackupEnabled` | `bool` | `false` | Replicates backups to the paired region (enables `GEO_RESTORE`). Fixed at creation. |
+| `publicNetworkAccess` | `enum` | Azure derives | `ENABLED`/`DISABLED`. Leave unset: Azure derives ENABLED publicly, DISABLED when VNet-injected. |
+| `delegatedSubnetId` | `StringValueOrRef` | -- | VNet injection: a delegated subnet (references `AzureSubnet`). Requires `privateDnsZoneId`. Fixed at creation. |
+| `privateDnsZoneId` | `StringValueOrRef` | -- | The private DNS zone the injected server registers in (references `AzurePrivateDnsZone`). Fixed at creation. |
+| `userAssignedIdentityIds` | `list` | `[]` | User-assigned identities attached to the server (MySQL supports no system-assigned flavor). Required for CMK and the Entra administrator. |
+| `customerManagedKey` | `object` | -- | CMK encryption: `keyVaultKeyId` (references `AzureKeyVaultKey.versionless_id`), the unwrap identity, and an optional geo-backup key + identity pair. |
+| `aadAdministrator` | `object` | -- | The single Entra admin: `identityId` (an attached identity), `login`, `objectId` (a directory object ID; a managed identity's CLIENT ID), optional `tenantId`. |
+| `databases` | `list` | `[]` | Databases (`name`, `charset` default `utf8mb4`, `collation` default `utf8mb4_0900_ai_ci`). |
+| `firewallRules` | `list` | `[]` | Public-endpoint IPv4 allowlist (`0.0.0.0`-`0.0.0.0` admits Azure-internal services only). |
+| `serverParameters` | `map(string)` | `{}` | MySQL parameter overrides by name (e.g. `require_secure_transport`, `max_connections`). Static parameters need a restart. |
+| `tags` | `map(string)` | `{}` | User tags, merged over Planton-derived tags (user wins on collision). |
 
 ## Examples
 
-### Development Server with Burstable SKU
-
-A minimal server for development and testing with the smallest compute tier:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureMysqlFlexibleServer
-metadata:
-  name: dev-mysql
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureMysqlFlexibleServer.dev-mysql
-spec:
-  region: eastus
-  resourceGroup: dev-rg
-  name: dev-mysql
-  administratorLogin: devadmin
-  administratorPassword: "D3v$ecure!Pass"
-  skuName: B_Standard_B1ms
-  storageSizeGb: 20
-  backupRetentionDays: 1
-  databases:
-    - name: appdb
-  firewallRules:
-    - name: allow-all-azure
-      startIpAddress: "0.0.0.0"
-      endIpAddress: "0.0.0.0"
-```
-
-### Production Server with HA and Firewall Rules
-
-A General Purpose server with zone-redundant high availability, multiple databases, and restricted network access:
+### Production: VNet-Injected with Zone-Redundant HA
 
 ```yaml
 apiVersion: azure.planton.dev/v1
 kind: AzureMysqlFlexibleServer
 metadata:
   name: prod-mysql
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureMysqlFlexibleServer.prod-mysql
-spec:
-  region: eastus
-  resourceGroup: prod-rg
-  name: prod-mysql
-  administratorLogin: prodadmin
-  administratorPassword: "Pr0d$ecure!Passw0rd"
-  version: "8.0.21"
-  skuName: GP_Standard_D4ds_v4
-  storageSizeGb: 256
-  autoGrowEnabled: true
-  zone: "1"
-  highAvailability:
-    mode: ZoneRedundant
-    standbyAvailabilityZone: "2"
-  backupRetentionDays: 35
-  geoRedundantBackupEnabled: true
-  databases:
-    - name: appdb
-    - name: analytics
-      charset: utf8mb4
-      collation: utf8mb4_0900_ai_ci
-  firewallRules:
-    - name: allow-office
-      startIpAddress: "203.0.113.0"
-      endIpAddress: "203.0.113.255"
-    - name: allow-ci
-      startIpAddress: "198.51.100.42"
-      endIpAddress: "198.51.100.42"
-```
-
-### Private VNet Access with Delegated Subnet
-
-A server deployed into a private VNet with no public endpoint, using a delegated subnet and private DNS zone:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureMysqlFlexibleServer
-metadata:
-  name: private-mysql
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureMysqlFlexibleServer.private-mysql
-spec:
-  region: westeurope
-  resourceGroup: prod-rg
-  name: private-mysql
-  administratorLogin: dbadmin
-  administratorPassword: "Pr!vat3Acc3ss#99"
-  skuName: GP_Standard_D2ds_v4
-  storageSizeGb: 128
-  delegatedSubnetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet/subnets/mysql-subnet
-  privateDnsZoneId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.Network/privateDnsZones/privatelink.mysql.database.azure.com
-  highAvailability:
-    mode: SameZone
-  databases:
-    - name: appdb
-```
-
-### Using Foreign Key References
-
-Reference Planton-managed resources instead of hardcoding Azure resource IDs:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureMysqlFlexibleServer
-metadata:
-  name: ref-mysql
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureMysqlFlexibleServer.ref-mysql
 spec:
   region: eastus
   resourceGroup:
     valueFrom:
-      kind: AzureResourceGroup
-      name: my-rg
-      field: status.outputs.resource_group_name
-  name: ref-mysql
-  administratorLogin: myadmin
-  administratorPassword: "R3f$ecure!Pass"
-  skuName: GP_Standard_D2ds_v4
-  storageSizeGb: 64
+      name: data-rg
+  serverName: myorg-prod-mysql
+  administratorLogin: mysqladmin
+  administratorPassword:
+    value: "Ch@ngeMe1234!"
+  skuName: GP_Standard_D4ds_v4
+  storage:
+    sizeGb: 256
+    ioScalingEnabled: true
+  zone: "1"
+  highAvailability:
+    mode: ZONE_REDUNDANT
+    standbyAvailabilityZone: "2"
+  backupRetentionDays: 35
+  geoRedundantBackupEnabled: true
   delegatedSubnetId:
     valueFrom:
-      kind: AzureSubnet
-      name: mysql-subnet
-      field: status.outputs.subnet_id
+      name: database-subnet
   privateDnsZoneId:
     valueFrom:
-      kind: AzurePrivateDnsZone
-      name: mysql-dns
-      field: status.outputs.zone_id
+      name: mysql-dns-zone
   databases:
-    - name: appdb
-    - name: jobs
+    - name: orders
 ```
 
-### MySQL 8.4 with Memory Optimized SKU
-
-A high-performance server running the latest MySQL version on a Memory Optimized tier for analytics workloads:
+### Read Replica of a Primary
 
 ```yaml
 apiVersion: azure.planton.dev/v1
 kind: AzureMysqlFlexibleServer
 metadata:
-  name: analytics-mysql
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureMysqlFlexibleServer.analytics-mysql
+  name: prod-mysql-replica
 spec:
   region: eastus
-  resourceGroup: analytics-rg
-  name: analytics-mysql
-  administratorLogin: analyticsadmin
-  administratorPassword: "An@lytics!P4ss"
-  version: "8.4"
-  skuName: MO_Standard_E2ds_v4
-  storageSizeGb: 512
-  autoGrowEnabled: true
-  backupRetentionDays: 14
-  databases:
-    - name: warehouse
-    - name: reporting
-  firewallRules:
-    - name: allow-office
-      startIpAddress: "203.0.113.0"
-      endIpAddress: "203.0.113.255"
+  resourceGroup:
+    valueFrom:
+      name: data-rg
+  serverName: myorg-prod-mysql-replica
+  createMode: REPLICA
+  sourceServerId:
+    valueFrom:
+      kind: AzureMysqlFlexibleServer
+      name: prod-mysql
+      fieldPath: status.outputs.server_id
+```
+
+The replica inherits the source's SKU, storage, and version. Promote it later by setting `replicationRole: NONE`. The source's `replica_capacity` output reports how many more replicas it can accept.
+
+### Hardened: Customer-Managed Key and an Entra Administrator
+
+```yaml
+apiVersion: azure.planton.dev/v1
+kind: AzureMysqlFlexibleServer
+metadata:
+  name: hardened-mysql
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: data-rg
+  serverName: myorg-hardened-mysql
+  administratorLogin: mysqladmin
+  administratorPassword:
+    value: "Ch@ngeMe1234!"
+  skuName: GP_Standard_D4ds_v4
+  userAssignedIdentityIds:
+    - valueFrom:
+        name: mysql-cmk-identity
+  customerManagedKey:
+    keyVaultKeyId:
+      valueFrom:
+        kind: AzureKeyVaultKey
+        name: mysql-cmk
+        fieldPath: status.outputs.versionless_id
+    primaryUserAssignedIdentityId:
+      valueFrom:
+        name: mysql-cmk-identity
+  aadAdministrator:
+    identityId:
+      valueFrom:
+        name: mysql-cmk-identity
+    login: dba-team
+    objectId:
+      value: "11111111-2222-3333-4444-555555555555"
 ```
 
 ## Stack Outputs
@@ -268,16 +200,18 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `server_id` | `string` | Azure Resource Manager ID of the MySQL Flexible Server. Referenced by AzurePrivateEndpoint for private connectivity. |
-| `server_name` | `string` | Name of the MySQL Flexible Server |
-| `fqdn` | `string` | Fully qualified domain name (e.g., `{name}.mysql.database.azure.com`). Used to construct connection strings. |
-| `administrator_login` | `string` | Administrator login name for constructing connection strings |
-| `database_ids` | `map<string, string>` | Map of database names to their Azure Resource Manager IDs. Only populated for databases defined in `databases`. |
+| `server_id` | `string` | The server's ARM ID -- referenced by `AzurePrivateEndpoint` and by replica/restore servers' `sourceServerId` |
+| `server_name` | `string` | The server's name |
+| `fqdn` | `string` | `{name}.mysql.database.azure.com` -- the connection-string host; resolves privately when VNet-injected |
+| `administrator_login` | `string` | The admin login, echoed for connection strings |
+| `database_ids` | `map(string)` | Each declared database's ARM ID, keyed by name |
+| `replica_capacity` | `int32` | How many read replicas the server can still accept (burstable SKUs report 0) |
 
 ## Related Components
 
 - [AzureResourceGroup](/docs/catalog/azure/azureresourcegroup) — provides the resource group for server placement
-- [AzureSubnet](/docs/catalog/azure/azuresubnet) — provides a delegated subnet for private VNet access
-- [AzurePrivateDnsZone](/docs/catalog/azure/azureprivatednszone) — provides a private DNS zone for VNet name resolution
-- [AzureVpc](/docs/catalog/azure/azurevpc) — provides the virtual network containing delegated subnets
-- [AzureKeyVault](/docs/catalog/azure/azurekeyvault) — can store the administrator password as a secret
+- [AzureSubnet](/docs/catalog/azure/subnet) — the delegated subnet for VNet injection
+- [AzurePrivateDnsZone](/docs/catalog/azure/private-dns-zone) — private name resolution for the injected server
+- [AzurePrivateEndpoint](/docs/catalog/azure/azureprivateendpoint) — Private Link connectivity as an alternative to VNet injection
+- [AzureUserAssignedIdentity](/docs/catalog/azure/user-assigned-identity) — the CMK unwrap identity and the Entra administrator's backing identity
+- [AzureKeyVaultKey](/docs/catalog/azure/key-vault-key) — the customer-managed encryption key

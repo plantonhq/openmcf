@@ -7,22 +7,29 @@ spec:
   resourceGroup:
     value: "<your-resource-group-name>"
   name: <your-lb-name>
-  subnetId:
-    value: "<subnet-resource-id>"
-  privateIpAddress: <private-ip-address>  # optional; omit for dynamic allocation
+  frontendIpConfigurations:
+    - name: internal
+      # An internal frontend gets a private address in this subnet.
+      subnetId:
+        value: "<subnet-resource-id>"
+      # Pin the address so DNS records and firewall rules stay stable.
+      privateIpAddress: <static-private-ip>
+      # Zone-redundant private frontend -- the production default posture.
+      zones: ["1", "2", "3"]
   backendPools:
-    - name: default
+    - name: app
   healthProbes:
-    - name: tcp-probe
-      protocol: Tcp
+    - name: tcp-health
+      protocol: PROBE_TCP # default; port-open means healthy
       port: 8080
-      intervalInSeconds: 15  # default from spec
-      numberOfProbes: 2  # default from spec
   rules:
-    - name: app-rule
-      protocol: Tcp
+    - name: app
+      protocol: TCP
       frontendPort: 8080
       backendPort: 8080
-      backendPoolName: default
-      probeName: tcp-probe
-      idleTimeoutInMinutes: 4  # default from spec
+      backendPoolNames: [app]
+      probeName: tcp-health
+      tcpResetEnabled: true
+      # Long-lived east-west connections (databases, gRPC) benefit from a
+      # raised idle timeout.
+      idleTimeoutInMinutes: 30

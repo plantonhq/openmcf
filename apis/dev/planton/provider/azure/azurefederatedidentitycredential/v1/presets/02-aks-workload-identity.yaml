@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFederatedIdentityCredential
+metadata:
+  name: my-workload-identity-trust
+spec:
+  name: aks-<namespace>-<serviceaccount>
+  userAssignedIdentity:
+    value: <user-assigned-identity-arm-id>
+  issuer:
+    valueFrom:
+      kind: AzureAksCluster
+      name: <aks-cluster-name>
+      fieldPath: status.outputs.oidc_issuer_url
+  subject: system:serviceaccount:<namespace>:<serviceaccount>

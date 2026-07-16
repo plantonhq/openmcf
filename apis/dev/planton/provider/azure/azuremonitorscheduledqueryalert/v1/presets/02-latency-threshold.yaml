@@ -1,0 +1,49 @@
+# Latency query alert -- the metric-measurement shape: compute average
+# request duration from log rows, split per service role, and fire per
+# role that breaches 500ms in 3 of 5 recent periods.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorScheduledQueryAlert
+metadata:
+  name: my-latency-alert
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: my-observability-rg
+      fieldPath: status.outputs.resource_group_name
+  alertName: api-latency-high
+  scope:
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: my-platform-logs
+      fieldPath: status.outputs.workspace_id
+  displayName: API latency over 500ms
+  description: Average request duration exceeded 500ms for a sustained window -- check dependency latency and recent scaling events.
+  severity: 2
+  evaluationFrequency: PT5M
+  windowDuration: PT15M
+  criteria:
+    - query: |
+        AppRequests
+        | summarize avg(DurationMs) by bin(TimeGenerated, 5m), AppRoleName
+      timeAggregationMethod: AVERAGE
+      operator: GREATER_THAN
+      threshold: 500
+      metricMeasureColumn: avg_DurationMs
+      dimensions:
+        - name: AppRoleName
+          operator: INCLUDE
+          values:
+            - "*"
+      failingPeriods:
+        minimumFailingPeriodsToTriggerAlert: 3
+        numberOfEvaluationPeriods: 5
+  action:
+    actionGroupIds:
+      - valueFrom:
+          kind: AzureMonitorActionGroup
+          name: my-platform-oncall
+          fieldPath: status.outputs.action_group_id
+  tags:
+    team: platform

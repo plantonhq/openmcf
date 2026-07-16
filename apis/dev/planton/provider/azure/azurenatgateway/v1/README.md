@@ -14,9 +14,9 @@ We developed this API resource to streamline the deployment of Azure NAT Gateway
 ## Key Features
 
 - **Consistent Interface**: Aligns with our existing APIs for deploying cloud infrastructure across multiple providers
-- **Simplified Deployment**: Automates provisioning of NAT Gateway, public IPs/prefixes, and subnet associations
-- **Production-Ready Defaults**: Follows Azure best practices for idle timeout, IP prefix sizing, and high availability
-- **Flexible Configuration**: Support for both individual public IPs and IP prefixes for different scale requirements
+- **Composition by Reference**: The gateway SNATs through first-class AzurePublicIp and AzurePublicIpPrefix resources (`publicIpIds` / `publicIpPrefixIds`), keeping egress addresses visible in the resource graph, allowlistable, and reusable
+- **Subnet-Side Attachment**: Subnets attach themselves via AzureSubnet's `natGatewayId`, matching Azure's model where one gateway serves many subnets
+- **SKU Choice**: `STANDARD` for zonal deployments (optionally pinned to an availability zone) or `STANDARD_V2` for automatic zone redundancy
 - **AKS Integration**: Perfect for providing predictable outbound connectivity for private AKS clusters
 
 ## Use Cases
@@ -32,7 +32,6 @@ We developed this API resource to streamline the deployment of Azure NAT Gateway
 
 Future updates will include:
 
-- **Availability Zone Support**: Explicit zonal deployment for maximum fault isolation
 - **Monitoring Integration**: Built-in Azure Monitor metrics and alerts for port utilization
 - **Cost Optimization**: Automatic configuration of Private Link bypass patterns
 - **Multi-IP Management**: Dynamic scaling of public IP count based on load

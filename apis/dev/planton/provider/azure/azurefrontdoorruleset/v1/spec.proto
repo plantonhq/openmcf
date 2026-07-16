@@ -1,0 +1,1292 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurefrontdoorruleset.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// **AzureFrontDoorRuleSetSpec** defines the configuration for creating a
+// rule set inside an Azure Front Door (Standard/Premium) profile -- the
+// edge delivery policy a route attaches to. A rule set is an ordered list
+// of rules; each rule pairs match conditions (what traffic it applies to)
+// with actions (what happens: redirect, rewrite, header edits, or a
+// per-request override of the route's caching and forwarding).
+//
+// The rules live INSIDE the rule set rather than as standalone resources:
+// they form one ordered policy document (evaluation order is a property
+// of the set), nothing references an individual rule, and a rule is
+// meaningless outside its set. Routes attach the whole set by ARM ID
+// (see the rule_set_id output); one set is commonly shared by many
+// routes, which is exactly why the set is its own first-class resource
+// rather than settings folded into a route.
+//
+// **ForceNew fields**: `profile_id`, `rule_set_name`, and each rule's
+// `name` -- they fix ARM identities at creation. Everything else
+// (order, conditions, actions) updates in place.
+message AzureFrontDoorRuleSetSpec {
+  // The Front Door profile the rule set lives in, by ARM ID. References
+  // an AzureFrontDoorProfile's profile_id output so the profile and its
+  // rule sets compose in one manifest set. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef profile_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorProfile,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.profile_id"
+  ];
+
+  // The rule set's name -- unique within the profile. Routes attach the
+  // set by ARM ID, so the name is mostly a human-facing label; it is
+  // also the segment under which each rule's ARM ID nests.
+  //
+  // 1-60 characters; must begin with a letter and may contain only
+  // letters and numbers (Azure allows no hyphens here, unlike most
+  // Front Door names).
+  //
+  // **ForceNew**: changing the name replaces the rule set AND every
+  // rule inside it.
+  string rule_set_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "front_door_rule_set_name_format"
+      message: "rule_set_name must be 1-60 characters, begin with a letter, and contain only letters and numbers (no hyphens)"
+      expression: "this.matches('^[a-zA-Z][0-9a-zA-Z]{0,59}$')"
+    }
+  ];
+
+  // The rules that make up this delivery policy, evaluated in ascending
+  // `order`. An empty set is legal (a placeholder routes can already
+  // attach); add rules as the policy grows. Azure evaluates a request
+  // against each rule in order: when a rule's conditions match, its
+  // actions apply, and evaluation continues or stops per the rule's
+  // behavior_on_match.
+  repeated AzureFrontDoorRule rules = 3;
+
+  option (buf.validate.message).cel = {
+    id: "front_door_rule_set_rule_names_unique"
+    message: "every rule in the set must have a unique name -- each rule is its own Azure resource keyed by name, so two rules with the same name would silently target one resource"
+    expression: "this.rules.map(r, r.name).unique()"
+  };
+}
+
+// AzureFrontDoorRule is one rule in the set: an evaluation order, match
+// conditions, and the actions applied when the conditions match.
+message AzureFrontDoorRule {
+  // The rule's name -- unique within the rule set (each rule is an ARM
+  // child resource of the set, keyed by this name). 1-260 characters;
+  // must begin with a letter and may contain only letters and numbers.
+  //
+  // **ForceNew**: renaming a rule replaces it (the ARM identity changes).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "front_door_rule_name_format"
+      message: "rule name must be 1-260 characters, begin with a letter, and contain only letters and numbers (no hyphens)"
+      expression: "this.matches('^[a-zA-Z][0-9a-zA-Z]{0,259}$')"
+    }
+  ];
+
+  // The rule's evaluation position within the set -- Azure evaluates
+  // rules in ascending order. Must be 0 or greater. Convention: number
+  // rules 1, 2, 3, ... and leave gaps (10, 20, 30) when you expect to
+  // insert rules later; order only needs to be consistent, not
+  // contiguous.
+  int32 order = 2 [(buf.validate.field).int32.gte = 0];
+
+  // What happens after this rule's actions apply: keep evaluating the
+  // remaining rules (CONTINUE, Azure's default) or stop so later rules
+  // never see the request (STOP). Use STOP for terminal actions like
+  // redirects, where applying further rules would be surprising.
+  AzureFrontDoorRuleBehaviorOnMatch behavior_on_match = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // The match conditions. ALL conditions must match for the rule's
+  // actions to apply (conditions AND together; the values WITHIN one
+  // condition OR together). Omit entirely for a rule that applies to
+  // every request -- e.g. a set-wide security-headers rule.
+  AzureFrontDoorRuleConditions conditions = 4;
+
+  // The actions applied when the conditions match. At least one; at
+  // most five per rule (Azure's cap).
+  AzureFrontDoorRuleActions actions = 5 [(buf.validate.field).required = true];
+}
+
+// What happens to the remaining rules after a rule matches.
+enum AzureFrontDoorRuleBehaviorOnMatch {
+  // Not specified -- deploys CONTINUE, Azure's default.
+  azure_front_door_rule_behavior_on_match_unspecified = 0;
+
+  // Keep evaluating the remaining rules in the set.
+  CONTINUE = 1;
+
+  // Stop evaluating -- later rules never see the request.
+  STOP = 2;
+}
+
+// AzureFrontDoorRuleConditions groups a rule's match conditions by the
+// request attribute they inspect. Multiple conditions of the same type
+// are allowed (each entry is one condition); across ALL types a rule
+// may carry at most 10 conditions (Azure's cap). All conditions must
+// match for the rule to apply.
+message AzureFrontDoorRuleConditions {
+  // Match on the client's IP address (IP_MATCH against CIDR ranges) or
+  // the country Azure geo-locates it to (GEO_MATCH against two-letter
+  // ISO 3166-1 codes).
+  repeated AzureFrontDoorRuleRemoteAddressCondition remote_address = 1;
+
+  // Match on the HTTP request method (GET, POST, ...).
+  repeated AzureFrontDoorRuleRequestMethodCondition request_method = 2;
+
+  // Match on the full query string (everything after '?').
+  repeated AzureFrontDoorRuleQueryStringCondition query_string = 3;
+
+  // Match on a named argument in a POST body (application/x-www-form-urlencoded).
+  repeated AzureFrontDoorRulePostArgsCondition post_args = 4;
+
+  // Match on the full request URI (path + query string).
+  repeated AzureFrontDoorRuleRequestUriCondition request_uri = 5;
+
+  // Match on the value of a named request header.
+  repeated AzureFrontDoorRuleRequestHeaderCondition request_header = 6;
+
+  // Match on the request body's content.
+  repeated AzureFrontDoorRuleRequestBodyCondition request_body = 7;
+
+  // Match on the request scheme (HTTP vs HTTPS).
+  repeated AzureFrontDoorRuleRequestSchemeCondition request_scheme = 8;
+
+  // Match on the URL path (everything between the host and the query
+  // string). The only condition type that supports the WILDCARD
+  // operator.
+  repeated AzureFrontDoorRuleUrlPathCondition url_path = 9;
+
+  // Match on the requested file's extension (the text after the last
+  // '.' in the path -- write values WITHOUT the leading dot, e.g. "pdf").
+  repeated AzureFrontDoorRuleUrlFileExtensionCondition url_file_extension = 10;
+
+  // Match on the requested file's name (the last path segment).
+  repeated AzureFrontDoorRuleUrlFilenameCondition url_filename = 11;
+
+  // Match on the HTTP protocol version the client negotiated.
+  repeated AzureFrontDoorRuleHttpVersionCondition http_version = 12;
+
+  // Match on the value of a named cookie.
+  repeated AzureFrontDoorRuleCookiesCondition cookies = 13;
+
+  // Match on the device class (Desktop vs Mobile) Azure derives from
+  // the User-Agent.
+  repeated AzureFrontDoorRuleIsDeviceCondition is_device = 14;
+
+  // Match on the socket address the connection actually arrived from
+  // (the TCP peer). Differs from remote_address when a proxy sits in
+  // front of Front Door: remote_address honors X-Forwarded-For; the
+  // socket address is the proxy itself.
+  repeated AzureFrontDoorRuleSocketAddressCondition socket_address = 15;
+
+  // Match on the client's TCP port.
+  repeated AzureFrontDoorRuleClientPortCondition client_port = 16;
+
+  // Match on the port the request arrived on at Front Door (80 or 443).
+  repeated AzureFrontDoorRuleServerPortCondition server_port = 17;
+
+  // Match on the Host header (the hostname the client requested) --
+  // how one route serving several custom domains applies per-domain
+  // policy.
+  repeated AzureFrontDoorRuleHostNameCondition host_name = 18;
+
+  // Match on the TLS protocol version of the client connection.
+  repeated AzureFrontDoorRuleSslProtocolCondition ssl_protocol = 19;
+
+  option (buf.validate.message).cel = {
+    id: "front_door_rule_conditions_max_ten"
+    message: "a rule may carry at most 10 match conditions across all condition types -- split the policy into additional rules if you need more"
+    expression: "this.remote_address.size() + this.request_method.size() + this.query_string.size() + this.post_args.size() + this.request_uri.size() + this.request_header.size() + this.request_body.size() + this.request_scheme.size() + this.url_path.size() + this.url_file_extension.size() + this.url_filename.size() + this.http_version.size() + this.cookies.size() + this.is_device.size() + this.socket_address.size() + this.client_port.size() + this.server_port.size() + this.host_name.size() + this.ssl_protocol.size() <= 10"
+  };
+}
+
+// The comparison a condition applies between the inspected request
+// attribute and its match values. Not every condition type accepts
+// every operator -- each condition's `operator` field documents and
+// validates its own vocabulary (WILDCARD is url_path-only; GEO_MATCH
+// and IP_MATCH belong to the address conditions).
+enum AzureFrontDoorRuleOperator {
+  // Not specified -- invalid for most conditions; the address
+  // conditions treat it as IP_MATCH (their documented default).
+  azure_front_door_rule_operator_unspecified = 0;
+
+  // Match any value -- the condition matches whenever the attribute is
+  // present at all. match_values must be empty with this operator.
+  ANY = 1;
+
+  // Exact (case-sensitive) equality; combine with transforms like
+  // LOWERCASE for case-insensitive matching.
+  EQUAL = 2;
+
+  // The attribute contains the match value as a substring.
+  CONTAINS = 3;
+
+  // The attribute starts with the match value.
+  BEGINS_WITH = 4;
+
+  // The attribute ends with the match value.
+  ENDS_WITH = 5;
+
+  // Numeric greater-than (values compared as numbers).
+  GREATER_THAN = 6;
+
+  // Numeric greater-than-or-equal.
+  GREATER_THAN_OR_EQUAL = 7;
+
+  // Numeric less-than.
+  LESS_THAN = 8;
+
+  // Numeric less-than-or-equal.
+  LESS_THAN_OR_EQUAL = 9;
+
+  // Regular-expression match (RE2 syntax; Premium-tier profiles only --
+  // Azure rejects RegEx on Standard at apply time).
+  REG_EX = 10;
+
+  // Wildcard match with '*' placeholders -- URL path conditions only.
+  WILDCARD = 11;
+
+  // Geo-match: the client's country equals one of the two-letter ISO
+  // 3166-1 match values -- address conditions only.
+  GEO_MATCH = 12;
+
+  // IP match: the client's address falls inside one of the IPv4/IPv6
+  // CIDR match values -- address conditions only.
+  IP_MATCH = 13;
+}
+
+// A normalization Azure applies to the inspected attribute BEFORE
+// comparing it to the match values (e.g. LOWERCASE + EQUAL gives
+// case-insensitive equality). Up to 4 per condition, applied in order.
+enum AzureFrontDoorRuleTransform {
+  // Not specified -- invalid; list concrete transforms.
+  azure_front_door_rule_transform_unspecified = 0;
+
+  // Lowercase the attribute before comparing.
+  LOWERCASE = 1;
+
+  // Uppercase the attribute before comparing.
+  UPPERCASE = 2;
+
+  // Trim leading/trailing whitespace before comparing.
+  TRIM = 3;
+
+  // URL-decode the attribute before comparing.
+  URL_DECODE = 4;
+
+  // URL-encode the attribute before comparing.
+  URL_ENCODE = 5;
+
+  // Remove null bytes before comparing.
+  REMOVE_NULLS = 6;
+}
+
+// Match on the client's IP address or geo-located country.
+message AzureFrontDoorRuleRemoteAddressCondition {
+  // IP_MATCH (default when unspecified), GEO_MATCH, or ANY. IP_MATCH
+  // compares against CIDR ranges; GEO_MATCH against two-letter country
+  // codes; ANY matches every request that carries a client address.
+  AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      0,
+      1,
+      12,
+      13
+    ]
+  }];
+
+  // Invert the condition -- match when the address does NOT satisfy the
+  // operator.
+  bool negate_condition = 2;
+
+  // Up to 25 values: IPv4/IPv6 CIDR ranges for IP_MATCH (e.g.
+  // "203.0.113.0/24"), two-letter uppercase ISO 3166-1 country codes
+  // for GEO_MATCH (e.g. "US"). Values OR together. Azure additionally
+  // rejects duplicate and overlapping CIDRs at apply time.
+  repeated string match_values = 3 [(buf.validate.field).repeated.max_items = 25];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_remote_address_operator_values"
+    message: "match_values must be empty when the operator is ANY, and non-empty otherwise (unspecified operator means IP_MATCH)"
+    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "front_door_remote_address_geo_country_codes"
+    message: "with the GEO_MATCH operator every match value must be a two-letter uppercase ISO 3166-1 country code, e.g. \"US\" or \"DE\""
+    expression: "this.operator != 12 || this.match_values.all(v, v.matches('^[A-Z]{2}$'))"
+  };
+}
+
+// Match on the HTTP request method. The comparison is always equality
+// (Azure supports no other operator here), so there is no operator
+// field.
+message AzureFrontDoorRuleRequestMethodCondition {
+  // Invert the condition -- match when the method is NOT in the list.
+  bool negate_condition = 1;
+
+  // The methods to match, 1-7 unique values from: GET, HEAD, OPTIONS,
+  // TRACE, POST, PUT, DELETE.
+  repeated string match_values = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 7
+    unique: true
+    items: {
+      cel: {
+        id: "front_door_request_method_value"
+        message: "each value must be one of: GET, HEAD, OPTIONS, TRACE, POST, PUT, DELETE"
+        expression: "this in ['GET', 'HEAD', 'OPTIONS', 'TRACE', 'POST', 'PUT', 'DELETE']"
+      }
+    }
+  }];
+}
+
+// Match on the full query string (everything after '?').
+message AzureFrontDoorRuleQueryStringCondition {
+  // The comparison operator (the standard set; ANY matches whenever a
+  // query string is present).
+  AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 2;
+
+  // Up to 25 values, OR'd together. Empty strings are legal values.
+  repeated string match_values = 3 [(buf.validate.field).repeated.max_items = 25];
+
+  // Normalizations applied before comparing, up to 4.
+  repeated AzureFrontDoorRuleTransform transforms = 4 [(buf.validate.field).repeated = {
+    max_items: 4
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_query_string_operator_values"
+    message: "match_values must be empty when the operator is ANY, and non-empty otherwise"
+    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+  };
+}
+
+// Match on a named argument in a POST body
+// (application/x-www-form-urlencoded forms).
+message AzureFrontDoorRulePostArgsCondition {
+  // The name of the POST argument to inspect.
+  string post_args_name = 1 [(buf.validate.field).required = true];
+
+  // The comparison operator (the standard set).
+  AzureFrontDoorRuleOperator operator = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 3;
+
+  // Up to 25 values, OR'd together.
+  repeated string match_values = 4 [(buf.validate.field).repeated.max_items = 25];
+
+  // Normalizations applied before comparing, up to 4.
+  repeated AzureFrontDoorRuleTransform transforms = 5 [(buf.validate.field).repeated = {
+    max_items: 4
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_post_args_operator_values"
+    message: "match_values must be empty when the operator is ANY, and non-empty otherwise"
+    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+  };
+}
+
+// Match on the full request URI (path plus query string).
+message AzureFrontDoorRuleRequestUriCondition {
+  // The comparison operator (the standard set).
+  AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 2;
+
+  // Up to 25 values, OR'd together.
+  repeated string match_values = 3 [(buf.validate.field).repeated.max_items = 25];
+
+  // Normalizations applied before comparing, up to 4.
+  repeated AzureFrontDoorRuleTransform transforms = 4 [(buf.validate.field).repeated = {
+    max_items: 4
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_request_uri_operator_values"
+    message: "match_values must be empty when the operator is ANY, and non-empty otherwise"
+    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+  };
+}
+
+// Match on the value of a named request header.
+message AzureFrontDoorRuleRequestHeaderCondition {
+  // The header to inspect (case-insensitive per HTTP semantics).
+  string header_name = 1 [(buf.validate.field).required = true];
+
+  // The comparison operator (the standard set; ANY matches whenever the
+  // header is present).
+  AzureFrontDoorRuleOperator operator = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 3;
+
+  // Up to 25 values, OR'd together.
+  repeated string match_values = 4 [(buf.validate.field).repeated.max_items = 25];
+
+  // Normalizations applied before comparing, up to 4.
+  repeated AzureFrontDoorRuleTransform transforms = 5 [(buf.validate.field).repeated = {
+    max_items: 4
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_request_header_operator_values"
+    message: "match_values must be empty when the operator is ANY, and non-empty otherwise"
+    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+  };
+}
+
+// Match on the request body's content. Azure requires concrete match
+// values here (the ANY operator does not apply to bodies), so the
+// operator vocabulary excludes ANY and match_values is required.
+message AzureFrontDoorRuleRequestBodyCondition {
+  // The comparison operator (the standard set minus ANY).
+  AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 2;
+
+  // 1-25 non-empty values, OR'd together.
+  repeated string match_values = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 25
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // Normalizations applied before comparing, up to 4.
+  repeated AzureFrontDoorRuleTransform transforms = 4 [(buf.validate.field).repeated = {
+    max_items: 4
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+}
+
+// Match on the request scheme (HTTP vs HTTPS). Always an equality
+// comparison against a single scheme.
+message AzureFrontDoorRuleRequestSchemeCondition {
+  // Invert the condition -- match the OTHER scheme.
+  bool negate_condition = 1;
+
+  // The scheme to match: "HTTP" or "HTTPS". Unset matches HTTP (Azure's
+  // default) -- though stating it explicitly reads better.
+  optional string match_value = 2 [
+    (dev.planton.shared.options.default) = "HTTP",
+    (buf.validate.field).cel = {
+      id: "front_door_request_scheme_value"
+      message: "match_value must be HTTP or HTTPS"
+      expression: "this in ['HTTP', 'HTTPS']"
+    }
+  ];
+}
+
+// Match on the URL path (between the host and the query string). The
+// only condition supporting the WILDCARD operator.
+message AzureFrontDoorRuleUrlPathCondition {
+  // The comparison operator: the standard set plus WILDCARD.
+  AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 2;
+
+  // Up to 25 values, OR'd together. Write paths WITHOUT a leading '/'
+  // (Azure matches against the path with the leading slash stripped,
+  // e.g. "images/products" not "/images/products").
+  repeated string match_values = 3 [(buf.validate.field).repeated.max_items = 25];
+
+  // Normalizations applied before comparing, up to 4.
+  repeated AzureFrontDoorRuleTransform transforms = 4 [(buf.validate.field).repeated = {
+    max_items: 4
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_url_path_operator_values"
+    message: "match_values must be empty when the operator is ANY, and non-empty otherwise"
+    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+  };
+}
+
+// Match on the requested file's extension. Azure requires concrete
+// match values here, so the operator vocabulary excludes ANY and
+// match_values is required.
+message AzureFrontDoorRuleUrlFileExtensionCondition {
+  // The comparison operator (the standard set minus ANY).
+  AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 2;
+
+  // 1-25 non-empty extensions WITHOUT the leading dot (e.g. "pdf",
+  // "woff2"), OR'd together.
+  repeated string match_values = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 25
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // Normalizations applied before comparing, up to 4.
+  repeated AzureFrontDoorRuleTransform transforms = 4 [(buf.validate.field).repeated = {
+    max_items: 4
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+}
+
+// Match on the requested file's name (the last path segment).
+message AzureFrontDoorRuleUrlFilenameCondition {
+  // The comparison operator (the standard set).
+  AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 2;
+
+  // Up to 25 values, OR'd together.
+  repeated string match_values = 3 [(buf.validate.field).repeated.max_items = 25];
+
+  // Normalizations applied before comparing, up to 4.
+  repeated AzureFrontDoorRuleTransform transforms = 4 [(buf.validate.field).repeated = {
+    max_items: 4
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_url_filename_operator_values"
+    message: "match_values must be empty when the operator is ANY, and non-empty otherwise"
+    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+  };
+}
+
+// Match on the HTTP protocol version the client negotiated. Always an
+// equality comparison.
+message AzureFrontDoorRuleHttpVersionCondition {
+  // Invert the condition.
+  bool negate_condition = 1;
+
+  // The versions to match, 1-4 unique values from: "2.0", "1.1", "1.0",
+  // "0.9".
+  repeated string match_values = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 4
+    unique: true
+    items: {
+      cel: {
+        id: "front_door_http_version_value"
+        message: "each value must be one of: 2.0, 1.1, 1.0, 0.9"
+        expression: "this in ['2.0', '1.1', '1.0', '0.9']"
+      }
+    }
+  }];
+}
+
+// Match on the value of a named cookie.
+message AzureFrontDoorRuleCookiesCondition {
+  // The cookie to inspect.
+  string cookie_name = 1 [(buf.validate.field).required = true];
+
+  // The comparison operator (the standard set; ANY matches whenever the
+  // cookie is present).
+  AzureFrontDoorRuleOperator operator = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 3;
+
+  // Up to 25 values, OR'd together.
+  repeated string match_values = 4 [(buf.validate.field).repeated.max_items = 25];
+
+  // Normalizations applied before comparing, up to 4.
+  repeated AzureFrontDoorRuleTransform transforms = 5 [(buf.validate.field).repeated = {
+    max_items: 4
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_cookies_operator_values"
+    message: "match_values must be empty when the operator is ANY, and non-empty otherwise"
+    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+  };
+}
+
+// Match on the device class Azure derives from the User-Agent. Always
+// an equality comparison against a single class.
+message AzureFrontDoorRuleIsDeviceCondition {
+  // Invert the condition -- match the OTHER device class.
+  bool negate_condition = 1;
+
+  // The device class to match: "Desktop" or "Mobile".
+  string match_value = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "front_door_is_device_value"
+      message: "match_value must be Desktop or Mobile"
+      expression: "this in ['Desktop', 'Mobile']"
+    }
+  ];
+}
+
+// Match on the socket address the connection arrived from (the TCP
+// peer, ignoring X-Forwarded-For).
+message AzureFrontDoorRuleSocketAddressCondition {
+  // IP_MATCH (default when unspecified) or ANY. No geo-matching on
+  // socket addresses.
+  AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      0,
+      1,
+      13
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 2;
+
+  // Up to 25 IPv4/IPv6 CIDR ranges, OR'd together. Azure rejects
+  // duplicate and overlapping CIDRs at apply time.
+  repeated string match_values = 3 [(buf.validate.field).repeated.max_items = 25];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_socket_address_operator_values"
+    message: "match_values must be empty when the operator is ANY, and non-empty otherwise (unspecified operator means IP_MATCH)"
+    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+  };
+}
+
+// Match on the client's TCP port.
+message AzureFrontDoorRuleClientPortCondition {
+  // The comparison operator (the standard set).
+  AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 2;
+
+  // Up to 25 port numbers (as strings), OR'd together.
+  repeated string match_values = 3 [(buf.validate.field).repeated.max_items = 25];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_client_port_operator_values"
+    message: "match_values must be empty when the operator is ANY, and non-empty otherwise"
+    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+  };
+}
+
+// Match on the port the request arrived on at Front Door.
+message AzureFrontDoorRuleServerPortCondition {
+  // The comparison operator (the standard set).
+  AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 2;
+
+  // The ports to match, 1-2 unique values from: "80", "443" (the only
+  // ports Front Door serves).
+  repeated string match_values = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 2
+    unique: true
+    items: {
+      cel: {
+        id: "front_door_server_port_value"
+        message: "each value must be 80 or 443 -- the only ports Front Door listens on"
+        expression: "this in ['80', '443']"
+      }
+    }
+  }];
+}
+
+// Match on the Host header -- the hostname the client requested.
+message AzureFrontDoorRuleHostNameCondition {
+  // The comparison operator (the standard set).
+  AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  }];
+
+  // Invert the condition.
+  bool negate_condition = 2;
+
+  // Up to 25 hostnames, OR'd together.
+  repeated string match_values = 3 [(buf.validate.field).repeated.max_items = 25];
+
+  // Normalizations applied before comparing, up to 4.
+  repeated AzureFrontDoorRuleTransform transforms = 4 [(buf.validate.field).repeated = {
+    max_items: 4
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_host_name_operator_values"
+    message: "match_values must be empty when the operator is ANY, and non-empty otherwise"
+    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+  };
+}
+
+// Match on the TLS protocol version of the client connection. Always
+// an equality comparison.
+message AzureFrontDoorRuleSslProtocolCondition {
+  // Invert the condition.
+  bool negate_condition = 1;
+
+  // The TLS versions to match, 1-3 unique values from: "TLSv1",
+  // "TLSv1.1", "TLSv1.2".
+  repeated string match_values = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 3
+    unique: true
+    items: {
+      cel: {
+        id: "front_door_ssl_protocol_value"
+        message: "each value must be one of: TLSv1, TLSv1.1, TLSv1.2"
+        expression: "this in ['TLSv1', 'TLSv1.1', 'TLSv1.2']"
+      }
+    }
+  }];
+}
+
+// AzureFrontDoorRuleActions holds the actions a rule applies when its
+// conditions match: at most one redirect OR one rewrite (never both --
+// they contradict), any number of header edits, and at most one
+// route-configuration override -- at most 5 actions total (Azure's cap).
+message AzureFrontDoorRuleActions {
+  // Answer the request with an HTTP redirect instead of forwarding it
+  // to the origin. Mutually exclusive with url_rewrite.
+  AzureFrontDoorRuleUrlRedirectAction url_redirect = 1;
+
+  // Rewrite the request path before forwarding it to the origin (the
+  // client never sees the rewritten path). Mutually exclusive with
+  // url_redirect.
+  AzureFrontDoorRuleUrlRewriteAction url_rewrite = 2;
+
+  // Add, overwrite, or delete headers on the request Front Door
+  // forwards to the origin.
+  repeated AzureFrontDoorRuleHeaderAction request_headers = 3;
+
+  // Add, overwrite, or delete headers on the response Front Door
+  // returns to the client (e.g. security headers).
+  repeated AzureFrontDoorRuleHeaderAction response_headers = 4;
+
+  // Override the route's own forwarding and caching configuration for
+  // requests this rule matches -- e.g. send matched traffic to a
+  // different origin group, or disable caching for authenticated paths.
+  AzureFrontDoorRuleRouteConfigurationOverrideAction route_configuration_override = 5;
+
+  option (buf.validate.message).cel = {
+    id: "front_door_rule_actions_at_least_one"
+    message: "a rule must carry at least one action -- a rule with conditions but no actions does nothing and Azure rejects it"
+    expression: "has(this.url_redirect) || has(this.url_rewrite) || this.request_headers.size() > 0 || this.response_headers.size() > 0 || has(this.route_configuration_override)"
+  };
+  option (buf.validate.message).cel = {
+    id: "front_door_rule_actions_max_five"
+    message: "a rule may carry at most 5 actions in total -- split the policy into additional rules if you need more"
+    expression: "(has(this.url_redirect) ? 1 : 0) + (has(this.url_rewrite) ? 1 : 0) + this.request_headers.size() + this.response_headers.size() + (has(this.route_configuration_override) ? 1 : 0) <= 5"
+  };
+  option (buf.validate.message).cel = {
+    id: "front_door_rule_actions_redirect_xor_rewrite"
+    message: "url_redirect and url_rewrite cannot both be set on one rule -- a redirect answers the client directly while a rewrite forwards to the origin, so the two contradict"
+    expression: "!(has(this.url_redirect) && has(this.url_rewrite))"
+  };
+}
+
+// Answer matched requests with an HTTP redirect. Each destination part
+// left empty preserves the corresponding part of the incoming request,
+// which is how a scheme-only or host-only redirect is expressed.
+message AzureFrontDoorRuleUrlRedirectAction {
+  // The redirect's HTTP status: MOVED (301), FOUND (302),
+  // TEMPORARY_REDIRECT (307), or PERMANENT_REDIRECT (308). The 30x
+  // codes preserve the request method; 301/302 may downgrade POST to
+  // GET in older clients.
+  AzureFrontDoorRuleRedirectType redirect_type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The scheme of the redirect target: MATCH_REQUEST (default,
+  // preserve the incoming scheme), HTTP_ONLY, or HTTPS_ONLY. An
+  // HTTPS_ONLY redirect with everything else preserved is the classic
+  // HTTP-to-HTTPS upgrade.
+  AzureFrontDoorRuleForwardingProtocol redirect_protocol = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // The hostname to redirect to, up to 2048 characters. Leave empty to
+  // preserve the incoming host (e.g. for a scheme- or path-only
+  // redirect).
+  string destination_hostname = 3 [(buf.validate.field).string.max_len = 2048];
+
+  // The path to redirect to; must start with '/'. Leave empty to
+  // preserve the incoming path.
+  string destination_path = 4 [(buf.validate.field).cel = {
+    id: "front_door_redirect_destination_path_format"
+    message: "destination_path must begin with '/' -- leave it empty to preserve the incoming path"
+    expression: "this == '' || this.startsWith('/')"
+  }];
+
+  // The query string of the redirect target in key=value&key2=value2
+  // form, WITHOUT the leading '?' (Front Door adds it), up to 2048
+  // characters. Leave empty to preserve the incoming query string.
+  string query_string = 5 [
+    (buf.validate.field).string.max_len = 2048,
+    (buf.validate.field).cel = {
+      id: "front_door_redirect_query_string_format"
+      message: "query_string must not start with '?' -- Front Door adds the separator automatically"
+      expression: "!this.startsWith('?')"
+    }
+  ];
+
+  // The fragment (the part after '#') of the redirect target, without
+  // the '#', up to 1024 characters. Leave empty for no fragment.
+  string destination_fragment = 6 [(buf.validate.field).string.max_len = 1024];
+}
+
+// The HTTP status a redirect answers with.
+enum AzureFrontDoorRuleRedirectType {
+  // Not specified -- invalid; pick a concrete redirect status.
+  azure_front_door_rule_redirect_type_unspecified = 0;
+
+  // 301 Moved Permanently -- cached by clients; may downgrade POST to
+  // GET in older clients.
+  MOVED = 1;
+
+  // 302 Found -- temporary; may downgrade POST to GET in older clients.
+  FOUND = 2;
+
+  // 307 Temporary Redirect -- preserves the request method.
+  TEMPORARY_REDIRECT = 3;
+
+  // 308 Permanent Redirect -- preserves the request method; cached.
+  PERMANENT_REDIRECT = 4;
+}
+
+// A protocol choice shared by the redirect action (the scheme of the
+// redirect target) and the route-configuration override (the protocol
+// toward the origin).
+enum AzureFrontDoorRuleForwardingProtocol {
+  // Not specified -- deploys MATCH_REQUEST, Azure's default, for
+  // redirects; for the route-configuration override the field is only
+  // sent when a value is chosen.
+  azure_front_door_rule_forwarding_protocol_unspecified = 0;
+
+  // Mirror the incoming request's protocol.
+  MATCH_REQUEST = 1;
+
+  // Always HTTP.
+  HTTP_ONLY = 2;
+
+  // Always HTTPS.
+  HTTPS_ONLY = 3;
+}
+
+// Rewrite the request path before forwarding to the origin. The client
+// never sees the rewritten path (contrast with a redirect).
+message AzureFrontDoorRuleUrlRewriteAction {
+  // The path prefix to match and replace, e.g. "/v1". Use "/" to
+  // replace the whole path.
+  string source_pattern = 1 [(buf.validate.field).required = true];
+
+  // What the matched prefix is replaced with, e.g. "/api/v1".
+  string destination = 2 [(buf.validate.field).required = true];
+
+  // Keep the path remainder after the matched prefix and append it to
+  // the destination (true), or forward exactly the destination
+  // (false, Azure's default). With source "/v1", destination "/api"
+  // and preserve on, "/v1/users" becomes "/api/users".
+  bool preserve_unmatched_path = 3;
+}
+
+// Add, overwrite, or delete one header (on the origin-bound request or
+// the client-bound response, depending on which list the action sits in).
+message AzureFrontDoorRuleHeaderAction {
+  // APPEND adds the header (joining an existing value), OVERWRITE
+  // replaces it, DELETE removes it.
+  AzureFrontDoorRuleHeaderActionType header_action = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The header to act on.
+  string header_name = 2 [(buf.validate.field).required = true];
+
+  // The value to append or overwrite with. Required for APPEND and
+  // OVERWRITE; must be empty for DELETE (there is nothing to set when
+  // removing a header).
+  string value = 3;
+
+  option (buf.validate.message).cel = {
+    id: "front_door_header_action_value"
+    message: "value is required when header_action is APPEND or OVERWRITE, and must be empty when it is DELETE"
+    expression: "this.header_action == 3 ? this.value == '' : this.value != ''"
+  };
+}
+
+// What a header action does to its header.
+enum AzureFrontDoorRuleHeaderActionType {
+  // Not specified -- invalid; pick APPEND, OVERWRITE, or DELETE.
+  azure_front_door_rule_header_action_type_unspecified = 0;
+
+  // Add the header, joining any existing value.
+  APPEND = 1;
+
+  // Replace the header's value (or add it if absent).
+  OVERWRITE = 2;
+
+  // Remove the header.
+  DELETE = 3;
+}
+
+// Override the route's own forwarding and caching configuration for
+// matched requests. Two independent knobs live here: WHERE the request
+// goes (origin_group_id + forwarding_protocol, set together) and HOW it
+// caches (cache_behavior and its dependent fields).
+message AzureFrontDoorRuleRouteConfigurationOverrideAction {
+  // Send matched requests to a different origin group than the route's
+  // own, by ARM ID. References an AzureFrontDoorOriginGroup's
+  // origin_group_id output. When set, forwarding_protocol must be
+  // chosen too; when unset, the route's own origin group keeps serving.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef origin_group_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorOriginGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.origin_group_id"
+  ];
+
+  // The protocol toward the overriding origin group. Required when
+  // origin_group_id is set; must be left unspecified otherwise (it
+  // qualifies the override's origin, not the route's).
+  AzureFrontDoorRuleForwardingProtocol forwarding_protocol = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // How matched responses cache at the edge: HONOR_ORIGIN follows the
+  // origin's Cache-Control, the OVERRIDE_* behaviors force the
+  // cache_duration, and DISABLED turns caching off for matched
+  // requests. Required -- every override makes an explicit cache
+  // decision (DISABLED is the "no caching" choice; there is no
+  // leave-the-route-alone value on this action).
+  AzureFrontDoorRuleCacheBehavior cache_behavior = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // How long forced caching lasts, in "d.HH:MM:SS" (days 1-365) or
+  // "HH:MM:SS" format, e.g. "1.12:00:00" or "00:05:00". Required with
+  // the OVERRIDE_* behaviors; forbidden with HONOR_ORIGIN (the origin
+  // decides) and DISABLED (nothing caches).
+  string cache_duration = 4 [(buf.validate.field).cel = {
+    id: "front_door_override_cache_duration_format"
+    message: "cache_duration must be d.HH:MM:SS (days 1-365) or HH:MM:SS, e.g. \"1.12:00:00\" or \"00:05:00\""
+    expression: "this == '' || this.matches('^(([1-9]|[1-9][0-9]|[12][0-9][0-9]|3[0-5][0-9]|36[0-5])\\\\.)?([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$')"
+  }];
+
+  // How query strings participate in the cache key for matched
+  // requests. Required whenever cache_behavior enables caching
+  // (HONOR_ORIGIN or OVERRIDE_*); forbidden with DISABLED.
+  AzureFrontDoorRuleQueryStringCachingBehavior query_string_caching_behavior = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // The query-string parameter NAMES the *_SPECIFIED caching behaviors
+  // operate on, up to 100. Required with those two behaviors; forbidden
+  // with the other two.
+  repeated string query_string_parameters = 6 [(buf.validate.field).repeated.max_items = 100];
+
+  // Compress eligible matched responses at the edge. Only meaningful
+  // when cache_behavior enables caching (compression is part of the
+  // cache configuration); with DISABLED it is ignored. Default false.
+  optional bool compression_enabled = 7 [(dev.planton.shared.options.default) = "false"];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_override_origin_needs_protocol"
+    message: "forwarding_protocol must be set when origin_group_id is set (it qualifies the overriding origin), and must be left unspecified when there is no origin override"
+    expression: "has(this.origin_group_id) ? this.forwarding_protocol != 0 : this.forwarding_protocol == 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "front_door_override_disabled_forbids_cache_fields"
+    message: "with cache_behavior DISABLED nothing caches, so cache_duration, query_string_caching_behavior, and query_string_parameters must stay unset"
+    expression: "this.cache_behavior != 4 || (this.cache_duration == '' && this.query_string_caching_behavior == 0 && this.query_string_parameters.size() == 0)"
+  };
+  option (buf.validate.message).cel = {
+    id: "front_door_override_enabled_requires_qscb"
+    message: "query_string_caching_behavior is required when cache_behavior enables caching (HONOR_ORIGIN or the OVERRIDE_* behaviors)"
+    expression: "!(this.cache_behavior in [1, 2, 3]) || this.query_string_caching_behavior != 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "front_door_override_duration_by_behavior"
+    message: "cache_duration is required with OVERRIDE_ALWAYS and OVERRIDE_IF_ORIGIN_MISSING, and must stay unset with HONOR_ORIGIN (the origin's Cache-Control decides)"
+    expression: "(this.cache_behavior in [2, 3] && this.cache_duration != '') || (this.cache_behavior == 1 && this.cache_duration == '') || !(this.cache_behavior in [1, 2, 3])"
+  };
+  option (buf.validate.message).cel = {
+    id: "front_door_override_query_string_parameters_pairing"
+    message: "query_string_parameters is required with the *_SPECIFIED caching behaviors and must stay unset with IGNORE_QUERY_STRING and USE_QUERY_STRING"
+    expression: "(this.query_string_caching_behavior in [3, 4]) ? this.query_string_parameters.size() > 0 : this.query_string_parameters.size() == 0"
+  };
+}
+
+// How matched responses cache at the edge.
+enum AzureFrontDoorRuleCacheBehavior {
+  // Not specified -- invalid; every override makes an explicit cache
+  // decision (use DISABLED to turn caching off for matched requests).
+  azure_front_door_rule_cache_behavior_unspecified = 0;
+
+  // Follow the origin's Cache-Control headers.
+  HONOR_ORIGIN = 1;
+
+  // Cache for cache_duration regardless of the origin's headers.
+  OVERRIDE_ALWAYS = 2;
+
+  // Cache for cache_duration only when the origin sends no caching
+  // headers of its own.
+  OVERRIDE_IF_ORIGIN_MISSING = 3;
+
+  // Turn caching off for matched requests.
+  DISABLED = 4;
+}
+
+// How query strings participate in the cache key for matched requests.
+enum AzureFrontDoorRuleQueryStringCachingBehavior {
+  // Not specified -- only legal when cache_behavior is unspecified or
+  // DISABLED.
+  azure_front_door_rule_query_string_caching_behavior_unspecified = 0;
+
+  // Strip query strings from the cache key -- every variant shares one
+  // entry.
+  IGNORE_QUERY_STRING = 1;
+
+  // Key the cache on the full query string -- each variant caches
+  // separately.
+  USE_QUERY_STRING = 2;
+
+  // Ignore ONLY the parameters named in query_string_parameters.
+  IGNORE_SPECIFIED_QUERY_STRINGS = 3;
+
+  // Include ONLY the parameters named in query_string_parameters.
+  INCLUDE_SPECIFIED_QUERY_STRINGS = 4;
+}

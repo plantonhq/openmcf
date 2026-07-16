@@ -24,28 +24,33 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzureStorageAccountKind** defines the kind of storage account.
+// The kind of storage account.
 type AzureStorageAccountKind int32
 
 const (
-	// Unspecified kind (will default to STORAGE_V2)
-	AzureStorageAccountKind_ACCOUNT_KIND_UNSPECIFIED AzureStorageAccountKind = 0
-	// General-purpose v2 storage account (recommended)
+	// Not specified: STORAGE_V2 (the general-purpose v2 account).
+	AzureStorageAccountKind_azure_storage_account_kind_unspecified AzureStorageAccountKind = 0
+	// General-purpose v2: blobs, files, queues, tables, and ADLS Gen2 --
+	// the right choice for virtually every workload.
 	AzureStorageAccountKind_STORAGE_V2 AzureStorageAccountKind = 1
-	// Specialized blob storage with access tiers
+	// Legacy blob-only account with access tiers. Superseded by
+	// STORAGE_V2; use only when a legacy pricing artifact demands it.
 	AzureStorageAccountKind_BLOB_STORAGE AzureStorageAccountKind = 2
-	// Premium block blob storage (SSD-backed)
+	// Premium block blobs (SSD): low-latency object storage and premium
+	// ADLS Gen2. Pairs with PREMIUM tier.
 	AzureStorageAccountKind_BLOCK_BLOB_STORAGE AzureStorageAccountKind = 3
-	// Premium file storage (SSD-backed)
+	// Premium file shares (SSD): enterprise SMB/NFS file serving. Pairs
+	// with PREMIUM tier.
 	AzureStorageAccountKind_FILE_STORAGE AzureStorageAccountKind = 4
-	// Legacy general-purpose v1 storage account
+	// Legacy general-purpose v1: predates access tiers and modern
+	// features; upgradeable in place to STORAGE_V2.
 	AzureStorageAccountKind_STORAGE AzureStorageAccountKind = 5
 )
 
 // Enum value maps for AzureStorageAccountKind.
 var (
 	AzureStorageAccountKind_name = map[int32]string{
-		0: "ACCOUNT_KIND_UNSPECIFIED",
+		0: "azure_storage_account_kind_unspecified",
 		1: "STORAGE_V2",
 		2: "BLOB_STORAGE",
 		3: "BLOCK_BLOB_STORAGE",
@@ -53,12 +58,12 @@ var (
 		5: "STORAGE",
 	}
 	AzureStorageAccountKind_value = map[string]int32{
-		"ACCOUNT_KIND_UNSPECIFIED": 0,
-		"STORAGE_V2":               1,
-		"BLOB_STORAGE":             2,
-		"BLOCK_BLOB_STORAGE":       3,
-		"FILE_STORAGE":             4,
-		"STORAGE":                  5,
+		"azure_storage_account_kind_unspecified": 0,
+		"STORAGE_V2":                             1,
+		"BLOB_STORAGE":                           2,
+		"BLOCK_BLOB_STORAGE":                     3,
+		"FILE_STORAGE":                           4,
+		"STORAGE":                                5,
 	}
 )
 
@@ -89,29 +94,30 @@ func (AzureStorageAccountKind) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-// **AzureStorageAccountTier** defines the performance tier.
+// The performance tier.
 type AzureStorageAccountTier int32
 
 const (
-	// Unspecified tier (will default to STANDARD)
-	AzureStorageAccountTier_ACCOUNT_TIER_UNSPECIFIED AzureStorageAccountTier = 0
-	// Standard performance backed by HDD
+	// Not specified: STANDARD.
+	AzureStorageAccountTier_azure_storage_account_tier_unspecified AzureStorageAccountTier = 0
+	// HDD-backed. All redundancy options; the cost-efficient default.
 	AzureStorageAccountTier_STANDARD AzureStorageAccountTier = 1
-	// Premium performance backed by SSD
+	// SSD-backed, single-digit-ms latency. Pairs with the specialized
+	// kinds (BLOCK_BLOB_STORAGE, FILE_STORAGE) or premium page blobs.
 	AzureStorageAccountTier_PREMIUM AzureStorageAccountTier = 2
 )
 
 // Enum value maps for AzureStorageAccountTier.
 var (
 	AzureStorageAccountTier_name = map[int32]string{
-		0: "ACCOUNT_TIER_UNSPECIFIED",
+		0: "azure_storage_account_tier_unspecified",
 		1: "STANDARD",
 		2: "PREMIUM",
 	}
 	AzureStorageAccountTier_value = map[string]int32{
-		"ACCOUNT_TIER_UNSPECIFIED": 0,
-		"STANDARD":                 1,
-		"PREMIUM":                  2,
+		"azure_storage_account_tier_unspecified": 0,
+		"STANDARD":                               1,
+		"PREMIUM":                                2,
 	}
 )
 
@@ -142,30 +148,35 @@ func (AzureStorageAccountTier) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-// **AzureStorageReplicationType** defines the replication strategy.
-type AzureStorageReplicationType int32
+// How the account's data is replicated.
+type AzureStorageAccountReplicationType int32
 
 const (
-	// Unspecified replication (will default to LRS)
-	AzureStorageReplicationType_REPLICATION_UNSPECIFIED AzureStorageReplicationType = 0
-	// Locally redundant storage (3 copies in single datacenter)
-	AzureStorageReplicationType_LRS AzureStorageReplicationType = 1
-	// Zone-redundant storage (3 copies across availability zones)
-	AzureStorageReplicationType_ZRS AzureStorageReplicationType = 2
-	// Geo-redundant storage (6 copies total)
-	AzureStorageReplicationType_GRS AzureStorageReplicationType = 3
-	// Geo-zone-redundant storage
-	AzureStorageReplicationType_GZRS AzureStorageReplicationType = 4
-	// Read-access geo-redundant storage
-	AzureStorageReplicationType_RA_GRS AzureStorageReplicationType = 5
-	// Read-access geo-zone-redundant storage
-	AzureStorageReplicationType_RA_GZRS AzureStorageReplicationType = 6
+	// Not specified: LRS.
+	AzureStorageAccountReplicationType_azure_storage_account_replication_type_unspecified AzureStorageAccountReplicationType = 0
+	// Locally-redundant: three copies in one datacenter. Cheapest; no
+	// zone or region resilience.
+	AzureStorageAccountReplicationType_LRS AzureStorageAccountReplicationType = 1
+	// Zone-redundant: three copies across availability zones. The
+	// single-region production recommendation.
+	AzureStorageAccountReplicationType_ZRS AzureStorageAccountReplicationType = 2
+	// Geo-redundant: LRS at home plus three async copies in the paired
+	// region.
+	AzureStorageAccountReplicationType_GRS AzureStorageAccountReplicationType = 3
+	// Geo-zone-redundant: ZRS at home plus geo-replication. The highest
+	// durability tier.
+	AzureStorageAccountReplicationType_GZRS AzureStorageAccountReplicationType = 4
+	// GRS plus a READ-ONLY secondary endpoint in the paired region
+	// (the secondary endpoints in the outputs become live).
+	AzureStorageAccountReplicationType_RA_GRS AzureStorageAccountReplicationType = 5
+	// GZRS plus a read-only secondary endpoint.
+	AzureStorageAccountReplicationType_RA_GZRS AzureStorageAccountReplicationType = 6
 )
 
-// Enum value maps for AzureStorageReplicationType.
+// Enum value maps for AzureStorageAccountReplicationType.
 var (
-	AzureStorageReplicationType_name = map[int32]string{
-		0: "REPLICATION_UNSPECIFIED",
+	AzureStorageAccountReplicationType_name = map[int32]string{
+		0: "azure_storage_account_replication_type_unspecified",
 		1: "LRS",
 		2: "ZRS",
 		3: "GRS",
@@ -173,318 +184,1075 @@ var (
 		5: "RA_GRS",
 		6: "RA_GZRS",
 	}
-	AzureStorageReplicationType_value = map[string]int32{
-		"REPLICATION_UNSPECIFIED": 0,
-		"LRS":                     1,
-		"ZRS":                     2,
-		"GRS":                     3,
-		"GZRS":                    4,
-		"RA_GRS":                  5,
-		"RA_GZRS":                 6,
+	AzureStorageAccountReplicationType_value = map[string]int32{
+		"azure_storage_account_replication_type_unspecified": 0,
+		"LRS":     1,
+		"ZRS":     2,
+		"GRS":     3,
+		"GZRS":    4,
+		"RA_GRS":  5,
+		"RA_GZRS": 6,
 	}
 )
 
-func (x AzureStorageReplicationType) Enum() *AzureStorageReplicationType {
-	p := new(AzureStorageReplicationType)
+func (x AzureStorageAccountReplicationType) Enum() *AzureStorageAccountReplicationType {
+	p := new(AzureStorageAccountReplicationType)
 	*p = x
 	return p
 }
 
-func (x AzureStorageReplicationType) String() string {
+func (x AzureStorageAccountReplicationType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureStorageReplicationType) Descriptor() protoreflect.EnumDescriptor {
+func (AzureStorageAccountReplicationType) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[2].Descriptor()
 }
 
-func (AzureStorageReplicationType) Type() protoreflect.EnumType {
+func (AzureStorageAccountReplicationType) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[2]
 }
 
-func (x AzureStorageReplicationType) Number() protoreflect.EnumNumber {
+func (x AzureStorageAccountReplicationType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureStorageReplicationType.Descriptor instead.
-func (AzureStorageReplicationType) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use AzureStorageAccountReplicationType.Descriptor instead.
+func (AzureStorageAccountReplicationType) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-// **AzureStorageAccessTier** defines the blob access tier.
-type AzureStorageAccessTier int32
+// The default blob access tier.
+type AzureStorageAccountAccessTier int32
 
 const (
-	// Unspecified tier (will default to HOT)
-	AzureStorageAccessTier_ACCESS_TIER_UNSPECIFIED AzureStorageAccessTier = 0
-	// Hot tier for frequently accessed data
-	AzureStorageAccessTier_HOT AzureStorageAccessTier = 1
-	// Cool tier for infrequently accessed data
-	AzureStorageAccessTier_COOL AzureStorageAccessTier = 2
+	// Not specified: Azure applies HOT on the kinds that support tiers.
+	AzureStorageAccountAccessTier_azure_storage_account_access_tier_unspecified AzureStorageAccountAccessTier = 0
+	// Frequent access: highest storage price, lowest access price.
+	AzureStorageAccountAccessTier_HOT AzureStorageAccountAccessTier = 1
+	// Infrequent access (30-day minimum retention): cheaper storage,
+	// pricier access.
+	AzureStorageAccountAccessTier_COOL AzureStorageAccountAccessTier = 2
+	// Rare access (90-day minimum retention): between COOL and archive.
+	AzureStorageAccountAccessTier_COLD AzureStorageAccountAccessTier = 3
+	// The tier premium accounts report; storage on SSD media.
+	AzureStorageAccountAccessTier_ACCESS_TIER_PREMIUM AzureStorageAccountAccessTier = 4
 )
 
-// Enum value maps for AzureStorageAccessTier.
+// Enum value maps for AzureStorageAccountAccessTier.
 var (
-	AzureStorageAccessTier_name = map[int32]string{
-		0: "ACCESS_TIER_UNSPECIFIED",
+	AzureStorageAccountAccessTier_name = map[int32]string{
+		0: "azure_storage_account_access_tier_unspecified",
 		1: "HOT",
 		2: "COOL",
+		3: "COLD",
+		4: "ACCESS_TIER_PREMIUM",
 	}
-	AzureStorageAccessTier_value = map[string]int32{
-		"ACCESS_TIER_UNSPECIFIED": 0,
-		"HOT":                     1,
-		"COOL":                    2,
+	AzureStorageAccountAccessTier_value = map[string]int32{
+		"azure_storage_account_access_tier_unspecified": 0,
+		"HOT":                 1,
+		"COOL":                2,
+		"COLD":                3,
+		"ACCESS_TIER_PREMIUM": 4,
 	}
 )
 
-func (x AzureStorageAccessTier) Enum() *AzureStorageAccessTier {
-	p := new(AzureStorageAccessTier)
+func (x AzureStorageAccountAccessTier) Enum() *AzureStorageAccountAccessTier {
+	p := new(AzureStorageAccountAccessTier)
 	*p = x
 	return p
 }
 
-func (x AzureStorageAccessTier) String() string {
+func (x AzureStorageAccountAccessTier) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureStorageAccessTier) Descriptor() protoreflect.EnumDescriptor {
+func (AzureStorageAccountAccessTier) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[3].Descriptor()
 }
 
-func (AzureStorageAccessTier) Type() protoreflect.EnumType {
+func (AzureStorageAccountAccessTier) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[3]
 }
 
-func (x AzureStorageAccessTier) Number() protoreflect.EnumNumber {
+func (x AzureStorageAccountAccessTier) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureStorageAccessTier.Descriptor instead.
-func (AzureStorageAccessTier) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use AzureStorageAccountAccessTier.Descriptor instead.
+func (AzureStorageAccountAccessTier) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-// **AzureTlsVersion** defines the minimum TLS version.
-type AzureTlsVersion int32
+// The minimum TLS version for incoming requests.
+type AzureStorageAccountMinTlsVersion int32
 
 const (
-	// Unspecified version (will default to TLS1_2)
-	AzureTlsVersion_TLS_VERSION_UNSPECIFIED AzureTlsVersion = 0
-	// TLS 1.0 (not recommended)
-	AzureTlsVersion_TLS1_0 AzureTlsVersion = 1
-	// TLS 1.1 (not recommended)
-	AzureTlsVersion_TLS1_1 AzureTlsVersion = 2
-	// TLS 1.2 (recommended)
-	AzureTlsVersion_TLS1_2 AzureTlsVersion = 3
+	// Not specified: TLS1_2 (Azure's default and the compliance floor).
+	AzureStorageAccountMinTlsVersion_azure_storage_account_min_tls_version_unspecified AzureStorageAccountMinTlsVersion = 0
+	// TLS 1.0 -- legacy clients only; fails most compliance scans.
+	AzureStorageAccountMinTlsVersion_TLS1_0 AzureStorageAccountMinTlsVersion = 1
+	// TLS 1.1 -- legacy clients only; fails most compliance scans.
+	AzureStorageAccountMinTlsVersion_TLS1_1 AzureStorageAccountMinTlsVersion = 2
+	// TLS 1.2 -- the floor for new deployments.
+	AzureStorageAccountMinTlsVersion_TLS1_2 AzureStorageAccountMinTlsVersion = 3
 )
 
-// Enum value maps for AzureTlsVersion.
+// Enum value maps for AzureStorageAccountMinTlsVersion.
 var (
-	AzureTlsVersion_name = map[int32]string{
-		0: "TLS_VERSION_UNSPECIFIED",
+	AzureStorageAccountMinTlsVersion_name = map[int32]string{
+		0: "azure_storage_account_min_tls_version_unspecified",
 		1: "TLS1_0",
 		2: "TLS1_1",
 		3: "TLS1_2",
 	}
-	AzureTlsVersion_value = map[string]int32{
-		"TLS_VERSION_UNSPECIFIED": 0,
-		"TLS1_0":                  1,
-		"TLS1_1":                  2,
-		"TLS1_2":                  3,
+	AzureStorageAccountMinTlsVersion_value = map[string]int32{
+		"azure_storage_account_min_tls_version_unspecified": 0,
+		"TLS1_0": 1,
+		"TLS1_1": 2,
+		"TLS1_2": 3,
 	}
 )
 
-func (x AzureTlsVersion) Enum() *AzureTlsVersion {
-	p := new(AzureTlsVersion)
+func (x AzureStorageAccountMinTlsVersion) Enum() *AzureStorageAccountMinTlsVersion {
+	p := new(AzureStorageAccountMinTlsVersion)
 	*p = x
 	return p
 }
 
-func (x AzureTlsVersion) String() string {
+func (x AzureStorageAccountMinTlsVersion) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureTlsVersion) Descriptor() protoreflect.EnumDescriptor {
+func (AzureStorageAccountMinTlsVersion) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[4].Descriptor()
 }
 
-func (AzureTlsVersion) Type() protoreflect.EnumType {
+func (AzureStorageAccountMinTlsVersion) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[4]
 }
 
-func (x AzureTlsVersion) Number() protoreflect.EnumNumber {
+func (x AzureStorageAccountMinTlsVersion) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureTlsVersion.Descriptor instead.
-func (AzureTlsVersion) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use AzureStorageAccountMinTlsVersion.Descriptor instead.
+func (AzureStorageAccountMinTlsVersion) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-// **AzureStorageNetworkAction** defines the default network action.
-type AzureStorageNetworkAction int32
+// Copy-scope restriction.
+type AzureStorageAccountAllowedCopyScope int32
 
 const (
-	// Unspecified action (will default to DENY)
-	AzureStorageNetworkAction_NETWORK_ACTION_UNSPECIFIED AzureStorageNetworkAction = 0
-	// Allow all network traffic
-	AzureStorageNetworkAction_ALLOW AzureStorageNetworkAction = 1
-	// Deny all network traffic unless explicitly allowed
-	AzureStorageNetworkAction_DENY AzureStorageNetworkAction = 2
+	// Not specified: copy destinations are unrestricted (Azure's
+	// default).
+	AzureStorageAccountAllowedCopyScope_azure_storage_account_allowed_copy_scope_unspecified AzureStorageAccountAllowedCopyScope = 0
+	// Copy only to accounts in the same Microsoft Entra tenant.
+	AzureStorageAccountAllowedCopyScope_AAD AzureStorageAccountAllowedCopyScope = 1
+	// Copy only to accounts connected via private link.
+	AzureStorageAccountAllowedCopyScope_PRIVATE_LINK AzureStorageAccountAllowedCopyScope = 2
 )
 
-// Enum value maps for AzureStorageNetworkAction.
+// Enum value maps for AzureStorageAccountAllowedCopyScope.
 var (
-	AzureStorageNetworkAction_name = map[int32]string{
-		0: "NETWORK_ACTION_UNSPECIFIED",
-		1: "ALLOW",
-		2: "DENY",
+	AzureStorageAccountAllowedCopyScope_name = map[int32]string{
+		0: "azure_storage_account_allowed_copy_scope_unspecified",
+		1: "AAD",
+		2: "PRIVATE_LINK",
 	}
-	AzureStorageNetworkAction_value = map[string]int32{
-		"NETWORK_ACTION_UNSPECIFIED": 0,
-		"ALLOW":                      1,
-		"DENY":                       2,
+	AzureStorageAccountAllowedCopyScope_value = map[string]int32{
+		"azure_storage_account_allowed_copy_scope_unspecified": 0,
+		"AAD":          1,
+		"PRIVATE_LINK": 2,
 	}
 )
 
-func (x AzureStorageNetworkAction) Enum() *AzureStorageNetworkAction {
-	p := new(AzureStorageNetworkAction)
+func (x AzureStorageAccountAllowedCopyScope) Enum() *AzureStorageAccountAllowedCopyScope {
+	p := new(AzureStorageAccountAllowedCopyScope)
 	*p = x
 	return p
 }
 
-func (x AzureStorageNetworkAction) String() string {
+func (x AzureStorageAccountAllowedCopyScope) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureStorageNetworkAction) Descriptor() protoreflect.EnumDescriptor {
+func (AzureStorageAccountAllowedCopyScope) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[5].Descriptor()
 }
 
-func (AzureStorageNetworkAction) Type() protoreflect.EnumType {
+func (AzureStorageAccountAllowedCopyScope) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[5]
 }
 
-func (x AzureStorageNetworkAction) Number() protoreflect.EnumNumber {
+func (x AzureStorageAccountAllowedCopyScope) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureStorageNetworkAction.Descriptor instead.
-func (AzureStorageNetworkAction) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use AzureStorageAccountAllowedCopyScope.Descriptor instead.
+func (AzureStorageAccountAllowedCopyScope) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
-// **AzureStorageContainerAccess** defines the public access level for a container.
-type AzureStorageContainerAccess int32
+// The DNS endpoint architecture.
+type AzureStorageAccountDnsEndpointType int32
 
 const (
-	// Unspecified access (will default to PRIVATE)
-	AzureStorageContainerAccess_CONTAINER_ACCESS_UNSPECIFIED AzureStorageContainerAccess = 0
-	// No public read access (recommended)
-	AzureStorageContainerAccess_PRIVATE AzureStorageContainerAccess = 1
-	// Public read access for blobs only
-	AzureStorageContainerAccess_BLOB AzureStorageContainerAccess = 2
-	// Public read access for container and blobs
-	AzureStorageContainerAccess_CONTAINER AzureStorageContainerAccess = 3
+	// Not specified: the classic shared DNS endpoints.
+	AzureStorageAccountDnsEndpointType_azure_storage_account_dns_endpoint_type_unspecified AzureStorageAccountDnsEndpointType = 0
+	// Classic shared DNS: {name}.blob.core.windows.net.
+	AzureStorageAccountDnsEndpointType_DNS_ENDPOINT_STANDARD AzureStorageAccountDnsEndpointType = 1
+	// Partitioned DNS for very-high-scale subscriptions; incompatible
+	// with blob point-in-time restore.
+	AzureStorageAccountDnsEndpointType_AZURE_DNS_ZONE AzureStorageAccountDnsEndpointType = 2
 )
 
-// Enum value maps for AzureStorageContainerAccess.
+// Enum value maps for AzureStorageAccountDnsEndpointType.
 var (
-	AzureStorageContainerAccess_name = map[int32]string{
-		0: "CONTAINER_ACCESS_UNSPECIFIED",
-		1: "PRIVATE",
-		2: "BLOB",
-		3: "CONTAINER",
+	AzureStorageAccountDnsEndpointType_name = map[int32]string{
+		0: "azure_storage_account_dns_endpoint_type_unspecified",
+		1: "DNS_ENDPOINT_STANDARD",
+		2: "AZURE_DNS_ZONE",
 	}
-	AzureStorageContainerAccess_value = map[string]int32{
-		"CONTAINER_ACCESS_UNSPECIFIED": 0,
-		"PRIVATE":                      1,
-		"BLOB":                         2,
-		"CONTAINER":                    3,
+	AzureStorageAccountDnsEndpointType_value = map[string]int32{
+		"azure_storage_account_dns_endpoint_type_unspecified": 0,
+		"DNS_ENDPOINT_STANDARD":                               1,
+		"AZURE_DNS_ZONE":                                      2,
 	}
 )
 
-func (x AzureStorageContainerAccess) Enum() *AzureStorageContainerAccess {
-	p := new(AzureStorageContainerAccess)
+func (x AzureStorageAccountDnsEndpointType) Enum() *AzureStorageAccountDnsEndpointType {
+	p := new(AzureStorageAccountDnsEndpointType)
 	*p = x
 	return p
 }
 
-func (x AzureStorageContainerAccess) String() string {
+func (x AzureStorageAccountDnsEndpointType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureStorageContainerAccess) Descriptor() protoreflect.EnumDescriptor {
+func (AzureStorageAccountDnsEndpointType) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[6].Descriptor()
 }
 
-func (AzureStorageContainerAccess) Type() protoreflect.EnumType {
+func (AzureStorageAccountDnsEndpointType) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[6]
 }
 
-func (x AzureStorageContainerAccess) Number() protoreflect.EnumNumber {
+func (x AzureStorageAccountDnsEndpointType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureStorageContainerAccess.Descriptor instead.
-func (AzureStorageContainerAccess) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use AzureStorageAccountDnsEndpointType.Descriptor instead.
+func (AzureStorageAccountDnsEndpointType) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
-// **AzureStorageAccountSpec** defines the configuration for creating an Azure Storage Account.
-// This follows the 80/20 principle: exposing the 20% of configurations that 80% of users need.
+// Encryption key scope for the queue/table services.
+type AzureStorageAccountEncryptionKeyType int32
+
+const (
+	// Not specified: SERVICE (Azure's default).
+	AzureStorageAccountEncryptionKeyType_azure_storage_account_encryption_key_type_unspecified AzureStorageAccountEncryptionKeyType = 0
+	// A Microsoft-managed per-service key -- customer-managed keys do
+	// NOT cover this service's data.
+	AzureStorageAccountEncryptionKeyType_SERVICE AzureStorageAccountEncryptionKeyType = 1
+	// The account's encryption key scope -- required for the service's
+	// data to be covered by customer_managed_key.
+	AzureStorageAccountEncryptionKeyType_ACCOUNT AzureStorageAccountEncryptionKeyType = 2
+)
+
+// Enum value maps for AzureStorageAccountEncryptionKeyType.
+var (
+	AzureStorageAccountEncryptionKeyType_name = map[int32]string{
+		0: "azure_storage_account_encryption_key_type_unspecified",
+		1: "SERVICE",
+		2: "ACCOUNT",
+	}
+	AzureStorageAccountEncryptionKeyType_value = map[string]int32{
+		"azure_storage_account_encryption_key_type_unspecified": 0,
+		"SERVICE": 1,
+		"ACCOUNT": 2,
+	}
+)
+
+func (x AzureStorageAccountEncryptionKeyType) Enum() *AzureStorageAccountEncryptionKeyType {
+	p := new(AzureStorageAccountEncryptionKeyType)
+	*p = x
+	return p
+}
+
+func (x AzureStorageAccountEncryptionKeyType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureStorageAccountEncryptionKeyType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[7].Descriptor()
+}
+
+func (AzureStorageAccountEncryptionKeyType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[7]
+}
+
+func (x AzureStorageAccountEncryptionKeyType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureStorageAccountEncryptionKeyType.Descriptor instead.
+func (AzureStorageAccountEncryptionKeyType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+// Managed identity flavors.
+type AzureStorageAccountIdentityType int32
+
+const (
+	// Not specified -- invalid; choose an explicit flavor when the
+	// identity block is present.
+	AzureStorageAccountIdentityType_azure_storage_account_identity_type_unspecified AzureStorageAccountIdentityType = 0
+	// Azure creates and rotates an identity bound to the account's
+	// lifecycle.
+	AzureStorageAccountIdentityType_SYSTEM_ASSIGNED AzureStorageAccountIdentityType = 1
+	// Bring your own AzureUserAssignedIdentity resources (required for
+	// customer-managed-key encryption).
+	AzureStorageAccountIdentityType_USER_ASSIGNED AzureStorageAccountIdentityType = 2
+	// Both flavors together.
+	AzureStorageAccountIdentityType_SYSTEM_AND_USER_ASSIGNED AzureStorageAccountIdentityType = 3
+)
+
+// Enum value maps for AzureStorageAccountIdentityType.
+var (
+	AzureStorageAccountIdentityType_name = map[int32]string{
+		0: "azure_storage_account_identity_type_unspecified",
+		1: "SYSTEM_ASSIGNED",
+		2: "USER_ASSIGNED",
+		3: "SYSTEM_AND_USER_ASSIGNED",
+	}
+	AzureStorageAccountIdentityType_value = map[string]int32{
+		"azure_storage_account_identity_type_unspecified": 0,
+		"SYSTEM_ASSIGNED":          1,
+		"USER_ASSIGNED":            2,
+		"SYSTEM_AND_USER_ASSIGNED": 3,
+	}
+)
+
+func (x AzureStorageAccountIdentityType) Enum() *AzureStorageAccountIdentityType {
+	p := new(AzureStorageAccountIdentityType)
+	*p = x
+	return p
+}
+
+func (x AzureStorageAccountIdentityType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureStorageAccountIdentityType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[8].Descriptor()
+}
+
+func (AzureStorageAccountIdentityType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[8]
+}
+
+func (x AzureStorageAccountIdentityType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureStorageAccountIdentityType.Descriptor instead.
+func (AzureStorageAccountIdentityType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+// Firewall default action.
+type AzureStorageAccountNetworkDefaultAction int32
+
+const (
+	// Not specified -- invalid; the network_rules block requires an
+	// explicit choice.
+	AzureStorageAccountNetworkDefaultAction_azure_storage_account_network_default_action_unspecified AzureStorageAccountNetworkDefaultAction = 0
+	// Admit traffic no rule matches (the firewall is advisory).
+	AzureStorageAccountNetworkDefaultAction_ALLOW AzureStorageAccountNetworkDefaultAction = 1
+	// Reject traffic no rule matches (the production posture).
+	AzureStorageAccountNetworkDefaultAction_DENY AzureStorageAccountNetworkDefaultAction = 2
+)
+
+// Enum value maps for AzureStorageAccountNetworkDefaultAction.
+var (
+	AzureStorageAccountNetworkDefaultAction_name = map[int32]string{
+		0: "azure_storage_account_network_default_action_unspecified",
+		1: "ALLOW",
+		2: "DENY",
+	}
+	AzureStorageAccountNetworkDefaultAction_value = map[string]int32{
+		"azure_storage_account_network_default_action_unspecified": 0,
+		"ALLOW": 1,
+		"DENY":  2,
+	}
+)
+
+func (x AzureStorageAccountNetworkDefaultAction) Enum() *AzureStorageAccountNetworkDefaultAction {
+	p := new(AzureStorageAccountNetworkDefaultAction)
+	*p = x
+	return p
+}
+
+func (x AzureStorageAccountNetworkDefaultAction) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureStorageAccountNetworkDefaultAction) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[9].Descriptor()
+}
+
+func (AzureStorageAccountNetworkDefaultAction) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[9]
+}
+
+func (x AzureStorageAccountNetworkDefaultAction) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureStorageAccountNetworkDefaultAction.Descriptor instead.
+func (AzureStorageAccountNetworkDefaultAction) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+// Firewall bypass classes.
+type AzureStorageAccountNetworkBypass int32
+
+const (
+	// Not specified -- not a valid list entry.
+	AzureStorageAccountNetworkBypass_azure_storage_account_network_bypass_unspecified AzureStorageAccountNetworkBypass = 0
+	// Trusted Microsoft services (Backup, Monitor, Event Grid, ...).
+	AzureStorageAccountNetworkBypass_AZURE_SERVICES AzureStorageAccountNetworkBypass = 1
+	// Classic storage-analytics log readers.
+	AzureStorageAccountNetworkBypass_LOGGING AzureStorageAccountNetworkBypass = 2
+	// Classic storage-analytics metric readers.
+	AzureStorageAccountNetworkBypass_METRICS AzureStorageAccountNetworkBypass = 3
+	// Exempt nothing (use as the sole entry).
+	AzureStorageAccountNetworkBypass_NONE AzureStorageAccountNetworkBypass = 4
+)
+
+// Enum value maps for AzureStorageAccountNetworkBypass.
+var (
+	AzureStorageAccountNetworkBypass_name = map[int32]string{
+		0: "azure_storage_account_network_bypass_unspecified",
+		1: "AZURE_SERVICES",
+		2: "LOGGING",
+		3: "METRICS",
+		4: "NONE",
+	}
+	AzureStorageAccountNetworkBypass_value = map[string]int32{
+		"azure_storage_account_network_bypass_unspecified": 0,
+		"AZURE_SERVICES": 1,
+		"LOGGING":        2,
+		"METRICS":        3,
+		"NONE":           4,
+	}
+)
+
+func (x AzureStorageAccountNetworkBypass) Enum() *AzureStorageAccountNetworkBypass {
+	p := new(AzureStorageAccountNetworkBypass)
+	*p = x
+	return p
+}
+
+func (x AzureStorageAccountNetworkBypass) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureStorageAccountNetworkBypass) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[10].Descriptor()
+}
+
+func (AzureStorageAccountNetworkBypass) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[10]
+}
+
+func (x AzureStorageAccountNetworkBypass) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureStorageAccountNetworkBypass.Descriptor instead.
+func (AzureStorageAccountNetworkBypass) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+// Network routing choices.
+type AzureStorageAccountRoutingChoice int32
+
+const (
+	// Not specified: MICROSOFT_ROUTING (Azure's default).
+	AzureStorageAccountRoutingChoice_azure_storage_account_routing_choice_unspecified AzureStorageAccountRoutingChoice = 0
+	// Traffic enters Microsoft's backbone close to the client: lowest
+	// latency.
+	AzureStorageAccountRoutingChoice_MICROSOFT_ROUTING AzureStorageAccountRoutingChoice = 1
+	// Traffic rides the public internet and enters close to the
+	// account: lower cost.
+	AzureStorageAccountRoutingChoice_INTERNET_ROUTING AzureStorageAccountRoutingChoice = 2
+)
+
+// Enum value maps for AzureStorageAccountRoutingChoice.
+var (
+	AzureStorageAccountRoutingChoice_name = map[int32]string{
+		0: "azure_storage_account_routing_choice_unspecified",
+		1: "MICROSOFT_ROUTING",
+		2: "INTERNET_ROUTING",
+	}
+	AzureStorageAccountRoutingChoice_value = map[string]int32{
+		"azure_storage_account_routing_choice_unspecified": 0,
+		"MICROSOFT_ROUTING": 1,
+		"INTERNET_ROUTING":  2,
+	}
+)
+
+func (x AzureStorageAccountRoutingChoice) Enum() *AzureStorageAccountRoutingChoice {
+	p := new(AzureStorageAccountRoutingChoice)
+	*p = x
+	return p
+}
+
+func (x AzureStorageAccountRoutingChoice) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureStorageAccountRoutingChoice) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[11].Descriptor()
+}
+
+func (AzureStorageAccountRoutingChoice) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[11]
+}
+
+func (x AzureStorageAccountRoutingChoice) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureStorageAccountRoutingChoice.Descriptor instead.
+func (AzureStorageAccountRoutingChoice) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+// SAS expiration-policy actions.
+type AzureStorageAccountSasExpirationAction int32
+
+const (
+	// Not specified: LOG (Azure's default).
+	AzureStorageAccountSasExpirationAction_azure_storage_account_sas_expiration_action_unspecified AzureStorageAccountSasExpirationAction = 0
+	// Record a policy violation but accept the token.
+	AzureStorageAccountSasExpirationAction_LOG AzureStorageAccountSasExpirationAction = 1
+	// Reject tokens that exceed the expiration period.
+	AzureStorageAccountSasExpirationAction_BLOCK AzureStorageAccountSasExpirationAction = 2
+)
+
+// Enum value maps for AzureStorageAccountSasExpirationAction.
+var (
+	AzureStorageAccountSasExpirationAction_name = map[int32]string{
+		0: "azure_storage_account_sas_expiration_action_unspecified",
+		1: "LOG",
+		2: "BLOCK",
+	}
+	AzureStorageAccountSasExpirationAction_value = map[string]int32{
+		"azure_storage_account_sas_expiration_action_unspecified": 0,
+		"LOG":   1,
+		"BLOCK": 2,
+	}
+)
+
+func (x AzureStorageAccountSasExpirationAction) Enum() *AzureStorageAccountSasExpirationAction {
+	p := new(AzureStorageAccountSasExpirationAction)
+	*p = x
+	return p
+}
+
+func (x AzureStorageAccountSasExpirationAction) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureStorageAccountSasExpirationAction) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[12].Descriptor()
+}
+
+func (AzureStorageAccountSasExpirationAction) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[12]
+}
+
+func (x AzureStorageAccountSasExpirationAction) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureStorageAccountSasExpirationAction.Descriptor instead.
+func (AzureStorageAccountSasExpirationAction) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+// Account-level immutability policy states.
+type AzureStorageAccountImmutabilityState int32
+
+const (
+	// Not specified -- invalid; the policy block requires an explicit
+	// state.
+	AzureStorageAccountImmutabilityState_azure_storage_account_immutability_state_unspecified AzureStorageAccountImmutabilityState = 0
+	// The policy exists but is not enforced.
+	AzureStorageAccountImmutabilityState_DISABLED AzureStorageAccountImmutabilityState = 1
+	// Enforced but adjustable/deletable -- the safe starting state.
+	AzureStorageAccountImmutabilityState_UNLOCKED AzureStorageAccountImmutabilityState = 2
+	// Enforced and IRREVERSIBLE: retention can never be shortened and
+	// the policy can never be removed. Enter only from UNLOCKED, after
+	// validation.
+	AzureStorageAccountImmutabilityState_LOCKED AzureStorageAccountImmutabilityState = 3
+)
+
+// Enum value maps for AzureStorageAccountImmutabilityState.
+var (
+	AzureStorageAccountImmutabilityState_name = map[int32]string{
+		0: "azure_storage_account_immutability_state_unspecified",
+		1: "DISABLED",
+		2: "UNLOCKED",
+		3: "LOCKED",
+	}
+	AzureStorageAccountImmutabilityState_value = map[string]int32{
+		"azure_storage_account_immutability_state_unspecified": 0,
+		"DISABLED": 1,
+		"UNLOCKED": 2,
+		"LOCKED":   3,
+	}
+)
+
+func (x AzureStorageAccountImmutabilityState) Enum() *AzureStorageAccountImmutabilityState {
+	p := new(AzureStorageAccountImmutabilityState)
+	*p = x
+	return p
+}
+
+func (x AzureStorageAccountImmutabilityState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureStorageAccountImmutabilityState) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[13].Descriptor()
+}
+
+func (AzureStorageAccountImmutabilityState) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[13]
+}
+
+func (x AzureStorageAccountImmutabilityState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureStorageAccountImmutabilityState.Descriptor instead.
+func (AzureStorageAccountImmutabilityState) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+// Directory services for Azure Files authentication.
+type AzureStorageAccountDirectoryServiceType int32
+
+const (
+	// Not specified -- invalid; the block requires an explicit service.
+	AzureStorageAccountDirectoryServiceType_azure_storage_account_directory_service_type_unspecified AzureStorageAccountDirectoryServiceType = 0
+	// Microsoft Entra Domain Services.
+	AzureStorageAccountDirectoryServiceType_AADDS AzureStorageAccountDirectoryServiceType = 1
+	// Microsoft Entra Kerberos (hybrid identities, no domain-controller
+	// line of sight needed).
+	AzureStorageAccountDirectoryServiceType_AADKERB AzureStorageAccountDirectoryServiceType = 2
+	// On-premises Active Directory Domain Services (requires
+	// active_directory coordinates).
+	AzureStorageAccountDirectoryServiceType_AD AzureStorageAccountDirectoryServiceType = 3
+)
+
+// Enum value maps for AzureStorageAccountDirectoryServiceType.
+var (
+	AzureStorageAccountDirectoryServiceType_name = map[int32]string{
+		0: "azure_storage_account_directory_service_type_unspecified",
+		1: "AADDS",
+		2: "AADKERB",
+		3: "AD",
+	}
+	AzureStorageAccountDirectoryServiceType_value = map[string]int32{
+		"azure_storage_account_directory_service_type_unspecified": 0,
+		"AADDS":   1,
+		"AADKERB": 2,
+		"AD":      3,
+	}
+)
+
+func (x AzureStorageAccountDirectoryServiceType) Enum() *AzureStorageAccountDirectoryServiceType {
+	p := new(AzureStorageAccountDirectoryServiceType)
+	*p = x
+	return p
+}
+
+func (x AzureStorageAccountDirectoryServiceType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureStorageAccountDirectoryServiceType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[14].Descriptor()
+}
+
+func (AzureStorageAccountDirectoryServiceType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[14]
+}
+
+func (x AzureStorageAccountDirectoryServiceType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureStorageAccountDirectoryServiceType.Descriptor instead.
+func (AzureStorageAccountDirectoryServiceType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+// Default share-level permissions for Azure Files.
+type AzureStorageAccountDefaultSharePermission int32
+
+const (
+	// Not specified: SHARE_PERMISSION_NONE.
+	AzureStorageAccountDefaultSharePermission_azure_storage_account_default_share_permission_unspecified AzureStorageAccountDefaultSharePermission = 0
+	// No default access -- every user needs an explicit share-level role
+	// assignment.
+	AzureStorageAccountDefaultSharePermission_SHARE_PERMISSION_NONE AzureStorageAccountDefaultSharePermission = 1
+	// Read access to shares by default.
+	AzureStorageAccountDefaultSharePermission_SHARE_PERMISSION_READER AzureStorageAccountDefaultSharePermission = 2
+	// Read/write/delete access to shares by default.
+	AzureStorageAccountDefaultSharePermission_SHARE_PERMISSION_CONTRIBUTOR AzureStorageAccountDefaultSharePermission = 3
+	// Contributor plus NTFS-permission modification.
+	AzureStorageAccountDefaultSharePermission_SHARE_PERMISSION_ELEVATED_CONTRIBUTOR AzureStorageAccountDefaultSharePermission = 4
+)
+
+// Enum value maps for AzureStorageAccountDefaultSharePermission.
+var (
+	AzureStorageAccountDefaultSharePermission_name = map[int32]string{
+		0: "azure_storage_account_default_share_permission_unspecified",
+		1: "SHARE_PERMISSION_NONE",
+		2: "SHARE_PERMISSION_READER",
+		3: "SHARE_PERMISSION_CONTRIBUTOR",
+		4: "SHARE_PERMISSION_ELEVATED_CONTRIBUTOR",
+	}
+	AzureStorageAccountDefaultSharePermission_value = map[string]int32{
+		"azure_storage_account_default_share_permission_unspecified": 0,
+		"SHARE_PERMISSION_NONE":                 1,
+		"SHARE_PERMISSION_READER":               2,
+		"SHARE_PERMISSION_CONTRIBUTOR":          3,
+		"SHARE_PERMISSION_ELEVATED_CONTRIBUTOR": 4,
+	}
+)
+
+func (x AzureStorageAccountDefaultSharePermission) Enum() *AzureStorageAccountDefaultSharePermission {
+	p := new(AzureStorageAccountDefaultSharePermission)
+	*p = x
+	return p
+}
+
+func (x AzureStorageAccountDefaultSharePermission) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureStorageAccountDefaultSharePermission) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[15].Descriptor()
+}
+
+func (AzureStorageAccountDefaultSharePermission) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[15]
+}
+
+func (x AzureStorageAccountDefaultSharePermission) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureStorageAccountDefaultSharePermission.Descriptor instead.
+func (AzureStorageAccountDefaultSharePermission) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+// Blob types a lifecycle rule can cover.
+type AzureStorageAccountLifecycleBlobType int32
+
+const (
+	// Not specified -- not a valid list entry.
+	AzureStorageAccountLifecycleBlobType_azure_storage_account_lifecycle_blob_type_unspecified AzureStorageAccountLifecycleBlobType = 0
+	// Standard block blobs (objects). Supports tiering and deletion.
+	AzureStorageAccountLifecycleBlobType_BLOCK_BLOB AzureStorageAccountLifecycleBlobType = 1
+	// Append blobs (logs). Supports deletion only.
+	AzureStorageAccountLifecycleBlobType_APPEND_BLOB AzureStorageAccountLifecycleBlobType = 2
+)
+
+// Enum value maps for AzureStorageAccountLifecycleBlobType.
+var (
+	AzureStorageAccountLifecycleBlobType_name = map[int32]string{
+		0: "azure_storage_account_lifecycle_blob_type_unspecified",
+		1: "BLOCK_BLOB",
+		2: "APPEND_BLOB",
+	}
+	AzureStorageAccountLifecycleBlobType_value = map[string]int32{
+		"azure_storage_account_lifecycle_blob_type_unspecified": 0,
+		"BLOCK_BLOB":  1,
+		"APPEND_BLOB": 2,
+	}
+)
+
+func (x AzureStorageAccountLifecycleBlobType) Enum() *AzureStorageAccountLifecycleBlobType {
+	p := new(AzureStorageAccountLifecycleBlobType)
+	*p = x
+	return p
+}
+
+func (x AzureStorageAccountLifecycleBlobType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureStorageAccountLifecycleBlobType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[16].Descriptor()
+}
+
+func (AzureStorageAccountLifecycleBlobType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes[16]
+}
+
+func (x AzureStorageAccountLifecycleBlobType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureStorageAccountLifecycleBlobType.Descriptor instead.
+func (AzureStorageAccountLifecycleBlobType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+// **AzureStorageAccountSpec** defines the configuration for creating an Azure
+// Storage Account: the multi-service storage primitive that fronts Blob
+// (objects), Files (SMB/NFS shares), Queues, Tables, and Data Lake Storage
+// Gen2 behind one globally-unique DNS name. Kind, performance tier, and
+// replication together pick the SKU; the service-level blocks (blob, file,
+// static website) tune the data services the account exposes.
+//
+// **The account is the container; data-plane children are their own kinds.**
+// Blob containers are first-class `AzureStorageContainer` resources
+// referencing this account's `storage_account_id` output -- the account spec
+// deliberately creates no containers. Blob lifecycle management, by contrast,
+// is folded in as `lifecycle_rules`: Azure models it as a single per-account
+// policy document with no independent lifecycle and nothing referencing it.
+//
+// **Network access** follows Azure's real default: the account is reachable
+// from all networks until `network_rules` declares otherwise. Locking an
+// account down is a two-step posture -- `default_action: DENY` plus explicit
+// IP rules, subnet references, and/or trusted-service bypass. Note that ARM
+// (control-plane) operations are never subject to these rules; they govern
+// the data plane only.
+//
+// **Encryption** is always on. The dials are ownership and depth: bring your
+// own key with `customer_managed_key` (a Key Vault key unwrapped by a
+// user-assigned identity), double-encrypt at rest with
+// `infrastructure_encryption_enabled`, and move queue/table encryption under
+// the account key scope with the `*_encryption_key_type` fields.
 type AzureStorageAccountSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure region where the Storage Account will be deployed (e.g., "eastus", "westus2", "westeurope").
-	// This is required as Storage Account is a regional service.
+	// The Azure region where the account will be created (e.g. "eastus",
+	// "westeurope"). Changing the region replaces the account.
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// The Azure Resource Group where the Storage Account will be created.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
+	// The Azure resource group the account will be created in. Can be a
+	// literal resource-group name or a reference to an AzureResourceGroup's
+	// name output. Changing it replaces the account.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// The kind of storage account.
-	// - STORAGE_V2: General-purpose v2 (recommended for most scenarios)
-	// - BLOB_STORAGE: Specialized for blob data (hot/cool/archive tiers)
-	// - BLOCK_BLOB_STORAGE: Premium storage for block blobs and append blobs
-	// - FILE_STORAGE: Premium storage for file shares
-	// Default: STORAGE_V2
-	AccountKind *AzureStorageAccountKind `protobuf:"varint,3,opt,name=account_kind,json=accountKind,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountKind,oneof" json:"account_kind,omitempty"`
-	// The performance tier of the storage account.
-	// - STANDARD: Standard performance backed by HDD
-	// - PREMIUM: Premium performance backed by SSD (only for specific account kinds)
-	// Default: STANDARD
-	AccountTier *AzureStorageAccountTier `protobuf:"varint,4,opt,name=account_tier,json=accountTier,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountTier,oneof" json:"account_tier,omitempty"`
-	// The replication strategy for the storage account.
-	// - LRS: Locally redundant storage (3 copies in single datacenter)
-	// - ZRS: Zone-redundant storage (3 copies across availability zones)
-	// - GRS: Geo-redundant storage (6 copies: 3 local + 3 in paired region)
-	// - GZRS: Geo-zone-redundant storage (ZRS + geo-replication)
-	// - RA_GRS: Read-access geo-redundant storage
-	// - RA_GZRS: Read-access geo-zone-redundant storage
-	// Default: LRS
-	ReplicationType *AzureStorageReplicationType `protobuf:"varint,5,opt,name=replication_type,json=replicationType,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageReplicationType,oneof" json:"replication_type,omitempty"`
-	// The default access tier for blob data.
-	// Only applicable for BlobStorage and StorageV2 account kinds.
-	// - HOT: Optimized for frequently accessed data
-	// - COOL: Optimized for infrequently accessed data (30-day minimum retention)
-	// Default: HOT
-	AccessTier *AzureStorageAccessTier `protobuf:"varint,6,opt,name=access_tier,json=accessTier,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccessTier,oneof" json:"access_tier,omitempty"`
-	// Enable HTTPS traffic only. When true, all requests must use HTTPS.
-	// Strongly recommended for security.
-	// Default: true
-	EnableHttpsTrafficOnly *bool `protobuf:"varint,7,opt,name=enable_https_traffic_only,json=enableHttpsTrafficOnly,proto3,oneof" json:"enable_https_traffic_only,omitempty"`
-	// Minimum TLS version for incoming requests.
-	// - TLS1_0: TLS 1.0 (not recommended)
-	// - TLS1_1: TLS 1.1 (not recommended)
-	// - TLS1_2: TLS 1.2 (recommended)
-	// Default: TLS1_2
-	MinTlsVersion *AzureTlsVersion `protobuf:"varint,8,opt,name=min_tls_version,json=minTlsVersion,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureTlsVersion,oneof" json:"min_tls_version,omitempty"`
-	// Network access control configuration for the Storage Account.
-	// Controls who can access the storage from where (public internet, specific IPs, VNets).
-	NetworkRules *AzureStorageNetworkRules `protobuf:"bytes,9,opt,name=network_rules,json=networkRules,proto3" json:"network_rules,omitempty"`
-	// Blob service properties configuration.
-	BlobProperties *AzureStorageBlobProperties `protobuf:"bytes,10,opt,name=blob_properties,json=blobProperties,proto3" json:"blob_properties,omitempty"`
-	// List of blob containers to create in the storage account.
-	Containers    []*AzureStorageContainer `protobuf:"bytes,11,rep,name=containers,proto3" json:"containers,omitempty"`
+	// The account's name: 3-24 lowercase letters and digits ONLY (no hyphens
+	// -- stricter than most Azure names) and GLOBALLY unique across all of
+	// Azure, because it becomes the DNS prefix of every service endpoint
+	// ({name}.blob.core.windows.net and friends). Changing the name replaces
+	// the account.
+	AccountName string `protobuf:"bytes,3,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
+	// The kind of account, which decides which data services exist and which
+	// SKUs are legal. Unspecified means STORAGE_V2 -- the general-purpose v2
+	// account that serves virtually every workload. Only the legacy
+	// STORAGE -> STORAGE_V2 upgrade is an in-place change; any other kind
+	// change replaces the account.
+	AccountKind AzureStorageAccountKind `protobuf:"varint,4,opt,name=account_kind,json=accountKind,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountKind" json:"account_kind,omitempty"`
+	// The performance tier. Unspecified means STANDARD (HDD-backed, all
+	// redundancy options). PREMIUM (SSD-backed, low single-digit-ms latency)
+	// pairs with the specialized kinds: BLOCK_BLOB_STORAGE for premium
+	// blobs/ADLS, FILE_STORAGE for premium file shares. Changing the tier
+	// replaces the account.
+	AccountTier AzureStorageAccountTier `protobuf:"varint,5,opt,name=account_tier,json=accountTier,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountTier" json:"account_tier,omitempty"`
+	// How the account's data is replicated. Unspecified means LRS (three
+	// copies in one datacenter -- the dev/test floor). Production guidance:
+	// ZRS to survive a zone loss, GZRS to survive a regional loss with zone
+	// resilience at home, RA_* variants to add a read-only secondary
+	// endpoint in the paired region. Switching between the zonal family
+	// (ZRS/GZRS/RA_GZRS) and the non-zonal family (LRS/GRS/RA_GRS) replaces
+	// the account; changes within a family are in-place.
+	ReplicationType AzureStorageAccountReplicationType `protobuf:"varint,6,opt,name=replication_type,json=replicationType,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountReplicationType" json:"replication_type,omitempty"`
+	// The default access tier for blob data: the cost/latency trade-off
+	// applied to blobs that don't set their own tier. Unspecified lets
+	// Azure apply HOT. Only meaningful for STORAGE_V2, BLOB_STORAGE, and
+	// FILE_STORAGE kinds. COOL (30-day minimum retention) and COLD (90-day)
+	// trade storage price for access price; ACCESS_TIER_PREMIUM is the
+	// read-back of premium accounts.
+	AccessTier AzureStorageAccountAccessTier `protobuf:"varint,7,opt,name=access_tier,json=accessTier,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAccessTier" json:"access_tier,omitempty"`
+	// The provisioned billing model version. Set "V2" to select the
+	// provisioned-v2 billing model (currently meaningful for FileStorage
+	// accounts -- capacity/IOPS/throughput are provisioned independently);
+	// leave unset for pay-as-you-go / provisioned v1. Fixed at creation.
+	ProvisionedBillingModelVersion string `protobuf:"bytes,8,opt,name=provisioned_billing_model_version,json=provisionedBillingModelVersion,proto3" json:"provisioned_billing_model_version,omitempty"`
+	// The Azure Edge Zone where the account should live, for
+	// ultra-low-latency edge scenarios. Leave unset for a regular regional
+	// deployment (virtually all accounts). Fixed at creation.
+	EdgeZone string `protobuf:"bytes,9,opt,name=edge_zone,json=edgeZone,proto3" json:"edge_zone,omitempty"`
+	// Whether the account rejects plaintext HTTP and requires HTTPS on
+	// every request. Azure's default is true; disable only for the rare
+	// legacy client that cannot speak TLS (NFSv3 mounts are exempt from
+	// this setting by design).
+	HttpsTrafficOnlyEnabled *bool `protobuf:"varint,10,opt,name=https_traffic_only_enabled,json=httpsTrafficOnlyEnabled,proto3,oneof" json:"https_traffic_only_enabled,omitempty"`
+	// The minimum TLS version the account accepts. Unspecified applies
+	// TLS1_2 (Azure's default since 2024 and the compliance floor); the
+	// older versions exist only for legacy clients that cannot negotiate
+	// TLS 1.2.
+	MinTlsVersion AzureStorageAccountMinTlsVersion `protobuf:"varint,11,opt,name=min_tls_version,json=minTlsVersion,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountMinTlsVersion" json:"min_tls_version,omitempty"`
+	// Whether the account's shared access keys (and SAS tokens signed by
+	// them) are accepted for authorization. Azure's default is true.
+	// Setting false forces every data-plane request through Microsoft
+	// Entra -- the zero-static-credential posture; be sure every consumer
+	// supports Entra auth before flipping it.
+	SharedAccessKeyEnabled *bool `protobuf:"varint,12,opt,name=shared_access_key_enabled,json=sharedAccessKeyEnabled,proto3,oneof" json:"shared_access_key_enabled,omitempty"`
+	// Whether the Azure portal and tools default to Microsoft Entra
+	// authorization (instead of key-based) when a user browses the
+	// account's data. Azure's default is false. A UX nudge toward Entra --
+	// it does not disable keys (that is shared_access_key_enabled).
+	DefaultToOauthAuthentication bool `protobuf:"varint,13,opt,name=default_to_oauth_authentication,json=defaultToOauthAuthentication,proto3" json:"default_to_oauth_authentication,omitempty"`
+	// Whether individual containers may opt into public (anonymous) read
+	// access. Azure's (and the provider's) current default is true --
+	// which only PERMITS per-container public access; each container is
+	// still private unless its own access type says otherwise. Set false
+	// to make anonymous access unrepresentable account-wide, the
+	// recommended posture for anything that isn't a public website/CDN
+	// origin.
+	AllowNestedItemsToBePublic *bool `protobuf:"varint,14,opt,name=allow_nested_items_to_be_public,json=allowNestedItemsToBePublic,proto3,oneof" json:"allow_nested_items_to_be_public,omitempty"`
+	// Whether the account's public endpoints accept traffic at all.
+	// Azure's default is true. Setting false removes the public endpoint
+	// entirely -- reachable only via private endpoints -- and makes
+	// network_rules moot.
+	PublicNetworkAccessEnabled *bool `protobuf:"varint,15,opt,name=public_network_access_enabled,json=publicNetworkAccessEnabled,proto3,oneof" json:"public_network_access_enabled,omitempty"`
+	// Restricts where data can be COPIED to from this account (the
+	// exfiltration guard on the copy APIs). Unspecified leaves copy
+	// unrestricted (Azure's default). AAD limits copy destinations to
+	// accounts in the same tenant; PRIVATE_LINK to accounts wired by
+	// private link.
+	AllowedCopyScope AzureStorageAccountAllowedCopyScope `protobuf:"varint,16,opt,name=allowed_copy_scope,json=allowedCopyScope,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAllowedCopyScope" json:"allowed_copy_scope,omitempty"`
+	// The account-wide SAS expiration policy: caps how long user-signed
+	// SAS tokens may live, and whether a violation is logged or blocked.
+	// Omit to leave SAS lifetimes unpoliced (Azure's default).
+	SasPolicy *AzureStorageAccountSasPolicy `protobuf:"bytes,17,opt,name=sas_policy,json=sasPolicy,proto3" json:"sas_policy,omitempty"`
+	// Whether local (SFTP) user identities may be created on the account.
+	// Azure's default is true, but local users only matter when
+	// sftp_enabled is true -- they are the credential model SFTP uses.
+	LocalUserEnabled *bool `protobuf:"varint,18,opt,name=local_user_enabled,json=localUserEnabled,proto3,oneof" json:"local_user_enabled,omitempty"`
+	// Whether the account exposes an SFTP endpoint onto its blob storage.
+	// Azure's default is false. Requires is_hns_enabled (SFTP is a Data
+	// Lake Gen2 feature) and bills per enabled hour.
+	SftpEnabled bool `protobuf:"varint,19,opt,name=sftp_enabled,json=sftpEnabled,proto3" json:"sftp_enabled,omitempty"`
+	// Whether object replication may cross Microsoft Entra tenants.
+	// Azure's (and the provider's v4) default is false; enable only when
+	// an object-replication policy genuinely spans tenants.
+	CrossTenantReplicationEnabled bool `protobuf:"varint,20,opt,name=cross_tenant_replication_enabled,json=crossTenantReplicationEnabled,proto3" json:"cross_tenant_replication_enabled,omitempty"`
+	// Whether the account has a hierarchical namespace (Data Lake Storage
+	// Gen2): real directories, POSIX ACLs, and the dfs endpoint --
+	// required for analytics engines (Spark/Databricks/Synapse), SFTP,
+	// and NFSv3. Mutually exclusive with blob versioning. Fixed at
+	// creation.
+	IsHnsEnabled bool `protobuf:"varint,21,opt,name=is_hns_enabled,json=isHnsEnabled,proto3" json:"is_hns_enabled,omitempty"`
+	// Whether the blob service accepts NFSv3 mounts. Requires
+	// is_hns_enabled, a supported tier/kind pairing (STANDARD + STORAGE_V2
+	// or PREMIUM + BLOCK_BLOB_STORAGE), and LRS or RA_GRS replication.
+	// Fixed at creation.
+	Nfsv3Enabled bool `protobuf:"varint,22,opt,name=nfsv3_enabled,json=nfsv3Enabled,proto3" json:"nfsv3_enabled,omitempty"`
+	// Whether file shares may grow beyond 5 TiB (to 100 TiB). Only
+	// meaningful for STORAGE_V2 and FILE_STORAGE kinds; premium
+	// FileStorage accounts have it on inherently. One-way: Azure cannot
+	// disable it once enabled -- false here means "leave it to Azure",
+	// never "disable" (both engines send the flag only when true).
+	LargeFileShareEnabled bool `protobuf:"varint,23,opt,name=large_file_share_enabled,json=largeFileShareEnabled,proto3" json:"large_file_share_enabled,omitempty"`
+	// The DNS endpoint architecture. Unspecified means the classic shared
+	// DNS ({name}.blob.core.windows.net). AZURE_DNS_ZONE gives the account
+	// partitioned DNS for very-high-scale subscriptions (thousands of
+	// accounts); it cannot be combined with blob_properties.restore_policy.
+	// Fixed at creation.
+	DnsEndpointType AzureStorageAccountDnsEndpointType `protobuf:"varint,24,opt,name=dns_endpoint_type,json=dnsEndpointType,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDnsEndpointType" json:"dns_endpoint_type,omitempty"`
+	// Whether data is DOUBLE-encrypted at rest (two independent encryption
+	// layers with separate keys/algorithms) for regimes that require it.
+	// Azure's default is false. Only STORAGE_V2 accounts, or PREMIUM
+	// BLOCK_BLOB_STORAGE / FILE_STORAGE accounts, support it. Fixed at
+	// creation.
+	InfrastructureEncryptionEnabled bool `protobuf:"varint,25,opt,name=infrastructure_encryption_enabled,json=infrastructureEncryptionEnabled,proto3" json:"infrastructure_encryption_enabled,omitempty"`
+	// Which key scope encrypts the QUEUE service. Unspecified means
+	// SERVICE (a Microsoft-managed per-service key). ACCOUNT moves queues
+	// under the account's encryption key -- required for queue data to be
+	// covered by customer_managed_key. Not supported on the legacy STORAGE
+	// kind. Fixed at creation.
+	QueueEncryptionKeyType AzureStorageAccountEncryptionKeyType `protobuf:"varint,26,opt,name=queue_encryption_key_type,json=queueEncryptionKeyType,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountEncryptionKeyType" json:"queue_encryption_key_type,omitempty"`
+	// Which key scope encrypts the TABLE service. Same semantics and
+	// constraints as queue_encryption_key_type, for tables. Fixed at
+	// creation.
+	TableEncryptionKeyType AzureStorageAccountEncryptionKeyType `protobuf:"varint,27,opt,name=table_encryption_key_type,json=tableEncryptionKeyType,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountEncryptionKeyType" json:"table_encryption_key_type,omitempty"`
+	// The account's managed identity. Required (with a user-assigned
+	// entry) for customer_managed_key; a system-assigned identity's
+	// principal surfaces in the outputs for AzureRoleAssignment grants.
+	Identity *AzureStorageAccountIdentity `protobuf:"bytes,28,opt,name=identity,proto3" json:"identity,omitempty"`
+	// Customer-managed-key encryption: the account's data is encrypted
+	// with a Key Vault key you own instead of a Microsoft-managed key.
+	// Requires a user-assigned identity (attached via identity) that has
+	// wrap/unwrap access on the key's vault, and the vault must have
+	// purge protection enabled.
+	CustomerManagedKey *AzureStorageAccountCustomerManagedKey `protobuf:"bytes,29,opt,name=customer_managed_key,json=customerManagedKey,proto3" json:"customer_managed_key,omitempty"`
+	// Data-plane network access control: the default action plus IP,
+	// virtual-network, trusted-service, and private-link exceptions. Omit
+	// to leave the account reachable from all networks (Azure's default).
+	NetworkRules *AzureStorageAccountNetworkRules `protobuf:"bytes,30,opt,name=network_rules,json=networkRules,proto3" json:"network_rules,omitempty"`
+	// Blob service settings: versioning, soft delete for blobs and
+	// containers, point-in-time restore, change feed, CORS, and last-access
+	// tracking. Not supported on FILE_STORAGE accounts (they have no blob
+	// service).
+	BlobProperties *AzureStorageAccountBlobProperties `protobuf:"bytes,31,opt,name=blob_properties,json=blobProperties,proto3" json:"blob_properties,omitempty"`
+	// File service settings: share soft-delete retention, SMB protocol
+	// dials, and CORS. Supported on FILE_STORAGE accounts and standard
+	// STORAGE_V2 / legacy STORAGE accounts (the kinds that have a file
+	// service).
+	ShareProperties *AzureStorageAccountShareProperties `protobuf:"bytes,32,opt,name=share_properties,json=shareProperties,proto3" json:"share_properties,omitempty"`
+	// Static website hosting on the blob service: serves the $web
+	// container at the account's web endpoint. Only STORAGE_V2 and
+	// BLOCK_BLOB_STORAGE accounts support it. The web endpoint surfaces in
+	// the outputs for CDN/Front Door origins.
+	StaticWebsite *AzureStorageAccountStaticWebsite `protobuf:"bytes,33,opt,name=static_website,json=staticWebsite,proto3" json:"static_website,omitempty"`
+	// Network routing preference: whether traffic enters Microsoft's
+	// backbone close to the client (MICROSOFT_ROUTING, the default) or
+	// close to the account (INTERNET_ROUTING), and whether the
+	// routing-specific endpoint sets are published.
+	Routing *AzureStorageAccountRouting `protobuf:"bytes,34,opt,name=routing,proto3" json:"routing,omitempty"`
+	// A custom domain (CNAME) for the blob endpoint, e.g.
+	// "assets.example.com". Azure validates ownership via the CNAME (or
+	// the asverify subdomain when use_subdomain is set).
+	CustomDomain *AzureStorageAccountCustomDomain `protobuf:"bytes,35,opt,name=custom_domain,json=customDomain,proto3" json:"custom_domain,omitempty"`
+	// Identity-based authentication for Azure Files (SMB): Entra Domain
+	// Services, Entra Kerberos, or on-premises Active Directory. Governs
+	// how file-share mounts authenticate users.
+	AzureFilesAuthentication *AzureStorageAccountAzureFilesAuthentication `protobuf:"bytes,36,opt,name=azure_files_authentication,json=azureFilesAuthentication,proto3" json:"azure_files_authentication,omitempty"`
+	// Account-level immutability (WORM) policy applied as the default to
+	// every new container. Requires blob versioning. The state machine is
+	// one-way: once LOCKED, the policy (and the account's data) cannot be
+	// un-locked -- start with UNLOCKED and lock only after validating the
+	// configuration. Fixed at creation (the block's presence).
+	ImmutabilityPolicy *AzureStorageAccountImmutabilityPolicy `protobuf:"bytes,37,opt,name=immutability_policy,json=immutabilityPolicy,proto3" json:"immutability_policy,omitempty"`
+	// Blob lifecycle management rules: tier blobs down (cool/cold/archive)
+	// and delete them on age/access schedules, filtered by container
+	// prefix, blob type, and index tags. Azure models this as one
+	// per-account policy document -- it lives and dies with the account,
+	// so it is folded here rather than modeled as a standalone kind.
+	LifecycleRules []*AzureStorageAccountLifecycleRule `protobuf:"bytes,38,rep,name=lifecycle_rules,json=lifecycleRules,proto3" json:"lifecycle_rules,omitempty"`
+	// Free-form tags applied to the account, merged over the
+	// Planton-derived resource tags (organization, environment, resource
+	// id); a user tag with the same key wins. Tags are Azure's governance
+	// surface -- Azure Policy enforces them and Microsoft Cost Management
+	// groups by them.
+	Tags          map[string]string `protobuf:"bytes,39,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -533,105 +1301,297 @@ func (x *AzureStorageAccountSpec) GetResourceGroup() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureStorageAccountSpec) GetAccountKind() AzureStorageAccountKind {
-	if x != nil && x.AccountKind != nil {
-		return *x.AccountKind
+func (x *AzureStorageAccountSpec) GetAccountName() string {
+	if x != nil {
+		return x.AccountName
 	}
-	return AzureStorageAccountKind_ACCOUNT_KIND_UNSPECIFIED
+	return ""
+}
+
+func (x *AzureStorageAccountSpec) GetAccountKind() AzureStorageAccountKind {
+	if x != nil {
+		return x.AccountKind
+	}
+	return AzureStorageAccountKind_azure_storage_account_kind_unspecified
 }
 
 func (x *AzureStorageAccountSpec) GetAccountTier() AzureStorageAccountTier {
-	if x != nil && x.AccountTier != nil {
-		return *x.AccountTier
+	if x != nil {
+		return x.AccountTier
 	}
-	return AzureStorageAccountTier_ACCOUNT_TIER_UNSPECIFIED
+	return AzureStorageAccountTier_azure_storage_account_tier_unspecified
 }
 
-func (x *AzureStorageAccountSpec) GetReplicationType() AzureStorageReplicationType {
-	if x != nil && x.ReplicationType != nil {
-		return *x.ReplicationType
+func (x *AzureStorageAccountSpec) GetReplicationType() AzureStorageAccountReplicationType {
+	if x != nil {
+		return x.ReplicationType
 	}
-	return AzureStorageReplicationType_REPLICATION_UNSPECIFIED
+	return AzureStorageAccountReplicationType_azure_storage_account_replication_type_unspecified
 }
 
-func (x *AzureStorageAccountSpec) GetAccessTier() AzureStorageAccessTier {
-	if x != nil && x.AccessTier != nil {
-		return *x.AccessTier
+func (x *AzureStorageAccountSpec) GetAccessTier() AzureStorageAccountAccessTier {
+	if x != nil {
+		return x.AccessTier
 	}
-	return AzureStorageAccessTier_ACCESS_TIER_UNSPECIFIED
+	return AzureStorageAccountAccessTier_azure_storage_account_access_tier_unspecified
 }
 
-func (x *AzureStorageAccountSpec) GetEnableHttpsTrafficOnly() bool {
-	if x != nil && x.EnableHttpsTrafficOnly != nil {
-		return *x.EnableHttpsTrafficOnly
+func (x *AzureStorageAccountSpec) GetProvisionedBillingModelVersion() string {
+	if x != nil {
+		return x.ProvisionedBillingModelVersion
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountSpec) GetEdgeZone() string {
+	if x != nil {
+		return x.EdgeZone
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountSpec) GetHttpsTrafficOnlyEnabled() bool {
+	if x != nil && x.HttpsTrafficOnlyEnabled != nil {
+		return *x.HttpsTrafficOnlyEnabled
 	}
 	return false
 }
 
-func (x *AzureStorageAccountSpec) GetMinTlsVersion() AzureTlsVersion {
-	if x != nil && x.MinTlsVersion != nil {
-		return *x.MinTlsVersion
+func (x *AzureStorageAccountSpec) GetMinTlsVersion() AzureStorageAccountMinTlsVersion {
+	if x != nil {
+		return x.MinTlsVersion
 	}
-	return AzureTlsVersion_TLS_VERSION_UNSPECIFIED
+	return AzureStorageAccountMinTlsVersion_azure_storage_account_min_tls_version_unspecified
 }
 
-func (x *AzureStorageAccountSpec) GetNetworkRules() *AzureStorageNetworkRules {
+func (x *AzureStorageAccountSpec) GetSharedAccessKeyEnabled() bool {
+	if x != nil && x.SharedAccessKeyEnabled != nil {
+		return *x.SharedAccessKeyEnabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountSpec) GetDefaultToOauthAuthentication() bool {
+	if x != nil {
+		return x.DefaultToOauthAuthentication
+	}
+	return false
+}
+
+func (x *AzureStorageAccountSpec) GetAllowNestedItemsToBePublic() bool {
+	if x != nil && x.AllowNestedItemsToBePublic != nil {
+		return *x.AllowNestedItemsToBePublic
+	}
+	return false
+}
+
+func (x *AzureStorageAccountSpec) GetPublicNetworkAccessEnabled() bool {
+	if x != nil && x.PublicNetworkAccessEnabled != nil {
+		return *x.PublicNetworkAccessEnabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountSpec) GetAllowedCopyScope() AzureStorageAccountAllowedCopyScope {
+	if x != nil {
+		return x.AllowedCopyScope
+	}
+	return AzureStorageAccountAllowedCopyScope_azure_storage_account_allowed_copy_scope_unspecified
+}
+
+func (x *AzureStorageAccountSpec) GetSasPolicy() *AzureStorageAccountSasPolicy {
+	if x != nil {
+		return x.SasPolicy
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountSpec) GetLocalUserEnabled() bool {
+	if x != nil && x.LocalUserEnabled != nil {
+		return *x.LocalUserEnabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountSpec) GetSftpEnabled() bool {
+	if x != nil {
+		return x.SftpEnabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountSpec) GetCrossTenantReplicationEnabled() bool {
+	if x != nil {
+		return x.CrossTenantReplicationEnabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountSpec) GetIsHnsEnabled() bool {
+	if x != nil {
+		return x.IsHnsEnabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountSpec) GetNfsv3Enabled() bool {
+	if x != nil {
+		return x.Nfsv3Enabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountSpec) GetLargeFileShareEnabled() bool {
+	if x != nil {
+		return x.LargeFileShareEnabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountSpec) GetDnsEndpointType() AzureStorageAccountDnsEndpointType {
+	if x != nil {
+		return x.DnsEndpointType
+	}
+	return AzureStorageAccountDnsEndpointType_azure_storage_account_dns_endpoint_type_unspecified
+}
+
+func (x *AzureStorageAccountSpec) GetInfrastructureEncryptionEnabled() bool {
+	if x != nil {
+		return x.InfrastructureEncryptionEnabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountSpec) GetQueueEncryptionKeyType() AzureStorageAccountEncryptionKeyType {
+	if x != nil {
+		return x.QueueEncryptionKeyType
+	}
+	return AzureStorageAccountEncryptionKeyType_azure_storage_account_encryption_key_type_unspecified
+}
+
+func (x *AzureStorageAccountSpec) GetTableEncryptionKeyType() AzureStorageAccountEncryptionKeyType {
+	if x != nil {
+		return x.TableEncryptionKeyType
+	}
+	return AzureStorageAccountEncryptionKeyType_azure_storage_account_encryption_key_type_unspecified
+}
+
+func (x *AzureStorageAccountSpec) GetIdentity() *AzureStorageAccountIdentity {
+	if x != nil {
+		return x.Identity
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountSpec) GetCustomerManagedKey() *AzureStorageAccountCustomerManagedKey {
+	if x != nil {
+		return x.CustomerManagedKey
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountSpec) GetNetworkRules() *AzureStorageAccountNetworkRules {
 	if x != nil {
 		return x.NetworkRules
 	}
 	return nil
 }
 
-func (x *AzureStorageAccountSpec) GetBlobProperties() *AzureStorageBlobProperties {
+func (x *AzureStorageAccountSpec) GetBlobProperties() *AzureStorageAccountBlobProperties {
 	if x != nil {
 		return x.BlobProperties
 	}
 	return nil
 }
 
-func (x *AzureStorageAccountSpec) GetContainers() []*AzureStorageContainer {
+func (x *AzureStorageAccountSpec) GetShareProperties() *AzureStorageAccountShareProperties {
 	if x != nil {
-		return x.Containers
+		return x.ShareProperties
 	}
 	return nil
 }
 
-// **AzureStorageNetworkRules** defines network access control rules.
-type AzureStorageNetworkRules struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Default action when no explicit rule matches.
-	// - ALLOW: Permit all traffic (not recommended for production)
-	// - DENY: Block all traffic unless explicitly allowed (recommended)
-	// Default: DENY
-	DefaultAction *AzureStorageNetworkAction `protobuf:"varint,1,opt,name=default_action,json=defaultAction,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageNetworkAction,oneof" json:"default_action,omitempty"`
-	// Allow traffic from trusted Azure services even when default_action is DENY.
-	// This includes services like Azure Backup, Azure Monitor, Azure Event Grid, etc.
-	// Default: true
-	BypassAzureServices *bool `protobuf:"varint,2,opt,name=bypass_azure_services,json=bypassAzureServices,proto3,oneof" json:"bypass_azure_services,omitempty"`
-	// List of IP addresses or CIDR ranges allowed to access the storage.
-	// Example: ["203.0.113.0/24", "198.51.100.42"]
-	IpRules []string `protobuf:"bytes,3,rep,name=ip_rules,json=ipRules,proto3" json:"ip_rules,omitempty"`
-	// List of Azure Virtual Network subnet resource IDs allowed to access the storage.
-	// Example: ["/subscriptions/{sub-id}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{vnet}/subnets/{subnet}"]
-	VirtualNetworkSubnetIds []string `protobuf:"bytes,4,rep,name=virtual_network_subnet_ids,json=virtualNetworkSubnetIds,proto3" json:"virtual_network_subnet_ids,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+func (x *AzureStorageAccountSpec) GetStaticWebsite() *AzureStorageAccountStaticWebsite {
+	if x != nil {
+		return x.StaticWebsite
+	}
+	return nil
 }
 
-func (x *AzureStorageNetworkRules) Reset() {
-	*x = AzureStorageNetworkRules{}
+func (x *AzureStorageAccountSpec) GetRouting() *AzureStorageAccountRouting {
+	if x != nil {
+		return x.Routing
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountSpec) GetCustomDomain() *AzureStorageAccountCustomDomain {
+	if x != nil {
+		return x.CustomDomain
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountSpec) GetAzureFilesAuthentication() *AzureStorageAccountAzureFilesAuthentication {
+	if x != nil {
+		return x.AzureFilesAuthentication
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountSpec) GetImmutabilityPolicy() *AzureStorageAccountImmutabilityPolicy {
+	if x != nil {
+		return x.ImmutabilityPolicy
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountSpec) GetLifecycleRules() []*AzureStorageAccountLifecycleRule {
+	if x != nil {
+		return x.LifecycleRules
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+// The account's managed identity.
+type AzureStorageAccountIdentity struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+	// with the account (its principal surfaces in the outputs for
+	// AzureRoleAssignment grants); USER_ASSIGNED brings identities you
+	// manage and share across resources (required for customer-managed-key
+	// encryption); SYSTEM_AND_USER_ASSIGNED carries both.
+	Type AzureStorageAccountIdentityType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountIdentityType" json:"type,omitempty"`
+	// For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+	// identities attached to the account, by ARM ID. Reference
+	// AzureUserAssignedIdentity resources so Key Vault grants can be
+	// composed before the account exists.
+	IdentityIds   []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=identity_ids,json=identityIds,proto3" json:"identity_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountIdentity) Reset() {
+	*x = AzureStorageAccountIdentity{}
 	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureStorageNetworkRules) String() string {
+func (x *AzureStorageAccountIdentity) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureStorageNetworkRules) ProtoMessage() {}
+func (*AzureStorageAccountIdentity) ProtoMessage() {}
 
-func (x *AzureStorageNetworkRules) ProtoReflect() protoreflect.Message {
+func (x *AzureStorageAccountIdentity) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -643,75 +1603,215 @@ func (x *AzureStorageNetworkRules) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureStorageNetworkRules.ProtoReflect.Descriptor instead.
-func (*AzureStorageNetworkRules) Descriptor() ([]byte, []int) {
+// Deprecated: Use AzureStorageAccountIdentity.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountIdentity) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AzureStorageNetworkRules) GetDefaultAction() AzureStorageNetworkAction {
-	if x != nil && x.DefaultAction != nil {
-		return *x.DefaultAction
+func (x *AzureStorageAccountIdentity) GetType() AzureStorageAccountIdentityType {
+	if x != nil {
+		return x.Type
 	}
-	return AzureStorageNetworkAction_NETWORK_ACTION_UNSPECIFIED
+	return AzureStorageAccountIdentityType_azure_storage_account_identity_type_unspecified
 }
 
-func (x *AzureStorageNetworkRules) GetBypassAzureServices() bool {
-	if x != nil && x.BypassAzureServices != nil {
-		return *x.BypassAzureServices
+func (x *AzureStorageAccountIdentity) GetIdentityIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.IdentityIds
 	}
-	return false
+	return nil
 }
 
-func (x *AzureStorageNetworkRules) GetIpRules() []string {
+// Customer-managed-key encryption settings.
+type AzureStorageAccountCustomerManagedKey struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Key Vault key that encrypts the account's data, by data-plane
+	// key ID. Defaults to referencing an AzureKeyVaultKey's versionless_id
+	// output so key rotations propagate automatically; pin a versioned ID
+	// only when a compliance regime demands an immutable key version. The
+	// key's vault must have purge protection enabled.
+	KeyVaultKeyId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=key_vault_key_id,json=keyVaultKeyId,proto3" json:"key_vault_key_id,omitempty"`
+	// The user-assigned identity Azure uses to unwrap the key, by ARM ID.
+	// Must be one of the identities attached via the account's identity
+	// block, with wrap/unwrap access on the key's vault (a "Key Vault
+	// Crypto Service Encryption User" role assignment, or the equivalent
+	// access policy).
+	UserAssignedIdentityId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=user_assigned_identity_id,json=userAssignedIdentityId,proto3" json:"user_assigned_identity_id,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountCustomerManagedKey) Reset() {
+	*x = AzureStorageAccountCustomerManagedKey{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountCustomerManagedKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountCustomerManagedKey) ProtoMessage() {}
+
+func (x *AzureStorageAccountCustomerManagedKey) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountCustomerManagedKey.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountCustomerManagedKey) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AzureStorageAccountCustomerManagedKey) GetKeyVaultKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KeyVaultKeyId
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountCustomerManagedKey) GetUserAssignedIdentityId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.UserAssignedIdentityId
+	}
+	return nil
+}
+
+// Data-plane network access control.
+type AzureStorageAccountNetworkRules struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What happens to traffic no explicit rule admits. Azure's own
+	// account default is Allow-from-everywhere; declaring this block
+	// requires choosing explicitly. DENY plus the exception lists below
+	// is the production posture.
+	DefaultAction AzureStorageAccountNetworkDefaultAction `protobuf:"varint,1,opt,name=default_action,json=defaultAction,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkDefaultAction" json:"default_action,omitempty"`
+	// Traffic classes exempt from the rules. AZURE_SERVICES admits the
+	// trusted Microsoft services (Backup, Monitor, Event Grid, ...);
+	// LOGGING and METRICS admit the classic analytics readers; NONE (the
+	// sole entry) exempts nothing. Unset lets Azure default to
+	// AZURE_SERVICES.
+	Bypass []AzureStorageAccountNetworkBypass `protobuf:"varint,2,rep,packed,name=bypass,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkBypass" json:"bypass,omitempty"`
+	// Public IPv4 addresses or CIDR ranges admitted to the data plane,
+	// e.g. "203.0.113.0/24". Private-range (RFC 1918) addresses are not
+	// accepted -- VNet traffic is admitted via
+	// virtual_network_subnet_ids instead.
+	IpRules []string `protobuf:"bytes,3,rep,name=ip_rules,json=ipRules,proto3" json:"ip_rules,omitempty"`
+	// Subnets admitted to the data plane, by ARM ID. Each subnet must
+	// have the Microsoft.Storage service endpoint enabled. References
+	// AzureSubnet outputs so the network graph composes in one manifest
+	// set.
+	VirtualNetworkSubnetIds []*v1.StringValueOrRef `protobuf:"bytes,4,rep,name=virtual_network_subnet_ids,json=virtualNetworkSubnetIds,proto3" json:"virtual_network_subnet_ids,omitempty"`
+	// Resource instances granted private-link-style access through the
+	// firewall (e.g. a Synapse workspace or Azure Backup vault reaching a
+	// locked-down account without a full private endpoint).
+	PrivateLinkAccess []*AzureStorageAccountPrivateLinkAccess `protobuf:"bytes,5,rep,name=private_link_access,json=privateLinkAccess,proto3" json:"private_link_access,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountNetworkRules) Reset() {
+	*x = AzureStorageAccountNetworkRules{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountNetworkRules) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountNetworkRules) ProtoMessage() {}
+
+func (x *AzureStorageAccountNetworkRules) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountNetworkRules.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountNetworkRules) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AzureStorageAccountNetworkRules) GetDefaultAction() AzureStorageAccountNetworkDefaultAction {
+	if x != nil {
+		return x.DefaultAction
+	}
+	return AzureStorageAccountNetworkDefaultAction_azure_storage_account_network_default_action_unspecified
+}
+
+func (x *AzureStorageAccountNetworkRules) GetBypass() []AzureStorageAccountNetworkBypass {
+	if x != nil {
+		return x.Bypass
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountNetworkRules) GetIpRules() []string {
 	if x != nil {
 		return x.IpRules
 	}
 	return nil
 }
 
-func (x *AzureStorageNetworkRules) GetVirtualNetworkSubnetIds() []string {
+func (x *AzureStorageAccountNetworkRules) GetVirtualNetworkSubnetIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.VirtualNetworkSubnetIds
 	}
 	return nil
 }
 
-// **AzureStorageBlobProperties** defines blob service properties.
-type AzureStorageBlobProperties struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Enable versioning for blobs. When enabled, Azure maintains previous versions of blobs.
-	// Useful for data protection and recovery.
-	// Default: false
-	EnableVersioning *bool `protobuf:"varint,1,opt,name=enable_versioning,json=enableVersioning,proto3,oneof" json:"enable_versioning,omitempty"`
-	// Soft delete retention period for blobs in days (1-365 days).
-	// When set, deleted blobs are retained for the specified period and can be recovered.
-	// Set to 0 to disable soft delete.
-	// Default: 7 days
-	SoftDeleteRetentionDays *int32 `protobuf:"varint,2,opt,name=soft_delete_retention_days,json=softDeleteRetentionDays,proto3,oneof" json:"soft_delete_retention_days,omitempty"`
-	// Soft delete retention period for containers in days (1-365 days).
-	// When set, deleted containers are retained for the specified period and can be recovered.
-	// Set to 0 to disable container soft delete.
-	// Default: 7 days
-	ContainerSoftDeleteRetentionDays *int32 `protobuf:"varint,3,opt,name=container_soft_delete_retention_days,json=containerSoftDeleteRetentionDays,proto3,oneof" json:"container_soft_delete_retention_days,omitempty"`
-	unknownFields                    protoimpl.UnknownFields
-	sizeCache                        protoimpl.SizeCache
+func (x *AzureStorageAccountNetworkRules) GetPrivateLinkAccess() []*AzureStorageAccountPrivateLinkAccess {
+	if x != nil {
+		return x.PrivateLinkAccess
+	}
+	return nil
 }
 
-func (x *AzureStorageBlobProperties) Reset() {
-	*x = AzureStorageBlobProperties{}
-	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[2]
+// One resource instance admitted through the account firewall.
+type AzureStorageAccountPrivateLinkAccess struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ARM ID of the resource being admitted (e.g. a Synapse
+	// workspace, Azure Backup recovery vault, or Machine Learning
+	// workspace).
+	EndpointResourceId string `protobuf:"bytes,1,opt,name=endpoint_resource_id,json=endpointResourceId,proto3" json:"endpoint_resource_id,omitempty"`
+	// The tenant of the admitted resource. Leave unset for the
+	// deploying credential's tenant -- the correct value for virtually
+	// every deployment.
+	EndpointTenantId *string `protobuf:"bytes,2,opt,name=endpoint_tenant_id,json=endpointTenantId,proto3,oneof" json:"endpoint_tenant_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountPrivateLinkAccess) Reset() {
+	*x = AzureStorageAccountPrivateLinkAccess{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureStorageBlobProperties) String() string {
+func (x *AzureStorageAccountPrivateLinkAccess) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureStorageBlobProperties) ProtoMessage() {}
+func (*AzureStorageAccountPrivateLinkAccess) ProtoMessage() {}
 
-func (x *AzureStorageBlobProperties) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[2]
+func (x *AzureStorageAccountPrivateLinkAccess) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -722,63 +1822,81 @@ func (x *AzureStorageBlobProperties) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureStorageBlobProperties.ProtoReflect.Descriptor instead.
-func (*AzureStorageBlobProperties) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{2}
+// Deprecated: Use AzureStorageAccountPrivateLinkAccess.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountPrivateLinkAccess) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *AzureStorageBlobProperties) GetEnableVersioning() bool {
-	if x != nil && x.EnableVersioning != nil {
-		return *x.EnableVersioning
+func (x *AzureStorageAccountPrivateLinkAccess) GetEndpointResourceId() string {
+	if x != nil {
+		return x.EndpointResourceId
 	}
-	return false
+	return ""
 }
 
-func (x *AzureStorageBlobProperties) GetSoftDeleteRetentionDays() int32 {
-	if x != nil && x.SoftDeleteRetentionDays != nil {
-		return *x.SoftDeleteRetentionDays
+func (x *AzureStorageAccountPrivateLinkAccess) GetEndpointTenantId() string {
+	if x != nil && x.EndpointTenantId != nil {
+		return *x.EndpointTenantId
 	}
-	return 0
+	return ""
 }
 
-func (x *AzureStorageBlobProperties) GetContainerSoftDeleteRetentionDays() int32 {
-	if x != nil && x.ContainerSoftDeleteRetentionDays != nil {
-		return *x.ContainerSoftDeleteRetentionDays
-	}
-	return 0
-}
-
-// **AzureStorageContainer** defines a blob container to create.
-type AzureStorageContainer struct {
+// Blob service settings.
+type AzureStorageAccountBlobProperties struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the container.
-	// Must be lowercase, 3-63 characters, and start with a letter or number.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The access level for the container.
-	// - PRIVATE: No public read access (default, recommended)
-	// - BLOB: Public read access for blobs only
-	// - CONTAINER: Public read access for container and blobs
-	// Default: PRIVATE
-	AccessType    *AzureStorageContainerAccess `protobuf:"varint,2,opt,name=access_type,json=accessType,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageContainerAccess,oneof" json:"access_type,omitempty"`
+	// Whether every blob write keeps the previous version recoverable.
+	// Azure's default is false. The foundation for restore_policy and
+	// immutability_policy; incompatible with hierarchical namespace.
+	VersioningEnabled bool `protobuf:"varint,1,opt,name=versioning_enabled,json=versioningEnabled,proto3" json:"versioning_enabled,omitempty"`
+	// Whether the change feed (an ordered, replayable log of every blob
+	// change) is recorded. Azure's default is false. Required for
+	// restore_policy.
+	ChangeFeedEnabled bool `protobuf:"varint,2,opt,name=change_feed_enabled,json=changeFeedEnabled,proto3" json:"change_feed_enabled,omitempty"`
+	// How many days change-feed records are retained, 1-146000. Unset
+	// means infinite retention. Only meaningful with change_feed_enabled.
+	ChangeFeedRetentionInDays *int32 `protobuf:"varint,3,opt,name=change_feed_retention_in_days,json=changeFeedRetentionInDays,proto3,oneof" json:"change_feed_retention_in_days,omitempty"`
+	// The default REST API version the blob service answers with for
+	// requests that don't pin one, e.g. "2020-06-12". Unset lets Azure
+	// choose.
+	DefaultServiceVersion string `protobuf:"bytes,4,opt,name=default_service_version,json=defaultServiceVersion,proto3" json:"default_service_version,omitempty"`
+	// Whether each blob's last-access time is tracked (a prerequisite for
+	// the lifecycle rules' days-since-last-access conditions). Azure's
+	// default is false.
+	LastAccessTimeEnabled bool `protobuf:"varint,5,opt,name=last_access_time_enabled,json=lastAccessTimeEnabled,proto3" json:"last_access_time_enabled,omitempty"`
+	// Soft delete for BLOBS: deleted blobs are retained and recoverable
+	// for the configured window. Omit to leave blob soft delete off.
+	DeleteRetentionPolicy *AzureStorageAccountDeleteRetentionPolicy `protobuf:"bytes,6,opt,name=delete_retention_policy,json=deleteRetentionPolicy,proto3" json:"delete_retention_policy,omitempty"`
+	// Soft delete for CONTAINERS: deleted containers are retained and
+	// recoverable for the configured window. Omit to leave container
+	// soft delete off.
+	ContainerDeleteRetentionPolicy *AzureStorageAccountContainerDeleteRetentionPolicy `protobuf:"bytes,7,opt,name=container_delete_retention_policy,json=containerDeleteRetentionPolicy,proto3" json:"container_delete_retention_policy,omitempty"`
+	// Point-in-time restore: the whole blob service can be rolled back to
+	// any instant inside the window. Requires versioning, change feed,
+	// and blob soft delete -- and the restore window must be shorter than
+	// the soft-delete window.
+	RestorePolicy *AzureStorageAccountRestorePolicy `protobuf:"bytes,8,opt,name=restore_policy,json=restorePolicy,proto3" json:"restore_policy,omitempty"`
+	// CORS rules for browser-based access to the blob service, evaluated
+	// in order (max 5).
+	CorsRules     []*AzureStorageAccountCorsRule `protobuf:"bytes,9,rep,name=cors_rules,json=corsRules,proto3" json:"cors_rules,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AzureStorageContainer) Reset() {
-	*x = AzureStorageContainer{}
-	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[3]
+func (x *AzureStorageAccountBlobProperties) Reset() {
+	*x = AzureStorageAccountBlobProperties{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureStorageContainer) String() string {
+func (x *AzureStorageAccountBlobProperties) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureStorageContainer) ProtoMessage() {}
+func (*AzureStorageAccountBlobProperties) ProtoMessage() {}
 
-func (x *AzureStorageContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[3]
+func (x *AzureStorageAccountBlobProperties) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -789,115 +1907,1960 @@ func (x *AzureStorageContainer) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureStorageContainer.ProtoReflect.Descriptor instead.
-func (*AzureStorageContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{3}
+// Deprecated: Use AzureStorageAccountBlobProperties.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountBlobProperties) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *AzureStorageContainer) GetName() string {
+func (x *AzureStorageAccountBlobProperties) GetVersioningEnabled() bool {
+	if x != nil {
+		return x.VersioningEnabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountBlobProperties) GetChangeFeedEnabled() bool {
+	if x != nil {
+		return x.ChangeFeedEnabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountBlobProperties) GetChangeFeedRetentionInDays() int32 {
+	if x != nil && x.ChangeFeedRetentionInDays != nil {
+		return *x.ChangeFeedRetentionInDays
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountBlobProperties) GetDefaultServiceVersion() string {
+	if x != nil {
+		return x.DefaultServiceVersion
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountBlobProperties) GetLastAccessTimeEnabled() bool {
+	if x != nil {
+		return x.LastAccessTimeEnabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountBlobProperties) GetDeleteRetentionPolicy() *AzureStorageAccountDeleteRetentionPolicy {
+	if x != nil {
+		return x.DeleteRetentionPolicy
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountBlobProperties) GetContainerDeleteRetentionPolicy() *AzureStorageAccountContainerDeleteRetentionPolicy {
+	if x != nil {
+		return x.ContainerDeleteRetentionPolicy
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountBlobProperties) GetRestorePolicy() *AzureStorageAccountRestorePolicy {
+	if x != nil {
+		return x.RestorePolicy
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountBlobProperties) GetCorsRules() []*AzureStorageAccountCorsRule {
+	if x != nil {
+		return x.CorsRules
+	}
+	return nil
+}
+
+// Soft-delete retention for blobs.
+type AzureStorageAccountDeleteRetentionPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How many days deleted blobs remain recoverable, 1-365. Unspecified
+	// applies Azure's default of 7.
+	Days *int32 `protobuf:"varint,1,opt,name=days,proto3,oneof" json:"days,omitempty"`
+	// Whether soft-deleted blobs can be PERMANENTLY deleted before the
+	// window ends (an explicit erasure API for right-to-be-forgotten
+	// regimes). Azure's default is false.
+	PermanentDeleteEnabled bool `protobuf:"varint,2,opt,name=permanent_delete_enabled,json=permanentDeleteEnabled,proto3" json:"permanent_delete_enabled,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountDeleteRetentionPolicy) Reset() {
+	*x = AzureStorageAccountDeleteRetentionPolicy{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountDeleteRetentionPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountDeleteRetentionPolicy) ProtoMessage() {}
+
+func (x *AzureStorageAccountDeleteRetentionPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountDeleteRetentionPolicy.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountDeleteRetentionPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AzureStorageAccountDeleteRetentionPolicy) GetDays() int32 {
+	if x != nil && x.Days != nil {
+		return *x.Days
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountDeleteRetentionPolicy) GetPermanentDeleteEnabled() bool {
+	if x != nil {
+		return x.PermanentDeleteEnabled
+	}
+	return false
+}
+
+// Soft-delete retention for containers.
+type AzureStorageAccountContainerDeleteRetentionPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How many days deleted containers remain recoverable, 1-365.
+	// Unspecified applies Azure's default of 7.
+	Days          *int32 `protobuf:"varint,1,opt,name=days,proto3,oneof" json:"days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountContainerDeleteRetentionPolicy) Reset() {
+	*x = AzureStorageAccountContainerDeleteRetentionPolicy{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountContainerDeleteRetentionPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountContainerDeleteRetentionPolicy) ProtoMessage() {}
+
+func (x *AzureStorageAccountContainerDeleteRetentionPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountContainerDeleteRetentionPolicy.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountContainerDeleteRetentionPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AzureStorageAccountContainerDeleteRetentionPolicy) GetDays() int32 {
+	if x != nil && x.Days != nil {
+		return *x.Days
+	}
+	return 0
+}
+
+// Point-in-time restore window.
+type AzureStorageAccountRestorePolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How many days back the blob service can be restored to, 1-365.
+	// Must be less than delete_retention_policy.days.
+	Days          int32 `protobuf:"varint,1,opt,name=days,proto3" json:"days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountRestorePolicy) Reset() {
+	*x = AzureStorageAccountRestorePolicy{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountRestorePolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountRestorePolicy) ProtoMessage() {}
+
+func (x *AzureStorageAccountRestorePolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountRestorePolicy.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountRestorePolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AzureStorageAccountRestorePolicy) GetDays() int32 {
+	if x != nil {
+		return x.Days
+	}
+	return 0
+}
+
+// One CORS rule (shared by the blob and file services).
+type AzureStorageAccountCorsRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The origins allowed to make cross-origin requests, e.g.
+	// "https://app.example.com", or "*" for any origin.
+	AllowedOrigins []string `protobuf:"bytes,1,rep,name=allowed_origins,json=allowedOrigins,proto3" json:"allowed_origins,omitempty"`
+	// The HTTP methods the rule admits.
+	AllowedMethods []string `protobuf:"bytes,2,rep,name=allowed_methods,json=allowedMethods,proto3" json:"allowed_methods,omitempty"`
+	// The request headers the browser may send, e.g. "x-ms-meta-*", or
+	// "*" for all.
+	AllowedHeaders []string `protobuf:"bytes,3,rep,name=allowed_headers,json=allowedHeaders,proto3" json:"allowed_headers,omitempty"`
+	// The response headers exposed to the browser, e.g. "x-ms-meta-*",
+	// or "*" for all.
+	ExposedHeaders []string `protobuf:"bytes,4,rep,name=exposed_headers,json=exposedHeaders,proto3" json:"exposed_headers,omitempty"`
+	// How long (seconds) the browser may cache the preflight response.
+	MaxAgeInSeconds int32 `protobuf:"varint,5,opt,name=max_age_in_seconds,json=maxAgeInSeconds,proto3" json:"max_age_in_seconds,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountCorsRule) Reset() {
+	*x = AzureStorageAccountCorsRule{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountCorsRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountCorsRule) ProtoMessage() {}
+
+func (x *AzureStorageAccountCorsRule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountCorsRule.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountCorsRule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AzureStorageAccountCorsRule) GetAllowedOrigins() []string {
+	if x != nil {
+		return x.AllowedOrigins
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountCorsRule) GetAllowedMethods() []string {
+	if x != nil {
+		return x.AllowedMethods
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountCorsRule) GetAllowedHeaders() []string {
+	if x != nil {
+		return x.AllowedHeaders
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountCorsRule) GetExposedHeaders() []string {
+	if x != nil {
+		return x.ExposedHeaders
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountCorsRule) GetMaxAgeInSeconds() int32 {
+	if x != nil {
+		return x.MaxAgeInSeconds
+	}
+	return 0
+}
+
+// File service settings.
+type AzureStorageAccountShareProperties struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Soft delete for file shares: deleted shares are retained and
+	// recoverable for the configured window. Omit to accept Azure's
+	// service-side default (7 days).
+	RetentionPolicy *AzureStorageAccountShareRetentionPolicy `protobuf:"bytes,1,opt,name=retention_policy,json=retentionPolicy,proto3" json:"retention_policy,omitempty"`
+	// SMB protocol dials for file-share mounts: allowed protocol
+	// versions, authentication and encryption suites, and multichannel.
+	Smb *AzureStorageAccountSmbSettings `protobuf:"bytes,2,opt,name=smb,proto3" json:"smb,omitempty"`
+	// CORS rules for browser-based access to the file service, evaluated
+	// in order (max 5).
+	CorsRules     []*AzureStorageAccountCorsRule `protobuf:"bytes,3,rep,name=cors_rules,json=corsRules,proto3" json:"cors_rules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountShareProperties) Reset() {
+	*x = AzureStorageAccountShareProperties{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountShareProperties) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountShareProperties) ProtoMessage() {}
+
+func (x *AzureStorageAccountShareProperties) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountShareProperties.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountShareProperties) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AzureStorageAccountShareProperties) GetRetentionPolicy() *AzureStorageAccountShareRetentionPolicy {
+	if x != nil {
+		return x.RetentionPolicy
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountShareProperties) GetSmb() *AzureStorageAccountSmbSettings {
+	if x != nil {
+		return x.Smb
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountShareProperties) GetCorsRules() []*AzureStorageAccountCorsRule {
+	if x != nil {
+		return x.CorsRules
+	}
+	return nil
+}
+
+// Soft-delete retention for file shares.
+type AzureStorageAccountShareRetentionPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How many days deleted shares remain recoverable, 1-365.
+	// Unspecified applies Azure's default of 7.
+	Days          *int32 `protobuf:"varint,1,opt,name=days,proto3,oneof" json:"days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountShareRetentionPolicy) Reset() {
+	*x = AzureStorageAccountShareRetentionPolicy{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountShareRetentionPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountShareRetentionPolicy) ProtoMessage() {}
+
+func (x *AzureStorageAccountShareRetentionPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountShareRetentionPolicy.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountShareRetentionPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *AzureStorageAccountShareRetentionPolicy) GetDays() int32 {
+	if x != nil && x.Days != nil {
+		return *x.Days
+	}
+	return 0
+}
+
+// SMB protocol settings for the file service.
+type AzureStorageAccountSmbSettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The SMB protocol versions the service accepts. Unset admits all.
+	Versions []string `protobuf:"bytes,1,rep,name=versions,proto3" json:"versions,omitempty"`
+	// The authentication methods the service accepts. Unset admits all.
+	AuthenticationTypes []string `protobuf:"bytes,2,rep,name=authentication_types,json=authenticationTypes,proto3" json:"authentication_types,omitempty"`
+	// The Kerberos ticket encryption suites the service accepts. Unset
+	// admits all.
+	KerberosTicketEncryptionType []string `protobuf:"bytes,3,rep,name=kerberos_ticket_encryption_type,json=kerberosTicketEncryptionType,proto3" json:"kerberos_ticket_encryption_type,omitempty"`
+	// The SMB channel encryption suites the service accepts. Unset
+	// admits all.
+	ChannelEncryptionType []string `protobuf:"bytes,4,rep,name=channel_encryption_type,json=channelEncryptionType,proto3" json:"channel_encryption_type,omitempty"`
+	// Whether SMB Multichannel (multiple parallel network connections
+	// per session) is enabled -- a premium-tier FileStorage feature.
+	// Azure's default is false.
+	MultichannelEnabled bool `protobuf:"varint,5,opt,name=multichannel_enabled,json=multichannelEnabled,proto3" json:"multichannel_enabled,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountSmbSettings) Reset() {
+	*x = AzureStorageAccountSmbSettings{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountSmbSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountSmbSettings) ProtoMessage() {}
+
+func (x *AzureStorageAccountSmbSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountSmbSettings.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountSmbSettings) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AzureStorageAccountSmbSettings) GetVersions() []string {
+	if x != nil {
+		return x.Versions
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountSmbSettings) GetAuthenticationTypes() []string {
+	if x != nil {
+		return x.AuthenticationTypes
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountSmbSettings) GetKerberosTicketEncryptionType() []string {
+	if x != nil {
+		return x.KerberosTicketEncryptionType
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountSmbSettings) GetChannelEncryptionType() []string {
+	if x != nil {
+		return x.ChannelEncryptionType
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountSmbSettings) GetMultichannelEnabled() bool {
+	if x != nil {
+		return x.MultichannelEnabled
+	}
+	return false
+}
+
+// Static website hosting settings.
+type AzureStorageAccountStaticWebsite struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The document served at the site root and directory paths, e.g.
+	// "index.html".
+	IndexDocument string `protobuf:"bytes,1,opt,name=index_document,json=indexDocument,proto3" json:"index_document,omitempty"`
+	// The document served on 404s, e.g. "404.html".
+	Error_404Document string `protobuf:"bytes,2,opt,name=error_404_document,json=error404Document,proto3" json:"error_404_document,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountStaticWebsite) Reset() {
+	*x = AzureStorageAccountStaticWebsite{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountStaticWebsite) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountStaticWebsite) ProtoMessage() {}
+
+func (x *AzureStorageAccountStaticWebsite) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountStaticWebsite.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountStaticWebsite) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AzureStorageAccountStaticWebsite) GetIndexDocument() string {
+	if x != nil {
+		return x.IndexDocument
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountStaticWebsite) GetError_404Document() string {
+	if x != nil {
+		return x.Error_404Document
+	}
+	return ""
+}
+
+// Network routing preference.
+type AzureStorageAccountRouting struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Where client traffic enters Microsoft's network. Unspecified means
+	// MICROSOFT_ROUTING (enter near the client -- lowest latency,
+	// Azure's default). INTERNET_ROUTING enters near the account (lower
+	// cost, higher latency).
+	Choice AzureStorageAccountRoutingChoice `protobuf:"varint,1,opt,name=choice,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountRoutingChoice" json:"choice,omitempty"`
+	// Whether the internet-routing endpoint set (the "-internetrouting"
+	// hostnames) is published. Azure's default is false.
+	PublishInternetEndpoints bool `protobuf:"varint,2,opt,name=publish_internet_endpoints,json=publishInternetEndpoints,proto3" json:"publish_internet_endpoints,omitempty"`
+	// Whether the Microsoft-routing endpoint set is published. Azure's
+	// default is false.
+	PublishMicrosoftEndpoints bool `protobuf:"varint,3,opt,name=publish_microsoft_endpoints,json=publishMicrosoftEndpoints,proto3" json:"publish_microsoft_endpoints,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountRouting) Reset() {
+	*x = AzureStorageAccountRouting{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountRouting) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountRouting) ProtoMessage() {}
+
+func (x *AzureStorageAccountRouting) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountRouting.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountRouting) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AzureStorageAccountRouting) GetChoice() AzureStorageAccountRoutingChoice {
+	if x != nil {
+		return x.Choice
+	}
+	return AzureStorageAccountRoutingChoice_azure_storage_account_routing_choice_unspecified
+}
+
+func (x *AzureStorageAccountRouting) GetPublishInternetEndpoints() bool {
+	if x != nil {
+		return x.PublishInternetEndpoints
+	}
+	return false
+}
+
+func (x *AzureStorageAccountRouting) GetPublishMicrosoftEndpoints() bool {
+	if x != nil {
+		return x.PublishMicrosoftEndpoints
+	}
+	return false
+}
+
+// Custom domain (CNAME) for the blob endpoint.
+type AzureStorageAccountCustomDomain struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The custom domain name, e.g. "assets.example.com". The domain's
+	// CNAME must point at the account's blob host.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Whether ownership is validated indirectly via the
+	// "asverify.{domain}" CNAME instead of the domain itself -- avoids
+	// downtime when migrating a domain already serving traffic.
+	UseSubdomain  bool `protobuf:"varint,2,opt,name=use_subdomain,json=useSubdomain,proto3" json:"use_subdomain,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountCustomDomain) Reset() {
+	*x = AzureStorageAccountCustomDomain{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountCustomDomain) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountCustomDomain) ProtoMessage() {}
+
+func (x *AzureStorageAccountCustomDomain) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountCustomDomain.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountCustomDomain) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AzureStorageAccountCustomDomain) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *AzureStorageContainer) GetAccessType() AzureStorageContainerAccess {
-	if x != nil && x.AccessType != nil {
-		return *x.AccessType
+func (x *AzureStorageAccountCustomDomain) GetUseSubdomain() bool {
+	if x != nil {
+		return x.UseSubdomain
 	}
-	return AzureStorageContainerAccess_CONTAINER_ACCESS_UNSPECIFIED
+	return false
+}
+
+// Identity-based authentication for Azure Files.
+type AzureStorageAccountAzureFilesAuthentication struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The directory service that authenticates SMB mounts: AADDS (Entra
+	// Domain Services), AADKERB (Entra Kerberos -- for hybrid identities
+	// without domain-controller line-of-sight), or AD (on-premises
+	// Active Directory, requires active_directory).
+	DirectoryType AzureStorageAccountDirectoryServiceType `protobuf:"varint,1,opt,name=directory_type,json=directoryType,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDirectoryServiceType" json:"directory_type,omitempty"`
+	// For AD (and optionally AADKERB): the on-premises domain's
+	// coordinates.
+	ActiveDirectory *AzureStorageAccountActiveDirectory `protobuf:"bytes,2,opt,name=active_directory,json=activeDirectory,proto3" json:"active_directory,omitempty"`
+	// The default share-level permission applied to authenticated users
+	// that carry no explicit share-level role assignment. Unspecified
+	// means SHARE_PERMISSION_NONE (explicit assignments only).
+	DefaultShareLevelPermission AzureStorageAccountDefaultSharePermission `protobuf:"varint,3,opt,name=default_share_level_permission,json=defaultShareLevelPermission,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDefaultSharePermission" json:"default_share_level_permission,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountAzureFilesAuthentication) Reset() {
+	*x = AzureStorageAccountAzureFilesAuthentication{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountAzureFilesAuthentication) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountAzureFilesAuthentication) ProtoMessage() {}
+
+func (x *AzureStorageAccountAzureFilesAuthentication) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountAzureFilesAuthentication.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountAzureFilesAuthentication) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AzureStorageAccountAzureFilesAuthentication) GetDirectoryType() AzureStorageAccountDirectoryServiceType {
+	if x != nil {
+		return x.DirectoryType
+	}
+	return AzureStorageAccountDirectoryServiceType_azure_storage_account_directory_service_type_unspecified
+}
+
+func (x *AzureStorageAccountAzureFilesAuthentication) GetActiveDirectory() *AzureStorageAccountActiveDirectory {
+	if x != nil {
+		return x.ActiveDirectory
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountAzureFilesAuthentication) GetDefaultShareLevelPermission() AzureStorageAccountDefaultSharePermission {
+	if x != nil {
+		return x.DefaultShareLevelPermission
+	}
+	return AzureStorageAccountDefaultSharePermission_azure_storage_account_default_share_permission_unspecified
+}
+
+// On-premises Active Directory coordinates for Azure Files
+// authentication.
+type AzureStorageAccountActiveDirectory struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The AD DS domain's DNS name, e.g. "corp.example.com".
+	DomainName string `protobuf:"bytes,1,opt,name=domain_name,json=domainName,proto3" json:"domain_name,omitempty"`
+	// The AD DS domain's GUID.
+	DomainGuid string `protobuf:"bytes,2,opt,name=domain_guid,json=domainGuid,proto3" json:"domain_guid,omitempty"`
+	// The security identifier (SID) of the AD DS domain. Required for
+	// directory_type AD; not used for AADKERB.
+	DomainSid string `protobuf:"bytes,3,opt,name=domain_sid,json=domainSid,proto3" json:"domain_sid,omitempty"`
+	// The SID of the computer account created for the storage account in
+	// AD DS. Required for directory_type AD; not used for AADKERB.
+	StorageSid string `protobuf:"bytes,4,opt,name=storage_sid,json=storageSid,proto3" json:"storage_sid,omitempty"`
+	// The AD DS forest the domain belongs to, e.g. "corp.example.com".
+	// Required for directory_type AD; not used for AADKERB.
+	ForestName string `protobuf:"bytes,5,opt,name=forest_name,json=forestName,proto3" json:"forest_name,omitempty"`
+	// The NetBIOS name of the AD DS domain, e.g. "CORP". Required for
+	// directory_type AD; not used for AADKERB.
+	NetbiosDomainName string `protobuf:"bytes,6,opt,name=netbios_domain_name,json=netbiosDomainName,proto3" json:"netbios_domain_name,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountActiveDirectory) Reset() {
+	*x = AzureStorageAccountActiveDirectory{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountActiveDirectory) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountActiveDirectory) ProtoMessage() {}
+
+func (x *AzureStorageAccountActiveDirectory) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountActiveDirectory.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountActiveDirectory) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AzureStorageAccountActiveDirectory) GetDomainName() string {
+	if x != nil {
+		return x.DomainName
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountActiveDirectory) GetDomainGuid() string {
+	if x != nil {
+		return x.DomainGuid
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountActiveDirectory) GetDomainSid() string {
+	if x != nil {
+		return x.DomainSid
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountActiveDirectory) GetStorageSid() string {
+	if x != nil {
+		return x.StorageSid
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountActiveDirectory) GetForestName() string {
+	if x != nil {
+		return x.ForestName
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountActiveDirectory) GetNetbiosDomainName() string {
+	if x != nil {
+		return x.NetbiosDomainName
+	}
+	return ""
+}
+
+// Account-wide SAS expiration policy.
+type AzureStorageAccountSasPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The longest lifetime a user-signed SAS token may have, in
+	// "D.HH:MM:SS" form (e.g. "90.00:00:00" for 90 days).
+	ExpirationPeriod string `protobuf:"bytes,1,opt,name=expiration_period,json=expirationPeriod,proto3" json:"expiration_period,omitempty"`
+	// What happens when a SAS token exceeds the period: LOG (record the
+	// violation -- Azure's default) or BLOCK (reject the token).
+	ExpirationAction AzureStorageAccountSasExpirationAction `protobuf:"varint,2,opt,name=expiration_action,json=expirationAction,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSasExpirationAction" json:"expiration_action,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountSasPolicy) Reset() {
+	*x = AzureStorageAccountSasPolicy{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountSasPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountSasPolicy) ProtoMessage() {}
+
+func (x *AzureStorageAccountSasPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountSasPolicy.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountSasPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *AzureStorageAccountSasPolicy) GetExpirationPeriod() string {
+	if x != nil {
+		return x.ExpirationPeriod
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountSasPolicy) GetExpirationAction() AzureStorageAccountSasExpirationAction {
+	if x != nil {
+		return x.ExpirationAction
+	}
+	return AzureStorageAccountSasExpirationAction_azure_storage_account_sas_expiration_action_unspecified
+}
+
+// Account-level immutability (WORM) policy.
+type AzureStorageAccountImmutabilityPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The policy's state. Start with UNLOCKED (retention adjustable,
+	// policy deletable) or DISABLED; move to LOCKED only after validating
+	// -- LOCKED is irreversible and makes the retention window a
+	// compliance guarantee Azure itself cannot override.
+	State AzureStorageAccountImmutabilityState `protobuf:"varint,1,opt,name=state,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountImmutabilityState" json:"state,omitempty"`
+	// How many days each object is immutable from its creation, 1-146000.
+	PeriodSinceCreationInDays int32 `protobuf:"varint,2,opt,name=period_since_creation_in_days,json=periodSinceCreationInDays,proto3" json:"period_since_creation_in_days,omitempty"`
+	// Whether new blocks may still be APPENDED to append blobs under the
+	// policy (audit-log pattern: append-only, never modify or delete).
+	AllowProtectedAppendWrites bool `protobuf:"varint,3,opt,name=allow_protected_append_writes,json=allowProtectedAppendWrites,proto3" json:"allow_protected_append_writes,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountImmutabilityPolicy) Reset() {
+	*x = AzureStorageAccountImmutabilityPolicy{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountImmutabilityPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountImmutabilityPolicy) ProtoMessage() {}
+
+func (x *AzureStorageAccountImmutabilityPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountImmutabilityPolicy.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountImmutabilityPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AzureStorageAccountImmutabilityPolicy) GetState() AzureStorageAccountImmutabilityState {
+	if x != nil {
+		return x.State
+	}
+	return AzureStorageAccountImmutabilityState_azure_storage_account_immutability_state_unspecified
+}
+
+func (x *AzureStorageAccountImmutabilityPolicy) GetPeriodSinceCreationInDays() int32 {
+	if x != nil {
+		return x.PeriodSinceCreationInDays
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountImmutabilityPolicy) GetAllowProtectedAppendWrites() bool {
+	if x != nil {
+		return x.AllowProtectedAppendWrites
+	}
+	return false
+}
+
+// One blob lifecycle management rule.
+type AzureStorageAccountLifecycleRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The rule's name, unique within the account's policy.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Whether the rule is evaluated. Unspecified applies true --
+	// declaring a rule normally means wanting it active.
+	Enabled *bool `protobuf:"varint,2,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// What the rule applies to: blob types, name prefixes, and/or index
+	// tags.
+	Filters *AzureStorageAccountLifecycleFilters `protobuf:"bytes,3,opt,name=filters,proto3" json:"filters,omitempty"`
+	// What the rule does: tiering and deletion schedules for base blobs,
+	// snapshots, and versions.
+	Actions       *AzureStorageAccountLifecycleActions `protobuf:"bytes,4,opt,name=actions,proto3" json:"actions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountLifecycleRule) Reset() {
+	*x = AzureStorageAccountLifecycleRule{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountLifecycleRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountLifecycleRule) ProtoMessage() {}
+
+func (x *AzureStorageAccountLifecycleRule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountLifecycleRule.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountLifecycleRule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AzureStorageAccountLifecycleRule) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountLifecycleRule) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountLifecycleRule) GetFilters() *AzureStorageAccountLifecycleFilters {
+	if x != nil {
+		return x.Filters
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountLifecycleRule) GetActions() *AzureStorageAccountLifecycleActions {
+	if x != nil {
+		return x.Actions
+	}
+	return nil
+}
+
+// What a lifecycle rule applies to.
+type AzureStorageAccountLifecycleFilters struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The blob types the rule covers. Tiering actions only apply to
+	// BLOCK_BLOB; APPEND_BLOB supports deletion only.
+	BlobTypes []AzureStorageAccountLifecycleBlobType `protobuf:"varint,1,rep,packed,name=blob_types,json=blobTypes,proto3,enum=dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleBlobType" json:"blob_types,omitempty"`
+	// Name prefixes the rule covers (e.g. "logs/", "container1/raw/").
+	// Unset covers the whole account.
+	PrefixMatch []string `protobuf:"bytes,2,rep,name=prefix_match,json=prefixMatch,proto3" json:"prefix_match,omitempty"`
+	// Blob index tags the rule matches. A rule carrying tag filters
+	// cannot have snapshot or version actions (an ARM restriction).
+	MatchBlobIndexTags []*AzureStorageAccountLifecycleTagFilter `protobuf:"bytes,3,rep,name=match_blob_index_tags,json=matchBlobIndexTags,proto3" json:"match_blob_index_tags,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountLifecycleFilters) Reset() {
+	*x = AzureStorageAccountLifecycleFilters{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountLifecycleFilters) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountLifecycleFilters) ProtoMessage() {}
+
+func (x *AzureStorageAccountLifecycleFilters) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountLifecycleFilters.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountLifecycleFilters) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *AzureStorageAccountLifecycleFilters) GetBlobTypes() []AzureStorageAccountLifecycleBlobType {
+	if x != nil {
+		return x.BlobTypes
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountLifecycleFilters) GetPrefixMatch() []string {
+	if x != nil {
+		return x.PrefixMatch
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountLifecycleFilters) GetMatchBlobIndexTags() []*AzureStorageAccountLifecycleTagFilter {
+	if x != nil {
+		return x.MatchBlobIndexTags
+	}
+	return nil
+}
+
+// One blob-index-tag filter on a lifecycle rule.
+type AzureStorageAccountLifecycleTagFilter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The tag name.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The comparison operator. ARM supports equality only; unspecified
+	// applies "==".
+	Operation *string `protobuf:"bytes,2,opt,name=operation,proto3,oneof" json:"operation,omitempty"`
+	// The tag value to match.
+	Value         string `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountLifecycleTagFilter) Reset() {
+	*x = AzureStorageAccountLifecycleTagFilter{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountLifecycleTagFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountLifecycleTagFilter) ProtoMessage() {}
+
+func (x *AzureStorageAccountLifecycleTagFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountLifecycleTagFilter.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountLifecycleTagFilter) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AzureStorageAccountLifecycleTagFilter) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountLifecycleTagFilter) GetOperation() string {
+	if x != nil && x.Operation != nil {
+		return *x.Operation
+	}
+	return ""
+}
+
+func (x *AzureStorageAccountLifecycleTagFilter) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+// What a lifecycle rule does. At least one of the three action groups
+// must be present.
+type AzureStorageAccountLifecycleActions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Schedules for current (base) blobs.
+	BaseBlob *AzureStorageAccountLifecycleBaseBlobActions `protobuf:"bytes,1,opt,name=base_blob,json=baseBlob,proto3" json:"base_blob,omitempty"`
+	// Schedules for blob snapshots.
+	Snapshot *AzureStorageAccountLifecycleSnapshotActions `protobuf:"bytes,2,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
+	// Schedules for previous blob versions.
+	Version       *AzureStorageAccountLifecycleVersionActions `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountLifecycleActions) Reset() {
+	*x = AzureStorageAccountLifecycleActions{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountLifecycleActions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountLifecycleActions) ProtoMessage() {}
+
+func (x *AzureStorageAccountLifecycleActions) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountLifecycleActions.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountLifecycleActions) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AzureStorageAccountLifecycleActions) GetBaseBlob() *AzureStorageAccountLifecycleBaseBlobActions {
+	if x != nil {
+		return x.BaseBlob
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountLifecycleActions) GetSnapshot() *AzureStorageAccountLifecycleSnapshotActions {
+	if x != nil {
+		return x.Snapshot
+	}
+	return nil
+}
+
+func (x *AzureStorageAccountLifecycleActions) GetVersion() *AzureStorageAccountLifecycleVersionActions {
+	if x != nil {
+		return x.Version
+	}
+	return nil
+}
+
+// Tiering/deletion schedules for base blobs. Each destination (cool,
+// cold, archive, delete) accepts exactly ONE aging basis: days since
+// modification, days since last access (requires
+// blob_properties.last_access_time_enabled), or days since creation.
+type AzureStorageAccountLifecycleBaseBlobActions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Move to COOL after this many days without modification.
+	TierToCoolAfterDaysSinceModificationGreaterThan *int32 `protobuf:"varint,1,opt,name=tier_to_cool_after_days_since_modification_greater_than,json=tierToCoolAfterDaysSinceModificationGreaterThan,proto3,oneof" json:"tier_to_cool_after_days_since_modification_greater_than,omitempty"`
+	// Move to COOL after this many days without being read.
+	TierToCoolAfterDaysSinceLastAccessTimeGreaterThan *int32 `protobuf:"varint,2,opt,name=tier_to_cool_after_days_since_last_access_time_greater_than,json=tierToCoolAfterDaysSinceLastAccessTimeGreaterThan,proto3,oneof" json:"tier_to_cool_after_days_since_last_access_time_greater_than,omitempty"`
+	// Move to COOL after this many days since creation.
+	TierToCoolAfterDaysSinceCreationGreaterThan *int32 `protobuf:"varint,3,opt,name=tier_to_cool_after_days_since_creation_greater_than,json=tierToCoolAfterDaysSinceCreationGreaterThan,proto3,oneof" json:"tier_to_cool_after_days_since_creation_greater_than,omitempty"`
+	// Whether a blob tiered to COOL on the last-access schedule moves
+	// back to HOT automatically when it is read again. Requires
+	// tier_to_cool_after_days_since_last_access_time_greater_than.
+	AutoTierToHotFromCoolEnabled bool `protobuf:"varint,4,opt,name=auto_tier_to_hot_from_cool_enabled,json=autoTierToHotFromCoolEnabled,proto3" json:"auto_tier_to_hot_from_cool_enabled,omitempty"`
+	// Move to COLD after this many days without modification.
+	TierToColdAfterDaysSinceModificationGreaterThan *int32 `protobuf:"varint,5,opt,name=tier_to_cold_after_days_since_modification_greater_than,json=tierToColdAfterDaysSinceModificationGreaterThan,proto3,oneof" json:"tier_to_cold_after_days_since_modification_greater_than,omitempty"`
+	// Move to COLD after this many days without being read.
+	TierToColdAfterDaysSinceLastAccessTimeGreaterThan *int32 `protobuf:"varint,6,opt,name=tier_to_cold_after_days_since_last_access_time_greater_than,json=tierToColdAfterDaysSinceLastAccessTimeGreaterThan,proto3,oneof" json:"tier_to_cold_after_days_since_last_access_time_greater_than,omitempty"`
+	// Move to COLD after this many days since creation.
+	TierToColdAfterDaysSinceCreationGreaterThan *int32 `protobuf:"varint,7,opt,name=tier_to_cold_after_days_since_creation_greater_than,json=tierToColdAfterDaysSinceCreationGreaterThan,proto3,oneof" json:"tier_to_cold_after_days_since_creation_greater_than,omitempty"`
+	// Move to ARCHIVE after this many days without modification.
+	TierToArchiveAfterDaysSinceModificationGreaterThan *int32 `protobuf:"varint,8,opt,name=tier_to_archive_after_days_since_modification_greater_than,json=tierToArchiveAfterDaysSinceModificationGreaterThan,proto3,oneof" json:"tier_to_archive_after_days_since_modification_greater_than,omitempty"`
+	// Move to ARCHIVE after this many days without being read.
+	TierToArchiveAfterDaysSinceLastAccessTimeGreaterThan *int32 `protobuf:"varint,9,opt,name=tier_to_archive_after_days_since_last_access_time_greater_than,json=tierToArchiveAfterDaysSinceLastAccessTimeGreaterThan,proto3,oneof" json:"tier_to_archive_after_days_since_last_access_time_greater_than,omitempty"`
+	// Move to ARCHIVE after this many days since creation.
+	TierToArchiveAfterDaysSinceCreationGreaterThan *int32 `protobuf:"varint,10,opt,name=tier_to_archive_after_days_since_creation_greater_than,json=tierToArchiveAfterDaysSinceCreationGreaterThan,proto3,oneof" json:"tier_to_archive_after_days_since_creation_greater_than,omitempty"`
+	// Guard against archive ping-pong: only re-archive a blob this many
+	// days after its last tier change.
+	TierToArchiveAfterDaysSinceLastTierChangeGreaterThan *int32 `protobuf:"varint,11,opt,name=tier_to_archive_after_days_since_last_tier_change_greater_than,json=tierToArchiveAfterDaysSinceLastTierChangeGreaterThan,proto3,oneof" json:"tier_to_archive_after_days_since_last_tier_change_greater_than,omitempty"`
+	// Delete after this many days without modification.
+	DeleteAfterDaysSinceModificationGreaterThan *int32 `protobuf:"varint,12,opt,name=delete_after_days_since_modification_greater_than,json=deleteAfterDaysSinceModificationGreaterThan,proto3,oneof" json:"delete_after_days_since_modification_greater_than,omitempty"`
+	// Delete after this many days without being read.
+	DeleteAfterDaysSinceLastAccessTimeGreaterThan *int32 `protobuf:"varint,13,opt,name=delete_after_days_since_last_access_time_greater_than,json=deleteAfterDaysSinceLastAccessTimeGreaterThan,proto3,oneof" json:"delete_after_days_since_last_access_time_greater_than,omitempty"`
+	// Delete after this many days since creation.
+	DeleteAfterDaysSinceCreationGreaterThan *int32 `protobuf:"varint,14,opt,name=delete_after_days_since_creation_greater_than,json=deleteAfterDaysSinceCreationGreaterThan,proto3,oneof" json:"delete_after_days_since_creation_greater_than,omitempty"`
+	unknownFields                           protoimpl.UnknownFields
+	sizeCache                               protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) Reset() {
+	*x = AzureStorageAccountLifecycleBaseBlobActions{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountLifecycleBaseBlobActions) ProtoMessage() {}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountLifecycleBaseBlobActions.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountLifecycleBaseBlobActions) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetTierToCoolAfterDaysSinceModificationGreaterThan() int32 {
+	if x != nil && x.TierToCoolAfterDaysSinceModificationGreaterThan != nil {
+		return *x.TierToCoolAfterDaysSinceModificationGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetTierToCoolAfterDaysSinceLastAccessTimeGreaterThan() int32 {
+	if x != nil && x.TierToCoolAfterDaysSinceLastAccessTimeGreaterThan != nil {
+		return *x.TierToCoolAfterDaysSinceLastAccessTimeGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetTierToCoolAfterDaysSinceCreationGreaterThan() int32 {
+	if x != nil && x.TierToCoolAfterDaysSinceCreationGreaterThan != nil {
+		return *x.TierToCoolAfterDaysSinceCreationGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetAutoTierToHotFromCoolEnabled() bool {
+	if x != nil {
+		return x.AutoTierToHotFromCoolEnabled
+	}
+	return false
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetTierToColdAfterDaysSinceModificationGreaterThan() int32 {
+	if x != nil && x.TierToColdAfterDaysSinceModificationGreaterThan != nil {
+		return *x.TierToColdAfterDaysSinceModificationGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetTierToColdAfterDaysSinceLastAccessTimeGreaterThan() int32 {
+	if x != nil && x.TierToColdAfterDaysSinceLastAccessTimeGreaterThan != nil {
+		return *x.TierToColdAfterDaysSinceLastAccessTimeGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetTierToColdAfterDaysSinceCreationGreaterThan() int32 {
+	if x != nil && x.TierToColdAfterDaysSinceCreationGreaterThan != nil {
+		return *x.TierToColdAfterDaysSinceCreationGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetTierToArchiveAfterDaysSinceModificationGreaterThan() int32 {
+	if x != nil && x.TierToArchiveAfterDaysSinceModificationGreaterThan != nil {
+		return *x.TierToArchiveAfterDaysSinceModificationGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetTierToArchiveAfterDaysSinceLastAccessTimeGreaterThan() int32 {
+	if x != nil && x.TierToArchiveAfterDaysSinceLastAccessTimeGreaterThan != nil {
+		return *x.TierToArchiveAfterDaysSinceLastAccessTimeGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetTierToArchiveAfterDaysSinceCreationGreaterThan() int32 {
+	if x != nil && x.TierToArchiveAfterDaysSinceCreationGreaterThan != nil {
+		return *x.TierToArchiveAfterDaysSinceCreationGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetTierToArchiveAfterDaysSinceLastTierChangeGreaterThan() int32 {
+	if x != nil && x.TierToArchiveAfterDaysSinceLastTierChangeGreaterThan != nil {
+		return *x.TierToArchiveAfterDaysSinceLastTierChangeGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetDeleteAfterDaysSinceModificationGreaterThan() int32 {
+	if x != nil && x.DeleteAfterDaysSinceModificationGreaterThan != nil {
+		return *x.DeleteAfterDaysSinceModificationGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetDeleteAfterDaysSinceLastAccessTimeGreaterThan() int32 {
+	if x != nil && x.DeleteAfterDaysSinceLastAccessTimeGreaterThan != nil {
+		return *x.DeleteAfterDaysSinceLastAccessTimeGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleBaseBlobActions) GetDeleteAfterDaysSinceCreationGreaterThan() int32 {
+	if x != nil && x.DeleteAfterDaysSinceCreationGreaterThan != nil {
+		return *x.DeleteAfterDaysSinceCreationGreaterThan
+	}
+	return 0
+}
+
+// Tiering/deletion schedules for blob snapshots (all bases are days
+// since the snapshot was created).
+type AzureStorageAccountLifecycleSnapshotActions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Move snapshots to COOL after this many days.
+	ChangeTierToCoolAfterDaysSinceCreation *int32 `protobuf:"varint,1,opt,name=change_tier_to_cool_after_days_since_creation,json=changeTierToCoolAfterDaysSinceCreation,proto3,oneof" json:"change_tier_to_cool_after_days_since_creation,omitempty"`
+	// Move snapshots to COLD after this many days.
+	TierToColdAfterDaysSinceCreationGreaterThan *int32 `protobuf:"varint,2,opt,name=tier_to_cold_after_days_since_creation_greater_than,json=tierToColdAfterDaysSinceCreationGreaterThan,proto3,oneof" json:"tier_to_cold_after_days_since_creation_greater_than,omitempty"`
+	// Move snapshots to ARCHIVE after this many days.
+	ChangeTierToArchiveAfterDaysSinceCreation *int32 `protobuf:"varint,3,opt,name=change_tier_to_archive_after_days_since_creation,json=changeTierToArchiveAfterDaysSinceCreation,proto3,oneof" json:"change_tier_to_archive_after_days_since_creation,omitempty"`
+	// Guard against archive ping-pong: only re-archive a snapshot this
+	// many days after its last tier change.
+	TierToArchiveAfterDaysSinceLastTierChangeGreaterThan *int32 `protobuf:"varint,4,opt,name=tier_to_archive_after_days_since_last_tier_change_greater_than,json=tierToArchiveAfterDaysSinceLastTierChangeGreaterThan,proto3,oneof" json:"tier_to_archive_after_days_since_last_tier_change_greater_than,omitempty"`
+	// Delete snapshots after this many days.
+	DeleteAfterDaysSinceCreationGreaterThan *int32 `protobuf:"varint,5,opt,name=delete_after_days_since_creation_greater_than,json=deleteAfterDaysSinceCreationGreaterThan,proto3,oneof" json:"delete_after_days_since_creation_greater_than,omitempty"`
+	unknownFields                           protoimpl.UnknownFields
+	sizeCache                               protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountLifecycleSnapshotActions) Reset() {
+	*x = AzureStorageAccountLifecycleSnapshotActions{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountLifecycleSnapshotActions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountLifecycleSnapshotActions) ProtoMessage() {}
+
+func (x *AzureStorageAccountLifecycleSnapshotActions) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountLifecycleSnapshotActions.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountLifecycleSnapshotActions) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *AzureStorageAccountLifecycleSnapshotActions) GetChangeTierToCoolAfterDaysSinceCreation() int32 {
+	if x != nil && x.ChangeTierToCoolAfterDaysSinceCreation != nil {
+		return *x.ChangeTierToCoolAfterDaysSinceCreation
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleSnapshotActions) GetTierToColdAfterDaysSinceCreationGreaterThan() int32 {
+	if x != nil && x.TierToColdAfterDaysSinceCreationGreaterThan != nil {
+		return *x.TierToColdAfterDaysSinceCreationGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleSnapshotActions) GetChangeTierToArchiveAfterDaysSinceCreation() int32 {
+	if x != nil && x.ChangeTierToArchiveAfterDaysSinceCreation != nil {
+		return *x.ChangeTierToArchiveAfterDaysSinceCreation
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleSnapshotActions) GetTierToArchiveAfterDaysSinceLastTierChangeGreaterThan() int32 {
+	if x != nil && x.TierToArchiveAfterDaysSinceLastTierChangeGreaterThan != nil {
+		return *x.TierToArchiveAfterDaysSinceLastTierChangeGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleSnapshotActions) GetDeleteAfterDaysSinceCreationGreaterThan() int32 {
+	if x != nil && x.DeleteAfterDaysSinceCreationGreaterThan != nil {
+		return *x.DeleteAfterDaysSinceCreationGreaterThan
+	}
+	return 0
+}
+
+// Tiering/deletion schedules for previous blob versions (all bases are
+// days since the version was created).
+type AzureStorageAccountLifecycleVersionActions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Move versions to COOL after this many days.
+	ChangeTierToCoolAfterDaysSinceCreation *int32 `protobuf:"varint,1,opt,name=change_tier_to_cool_after_days_since_creation,json=changeTierToCoolAfterDaysSinceCreation,proto3,oneof" json:"change_tier_to_cool_after_days_since_creation,omitempty"`
+	// Move versions to COLD after this many days.
+	TierToColdAfterDaysSinceCreationGreaterThan *int32 `protobuf:"varint,2,opt,name=tier_to_cold_after_days_since_creation_greater_than,json=tierToColdAfterDaysSinceCreationGreaterThan,proto3,oneof" json:"tier_to_cold_after_days_since_creation_greater_than,omitempty"`
+	// Move versions to ARCHIVE after this many days.
+	ChangeTierToArchiveAfterDaysSinceCreation *int32 `protobuf:"varint,3,opt,name=change_tier_to_archive_after_days_since_creation,json=changeTierToArchiveAfterDaysSinceCreation,proto3,oneof" json:"change_tier_to_archive_after_days_since_creation,omitempty"`
+	// Guard against archive ping-pong: only re-archive a version this
+	// many days after its last tier change.
+	TierToArchiveAfterDaysSinceLastTierChangeGreaterThan *int32 `protobuf:"varint,4,opt,name=tier_to_archive_after_days_since_last_tier_change_greater_than,json=tierToArchiveAfterDaysSinceLastTierChangeGreaterThan,proto3,oneof" json:"tier_to_archive_after_days_since_last_tier_change_greater_than,omitempty"`
+	// Delete versions after this many days.
+	DeleteAfterDaysSinceCreation *int32 `protobuf:"varint,5,opt,name=delete_after_days_since_creation,json=deleteAfterDaysSinceCreation,proto3,oneof" json:"delete_after_days_since_creation,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
+}
+
+func (x *AzureStorageAccountLifecycleVersionActions) Reset() {
+	*x = AzureStorageAccountLifecycleVersionActions{}
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureStorageAccountLifecycleVersionActions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureStorageAccountLifecycleVersionActions) ProtoMessage() {}
+
+func (x *AzureStorageAccountLifecycleVersionActions) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureStorageAccountLifecycleVersionActions.ProtoReflect.Descriptor instead.
+func (*AzureStorageAccountLifecycleVersionActions) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *AzureStorageAccountLifecycleVersionActions) GetChangeTierToCoolAfterDaysSinceCreation() int32 {
+	if x != nil && x.ChangeTierToCoolAfterDaysSinceCreation != nil {
+		return *x.ChangeTierToCoolAfterDaysSinceCreation
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleVersionActions) GetTierToColdAfterDaysSinceCreationGreaterThan() int32 {
+	if x != nil && x.TierToColdAfterDaysSinceCreationGreaterThan != nil {
+		return *x.TierToColdAfterDaysSinceCreationGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleVersionActions) GetChangeTierToArchiveAfterDaysSinceCreation() int32 {
+	if x != nil && x.ChangeTierToArchiveAfterDaysSinceCreation != nil {
+		return *x.ChangeTierToArchiveAfterDaysSinceCreation
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleVersionActions) GetTierToArchiveAfterDaysSinceLastTierChangeGreaterThan() int32 {
+	if x != nil && x.TierToArchiveAfterDaysSinceLastTierChangeGreaterThan != nil {
+		return *x.TierToArchiveAfterDaysSinceLastTierChangeGreaterThan
+	}
+	return 0
+}
+
+func (x *AzureStorageAccountLifecycleVersionActions) GetDeleteAfterDaysSinceCreation() int32 {
+	if x != nil && x.DeleteAfterDaysSinceCreation != nil {
+		return *x.DeleteAfterDaysSinceCreation
+	}
+	return 0
 }
 
 var File_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/azure/azurestorageaccount/v1/spec.proto\x121dev.planton.provider.azure.azurestorageaccount.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa0\v\n" +
+	"<dev/planton/provider/azure/azurestorageaccount/v1/spec.proto\x121dev.planton.provider.azure.azurestorageaccount.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb4A\n" +
 	"\x17AzureStorageAccountSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x8a\x01\n" +
-	"\faccount_kind\x18\x03 \x01(\x0e2J.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountKindB\x16\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\n" +
-	"STORAGE_V2H\x00R\vaccountKind\x88\x01\x01\x12\x88\x01\n" +
-	"\faccount_tier\x18\x04 \x01(\x0e2J.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountTierB\x14\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\bSTANDARDH\x01R\vaccountTier\x88\x01\x01\x12\x8f\x01\n" +
-	"\x10replication_type\x18\x05 \x01(\x0e2N.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageReplicationTypeB\x0f\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x03LRSH\x02R\x0freplicationType\x88\x01\x01\x12\x80\x01\n" +
-	"\vaccess_tier\x18\x06 \x01(\x0e2I.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccessTierB\x0f\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x03HOTH\x03R\n" +
-	"accessTier\x88\x01\x01\x12H\n" +
-	"\x19enable_https_traffic_only\x18\a \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\x16enableHttpsTrafficOnly\x88\x01\x01\x12\x83\x01\n" +
-	"\x0fmin_tls_version\x18\b \x01(\x0e2B.dev.planton.provider.azure.azurestorageaccount.v1.AzureTlsVersionB\x12\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x06TLS1_2H\x05R\rminTlsVersion\x88\x01\x01\x12p\n" +
-	"\rnetwork_rules\x18\t \x01(\v2K.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageNetworkRulesR\fnetworkRules\x12v\n" +
-	"\x0fblob_properties\x18\n" +
-	" \x01(\v2M.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageBlobPropertiesR\x0eblobProperties\x12r\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12=\n" +
+	"\faccount_name\x18\x03 \x01(\tB\x1a\xbaH\x17\xc8\x01\x01r\x122\x10^[a-z0-9]{3,24}$R\vaccountName\x12m\n" +
+	"\faccount_kind\x18\x04 \x01(\x0e2J.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountKindR\vaccountKind\x12m\n" +
+	"\faccount_tier\x18\x05 \x01(\x0e2J.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountTierR\vaccountTier\x12\x80\x01\n" +
+	"\x10replication_type\x18\x06 \x01(\x0e2U.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountReplicationTypeR\x0freplicationType\x12q\n" +
+	"\vaccess_tier\x18\a \x01(\x0e2P.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAccessTierR\n" +
+	"accessTier\x12\xf1\x01\n" +
+	"!provisioned_billing_model_version\x18\b \x01(\tB\xa5\x01\xbaH\xa1\x01\xba\x01\x9d\x01\n" +
+	" storage_account_billing_model_v2\x12]provisioned_billing_model_version must be \"V2\" or left unset (pay-as-you-go / provisioned v1)\x1a\x1athis == '' || this == 'V2'R\x1eprovisionedBillingModelVersion\x12\x1b\n" +
+	"\tedge_zone\x18\t \x01(\tR\bedgeZone\x12J\n" +
+	"\x1ahttps_traffic_only_enabled\x18\n" +
+	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x17httpsTrafficOnlyEnabled\x88\x01\x01\x12{\n" +
+	"\x0fmin_tls_version\x18\v \x01(\x0e2S.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountMinTlsVersionR\rminTlsVersion\x12H\n" +
+	"\x19shared_access_key_enabled\x18\f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x16sharedAccessKeyEnabled\x88\x01\x01\x12E\n" +
+	"\x1fdefault_to_oauth_authentication\x18\r \x01(\bR\x1cdefaultToOauthAuthentication\x12R\n" +
+	"\x1fallow_nested_items_to_be_public\x18\x0e \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x1aallowNestedItemsToBePublic\x88\x01\x01\x12P\n" +
+	"\x1dpublic_network_access_enabled\x18\x0f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x1apublicNetworkAccessEnabled\x88\x01\x01\x12\x84\x01\n" +
+	"\x12allowed_copy_scope\x18\x10 \x01(\x0e2V.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAllowedCopyScopeR\x10allowedCopyScope\x12n\n" +
 	"\n" +
-	"containers\x18\v \x03(\v2H.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageContainerB\b\xbaH\x05\x92\x01\x02\x10dR\n" +
-	"containersB\x0f\n" +
-	"\r_account_kindB\x0f\n" +
-	"\r_account_tierB\x13\n" +
-	"\x11_replication_typeB\x0e\n" +
-	"\f_access_tierB\x1c\n" +
-	"\x1a_enable_https_traffic_onlyB\x12\n" +
-	"\x10_min_tls_version\"\x84\x03\n" +
-	"\x18AzureStorageNetworkRules\x12\x8a\x01\n" +
-	"\x0edefault_action\x18\x01 \x01(\x0e2L.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageNetworkActionB\x10\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x04DENYH\x00R\rdefaultAction\x88\x01\x01\x12A\n" +
-	"\x15bypass_azure_services\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x13bypassAzureServices\x88\x01\x01\x12$\n" +
-	"\bip_rules\x18\x03 \x03(\tB\t\xbaH\x06\x92\x01\x03\x10\xc8\x01R\aipRules\x12E\n" +
-	"\x1avirtual_network_subnet_ids\x18\x04 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10dR\x17virtualNetworkSubnetIdsB\x11\n" +
-	"\x0f_default_actionB\x18\n" +
-	"\x16_bypass_azure_services\"\xf0\x02\n" +
-	"\x1aAzureStorageBlobProperties\x12;\n" +
-	"\x11enable_versioning\x18\x01 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x10enableVersioning\x88\x01\x01\x12Q\n" +
-	"\x1asoft_delete_retention_days\x18\x02 \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xed\x02(\x00\x8a\xa6\x1d\x017H\x01R\x17softDeleteRetentionDays\x88\x01\x01\x12d\n" +
-	"$container_soft_delete_retention_days\x18\x03 \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xed\x02(\x00\x8a\xa6\x1d\x017H\x02R containerSoftDeleteRetentionDays\x88\x01\x01B\x14\n" +
-	"\x12_enable_versioningB\x1d\n" +
-	"\x1b_soft_delete_retention_daysB'\n" +
-	"%_container_soft_delete_retention_days\"\xd5\x01\n" +
-	"\x15AzureStorageContainer\x12 \n" +
-	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x03\x18?R\x04name\x12\x89\x01\n" +
-	"\vaccess_type\x18\x02 \x01(\x0e2N.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageContainerAccessB\x13\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\aPRIVATEH\x00R\n" +
-	"accessType\x88\x01\x01B\x0e\n" +
-	"\f_access_type*\x90\x01\n" +
-	"\x17AzureStorageAccountKind\x12\x1c\n" +
-	"\x18ACCOUNT_KIND_UNSPECIFIED\x10\x00\x12\x0e\n" +
+	"sas_policy\x18\x11 \x01(\v2O.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSasPolicyR\tsasPolicy\x12;\n" +
+	"\x12local_user_enabled\x18\x12 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\x10localUserEnabled\x88\x01\x01\x12!\n" +
+	"\fsftp_enabled\x18\x13 \x01(\bR\vsftpEnabled\x12G\n" +
+	" cross_tenant_replication_enabled\x18\x14 \x01(\bR\x1dcrossTenantReplicationEnabled\x12$\n" +
+	"\x0eis_hns_enabled\x18\x15 \x01(\bR\fisHnsEnabled\x12#\n" +
+	"\rnfsv3_enabled\x18\x16 \x01(\bR\fnfsv3Enabled\x127\n" +
+	"\x18large_file_share_enabled\x18\x17 \x01(\bR\x15largeFileShareEnabled\x12\x81\x01\n" +
+	"\x11dns_endpoint_type\x18\x18 \x01(\x0e2U.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDnsEndpointTypeR\x0fdnsEndpointType\x12J\n" +
+	"!infrastructure_encryption_enabled\x18\x19 \x01(\bR\x1finfrastructureEncryptionEnabled\x12\x92\x01\n" +
+	"\x19queue_encryption_key_type\x18\x1a \x01(\x0e2W.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountEncryptionKeyTypeR\x16queueEncryptionKeyType\x12\x92\x01\n" +
+	"\x19table_encryption_key_type\x18\x1b \x01(\x0e2W.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountEncryptionKeyTypeR\x16tableEncryptionKeyType\x12j\n" +
+	"\bidentity\x18\x1c \x01(\v2N.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountIdentityR\bidentity\x12\x8a\x01\n" +
+	"\x14customer_managed_key\x18\x1d \x01(\v2X.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCustomerManagedKeyR\x12customerManagedKey\x12w\n" +
+	"\rnetwork_rules\x18\x1e \x01(\v2R.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkRulesR\fnetworkRules\x12}\n" +
+	"\x0fblob_properties\x18\x1f \x01(\v2T.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountBlobPropertiesR\x0eblobProperties\x12\x80\x01\n" +
+	"\x10share_properties\x18  \x01(\v2U.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSharePropertiesR\x0fshareProperties\x12z\n" +
+	"\x0estatic_website\x18! \x01(\v2S.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountStaticWebsiteR\rstaticWebsite\x12g\n" +
+	"\arouting\x18\" \x01(\v2M.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountRoutingR\arouting\x12w\n" +
+	"\rcustom_domain\x18# \x01(\v2R.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCustomDomainR\fcustomDomain\x12\x9c\x01\n" +
+	"\x1aazure_files_authentication\x18$ \x01(\v2^.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAzureFilesAuthenticationR\x18azureFilesAuthentication\x12\x89\x01\n" +
+	"\x13immutability_policy\x18% \x01(\v2X.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountImmutabilityPolicyR\x12immutabilityPolicy\x12|\n" +
+	"\x0flifecycle_rules\x18& \x03(\v2S.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleRuleR\x0elifecycleRules\x12h\n" +
+	"\x04tags\x18' \x03(\v2T.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xeb\x1f\xbaH\xe7\x1f\x1a\xb9\x01\n" +
+	"%storage_account_access_tier_kind_gate\x12Taccess_tier is only supported on STORAGE_V2, BLOB_STORAGE, and FILE_STORAGE accounts\x1a:this.access_tier == 0 || this.account_kind in [0, 1, 2, 4]\x1a\xca\x01\n" +
+	"\x1dstorage_account_hns_kind_gate\x12nis_hns_enabled (Data Lake Gen2) is only supported on STORAGE_V2, BLOB_STORAGE, and BLOCK_BLOB_STORAGE accounts\x1a9!this.is_hns_enabled || this.account_kind in [0, 1, 2, 3]\x1a\x97\x01\n" +
+	"!storage_account_sftp_requires_hns\x12Gsftp_enabled requires is_hns_enabled (SFTP is a Data Lake Gen2 feature)\x1a)!this.sftp_enabled || this.is_hns_enabled\x1aw\n" +
+	"\"storage_account_nfsv3_requires_hns\x12%nfsv3_enabled requires is_hns_enabled\x1a*!this.nfsv3_enabled || this.is_hns_enabled\x1a\x9d\x02\n" +
+	"$storage_account_nfsv3_tier_kind_gate\x12gnfsv3_enabled requires STANDARD tier with STORAGE_V2 kind, or PREMIUM tier with BLOCK_BLOB_STORAGE kind\x1a\x8b\x01!this.nfsv3_enabled || ((this.account_tier in [0, 1] && this.account_kind in [0, 1]) || (this.account_tier == 2 && this.account_kind == 3))\x1a\x95\x01\n" +
+	"&storage_account_nfsv3_replication_gate\x120nfsv3_enabled requires LRS or RA_GRS replication\x1a9!this.nfsv3_enabled || this.replication_type in [0, 1, 5]\x1a\xa3\x01\n" +
+	",storage_account_blob_storage_zrs_unsupported\x12:ZRS replication is not supported for BLOB_STORAGE accounts\x1a7!(this.account_kind == 2 && this.replication_type == 2)\x1a\xe2\x01\n" +
+	"(storage_account_versioning_conflicts_hns\x12Vblob versioning cannot be enabled on a hierarchical-namespace (is_hns_enabled) account\x1a^!this.is_hns_enabled || !has(this.blob_properties) || !this.blob_properties.versioning_enabled\x1a\xe4\x01\n" +
+	"0storage_account_immutability_requires_versioning\x12Fimmutability_policy requires blob_properties.versioning_enabled = true\x1ah!has(this.immutability_policy) || (has(this.blob_properties) && this.blob_properties.versioning_enabled)\x1a\xb3\x02\n" +
+	".storage_account_infrastructure_encryption_gate\x12}infrastructure_encryption_enabled requires a STORAGE_V2 account, or a PREMIUM-tier BLOCK_BLOB_STORAGE or FILE_STORAGE account\x1a\x81\x01!this.infrastructure_encryption_enabled || this.account_kind in [0, 1] || (this.account_tier == 2 && this.account_kind in [3, 4])\x1a\xec\x01\n" +
+	")storage_account_dns_zone_restore_conflict\x12Wblob_properties.restore_policy cannot be combined with dns_endpoint_type AZURE_DNS_ZONE\x1afthis.dns_endpoint_type != 2 || !has(this.blob_properties) || !has(this.blob_properties.restore_policy)\x1a\x93\x02\n" +
+	"-storage_account_smb_multichannel_premium_only\x12Tshare_properties.smb.multichannel_enabled is only supported on PREMIUM-tier accounts\x1a\x8b\x01!has(this.share_properties) || !has(this.share_properties.smb) || !this.share_properties.smb.multichannel_enabled || this.account_tier == 2\x1a\xb8\x01\n" +
+	")storage_account_blob_properties_kind_gate\x12Ublob_properties is not supported on FILE_STORAGE accounts (they have no blob service)\x1a4!has(this.blob_properties) || this.account_kind != 4\x1a\x8b\x02\n" +
+	"%storage_account_share_properties_gate\x12hshare_properties requires a FILE_STORAGE account, or a STANDARD-tier STORAGE_V2 / legacy STORAGE account\x1ax!has(this.share_properties) || this.account_kind == 4 || (this.account_kind in [0, 1, 5] && this.account_tier in [0, 1])\x1a\xb7\x01\n" +
+	"(storage_account_static_website_kind_gate\x12Nstatic_website is only supported on STORAGE_V2 and BLOCK_BLOB_STORAGE accounts\x1a;!has(this.static_website) || this.account_kind in [0, 1, 3]\x1a\xc2\x01\n" +
+	"*storage_account_large_file_share_kind_gate\x12Rlarge_file_share_enabled is only supported on STORAGE_V2 and FILE_STORAGE accounts\x1a@!this.large_file_share_enabled || this.account_kind in [0, 1, 4]\x1a\xb8\x01\n" +
+	"(storage_account_queue_key_type_kind_gate\x12Mqueue_encryption_key_type ACCOUNT is not supported on the legacy STORAGE kind\x1a=this.queue_encryption_key_type != 2 || this.account_kind != 5\x1a\xb8\x01\n" +
+	"(storage_account_table_key_type_kind_gate\x12Mtable_encryption_key_type ACCOUNT is not supported on the legacy STORAGE kind\x1a=this.table_encryption_key_type != 2 || this.account_kind != 5\x1a\xa5\x02\n" +
+	"3storage_account_cmk_requires_user_assigned_identity\x12\x94\x01customer_managed_key requires identity with type USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED (the unwrapping identity must be attached to the account)\x1aW!has(this.customer_managed_key) || (has(this.identity) && this.identity.type in [2, 3])B\x1d\n" +
+	"\x1b_https_traffic_only_enabledB\x1c\n" +
+	"\x1a_shared_access_key_enabledB\"\n" +
+	" _allow_nested_items_to_be_publicB \n" +
+	"\x1e_public_network_access_enabledB\x15\n" +
+	"\x13_local_user_enabled\"\x8e\x04\n" +
+	"\x1bAzureStorageAccountIdentity\x12n\n" +
+	"\x04type\x18\x01 \x01(\x0e2R.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountIdentityTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12z\n" +
+	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\x82\x02\xbaH\xfe\x01\x1a\xfb\x01\n" +
+	"'storage_account_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\xce\x02\n" +
+	"%AzureStorageAccountCustomerManagedKey\x12\x89\x01\n" +
+	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12\x98\x01\n" +
+	"\x19user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityId\"\xee\x04\n" +
+	"\x1fAzureStorageAccountNetworkRules\x12\x89\x01\n" +
+	"\x0edefault_action\x18\x01 \x01(\x0e2Z.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkDefaultActionB\x06\xbaH\x03\xc8\x01\x01R\rdefaultAction\x12z\n" +
+	"\x06bypass\x18\x02 \x03(\x0e2S.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkBypassB\r\xbaH\n" +
+	"\x92\x01\a\"\x05\x82\x01\x02\x10\x01R\x06bypass\x12$\n" +
+	"\bip_rules\x18\x03 \x03(\tB\t\xbaH\x06\x92\x01\x03\x10\x90\x03R\aipRules\x12\x92\x01\n" +
+	"\x1avirtual_network_subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x17virtualNetworkSubnetIds\x12\x87\x01\n" +
+	"\x13private_link_access\x18\x05 \x03(\v2W.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountPrivateLinkAccessR\x11privateLinkAccess\"\xb8\x01\n" +
+	"$AzureStorageAccountPrivateLinkAccess\x12<\n" +
+	"\x14endpoint_resource_id\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x12endpointResourceId\x12;\n" +
+	"\x12endpoint_tenant_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\x10endpointTenantId\x88\x01\x01B\x15\n" +
+	"\x13_endpoint_tenant_id\"\xb9\v\n" +
+	"!AzureStorageAccountBlobProperties\x12-\n" +
+	"\x12versioning_enabled\x18\x01 \x01(\bR\x11versioningEnabled\x12.\n" +
+	"\x13change_feed_enabled\x18\x02 \x01(\bR\x11changeFeedEnabled\x12R\n" +
+	"\x1dchange_feed_retention_in_days\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xd0\xf4\b(\x01H\x00R\x19changeFeedRetentionInDays\x88\x01\x01\x126\n" +
+	"\x17default_service_version\x18\x04 \x01(\tR\x15defaultServiceVersion\x127\n" +
+	"\x18last_access_time_enabled\x18\x05 \x01(\bR\x15lastAccessTimeEnabled\x12\x93\x01\n" +
+	"\x17delete_retention_policy\x18\x06 \x01(\v2[.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDeleteRetentionPolicyR\x15deleteRetentionPolicy\x12\xaf\x01\n" +
+	"!container_delete_retention_policy\x18\a \x01(\v2d.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountContainerDeleteRetentionPolicyR\x1econtainerDeleteRetentionPolicy\x12z\n" +
+	"\x0erestore_policy\x18\b \x01(\v2S.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountRestorePolicyR\rrestorePolicy\x12w\n" +
+	"\n" +
+	"cors_rules\x18\t \x03(\v2N.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCorsRuleB\b\xbaH\x05\x92\x01\x02\x10\x05R\tcorsRules:\x90\x04\xbaH\x8c\x04\x1a\x96\x01\n" +
+	"+storage_account_restore_requires_versioning\x121restore_policy requires versioning_enabled = true\x1a4!has(this.restore_policy) || this.versioning_enabled\x1a\x99\x01\n" +
+	",storage_account_restore_requires_change_feed\x122restore_policy requires change_feed_enabled = true\x1a5!has(this.restore_policy) || this.change_feed_enabled\x1a\xd4\x01\n" +
+	"1storage_account_restore_requires_delete_retention\x12_restore_policy requires delete_retention_policy (and its window must exceed the restore window)\x1a>!has(this.restore_policy) || has(this.delete_retention_policy)B \n" +
+	"\x1e_change_feed_retention_in_days\"\x97\x01\n" +
+	"(AzureStorageAccountDeleteRetentionPolicy\x12(\n" +
+	"\x04days\x18\x01 \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xed\x02(\x01\x8a\xa6\x1d\x017H\x00R\x04days\x88\x01\x01\x128\n" +
+	"\x18permanent_delete_enabled\x18\x02 \x01(\bR\x16permanentDeleteEnabledB\a\n" +
+	"\x05_days\"f\n" +
+	"1AzureStorageAccountContainerDeleteRetentionPolicy\x12(\n" +
+	"\x04days\x18\x01 \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xed\x02(\x01\x8a\xa6\x1d\x017H\x00R\x04days\x88\x01\x01B\a\n" +
+	"\x05_days\"B\n" +
+	" AzureStorageAccountRestorePolicy\x12\x1e\n" +
+	"\x04days\x18\x01 \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xed\x02(\x01R\x04days\"\x85\x04\n" +
+	"\x1bAzureStorageAccountCorsRule\x123\n" +
+	"\x0fallowed_origins\x18\x01 \x03(\tB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10@R\x0eallowedOrigins\x12\x8a\x02\n" +
+	"\x0fallowed_methods\x18\x02 \x03(\tB\xe0\x01\xbaH\xdc\x01\x92\x01\xd8\x01\b\x01\"\xd3\x01\xba\x01\xcf\x01\n" +
+	"!storage_account_cors_method_valid\x12[allowed_methods entries must be one of: DELETE, GET, HEAD, MERGE, POST, OPTIONS, PUT, PATCH\x1aMthis in ['DELETE', 'GET', 'HEAD', 'MERGE', 'POST', 'OPTIONS', 'PUT', 'PATCH']R\x0eallowedMethods\x123\n" +
+	"\x0fallowed_headers\x18\x03 \x03(\tB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10@R\x0eallowedHeaders\x123\n" +
+	"\x0fexposed_headers\x18\x04 \x03(\tB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10@R\x0eexposedHeaders\x12:\n" +
+	"\x12max_age_in_seconds\x18\x05 \x01(\x05B\r\xbaH\n" +
+	"\x1a\b\x18\x80\xa8ֹ\a(\x00R\x0fmaxAgeInSeconds\"\x8a\x03\n" +
+	"\"AzureStorageAccountShareProperties\x12\x85\x01\n" +
+	"\x10retention_policy\x18\x01 \x01(\v2Z.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountShareRetentionPolicyR\x0fretentionPolicy\x12c\n" +
+	"\x03smb\x18\x02 \x01(\v2Q.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSmbSettingsR\x03smb\x12w\n" +
+	"\n" +
+	"cors_rules\x18\x03 \x03(\v2N.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCorsRuleB\b\xbaH\x05\x92\x01\x02\x10\x05R\tcorsRules\"\\\n" +
+	"'AzureStorageAccountShareRetentionPolicy\x12(\n" +
+	"\x04days\x18\x01 \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xed\x02(\x01\x8a\xa6\x1d\x017H\x00R\x04days\x88\x01\x01B\a\n" +
+	"\x05_days\"\xb0\a\n" +
+	"\x1eAzureStorageAccountSmbSettings\x12\xb4\x01\n" +
+	"\bversions\x18\x01 \x03(\tB\x97\x01\xbaH\x93\x01\x92\x01\x8f\x01\"\x8c\x01\xba\x01\x88\x01\n" +
+	"!storage_account_smb_version_valid\x129versions entries must be one of: SMB2.1, SMB3.0, SMB3.1.1\x1a(this in ['SMB2.1', 'SMB3.0', 'SMB3.1.1']R\bversions\x12\xc1\x01\n" +
+	"\x14authentication_types\x18\x02 \x03(\tB\x8d\x01\xbaH\x89\x01\x92\x01\x85\x01\"\x82\x01\xba\x01\x7f\n" +
+	"\x1estorage_account_smb_auth_valid\x12=authentication_types entries must be one of: Kerberos, NTLMv2\x1a\x1ethis in ['Kerberos', 'NTLMv2']R\x13authenticationTypes\x12\xe3\x01\n" +
+	"\x1fkerberos_ticket_encryption_type\x18\x03 \x03(\tB\x9b\x01\xbaH\x97\x01\x92\x01\x93\x01\"\x90\x01\xba\x01\x8c\x01\n" +
+	"\x1estorage_account_smb_kerb_valid\x12Ikerberos_ticket_encryption_type entries must be one of: AES-256, RC4-HMAC\x1a\x1fthis in ['AES-256', 'RC4-HMAC']R\x1ckerberosTicketEncryptionType\x12\xf9\x01\n" +
+	"\x17channel_encryption_type\x18\x04 \x03(\tB\xc0\x01\xbaH\xbc\x01\x92\x01\xb8\x01\"\xb5\x01\xba\x01\xb1\x01\n" +
+	"!storage_account_smb_channel_valid\x12Uchannel_encryption_type entries must be one of: AES-128-CCM, AES-128-GCM, AES-256-GCM\x1a5this in ['AES-128-CCM', 'AES-128-GCM', 'AES-256-GCM']R\x15channelEncryptionType\x121\n" +
+	"\x14multichannel_enabled\x18\x05 \x01(\bR\x13multichannelEnabled\"\xb0\x02\n" +
+	" AzureStorageAccountStaticWebsite\x12%\n" +
+	"\x0eindex_document\x18\x01 \x01(\tR\rindexDocument\x12,\n" +
+	"\x12error_404_document\x18\x02 \x01(\tR\x10error404Document:\xb6\x01\xbaH\xb2\x01\x1a\xaf\x01\n" +
+	"/storage_account_static_website_needs_a_document\x12@static_website requires index_document and/or error_404_document\x1a:this.index_document != '' || this.error_404_document != ''\"\x87\x02\n" +
+	"\x1aAzureStorageAccountRouting\x12k\n" +
+	"\x06choice\x18\x01 \x01(\x0e2S.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountRoutingChoiceR\x06choice\x12<\n" +
+	"\x1apublish_internet_endpoints\x18\x02 \x01(\bR\x18publishInternetEndpoints\x12>\n" +
+	"\x1bpublish_microsoft_endpoints\x18\x03 \x01(\bR\x19publishMicrosoftEndpoints\"f\n" +
+	"\x1fAzureStorageAccountCustomDomain\x12\x1e\n" +
+	"\x04name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12#\n" +
+	"\ruse_subdomain\x18\x02 \x01(\bR\fuseSubdomain\"\xa0\x05\n" +
+	"+AzureStorageAccountAzureFilesAuthentication\x12\x89\x01\n" +
+	"\x0edirectory_type\x18\x01 \x01(\x0e2Z.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDirectoryServiceTypeB\x06\xbaH\x03\xc8\x01\x01R\rdirectoryType\x12\x80\x01\n" +
+	"\x10active_directory\x18\x02 \x01(\v2U.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountActiveDirectoryR\x0factiveDirectory\x12\xa1\x01\n" +
+	"\x1edefault_share_level_permission\x18\x03 \x01(\x0e2\\.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDefaultSharePermissionR\x1bdefaultShareLevelPermission:\xbd\x01\xbaH\xb9\x01\x1a\xb6\x01\n" +
+	"0storage_account_files_auth_ad_requires_directory\x12Jdirectory_type AD requires the active_directory block (domain coordinates)\x1a6this.directory_type != 3 || has(this.active_directory)\"\x90\x02\n" +
+	"\"AzureStorageAccountActiveDirectory\x12+\n" +
+	"\vdomain_name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\n" +
+	"domainName\x12,\n" +
+	"\vdomain_guid\x18\x02 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\xb0\x01\x01R\n" +
+	"domainGuid\x12\x1d\n" +
+	"\n" +
+	"domain_sid\x18\x03 \x01(\tR\tdomainSid\x12\x1f\n" +
+	"\vstorage_sid\x18\x04 \x01(\tR\n" +
+	"storageSid\x12\x1f\n" +
+	"\vforest_name\x18\x05 \x01(\tR\n" +
+	"forestName\x12.\n" +
+	"\x13netbios_domain_name\x18\x06 \x01(\tR\x11netbiosDomainName\"\xf8\x01\n" +
+	"\x1cAzureStorageAccountSasPolicy\x12O\n" +
+	"\x11expiration_period\x18\x01 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1a2\x18^\\d+\\.\\d{2}:\\d{2}:\\d{2}$R\x10expirationPeriod\x12\x86\x01\n" +
+	"\x11expiration_action\x18\x02 \x01(\x0e2Y.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSasExpirationActionR\x10expirationAction\"\xb0\x02\n" +
+	"%AzureStorageAccountImmutabilityPolicy\x12u\n" +
+	"\x05state\x18\x01 \x01(\x0e2W.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountImmutabilityStateB\x06\xbaH\x03\xc8\x01\x01R\x05state\x12M\n" +
+	"\x1dperiod_since_creation_in_days\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xd0\xf4\b(\x01R\x19periodSinceCreationInDays\x12A\n" +
+	"\x1dallow_protected_append_writes\x18\x03 \x01(\bR\x1aallowProtectedAppendWrites\"\xb1\x05\n" +
+	" AzureStorageAccountLifecycleRule\x12\x1e\n" +
+	"\x04name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12'\n" +
+	"\aenabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12x\n" +
+	"\afilters\x18\x03 \x01(\v2V.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleFiltersB\x06\xbaH\x03\xc8\x01\x01R\afilters\x12x\n" +
+	"\aactions\x18\x04 \x01(\v2V.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleActionsB\x06\xbaH\x03\xc8\x01\x01R\aactions:\xc3\x02\xbaH\xbf\x02\x1a\xbc\x02\n" +
+	"7storage_account_lifecycle_tags_exclude_snapshot_version\x12{a rule filtering by blob index tags cannot carry snapshot or version actions (an ARM restriction) -- only base_blob actions\x1a\x83\x01!has(this.filters) || this.filters.match_blob_index_tags.size() == 0 || (!has(this.actions.snapshot) && !has(this.actions.version))B\n" +
+	"\n" +
+	"\b_enabled\"\xe0\x02\n" +
+	"#AzureStorageAccountLifecycleFilters\x12\x87\x01\n" +
+	"\n" +
+	"blob_types\x18\x01 \x03(\x0e2W.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleBlobTypeB\x0f\xbaH\f\x92\x01\t\b\x01\"\x05\x82\x01\x02\x10\x01R\tblobTypes\x12!\n" +
+	"\fprefix_match\x18\x02 \x03(\tR\vprefixMatch\x12\x8b\x01\n" +
+	"\x15match_blob_index_tags\x18\x03 \x03(\v2X.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleTagFilterR\x12matchBlobIndexTags\"\x94\x02\n" +
+	"%AzureStorageAccountLifecycleTagFilter\x12\x1e\n" +
+	"\x04name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x9a\x01\n" +
+	"\toperation\x18\x02 \x01(\tBw\xbaHn\xba\x01k\n" +
+	" storage_account_lifecycle_tag_op\x129operation must be \"==\" (the only comparison ARM supports)\x1a\fthis == '=='\x8a\xa6\x1d\x02==H\x00R\toperation\x88\x01\x01\x12 \n" +
+	"\x05value\x18\x03 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05valueB\f\n" +
+	"\n" +
+	"_operation\"\xdd\x04\n" +
+	"#AzureStorageAccountLifecycleActions\x12{\n" +
+	"\tbase_blob\x18\x01 \x01(\v2^.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleBaseBlobActionsR\bbaseBlob\x12z\n" +
+	"\bsnapshot\x18\x02 \x01(\v2^.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleSnapshotActionsR\bsnapshot\x12w\n" +
+	"\aversion\x18\x03 \x01(\v2].dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleVersionActionsR\aversion:\xc3\x01\xbaH\xbf\x01\x1a\xbc\x01\n" +
+	"*storage_account_lifecycle_actions_nonempty\x12Na lifecycle rule needs at least one of base_blob, snapshot, or version actions\x1a>has(this.base_blob) || has(this.snapshot) || has(this.version)\"\xeb!\n" +
+	"+AzureStorageAccountLifecycleBaseBlobActions\x12\x82\x01\n" +
+	"7tier_to_cool_after_days_since_modification_greater_than\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x00R/tierToCoolAfterDaysSinceModificationGreaterThan\x88\x01\x01\x12\x88\x01\n" +
+	";tier_to_cool_after_days_since_last_access_time_greater_than\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x01R1tierToCoolAfterDaysSinceLastAccessTimeGreaterThan\x88\x01\x01\x12z\n" +
+	"3tier_to_cool_after_days_since_creation_greater_than\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x02R+tierToCoolAfterDaysSinceCreationGreaterThan\x88\x01\x01\x12H\n" +
+	"\"auto_tier_to_hot_from_cool_enabled\x18\x04 \x01(\bR\x1cautoTierToHotFromCoolEnabled\x12\x82\x01\n" +
+	"7tier_to_cold_after_days_since_modification_greater_than\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x03R/tierToColdAfterDaysSinceModificationGreaterThan\x88\x01\x01\x12\x88\x01\n" +
+	";tier_to_cold_after_days_since_last_access_time_greater_than\x18\x06 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x04R1tierToColdAfterDaysSinceLastAccessTimeGreaterThan\x88\x01\x01\x12z\n" +
+	"3tier_to_cold_after_days_since_creation_greater_than\x18\a \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x05R+tierToColdAfterDaysSinceCreationGreaterThan\x88\x01\x01\x12\x88\x01\n" +
+	":tier_to_archive_after_days_since_modification_greater_than\x18\b \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x06R2tierToArchiveAfterDaysSinceModificationGreaterThan\x88\x01\x01\x12\x8e\x01\n" +
+	">tier_to_archive_after_days_since_last_access_time_greater_than\x18\t \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\aR4tierToArchiveAfterDaysSinceLastAccessTimeGreaterThan\x88\x01\x01\x12\x80\x01\n" +
+	"6tier_to_archive_after_days_since_creation_greater_than\x18\n" +
+	" \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\bR.tierToArchiveAfterDaysSinceCreationGreaterThan\x88\x01\x01\x12\x8e\x01\n" +
+	">tier_to_archive_after_days_since_last_tier_change_greater_than\x18\v \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\tR4tierToArchiveAfterDaysSinceLastTierChangeGreaterThan\x88\x01\x01\x12x\n" +
+	"1delete_after_days_since_modification_greater_than\x18\f \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\n" +
+	"R+deleteAfterDaysSinceModificationGreaterThan\x88\x01\x01\x12~\n" +
+	"5delete_after_days_since_last_access_time_greater_than\x18\r \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\vR-deleteAfterDaysSinceLastAccessTimeGreaterThan\x88\x01\x01\x12p\n" +
+	"-delete_after_days_since_creation_greater_than\x18\x0e \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\fR'deleteAfterDaysSinceCreationGreaterThan\x88\x01\x01:\xb3\r\xbaH\xaf\r\x1a\xe5\x02\n" +
+	"(storage_account_lifecycle_cool_one_basis\x12Ttier-to-cool accepts exactly one aging basis: modification, last access, or creation\x1a\xe2\x01[has(this.tier_to_cool_after_days_since_modification_greater_than), has(this.tier_to_cool_after_days_since_last_access_time_greater_than), has(this.tier_to_cool_after_days_since_creation_greater_than)].filter(x, x).size() <= 1\x1a\xe5\x02\n" +
+	"(storage_account_lifecycle_cold_one_basis\x12Ttier-to-cold accepts exactly one aging basis: modification, last access, or creation\x1a\xe2\x01[has(this.tier_to_cold_after_days_since_modification_greater_than), has(this.tier_to_cold_after_days_since_last_access_time_greater_than), has(this.tier_to_cold_after_days_since_creation_greater_than)].filter(x, x).size() <= 1\x1a\xf4\x02\n" +
+	"+storage_account_lifecycle_archive_one_basis\x12Wtier-to-archive accepts exactly one aging basis: modification, last access, or creation\x1a\xeb\x01[has(this.tier_to_archive_after_days_since_modification_greater_than), has(this.tier_to_archive_after_days_since_last_access_time_greater_than), has(this.tier_to_archive_after_days_since_creation_greater_than)].filter(x, x).size() <= 1\x1a\xcf\x02\n" +
+	"*storage_account_lifecycle_delete_one_basis\x12Ndelete accepts exactly one aging basis: modification, last access, or creation\x1a\xd0\x01[has(this.delete_after_days_since_modification_greater_than), has(this.delete_after_days_since_last_access_time_greater_than), has(this.delete_after_days_since_creation_greater_than)].filter(x, x).size() <= 1\x1a\x93\x02\n" +
+	"5storage_account_lifecycle_auto_tier_needs_last_access\x12gauto_tier_to_hot_from_cool_enabled requires tier_to_cool_after_days_since_last_access_time_greater_than\x1aq!this.auto_tier_to_hot_from_cool_enabled || has(this.tier_to_cool_after_days_since_last_access_time_greater_than)B:\n" +
+	"8_tier_to_cool_after_days_since_modification_greater_thanB>\n" +
+	"<_tier_to_cool_after_days_since_last_access_time_greater_thanB6\n" +
+	"4_tier_to_cool_after_days_since_creation_greater_thanB:\n" +
+	"8_tier_to_cold_after_days_since_modification_greater_thanB>\n" +
+	"<_tier_to_cold_after_days_since_last_access_time_greater_thanB6\n" +
+	"4_tier_to_cold_after_days_since_creation_greater_thanB=\n" +
+	";_tier_to_archive_after_days_since_modification_greater_thanBA\n" +
+	"?_tier_to_archive_after_days_since_last_access_time_greater_thanB9\n" +
+	"7_tier_to_archive_after_days_since_creation_greater_thanBA\n" +
+	"?_tier_to_archive_after_days_since_last_tier_change_greater_thanB4\n" +
+	"2_delete_after_days_since_modification_greater_thanB8\n" +
+	"6_delete_after_days_since_last_access_time_greater_thanB0\n" +
+	"._delete_after_days_since_creation_greater_than\"\xa8\a\n" +
+	"+AzureStorageAccountLifecycleSnapshotActions\x12o\n" +
+	"-change_tier_to_cool_after_days_since_creation\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x00R&changeTierToCoolAfterDaysSinceCreation\x88\x01\x01\x12z\n" +
+	"3tier_to_cold_after_days_since_creation_greater_than\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x01R+tierToColdAfterDaysSinceCreationGreaterThan\x88\x01\x01\x12u\n" +
+	"0change_tier_to_archive_after_days_since_creation\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x02R)changeTierToArchiveAfterDaysSinceCreation\x88\x01\x01\x12\x8e\x01\n" +
+	">tier_to_archive_after_days_since_last_tier_change_greater_than\x18\x04 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x03R4tierToArchiveAfterDaysSinceLastTierChangeGreaterThan\x88\x01\x01\x12p\n" +
+	"-delete_after_days_since_creation_greater_than\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x04R'deleteAfterDaysSinceCreationGreaterThan\x88\x01\x01B0\n" +
+	"._change_tier_to_cool_after_days_since_creationB6\n" +
+	"4_tier_to_cold_after_days_since_creation_greater_thanB3\n" +
+	"1_change_tier_to_archive_after_days_since_creationBA\n" +
+	"?_tier_to_archive_after_days_since_last_tier_change_greater_thanB0\n" +
+	"._delete_after_days_since_creation_greater_than\"\x82\a\n" +
+	"*AzureStorageAccountLifecycleVersionActions\x12o\n" +
+	"-change_tier_to_cool_after_days_since_creation\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x00R&changeTierToCoolAfterDaysSinceCreation\x88\x01\x01\x12z\n" +
+	"3tier_to_cold_after_days_since_creation_greater_than\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x01R+tierToColdAfterDaysSinceCreationGreaterThan\x88\x01\x01\x12u\n" +
+	"0change_tier_to_archive_after_days_since_creation\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x02R)changeTierToArchiveAfterDaysSinceCreation\x88\x01\x01\x12\x8e\x01\n" +
+	">tier_to_archive_after_days_since_last_tier_change_greater_than\x18\x04 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x03R4tierToArchiveAfterDaysSinceLastTierChangeGreaterThan\x88\x01\x01\x12X\n" +
+	" delete_after_days_since_creation\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x9f\x8d\x06(\x00H\x04R\x1cdeleteAfterDaysSinceCreation\x88\x01\x01B0\n" +
+	"._change_tier_to_cool_after_days_since_creationB6\n" +
+	"4_tier_to_cold_after_days_since_creation_greater_thanB3\n" +
+	"1_change_tier_to_archive_after_days_since_creationBA\n" +
+	"?_tier_to_archive_after_days_since_last_tier_change_greater_thanB#\n" +
+	"!_delete_after_days_since_creation*\x9e\x01\n" +
+	"\x17AzureStorageAccountKind\x12*\n" +
+	"&azure_storage_account_kind_unspecified\x10\x00\x12\x0e\n" +
 	"\n" +
 	"STORAGE_V2\x10\x01\x12\x10\n" +
 	"\fBLOB_STORAGE\x10\x02\x12\x16\n" +
 	"\x12BLOCK_BLOB_STORAGE\x10\x03\x12\x10\n" +
 	"\fFILE_STORAGE\x10\x04\x12\v\n" +
-	"\aSTORAGE\x10\x05*R\n" +
-	"\x17AzureStorageAccountTier\x12\x1c\n" +
-	"\x18ACCOUNT_TIER_UNSPECIFIED\x10\x00\x12\f\n" +
+	"\aSTORAGE\x10\x05*`\n" +
+	"\x17AzureStorageAccountTier\x12*\n" +
+	"&azure_storage_account_tier_unspecified\x10\x00\x12\f\n" +
 	"\bSTANDARD\x10\x01\x12\v\n" +
-	"\aPREMIUM\x10\x02*x\n" +
-	"\x1bAzureStorageReplicationType\x12\x1b\n" +
-	"\x17REPLICATION_UNSPECIFIED\x10\x00\x12\a\n" +
+	"\aPREMIUM\x10\x02*\x9a\x01\n" +
+	"\"AzureStorageAccountReplicationType\x126\n" +
+	"2azure_storage_account_replication_type_unspecified\x10\x00\x12\a\n" +
 	"\x03LRS\x10\x01\x12\a\n" +
 	"\x03ZRS\x10\x02\x12\a\n" +
 	"\x03GRS\x10\x03\x12\b\n" +
 	"\x04GZRS\x10\x04\x12\n" +
 	"\n" +
 	"\x06RA_GRS\x10\x05\x12\v\n" +
-	"\aRA_GZRS\x10\x06*H\n" +
-	"\x16AzureStorageAccessTier\x12\x1b\n" +
-	"\x17ACCESS_TIER_UNSPECIFIED\x10\x00\x12\a\n" +
+	"\aRA_GZRS\x10\x06*\x88\x01\n" +
+	"\x1dAzureStorageAccountAccessTier\x121\n" +
+	"-azure_storage_account_access_tier_unspecified\x10\x00\x12\a\n" +
 	"\x03HOT\x10\x01\x12\b\n" +
-	"\x04COOL\x10\x02*R\n" +
-	"\x0fAzureTlsVersion\x12\x1b\n" +
-	"\x17TLS_VERSION_UNSPECIFIED\x10\x00\x12\n" +
+	"\x04COOL\x10\x02\x12\b\n" +
+	"\x04COLD\x10\x03\x12\x17\n" +
+	"\x13ACCESS_TIER_PREMIUM\x10\x04*}\n" +
+	" AzureStorageAccountMinTlsVersion\x125\n" +
+	"1azure_storage_account_min_tls_version_unspecified\x10\x00\x12\n" +
 	"\n" +
 	"\x06TLS1_0\x10\x01\x12\n" +
 	"\n" +
 	"\x06TLS1_1\x10\x02\x12\n" +
 	"\n" +
-	"\x06TLS1_2\x10\x03*P\n" +
-	"\x19AzureStorageNetworkAction\x12\x1e\n" +
-	"\x1aNETWORK_ACTION_UNSPECIFIED\x10\x00\x12\t\n" +
+	"\x06TLS1_2\x10\x03*z\n" +
+	"#AzureStorageAccountAllowedCopyScope\x128\n" +
+	"4azure_storage_account_allowed_copy_scope_unspecified\x10\x00\x12\a\n" +
+	"\x03AAD\x10\x01\x12\x10\n" +
+	"\fPRIVATE_LINK\x10\x02*\x8c\x01\n" +
+	"\"AzureStorageAccountDnsEndpointType\x127\n" +
+	"3azure_storage_account_dns_endpoint_type_unspecified\x10\x00\x12\x19\n" +
+	"\x15DNS_ENDPOINT_STANDARD\x10\x01\x12\x12\n" +
+	"\x0eAZURE_DNS_ZONE\x10\x02*{\n" +
+	"$AzureStorageAccountEncryptionKeyType\x129\n" +
+	"5azure_storage_account_encryption_key_type_unspecified\x10\x00\x12\v\n" +
+	"\aSERVICE\x10\x01\x12\v\n" +
+	"\aACCOUNT\x10\x02*\x9c\x01\n" +
+	"\x1fAzureStorageAccountIdentityType\x123\n" +
+	"/azure_storage_account_identity_type_unspecified\x10\x00\x12\x13\n" +
+	"\x0fSYSTEM_ASSIGNED\x10\x01\x12\x11\n" +
+	"\rUSER_ASSIGNED\x10\x02\x12\x1c\n" +
+	"\x18SYSTEM_AND_USER_ASSIGNED\x10\x03*|\n" +
+	"'AzureStorageAccountNetworkDefaultAction\x12<\n" +
+	"8azure_storage_account_network_default_action_unspecified\x10\x00\x12\t\n" +
 	"\x05ALLOW\x10\x01\x12\b\n" +
-	"\x04DENY\x10\x02*e\n" +
-	"\x1bAzureStorageContainerAccess\x12 \n" +
-	"\x1cCONTAINER_ACCESS_UNSPECIFIED\x10\x00\x12\v\n" +
-	"\aPRIVATE\x10\x01\x12\b\n" +
-	"\x04BLOB\x10\x02\x12\r\n" +
-	"\tCONTAINER\x10\x03B\x98\x03\n" +
+	"\x04DENY\x10\x02*\x90\x01\n" +
+	" AzureStorageAccountNetworkBypass\x124\n" +
+	"0azure_storage_account_network_bypass_unspecified\x10\x00\x12\x12\n" +
+	"\x0eAZURE_SERVICES\x10\x01\x12\v\n" +
+	"\aLOGGING\x10\x02\x12\v\n" +
+	"\aMETRICS\x10\x03\x12\b\n" +
+	"\x04NONE\x10\x04*\x85\x01\n" +
+	" AzureStorageAccountRoutingChoice\x124\n" +
+	"0azure_storage_account_routing_choice_unspecified\x10\x00\x12\x15\n" +
+	"\x11MICROSOFT_ROUTING\x10\x01\x12\x14\n" +
+	"\x10INTERNET_ROUTING\x10\x02*y\n" +
+	"&AzureStorageAccountSasExpirationAction\x12;\n" +
+	"7azure_storage_account_sas_expiration_action_unspecified\x10\x00\x12\a\n" +
+	"\x03LOG\x10\x01\x12\t\n" +
+	"\x05BLOCK\x10\x02*\x88\x01\n" +
+	"$AzureStorageAccountImmutabilityState\x128\n" +
+	"4azure_storage_account_immutability_state_unspecified\x10\x00\x12\f\n" +
+	"\bDISABLED\x10\x01\x12\f\n" +
+	"\bUNLOCKED\x10\x02\x12\n" +
+	"\n" +
+	"\x06LOCKED\x10\x03*\x87\x01\n" +
+	"'AzureStorageAccountDirectoryServiceType\x12<\n" +
+	"8azure_storage_account_directory_service_type_unspecified\x10\x00\x12\t\n" +
+	"\x05AADDS\x10\x01\x12\v\n" +
+	"\aAADKERB\x10\x02\x12\x06\n" +
+	"\x02AD\x10\x03*\xf0\x01\n" +
+	")AzureStorageAccountDefaultSharePermission\x12>\n" +
+	":azure_storage_account_default_share_permission_unspecified\x10\x00\x12\x19\n" +
+	"\x15SHARE_PERMISSION_NONE\x10\x01\x12\x1b\n" +
+	"\x17SHARE_PERMISSION_READER\x10\x02\x12 \n" +
+	"\x1cSHARE_PERMISSION_CONTRIBUTOR\x10\x03\x12)\n" +
+	"%SHARE_PERMISSION_ELEVATED_CONTRIBUTOR\x10\x04*\x82\x01\n" +
+	"$AzureStorageAccountLifecycleBlobType\x129\n" +
+	"5azure_storage_account_lifecycle_blob_type_unspecified\x10\x00\x12\x0e\n" +
+	"\n" +
+	"BLOCK_BLOB\x10\x01\x12\x0f\n" +
+	"\vAPPEND_BLOB\x10\x02B\x98\x03\n" +
 	"5com.dev.planton.provider.azure.azurestorageaccount.v1B\tSpecProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestorageaccount/v1;azurestorageaccountv1\xa2\x02\x05DPPAA\xaa\x021Dev.Planton.Provider.Azure.Azurestorageaccount.V1\xca\x021Dev\\Planton\\Provider\\Azure\\Azurestorageaccount\\V1\xe2\x02=Dev\\Planton\\Provider\\Azure\\Azurestorageaccount\\V1\\GPBMetadata\xea\x026Dev::Planton::Provider::Azure::Azurestorageaccount::V1b\x06proto3"
 
 var (
@@ -912,39 +3875,113 @@ func file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescGZ
 	return file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 17)
+var file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_goTypes = []any{
-	(AzureStorageAccountKind)(0),       // 0: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountKind
-	(AzureStorageAccountTier)(0),       // 1: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountTier
-	(AzureStorageReplicationType)(0),   // 2: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageReplicationType
-	(AzureStorageAccessTier)(0),        // 3: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccessTier
-	(AzureTlsVersion)(0),               // 4: dev.planton.provider.azure.azurestorageaccount.v1.AzureTlsVersion
-	(AzureStorageNetworkAction)(0),     // 5: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageNetworkAction
-	(AzureStorageContainerAccess)(0),   // 6: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageContainerAccess
-	(*AzureStorageAccountSpec)(nil),    // 7: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec
-	(*AzureStorageNetworkRules)(nil),   // 8: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageNetworkRules
-	(*AzureStorageBlobProperties)(nil), // 9: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageBlobProperties
-	(*AzureStorageContainer)(nil),      // 10: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageContainer
-	(*v1.StringValueOrRef)(nil),        // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureStorageAccountKind)(0),                              // 0: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountKind
+	(AzureStorageAccountTier)(0),                              // 1: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountTier
+	(AzureStorageAccountReplicationType)(0),                   // 2: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountReplicationType
+	(AzureStorageAccountAccessTier)(0),                        // 3: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAccessTier
+	(AzureStorageAccountMinTlsVersion)(0),                     // 4: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountMinTlsVersion
+	(AzureStorageAccountAllowedCopyScope)(0),                  // 5: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAllowedCopyScope
+	(AzureStorageAccountDnsEndpointType)(0),                   // 6: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDnsEndpointType
+	(AzureStorageAccountEncryptionKeyType)(0),                 // 7: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountEncryptionKeyType
+	(AzureStorageAccountIdentityType)(0),                      // 8: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountIdentityType
+	(AzureStorageAccountNetworkDefaultAction)(0),              // 9: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkDefaultAction
+	(AzureStorageAccountNetworkBypass)(0),                     // 10: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkBypass
+	(AzureStorageAccountRoutingChoice)(0),                     // 11: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountRoutingChoice
+	(AzureStorageAccountSasExpirationAction)(0),               // 12: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSasExpirationAction
+	(AzureStorageAccountImmutabilityState)(0),                 // 13: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountImmutabilityState
+	(AzureStorageAccountDirectoryServiceType)(0),              // 14: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDirectoryServiceType
+	(AzureStorageAccountDefaultSharePermission)(0),            // 15: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDefaultSharePermission
+	(AzureStorageAccountLifecycleBlobType)(0),                 // 16: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleBlobType
+	(*AzureStorageAccountSpec)(nil),                           // 17: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec
+	(*AzureStorageAccountIdentity)(nil),                       // 18: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountIdentity
+	(*AzureStorageAccountCustomerManagedKey)(nil),             // 19: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCustomerManagedKey
+	(*AzureStorageAccountNetworkRules)(nil),                   // 20: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkRules
+	(*AzureStorageAccountPrivateLinkAccess)(nil),              // 21: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountPrivateLinkAccess
+	(*AzureStorageAccountBlobProperties)(nil),                 // 22: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountBlobProperties
+	(*AzureStorageAccountDeleteRetentionPolicy)(nil),          // 23: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDeleteRetentionPolicy
+	(*AzureStorageAccountContainerDeleteRetentionPolicy)(nil), // 24: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountContainerDeleteRetentionPolicy
+	(*AzureStorageAccountRestorePolicy)(nil),                  // 25: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountRestorePolicy
+	(*AzureStorageAccountCorsRule)(nil),                       // 26: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCorsRule
+	(*AzureStorageAccountShareProperties)(nil),                // 27: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountShareProperties
+	(*AzureStorageAccountShareRetentionPolicy)(nil),           // 28: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountShareRetentionPolicy
+	(*AzureStorageAccountSmbSettings)(nil),                    // 29: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSmbSettings
+	(*AzureStorageAccountStaticWebsite)(nil),                  // 30: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountStaticWebsite
+	(*AzureStorageAccountRouting)(nil),                        // 31: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountRouting
+	(*AzureStorageAccountCustomDomain)(nil),                   // 32: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCustomDomain
+	(*AzureStorageAccountAzureFilesAuthentication)(nil),       // 33: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAzureFilesAuthentication
+	(*AzureStorageAccountActiveDirectory)(nil),                // 34: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountActiveDirectory
+	(*AzureStorageAccountSasPolicy)(nil),                      // 35: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSasPolicy
+	(*AzureStorageAccountImmutabilityPolicy)(nil),             // 36: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountImmutabilityPolicy
+	(*AzureStorageAccountLifecycleRule)(nil),                  // 37: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleRule
+	(*AzureStorageAccountLifecycleFilters)(nil),               // 38: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleFilters
+	(*AzureStorageAccountLifecycleTagFilter)(nil),             // 39: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleTagFilter
+	(*AzureStorageAccountLifecycleActions)(nil),               // 40: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleActions
+	(*AzureStorageAccountLifecycleBaseBlobActions)(nil),       // 41: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleBaseBlobActions
+	(*AzureStorageAccountLifecycleSnapshotActions)(nil),       // 42: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleSnapshotActions
+	(*AzureStorageAccountLifecycleVersionActions)(nil),        // 43: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleVersionActions
+	nil,                         // 44: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 45: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_depIdxs = []int32{
-	11, // 0: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	45, // 0: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0,  // 1: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.account_kind:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountKind
 	1,  // 2: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.account_tier:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountTier
-	2,  // 3: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.replication_type:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageReplicationType
-	3,  // 4: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.access_tier:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccessTier
-	4,  // 5: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.min_tls_version:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureTlsVersion
-	8,  // 6: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.network_rules:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageNetworkRules
-	9,  // 7: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.blob_properties:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageBlobProperties
-	10, // 8: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.containers:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageContainer
-	5,  // 9: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageNetworkRules.default_action:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageNetworkAction
-	6,  // 10: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageContainer.access_type:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageContainerAccess
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	2,  // 3: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.replication_type:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountReplicationType
+	3,  // 4: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.access_tier:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAccessTier
+	4,  // 5: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.min_tls_version:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountMinTlsVersion
+	5,  // 6: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.allowed_copy_scope:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAllowedCopyScope
+	35, // 7: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.sas_policy:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSasPolicy
+	6,  // 8: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.dns_endpoint_type:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDnsEndpointType
+	7,  // 9: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.queue_encryption_key_type:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountEncryptionKeyType
+	7,  // 10: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.table_encryption_key_type:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountEncryptionKeyType
+	18, // 11: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.identity:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountIdentity
+	19, // 12: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.customer_managed_key:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCustomerManagedKey
+	20, // 13: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.network_rules:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkRules
+	22, // 14: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.blob_properties:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountBlobProperties
+	27, // 15: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.share_properties:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountShareProperties
+	30, // 16: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.static_website:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountStaticWebsite
+	31, // 17: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.routing:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountRouting
+	32, // 18: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.custom_domain:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCustomDomain
+	33, // 19: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.azure_files_authentication:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAzureFilesAuthentication
+	36, // 20: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.immutability_policy:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountImmutabilityPolicy
+	37, // 21: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.lifecycle_rules:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleRule
+	44, // 22: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.tags:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSpec.TagsEntry
+	8,  // 23: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountIdentity.type:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountIdentityType
+	45, // 24: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	45, // 25: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCustomerManagedKey.key_vault_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	45, // 26: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCustomerManagedKey.user_assigned_identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 27: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkRules.default_action:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkDefaultAction
+	10, // 28: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkRules.bypass:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkBypass
+	45, // 29: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkRules.virtual_network_subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // 30: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkRules.private_link_access:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountPrivateLinkAccess
+	23, // 31: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountBlobProperties.delete_retention_policy:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDeleteRetentionPolicy
+	24, // 32: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountBlobProperties.container_delete_retention_policy:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountContainerDeleteRetentionPolicy
+	25, // 33: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountBlobProperties.restore_policy:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountRestorePolicy
+	26, // 34: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountBlobProperties.cors_rules:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCorsRule
+	28, // 35: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountShareProperties.retention_policy:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountShareRetentionPolicy
+	29, // 36: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountShareProperties.smb:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSmbSettings
+	26, // 37: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountShareProperties.cors_rules:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountCorsRule
+	11, // 38: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountRouting.choice:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountRoutingChoice
+	14, // 39: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAzureFilesAuthentication.directory_type:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDirectoryServiceType
+	34, // 40: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAzureFilesAuthentication.active_directory:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountActiveDirectory
+	15, // 41: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountAzureFilesAuthentication.default_share_level_permission:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountDefaultSharePermission
+	12, // 42: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSasPolicy.expiration_action:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountSasExpirationAction
+	13, // 43: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountImmutabilityPolicy.state:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountImmutabilityState
+	38, // 44: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleRule.filters:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleFilters
+	40, // 45: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleRule.actions:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleActions
+	16, // 46: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleFilters.blob_types:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleBlobType
+	39, // 47: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleFilters.match_blob_index_tags:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleTagFilter
+	41, // 48: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleActions.base_blob:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleBaseBlobActions
+	42, // 49: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleActions.snapshot:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleSnapshotActions
+	43, // 50: dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleActions.version:type_name -> dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountLifecycleVersionActions
+	51, // [51:51] is the sub-list for method output_type
+	51, // [51:51] is the sub-list for method input_type
+	51, // [51:51] is the sub-list for extension type_name
+	51, // [51:51] is the sub-list for extension extendee
+	0,  // [0:51] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_init() }
@@ -953,16 +3990,23 @@ func file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_init() {
 		return
 	}
 	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[11].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[20].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[22].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[24].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[25].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_msgTypes[26].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDesc)),
-			NumEnums:      7,
-			NumMessages:   4,
+			NumEnums:      17,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

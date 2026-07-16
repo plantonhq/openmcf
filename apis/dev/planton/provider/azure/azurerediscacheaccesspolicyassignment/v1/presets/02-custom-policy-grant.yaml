@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRedisCacheAccessPolicyAssignment
+metadata:
+  name: my-custom-policy-grant
+spec:
+  redisCacheId:
+    valueFrom:
+      kind: AzureRedisCache
+      name: <cache-resource-name>
+      fieldPath: status.outputs.redis_cache_id
+  assignmentName: <assignmentName>
+  # A custom AzureRedisCacheAccessPolicy, referenced through its name
+  # output -- the three-kind composition: cache -> policy -> grant.
+  accessPolicyName:
+    valueFrom:
+      kind: AzureRedisCacheAccessPolicy
+      name: <policy-resource-name>
+      fieldPath: status.outputs.access_policy_name
+  objectId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: <identity-resource-name>
+      fieldPath: status.outputs.principal_id
+  objectIdAlias: <identity-resource-name>

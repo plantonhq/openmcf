@@ -23,122 +23,75 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzurePrivateEndpointSpec** defines the configuration for creating an Azure
-// Private Endpoint with an optional Private DNS Zone Group.
+// **AzurePrivateEndpointSpec** defines an Azure Private Endpoint: a network
+// interface that gives a service powered by Azure Private Link a private IP
+// address inside your virtual network. The service -- an Azure PaaS resource
+// (SQL, PostgreSQL, Storage, Key Vault, Cosmos DB, ...) or a custom Private
+// Link Service -- becomes reachable over a private IP on the Microsoft
+// backbone, never the public internet.
 //
-// Azure Private Endpoint is a network interface that connects you privately and
-// securely to a service powered by Azure Private Link. It uses a private IP
-// address from your VNet, effectively bringing the service into your VNet. The
-// service could be an Azure PaaS service (Azure SQL, PostgreSQL, Storage, Key
-// Vault, etc.) or a custom Private Link Service.
+// Private endpoints deliver three things: private connectivity (traffic
+// stays on the backbone), data-exfiltration protection (each endpoint maps
+// to one sub-resource -- "blob", "vault", "sqlServer" -- not the whole
+// service), and a simpler network (no service endpoints, NAT, or public IPs
+// to reach Azure services).
 //
-// Private Endpoints enable:
-//
-//  1. **Private connectivity** -- Access Azure PaaS services over a private IP
-//     instead of the public internet. Traffic stays entirely on the Microsoft
-//     backbone network.
-//
-//  2. **Data exfiltration protection** -- Each private endpoint maps to a specific
-//     sub-resource (e.g., "postgresqlServer", "vault", "blob"), not the entire
-//     service. Clients can only connect to the specific resource, preventing
-//     lateral data access.
-//
-//  3. **Simplified network architecture** -- No need for service endpoints, NAT
-//     devices, or public IP addresses to reach Azure services from the VNet.
-//
-// This component bundles the private endpoint with its DNS zone group per DD03
-// (Composite Bundling Rules): a private endpoint without DNS zone group
-// registration won't resolve correctly in the VNet, causing clients to reach the
-// public IP instead of the private one.
-//
-// **Design decisions:**
-//   - `is_manual_connection` is hardcoded to `false` (auto-approved) in IaC modules.
-//     Auto-approved connections are the 80/20 case; manual connections require
-//     request messages and owner approval, adding spec complexity for an edge case.
-//   - Private service connection name and DNS zone group name are auto-derived from
-//     `metadata.name` in IaC modules, following the pattern established by
-//     AzurePrivateDnsZone (VNet link name auto-derived).
-//   - `ip_configuration` (static IP assignment) is omitted per 80/20 scoping;
-//     dynamic allocation from the subnet is the standard pattern.
+// The private DNS zone group is part of this resource, not a separate node:
+// a private endpoint without DNS registration resolves to the service's
+// PUBLIC IP, silently defeating the private link. Folding the zone group in
+// keeps that guarantee atomic. DNS zones themselves are first-class
+// (AzurePrivateDnsZone) and referenced here by id.
 type AzurePrivateEndpointSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure region where the Private Endpoint will be created.
-	// Must be in the same region as the subnet it connects to.
-	// Examples: "eastus", "westus2", "westeurope", "southeastasia".
+	// The Azure region the private endpoint is created in. Must match the
+	// region of the subnet it draws its IP from. Fixed at creation.
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// The Azure Resource Group where the Private Endpoint will be created.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
+	// The Azure resource group the private endpoint is created in. Can be a
+	// literal resource-group name or a reference to an AzureResourceGroup's
+	// name output.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// The name of the Private Endpoint.
-	// Must be unique within the resource group.
-	// Azure allows 1-80 characters: must start/end with alphanumeric, allows
-	// letters, numbers, underscores, periods, and hyphens.
+	// The name of the private endpoint, unique within the resource group.
+	// 1-80 characters (alphanumerics, underscores, periods, and hyphens;
+	// must start with a letter or number and end with a letter, number, or
+	// underscore). Fixed at creation.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// The Azure Resource Manager ID of the Subnet from which a private IP address
-	// will be allocated for this Private Endpoint.
-	// The subnet must have private endpoint network policies configured appropriately.
-	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{vnet}/subnets/{subnet}
+	// The subnet the private endpoint draws its private IP from. The subnet
+	// must permit private endpoints (its private-endpoint network policies
+	// configured accordingly). Can be a literal subnet ARM ID or a reference
+	// to an AzureSubnet's output. Fixed at creation.
 	SubnetId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
-	// The Azure Resource Manager ID of the Private Link-enabled resource to connect
-	// to privately. This is the target service that the private endpoint will create
-	// a secure tunnel to.
-	//
-	// Can be a literal Azure resource ID or a reference to another Planton resource's
-	// output. In infra charts, this enables dynamic wiring:
-	//
-	//	privateConnectionResourceId:
-	//	  valueFrom:
-	//	    kind: AzurePostgresqlFlexibleServer
-	//	    name: prod-postgresql
-	//	    fieldPath: status.outputs.server_id
-	//
-	// **Note:** No default_kind annotation because this field is polymorphic -- it
-	// can reference any Azure resource type that supports Private Link (PostgreSQL,
-	// MySQL, Key Vault, Storage Account, Cosmos DB, Redis, SQL Server, etc.).
-	//
-	// Examples of literal resource IDs:
-	// - PostgreSQL: "/subscriptions/.../Microsoft.DBforPostgreSQL/flexibleServers/myserver"
-	// - Key Vault: "/subscriptions/.../Microsoft.KeyVault/vaults/myvault"
-	// - Storage: "/subscriptions/.../Microsoft.Storage/storageAccounts/mystorage"
-	PrivateConnectionResourceId *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=private_connection_resource_id,json=privateConnectionResourceId,proto3" json:"private_connection_resource_id,omitempty"`
-	// The list of sub-resource names (group IDs) that the Private Endpoint can
-	// connect to. Each Azure service defines its own sub-resource names.
-	//
-	// In practice, most private endpoints connect to exactly one sub-resource.
-	// Azure validates that the sub-resource name is valid for the target service.
-	//
-	// Common sub-resource names by service:
-	// - PostgreSQL Flexible Server: "postgresqlServer"
-	// - MySQL Flexible Server: "mysqlServer"
-	// - Azure SQL Database: "sqlServer"
-	// - Azure Key Vault: "vault"
-	// - Azure Blob Storage: "blob"
-	// - Azure Table Storage: "table"
-	// - Azure Queue Storage: "queue"
-	// - Azure File Storage: "file"
-	// - Azure Cosmos DB: "Sql" (SQL API), "MongoDB" (Mongo API)
-	// - Azure Cache for Redis: "redisCache"
-	// - Azure Container Registry: "registry"
-	//
-	// Note: Some services (like Storage Account) only support one sub-resource
-	// per private endpoint.
-	SubresourceNames []string `protobuf:"bytes,6,rep,name=subresource_names,json=subresourceNames,proto3" json:"subresource_names,omitempty"`
-	// The Azure Resource Manager ID of an AzurePrivateDnsZone to associate with
-	// this Private Endpoint via a DNS Zone Group.
-	//
-	// When provided, the IaC module creates a `private_dns_zone_group` that
-	// automatically registers the private endpoint's IP address as an A-record in
-	// the specified zone. This is critical for DNS resolution: without it, the
-	// service FQDN resolves to the public IP instead of the private one.
-	//
-	// For the database-stack infra chart, this wires each private endpoint to its
-	// corresponding privatelink zone (e.g., `privatelink.postgres.database.azure.com`).
-	//
-	// When omitted, no DNS zone group is created. Use this when DNS is managed
-	// externally or when custom DNS configuration is needed.
-	PrivateDnsZoneId *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=private_dns_zone_id,json=privateDnsZoneId,proto3" json:"private_dns_zone_id,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The private link connection this endpoint establishes -- which service
+	// it tunnels to and which sub-resource of that service. Required: an
+	// endpoint with no connection has nothing to reach.
+	PrivateServiceConnection *AzurePrivateEndpointServiceConnection `protobuf:"bytes,5,opt,name=private_service_connection,json=privateServiceConnection,proto3" json:"private_service_connection,omitempty"`
+	// The private DNS zones this endpoint registers its IP into, as an A
+	// record, so the service FQDN resolves to the private IP inside the VNet.
+	// Each entry is a private DNS zone by ARM ID, or a reference to an
+	// AzurePrivateDnsZone's output (typically the service's privatelink zone,
+	// e.g. privatelink.postgres.database.azure.com). When empty, no DNS zone
+	// group is created -- use that only when DNS is managed externally, since
+	// without registration the FQDN resolves to the PUBLIC IP.
+	PrivateDnsZoneIds []*v1.StringValueOrRef `protobuf:"bytes,6,rep,name=private_dns_zone_ids,json=privateDnsZoneIds,proto3" json:"private_dns_zone_ids,omitempty"`
+	// Static private IP assignments for the endpoint's network interface.
+	// Leave empty for dynamic allocation from the subnet (the common case);
+	// set one entry per sub-resource when a service must land on a fixed IP
+	// (firewall allowlists, hard-coded DNS). Fixed at creation.
+	IpConfigurations []*AzurePrivateEndpointIpConfiguration `protobuf:"bytes,7,rep,name=ip_configurations,json=ipConfigurations,proto3" json:"ip_configurations,omitempty"`
+	// Application security groups this endpoint's network interface joins, so
+	// NSG rules can govern traffic to the endpoint by workload group. Each
+	// entry is an application security group by ARM ID, or a reference to an
+	// AzureApplicationSecurityGroup's output. Realized as association
+	// resources (Azure models ASG membership from the member side).
+	ApplicationSecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,8,rep,name=application_security_group_ids,json=applicationSecurityGroupIds,proto3" json:"application_security_group_ids,omitempty"`
+	// A custom name for the network interface Azure creates for this
+	// endpoint. Leave empty to let Azure name it. Fixed at creation.
+	CustomNetworkInterfaceName string `protobuf:"bytes,9,opt,name=custom_network_interface_name,json=customNetworkInterfaceName,proto3" json:"custom_network_interface_name,omitempty"`
+	// Free-form tags applied to the endpoint, merged over the Planton-derived
+	// resource tags (organization, environment, resource id); a user tag with
+	// the same key wins. Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,10,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AzurePrivateEndpointSpec) Reset() {
@@ -199,41 +152,273 @@ func (x *AzurePrivateEndpointSpec) GetSubnetId() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzurePrivateEndpointSpec) GetPrivateConnectionResourceId() *v1.StringValueOrRef {
+func (x *AzurePrivateEndpointSpec) GetPrivateServiceConnection() *AzurePrivateEndpointServiceConnection {
+	if x != nil {
+		return x.PrivateServiceConnection
+	}
+	return nil
+}
+
+func (x *AzurePrivateEndpointSpec) GetPrivateDnsZoneIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.PrivateDnsZoneIds
+	}
+	return nil
+}
+
+func (x *AzurePrivateEndpointSpec) GetIpConfigurations() []*AzurePrivateEndpointIpConfiguration {
+	if x != nil {
+		return x.IpConfigurations
+	}
+	return nil
+}
+
+func (x *AzurePrivateEndpointSpec) GetApplicationSecurityGroupIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.ApplicationSecurityGroupIds
+	}
+	return nil
+}
+
+func (x *AzurePrivateEndpointSpec) GetCustomNetworkInterfaceName() string {
+	if x != nil {
+		return x.CustomNetworkInterfaceName
+	}
+	return ""
+}
+
+func (x *AzurePrivateEndpointSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+// The private link connection a private endpoint establishes. Azure models
+// this as a single connection block per endpoint.
+type AzurePrivateEndpointServiceConnection struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Private Link-enabled resource to connect to, by ARM ID. Polymorphic
+	// -- any Azure resource type supporting Private Link (PostgreSQL, MySQL,
+	// Key Vault, Storage, Cosmos DB, SQL Server, ...) -- so it carries no
+	// default_kind; reference the service's own output id in composed
+	// environments. Set this OR connection_alias, never both. Fixed at
+	// creation.
+	PrivateConnectionResourceId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=private_connection_resource_id,json=privateConnectionResourceId,proto3" json:"private_connection_resource_id,omitempty"`
+	// The Private Link Service ALIAS to connect to, when the target is
+	// exposed through an alias rather than a resource ID (typically a
+	// partner's cross-tenant Private Link Service). Aliases always end in
+	// ".azure.privatelinkservice". Set this OR
+	// private_connection_resource_id, never both. Fixed at creation.
+	ConnectionAlias string `protobuf:"bytes,2,opt,name=connection_alias,json=connectionAlias,proto3" json:"connection_alias,omitempty"`
+	// The sub-resource (group ID) of the target service this endpoint reaches
+	// -- the data-exfiltration boundary. Most endpoints name exactly one.
+	// Examples: PostgreSQL "postgresqlServer"; SQL "sqlServer"; Key Vault
+	// "vault"; Storage "blob"/"table"/"queue"/"file"; Cosmos DB "Sql"/
+	// "MongoDB"; Redis "redisCache"; Container Registry "registry". Omit when
+	// connecting through a Private Link Service alias (the alias already pins
+	// the target). Fixed at creation.
+	SubresourceNames []string `protobuf:"bytes,3,rep,name=subresource_names,json=subresourceNames,proto3" json:"subresource_names,omitempty"`
+	// Whether the connection requires manual approval by the target service's
+	// owner. False (auto-approved) is the norm and works whenever you own or
+	// are granted access to the target. Set true for cross-tenant or
+	// cross-subscription connections where the owner must approve; then
+	// request_message is required. Fixed at creation.
+	IsManualConnection *bool `protobuf:"varint,4,opt,name=is_manual_connection,json=isManualConnection,proto3,oneof" json:"is_manual_connection,omitempty"`
+	// The message shown to the target owner on a manual approval request
+	// (1-140 characters). Required when is_manual_connection is true; must be
+	// empty otherwise.
+	RequestMessage string `protobuf:"bytes,5,opt,name=request_message,json=requestMessage,proto3" json:"request_message,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AzurePrivateEndpointServiceConnection) Reset() {
+	*x = AzurePrivateEndpointServiceConnection{}
+	mi := &file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzurePrivateEndpointServiceConnection) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzurePrivateEndpointServiceConnection) ProtoMessage() {}
+
+func (x *AzurePrivateEndpointServiceConnection) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzurePrivateEndpointServiceConnection.ProtoReflect.Descriptor instead.
+func (*AzurePrivateEndpointServiceConnection) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AzurePrivateEndpointServiceConnection) GetPrivateConnectionResourceId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.PrivateConnectionResourceId
 	}
 	return nil
 }
 
-func (x *AzurePrivateEndpointSpec) GetSubresourceNames() []string {
+func (x *AzurePrivateEndpointServiceConnection) GetConnectionAlias() string {
+	if x != nil {
+		return x.ConnectionAlias
+	}
+	return ""
+}
+
+func (x *AzurePrivateEndpointServiceConnection) GetSubresourceNames() []string {
 	if x != nil {
 		return x.SubresourceNames
 	}
 	return nil
 }
 
-func (x *AzurePrivateEndpointSpec) GetPrivateDnsZoneId() *v1.StringValueOrRef {
-	if x != nil {
-		return x.PrivateDnsZoneId
+func (x *AzurePrivateEndpointServiceConnection) GetIsManualConnection() bool {
+	if x != nil && x.IsManualConnection != nil {
+		return *x.IsManualConnection
 	}
-	return nil
+	return false
+}
+
+func (x *AzurePrivateEndpointServiceConnection) GetRequestMessage() string {
+	if x != nil {
+		return x.RequestMessage
+	}
+	return ""
+}
+
+// A static private IP assignment for a private endpoint's network
+// interface. Pins one sub-resource of the target to a fixed IP inside the
+// subnet instead of dynamic allocation.
+type AzurePrivateEndpointIpConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A name for this IP configuration, unique within the endpoint. Fixed at
+	// creation.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The static private IP to assign, which must fall within the endpoint's
+	// subnet range. Fixed at creation.
+	PrivateIpAddress string `protobuf:"bytes,2,opt,name=private_ip_address,json=privateIpAddress,proto3" json:"private_ip_address,omitempty"`
+	// The sub-resource (group ID) this IP applies to -- must match one of the
+	// connection's subresource_names (e.g. "blob"). Fixed at creation.
+	SubresourceName string `protobuf:"bytes,3,opt,name=subresource_name,json=subresourceName,proto3" json:"subresource_name,omitempty"`
+	// The member name this IP applies to. When omitted, Azure uses the
+	// subresource_name. Some services require it explicitly. Fixed at
+	// creation.
+	MemberName    string `protobuf:"bytes,4,opt,name=member_name,json=memberName,proto3" json:"member_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzurePrivateEndpointIpConfiguration) Reset() {
+	*x = AzurePrivateEndpointIpConfiguration{}
+	mi := &file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzurePrivateEndpointIpConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzurePrivateEndpointIpConfiguration) ProtoMessage() {}
+
+func (x *AzurePrivateEndpointIpConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzurePrivateEndpointIpConfiguration.ProtoReflect.Descriptor instead.
+func (*AzurePrivateEndpointIpConfiguration) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AzurePrivateEndpointIpConfiguration) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AzurePrivateEndpointIpConfiguration) GetPrivateIpAddress() string {
+	if x != nil {
+		return x.PrivateIpAddress
+	}
+	return ""
+}
+
+func (x *AzurePrivateEndpointIpConfiguration) GetSubresourceName() string {
+	if x != nil {
+		return x.SubresourceName
+	}
+	return ""
+}
+
+func (x *AzurePrivateEndpointIpConfiguration) GetMemberName() string {
+	if x != nil {
+		return x.MemberName
+	}
+	return ""
 }
 
 var File_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/azure/azureprivateendpoint/v1/spec.proto\x122dev.planton.provider.azure.azureprivateendpoint.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9c\x05\n" +
+	"=dev/planton/provider/azure/azureprivateendpoint/v1/spec.proto\x122dev.planton.provider.azure.azureprivateendpoint.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc5\v\n" +
 	"\x18AzurePrivateEndpointSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12 \n" +
-	"\x04name\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12x\n" +
-	"\tsubnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x7f\n" +
-	"\x1eprivate_connection_resource_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x1bprivateConnectionResourceId\x12+\n" +
-	"\x11subresource_names\x18\x06 \x03(\tR\x10subresourceNames\x12\x82\x01\n" +
-	"\x13private_dns_zone_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_idR\x10privateDnsZoneIdB\x9f\x03\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xb2\x02\n" +
+	"\x04name\x18\x03 \x01(\tB\x9d\x02\xbaH\x99\x02\xba\x01\x8c\x02\n" +
+	"\x1cprivate_endpoint_name_format\x12\xa0\x01Private endpoint names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12x\n" +
+	"\tsubnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x9f\x01\n" +
+	"\x1aprivate_service_connection\x18\x05 \x01(\v2Y.dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointServiceConnectionB\x06\xbaH\x03\xc8\x01\x01R\x18privateServiceConnection\x12\x84\x01\n" +
+	"\x14private_dns_zone_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_idR\x11privateDnsZoneIds\x12\x84\x01\n" +
+	"\x11ip_configurations\x18\a \x03(\v2W.dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointIpConfigurationR\x10ipConfigurations\x12\xae\x01\n" +
+	"\x1eapplication_security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\x88\xd4a\xac\x03\x92\xd4a,status.outputs.application_security_group_idR\x1bapplicationSecurityGroupIds\x12A\n" +
+	"\x1dcustom_network_interface_name\x18\t \x01(\tR\x1acustomNetworkInterfaceName\x12j\n" +
+	"\x04tags\x18\n" +
+	" \x03(\v2V.dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x85\t\n" +
+	"%AzurePrivateEndpointServiceConnection\x12w\n" +
+	"\x1eprivate_connection_resource_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x1bprivateConnectionResourceId\x12\xc1\x01\n" +
+	"\x10connection_alias\x18\x02 \x01(\tB\x95\x01\xbaH\x91\x01\xba\x01\x8d\x01\n" +
+	"\x17connection_alias_suffix\x128connection_alias must end with .azure.privatelinkservice\x1a8this == '' || this.endsWith('.azure.privatelinkservice')R\x0fconnectionAlias\x12+\n" +
+	"\x11subresource_names\x18\x03 \x03(\tR\x10subresourceNames\x125\n" +
+	"\x14is_manual_connection\x18\x04 \x01(\bH\x00R\x12isManualConnection\x88\x01\x01\x12\x92\x01\n" +
+	"\x0frequest_message\x18\x05 \x01(\tBi\xbaHf\xba\x01c\n" +
+	"\x16request_message_length\x12(request_message must be 1-140 characters\x1a\x1fthis == '' || size(this) <= 140R\x0erequestMessage:\x8c\x04\xbaH\x88\x04\x1a\xf5\x01\n" +
+	"\x1dconnection_target_exactly_one\x12\x88\x01Set exactly one connection target: private_connection_resource_id (an Azure resource) or connection_alias (a Private Link Service alias)\x1aIhas(this.private_connection_resource_id) != (this.connection_alias != '')\x1a\x8d\x02\n" +
+	")manual_connection_request_message_pairing\x12\x9a\x01request_message is required when is_manual_connection is true, and must be empty when it is false (Azure rejects a message on an auto-approved connection)\x1aC(this.is_manual_connection == true) == (this.request_message != '')B\x17\n" +
+	"\x15_is_manual_connection\"\xcb\x01\n" +
+	"#AzurePrivateEndpointIpConfiguration\x12\x1e\n" +
+	"\x04name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x128\n" +
+	"\x12private_ip_address\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x10privateIpAddress\x12)\n" +
+	"\x10subresource_name\x18\x03 \x01(\tR\x0fsubresourceName\x12\x1f\n" +
+	"\vmember_name\x18\x04 \x01(\tR\n" +
+	"memberNameB\x9f\x03\n" +
 	"6com.dev.planton.provider.azure.azureprivateendpoint.v1B\tSpecProtoP\x01Zkgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureprivateendpoint/v1;azureprivateendpointv1\xa2\x02\x05DPPAA\xaa\x022Dev.Planton.Provider.Azure.Azureprivateendpoint.V1\xca\x022Dev\\Planton\\Provider\\Azure\\Azureprivateendpoint\\V1\xe2\x02>Dev\\Planton\\Provider\\Azure\\Azureprivateendpoint\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Azure::Azureprivateendpoint::V1b\x06proto3"
 
 var (
@@ -248,21 +433,28 @@ func file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_rawDescG
 	return file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_goTypes = []any{
-	(*AzurePrivateEndpointSpec)(nil), // 0: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec
-	(*v1.StringValueOrRef)(nil),      // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AzurePrivateEndpointSpec)(nil),              // 0: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec
+	(*AzurePrivateEndpointServiceConnection)(nil), // 1: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointServiceConnection
+	(*AzurePrivateEndpointIpConfiguration)(nil),   // 2: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointIpConfiguration
+	nil,                         // 3: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.private_connection_resource_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 3: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.private_dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	4, // 0: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 1: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 2: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.private_service_connection:type_name -> dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointServiceConnection
+	4, // 3: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.private_dns_zone_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 4: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.ip_configurations:type_name -> dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointIpConfiguration
+	4, // 5: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.application_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 6: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.tags:type_name -> dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.TagsEntry
+	4, // 7: dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointServiceConnection.private_connection_resource_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_init() }
@@ -270,13 +462,14 @@ func file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_init() {
 	if File_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

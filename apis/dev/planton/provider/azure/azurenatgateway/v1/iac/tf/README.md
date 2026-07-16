@@ -1,70 +1,77 @@
-# Azure NAT Gateway - Terraform Module
+# AzureNatGateway Terraform Module
 
-This Terraform module provisions an Azure NAT Gateway with dynamic SNAT, eliminating port exhaustion for private workloads.
+## Overview
 
-## Usage
+This Terraform module provisions an Azure NAT Gateway using the `azurerm`
+provider. It creates an `azurerm_nat_gateway` -- the managed SNAT service
+that gives every workload in its attached subnets stable, scalable
+outbound connectivity -- plus one association resource per referenced
+public IP and public IP prefix.
 
-### Basic Configuration
+The gateway is just the gateway. The addresses it SNATs through are
+referenced first-class AzurePublicIp / AzurePublicIpPrefix resources (each
+address adds 64,512 SNAT ports), and the subnets it serves attach
+themselves via AzureSubnet's `nat_gateway_id` -- matching Azure's model,
+so one gateway serves many subnets without listing them. A gateway with
+no associated addresses deploys but cannot translate anything.
 
-```hcl
-module "nat_gateway" {
-  source = "./path/to/module"
+Idle timeout, tags, and the IP/prefix associations update in place. Name,
+SKU, and zone are the gateway's identity -- changing any of them replaces
+it, briefly interrupting egress for every attached subnet.
 
-  metadata = {
-    name = "prod-nat"
-    org  = "mycompany"
-    env  = "production"
-  }
+## Resources Created
 
-  spec = {
-    subnet_id = "/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{vnet}/subnets/{subnet}"
-  }
-}
-```
+- `azurerm_nat_gateway.main` -- the gateway itself
+- `azurerm_nat_gateway_public_ip_association.main` -- one per referenced public IP
+- `azurerm_nat_gateway_public_ip_prefix_association.main` -- one per referenced prefix
 
-### Production with IP Prefix
+## Variables
 
-```hcl
-module "nat_gateway_prod" {
-  source = "./path/to/module"
+| Variable | Type | Description |
+|----------|------|-------------|
+| `metadata` | object | Planton metadata (name, org, env) |
+| `spec` | object | NAT gateway specification |
 
-  metadata = {
-    name = "prod-nat"
-    env  = "production"
-  }
+Key spec fields:
 
-  spec = {
-    subnet_id               = var.subnet_id
-    idle_timeout_minutes    = 10
-    public_ip_prefix_length = 28  # 16 IPs, 1M+ ports
-    tags = {
-      "cost-center" = "infrastructure"
-    }
-  }
-}
-```
-
-## Inputs
-
-- `metadata.name` (required): Base name for resources
-- `spec.subnet_id` (required): Subnet resource ID
-- `spec.idle_timeout_minutes` (optional): Timeout 4-120, default 4
-- `spec.public_ip_prefix_length` (optional): Prefix /28-/31
-- `spec.tags` (optional): Additional resource tags
+| Field | Required | Description |
+|-------|----------|-------------|
+| `region` | yes | Azure region; a gateway only serves subnets in its own region |
+| `resource_group` | yes | Resource group name |
+| `name` | yes | Gateway name, unique within the resource group |
+| `sku_name` | no | `STANDARD` (Azure's default, zonal) or `STANDARD_V2` (zone-redundant, needs StandardV2 addresses, empty zones) |
+| `idle_timeout_in_minutes` | no | SNAT port hold time for idle TCP, 4-120; Azure default 4 |
+| `zones` | no | Single zone to pin a STANDARD gateway to; empty for STANDARD_V2 |
+| `public_ip_ids` / `public_ip_prefix_ids` | no | ARM IDs of the addresses and ranges to SNAT through |
+| `tags` | no | User tags, merged over metadata-derived tags |
 
 ## Outputs
 
-- `nat_gateway_id`: NAT Gateway resource ID
-- `public_ip_addresses`: List of allocated IPs (if using individual IP)
-- `public_ip_prefix_id`: Prefix ID (if using prefix)
+| Output | Description |
+|--------|-------------|
+| `nat_gateway_id` | Full ARM ID of the gateway -- the join key subnets attach through |
+| `nat_gateway_name` | The gateway's name as deployed |
+| `resource_guid` | The immutable GUID ARM assigns the gateway (billing/support correlation) |
 
-## Important Notes
+## Usage
 
-- Use Public IP Prefix (28-31) for production scale
-- Single IP provides 64,512 ports (sufficient for many workloads)
-- /28 prefix provides 16 IPs = 1,032,192 ports
-- NAT Gateway takes precedence over all other outbound methods
-- Cost: ~$0.045/hour + $0.045/GB processed
+```hcl
+module "nat_gateway" {
+  source = "./iac/tf"
 
-See full documentation: [Research Doc](../docs/README.md)
+  metadata = { name = "prod-egress", org = "mycompany", env = "production" }
 
+  spec = {
+    region               = "eastus"
+    resource_group       = "network-rg"
+    name                 = "prod-egress"
+    public_ip_prefix_ids = ["/subscriptions/xxx/.../publicIPPrefixes/prod-egress"]
+  }
+}
+```
+
+## Required Permissions
+
+The deploying credential needs `Microsoft.Network/natGateways/write` on
+the resource group, plus join rights on the associated public IPs and
+prefixes -- held via Network Contributor, Contributor, or Owner.

@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureservicebusauthorizationrule.v1;
+
+import "dev/planton/shared/options/options.proto";
+
+// **AzureServiceBusAuthorizationRuleStackOutputs** captures the outputs of
+// provisioning a SAS authorization rule: the credential surface
+// applications actually consume.
+//
+// Primary and secondary keys exist for zero-downtime rotation: move
+// clients to the secondary, regenerate the primary, move back. The
+// `*_alias` connection strings are only populated when the namespace is
+// paired for geo-disaster recovery (AzureServiceBusDisasterRecoveryConfig)
+// -- they address the failover-stable alias DNS name instead of the
+// namespace, so clients survive a failover without reconfiguration.
+message AzureServiceBusAuthorizationRuleStackOutputs {
+  // The Azure Resource Manager ID of the rule (under its namespace,
+  // queue, or topic parent). AzureServiceBusDisasterRecoveryConfig's
+  // alias_authorization_rule_id consumes it with zero translation.
+  string authorization_rule_id = 1;
+
+  // The rule's name -- the SharedAccessKeyName clients present.
+  string rule_name = 2;
+
+  // The primary key.
+  string primary_key = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // The secondary key -- the rotation partner.
+  string secondary_key = 4 [(dev.planton.shared.options.sensitive) = true];
+
+  // The ready-to-use primary connection string (endpoint + key name +
+  // primary key), scoped to the rule's entity when queue- or
+  // topic-scoped.
+  string primary_connection_string = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // The secondary connection string -- the rotation partner.
+  string secondary_connection_string = 6 [(dev.planton.shared.options.sensitive) = true];
+
+  // The primary connection string addressing the geo-DR alias instead of
+  // the namespace. Empty unless the namespace carries a disaster-recovery
+  // pairing.
+  string primary_connection_string_alias = 7 [(dev.planton.shared.options.sensitive) = true];
+
+  // The secondary alias connection string -- the rotation partner.
+  string secondary_connection_string_alias = 8 [(dev.planton.shared.options.sensitive) = true];
+}

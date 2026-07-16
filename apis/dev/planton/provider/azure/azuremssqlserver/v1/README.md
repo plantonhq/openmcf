@@ -1,91 +1,90 @@
 # AzureMssqlServer
 
-**Azure SQL Database Logical Server** with bundled databases and firewall rules.
-
-## Overview
-
-`AzureMssqlServer` provisions an Azure SQL Database logical server -- the managed
-endpoint for Azure SQL databases. Unlike PostgreSQL and MySQL Flexible Servers
-(which are physical servers carrying their own compute and storage), Azure SQL uses
-a **logical server + database** architecture:
-
-- The **server** is an administrative container that defines the login endpoint,
-  firewall rules, TLS policy, and connection policy. It has no compute or storage.
-- Each **database** carries its own compute SKU (DTU-based or vCore-based),
-  maximum storage size, zone redundancy, and license type. Databases are billed
-  independently.
-
-This component bundles the server with its databases and firewall rules per DD03
-(Composite Bundling Rules), because a server without at least one database and a
-connection path has no practical utility.
+Azure SQL Database's logical server: the administrative container that
+carries the login endpoint, SQL and Microsoft Entra authentication, the
+networking posture, the transparent-data-encryption key, auditing, and
+Microsoft Defender settings. It has no compute of its own -- databases
+(AzureMssqlDatabase) and elastic pools (AzureMssqlElasticPool) are
+first-class resources created on it, each carrying its own SKU and
+billing.
 
 ## When to Use
 
-- **Relational SQL workloads** that require T-SQL, stored procedures, or SQL Server
-  compatibility features not available in PostgreSQL/MySQL
-- **Enterprise applications** migrating from on-premises SQL Server
-- **Cost-optimized deployments** using Azure Hybrid Benefit (bring your own
-  SQL Server license for up to 55% savings)
-- **Multi-database architectures** where each database needs independent compute
-  and storage sizing
+Use AzureMssqlServer when you need:
+
+- **The container for Azure SQL databases and elastic pools** -- every
+  database estate starts with one
+- **Entra-only (passwordless) authentication** -- disable SQL logins
+  server-wide via the Entra administrator
+- **A customer-managed TDE key** composed against `AzureKeyVaultKey`,
+  protecting every database on the server
+- **Server-wide auditing and Microsoft Defender** threat detection
+- **Network governance** -- the public-endpoint dial, IPv4 firewall
+  rules, subnet service-endpoint rules, and outbound FQDN restriction
 
 ## Key Configuration
 
-### Server-Level Settings
+### Authentication (at least one mechanism)
 
-| Field | Description | Default |
-|-------|-------------|---------|
-| `version` | SQL Server version (`"12.0"` or `"2.0"`) | `"12.0"` |
-| `minimum_tls_version` | Minimum TLS for connections | `"1.2"` |
-| `public_network_access_enabled` | Allow public internet access | `true` |
-| `connection_policy` | How clients connect (`Default`, `Proxy`, `Redirect`) | `"Default"` |
+- **SQL auth**: `administrator_login` + `administrator_password` (the
+  login is fixed once set)
+- **Microsoft Entra**: `azuread_administrator` (use a group to admit a
+  team); with `azuread_authentication_only` SQL logins are disabled
+  server-wide and the SQL credentials must be omitted
+- Mixed mode (both) is legal and common during migrations
 
-### Database-Level Settings
+### Networking
 
-Each database in the `databases` list has its own compute and storage:
+Azure SQL does not support VNet delegation. The dials, matching ARM's
+contract:
 
-| Field | Description | Default |
-|-------|-------------|---------|
-| `sku_name` | Compute tier (e.g., `"S0"`, `"GP_Gen5_2"`, `"BC_Gen5_4"`) | Required |
-| `max_size_gb` | Maximum storage in GB | SKU default |
-| `collation` | Sort order and string comparison | `SQL_Latin1_General_CP1_CI_AS` |
-| `zone_redundant` | Spread replicas across availability zones | `false` |
-| `license_type` | `BasePrice` (Hybrid Benefit) or `LicenseIncluded` | `LicenseIncluded` |
-| `storage_account_type` | Backup redundancy (`Geo`, `Local`, `Zone`, `GeoZone`) | `"Geo"` |
+- `public_network_access_enabled` (default true) + `firewall_rules`
+  (IPv4 allowlist; 0.0.0.0-0.0.0.0 admits Azure-internal services) +
+  `virtual_network_rules` (subnet service-endpoint allowlist)
+- Private connectivity is exclusively **AzurePrivateEndpoint**
+  (subresource `sqlServer`) against the `server_id` output
+- `outbound_network_restriction_enabled` + `outbound_firewall_rules`
+  govern where the server reaches OUT to (elastic queries)
 
-### Network Access
+### Encryption, Auditing, Defender
 
-Azure SQL does **not** support VNet delegation. Private connectivity is exclusively
-through `AzurePrivateEndpoint` (subresource: `sqlServer`). The
-`public_network_access_enabled` boolean controls public endpoint visibility.
+- `transparent_data_encryption_key_vault_key_id` -- a VERSIONED
+  `AzureKeyVaultKey.key_id` (ARM pins the version at the server level);
+  requires an identity with wrap/unwrap on the vault
+- `extended_auditing` -- every database's audit events to blob storage
+  and/or Azure Monitor
+- `security_alert_policy` + `express_vulnerability_assessment_enabled`
+  -- Microsoft Defender for SQL
 
-### Connection Policy
+## Fields That Replace the Server When Changed
 
-- **Default**: Redirect for Azure-internal connections, Proxy for external
-- **Redirect**: Lower latency, requires ports 11000-11999 in addition to 1433
-- **Proxy**: All traffic through the gateway, simpler firewall rules
+`server_name`, `region`, `resource_group`, `version`, and
+`administrator_login` once set. Update-time contracts ARM enforces:
+`minimum_tls_version` cannot be removed once set, and the password
+cannot change while Entra-only auth is on.
 
-For Azure-to-Azure workloads, `Redirect` gives best performance.
-
-## Outputs
+## Stack Outputs
 
 | Output | Description |
 |--------|-------------|
-| `server_id` | Azure Resource Manager ID (used by AzurePrivateEndpoint) |
+| `server_id` | ARM ID -- the parent seam for AzureMssqlDatabase, AzureMssqlElasticPool, and AzurePrivateEndpoint |
 | `server_name` | Server name |
-| `fqdn` | `{name}.database.windows.net` -- for connection strings |
-| `administrator_login` | Admin login for connection strings |
-| `database_ids` | Map of database name to ARM resource ID |
+| `fqdn` | `{name}.database.windows.net` -- the connection-string host |
+| `administrator_login` | Admin login (empty on Entra-only servers) |
+| `identity_principal_id` | System-assigned identity's principal -- the role-assignment seam |
 
-## Infra Chart Usage
+**Connection string format:**
 
-This resource participates in the **database-stack** infra chart as the SQL Server
-option alongside PostgreSQL and MySQL. The `server_id` output is referenced by
-`AzurePrivateEndpoint` for private connectivity within the stack.
+```text
+Server={fqdn},1433;Database={database};User ID={admin};Password={password};Encrypt=True;
+```
 
 ## Related Resources
 
-- **AzurePrivateEndpoint** -- Private connectivity (subresource_names: `["sqlServer"]`)
-- **AzureResourceGroup** -- Container for the server and its resources
-- **AzurePostgresqlFlexibleServer** -- PostgreSQL alternative (different architecture)
-- **AzureMysqlFlexibleServer** -- MySQL alternative (different architecture)
+- **AzureResourceGroup** -- the server's container
+- **AzureMssqlDatabase** -- databases on the server (the unit of compute)
+- **AzureMssqlElasticPool** -- shared compute databases can join
+- **AzurePrivateEndpoint** -- private connectivity (subresource `sqlServer`)
+- **AzureSubnet** -- subnets admitted via service-endpoint rules
+- **AzureUserAssignedIdentity** -- the TDE unwrap identity / Entra administrator principal
+- **AzureKeyVaultKey** -- the customer-managed TDE key

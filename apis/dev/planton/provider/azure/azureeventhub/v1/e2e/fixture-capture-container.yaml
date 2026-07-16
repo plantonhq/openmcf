@@ -1,0 +1,21 @@
+# The blob container capture archives land in, on the scenario-local
+# capture account.
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageContainer
+metadata:
+  name: planton-oss-e2e-ehub-capture-container
+  id: planton-oss-e2e-ehub-capture-container
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestoragecontainer
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-ehub-capture-account
+  containerName: capture-archives

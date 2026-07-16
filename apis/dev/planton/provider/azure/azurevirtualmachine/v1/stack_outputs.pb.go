@@ -21,29 +21,34 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AzureVirtualMachineStackOutputs captures observable identifiers from the Azure Virtual Machine.
+// **AzureVirtualMachineStackOutputs** captures the outputs of provisioning
+// an Azure Virtual Machine.
 type AzureVirtualMachineStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure resource ID of the Virtual Machine.
+	// The Azure Resource Manager ID of the VM -- what role assignments,
+	// diagnostics, and backup policies scope to.
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/virtualMachines/{name}
 	VmId string `protobuf:"bytes,1,opt,name=vm_id,json=vmId,proto3" json:"vm_id,omitempty"`
-	// The name of the Virtual Machine.
+	// The name of the VM.
 	VmName string `protobuf:"bytes,2,opt,name=vm_name,json=vmName,proto3" json:"vm_name,omitempty"`
-	// The private IP address assigned to the VM's primary network interface.
-	PrivateIpAddress string `protobuf:"bytes,3,opt,name=private_ip_address,json=privateIpAddress,proto3" json:"private_ip_address,omitempty"`
-	// The public IP address assigned to the VM (if public IP is enabled).
-	PublicIpAddress string `protobuf:"bytes,4,opt,name=public_ip_address,json=publicIpAddress,proto3" json:"public_ip_address,omitempty"`
-	// The FQDN of the public IP (if public IP is enabled with DNS label).
-	PublicIpFqdn string `protobuf:"bytes,5,opt,name=public_ip_fqdn,json=publicIpFqdn,proto3" json:"public_ip_fqdn,omitempty"`
-	// The computer name (hostname) of the Virtual Machine.
+	// The 128-bit unique GUID Azure assigns the VM -- what licensing and
+	// inventory systems key on (stable across restarts, unlike the ARM id
+	// across recreate).
+	VirtualMachineGuid string `protobuf:"bytes,3,opt,name=virtual_machine_guid,json=virtualMachineGuid,proto3" json:"virtual_machine_guid,omitempty"`
+	// The primary private IP address across the VM's attached NICs -- a
+	// convenience echo of the primary AzureNetworkInterface's address.
+	PrivateIpAddress string `protobuf:"bytes,4,opt,name=private_ip_address,json=privateIpAddress,proto3" json:"private_ip_address,omitempty"`
+	// The primary public IP address across the VM's attached NICs, when
+	// any ip configuration is fronted by one (empty for private-only VMs).
+	PublicIpAddress string `protobuf:"bytes,5,opt,name=public_ip_address,json=publicIpAddress,proto3" json:"public_ip_address,omitempty"`
+	// The OS hostname (computer name) the VM booted with.
 	ComputerName string `protobuf:"bytes,6,opt,name=computer_name,json=computerName,proto3" json:"computer_name,omitempty"`
-	// The principal ID of the system-assigned managed identity (if enabled).
+	// The principal (object) ID of the VM's system-assigned identity,
+	// populated only when the identity type includes SYSTEM_ASSIGNED --
+	// what AzureRoleAssignment grants reference.
 	SystemAssignedIdentityPrincipalId string `protobuf:"bytes,7,opt,name=system_assigned_identity_principal_id,json=systemAssignedIdentityPrincipalId,proto3" json:"system_assigned_identity_principal_id,omitempty"`
-	// The Azure resource ID of the primary network interface.
-	NetworkInterfaceId string `protobuf:"bytes,8,opt,name=network_interface_id,json=networkInterfaceId,proto3" json:"network_interface_id,omitempty"`
-	// The availability zone where the VM is deployed (if zonal deployment).
-	AvailabilityZone string `protobuf:"bytes,9,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	unknownFields                     protoimpl.UnknownFields
+	sizeCache                         protoimpl.SizeCache
 }
 
 func (x *AzureVirtualMachineStackOutputs) Reset() {
@@ -90,6 +95,13 @@ func (x *AzureVirtualMachineStackOutputs) GetVmName() string {
 	return ""
 }
 
+func (x *AzureVirtualMachineStackOutputs) GetVirtualMachineGuid() string {
+	if x != nil {
+		return x.VirtualMachineGuid
+	}
+	return ""
+}
+
 func (x *AzureVirtualMachineStackOutputs) GetPrivateIpAddress() string {
 	if x != nil {
 		return x.PrivateIpAddress
@@ -100,13 +112,6 @@ func (x *AzureVirtualMachineStackOutputs) GetPrivateIpAddress() string {
 func (x *AzureVirtualMachineStackOutputs) GetPublicIpAddress() string {
 	if x != nil {
 		return x.PublicIpAddress
-	}
-	return ""
-}
-
-func (x *AzureVirtualMachineStackOutputs) GetPublicIpFqdn() string {
-	if x != nil {
-		return x.PublicIpFqdn
 	}
 	return ""
 }
@@ -125,35 +130,19 @@ func (x *AzureVirtualMachineStackOutputs) GetSystemAssignedIdentityPrincipalId()
 	return ""
 }
 
-func (x *AzureVirtualMachineStackOutputs) GetNetworkInterfaceId() string {
-	if x != nil {
-		return x.NetworkInterfaceId
-	}
-	return ""
-}
-
-func (x *AzureVirtualMachineStackOutputs) GetAvailabilityZone() string {
-	if x != nil {
-		return x.AvailabilityZone
-	}
-	return ""
-}
-
 var File_dev_planton_provider_azure_azurevirtualmachine_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurevirtualmachine_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/azure/azurevirtualmachine/v1/stack_outputs.proto\x121dev.planton.provider.azure.azurevirtualmachine.v1\"\xa5\x03\n" +
+	"Edev/planton/provider/azure/azurevirtualmachine/v1/stack_outputs.proto\x121dev.planton.provider.azure.azurevirtualmachine.v1\"\xd2\x02\n" +
 	"\x1fAzureVirtualMachineStackOutputs\x12\x13\n" +
 	"\x05vm_id\x18\x01 \x01(\tR\x04vmId\x12\x17\n" +
-	"\avm_name\x18\x02 \x01(\tR\x06vmName\x12,\n" +
-	"\x12private_ip_address\x18\x03 \x01(\tR\x10privateIpAddress\x12*\n" +
-	"\x11public_ip_address\x18\x04 \x01(\tR\x0fpublicIpAddress\x12$\n" +
-	"\x0epublic_ip_fqdn\x18\x05 \x01(\tR\fpublicIpFqdn\x12#\n" +
+	"\avm_name\x18\x02 \x01(\tR\x06vmName\x120\n" +
+	"\x14virtual_machine_guid\x18\x03 \x01(\tR\x12virtualMachineGuid\x12,\n" +
+	"\x12private_ip_address\x18\x04 \x01(\tR\x10privateIpAddress\x12*\n" +
+	"\x11public_ip_address\x18\x05 \x01(\tR\x0fpublicIpAddress\x12#\n" +
 	"\rcomputer_name\x18\x06 \x01(\tR\fcomputerName\x12P\n" +
-	"%system_assigned_identity_principal_id\x18\a \x01(\tR!systemAssignedIdentityPrincipalId\x120\n" +
-	"\x14network_interface_id\x18\b \x01(\tR\x12networkInterfaceId\x12+\n" +
-	"\x11availability_zone\x18\t \x01(\tR\x10availabilityZoneB\xa0\x03\n" +
+	"%system_assigned_identity_principal_id\x18\a \x01(\tR!systemAssignedIdentityPrincipalIdB\xa0\x03\n" +
 	"5com.dev.planton.provider.azure.azurevirtualmachine.v1B\x11StackOutputsProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualmachine/v1;azurevirtualmachinev1\xa2\x02\x05DPPAA\xaa\x021Dev.Planton.Provider.Azure.Azurevirtualmachine.V1\xca\x021Dev\\Planton\\Provider\\Azure\\Azurevirtualmachine\\V1\xe2\x02=Dev\\Planton\\Provider\\Azure\\Azurevirtualmachine\\V1\\GPBMetadata\xea\x026Dev::Planton::Provider::Azure::Azurevirtualmachine::V1b\x06proto3"
 
 var (

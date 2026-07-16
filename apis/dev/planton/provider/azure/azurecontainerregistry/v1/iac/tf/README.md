@@ -1,251 +1,112 @@
-# Azure Container Registry - Terraform Module
+# AzureContainerRegistry Terraform Module
 
-This Terraform module deploys an Azure Container Registry (ACR) instance using the AzureRM provider.
+## Overview
 
-## Features
+This Terraform module provisions an Azure Container Registry using the
+`azurerm` provider (`~> 4.0`). It creates an `azurerm_container_registry`
+-- the managed, private OCI registry the platform's workloads pull their
+images from -- covering the full surface: SKU, admin account, network
+posture (public access, IP rule set, bypass option, data endpoints),
+policies (quarantine, retention, content trust, export), geo-replications,
+managed identity, and customer-managed-key encryption.
 
-- **Multiple SKU Support**: Basic, Standard, and Premium tiers
-- **Geo-Replication**: Automatic multi-region replication for Premium SKU
-- **Secure by Default**: Admin user disabled unless explicitly enabled
-- **Zone Redundancy**: Enabled for geo-replications
-- **Network Security**: Azure services bypass enabled
+The SKU is the registry's feature gate; the Premium-only fields
+(geo-replication, zone redundancy, network rules, policies, CMK) are
+enforced at spec validation, mirroring ARM's own gates, so the module
+receives only deployable shapes. An unset `sku` deploys the STANDARD
+baseline (azurerm requires an explicit value; the default is materialized
+in locals).
 
-## Prerequisites
+Lifecycle notes worth knowing before operating this resource: name and
+region are the registry's identity -- changing either replaces it and its
+CONTENTS DO NOT MIGRATE; every image would need re-pushing. Zone
+redundancy (home replica) and CMK encryption are likewise fixed at
+creation. The SKU changes in place, but downgrading requires every
+Premium-only feature to be unset first. Geo-replications are managed
+inline and add/remove in place; azurerm expects them in alphabetical
+location order, and the module produces exactly that by iterating a
+location-keyed map, keeping manifests order-insensitive.
 
-- Terraform >= 1.0
-- Azure CLI authenticated
-- Azure subscription with appropriate permissions
+Grants are composed, never bundled: AcrPull/AcrPush role assignments are
+standalone AzureRoleAssignment resources scoped to the registry's ARM ID,
+and the identity that unwraps a CMK key is a referenced first-class
+AzureUserAssignedIdentity that must hold get/wrapKey/unwrapKey on the
+key's vault before the registry is created.
+
+## Resources Created
+
+- `azurerm_container_registry.main` -- the registry, including inline
+  geo-replications, network rule set, identity, and encryption blocks
+
+## Variables
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `metadata` | object | Planton metadata (name, org, env) |
+| `spec` | object | Container registry specification |
+
+Key spec fields:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `region` | yes | The home replica's region; additional regions are geo-replications |
+| `resource_group` | yes | Resource group name |
+| `registry_name` | yes | 5-50 lowercase alphanumerics, globally unique (becomes `{name}.azurecr.io`) |
+| `sku` | no | `BASIC` / `STANDARD` / `PREMIUM` enum name; unset applies the STANDARD baseline |
+| `admin_user_enabled` | no | Built-in admin account (default false; Entra auth is the production path) |
+| `public_network_access_enabled` | no | Default true; false = private-endpoints-only (Premium) |
+| `zone_redundancy_enabled` | no | Home replica across availability zones (Premium; fixed at creation) |
+| `anonymous_pull_enabled` | no | Unauthenticated pulls (Standard/Premium; makes every repo public) |
+| `data_endpoint_enabled` | no | Dedicated `{name}.{region}.data.azurecr.io` endpoints for exact firewall allowlisting (Premium) |
+| `quarantine_policy_enabled` | no | Hold pushed images until scanning tooling passes them (Premium) |
+| `retention_policy_in_days` | no | Purge untagged manifests after N days, 0-365; unset keeps them forever (Premium) |
+| `trust_policy_enabled` | no | Docker Content Trust / image signing (Premium) |
+| `export_policy_enabled` | no | Default true; disabling requires Premium + public access off |
+| `network_rule_bypass_option` | no | `AZURE_SERVICES` (Azure's default) or `NONE` |
+| `network_rule_set` | no | Default action (`ALLOW`/`DENY`) plus IPv4 CIDR allowlist (Premium) |
+| `georeplications` | no | Additional regions with per-replica zone redundancy, regional endpoint, tags (Premium; must not contain the home region) |
+| `identity` | no | `SYSTEM_ASSIGNED` / `USER_ASSIGNED` / `SYSTEM_AND_USER_ASSIGNED` plus resolved identity ARM IDs |
+| `encryption` | no | CMK: unwrapping identity's client id + Key Vault key ID (Premium; fixed at creation) |
+| `tags` | no | User tags, merged over metadata-derived tags (user wins) |
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `container_registry_id` | Full ARM ID of the registry -- the join key AKS clusters and AcrPull/AcrPush role assignments reference |
+| `container_registry_name` | The registry's name as deployed |
+| `login_server` | The hostname images are tagged with and pulled from, e.g. `myregistry.azurecr.io` |
+| `admin_username` | Admin account username (empty unless `admin_user_enabled`) |
+| `admin_password` | One of the admin account's two rotatable passwords (sensitive; empty unless enabled) |
+| `system_assigned_identity_principal_id` | Principal ID of the system-assigned identity (empty unless the identity type includes it) |
+| `data_endpoint_host_names` | Dedicated regional data-endpoint hostnames (empty unless `data_endpoint_enabled`) |
 
 ## Usage
 
-### Basic Example
-
 ```hcl
-module "acr_basic" {
+module "container_registry" {
   source = "./iac/tf"
 
-  metadata = {
-    name = "basic-acr"
-    env  = "production"
-  }
+  metadata = { name = "prod-registry", org = "mycompany", env = "production" }
 
   spec = {
     region        = "eastus"
-    registry_name = "mycompanyacr"
-    sku           = "STANDARD"
-  }
-}
-```
-
-### Premium with Geo-Replication
-
-```hcl
-module "acr_global" {
-  source = "./iac/tf"
-
-  metadata = {
-    name = "global-acr"
-    labels = {
-      environment = "production"
-      scope       = "global"
-    }
-  }
-
-  spec = {
-    region               = "eastus"
-    registry_name        = "globalacr"
-    sku                  = "PREMIUM"
-    admin_user_enabled   = false
-    geo_replication_regions = [
-      "westeurope",
-      "southeastasia",
-      "australiaeast"
+    resource_group = "prod-rg"
+    registry_name = "prodregistry01"
+    sku           = "PREMIUM"
+    zone_redundancy_enabled  = true
+    retention_policy_in_days = 30
+    georeplications = [
+      { location = "westeurope", zone_redundancy_enabled = true }
     ]
   }
 }
 ```
 
-### Development with Admin User
+## Required Permissions
 
-```hcl
-module "acr_dev" {
-  source = "./iac/tf"
-
-  metadata = {
-    name = "dev-acr"
-    env  = "development"
-  }
-
-  spec = {
-    region             = "eastus"
-    registry_name      = "devacr123"
-    sku                = "BASIC"
-    admin_user_enabled = true  # Convenience for local dev
-  }
-}
-```
-
-## Input Variables
-
-### metadata
-
-Object containing resource metadata:
-
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| name | string | yes | - | Resource name |
-| env | string | no | "default" | Environment (dev, staging, prod) |
-| labels | map(string) | no | {} | Additional labels/tags |
-
-### spec
-
-Object containing ACR specification:
-
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| region | string | yes | - | Azure region (e.g., "eastus") |
-| registry_name | string | yes | - | Registry name (5-50 lowercase alphanumeric) |
-| sku | string | no | "STANDARD" | SKU: "BASIC", "STANDARD", or "PREMIUM" |
-| admin_user_enabled | bool | no | false | Enable admin user |
-| geo_replication_regions | list(string) | no | [] | Replica regions (Premium only) |
-
-## Outputs
-
-| Name | Description |
-|------|-------------|
-| registry_login_server | Registry login server URL (e.g., "myacr.azurecr.io") |
-| registry_resource_id | Azure Resource Manager ID |
-| resource_group_name | Resource group name |
-| registry_name | Registry name |
-| admin_username | Admin username (if enabled, sensitive) |
-| admin_password | Admin password (if enabled, sensitive) |
-
-## SKU Selection Guide
-
-### Basic (~$5/month)
-- **Storage**: 10 GB
-- **Throughput**: ~1,000 pulls/min
-- **Use for**: Dev/test only
-- **Limitations**: No geo-replication, no private link
-
-### Standard (~$20/month)
-- **Storage**: 100 GB
-- **Throughput**: ~3,000 pulls/min
-- **Use for**: Single-region production
-- **Limitations**: No geo-replication
-
-### Premium (~$20/month + $50/replica)
-- **Storage**: 500 GB
-- **Throughput**: ~10,000 pulls/min
-- **Use for**: Global production, enterprise
-- **Features**: Geo-replication, private link, content trust
-
-## Geo-Replication
-
-Only available with Premium SKU. Specify additional regions:
-
-```hcl
-spec = {
-  sku = "PREMIUM"
-  geo_replication_regions = [
-    "westeurope",
-    "southeastasia"
-  ]
-}
-```
-
-**Benefits:**
-- Reduced latency for global deployments
-- Lower cross-region bandwidth costs
-- Regional redundancy
-
-## Authentication
-
-### From Azure CLI
-```shell
-az acr login --name <registry-name>
-```
-
-### From AKS
-```shell
-az aks update \
-  --name <cluster> \
-  --resource-group <rg> \
-  --attach-acr <registry-name>
-```
-
-### From CI/CD
-Use service principal with AcrPush/AcrPull roles.
-
-## Common Operations
-
-### Push Image
-```shell
-docker tag myapp:v1.0 myacr.azurecr.io/myapp:v1.0
-docker push myacr.azurecr.io/myapp:v1.0
-```
-
-### Pull Image
-```shell
-docker pull myacr.azurecr.io/myapp:v1.0
-```
-
-### List Images
-```shell
-az acr repository list --name myacr
-```
-
-### Show Tags
-```shell
-az acr repository show-tags --name myacr --repository myapp
-```
-
-## Security Best Practices
-
-✅ **Disable admin user in production** - Use Azure AD authentication  
-✅ **Use managed identities for AKS** - No secrets to manage  
-✅ **Enable Defender for Cloud** - Automatic vulnerability scanning  
-✅ **Implement retention policies** - Auto-delete old/untagged images  
-✅ **Use Premium for sensitive workloads** - Private Link and content trust  
-
-## Cost Optimization
-
-- **Use Basic for dev/test** - Save ~75% vs Standard
-- **Clean up old images** - Storage costs add up
-- **Evaluate geo-replication needs** - Each replica adds ~$50/month
-- **Consider Azure Reservations** - Save up to 30% with 1-year commitment
-
-## Limitations
-
-- **Registry name is globally unique** - Must be unique across all Azure
-- **Name is immutable** - Cannot rename after creation
-- **SKU upgrades only** - Can upgrade Basic→Standard→Premium, not downgrade
-- **Geo-replication requires Premium** - Cannot add replicas to Basic/Standard
-
-## Troubleshooting
-
-### Name Conflict
-```
-Error: Registry name already exists
-```
-**Solution**: Choose a different registry name (must be globally unique)
-
-### Geo-Replication on Non-Premium
-```
-Error: Geo-replication requires Premium SKU
-```
-**Solution**: Set `sku = "PREMIUM"`
-
-### Admin Credentials Not Found
-```
-Error: Admin user is disabled
-```
-**Solution**: Set `admin_user_enabled = true` (dev/test only)
-
-## References
-
-- [Main Component Documentation](../../README.md)
-- [Research Documentation](../../docs/README.md)
-- [Pulumi Module Overview](./overview.md)
-- [Azure ACR Documentation](https://docs.microsoft.com/en-us/azure/container-registry/)
-
+The deploying credential needs
+`Microsoft.ContainerRegistry/registries/write` on the resource group --
+held via Contributor or Owner. For CMK encryption, the referenced
+user-assigned identity (not the deployer) must hold get/wrapKey/unwrapKey
+on the Key Vault key's vault before the registry is created.

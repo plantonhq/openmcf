@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureroutetable.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azureroutetable/v1/spec.proto";
+import "dev/planton/provider/azure/azureroutetable/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureRouteTable is the top-level API resource for an Azure route table: a
+// reusable set of user-defined routes that overrides Azure's default system
+// routing for every subnet attached to it. It is modeled as a first-class
+// composable resource because one routing policy (egress via a firewall,
+// forced tunneling on-premises) is typically shared by many subnets and has
+// its own lifecycle independent of any of them.
+message AzureRouteTable {
+  // API version identifier. Must be "azure.planton.dev/v1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1'];
+
+  // Resource kind. Must be "AzureRouteTable".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureRouteTable'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Route table specification.
+  AzureRouteTableSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureRouteTableStatus status = 5;
+}
+
+// AzureRouteTableStatus holds the deployment outputs.
+message AzureRouteTableStatus {
+  // Stack outputs from the IaC deployment.
+  AzureRouteTableStackOutputs outputs = 1;
+}

@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRedisLinkedServer
+metadata:
+  name: test-redis-link
+spec:
+  # The PRIMARY cache -- the link's parent; its name and resource group
+  # derive from this ARM id.
+  targetRedisCacheId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-east/providers/Microsoft.Cache/redis/planton-hack-redis-east
+  # The SECONDARY (disaster-recovery) cache in another region.
+  linkedRedisCacheId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-west/providers/Microsoft.Cache/redis/planton-hack-redis-west
+  linkedRedisCacheLocation:
+    value: westus2
+  # Exercises the role enum mapping.
+  serverRole: SECONDARY

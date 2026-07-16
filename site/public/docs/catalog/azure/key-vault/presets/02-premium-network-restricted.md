@@ -1,6 +1,6 @@
 ---
-title: "Premium Key Vault with Network Restrictions"
-description: "This preset creates an Azure Key Vault with Premium SKU (HSM-backed keys), Azure RBAC, and network access control. Network ACLs restrict access to specific IP ranges and VNet subnets, with a..."
+title: "Premium Network-Restricted CMK Vault"
+description: "This preset creates the production posture for a vault holding customer-managed keys: Premium SKU (unlocks the HSM-backed key types for the `AzureKeyVaultKey` resources inside), purge protection ON..."
 type: "preset"
 rank: "02"
 presetSlug: "02-premium-network-restricted"
@@ -11,35 +11,66 @@ icon: "package"
 order: 2
 ---
 
-# Premium Key Vault with Network Restrictions
+# Premium Network-Restricted CMK Vault
 
-This preset creates an Azure Key Vault with Premium SKU (HSM-backed keys), Azure RBAC, and network access control. Network ACLs restrict access to specific IP ranges and VNet subnets, with a default-deny posture. This is the configuration for compliance-regulated workloads requiring FIPS 140-2 Level 3 validated key protection and strict network isolation.
+This preset creates the production posture for a vault holding
+customer-managed keys: Premium SKU (unlocks the HSM-backed key types for
+the `AzureKeyVaultKey` resources inside), purge protection ON (many CMK
+integrations refuse to enroll against a vault without it), and a DENY
+network firewall with explicit IP and subnet allowlists.
+
+Trusted Microsoft services (Azure Backup, Disk Encryption, Azure Monitor)
+keep access through the default bypass, so first-party integrations work
+even behind the DENY posture.
 
 ## When to Use
 
-- Compliance workloads (PCI-DSS, HIPAA, FedRAMP, financial services)
-- Environments requiring HSM-backed keys for cryptographic operations
-- Zero-trust architectures where Key Vault access must be restricted to specific networks
+- Vaults whose keys encrypt other resources (storage accounts, disk
+  encryption sets, container registries, database CMK)
+- Compliance regimes that mandate hardware key protection (PCI-DSS,
+  FedRAMP High) or network isolation
+- Any vault where accidental permanent deletion is unacceptable
 
 ## Key Configuration Choices
 
-- **Premium SKU** (`sku: PREMIUM`) -- HSM-backed keys with FIPS 140-2 Level 3 validation. Required for regulated industries
-- **Network ACLs** (`networkAcls.defaultAction: DENY`) -- Denies all access except from specified IPs and VNet subnets. Azure trusted services bypass this restriction
-- **IP rules** -- Allowlist for office IPs, VPN gateways, or CI/CD runner IPs
-- **VNet subnet rules** -- Allowlist for specific Azure subnets using service endpoints
-- **All other settings** match 01-standard-rbac (RBAC, purge protection, 90-day soft delete)
+- **`sku: PREMIUM`** -- required before any key inside can use the
+  RSA_HSM / EC_HSM types; the SKU itself can be changed in place later
+- **`purgeProtectionEnabled: true`** -- a ONE-WAY door: once on it cannot
+  be disabled, and destroying the vault schedules deletion for the end of
+  the retention window instead of purging (the name stays reserved)
+- **`defaultAction: DENY` + allowlists** -- the middle ground between
+  "open to the internet" and "private endpoints only"; keep
+  `publicNetworkAccessEnabled: true` for this shape
+- **Subnets need the `Microsoft.KeyVault` service endpoint** enabled on
+  the referenced `AzureSubnet`
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<azure-region>` | Azure region | Your regional deployment strategy |
-| `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-office-cidr>` | Office or VPN IP range (e.g., `203.0.113.0/24`) | Your network team |
-| `<your-subnet-resource-id>` | Full ARM resource ID of an allowed subnet | Azure portal or `AzureSubnet` status outputs |
-| `<your-secret-name-1>` | Name of the first secret to create | Your application configuration |
-| `<your-secret-name-2>` | Name of the second secret to create | Your application configuration |
+| `<resource-group-name>` | The resource group to create the vault in | The resource group's `status.outputs.resource_group_name` |
+| `myorg-prod-cmk-vault` | 3-24 chars, globally unique | Your naming convention |
+| `<office-or-ci-cidr>` | Public IPv4 CIDR allowed through the firewall | Your office/VPN/CI egress range |
+| `<app-subnet-arm-id>` | The subnet whose workloads reach the vault (or a `valueFrom` reference to an AzureSubnet's `subnet_id` output) | The subnet's `status.outputs.subnet_id` |
+| `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |
 
-## Related Presets
+## Downstream Wiring
 
-- **01-standard-rbac** -- Use instead for standard workloads without HSM or network isolation requirements
+Put an HSM-backed CMK inside and wire it to a consumer:
+
+```yaml
+apiVersion: azure.planton.dev/v1
+kind: AzureKeyVaultKey
+metadata:
+  name: registry-cmk
+spec:
+  name: registry-cmk
+  keyVaultId:
+    valueFrom:
+      name: prod-cmk-vault
+  keyType: RSA_HSM
+  keySize: 2048
+  keyOpts:
+    - WRAP_KEY
+    - UNWRAP_KEY
+```

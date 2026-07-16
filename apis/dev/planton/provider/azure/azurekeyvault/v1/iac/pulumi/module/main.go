@@ -1,135 +1,173 @@
 package module
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	azurekeyvaultv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurekeyvault/v1"
-	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider"
+	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/core"
 	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/keyvault"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func Resources(ctx *pulumi.Context, stackInput *azurekeyvaultv1.AzureKeyVaultStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
-	azureProviderConfig := stackInput.ProviderConfig
 
-	// Create azure provider using the credentials from the input
-	azureProvider, err := azure.NewProvider(ctx,
-		"azure",
-		&azure.ProviderArgs{
-			ClientId:       pulumi.String(azureProviderConfig.ClientId),
-			ClientSecret:   pulumi.String(azureProviderConfig.ClientSecret),
-			SubscriptionId: pulumi.String(azureProviderConfig.SubscriptionId),
-			TenantId:       pulumi.String(azureProviderConfig.TenantId),
-		})
+	// Build the Azure provider from the stack input via the shared builder, which resolves
+	// the right credential mechanism (static client secret, keyless web identity, or ambient chain).
+	azureProvider, err := pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to create azure provider")
 	}
 
-	// Get the spec from locals
 	spec := locals.AzureKeyVault.Spec
 
-	// Build network ACLs configuration
-	networkAcls := &keyvault.KeyVaultNetworkAclsArgs{
-		DefaultAction: pulumi.String("Deny"), // Default to secure
-		Bypass:        pulumi.String("AzureServices"),
+	// The vault authenticates against the deploying credential's Azure AD
+	// tenant -- a vault cannot be managed cross-tenant, so the tenant is
+	// read from the ambient client configuration instead of being modeled
+	// as a contradictable spec field.
+	clientConfig, err := core.GetClientConfig(ctx, pulumi.Provider(azureProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to read the azure client configuration")
 	}
 
+	vaultArgs := &keyvault.KeyVaultArgs{
+		Name:              pulumi.String(spec.VaultName),
+		Location:          pulumi.String(spec.Region),
+		ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+		TenantId:          pulumi.String(clientConfig.TenantId),
+		SkuName:           pulumi.String(locals.SkuName),
+		Tags:              pulumi.ToStringMap(locals.AzureTags),
+	}
+
+	// RBAC is the spec's recommended default; access_policy entries below
+	// are only honored by Azure when this is false (ARM stores but ignores
+	// policies on an RBAC-mode vault). Presence-guarded: stack inputs built
+	// from a manifest do NOT materialize proto defaults, so an unset field
+	// falls back to the spec default (true) explicitly.
+	if spec.RbacAuthorizationEnabled != nil {
+		vaultArgs.RbacAuthorizationEnabled = pulumi.Bool(spec.GetRbacAuthorizationEnabled())
+	} else {
+		vaultArgs.RbacAuthorizationEnabled = pulumi.Bool(true)
+	}
+
+	// Legacy access-policy grants, declared inline so the vault owns its
+	// complete grant list (mixing inline policies with the standalone
+	// access-policy resource causes perpetual drift).
+	if len(spec.AccessPolicies) > 0 {
+		accessPolicies := make(keyvault.KeyVaultAccessPolicyArray, 0, len(spec.AccessPolicies))
+		for _, policy := range spec.AccessPolicies {
+			policyArgs := &keyvault.KeyVaultAccessPolicyArgs{
+				ObjectId:               pulumi.String(policy.ObjectId.GetValue()),
+				KeyPermissions:         permissionStrings(policy.KeyPermissions, keyPermissionStrings),
+				SecretPermissions:      permissionStrings(policy.SecretPermissions, secretPermissionStrings),
+				CertificatePermissions: permissionStrings(policy.CertificatePermissions, certificatePermissionStrings),
+				StoragePermissions:     permissionStrings(policy.StoragePermissions, storagePermissionStrings),
+			}
+			// An unset tenant falls back to the vault's own tenant --
+			// access policies cannot span tenants in practice.
+			if policy.TenantId != nil {
+				policyArgs.TenantId = pulumi.String(policy.GetTenantId())
+			} else {
+				policyArgs.TenantId = pulumi.String(clientConfig.TenantId)
+			}
+			if policy.ApplicationId != nil {
+				policyArgs.ApplicationId = pulumi.String(policy.GetApplicationId())
+			}
+			accessPolicies = append(accessPolicies, policyArgs)
+		}
+		vaultArgs.AccessPolicies = accessPolicies
+	}
+
+	// Resource-manager integration switches (Azure defaults: all false).
+	vaultArgs.EnabledForDeployment = pulumi.Bool(spec.EnabledForDeployment)
+	vaultArgs.EnabledForDiskEncryption = pulumi.Bool(spec.EnabledForDiskEncryption)
+	vaultArgs.EnabledForTemplateDeployment = pulumi.Bool(spec.EnabledForTemplateDeployment)
+
+	// Presence-guarded true-default optional: unset falls back to Azure's
+	// default (public access on).
+	if spec.PublicNetworkAccessEnabled != nil {
+		vaultArgs.PublicNetworkAccessEnabled = pulumi.Bool(spec.GetPublicNetworkAccessEnabled())
+	} else {
+		vaultArgs.PublicNetworkAccessEnabled = pulumi.Bool(true)
+	}
+
+	// Purge protection is irreversible once enabled; with it on, destroying
+	// the vault schedules deletion for the end of the soft-delete retention
+	// window instead of purging (the provider's default behavior purges
+	// soft-deleted vaults on destroy when purge protection is off).
+	vaultArgs.PurgeProtectionEnabled = pulumi.Bool(spec.PurgeProtectionEnabled)
+
+	// Presence-guarded: unset falls back to Azure's default (90 days) --
+	// the same value the Terraform module's optional(number, 90) encodes.
+	if spec.SoftDeleteRetentionDays != nil {
+		vaultArgs.SoftDeleteRetentionDays = pulumi.Int(int(spec.GetSoftDeleteRetentionDays()))
+	} else {
+		vaultArgs.SoftDeleteRetentionDays = pulumi.Int(90)
+	}
+
+	// Public-endpoint firewall. azurerm requires default_action and bypass
+	// whenever the block is present; an unspecified bypass materializes
+	// Azure's own default (AzureServices) -- identical on both engines.
 	if spec.NetworkAcls != nil {
-		networkAcls.DefaultAction = pulumi.String(getNetworkDefaultAction(spec.NetworkAcls.GetDefaultAction()))
+		networkAcls := &keyvault.KeyVaultNetworkAclsArgs{}
 
-		if spec.NetworkAcls.GetBypassAzureServices() {
-			networkAcls.Bypass = pulumi.String("AzureServices")
+		// default_action is required whenever the block is present (spec
+		// validation enforces it), so there is no null fallback to invent.
+		if spec.NetworkAcls.DefaultAction == azurekeyvaultv1.AzureKeyVaultNetworkAclsDefaultAction_ALLOW {
+			networkAcls.DefaultAction = pulumi.String("Allow")
 		} else {
+			networkAcls.DefaultAction = pulumi.String("Deny")
+		}
+
+		if spec.NetworkAcls.Bypass == azurekeyvaultv1.AzureKeyVaultNetworkAclsBypass_NONE {
 			networkAcls.Bypass = pulumi.String("None")
+		} else {
+			networkAcls.Bypass = pulumi.String("AzureServices")
 		}
 
-		// Add IP rules
 		if len(spec.NetworkAcls.IpRules) > 0 {
-			ipRules := make(pulumi.StringArray, 0)
-			for _, ipRule := range spec.NetworkAcls.IpRules {
-				ipRules = append(ipRules, pulumi.String(ipRule))
-			}
-			networkAcls.IpRules = ipRules
+			networkAcls.IpRules = pulumi.ToStringArray(spec.NetworkAcls.IpRules)
 		}
 
-		// Add VNet rules
 		if len(spec.NetworkAcls.VirtualNetworkSubnetIds) > 0 {
-			vnetRules := make(pulumi.StringArray, 0)
+			subnetIds := make([]string, 0, len(spec.NetworkAcls.VirtualNetworkSubnetIds))
 			for _, subnetId := range spec.NetworkAcls.VirtualNetworkSubnetIds {
-				vnetRules = append(vnetRules, pulumi.String(subnetId))
+				subnetIds = append(subnetIds, subnetId.GetValue())
 			}
-			networkAcls.VirtualNetworkSubnetIds = vnetRules
+			networkAcls.VirtualNetworkSubnetIds = pulumi.ToStringArray(subnetIds)
 		}
+
+		vaultArgs.NetworkAcls = networkAcls
 	}
 
-	// Create the Key Vault
-	vault, err := keyvault.NewKeyVault(ctx,
-		locals.VaultName,
-		&keyvault.KeyVaultArgs{
-			Name:              pulumi.String(locals.VaultName),
-			Location:          pulumi.String(spec.Region),
-			ResourceGroupName: pulumi.String(locals.ResourceGroupName),
-			TenantId:          pulumi.String(azureProviderConfig.TenantId),
-			SkuName:           pulumi.String(getSku(spec.GetSku())),
-
-			// Security settings
-			EnableRbacAuthorization:      pulumi.Bool(spec.GetEnableRbacAuthorization()),
-			PurgeProtectionEnabled:       pulumi.Bool(spec.GetEnablePurgeProtection()),
-			SoftDeleteRetentionDays:      pulumi.Int(int(spec.GetSoftDeleteRetentionDays())),
-			EnabledForDeployment:         pulumi.Bool(false),
-			EnabledForDiskEncryption:     pulumi.Bool(false),
-			EnabledForTemplateDeployment: pulumi.Bool(false),
-
-			// Network ACLs
-			NetworkAcls: networkAcls,
-
-			// Tags
-			Tags: pulumi.ToStringMap(locals.AzureTags),
-		},
+	createdVault, err := keyvault.NewKeyVault(ctx,
+		spec.VaultName,
+		vaultArgs,
 		pulumi.Provider(azureProvider))
 	if err != nil {
-		return errors.Wrapf(err, "failed to create Key Vault %s", locals.VaultName)
+		return errors.Wrapf(err, "failed to create key vault %s", spec.VaultName)
 	}
 
-	// Create secrets (placeholder entries - actual values must be set separately)
-	secretIdMap := make(map[string]pulumi.StringOutput)
-
-	for _, secretName := range spec.SecretNames {
-		// Create empty secret (value must be set separately via Azure SDK/CLI)
-		secret, err := keyvault.NewSecret(ctx,
-			fmt.Sprintf("secret-%s", secretName),
-			&keyvault.SecretArgs{
-				Name:       pulumi.String(secretName),
-				KeyVaultId: vault.ID(),
-				Value:      pulumi.String(""), // Empty placeholder - must be set separately
-				Tags:       pulumi.ToStringMap(locals.AzureTags),
-			},
-			pulumi.Provider(azureProvider),
-			pulumi.Parent(vault))
-		if err != nil {
-			return errors.Wrapf(err, "failed to create secret %s", secretName)
-		}
-
-		secretIdMap[secretName] = secret.ID().ToStringOutput()
-	}
-
-	// Export stack outputs
-	ctx.Export(OpVaultId, vault.ID())
-	ctx.Export(OpVaultName, vault.Name)
-	ctx.Export(OpVaultUri, vault.VaultUri)
-	ctx.Export(OpRegion, pulumi.String(spec.Region))
-	ctx.Export(OpResourceGroup, pulumi.String(locals.ResourceGroupName))
-
-	// Export secret ID map
-	if len(secretIdMap) > 0 {
-		secretMap := pulumi.StringMap{}
-		for name, id := range secretIdMap {
-			secretMap[name] = id.ToStringOutput()
-		}
-		ctx.Export(OpSecretIdMap, secretMap)
-	}
+	// Export stack outputs from the created resource.
+	ctx.Export(OpKeyVaultId, createdVault.ID())
+	ctx.Export(OpKeyVaultName, createdVault.Name)
+	ctx.Export(OpVaultUri, createdVault.VaultUri)
+	ctx.Export(OpTenantId, createdVault.TenantId)
+	ctx.Export(OpResourceGroupName, createdVault.ResourceGroupName)
 
 	return nil
+}
+
+// permissionStrings translates a list of spec permission enums to the
+// data-plane strings Azure expects, through the exhaustive vocabulary maps
+// in locals.go.
+func permissionStrings[E comparable](permissions []E, vocabulary map[E]string) pulumi.StringArray {
+	if len(permissions) == 0 {
+		return nil
+	}
+	out := make(pulumi.StringArray, 0, len(permissions))
+	for _, permission := range permissions {
+		out = append(out, pulumi.String(vocabulary[permission]))
+	}
+	return out
 }

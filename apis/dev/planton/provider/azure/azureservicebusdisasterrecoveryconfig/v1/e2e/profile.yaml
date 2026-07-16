@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureservicebusdisasterrecoveryconfig
+spec:
+  # The scenario composes fixture RG -> TWO scenario-local PREMIUM
+  # namespaces (eastus primary + westus2 partner -- Azure requires
+  # Premium on both sides and different regions), pairs them under the
+  # alias, verifies the pairing via the ARM API, destroys (the provider
+  # break-pairs, deletes, and polls until the alias name frees), and
+  # verifies it is gone.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision: the chain needs two PREMIUM namespaces
+    (the slow tier) in two regions plus pairing/break-pairing settling
+    -- an estimated 40-70 minute dual-engine lane, past the pre-approved
+    live-E2E window. The component stands on its green offline gate --
+    100% parity audit, full tofu plan rendering both namespace
+    references and the alias-rule seam, spec tests covering every
+    validation rule, and the outputs conformance case. The scenario and
+    both fixtures ship ready-to-run once a live window is approved.
+  validated_provisioners: []
+  timeout_minutes: 90

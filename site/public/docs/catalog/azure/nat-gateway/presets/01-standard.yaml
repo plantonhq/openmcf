@@ -6,6 +6,10 @@ spec:
   region: <azure-region>
   resourceGroup:
     value: "<your-resource-group-name>"
-  subnetId:
-    value: "<subnet-resource-id>"
-  idleTimeoutMinutes: 10  # 10 min balances connection reuse vs resource cleanup
+  name: egress-nat
+  zones:
+    - "1"
+  idleTimeoutInMinutes: 10  # 10 min balances connection reuse vs SNAT port hold time
+  publicIpIds:
+    - valueFrom:
+        name: <your-public-ip-resource-name>

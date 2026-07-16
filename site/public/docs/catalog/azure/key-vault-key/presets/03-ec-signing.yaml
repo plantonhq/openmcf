@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureKeyVaultKey
+metadata:
+  name: jwt-signing
+spec:
+  name: jwt-signing
+  keyVaultId:
+    value: <key-vault-arm-id>
+  keyType: EC
+  curve: P_384
+  keyOpts:
+    - SIGN
+    - VERIFY
+  tags:
+    purpose: <purpose>

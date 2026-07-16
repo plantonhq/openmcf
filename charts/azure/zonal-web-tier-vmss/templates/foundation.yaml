@@ -1,0 +1,45 @@
+# One resource group holds the whole tier so a single delete reclaims
+# everything the chart created.
+apiVersion: azure.planton.dev/v1
+kind: AzureResourceGroup
+metadata:
+  name: "{{ values.env }}-web-tier"
+spec:
+  name: "{{ values.env }}-web-tier"
+  region: "{{ values.region }}"
+---
+# Destination for platform metrics from the scale set and the load
+# balancer. Guest-OS telemetry (syslog, app logs) needs an agent the
+# bootstrap can install -- see the README's day-2 notes.
+apiVersion: azure.planton.dev/v1
+kind: AzureLogAnalyticsWorkspace
+metadata:
+  name: "{{ values.env }}-web-tier-logs"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-tier"
+      fieldPath: status.outputs.resource_group_name
+  workspaceName: "{{ values.env }}-web-tier-logs"
+  retentionInDays: {{ values.log_retention_days }}
+---
+# The tier's identity. Flexible-orchestration scale sets take
+# user-assigned identities only (Azure's contract, enforced at the spec
+# level), and that constraint is a feature: the identity is a
+# first-class node other charts and resources grant roles to -- blob
+# access for assets, Key Vault for certificates -- with no credentials
+# on any instance.
+apiVersion: azure.planton.dev/v1
+kind: AzureUserAssignedIdentity
+metadata:
+  name: "{{ values.env }}-web-tier-identity"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-tier"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-web-tier-identity"

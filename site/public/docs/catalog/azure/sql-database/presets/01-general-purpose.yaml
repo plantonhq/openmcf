@@ -1,0 +1,25 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureMssqlDatabase
+metadata:
+  name: gp-database
+spec:
+  serverId:
+    valueFrom:
+      kind: AzureMssqlServer
+      name: <server-resource-name>
+      fieldPath: status.outputs.server_id
+  # Replace with your database name (no <>*%&:\/? characters).
+  databaseName: orders-db
+  # Provisioned General Purpose compute: 2 vCores, predictable
+  # performance and cost.
+  skuName: GP_Gen5_2
+  maxSizeGb: 128
+  # 14-day point-in-time restore window with 12-hour differentials, plus
+  # weekly backups kept 3 months and monthly backups kept a year.
+  shortTermRetentionPolicy:
+    retentionDays: 14
+  longTermRetentionPolicy:
+    weeklyRetention: P12W
+    monthlyRetention: P12M
+  tags:
+    cost-center: <cost-center>

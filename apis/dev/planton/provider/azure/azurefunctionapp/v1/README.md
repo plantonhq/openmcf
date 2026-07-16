@@ -1,36 +1,40 @@
 # AzureFunctionApp
 
-An Azure Linux Function App provides serverless compute for event-driven workloads -- HTTP APIs, queue processors, timer-triggered jobs, and blob-event handlers -- running on the Azure Functions runtime.
+An Azure Function App manages serverless compute infrastructure on Azure App Service (Linux), hosting event-driven functions triggered by HTTP requests, queues, timers, and Azure service events.
 
 ## Overview
 
-The `AzureFunctionApp` component provisions an `azurerm_linux_function_app` resource, a serverless compute platform that executes code in response to events without managing infrastructure. It is the Azure equivalent of AWS Lambda or GCP Cloud Functions, but with a key difference: Azure Functions run on an App Service Plan, giving explicit control over the compute tier (Consumption for pay-per-execution, Elastic Premium for pre-warmed instances, or Dedicated for reserved capacity).
+The `AzureFunctionApp` component provisions an `azurerm_linux_function_app` resource. Unlike always-on Web Apps, Function Apps are event-driven and (on serverless plans) scale to zero.
 
 Every Function App requires:
-- **An App Service Plan** (`AzureServicePlan`): Determines cost model, scale behavior, and features
-- **A Storage Account** (`AzureStorageAccount`): For runtime state, trigger management, and execution logs
-- **An application stack**: The runtime (Python, Node.js, .NET, Java, PowerShell, Docker, or custom handler)
+- **An App Service Plan** (`AzureServicePlan`): Consumption (`CONSUMPTION_Y1`) for pay-per-execution, Elastic Premium (`ELASTIC_PREMIUM_EP1`-`EP3`) for pre-warmed instances, or Dedicated tiers for reserved capacity
+- **A storage binding**: the runtime state store -- a storage account name (with an access key or managed identity), or a Key Vault secret holding the connection string
+- **An application stack**: the runtime (.NET with isolated worker, Node.js, Python, Java, PowerShell, Docker container, or custom handler)
+
+Azure's Flex Consumption tier (FC1 plans) is a separate resource type with its own storage and scaling model, not this kind.
 
 ## Key Features
 
 - **Dual IaC support**: Both Pulumi and Terraform modules with feature parity
-- **StringValueOrRef composability**: `service_plan_id`, `storage_account_name`, `virtual_network_subnet_id`, and `application_insights_connection_string` all support `valueFrom` references
-- **Full-feature site_config**: Application stack selection, scaling controls, health checks, TLS settings, FTPS state, load balancing, CORS, and IP restrictions
-- **Docker support**: Run custom container images as Azure Functions via the `docker` application stack
-- **Managed identity**: SystemAssigned, UserAssigned, or both -- credential-free access to Azure services
-- **Storage identity mode**: `storage_uses_managed_identity` for key-free storage binding
-- **Connection strings**: Named, typed connection strings for database and service integrations
-- **IP restrictions**: IP-based, service-tag, and VNet-based access control for both the main site and SCM (Kudu)
-- **CORS**: Cross-origin resource sharing configuration for HTTP endpoints
-- **Storage mounts**: Mount Azure File Shares or Blob containers as directories accessible at runtime
+- **StringValueOrRef composability**: `service_plan_id`, `resource_group`, `storage_account_name` + `storage_account_access_key`, `virtual_network_subnet_id`, and `application_insights_connection_string` all support `valueFrom` references
+- **Three storage bindings**: account + access key, account + managed identity (credential-free), or Key Vault secret ID -- with the exactly-one and key-XOR-identity contracts validated at manifest time
+- **Serverless scaling dials**: `app_scale_limit` (the Consumption cost cap), `elastic_instance_minimum` + `pre_warmed_instance_count` (Elastic Premium cold-start elimination), `runtime_scale_monitoring_enabled` (KEDA-based trigger scaling), and `daily_memory_time_quota` (the Consumption cost circuit breaker)
+- **Built-in authentication (Easy Auth v2)**: Platform-level authentication against Microsoft Entra ID, Apple, Facebook, GitHub, Google, Microsoft account, Twitter, or any OpenID Connect provider -- validated before requests reach function code, with provider secrets referenced by app setting name
+- **Scheduled backups**: Content + configuration backups to a storage container (Standard tier and above)
+- **Slot-swap safety**: `sticky_settings` pins named app settings and connection strings to the production slot
+- **Docker support**: Custom container images, over the public internet or the VNet (`vnet_image_pull_enabled`), with managed-identity ACR pulls
+- **Managed identity**: SYSTEM_ASSIGNED, USER_ASSIGNED, or both
+- **Deployment hardening**: Basic-auth publishing toggles (Web Deploy + FTP) close the classic credential-based deployment paths
+- **IP restrictions**: IP-based, service-tag, and VNet-based access control for both the main site and SCM (Kudu), with allow/deny default actions
+- **User tags**: Free-form Azure resource tags merged over the platform's metadata-derived tags
 
 ## When to Use
 
-- **Event-driven processing**: Respond to queue messages, blob uploads, Event Grid events, or Cosmos DB changes
-- **HTTP APIs**: Lightweight REST APIs with automatic scaling (alternative to AzureContainerApp for simple APIs)
-- **Scheduled tasks**: Timer-triggered functions for cron-like jobs (billing runs, report generation, cleanup)
-- **Queue processing**: Consume messages from Service Bus, Storage Queues, or Event Hubs
-- **Infra charts**: Leaf resource in the `function-app-environment` infra chart (references ServicePlan, StorageAccount, AppInsights, Subnet)
+- **HTTP APIs**: Lightweight REST endpoints with pay-per-execution billing
+- **Event processing**: Queue, blob, Service Bus, and Event Hub triggered workloads
+- **Scheduled jobs**: Timer-triggered functions (cron-style)
+- **Containerized functions**: Custom Docker images with the Functions runtime
+- **Infra charts**: Leaf resource in the `function-app-environment` infra chart (references ServicePlan, StorageAccount, AppInsights)
 
 ## Quick Example
 
@@ -38,17 +42,22 @@ Every Function App requires:
 apiVersion: azure.planton.dev/v1
 kind: AzureFunctionApp
 metadata:
-  name: my-functions
+  name: my-fn
 spec:
   region: eastus
-  resource_group: my-rg
-  name: my-functions
-  service_plan_id: /subscriptions/.../Microsoft.Web/serverfarms/my-plan
-  storage_account_name: myfuncsstorage
-  storage_account_access_key: <storage-access-key>
-  site_config:
-    application_stack:
-      python_version: "3.12"
+  resourceGroup:
+    value: my-rg
+  functionAppName: my-fn-app
+  servicePlanId:
+    value: /subscriptions/.../Microsoft.Web/serverfarms/my-plan
+  storageAccountName:
+    value: myfnstorage
+  storageAccountAccessKey:
+    value: "<storage-key>"
+  siteConfig:
+    applicationStack:
+      pythonVersion: "3.12"
+  httpsOnly: true
 ```
 
 ## Spec Fields
@@ -56,90 +65,99 @@ spec:
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `region` | string | Yes | - | Azure region (ForceNew) |
-| `resource_group` | StringValueOrRef | Yes | - | Resource group (literal or AzureResourceGroup ref) (ForceNew) |
-| `name` | string | Yes | - | Globally unique name (`{name}.azurewebsites.net`) (ForceNew) |
+| `resource_group` | StringValueOrRef | Yes | - | Resource group (ForceNew) |
+| `function_app_name` | string | Yes | - | Globally unique name (`{function_app_name}.azurewebsites.net`) (ForceNew) |
 | `service_plan_id` | StringValueOrRef | Yes | - | App Service Plan ARM ID (AzureServicePlan ref) |
-| `storage_account_name` | StringValueOrRef | Yes | - | Storage account name (AzureStorageAccount ref) |
-| `storage_account_access_key` | StringValueOrRef | No | - | Storage account access key (conflicts with managed identity) |
-| `storage_uses_managed_identity` | bool | No | `false` | Use managed identity for storage (conflicts with access key) |
-| `functions_extension_version` | string | No | `"~4"` | Azure Functions runtime version |
-| `site_config` | SiteConfig | Yes | - | Site configuration (runtime, scaling, security) |
-| `app_settings` | map | No | - | Environment variables (key-value pairs) |
-| `connection_strings` | repeated | No | - | Named connection strings (name, type, value) |
-| `application_insights_connection_string` | StringValueOrRef | No | - | Application Insights connection string |
+| `storage_account_name` | StringValueOrRef | One-of | - | Runtime-state storage account (XOR `storage_key_vault_secret_id`) |
+| `storage_account_access_key` | StringValueOrRef | No | - | Storage access key (XOR `storage_uses_managed_identity`) |
+| `storage_uses_managed_identity` | bool | No | `false` | Credential-free storage access via the app's identity |
+| `storage_key_vault_secret_id` | string | One-of | - | Key Vault secret holding the storage connection string |
+| `functions_extension_version` | string | No | `"~4"` | Functions host version |
+| `daily_memory_time_quota` | int32 | No | `0` | Consumption cost circuit breaker (GB-seconds/day; 0 = unlimited) |
+| `site_config` | SiteConfig | Yes | - | Runtime, scaling, security, and operational configuration |
+| `app_settings` | map | No | - | Environment variables |
+| `connection_strings` | repeated | No | - | Named connection strings (name, enum type, value) |
+| `sticky_settings` | StickySettings | No | - | Settings pinned to the production slot during swaps |
+| `application_insights_connection_string` | StringValueOrRef | No | - | APM telemetry destination |
 | `https_only` | bool | No | `true` | Enforce HTTPS-only access |
 | `public_network_access_enabled` | bool | No | `true` | Enable public network access |
-| `builtin_logging_enabled` | bool | No | `true` | Enable AzureWebJobsDashboard logging |
+| `enabled` | bool | No | `true` | Enable or disable the app |
+| `builtin_logging_enabled` | bool | No | `true` | Legacy AzureWebJobsDashboard logging |
+| `content_share_force_disabled` | bool | No | `false` | Skip the auto-created content share |
+| `client_certificate_enabled` / `_mode` / `_exclusion_paths` | - | No | `OPTIONAL` | Mutual TLS posture |
 | `virtual_network_subnet_id` | StringValueOrRef | No | - | Subnet for VNet integration (AzureSubnet ref) |
-| `identity` | Identity | No | - | Managed identity (SystemAssigned, UserAssigned, or both) |
+| `vnet_image_pull_enabled` | bool | No | `false` | Pull container images over the VNet |
+| `virtual_network_backup_restore_enabled` | bool | No | `false` | Route backup traffic over the VNet |
+| `identity` | Identity | No | - | Managed identity (SYSTEM_ASSIGNED, USER_ASSIGNED, or both) |
 | `key_vault_reference_identity_id` | StringValueOrRef | No | - | Identity for Key Vault references |
-| `client_certificate_enabled` | bool | No | `false` | Enable mTLS client certificates |
-| `client_certificate_mode` | string | No | `"Optional"` | Certificate mode (Required, Optional, OptionalInteractiveUser) |
-| `client_certificate_exclusion_paths` | string | No | - | Semicolon-separated paths excluded from cert validation |
-| `content_share_force_disabled` | bool | No | `false` | Disable auto-created Azure Files content share |
+| `webdeploy_publish_basic_authentication_enabled` | bool | No | `true` | Basic-auth publishing over Web Deploy |
+| `ftp_publish_basic_authentication_enabled` | bool | No | `true` | Basic-auth publishing over FTP/FTPS |
+| `zip_deploy_file` | string | No | - | Local ZIP package deployed on create/update |
 | `storage_mounts` | repeated | No | - | Azure File Share or Blob container mounts |
+| `backup` | Backup | No | - | Scheduled backups (Standard+) |
+| `auth_settings_v2` | AuthSettingsV2 | No | - | Built-in authentication (Easy Auth v2) |
+| `tags` | map | No | - | Free-form Azure resource tags |
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
 | `function_app_id` | ARM resource ID of the Function App |
-| `default_hostname` | Default hostname (`{name}.azurewebsites.net`) |
-| `outbound_ip_addresses` | Outbound IP addresses (for downstream firewall rules) |
+| `default_hostname` | Default hostname (`{function_app_name}.azurewebsites.net`) |
+| `outbound_ip_addresses` | Currently active outbound IP addresses |
+| `possible_outbound_ip_addresses` | Every outbound IP the platform could ever use -- for durable firewall allowlists |
 | `identity_principal_id` | System-assigned identity principal ID (for RBAC) |
 | `identity_tenant_id` | System-assigned identity tenant ID |
 | `custom_domain_verification_id` | TXT record value for custom domain verification |
 | `kind` | Resource kind string (e.g., `"functionapp,linux"`) |
+| `hosting_environment_id` | ARM ID of the App Service Environment (empty outside ASE) |
+| `site_credential_name` | Publishing credential username (Kudu/SCM basic auth) |
+| `site_credential_password` | Publishing credential password -- secret-bearing; grants deploy access while basic-auth publishing is enabled |
 
 ## Downstream Usage
 
-AzureFunctionApp is a **leaf resource** -- nothing references its outputs downstream. It consumes outputs from upstream resources via `valueFrom`:
+AzureFunctionApp is a **leaf resource**. It consumes outputs from upstream resources via `valueFrom`:
 
 ```yaml
 apiVersion: azure.planton.dev/v1
 kind: AzureFunctionApp
 metadata:
-  name: event-processor
+  name: my-events-fn
 spec:
   region: eastus
-  resource_group:
+  resourceGroup:
     valueFrom:
       kind: AzureResourceGroup
       name: shared-rg
       fieldPath: status.outputs.resource_group_name
-  name: event-processor
-  service_plan_id:
+  functionAppName: my-events-fn
+  servicePlanId:
     valueFrom:
       kind: AzureServicePlan
-      name: functions-plan
-      fieldPath: status.outputs.plan_id
-  storage_account_name:
+      name: fn-plan
+      fieldPath: status.outputs.service_plan_id
+  storageAccountName:
     valueFrom:
       kind: AzureStorageAccount
-      name: func-storage
+      name: fn-storage
       fieldPath: status.outputs.storage_account_name
-  application_insights_connection_string:
+  storageAccountAccessKey:
     valueFrom:
-      kind: AzureApplicationInsights
-      name: func-insights
-      fieldPath: status.outputs.connection_string
-  virtual_network_subnet_id:
-    valueFrom:
-      kind: AzureSubnet
-      name: functions-subnet
-      fieldPath: status.outputs.subnet_id
-  site_config:
-    application_stack:
-      python_version: "3.12"
+      kind: AzureStorageAccount
+      name: fn-storage
+      fieldPath: status.outputs.primary_access_key
+  siteConfig:
+    applicationStack:
+      pythonVersion: "3.12"
 ```
 
-## What's NOT Included (80/20 Scope)
+## Deliberate Scope Boundaries
 
-- **auth_settings / auth_settings_v2**: Azure App Service Authentication (Easy Auth). Complex configuration surface with 20+ sub-fields. Deferred to v2 when demand materializes.
-- **backup**: Automated backup configuration. Niche feature for stateful apps; most function apps are stateless.
-- **sticky_settings**: App settings that don't swap during slot deployments. Requires deployment slots (not in v1).
-- **Deployment slots**: Blue-green deployment via staging slots. Significant complexity; deferred to v2.
-- **zip_deploy_file**: In-line ZIP deployment. Most teams use CI/CD pipelines for deployment, not in-line ZIP.
-- **Windows Function Apps**: `azurerm_windows_function_app` is excluded. Linux covers the vast majority of serverless workloads.
+- **Flex Consumption function apps** are Azure's own separate resource type (`azurerm_function_app_flex_consumption`) with a container-endpoint storage model and top-level runtime selection -- a standalone-kind candidate, not fields on this spec.
+- **Legacy `auth_settings` (v1)**: superseded by `auth_settings_v2`, which this component models fully.
+- **Deployment slots** mirror the entire app surface with an independent lifecycle -- a standalone-kind candidate. `sticky_settings` is modeled here because it lives on the production app.
+- **Windows Function Apps** are the legacy path; the platform targets Linux-first runtimes and containers.
 
-These omissions follow the 80/20 principle: the included fields cover the vast majority of production use cases while keeping the API surface clean and maintainable.
+## Further Reading
+
+- [docs/README.md](./docs/README.md) -- Comprehensive research and design documentation

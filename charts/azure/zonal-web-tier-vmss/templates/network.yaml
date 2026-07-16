@@ -1,0 +1,77 @@
+# The web-tier network.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: "{{ values.env }}-web-vnet"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-tier"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-web-vnet"
+  addressSpaces:
+    - "{{ values.vnet_cidr }}"
+---
+# The tier's inbound contract: web traffic and nothing else. Azure's
+# implicit rules already allow the load balancer's health probes
+# (AzureLoadBalancer tag) and VNet-internal traffic, and deny other
+# inbound -- so two explicit allows are the complete policy, and there
+# is no management port open to the Internet at all (day-2 access goes
+# through Bastion or a peered management network).
+apiVersion: azure.planton.dev/v1
+kind: AzureNetworkSecurityGroup
+metadata:
+  name: "{{ values.env }}-web-nsg"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-tier"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-web-nsg"
+  securityRules:
+    - name: allow-https
+      priority: 100
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
+      sourceAddressPrefix: Internet
+      sourcePortRange: "*"
+      destinationAddressPrefix: "*"
+      destinationPortRange: "443"
+      description: HTTPS from the Internet -- the tier's production traffic
+    - name: allow-http
+      priority: 110
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
+      sourceAddressPrefix: Internet
+      sourcePortRange: "*"
+      destinationAddressPrefix: "*"
+      destinationPortRange: "80"
+      description: HTTP from the Internet -- for the health probe target and the TLS redirect; drop this rule once 443 fully owns the traffic
+---
+# The web subnet, with the NSG attached at the SUBNET so the policy
+# covers every NIC placed here -- instances cannot opt out of the
+# tier's inbound contract.
+apiVersion: azure.planton.dev/v1
+kind: AzureSubnet
+metadata:
+  name: "{{ values.env }}-web-subnet"
+spec:
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-web-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  name: web
+  addressPrefixes:
+    - "{{ values.web_subnet_cidr }}"
+  networkSecurityGroupId:
+    valueFrom:
+      kind: AzureNetworkSecurityGroup
+      name: "{{ values.env }}-web-nsg"
+      fieldPath: status.outputs.network_security_group_id

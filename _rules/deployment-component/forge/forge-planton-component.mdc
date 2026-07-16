@@ -68,7 +68,7 @@ A complete deployment component includes:
 ✅ **Proto API Definitions** - All 4 proto files with validations and tests
 ✅ **IaC Modules** - Both Pulumi and Terraform at **100% behavioral parity** (see the Parity Mandate below)
 ✅ **Documentation** - User-facing, research, and technical docs
-✅ **Supporting Files** - Test manifests, debug scripts, build configs
+✅ **Supporting Files** - Test manifests, build configs
 ✅ **Registry Entry** - Registered in cloud_resource_kind.proto
 ✅ **Import Recipes** - Provider-catalog entries + component import map, round-trip proven (Phase 6c)
 ✅ **Presets** - Ready-to-deploy configuration templates (2-3 common patterns)
@@ -203,7 +203,7 @@ The following 20 rules execute in order. Each rule is atomic and can be run indi
 
 12. **009-pulumi-module** - Generate module/ (main.go, locals.go, outputs.go, resources), richly commented to the module-comment bar
 13. **010-pulumi-entrypoint** - Generate entrypoint (main.go, Pulumi.yaml, Makefile)
-14. **012-pulumi-docs** - Generate iac/pulumi/README.md and debug.sh
+14. **012-pulumi-docs** - Generate iac/pulumi/README.md
 
 ### Phase 6: Terraform Implementation (Rules 013, 015)
 
@@ -391,11 +391,17 @@ and it propagates transitively into every consumer's dependency chain, so a
 padded registry taxes every downstream lane. For OPTIONAL references that only
 a particular scenario composes (an instance's subnet, a cluster's capacity
 group), the scenario manifest declares its own additional dependencies via the
-`planton.dev/e2e-prerequisites` metadata annotation (a comma-separated kind
-list, e.g. `"AwsSubnet,AwsSecurityGroup"`); declared kinds expand through
-their own registry graphs, merge and dedupe with the component's registry
-prerequisites, and deploy in topological order — so annotating the top of a
-chain is enough. Unknown kinds and self-references fail loudly. Singular AND
+`planton.dev/e2e-prerequisites` metadata annotation (comma-separated). Each
+entry is either a kind name (e.g. `"AwsSubnet,AwsSecurityGroup"`) or a
+repo-relative manifest path (recognized by containing a `/`). Declared kinds
+expand through their own registry graphs, merge and dedupe with the
+component's registry prerequisites, and deploy in topological order — so
+annotating the top of a chain is enough. Manifest-path entries deploy that
+exact document as an EXTRA INSTANCE of whatever kind it declares (how a
+scenario gets a SECOND instance of a kind, e.g. a peering's remote network),
+after the kind-driven chain, each preceded by its own not-yet-deployed
+transitive prerequisites — a path entry never substitutes for the kind's
+install profile. Unknown kinds and self-references fail loudly. Singular AND
 repeated `StringValueOrRef` fields both resolve, refs nested inside (repeated)
 spec messages resolve too, and a repeated list can mix literals with
 references. Audit the annotation against EVERY `valueFrom` kind the scenario
@@ -602,7 +608,7 @@ After forge completes, the component should have:
 ✅ **Both IaC modules richly commented to the module-comment bar** (explain why/trade-offs/provider quirks/ordering, not narration -- see `architecture/deployment-component.md` §4.1)
 ✅ **Cross-engine parity gate passed** (Phase 6b) -- Pulumi and Terraform agree on namespace, naming basis, labels, selectors, feature coverage, dependency ordering, and stack outputs; any divergence carries a `PARITY-EXCEPTION:` comment in both modules
 ✅ **Import recipes shipped and proven** (Phase 6c) -- catalog entries for every module resource type, component import map with derivable-first value sources, offline conformance green, live import round-trip green
-✅ Supporting files (manifests, debug scripts, module overviews)
+✅ Supporting files (manifests, module overviews)
 ✅ Initial presets generated (2-3 common configuration templates)
 ✅ Build validation passed -- BOTH `go build ./apis/.../v1/...` AND the release-equivalent `go build -o /dev/null ./apis/.../v1/iac/pulumi`
 ✅ Component test validation passed (`go test -v ./apis/.../v1/`)

@@ -1,0 +1,60 @@
+# One resource group holds the whole lake so a single delete reclaims
+# everything the chart created. (With CMK enabled, note the vault's
+# purge-protection caveat in the values -- the vault NAME survives
+# deletion until the soft-delete window passes.)
+apiVersion: azure.planton.dev/v1
+kind: AzureResourceGroup
+metadata:
+  name: "{{ values.env }}-lakehouse"
+spec:
+  name: "{{ values.env }}-lakehouse"
+  region: "{{ values.region }}"
+---
+# Destination for the lake's data-access audit trail. A governed lake
+# is defined by being able to answer "who read this data" -- the blob
+# service's StorageRead/StorageWrite/StorageDelete logs land here.
+apiVersion: azure.planton.dev/v1
+kind: AzureLogAnalyticsWorkspace
+metadata:
+  name: "{{ values.env }}-lakehouse-logs"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-lakehouse"
+      fieldPath: status.outputs.resource_group_name
+  workspaceName: "{{ values.env }}-lakehouse-logs"
+  retentionInDays: {{ values.log_retention_days }}
+---
+# The engineering identity: pipelines and processing jobs (Spark,
+# Databricks, Data Factory) bind this identity and hold write access
+# across every zone. Keyless -- the identity IS the credential.
+apiVersion: azure.planton.dev/v1
+kind: AzureUserAssignedIdentity
+metadata:
+  name: "{{ values.env }}-lake-engineering"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-lakehouse"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-lake-engineering"
+---
+# The analyst identity: BI tools and notebooks bind this identity and
+# read ONLY the curated zone -- analysts never see raw landings (PII
+# before scrubbing) or each other's sandbox experiments through it.
+apiVersion: azure.planton.dev/v1
+kind: AzureUserAssignedIdentity
+metadata:
+  name: "{{ values.env }}-lake-analysts"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-lakehouse"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-lake-analysts"

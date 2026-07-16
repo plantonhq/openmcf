@@ -1,0 +1,80 @@
+# Offline-plan test manifest. Exercises every receiver type in one
+# group -- email, SMS, voice, an Entra-authenticated webhook, app push,
+# an automation runbook, a Logic App, an Azure Function, ARM-role
+# fan-out, an Event Hub stream, and an ITSM connection -- plus tags.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorActionGroup
+metadata:
+  name: test-action-group
+  org: test-org
+  env: dev
+spec:
+  resourceGroup:
+    value: test-rg
+  shortName: TestAG
+  enabled: true
+  emailReceivers:
+    - name: oncall-email
+      emailAddress: oncall@example.com
+      useCommonAlertSchema: true
+  smsReceivers:
+    - name: oncall-sms
+      countryCode: "1"
+      phoneNumber: "5555550100"
+  voiceReceivers:
+    - name: oncall-voice
+      countryCode: "1"
+      phoneNumber: "5555550100"
+  webhookReceivers:
+    - name: pager
+      # A domain-you-own shape: Azure rejects placeholder domains like
+      # example.com server-side (WebhookServiceUriBlocked).
+      serviceUri: https://hooks.yourcompany.com/pager
+      useCommonAlertSchema: true
+      aadAuth:
+        objectId: 11111111-2222-3333-4444-555555555555
+        tenantId: 99999999-8888-7777-6666-555555555555
+  azureAppPushReceivers:
+    - name: oncall-push
+      emailAddress: oncall@example.com
+  automationRunbookReceivers:
+    - name: remediate
+      automationAccountId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Automation/automationAccounts/test-aa
+      runbookName: restart-app
+      webhookResourceId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Automation/automationAccounts/test-aa/webHooks/restart-hook
+      isGlobalRunbook: false
+      serviceUri: https://s1events.azure-automation.net/webhooks?token=test
+      useCommonAlertSchema: true
+  logicAppReceivers:
+    - name: workflow
+      resourceId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Logic/workflows/test-wf
+      callbackUrl: https://prod-1.eastus.logic.azure.com/workflows/test/triggers/manual/paths/invoke
+      useCommonAlertSchema: true
+  azureFunctionReceivers:
+    - name: func
+      functionAppResourceId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Web/sites/test-fn
+      functionName: HandleAlert
+      httpTriggerUrl: https://test-fn.azurewebsites.net/api/HandleAlert
+      useCommonAlertSchema: true
+  armRoleReceivers:
+    - name: owners
+      roleId:
+        value: 8e3af657-a8ff-443c-a75c-2fe8c4bcb635
+      useCommonAlertSchema: true
+  eventHubReceivers:
+    - name: siem
+      eventHubName:
+        value: alerts
+      eventHubNamespace:
+        value: test-alerts-ns
+      subscriptionId: 00000000-0000-0000-0000-000000000000
+      useCommonAlertSchema: true
+  itsmReceivers:
+    - name: servicenow
+      workspaceId: 00000000-0000-0000-0000-000000000000|11111111-1111-1111-1111-111111111111
+      connectionId: 22222222-2222-2222-2222-222222222222
+      ticketConfiguration: '{"PayloadRevision":0,"WorkItemType":"Incident"}'
+      region: eastus
+  tags:
+    team: platform

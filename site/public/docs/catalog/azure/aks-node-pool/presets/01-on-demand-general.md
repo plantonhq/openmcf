@@ -24,19 +24,19 @@ This preset creates a general-purpose AKS user node pool with on-demand (regular
 
 ## Key Configuration Choices
 
-- **On-demand VMs** (`spotEnabled` not set) -- Regular pricing with no risk of eviction; suitable for all workload types
+- **On-demand VMs** (`priority` unset = REGULAR) -- no risk of eviction; suitable for all workload types
 - **Standard_D4s_v5** (`vmSize`) -- 4 vCPUs, 16 GiB RAM; balanced general-purpose compute
-- **Autoscaling 2-10** (`autoscaling.minNodes: 2`, `autoscaling.maxNodes: 10`) -- Always has at least 2 nodes for HA; scales up to 10 under load
-- **3 availability zones** -- Distributes nodes across zones for 99.95% SLA
-- **User mode** (`mode: USER`) -- Runs application workloads; separated from system components
+- **Autoscaling 2-10** (`autoScalingEnabled: true`, `minCount: 2`, `maxCount: 10`) -- always at least 2 nodes for HA; scales up under load
+- **3 availability zones** (`zones`) -- distributes nodes across zones for the 99.95% SLA
+- **User mode** (`mode: USER`) -- runs application workloads, separated from the cluster's system pool
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<aks-cluster-name>` | Name of the parent AKS cluster | `AzureAksCluster` metadata.name |
-| `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
+| `<aks-cluster-arm-id>` | ARM ID of the parent AKS cluster | `AzureAksCluster` `status.outputs.cluster_id` (or reference it with `valueFrom`) |
 
 ## Related Presets
 
-- **02-spot-cost-optimized** -- Use instead for fault-tolerant, stateless workloads that can tolerate eviction in exchange for 30-90% cost savings
+- **02-spot-cost-optimized** -- Use instead for fault-tolerant, stateless workloads that can tolerate eviction for 30-90% savings
+- **03-gpu-or-windows** -- Use instead for GPU workloads reserved by taint

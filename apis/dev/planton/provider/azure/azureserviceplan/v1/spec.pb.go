@@ -24,56 +24,363 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// The operating system type the plan's VMs run.
+type AzureServicePlanOsType int32
+
+const (
+	// Not specified -- deploys LINUX.
+	AzureServicePlanOsType_azure_service_plan_os_type_unspecified AzureServicePlanOsType = 0
+	// Linux VMs (`reserved = true` in the Azure API). The right choice for
+	// containers and every modern runtime.
+	AzureServicePlanOsType_LINUX AzureServicePlanOsType = 1
+	// Windows VMs. Required for .NET Framework apps and the Shared-tier
+	// SKUs.
+	AzureServicePlanOsType_WINDOWS AzureServicePlanOsType = 2
+	// Windows Container VMs (`hyperV = true` in the Azure API) -- hosts
+	// Windows containers on Premium v3 and Isolated v2 SKUs.
+	AzureServicePlanOsType_WINDOWS_CONTAINER AzureServicePlanOsType = 3
+)
+
+// Enum value maps for AzureServicePlanOsType.
+var (
+	AzureServicePlanOsType_name = map[int32]string{
+		0: "azure_service_plan_os_type_unspecified",
+		1: "LINUX",
+		2: "WINDOWS",
+		3: "WINDOWS_CONTAINER",
+	}
+	AzureServicePlanOsType_value = map[string]int32{
+		"azure_service_plan_os_type_unspecified": 0,
+		"LINUX":                                  1,
+		"WINDOWS":                                2,
+		"WINDOWS_CONTAINER":                      3,
+	}
+)
+
+func (x AzureServicePlanOsType) Enum() *AzureServicePlanOsType {
+	p := new(AzureServicePlanOsType)
+	*p = x
+	return p
+}
+
+func (x AzureServicePlanOsType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureServicePlanOsType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (AzureServicePlanOsType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_enumTypes[0]
+}
+
+func (x AzureServicePlanOsType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureServicePlanOsType.Descriptor instead.
+func (AzureServicePlanOsType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+// The App Service Plan SKU vocabulary, mirroring Azure's own SKU names.
+// One value picks the tier (capabilities and SLA) and the VM size within
+// it. Values are grouped by tier family; enum numbers are contiguous
+// within each family (validation rules key on the ranges).
+type AzureServicePlanSku int32
+
+const (
+	// Not specified -- invalid; pick an explicit tier and size.
+	AzureServicePlanSku_azure_service_plan_sku_unspecified AzureServicePlanSku = 0
+	// Free tier: shared VMs, 60 CPU-minutes/day, no scale-out, no SLA, no
+	// Always-On. Dev/experiments only.
+	AzureServicePlanSku_FREE_F1 AzureServicePlanSku = 1
+	// Shared tier (Windows-only): shared VMs, 240 CPU-minutes/day, custom
+	// domains but no SSL bindings, no scale-out, no SLA.
+	AzureServicePlanSku_SHARED_D1 AzureServicePlanSku = 2
+	// Shared tier's legacy ARM spelling ("SHARED"), functionally D1.
+	AzureServicePlanSku_SHARED AzureServicePlanSku = 3
+	// Basic (B-family): dedicated VMs, manual scale to 3 instances, custom
+	// domains + SSL. Dev/test and low-traffic production.
+	AzureServicePlanSku_BASIC_B1 AzureServicePlanSku = 4
+	AzureServicePlanSku_BASIC_B2 AzureServicePlanSku = 5
+	AzureServicePlanSku_BASIC_B3 AzureServicePlanSku = 6
+	// Standard (S-family): auto-scale to 10 instances, 5 staging slots,
+	// daily backups, Traffic Manager integration.
+	AzureServicePlanSku_STANDARD_S1 AzureServicePlanSku = 7
+	AzureServicePlanSku_STANDARD_S2 AzureServicePlanSku = 8
+	AzureServicePlanSku_STANDARD_S3 AzureServicePlanSku = 9
+	// Premium v2 (P*v2): Dv2-series hardware, scale to 30 instances, 20
+	// slots, zone redundancy.
+	AzureServicePlanSku_PREMIUM_P1V2 AzureServicePlanSku = 10
+	AzureServicePlanSku_PREMIUM_P2V2 AzureServicePlanSku = 11
+	AzureServicePlanSku_PREMIUM_P3V2 AzureServicePlanSku = 12
+	// Premium v3 (P*v3): the current price-performance sweet spot --
+	// faster hardware, more memory per core, Windows containers, zone
+	// redundancy, and premium plan auto-scale.
+	AzureServicePlanSku_PREMIUM_P0V3 AzureServicePlanSku = 13
+	AzureServicePlanSku_PREMIUM_P1V3 AzureServicePlanSku = 14
+	AzureServicePlanSku_PREMIUM_P2V3 AzureServicePlanSku = 15
+	AzureServicePlanSku_PREMIUM_P3V3 AzureServicePlanSku = 16
+	// Premium v3 memory-optimized (P*mv3): double the RAM per core of the
+	// equivalent P*v3.
+	AzureServicePlanSku_PREMIUM_P1MV3 AzureServicePlanSku = 17
+	AzureServicePlanSku_PREMIUM_P2MV3 AzureServicePlanSku = 18
+	AzureServicePlanSku_PREMIUM_P3MV3 AzureServicePlanSku = 19
+	AzureServicePlanSku_PREMIUM_P4MV3 AzureServicePlanSku = 20
+	AzureServicePlanSku_PREMIUM_P5MV3 AzureServicePlanSku = 21
+	// Premium v4 (P*v4): the newest premium generation.
+	AzureServicePlanSku_PREMIUM_P0V4 AzureServicePlanSku = 22
+	AzureServicePlanSku_PREMIUM_P1V4 AzureServicePlanSku = 23
+	AzureServicePlanSku_PREMIUM_P2V4 AzureServicePlanSku = 24
+	AzureServicePlanSku_PREMIUM_P3V4 AzureServicePlanSku = 25
+	// Premium v4 memory-optimized (P*mv4).
+	AzureServicePlanSku_PREMIUM_P1MV4 AzureServicePlanSku = 26
+	AzureServicePlanSku_PREMIUM_P2MV4 AzureServicePlanSku = 27
+	AzureServicePlanSku_PREMIUM_P3MV4 AzureServicePlanSku = 28
+	AzureServicePlanSku_PREMIUM_P4MV4 AzureServicePlanSku = 29
+	AzureServicePlanSku_PREMIUM_P5MV4 AzureServicePlanSku = 30
+	// Consumption (Y1): Function Apps pay-per-execution -- scales to 200
+	// instances automatically, bills per GB-second, cold starts apply.
+	AzureServicePlanSku_CONSUMPTION_Y1 AzureServicePlanSku = 31
+	// Elastic Premium (EP-family): Function Apps with pre-warmed instances
+	// (no cold start), VNet integration, and event-driven scale to 100
+	// instances. Pair with maximum_elastic_worker_count to cap cost.
+	AzureServicePlanSku_ELASTIC_PREMIUM_EP1 AzureServicePlanSku = 32
+	AzureServicePlanSku_ELASTIC_PREMIUM_EP2 AzureServicePlanSku = 33
+	AzureServicePlanSku_ELASTIC_PREMIUM_EP3 AzureServicePlanSku = 34
+	// Flex Consumption (FC1): the newest serverless Functions tier --
+	// per-instance memory selection, always-ready instances, VNet support.
+	// Note: Azure models Flex Consumption function apps as their own
+	// resource type, distinct from AzureFunctionApp.
+	AzureServicePlanSku_FLEX_CONSUMPTION_FC1 AzureServicePlanSku = 35
+	// Isolated v1 (I-family, ASEv2): single-tenant compute in an App
+	// Service Environment v2 (legacy -- prefer Isolated v2 on ASEv3).
+	AzureServicePlanSku_ISOLATED_I1 AzureServicePlanSku = 36
+	AzureServicePlanSku_ISOLATED_I2 AzureServicePlanSku = 37
+	AzureServicePlanSku_ISOLATED_I3 AzureServicePlanSku = 38
+	// Isolated v2 (I*v2, ASEv3): single-tenant, network-isolated compute;
+	// scale to 100 instances. Requires app_service_environment_id.
+	AzureServicePlanSku_ISOLATED_I1V2 AzureServicePlanSku = 39
+	AzureServicePlanSku_ISOLATED_I2V2 AzureServicePlanSku = 40
+	AzureServicePlanSku_ISOLATED_I3V2 AzureServicePlanSku = 41
+	AzureServicePlanSku_ISOLATED_I4V2 AzureServicePlanSku = 42
+	AzureServicePlanSku_ISOLATED_I5V2 AzureServicePlanSku = 43
+	AzureServicePlanSku_ISOLATED_I6V2 AzureServicePlanSku = 44
+	// Isolated v2 memory-optimized (I*mv2, ASEv3).
+	AzureServicePlanSku_ISOLATED_I1MV2 AzureServicePlanSku = 45
+	AzureServicePlanSku_ISOLATED_I2MV2 AzureServicePlanSku = 46
+	AzureServicePlanSku_ISOLATED_I3MV2 AzureServicePlanSku = 47
+	AzureServicePlanSku_ISOLATED_I4MV2 AzureServicePlanSku = 48
+	AzureServicePlanSku_ISOLATED_I5MV2 AzureServicePlanSku = 49
+	// Workflow (WS-family): Logic Apps Standard hosting with elastic
+	// scale-out (maximum_elastic_worker_count applies).
+	AzureServicePlanSku_WORKFLOW_WS1 AzureServicePlanSku = 50
+	AzureServicePlanSku_WORKFLOW_WS2 AzureServicePlanSku = 51
+	AzureServicePlanSku_WORKFLOW_WS3 AzureServicePlanSku = 52
+)
+
+// Enum value maps for AzureServicePlanSku.
+var (
+	AzureServicePlanSku_name = map[int32]string{
+		0:  "azure_service_plan_sku_unspecified",
+		1:  "FREE_F1",
+		2:  "SHARED_D1",
+		3:  "SHARED",
+		4:  "BASIC_B1",
+		5:  "BASIC_B2",
+		6:  "BASIC_B3",
+		7:  "STANDARD_S1",
+		8:  "STANDARD_S2",
+		9:  "STANDARD_S3",
+		10: "PREMIUM_P1V2",
+		11: "PREMIUM_P2V2",
+		12: "PREMIUM_P3V2",
+		13: "PREMIUM_P0V3",
+		14: "PREMIUM_P1V3",
+		15: "PREMIUM_P2V3",
+		16: "PREMIUM_P3V3",
+		17: "PREMIUM_P1MV3",
+		18: "PREMIUM_P2MV3",
+		19: "PREMIUM_P3MV3",
+		20: "PREMIUM_P4MV3",
+		21: "PREMIUM_P5MV3",
+		22: "PREMIUM_P0V4",
+		23: "PREMIUM_P1V4",
+		24: "PREMIUM_P2V4",
+		25: "PREMIUM_P3V4",
+		26: "PREMIUM_P1MV4",
+		27: "PREMIUM_P2MV4",
+		28: "PREMIUM_P3MV4",
+		29: "PREMIUM_P4MV4",
+		30: "PREMIUM_P5MV4",
+		31: "CONSUMPTION_Y1",
+		32: "ELASTIC_PREMIUM_EP1",
+		33: "ELASTIC_PREMIUM_EP2",
+		34: "ELASTIC_PREMIUM_EP3",
+		35: "FLEX_CONSUMPTION_FC1",
+		36: "ISOLATED_I1",
+		37: "ISOLATED_I2",
+		38: "ISOLATED_I3",
+		39: "ISOLATED_I1V2",
+		40: "ISOLATED_I2V2",
+		41: "ISOLATED_I3V2",
+		42: "ISOLATED_I4V2",
+		43: "ISOLATED_I5V2",
+		44: "ISOLATED_I6V2",
+		45: "ISOLATED_I1MV2",
+		46: "ISOLATED_I2MV2",
+		47: "ISOLATED_I3MV2",
+		48: "ISOLATED_I4MV2",
+		49: "ISOLATED_I5MV2",
+		50: "WORKFLOW_WS1",
+		51: "WORKFLOW_WS2",
+		52: "WORKFLOW_WS3",
+	}
+	AzureServicePlanSku_value = map[string]int32{
+		"azure_service_plan_sku_unspecified": 0,
+		"FREE_F1":                            1,
+		"SHARED_D1":                          2,
+		"SHARED":                             3,
+		"BASIC_B1":                           4,
+		"BASIC_B2":                           5,
+		"BASIC_B3":                           6,
+		"STANDARD_S1":                        7,
+		"STANDARD_S2":                        8,
+		"STANDARD_S3":                        9,
+		"PREMIUM_P1V2":                       10,
+		"PREMIUM_P2V2":                       11,
+		"PREMIUM_P3V2":                       12,
+		"PREMIUM_P0V3":                       13,
+		"PREMIUM_P1V3":                       14,
+		"PREMIUM_P2V3":                       15,
+		"PREMIUM_P3V3":                       16,
+		"PREMIUM_P1MV3":                      17,
+		"PREMIUM_P2MV3":                      18,
+		"PREMIUM_P3MV3":                      19,
+		"PREMIUM_P4MV3":                      20,
+		"PREMIUM_P5MV3":                      21,
+		"PREMIUM_P0V4":                       22,
+		"PREMIUM_P1V4":                       23,
+		"PREMIUM_P2V4":                       24,
+		"PREMIUM_P3V4":                       25,
+		"PREMIUM_P1MV4":                      26,
+		"PREMIUM_P2MV4":                      27,
+		"PREMIUM_P3MV4":                      28,
+		"PREMIUM_P4MV4":                      29,
+		"PREMIUM_P5MV4":                      30,
+		"CONSUMPTION_Y1":                     31,
+		"ELASTIC_PREMIUM_EP1":                32,
+		"ELASTIC_PREMIUM_EP2":                33,
+		"ELASTIC_PREMIUM_EP3":                34,
+		"FLEX_CONSUMPTION_FC1":               35,
+		"ISOLATED_I1":                        36,
+		"ISOLATED_I2":                        37,
+		"ISOLATED_I3":                        38,
+		"ISOLATED_I1V2":                      39,
+		"ISOLATED_I2V2":                      40,
+		"ISOLATED_I3V2":                      41,
+		"ISOLATED_I4V2":                      42,
+		"ISOLATED_I5V2":                      43,
+		"ISOLATED_I6V2":                      44,
+		"ISOLATED_I1MV2":                     45,
+		"ISOLATED_I2MV2":                     46,
+		"ISOLATED_I3MV2":                     47,
+		"ISOLATED_I4MV2":                     48,
+		"ISOLATED_I5MV2":                     49,
+		"WORKFLOW_WS1":                       50,
+		"WORKFLOW_WS2":                       51,
+		"WORKFLOW_WS3":                       52,
+	}
+)
+
+func (x AzureServicePlanSku) Enum() *AzureServicePlanSku {
+	p := new(AzureServicePlanSku)
+	*p = x
+	return p
+}
+
+func (x AzureServicePlanSku) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureServicePlanSku) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_enumTypes[1].Descriptor()
+}
+
+func (AzureServicePlanSku) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_enumTypes[1]
+}
+
+func (x AzureServicePlanSku) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureServicePlanSku.Descriptor instead.
+func (AzureServicePlanSku) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
 // **AzureServicePlanSpec** defines the configuration for creating an Azure
 // App Service Plan (Microsoft.Web/serverfarms), the compute tier that hosts
-// Azure Web Apps, Function Apps, and Logic Apps.
+// Azure Web Apps, Function Apps, and Logic Apps Standard workflows.
 //
-// An App Service Plan defines a set of compute resources for a web application
-// to run. One or more apps can be configured to run on the same computing
-// resources (or in the same App Service Plan). The plan determines the region,
-// number of VM instances, size of VM instances, and pricing tier.
+// An App Service Plan defines a set of compute resources for applications to
+// run on. One or more apps can share the same plan (and therefore the same
+// VMs); the plan determines the region, VM size, instance count, pricing
+// tier, and which platform features (staging slots, zone redundancy,
+// per-site scaling, VNet integration) are available to the apps it hosts.
 //
-// **OS type**: Each plan is either Linux or Windows. The OS type is immutable
-// after creation (ForceNew). Linux plans set `reserved = true` in the Azure
-// API. All apps within a plan must share the same OS type.
+// **OS type**: Each plan is either Linux, Windows, or Windows Container.
+// The OS type is immutable after creation, and all apps within a plan must
+// share it. Linux plans set `reserved = true` in the Azure API; Windows
+// Container plans set `hyperV = true`.
 //
-// **SKU tiers** (grouped by category):
+// **Choosing a SKU** (the full vocabulary is the `AzureServicePlanSku`
+// enum; the tier determines both price and capability):
+//   - Free (F1) / Shared (D1, SHARED): apps share VMs with other customers;
+//     60/240 CPU-minutes per day, no scale-out, no SLA, no Always-On.
+//     Shared-tier SKUs are Windows-only.
+//   - Basic (B1-B3): dedicated VMs, manual scale to 3 instances. Dev/test.
+//   - Standard (S1-S3): auto-scale to 10 instances, staging slots, backups.
+//   - Premium (P*v2/P*v3/P*v4, memory-optimized P*m*): faster hardware,
+//     scale to 30 instances, zone redundancy, VNet features. P*v3/P*v4 offer
+//     the best price-performance and support the optional premium plan
+//     auto-scale (`premium_plan_auto_scale_enabled`).
+//   - Consumption (Y1): Function Apps pay-per-execution; scales to 200
+//     instances automatically; instances are recycled when idle.
+//   - Elastic Premium (EP1-EP3): Function Apps with pre-warmed instances
+//     (no cold start) and event-driven scale to 100 instances; the
+//     `maximum_elastic_worker_count` field is the cost-control lever.
+//   - Flex Consumption (FC1): the newest serverless Functions tier
+//     (per-instance memory selection, always-ready instances).
+//   - Isolated (I1-I3 for ASEv2, I*v2/I*mv2 for ASEv3): single-tenant
+//     compute inside an App Service Environment; requires
+//     `app_service_environment_id`.
+//   - Workflow (WS1-WS3): Logic Apps Standard hosting.
 //
-// Shared compute (apps share VMs with other customers):
-//   - Free: `F1` (60 CPU min/day, no scale-out, no SLA)
-//   - Shared: `D1` (240 CPU min/day, no scale-out, no SLA, Windows only)
+// **Zone redundancy** (`zone_balancing_enabled`): supported on Premium,
+// Elastic Premium, Consumption, Flex Consumption, Isolated v2, and Workflow
+// SKUs -- not on Free, Shared, Basic, or Standard. Enabling it on an
+// existing plan whose `worker_count` is below 2 forces the plan to be
+// destroyed and recreated; keep the instance count a multiple of the
+// region's availability-zone count (typically 3) for even spread.
 //
-// Dedicated compute (apps run on dedicated VMs):
-//   - Basic: `B1`, `B2`, `B3` (manual scale to 3 instances)
-//   - Standard: `S1`, `S2`, `S3` (auto-scale to 10 instances, staging slots)
-//   - Premium v2: `P1v2`, `P2v2`, `P3v2` (30 instances, zone redundancy)
-//   - Premium v3: `P0v3`, `P1v3`, `P2v3`, `P3v3` (30 instances, zone redundancy)
-//   - Premium v3 memory-optimized: `P1mv3`-`P5mv3` (double RAM per core)
+// **Per-site scaling** (`per_site_scaling_enabled`): lets individual apps
+// within the plan scale to fewer instances than the plan itself runs,
+// instead of every app running on every instance.
 //
-// Dynamic compute (event-driven auto-scaling for Functions):
-//   - Consumption: `Y1` (pay-per-execution, auto-scales to 200 instances)
-//   - Elastic Premium: `EP1`, `EP2`, `EP3` (pre-warmed instances, up to 100)
-//
-// Isolated compute (runs in App Service Environment v3):
-//   - Isolated v2: `I1v2`-`I6v2`, `I1mv2`-`I5mv2` (ASE required, up to 100)
-//
-// Workflow (Logic Apps Standard):
-//   - `WS1`, `WS2`, `WS3`
-//
-// **Zone redundancy**: Supported on Premium (v2/v3), Elastic Premium,
-// Isolated v2, and Workflow SKUs. Not supported on Free, Shared, Basic,
-// or Standard SKUs. Requires `worker_count >= 2` (ideally a multiple of
-// the number of availability zones in the region).
-//
-// **Per-site scaling**: Supported on Standard and above. Allows individual
-// apps within the plan to scale independently of the plan's instance count.
-//
-// **ForceNew fields** (changing these destroys and recreates the plan):
-// `name`, `os_type`, `region`, `resource_group`.
+// **ForceNew fields** (changing these destroys and recreates the plan --
+// and every app on it goes down with it): `service_plan_name`, `os_type`,
+// `region`, `resource_group`. The SKU is NOT ForceNew: plans scale up,
+// down, and across tiers in place (moving between Consumption and
+// dedicated tiers is the exception Azure rejects at apply time).
 type AzureServicePlanSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Azure region where the Service Plan will be created.
 	// Examples: "eastus", "westus2", "westeurope", "southeastasia".
+	// Every app hosted on the plan runs in this region.
 	//
 	// **ForceNew**: Changing this destroys and recreates the plan.
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
@@ -90,79 +397,94 @@ type AzureServicePlanSpec struct {
 	// globally unique (uniqueness is scoped to the resource group).
 	//
 	// **ForceNew**: Changing this destroys and recreates the plan.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// The operating system type for the plan.
-	// Uses Azure's exact API values for provider authenticity.
+	ServicePlanName string `protobuf:"bytes,3,opt,name=service_plan_name,json=servicePlanName,proto3" json:"service_plan_name,omitempty"`
+	// The operating system type for the plan. Unset deploys LINUX -- the
+	// right choice for containers and every modern runtime; the catalog's
+	// app kinds (AzureLinuxWebApp, AzureFunctionApp) are Linux-based.
 	//
-	// Valid values:
-	//   - "Linux" (default): Runs Linux-based web apps and function apps.
-	//     Sets `reserved = true` in the Azure API.
-	//   - "Windows": Runs Windows-based web apps and function apps.
-	//     Sets `reserved = false` in the Azure API.
-	//
-	// All apps within a plan must share the same OS type. The D1 (Shared)
-	// SKU is Windows-only.
+	// All apps within a plan must share the plan's OS type. The Shared-tier
+	// SKUs (D1, SHARED) are Windows-only.
 	//
 	// **ForceNew**: Changing this destroys and recreates the plan.
-	OsType *string `protobuf:"bytes,4,opt,name=os_type,json=osType,proto3,oneof" json:"os_type,omitempty"`
-	// The SKU name that determines the pricing tier and compute capacity.
+	OsType AzureServicePlanOsType `protobuf:"varint,4,opt,name=os_type,json=osType,proto3,enum=dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanOsType" json:"os_type,omitempty"`
+	// The SKU that determines the pricing tier and compute capacity -- one
+	// value picks both the tier's capabilities (slots, zone redundancy,
+	// scale-out ceiling) and the VM size. See the message-level comment for
+	// the tier guide and the AzureServicePlanSku enum for the full
+	// vocabulary.
 	//
-	// Common SKUs by category:
+	// NOT ForceNew: plans re-tier in place (apps keep running through most
+	// SKU changes; Azure rejects the few impossible moves at apply time).
+	SkuName AzureServicePlanSku `protobuf:"varint,5,opt,name=sku_name,json=skuName,proto3,enum=dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSku" json:"sku_name,omitempty"`
+	// The ARM ID of the App Service Environment v3 to place the plan in --
+	// single-tenant, network-isolated App Service compute. Only Isolated
+	// SKUs (I1-I3, I*v2, I*mv2) can be placed in an environment (enforced
+	// here, exactly as Azure enforces it at creation).
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/
 	//
-	//	Free/Shared: "F1", "D1"
-	//	Basic:       "B1", "B2", "B3"
-	//	Standard:    "S1", "S2", "S3"
-	//	Premium v3:  "P1v3", "P2v3", "P3v3"
-	//	Consumption: "Y1" (for Azure Functions pay-per-execution)
-	//	Elastic:     "EP1", "EP2", "EP3" (for Azure Functions pre-warmed)
+	//	Microsoft.Web/hostingEnvironments/{name}
 	//
-	// SKU names are case-insensitive in the Azure API. The full list of valid
-	// values is documented above in the message-level comment. Validation is
-	// deferred to the Azure API to avoid maintaining a 50+ entry whitelist.
-	SkuName string `protobuf:"bytes,5,opt,name=sku_name,json=skuName,proto3" json:"sku_name,omitempty"`
+	// Leave empty for regular multi-tenant App Service (the norm).
+	AppServiceEnvironmentId string `protobuf:"bytes,6,opt,name=app_service_environment_id,json=appServiceEnvironmentId,proto3" json:"app_service_environment_id,omitempty"`
 	// Number of VM instances (workers) allocated to the plan.
-	// Minimum: 1.
+	// Minimum: 1. If not specified, Azure defaults to the SKU's default
+	// capacity (typically 1).
 	//
-	// If not specified, Azure defaults to the SKU's default capacity (typically 1).
+	// Maximum varies by tier: Basic=3, Standard=10, Premium=30,
+	// Isolated=100. Consumption (Y1), Flex Consumption (FC1), and Elastic
+	// Premium (EP*) manage instance count automatically -- leave this unset
+	// for those tiers.
+	//
 	// When `zone_balancing_enabled` is true, set this to a multiple of the
-	// number of availability zones in the region (typically 3) for even distribution.
-	//
-	// Maximum varies by SKU: Basic=3, Standard=10, Premium=30, Isolated=100.
-	// Consumption (Y1) and Elastic Premium (EP*) manage instance count automatically.
-	WorkerCount *int32 `protobuf:"varint,6,opt,name=worker_count,json=workerCount,proto3,oneof" json:"worker_count,omitempty"`
-	// Enable availability zone balancing for the plan.
-	// Distributes instances across availability zones for higher resilience.
-	//
-	// Only supported on: Premium (v2/v3), Elastic Premium (EP*), Isolated v2,
-	// and Workflow (WS*) SKUs.
-	// **Not supported on**: Free (F1), Shared (D1), Basic (B*), Standard (S*).
-	//
-	// When enabling on an existing plan with `worker_count < 2`, Azure
-	// forces the plan to be recreated (ForceNew).
+	// number of availability zones in the region (typically 3) for even
+	// distribution -- and never below 2, or enabling zone balancing later
+	// will force the plan to be recreated.
+	WorkerCount *int32 `protobuf:"varint,7,opt,name=worker_count,json=workerCount,proto3,oneof" json:"worker_count,omitempty"`
+	// Enable automatic scaling for Premium (P*v2/P*v3/P*v4) plans -- Azure
+	// adds and removes instances based on HTTP load without an autoscale
+	// rule resource, up to `maximum_elastic_worker_count`. Only valid on
+	// Premium SKUs (enforced here, exactly as the provider enforces it).
 	//
 	// Default: false
-	ZoneBalancingEnabled *bool `protobuf:"varint,7,opt,name=zone_balancing_enabled,json=zoneBalancingEnabled,proto3,oneof" json:"zone_balancing_enabled,omitempty"`
-	// Enable per-site scaling, allowing individual apps within the plan
-	// to scale independently of the plan's overall instance count.
+	PremiumPlanAutoScaleEnabled *bool `protobuf:"varint,8,opt,name=premium_plan_auto_scale_enabled,json=premiumPlanAutoScaleEnabled,proto3,oneof" json:"premium_plan_auto_scale_enabled,omitempty"`
+	// The upper bound on how many workers the plan can scale to when
+	// handling events -- the primary cost-control lever for serverless
+	// workloads.
 	//
-	// Supported on Standard and above SKUs. Not supported on Free, Shared,
-	// Basic, Consumption (Y1), or Elastic Premium (EP*) SKUs.
+	// Applies to:
+	// - Elastic Premium SKUs (EP1-EP3): default 20, maximum 100.
+	// - Workflow SKUs (WS1-WS3): Logic Apps Standard scale-out.
+	// - Premium SKUs, only when `premium_plan_auto_scale_enabled` is true.
 	//
-	// Default: false
-	PerSiteScalingEnabled *bool `protobuf:"varint,8,opt,name=per_site_scaling_enabled,json=perSiteScalingEnabled,proto3,oneof" json:"per_site_scaling_enabled,omitempty"`
-	// Maximum number of elastic workers for the plan.
-	//
-	// Only applicable to:
-	//   - Elastic Premium SKUs (EP1, EP2, EP3): Controls the upper bound on
-	//     how many workers the plan can scale to when handling events. This is
-	//     the primary cost control lever for serverless Function App workloads.
-	//     Default: 20, maximum: 100.
-	//
-	// Ignored for all other SKU tiers. Set this when using EP* plans to
-	// prevent runaway scaling costs.
+	// Setting a value above 1 on a Premium plan without premium plan
+	// auto-scale is rejected (enforced here, exactly as the provider
+	// enforces it).
 	MaximumElasticWorkerCount *int32 `protobuf:"varint,9,opt,name=maximum_elastic_worker_count,json=maximumElasticWorkerCount,proto3,oneof" json:"maximum_elastic_worker_count,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// Distribute the plan's instances across availability zones for higher
+	// resilience. Supported on Premium, Elastic Premium, Consumption, Flex
+	// Consumption, Isolated, and Workflow SKUs -- NOT on Free, Shared,
+	// Basic, or Standard (enforced here, exactly as the provider enforces
+	// it).
+	//
+	// Flipping this from false to true on an existing plan with
+	// `worker_count` below 2 destroys and recreates the plan; with 2 or
+	// more workers it applies in place.
+	//
+	// Default: false
+	ZoneBalancingEnabled *bool `protobuf:"varint,10,opt,name=zone_balancing_enabled,json=zoneBalancingEnabled,proto3,oneof" json:"zone_balancing_enabled,omitempty"`
+	// Enable per-site scaling, allowing individual apps within the plan to
+	// scale to fewer instances than the plan itself runs (by default every
+	// app runs on every instance of the plan).
+	//
+	// Default: false
+	PerSiteScalingEnabled *bool `protobuf:"varint,11,opt,name=per_site_scaling_enabled,json=perSiteScalingEnabled,proto3,oneof" json:"per_site_scaling_enabled,omitempty"`
+	// Free-form Azure resource tags applied to the plan, merged over the
+	// platform's metadata-derived tags (user tags win on key collision) --
+	// the hooks for cost allocation, chargeback reports, and Azure Policy
+	// governance rules that filter or group by them. Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,12,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AzureServicePlanSpec) Reset() {
@@ -209,23 +531,30 @@ func (x *AzureServicePlanSpec) GetResourceGroup() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureServicePlanSpec) GetName() string {
+func (x *AzureServicePlanSpec) GetServicePlanName() string {
 	if x != nil {
-		return x.Name
+		return x.ServicePlanName
 	}
 	return ""
 }
 
-func (x *AzureServicePlanSpec) GetOsType() string {
-	if x != nil && x.OsType != nil {
-		return *x.OsType
+func (x *AzureServicePlanSpec) GetOsType() AzureServicePlanOsType {
+	if x != nil {
+		return x.OsType
 	}
-	return ""
+	return AzureServicePlanOsType_azure_service_plan_os_type_unspecified
 }
 
-func (x *AzureServicePlanSpec) GetSkuName() string {
+func (x *AzureServicePlanSpec) GetSkuName() AzureServicePlanSku {
 	if x != nil {
 		return x.SkuName
+	}
+	return AzureServicePlanSku_azure_service_plan_sku_unspecified
+}
+
+func (x *AzureServicePlanSpec) GetAppServiceEnvironmentId() string {
+	if x != nil {
+		return x.AppServiceEnvironmentId
 	}
 	return ""
 }
@@ -233,6 +562,20 @@ func (x *AzureServicePlanSpec) GetSkuName() string {
 func (x *AzureServicePlanSpec) GetWorkerCount() int32 {
 	if x != nil && x.WorkerCount != nil {
 		return *x.WorkerCount
+	}
+	return 0
+}
+
+func (x *AzureServicePlanSpec) GetPremiumPlanAutoScaleEnabled() bool {
+	if x != nil && x.PremiumPlanAutoScaleEnabled != nil {
+		return *x.PremiumPlanAutoScaleEnabled
+	}
+	return false
+}
+
+func (x *AzureServicePlanSpec) GetMaximumElasticWorkerCount() int32 {
+	if x != nil && x.MaximumElasticWorkerCount != nil {
+		return *x.MaximumElasticWorkerCount
 	}
 	return 0
 }
@@ -251,38 +594,108 @@ func (x *AzureServicePlanSpec) GetPerSiteScalingEnabled() bool {
 	return false
 }
 
-func (x *AzureServicePlanSpec) GetMaximumElasticWorkerCount() int32 {
-	if x != nil && x.MaximumElasticWorkerCount != nil {
-		return *x.MaximumElasticWorkerCount
+func (x *AzureServicePlanSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
 	}
-	return 0
+	return nil
 }
 
 var File_dev_planton_provider_azure_azureserviceplan_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/azure/azureserviceplan/v1/spec.proto\x12.dev.planton.provider.azure.azureserviceplan.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xab\a\n" +
+	"9dev/planton/provider/azure/azureserviceplan/v1/spec.proto\x12.dev.planton.provider.azure.azureserviceplan.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xde\x16\n" +
 	"\x14AzureServicePlanSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xae\x01\n" +
-	"\x04name\x18\x03 \x01(\tB\x99\x01\xbaH\x95\x01\xba\x01\x88\x01\n" +
-	"\x10plan_name_format\x12MPlan name must contain only alphanumeric characters, hyphens, and underscores\x1a%this.matches('^[0-9a-zA-Z-_]{1,60}$')\xc8\x01\x01r\x04\x10\x01\x18<R\x04name\x12\x82\x01\n" +
-	"\aos_type\x18\x04 \x01(\tBd\xbaHX\xba\x01U\n" +
-	"\ros_type_valid\x12&os_type must be one of: Linux, Windows\x1a\x1cthis in ['Linux', 'Windows']\x8a\xa6\x1d\x05LinuxH\x00R\x06osType\x88\x01\x01\x12%\n" +
-	"\bsku_name\x18\x05 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\askuName\x12/\n" +
-	"\fworker_count\x18\x06 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x01R\vworkerCount\x88\x01\x01\x12D\n" +
-	"\x16zone_balancing_enabled\x18\a \x01(\bB\t\x8a\xa6\x1d\x05falseH\x02R\x14zoneBalancingEnabled\x88\x01\x01\x12G\n" +
-	"\x18per_site_scaling_enabled\x18\b \x01(\bB\t\x8a\xa6\x1d\x05falseH\x03R\x15perSiteScalingEnabled\x88\x01\x01\x12M\n" +
-	"\x1cmaximum_elastic_worker_count\x18\t \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x04R\x19maximumElasticWorkerCount\x88\x01\x01B\n" +
-	"\n" +
-	"\b_os_typeB\x0f\n" +
-	"\r_worker_countB\x19\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xd6\x01\n" +
+	"\x11service_plan_name\x18\x03 \x01(\tB\xa9\x01\xbaH\xa5\x01\xba\x01\x98\x01\n" +
+	"\x18service_plan_name_format\x12UService Plan name must contain only alphanumeric characters, hyphens, and underscores\x1a%this.matches('^[0-9a-zA-Z-_]{1,60}$')\xc8\x01\x01r\x04\x10\x01\x18<R\x0fservicePlanName\x12i\n" +
+	"\aos_type\x18\x04 \x01(\x0e2F.dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanOsTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06osType\x12k\n" +
+	"\bsku_name\x18\x05 \x01(\x0e2C.dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSkuB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\askuName\x12\xfc\x02\n" +
+	"\x1aapp_service_environment_id\x18\x06 \x01(\tB\xbe\x02\xbaH\xba\x02\xba\x01\xb6\x02\n" +
+	"\x1aservice_plan_ase_id_format\x12\x90\x01app_service_environment_id must be a full App Service Environment ARM ID (/subscriptions/.../providers/Microsoft.Web/hostingEnvironments/{name})\x1a\x84\x01this == '' || this.matches('^/[sS]ubscriptions/[^/]+/[rR]esource[gG]roups/[^/]+/providers/Microsoft.Web/hostingEnvironments/[^/]+$')R\x17appServiceEnvironmentId\x12/\n" +
+	"\fworker_count\x18\a \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\vworkerCount\x88\x01\x01\x12T\n" +
+	"\x1fpremium_plan_auto_scale_enabled\x18\b \x01(\bB\t\x8a\xa6\x1d\x05falseH\x01R\x1bpremiumPlanAutoScaleEnabled\x88\x01\x01\x12M\n" +
+	"\x1cmaximum_elastic_worker_count\x18\t \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x02R\x19maximumElasticWorkerCount\x88\x01\x01\x12D\n" +
+	"\x16zone_balancing_enabled\x18\n" +
+	" \x01(\bB\t\x8a\xa6\x1d\x05falseH\x03R\x14zoneBalancingEnabled\x88\x01\x01\x12G\n" +
+	"\x18per_site_scaling_enabled\x18\v \x01(\bB\t\x8a\xa6\x1d\x05falseH\x04R\x15perSiteScalingEnabled\x88\x01\x01\x12b\n" +
+	"\x04tags\x18\f \x03(\v2N.dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xd2\t\xbaH\xce\t\x1a\xa6\x02\n" +
+	"$service_plan_auto_scale_premium_only\x12wpremium_plan_auto_scale_enabled can only be set on Premium SKUs (P*v2, P*v3, P*v4, and their memory-optimized variants)\x1a\x84\x01!(has(this.premium_plan_auto_scale_enabled) && this.premium_plan_auto_scale_enabled) || (this.sku_name >= 10 && this.sku_name <= 30)\x1a\xa8\x03\n" +
+	"*service_plan_elastic_worker_count_sku_gate\x12\x9c\x01maximum_elastic_worker_count above 1 on a Premium SKU requires premium_plan_auto_scale_enabled: true (Elastic Premium and Workflow SKUs support it natively)\x1a\xda\x01!(has(this.maximum_elastic_worker_count) && this.maximum_elastic_worker_count > 1) || !(this.sku_name >= 10 && this.sku_name <= 30) || (has(this.premium_plan_auto_scale_enabled) && this.premium_plan_auto_scale_enabled)\x1a\x91\x02\n" +
+	"$service_plan_zone_balancing_sku_gate\x12\x8d\x01zone_balancing_enabled is not supported on Free, Shared, Basic, or Standard SKUs -- use a Premium, Elastic Premium, Isolated, or Workflow SKU\x1aY!(has(this.zone_balancing_enabled) && this.zone_balancing_enabled) || this.sku_name >= 10\x1a\xe3\x01\n" +
+	"&service_plan_ase_requires_isolated_sku\x12bplans inside an App Service Environment require an Isolated SKU (I1-I3, I1v2-I6v2, or I1mv2-I5mv2)\x1aUthis.app_service_environment_id == '' || (this.sku_name >= 36 && this.sku_name <= 49)B\x0f\n" +
+	"\r_worker_countB\"\n" +
+	" _premium_plan_auto_scale_enabledB\x1f\n" +
+	"\x1d_maximum_elastic_worker_countB\x19\n" +
 	"\x17_zone_balancing_enabledB\x1b\n" +
-	"\x19_per_site_scaling_enabledB\x1f\n" +
-	"\x1d_maximum_elastic_worker_countB\x83\x03\n" +
+	"\x19_per_site_scaling_enabled*s\n" +
+	"\x16AzureServicePlanOsType\x12*\n" +
+	"&azure_service_plan_os_type_unspecified\x10\x00\x12\t\n" +
+	"\x05LINUX\x10\x01\x12\v\n" +
+	"\aWINDOWS\x10\x02\x12\x15\n" +
+	"\x11WINDOWS_CONTAINER\x10\x03*\xfe\a\n" +
+	"\x13AzureServicePlanSku\x12&\n" +
+	"\"azure_service_plan_sku_unspecified\x10\x00\x12\v\n" +
+	"\aFREE_F1\x10\x01\x12\r\n" +
+	"\tSHARED_D1\x10\x02\x12\n" +
+	"\n" +
+	"\x06SHARED\x10\x03\x12\f\n" +
+	"\bBASIC_B1\x10\x04\x12\f\n" +
+	"\bBASIC_B2\x10\x05\x12\f\n" +
+	"\bBASIC_B3\x10\x06\x12\x0f\n" +
+	"\vSTANDARD_S1\x10\a\x12\x0f\n" +
+	"\vSTANDARD_S2\x10\b\x12\x0f\n" +
+	"\vSTANDARD_S3\x10\t\x12\x10\n" +
+	"\fPREMIUM_P1V2\x10\n" +
+	"\x12\x10\n" +
+	"\fPREMIUM_P2V2\x10\v\x12\x10\n" +
+	"\fPREMIUM_P3V2\x10\f\x12\x10\n" +
+	"\fPREMIUM_P0V3\x10\r\x12\x10\n" +
+	"\fPREMIUM_P1V3\x10\x0e\x12\x10\n" +
+	"\fPREMIUM_P2V3\x10\x0f\x12\x10\n" +
+	"\fPREMIUM_P3V3\x10\x10\x12\x11\n" +
+	"\rPREMIUM_P1MV3\x10\x11\x12\x11\n" +
+	"\rPREMIUM_P2MV3\x10\x12\x12\x11\n" +
+	"\rPREMIUM_P3MV3\x10\x13\x12\x11\n" +
+	"\rPREMIUM_P4MV3\x10\x14\x12\x11\n" +
+	"\rPREMIUM_P5MV3\x10\x15\x12\x10\n" +
+	"\fPREMIUM_P0V4\x10\x16\x12\x10\n" +
+	"\fPREMIUM_P1V4\x10\x17\x12\x10\n" +
+	"\fPREMIUM_P2V4\x10\x18\x12\x10\n" +
+	"\fPREMIUM_P3V4\x10\x19\x12\x11\n" +
+	"\rPREMIUM_P1MV4\x10\x1a\x12\x11\n" +
+	"\rPREMIUM_P2MV4\x10\x1b\x12\x11\n" +
+	"\rPREMIUM_P3MV4\x10\x1c\x12\x11\n" +
+	"\rPREMIUM_P4MV4\x10\x1d\x12\x11\n" +
+	"\rPREMIUM_P5MV4\x10\x1e\x12\x12\n" +
+	"\x0eCONSUMPTION_Y1\x10\x1f\x12\x17\n" +
+	"\x13ELASTIC_PREMIUM_EP1\x10 \x12\x17\n" +
+	"\x13ELASTIC_PREMIUM_EP2\x10!\x12\x17\n" +
+	"\x13ELASTIC_PREMIUM_EP3\x10\"\x12\x18\n" +
+	"\x14FLEX_CONSUMPTION_FC1\x10#\x12\x0f\n" +
+	"\vISOLATED_I1\x10$\x12\x0f\n" +
+	"\vISOLATED_I2\x10%\x12\x0f\n" +
+	"\vISOLATED_I3\x10&\x12\x11\n" +
+	"\rISOLATED_I1V2\x10'\x12\x11\n" +
+	"\rISOLATED_I2V2\x10(\x12\x11\n" +
+	"\rISOLATED_I3V2\x10)\x12\x11\n" +
+	"\rISOLATED_I4V2\x10*\x12\x11\n" +
+	"\rISOLATED_I5V2\x10+\x12\x11\n" +
+	"\rISOLATED_I6V2\x10,\x12\x12\n" +
+	"\x0eISOLATED_I1MV2\x10-\x12\x12\n" +
+	"\x0eISOLATED_I2MV2\x10.\x12\x12\n" +
+	"\x0eISOLATED_I3MV2\x10/\x12\x12\n" +
+	"\x0eISOLATED_I4MV2\x100\x12\x12\n" +
+	"\x0eISOLATED_I5MV2\x101\x12\x10\n" +
+	"\fWORKFLOW_WS1\x102\x12\x10\n" +
+	"\fWORKFLOW_WS2\x103\x12\x10\n" +
+	"\fWORKFLOW_WS3\x104B\x83\x03\n" +
 	"2com.dev.planton.provider.azure.azureserviceplan.v1B\tSpecProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureserviceplan/v1;azureserviceplanv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Azure.Azureserviceplan.V1\xca\x02.Dev\\Planton\\Provider\\Azure\\Azureserviceplan\\V1\xe2\x02:Dev\\Planton\\Provider\\Azure\\Azureserviceplan\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Azure::Azureserviceplan::V1b\x06proto3"
 
 var (
@@ -297,18 +710,25 @@ func file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_rawDescGZIP(
 	return file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_goTypes = []any{
-	(*AzureServicePlanSpec)(nil), // 0: dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSpec
-	(*v1.StringValueOrRef)(nil),  // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureServicePlanOsType)(0),  // 0: dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanOsType
+	(AzureServicePlanSku)(0),     // 1: dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSku
+	(*AzureServicePlanSpec)(nil), // 2: dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSpec
+	nil,                          // 3: dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil),  // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	4, // 0: dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0, // 1: dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSpec.os_type:type_name -> dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanOsType
+	1, // 2: dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSpec.sku_name:type_name -> dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSku
+	3, // 3: dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSpec.tags:type_name -> dev.planton.provider.azure.azureserviceplan.v1.AzureServicePlanSpec.TagsEntry
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_init() }
@@ -322,13 +742,14 @@ func file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   1,
+			NumEnums:      2,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_depIdxs,
+		EnumInfos:         file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_azure_azureserviceplan_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_azure_azureserviceplan_v1_spec_proto = out.File

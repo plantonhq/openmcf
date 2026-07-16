@@ -4,11 +4,53 @@ metadata:
   name: test-redis
 spec:
   region: eastus
-  resource_group: test-rg
-  name: test-redis-cache
-  sku_name: Standard
+  resourceGroup:
+    value: test-rg
+  cacheName: planton-hack-redis
+  # Exercises the sku enum mapping and the P-family derivation.
+  skuName: PREMIUM
   capacity: 1
-  firewall_rules:
-    - name: allow_azure_services
-      start_ip: "0.0.0.0"
-      end_ip: "0.0.0.0"
+  redisVersion: "6"
+  zones:
+    - "1"
+  # Exercises VNet injection with a pinned private address.
+  subnetId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/redis
+  privateStaticIpAddress: 10.0.1.10
+  # Exercises the Premium replica dial (mutually exclusive with shards).
+  replicasPerPrimary: 2
+  # Exercises the keyless posture: keys off is only legal with Entra on.
+  accessKeysAuthenticationEnabled: false
+  redisConfiguration:
+    activeDirectoryAuthenticationEnabled: true
+    # Exercises the eviction vocabulary and every memory dial.
+    maxmemoryPolicy: allkeys-lru
+    maxmemoryReserved: 100
+    maxmemoryDelta: 100
+    maxfragmentationmemoryReserved: 100
+    notifyKeyspaceEvents: KEA
+    # false is only legal inside a VNet-injected cache.
+    authenticationEnabled: false
+    # Exercises the persistence-auth enum mapping and the RDB dials --
+    # the managed-identity path needs no storage connection string.
+    dataPersistenceAuthenticationMethod: MANAGED_IDENTITY
+    rdbBackupEnabled: true
+    rdbBackupFrequency: 60
+    rdbBackupMaxSnapshotCount: 1
+  # Exercises the identity-type enum mapping (pairs with the
+  # managed-identity persistence auth above).
+  identity:
+    type: SYSTEM_ASSIGNED
+  # Exercises the day-of-week enum mapping and the window dials.
+  patchSchedules:
+    - dayOfWeek: SUNDAY
+      startHourUtc: 2
+      maintenanceWindow: PT6H
+  firewallRules:
+    - name: office_range
+      startIp: 203.0.113.0
+      endIp: 203.0.113.255
+  tenantSettings:
+    trace: "true"
+  tags:
+    cost-center: platform

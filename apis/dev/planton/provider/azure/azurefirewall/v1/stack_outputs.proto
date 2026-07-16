@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurefirewall.v1;
+
+// **AzureFirewallStackOutputs** captures the outputs of provisioning an
+// Azure Firewall instance.
+message AzureFirewallStackOutputs {
+  // The Azure Resource Manager ID of the firewall.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/azureFirewalls/{name}
+  string firewall_id = 1;
+
+  // The name of the firewall resource.
+  string firewall_name = 2;
+
+  // The firewall's private IP on its data-path subnet -- THE hub-spoke
+  // seam: spoke route tables send 0.0.0.0/0 (or any egress-controlled
+  // prefix) here via a VIRTUAL_APPLIANCE next hop
+  // (AzureRouteTable.routes[].next_hop_in_ip_address). Empty for
+  // hub-deployed firewalls (see virtual_hub_private_ip_address).
+  string private_ip_address = 3;
+
+  // The management path's private IP, when a management_ip_configuration
+  // is deployed.
+  string management_private_ip_address = 4;
+
+  // The public IPs Azure assigned to a hub-deployed firewall
+  // (AZFW_HUB). Empty for VNet firewalls -- their public IPs are the
+  // referenced AzurePublicIp resources' own outputs.
+  repeated string virtual_hub_public_ip_addresses = 5;
+
+  // The private IP Azure assigned to a hub-deployed firewall. Empty for
+  // VNet firewalls (see private_ip_address).
+  string virtual_hub_private_ip_address = 6;
+}

@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurekeyvaultkey.v1;
+
+// **AzureKeyVaultKeyStackOutputs** captures the outputs of provisioning a
+// Key Vault key -- the identifiers downstream resources reference to encrypt
+// with it.
+message AzureKeyVaultKeyStackOutputs {
+  // The key's versioned data-plane ID:
+  // https://{vault}.vault.azure.net/keys/{name}/{version}. Pins consumers
+  // to THIS version -- rotation does not follow. Reference it only when a
+  // compliance regime demands a frozen key version.
+  string key_id = 1;
+
+  // The key's versionless data-plane ID:
+  // https://{vault}.vault.azure.net/keys/{name}. The reference every
+  // customer-managed-key consumer should use -- Azure services resolve it
+  // to the current version, so rotation propagates with zero intervention.
+  string versionless_id = 2;
+
+  // The key's name within the vault.
+  string key_name = 3;
+
+  // The current version identifier (the trailing segment of key_id).
+  string version = 4;
+
+  // The key's versioned ARM resource ID
+  // (.../vaults/{vault}/keys/{name}/versions/{version}) -- the
+  // control-plane identity used by ARM-level integrations and RBAC scopes.
+  string resource_id = 5;
+
+  // The key's versionless ARM resource ID (.../vaults/{vault}/keys/{name}).
+  string resource_versionless_id = 6;
+
+  // The public half of the key in PEM form -- consumable by anything that
+  // verifies signatures or encrypts to this key outside Azure.
+  string public_key_pem = 7;
+
+  // The public half of the key in OpenSSH form (RSA and P-256/P-384/P-521
+  // EC keys) -- usable directly in authorized_keys.
+  string public_key_openssh = 8;
+}

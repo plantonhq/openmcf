@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestoragecontainer.v1;
+
+// **AzureStorageContainerStackOutputs** captures the outputs of
+// provisioning a blob container.
+//
+// No URL output on purpose: the container's data-plane URL is the
+// ACCOUNT's blob endpoint plus the container name, and only the account
+// knows its real endpoint (partitioned-DNS accounts use a different
+// hostname than the classic shared DNS). Compose URLs from
+// AzureStorageAccount's primary_blob_endpoint output + container_name.
+message AzureStorageContainerStackOutputs {
+  // The Azure Resource Manager ID of the container. Role assignments
+  // (Storage Blob Data Reader/Contributor) scope to it for
+  // container-level data access.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{account}/blobServices/default/containers/{name}
+  string container_id = 1;
+
+  // The container's name -- what SDKs, function bindings, and app
+  // settings reference within the account.
+  string container_name = 2;
+
+  // The name of the storage account the container lives in, parsed from
+  // the resolved account ID -- saves consumers a second reference when
+  // they need the account/container pair.
+  string storage_account_name = 3;
+}

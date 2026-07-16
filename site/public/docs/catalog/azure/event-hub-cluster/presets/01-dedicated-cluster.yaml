@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHubCluster
+metadata:
+  name: my-streaming-cluster
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: my-streaming-rg
+      fieldPath: status.outputs.resource_group_name
+  clusterName: myorg-streaming-dedicated
+  # One capacity unit -- the entry size; scaling updates in place.
+  capacityUnits: 1
+  tags:
+    workload-tier: dedicated-streaming

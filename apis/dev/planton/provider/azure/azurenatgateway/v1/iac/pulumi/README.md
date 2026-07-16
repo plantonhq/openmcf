@@ -1,75 +1,55 @@
-**Note:** This module is not completely implemented as the API resource specification is currently empty.
+# AzureNatGateway Pulumi Module
 
-# Azure Azure AKS Cluster Pulumi Module
+## Overview
 
-## Introduction
+This Pulumi module provisions an Azure NAT Gateway using the Azure Classic
+provider (`pulumi-azure`). It creates a `network.NatGateway` -- the managed
+SNAT service that gives every workload in its attached subnets stable,
+scalable outbound connectivity -- plus one association resource per
+referenced public IP and public IP prefix.
 
-This Pulumi module provides a standardized way to manage Azure Kubernetes Service (AKS) clusters using our Unified APIs that mimic Kubernetes' resource modeling. It allows developers to define infrastructure configurations in a YAML file, simplifying the deployment and management of complex cloud resources across multiple providers.
+The gateway is just the gateway. The addresses it SNATs through are
+referenced first-class `AzurePublicIp` / `AzurePublicIpPrefix` resources
+(each adds 64,512 SNAT ports; a /28 prefix scales that by 16 in one
+allowlistable range), and the subnets it serves attach themselves via
+`AzureSubnet`'s `nat_gateway_id` -- matching Azure's model, so one gateway
+serves many subnets without listing them. A gateway with no associated
+addresses deploys but cannot translate anything.
 
-## Key Features
+Idle timeout, tags, and the IP/prefix associations update in place. Name,
+SKU, and zone are the gateway's identity -- changing any of them replaces
+it, briefly interrupting egress for every attached subnet.
 
-- **Unified API Structure**: Adheres to a standardized API format with `apiVersion`, `kind`, `metadata`, `spec`, and `status`, ensuring consistency across different resources.
-- **Multi-Cloud Support**: Designed to work seamlessly in a multi-cloud environment, starting with Azure.
-- **Pulumi Integration**: Leverages Pulumi's infrastructure-as-code capabilities to automate resource provisioning.
-- **Credential Management**: Securely handles Azure credentials for authenticating with Azure services.
-- **Simplified Deployment**: Enables developers to deploy AKS clusters using a single YAML configuration file.
-- **Standardized Documentation**: Comprehensive documentation available via buf.build for easy reference.
+## Resources Created
 
-## Usage
+- `network.NatGateway` -- the gateway itself
+- `network.NatGatewayPublicIpAssociation` -- one per referenced public IP
+- `network.NatGatewayPublicIpPrefixAssociation` -- one per referenced prefix
 
-Refer to the example section for usage instructions.
+## Inputs
 
-## Module Details
+The module receives an `AzureNatGatewayStackInput` containing:
 
-### API Resource Specification
+- `target.spec.region` / `target.spec.resource_group` / `target.spec.name` -- the gateway's ARM identity (references resolved to literals by the platform)
+- `target.spec.sku_name` -- STANDARD (Azure's default, zonal) or STANDARD_V2 (zone-redundant automatically, requires StandardV2 addresses and empty zones)
+- `target.spec.idle_timeout_in_minutes` -- SNAT port hold time for idle TCP connections, 4-120; Azure defaults to 4
+- `target.spec.zones` -- optional single zone to pin a STANDARD gateway to; must be empty for STANDARD_V2
+- `target.spec.public_ip_ids` / `target.spec.public_ip_prefix_ids` -- ARM IDs of the addresses and ranges to SNAT through
+- `target.spec.tags` -- user tags, merged over the metadata-derived tags (user wins)
+- `provider_config` -- Azure credentials (static client secret, keyless web identity, or ambient chain)
 
-The module expects an `api-resource.yaml` file defining the desired state of the AKS cluster. The key components of this file include:
+## Outputs
 
-- **`azure_credential_id`** (required): The identifier for the Azure credentials used to authenticate with Azure services.
-- **`environment_info`**: Contains environment-specific information (currently not implemented).
-- **`stack_job_settings`**: Settings related to the stack-update execution (currently not implemented).
+| Output | Description |
+|--------|-------------|
+| `nat_gateway_id` | Full ARM ID of the gateway -- the join key subnets attach through |
+| `nat_gateway_name` | The gateway's name as deployed |
+| `resource_guid` | The immutable GUID ARM assigns the gateway (billing/support correlation) |
 
-### Pulumi Module Functionality
+## Local Development
 
-The core functionality of this module revolves around setting up the Azure provider within the Pulumi context using the provided Azure credentials. This setup is essential for any subsequent resource creation and management within Azure.
-
-#### Steps Performed:
-
-1. **Azure Provider Initialization**:  
-   Initializes the Azure provider in Pulumi using credentials supplied in the `AzureNatGatewayStackInput`. The credentials required are:
-
-   - `ClientId`
-   - `ClientSecret`
-   - `SubscriptionId`
-   - `TenantId`
-
-2. **Resource Provisioning**:  
-   *(Not yet implemented)* The module will provision the AKS cluster and any associated resources based on the specifications provided in the `api-resource.yaml` file.
-
-3. **Output Handling**:  
-   *(Not yet implemented)* Captures the outputs from the Pulumi stack execution and stores them in `status.outputs` for later reference.
-
-## Limitations
-
-- **Incomplete Implementation**: The module currently does not implement resource creation due to the empty API resource specification.
-- **Unused Spec Fields**: Fields like `environment_info` and `stack_job_settings` are included in the spec but are not utilized in the current implementation.
-- **No Error Handling**: Advanced error handling and validation mechanisms are yet to be implemented.
-
-## Future Enhancements
-
-- **Implement Resource Creation**: Extend the module to create AKS clusters and related Azure resources based on the provided specifications.
-- **Utilize Spec Fields**: Make use of `environment_info` and `stack_job_settings` to allow for more granular control over the deployment environment and stack-update configurations.
-- **Enhance Output Management**: Capture and expose essential output parameters such as cluster endpoints, credentials, and configuration details.
-- **Error Handling and Validation**: Introduce comprehensive error handling and input validation to improve reliability and user experience.
-
-## Documentation
-
-For detailed API definitions and additional documentation, please refer to our resources available via [buf.build](https://buf.build).
-
-## Contributing
-
-Contributions are welcome! Please open issues or pull requests to help improve this module.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+```bash
+make build       # Build the module
+make deps        # Download and tidy dependencies
+make update-deps # Update to latest planton
+```

@@ -1,0 +1,3 @@
+name: azure-container-app-custom-domain
+runtime: go
+description: Pulumi program for Azure Container App custom-domain bindings

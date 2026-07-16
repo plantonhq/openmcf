@@ -1,0 +1,13 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: my-network
+spec:
+  region: eastus
+  resourceGroup:
+    value: <resource-group-name>
+  name: my-vnet
+  addressSpaces:
+    - "10.0.0.0/16"
+  tags:
+    cost-center: <cost-center>

@@ -21,28 +21,32 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzurePrivateDnsZoneStackOutputs** captures the outputs of provisioning an
-// Azure Private DNS Zone with its VNet link.
+// **AzurePrivateDnsZoneStackOutputs** captures the outputs of provisioning
+// an Azure Private DNS zone.
 //
-// The primary output is `zone_id`, which is referenced by downstream resources:
-// - AzurePrivateEndpoint (private_dns_zone_id for DNS zone group registration)
-// - AzurePostgresqlFlexibleServer (private_dns_zone_id for VNet-integrated deployment)
-// - AzureMysqlFlexibleServer (private_dns_zone_id for VNet-integrated deployment)
-//
-// These outputs enable the database-stack infra chart to wire private DNS zones
-// to database servers and private endpoints for fully private connectivity.
+// The primary output is `zone_id`, the join key for everything that
+// attaches to or registers in the zone:
+//   - AzurePrivateDnsZoneVirtualNetworkLink (makes the zone resolvable from a
+//     virtual network)
+//   - AzurePrivateEndpoint (private_dns_zone_id for DNS zone group registration)
+//   - AzurePostgresqlFlexibleServer / AzureMysqlFlexibleServer
+//     (private_dns_zone_id for VNet-integrated deployment)
 type AzurePrivateDnsZoneStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Manager ID of the Private DNS Zone.
+	// The Azure Resource Manager ID of the private DNS zone.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/privateDnsZones/{name}
 	// This is the primary output referenced by downstream resources via StringValueOrRef.
 	ZoneId string `protobuf:"bytes,1,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
-	// The name of the Private DNS Zone (e.g., "privatelink.postgres.database.azure.com").
-	// Echoed from the spec for convenience -- useful in IaC modules that need the
-	// zone name for creating DNS records or additional VNet links.
-	ZoneName      string `protobuf:"bytes,2,opt,name=zone_name,json=zoneName,proto3" json:"zone_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The name of the private DNS zone (e.g., "privatelink.postgres.database.azure.com").
+	// Echoed from the spec for convenience -- useful in IaC modules that need
+	// the zone name for creating DNS records.
+	ZoneName string `protobuf:"bytes,2,opt,name=zone_name,json=zoneName,proto3" json:"zone_name,omitempty"`
+	// The resource group the zone lives in. Echoed for downstream tooling
+	// that addresses records or links by zone name + resource group rather
+	// than parsing the ARM ID.
+	ResourceGroupName string `protobuf:"bytes,3,opt,name=resource_group_name,json=resourceGroupName,proto3" json:"resource_group_name,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *AzurePrivateDnsZoneStackOutputs) Reset() {
@@ -89,14 +93,22 @@ func (x *AzurePrivateDnsZoneStackOutputs) GetZoneName() string {
 	return ""
 }
 
+func (x *AzurePrivateDnsZoneStackOutputs) GetResourceGroupName() string {
+	if x != nil {
+		return x.ResourceGroupName
+	}
+	return ""
+}
+
 var File_dev_planton_provider_azure_azureprivatednszone_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azureprivatednszone_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/azure/azureprivatednszone/v1/stack_outputs.proto\x121dev.planton.provider.azure.azureprivatednszone.v1\"W\n" +
+	"Edev/planton/provider/azure/azureprivatednszone/v1/stack_outputs.proto\x121dev.planton.provider.azure.azureprivatednszone.v1\"\x87\x01\n" +
 	"\x1fAzurePrivateDnsZoneStackOutputs\x12\x17\n" +
 	"\azone_id\x18\x01 \x01(\tR\x06zoneId\x12\x1b\n" +
-	"\tzone_name\x18\x02 \x01(\tR\bzoneNameB\xa0\x03\n" +
+	"\tzone_name\x18\x02 \x01(\tR\bzoneName\x12.\n" +
+	"\x13resource_group_name\x18\x03 \x01(\tR\x11resourceGroupNameB\xa0\x03\n" +
 	"5com.dev.planton.provider.azure.azureprivatednszone.v1B\x11StackOutputsProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureprivatednszone/v1;azureprivatednszonev1\xa2\x02\x05DPPAA\xaa\x021Dev.Planton.Provider.Azure.Azureprivatednszone.V1\xca\x021Dev\\Planton\\Provider\\Azure\\Azureprivatednszone\\V1\xe2\x02=Dev\\Planton\\Provider\\Azure\\Azureprivatednszone\\V1\\GPBMetadata\xea\x026Dev::Planton::Provider::Azure::Azureprivatednszone::V1b\x06proto3"
 
 var (

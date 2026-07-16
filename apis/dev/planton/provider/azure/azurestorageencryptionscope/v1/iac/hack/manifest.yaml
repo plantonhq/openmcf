@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageEncryptionScope
+metadata:
+  name: test-storage-encryption-scope
+spec:
+  storageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/plantonhackstorage
+  scopeName: hackTenantScope
+  # Exercises the Key Vault source enum mapping AND the key pairing --
+  # the deeper of the two source paths.
+  source: MICROSOFT_KEY_VAULT
+  keyVaultKeyId:
+    value: https://plantonhackvault.vault.azure.net/keys/hack-tenant-key
+  # Exercises the double-encryption flag (sent only when true).
+  infrastructureEncryptionRequired: true

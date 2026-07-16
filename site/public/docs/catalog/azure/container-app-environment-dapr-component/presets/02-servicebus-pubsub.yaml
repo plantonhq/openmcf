@@ -1,0 +1,31 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppEnvironmentDaprComponent
+metadata:
+  name: my-pubsub
+spec:
+  containerAppEnvironmentId:
+    value: "<container-app-environment-id>"
+  componentName: pubsub
+  componentType: pubsub.azure.servicebus.queues
+  version: v1
+  metadata:
+    # Keyless (Entra) authentication: no connection string travels
+    # anywhere. The apps' user-assigned identity authenticates to the
+    # namespace; grant it Azure Service Bus Data Sender + Data Receiver.
+    - name: namespaceName
+      value:
+        value: "<service-bus-namespace>.servicebus.windows.net"
+    - name: azureClientId
+      value:
+        valueFrom:
+          kind: AzureUserAssignedIdentity
+          name: "<workload-identity>"
+          fieldPath: status.outputs.client_id
+    # Dapr consumes the topology IaC provisioned -- it must not create
+    # queues behind the infrastructure's back.
+    - name: disableEntityManagement
+      value:
+        value: "true"
+  scopes:
+    - "<publisher-app-id>"
+    - "<subscriber-app-id>"

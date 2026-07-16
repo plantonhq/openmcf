@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurecontainerappenvironmentstorage
+spec:
+  # The scenario deploys the composed RG -> environment + scenario-local
+  # (account -> share) chain, registers the share on the environment over
+  # SMB with the account's captured access key, verifies the registration
+  # via the ARM API, destroys it, and verifies it is gone. The
+  # registration itself is near-instant; the fixture environment's
+  # create + ~5-10 minute delete dominates the run.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 60

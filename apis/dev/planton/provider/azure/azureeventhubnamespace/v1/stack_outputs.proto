@@ -2,50 +2,68 @@ syntax = "proto3";
 
 package dev.planton.provider.azure.azureeventhubnamespace.v1;
 
-// **AzureEventHubNamespaceStackOutputs** captures the outputs of provisioning
-// an Azure Event Hubs namespace with its event hubs and consumer groups.
+import "dev/planton/shared/options/options.proto";
+
+// **AzureEventHubNamespaceStackOutputs** captures the outputs of
+// provisioning an Azure Event Hubs namespace.
 //
-// The primary outputs are `namespace_id` for resource identification and
-// `primary_connection_string` / `primary_key` for authentication. The
-// `event_hub_ids` map provides individual entity resource IDs for downstream
-// references and monitoring.
+// `namespace_id` is the ARM identity every child kind references
+// (AzureEventHub, AzureEventHubAuthorizationRule, AzureEventHubSchemaGroup,
+// AzureEventHubDisasterRecoveryConfig,
+// AzureEventHubNamespaceCustomerManagedKey) and the scope for
+// namespace-wide data-plane role assignments.
 //
-// Applications connect to Event Hubs using the `primary_connection_string`
-// which includes the namespace endpoint and the SAS key from the default
-// `RootManageSharedAccessKey` authorization rule. This is the standard
-// authentication method for most streaming workloads.
-//
-// For production workloads requiring fine-grained access control, consider
-// creating per-event-hub authorization rules or using Azure AD (Entra ID)
-// RBAC-based authentication instead of the namespace-level SAS key.
+// The `default_*` outputs carry the root SAS rule's
+// (RootManageSharedAccessKey) credentials -- full manage rights over the
+// whole namespace. They exist for quick starts and break-glass use;
+// production workloads should mint least-privilege credentials with
+// AzureEventHubAuthorizationRule, or go keyless
+// (local_authentication_enabled false + Entra data-plane roles), which
+// makes these keys unusable.
 message AzureEventHubNamespaceStackOutputs {
-  // The Azure Resource Manager ID of the Event Hubs namespace.
+  // The Azure Resource Manager ID of the namespace.
   // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.EventHub/namespaces/{name}
   //
-  // Referenced by AzurePrivateEndpoint (private_connection_resource_id)
-  // for establishing private connectivity.
-  // Subresource name for private endpoint: ["namespace"].
+  // The parent reference for every Event Hubs child kind, the scope for
+  // namespace-wide data-plane RBAC, and the private-endpoint target
+  // (subresource name: "namespace").
   string namespace_id = 1;
 
-  // The name of the Event Hubs namespace.
+  // The namespace name -- what SDKs, connection strings, and the Kafka
+  // bootstrap address identify the namespace by. The AMQP/Kafka host is
+  // {namespace_name}.servicebus.windows.net (Event Hubs shares the
+  // Service Bus DNS zone).
   string namespace_name = 2;
 
-  // The primary connection string from the default RootManageSharedAccessKey.
+  // The system-assigned identity's principal (object) ID -- grant this
+  // identity access on other resources (e.g. Storage for capture, Key
+  // Vault for CMK). Empty unless the identity block includes
+  // SYSTEM_ASSIGNED.
+  string identity_principal_id = 3;
+
+  // The root SAS rule's primary connection string (full manage rights on
+  // the namespace). Secret-bearing: it embeds the primary key.
   // Format: Endpoint=sb://{name}.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey={key}
-  //
-  // Ready-to-use connection string for Event Hubs SDKs, Kafka clients,
-  // and Azure Functions Event Hub triggers.
-  string primary_connection_string = 3;
+  string default_primary_connection_string = 4 [(dev.planton.shared.options.sensitive) = true];
 
-  // The primary SAS key from the default RootManageSharedAccessKey.
-  // Used for manual SAS token generation or when connecting with
-  // libraries that accept key and key-name separately.
-  string primary_key = 4;
+  // The root SAS rule's secondary connection string -- the rotation
+  // partner: move clients here, regenerate the primary, move back.
+  string default_secondary_connection_string = 5 [(dev.planton.shared.options.sensitive) = true];
 
-  // Map of event hub names to their Azure Resource Manager IDs.
-  // Format: { "my-events": "/subscriptions/.../eventhubs/my-events" }
-  //
-  // Useful for downstream references, monitoring dashboards, and
-  // Azure Functions Event Hub trigger configuration.
-  map<string, string> event_hub_ids = 5;
+  // The root SAS rule's primary key, for SDKs that take the key and key
+  // name separately or mint their own SAS tokens.
+  string default_primary_key = 6 [(dev.planton.shared.options.sensitive) = true];
+
+  // The root SAS rule's secondary key -- the rotation partner.
+  string default_secondary_key = 7 [(dev.planton.shared.options.sensitive) = true];
+
+  // The root SAS rule's primary connection string addressing the geo-DR
+  // alias hostname instead of the namespace hostname. Only meaningful
+  // when the namespace carries an AzureEventHubDisasterRecoveryConfig
+  // pairing; empty otherwise. Clients configured with the alias keep
+  // working across a failover.
+  string default_primary_connection_string_alias = 8 [(dev.planton.shared.options.sensitive) = true];
+
+  // The secondary alias connection string -- the rotation partner.
+  string default_secondary_connection_string_alias = 9 [(dev.planton.shared.options.sensitive) = true];
 }

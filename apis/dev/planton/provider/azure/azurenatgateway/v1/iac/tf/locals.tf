@@ -1,19 +1,16 @@
 locals {
-  # Derive a stable resource ID
   resource_id = (
     var.metadata.id != null && var.metadata.id != ""
     ? var.metadata.id
     : var.metadata.name
   )
 
-  # Generate NAT Gateway name
-  nat_gateway_name = "natgw-${var.metadata.name}"
-
-  # Resource group and region are explicit spec fields
-  resource_group = var.spec.resource_group
-  location       = var.spec.region
-
-  # Base tags for Azure resources
+  # PARITY-EXCEPTION: resource_kind here is the family-wide snake-case
+  # literal and resource_id falls back to metadata.name, while the Pulumi
+  # module emits the lowered CloudResourceKind enum string and omits
+  # resource_id when metadata.id is empty. Output-neutral (tags never feed
+  # stack outputs); aligning the two shapes is a family-wide convention
+  # change, not a per-kind fix.
   base_tags = {
     "resource"      = "true"
     "resource_id"   = local.resource_id
@@ -21,20 +18,25 @@ locals {
     "resource_name" = var.metadata.name
   }
 
-  # Organization tag only if var.metadata.org is non-empty
   org_tag = (
     var.metadata.org != null && var.metadata.org != ""
   ) ? { "organization" = var.metadata.org } : {}
 
-  # Environment tag only if var.metadata.env is non-empty
   env_tag = (
     var.metadata.env != null && var.metadata.env != ""
   ) ? { "environment" = var.metadata.env } : {}
 
-  # Merge base, org, environment, and user-provided tags
+  # Metadata-derived tags first, then the user's spec tags merged over them:
+  # user tags deliberately win so an org's governance conventions (cost
+  # center, owner) can override the derived values where they collide.
   final_tags = merge(local.base_tags, local.org_tag, local.env_tag, var.spec.tags)
 
-  # Determine if we're creating a prefix or individual IP
-  use_ip_prefix = var.spec.public_ip_prefix_length != null && var.spec.public_ip_prefix_length > 0
+  # Map the spec enum's name string to ARM's SKU value. null lets Azure
+  # apply its default (Standard); only an explicit choice is ever sent, so
+  # an unspecified spec and Azure's default deploy identically on both
+  # engines.
+  sku_name = (
+    var.spec.sku_name == "STANDARD" ? "Standard" :
+    var.spec.sku_name == "STANDARD_V2" ? "StandardV2" : null
+  )
 }
-

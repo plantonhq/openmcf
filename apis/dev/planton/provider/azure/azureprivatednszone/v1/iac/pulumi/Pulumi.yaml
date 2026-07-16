@@ -1,3 +1,4 @@
-name: azure-private-dns-zone
-runtime: go
-description: Pulumi program for Azure Private DNS Zone
+#name should be updated based on the choice of 'project' name in pulumi backend
+name: planton-azure-module-test
+runtime:
+  name: go

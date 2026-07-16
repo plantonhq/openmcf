@@ -1,0 +1,37 @@
+# The relational data plane: VNet-injected, private, with password auth at
+# defaults (Entra-only is the documented hardening path via
+# authentication.password_auth_enabled).
+apiVersion: azure.planton.dev/v1
+kind: AzurePostgresqlFlexibleServer
+metadata:
+  name: "{{ values.env }}-postgres"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.resource_group_name
+  serverName: "{{ values.env }}-postgres"
+  version: "16"
+  skuName: "{{ values.postgres_sku_name }}"
+  storageMb: 32768
+  administratorLogin: "{{ values.postgres_admin_login }}"
+  administratorPassword:
+    value: "{{ values.postgres_admin_password }}"
+  # VNet injection contract: subnet + private zone + public access OFF.
+  delegatedSubnetId:
+    valueFrom:
+      kind: AzureSubnet
+      name: "{{ values.env }}-db-subnet"
+      fieldPath: status.outputs.subnet_id
+  privateDnsZoneId:
+    valueFrom:
+      kind: AzurePrivateDnsZone
+      name: "{{ values.env }}-postgres-dns"
+      fieldPath: status.outputs.zone_id
+  publicNetworkAccessEnabled: false
+  {% if values.postgres_ha_enabled | bool %}
+  highAvailability:
+    mode: ZONE_REDUNDANT
+  {% endif %}

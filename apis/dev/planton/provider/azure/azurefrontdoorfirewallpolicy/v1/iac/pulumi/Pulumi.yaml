@@ -1,0 +1,3 @@
+name: azure-front-door-firewall-policy
+runtime: go
+description: Pulumi program for Azure Front Door WAF (firewall) policy

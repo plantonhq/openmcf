@@ -98,6 +98,13 @@ Use update when you need to:
    - Checks for changed `StringValueOrRef` types (may need `value:` wrapper added or removed)
    - Checks for changed `recommended_default` / `default` annotations (preset values and comments may need updating)
    - Updates stale presets to match the new schema
+   - **Mechanically validates every preset AND the hack manifest** with the CLI built
+     from the working tree: `planton validate-manifest <file>` must pass for each
+     `v1/presets/*.yaml` and `v1/iac/hack/manifest.yaml` of the touched kind. Eyeballing
+     is not validation — angle-bracket placeholders in format-validated fields, bare
+     strings where a `StringValueOrRef` wrapper is required, and stale enum spellings
+     all pass review and fail this command. These files are public catalog artifacts;
+     an invalid one ships a broken copy-paste experience.
 6. **Annotates secret-by-default fields**: any newly added or renamed secret-bearing field MUST be
    annotated `(dev.planton.shared.options.sensitive) = true` (a look-alike non-secret gets
    `(sensitive_exempt_reason)` instead); then `planton secret-coverage --check` MUST pass. See rule
@@ -831,11 +838,18 @@ conventions). A rename keeps the enum **number** — only the name changes every
    `make reset-gazelle` (the Go package path changed) -> `yarn copy-docs &&
    yarn generate-structure` in `site/` (the copy script clears provider dirs first, so
    the old slug's built output disappears on its own).
-9. **Validate**: component spec tests, `go build ./...`, the Pulumi entrypoint build,
+9. **Validate**: component spec tests, targeted package builds
+   (`go build ./apis/dev/planton/provider/<provider>/<kind>/v1/...` — NEVER a repo-root
+   `go build ./...`, which compiles 70+ component modules at once and halts the machine;
+   use `make build-go` for the repo-wide gate), the Pulumi entrypoint build,
    `planton validate-refs --check`, `planton secret-coverage --check`,
    `tofu init -backend=false && tofu validate` in `iac/tf/`, and a final
-   `git grep -i <oldname>` sweep that must return zero tracked-file hits (historical
-   `_changelog/` entries are records and stay untouched).
+   `git grep -i <oldname>` sweep that must return zero tracked-file hits. Historical
+   records stay untouched and are excluded from the sweep: `_changelog/` entries AND
+   other components' dated `docs/audit/*.md` reports (rewriting a dated audit would
+   falsify what was true at audit time). The renamed component's OWN stale audit
+   reports are the exception — delete them, since they describe a kind that no longer
+   exists at that path and a fresh audit replaces them.
 
 **Use when:**
 - A kind's name diverges from the provider's own naming format

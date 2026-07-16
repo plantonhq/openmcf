@@ -1,0 +1,18 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbMongoDatabase
+metadata:
+  name: my-app-database
+spec:
+  cosmosdbAccountId:
+    valueFrom:
+      kind: AzureCosmosdbAccount
+      # A MONGO_DB-kind account with the ENABLE_MONGO capability.
+      name: <cosmosdb-account-resource-name>
+      fieldPath: status.outputs.cosmosdb_account_id
+  # 1-255 characters, unique within the account. Renaming replaces the
+  # database AND everything in it.
+  databaseName: <database-name>
+  # No throughput on purpose: the database is a pure namespace, and
+  # each collection brings its own dedicated RU/s -- the production
+  # default, because dedicated throughput isolates workloads instead of
+  # letting one hot collection starve its siblings.

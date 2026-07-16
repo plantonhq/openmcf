@@ -1,22 +1,21 @@
-# Private AKS Cluster
+# Private AKS Cluster with Workload Identity
 
-This preset deploys a private AKS cluster with no public API server endpoint. The Kubernetes API is accessible only from within the VNet or via peered networks (VPN, ExpressRoute). All other configuration is identical to the standard preset: Azure CNI Overlay, 3-zone system and user node pools, and all recommended addons.
+This preset deploys a private AKS cluster with no public API server endpoint and the workload-identity loop enabled. The Kubernetes API is accessible only from within the VNet or via peered networks (VPN, ExpressRoute); nodes deploy into your own subnet.
 
 ## When to Use
 
 - Regulated or security-sensitive environments that prohibit public Kubernetes API endpoints
 - Clusters accessed exclusively via VPN, ExpressRoute, or Azure Bastion
-- Compliance requirements mandating private-only control plane access
+- Pods that authenticate to Azure services keylessly through federated credentials
 - Enterprise environments with strict network perimeter policies
 
 ## Key Configuration Choices
 
-- **Private cluster** (`privateClusterEnabled: true`) -- API server has no public IP; accessible only from within the VNet or peered networks
-- **Standard SKU** (`controlPlaneSku: STANDARD`) -- Financially-backed 99.95% uptime SLA with availability zones
-- **Azure CNI Overlay** (`networkPlugin: AZURE_CNI`, `networkPluginMode: OVERLAY`) -- Private pod CIDR avoids VNet IP exhaustion
-- **System node pool** (`vmSize: Standard_D4s_v5`, 3-5 nodes, 3 zones) -- Dedicated system components with HA
-- **User node pool** (`vmSize: Standard_D8s_v5`, 2-10 nodes, 3 zones) -- General-purpose autoscaling pool
-- **All addons enabled** -- Container Insights, Key Vault CSI, Azure Policy, Workload Identity
+- **Private cluster** (`privateClusterEnabled: true`) -- API server has no public IP; AKS manages the private DNS zone (reference an `AzurePrivateDnsZone` via `privateDnsZoneId` to bring your own)
+- **Standard tier** (`skuTier: STANDARD`) -- financially-backed 99.95% uptime SLA
+- **BYO subnet** (`defaultNodePool.vnetSubnetId`) -- private clusters place nodes in your network; the cluster identity needs Network Contributor on the subnet
+- **Workload identity** (`oidcIssuerEnabled: true`, `workloadIdentityEnabled: true`) -- the cluster's `oidc_issuer_url` output feeds `AzureFederatedIdentityCredential` for secret-less pod auth
+- **System pool isolated** (`onlyCriticalAddonsEnabled: true`, autoscaling 3-5 across 3 zones) -- workload pools are separate `AzureAksNodePool` resources
 
 ## Placeholders to Replace
 
@@ -24,9 +23,9 @@ This preset deploys a private AKS cluster with no public API server endpoint. Th
 | --- | --- | --- |
 | `<azure-region>` | Azure region (e.g., `eastus`, `westeurope`) | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<nodes-subnet-id>` | ARM resource ID of the subnet for cluster nodes | Azure portal or `AzureVpc` status outputs (`nodesSubnetId`) |
-| `<log-analytics-workspace-id>` | ARM resource ID of the Log Analytics workspace | Azure portal or `AzureLogAnalyticsWorkspace` status outputs |
+| `<nodes-subnet-id>` | ARM ID of the subnet for cluster nodes | Azure portal or an `AzureSubnet`'s `status.outputs.subnet_id` |
 
 ## Related Presets
 
-- **01-standard** -- Use instead when a public API endpoint is acceptable (simpler access for developers)
+- **01-standard** -- Use instead when a public API endpoint is acceptable
+- **03-hardened-enterprise** -- Use instead when you also need AAD RBAC, Defender, and host encryption

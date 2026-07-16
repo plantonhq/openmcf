@@ -1,0 +1,26 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureKeyVaultKey
+metadata:
+  name: test-kv-key
+  org: test-org
+  env: dev
+spec:
+  name: test-cmk
+  key_vault_id:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.KeyVault/vaults/test-kv
+  key_type: RSA_HSM
+  key_size: 2048
+  key_opts:
+    - WRAP_KEY
+    - UNWRAP_KEY
+    - ENCRYPT
+    - DECRYPT
+  not_before_date: "2027-01-01T00:00:00Z"
+  expiration_date: "2029-01-01T00:00:00Z"
+  rotation_policy:
+    expire_after: P2Y
+    notify_before_expiry: P30D
+    automatic:
+      time_before_expiry: P60D
+  tags:
+    purpose: hack-testing

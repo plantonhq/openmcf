@@ -1,0 +1,43 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorRuleSet
+metadata:
+  name: my-rewrite-and-canary
+spec:
+  profileId:
+    valueFrom:
+      kind: AzureFrontDoorProfile
+      name: <front-door-profile-resource-name>
+      fieldPath: status.outputs.profile_id
+  ruleSetName: rewriteandcanary
+  rules:
+    # Serve the public "/v1" API surface from the backend's real
+    # "/api/v1" path -- the client never sees the internal layout.
+    - name: apiversionrewrite
+      order: 1
+      conditions:
+        urlPath:
+          - operator: BEGINS_WITH
+            matchValues: [v1/]
+      actions:
+        urlRewrite:
+          sourcePattern: /v1
+          destination: /api/v1
+          preserveUnmatchedPath: true
+    # Send requests carrying the canary cookie to a separate origin
+    # group -- an edge-level canary release without touching the route.
+    - name: canarycookie
+      order: 2
+      conditions:
+        cookies:
+          - cookieName: canary
+            operator: EQUAL
+            matchValues: ["true"]
+      actions:
+        routeConfigurationOverride:
+          originGroupId:
+            valueFrom:
+              kind: AzureFrontDoorOriginGroup
+              name: <canary-origin-group-resource-name>
+              fieldPath: status.outputs.origin_group_id
+          forwardingProtocol: HTTPS_ONLY
+          cacheBehavior: DISABLED

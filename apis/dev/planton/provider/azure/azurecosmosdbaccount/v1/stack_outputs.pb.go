@@ -22,63 +22,76 @@ const (
 )
 
 // **AzureCosmosdbAccountStackOutputs** captures the outputs of provisioning
-// an Azure Cosmos DB account with its databases and containers/collections.
+// an Azure Cosmos DB account.
 //
-// The primary outputs are `account_id` for resource identification, `endpoint`
-// for SDK connectivity, and `primary_key`/`primary_connection_string` for
-// authentication. The `database_ids` map provides individual database resource
-// IDs for downstream references.
+// Cosmos DB authenticates with auto-generated account keys rather than
+// login/password pairs, so the keys and the ready-made connection strings
+// ARE the credential surface. Every key and connection string below is
+// secret-bearing: platform consumers treat them like passwords (they are
+// stored and surfaced through secret-aware paths, never logged). When the
+// account disables local authentication, the keys stop authenticating and
+// data-plane access rides Entra ID instead.
 //
-// Unlike relational databases (PostgreSQL, MySQL, MSSQL) which use login/password
-// authentication, Cosmos DB uses auto-generated access keys. Applications connect
-// using the `endpoint` + `primary_key` or the `primary_connection_string`.
-//
-// In the database-stack infra chart, the `account_id` output is referenced by
-// AzurePrivateEndpoint for establishing private connectivity. The
-// `primary_connection_string` or `primary_mongodb_connection_string` is consumed
-// by applications for database access.
+// `cosmosdb_account_id` is the ARM identity downstream resources reference
+// -- e.g. AzurePrivateEndpoint's private_connection_resource_id (private-
+// endpoint subresource names: "Sql" for SQL-API accounts, "MongoDB" for
+// Mongo accounts). Databases and containers are their own kinds
+// (AzureCosmosdbSqlDatabase / AzureCosmosdbSqlContainer /
+// AzureCosmosdbMongoDatabase / AzureCosmosdbMongoCollection) referencing
+// this account, so this kind exports no database ids.
 type AzureCosmosdbAccountStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Manager ID of the Cosmos DB account.
+	// The Azure Resource Manager ID of the account.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DocumentDB/databaseAccounts/{name}
-	//
-	// Referenced by AzurePrivateEndpoint (private_connection_resource_id)
-	// for establishing private connectivity.
-	// Subresource names for private endpoint: ["Sql"] for SQL API, ["MongoDB"] for Mongo API.
-	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	// The name of the Cosmos DB account.
-	AccountName string `protobuf:"bytes,2,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
-	// The document endpoint URI.
+	CosmosdbAccountId string `protobuf:"bytes,1,opt,name=cosmosdb_account_id,json=cosmosdbAccountId,proto3" json:"cosmosdb_account_id,omitempty"`
+	// The account's name -- the globally unique DNS label.
+	CosmosdbAccountName string `protobuf:"bytes,2,opt,name=cosmosdb_account_name,json=cosmosdbAccountName,proto3" json:"cosmosdb_account_name,omitempty"`
+	// The document endpoint SDKs connect to.
 	// Format: https://{name}.documents.azure.com:443/
-	//
-	// Used by Cosmos DB SDKs to connect to the account.
-	// Combined with `primary_key` for authentication.
 	Endpoint string `protobuf:"bytes,3,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	// The primary access key for the account.
-	// Used for key-based authentication with the Cosmos DB SDK.
-	//
-	// For production workloads, consider using RBAC-based authentication
-	// (Azure AD) instead of access keys.
-	PrimaryKey string `protobuf:"bytes,4,opt,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
-	// The primary connection string for the SQL/NoSQL API.
-	// Format: AccountEndpoint={endpoint};AccountKey={key};
-	//
-	// Ready-to-use connection string for SQL API SDKs.
-	// Always populated regardless of account kind.
-	PrimaryConnectionString string `protobuf:"bytes,5,opt,name=primary_connection_string,json=primaryConnectionString,proto3" json:"primary_connection_string,omitempty"`
-	// The primary connection string for the MongoDB API.
-	// Format: mongodb://{name}:{key}@{name}.mongo.cosmos.azure.com:10255/?ssl=true&...
-	//
-	// Only populated when `kind` is "MongoDB".
-	// Empty string for GlobalDocumentDB accounts.
-	PrimaryMongodbConnectionString string `protobuf:"bytes,6,opt,name=primary_mongodb_connection_string,json=primaryMongodbConnectionString,proto3" json:"primary_mongodb_connection_string,omitempty"`
-	// Map of database names to their Azure Resource Manager IDs.
-	// Includes both SQL databases and MongoDB databases, depending on the
-	// account kind.
-	// Format: { "mydb": "/subscriptions/.../sqlDatabases/mydb" }
-	DatabaseIds   map[string]string `protobuf:"bytes,7,rep,name=database_ids,json=databaseIds,proto3" json:"database_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Per-region read endpoints, ordered by the account's failover
+	// priorities -- what latency-sensitive readers pin to.
+	ReadEndpoints []string `protobuf:"bytes,4,rep,name=read_endpoints,json=readEndpoints,proto3" json:"read_endpoints,omitempty"`
+	// Per-region write endpoints. One entry for single-write accounts;
+	// one per region when multiple_write_locations_enabled is true.
+	WriteEndpoints []string `protobuf:"bytes,5,rep,name=write_endpoints,json=writeEndpoints,proto3" json:"write_endpoints,omitempty"`
+	// The primary read-write account key (secret-bearing).
+	PrimaryKey string `protobuf:"bytes,6,opt,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
+	// The secondary read-write account key (secret-bearing) -- the
+	// rotation partner: applications move to the secondary, the primary
+	// is regenerated, and back.
+	SecondaryKey string `protobuf:"bytes,7,opt,name=secondary_key,json=secondaryKey,proto3" json:"secondary_key,omitempty"`
+	// The primary read-only account key (secret-bearing) -- for consumers
+	// that must never write.
+	PrimaryReadonlyKey string `protobuf:"bytes,8,opt,name=primary_readonly_key,json=primaryReadonlyKey,proto3" json:"primary_readonly_key,omitempty"`
+	// The secondary read-only account key (secret-bearing).
+	SecondaryReadonlyKey string `protobuf:"bytes,9,opt,name=secondary_readonly_key,json=secondaryReadonlyKey,proto3" json:"secondary_readonly_key,omitempty"`
+	// Ready-made SQL-API connection strings (secret-bearing), populated
+	// for every account kind. Format:
+	// AccountEndpoint={endpoint};AccountKey={key};
+	PrimarySqlConnectionString string `protobuf:"bytes,10,opt,name=primary_sql_connection_string,json=primarySqlConnectionString,proto3" json:"primary_sql_connection_string,omitempty"`
+	// The secondary SQL-API connection string (secret-bearing).
+	SecondarySqlConnectionString string `protobuf:"bytes,11,opt,name=secondary_sql_connection_string,json=secondarySqlConnectionString,proto3" json:"secondary_sql_connection_string,omitempty"`
+	// The read-only primary SQL-API connection string (secret-bearing).
+	PrimaryReadonlySqlConnectionString string `protobuf:"bytes,12,opt,name=primary_readonly_sql_connection_string,json=primaryReadonlySqlConnectionString,proto3" json:"primary_readonly_sql_connection_string,omitempty"`
+	// The read-only secondary SQL-API connection string (secret-bearing).
+	SecondaryReadonlySqlConnectionString string `protobuf:"bytes,13,opt,name=secondary_readonly_sql_connection_string,json=secondaryReadonlySqlConnectionString,proto3" json:"secondary_readonly_sql_connection_string,omitempty"`
+	// Ready-made MongoDB connection strings (secret-bearing), meaningful
+	// on MONGO_DB accounts. Format:
+	// mongodb://{name}:{key}@{name}.mongo.cosmos.azure.com:10255/?ssl=true...
+	PrimaryMongodbConnectionString string `protobuf:"bytes,14,opt,name=primary_mongodb_connection_string,json=primaryMongodbConnectionString,proto3" json:"primary_mongodb_connection_string,omitempty"`
+	// The secondary MongoDB connection string (secret-bearing).
+	SecondaryMongodbConnectionString string `protobuf:"bytes,15,opt,name=secondary_mongodb_connection_string,json=secondaryMongodbConnectionString,proto3" json:"secondary_mongodb_connection_string,omitempty"`
+	// The read-only primary MongoDB connection string (secret-bearing).
+	PrimaryReadonlyMongodbConnectionString string `protobuf:"bytes,16,opt,name=primary_readonly_mongodb_connection_string,json=primaryReadonlyMongodbConnectionString,proto3" json:"primary_readonly_mongodb_connection_string,omitempty"`
+	// The read-only secondary MongoDB connection string (secret-bearing).
+	SecondaryReadonlyMongodbConnectionString string `protobuf:"bytes,17,opt,name=secondary_readonly_mongodb_connection_string,json=secondaryReadonlyMongodbConnectionString,proto3" json:"secondary_readonly_mongodb_connection_string,omitempty"`
+	// The principal ID of the account's system-assigned identity, when
+	// `identity` requests one -- the subject for role assignments the
+	// account needs against other services.
+	IdentityPrincipalId string `protobuf:"bytes,18,opt,name=identity_principal_id,json=identityPrincipalId,proto3" json:"identity_principal_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AzureCosmosdbAccountStackOutputs) Reset() {
@@ -111,16 +124,16 @@ func (*AzureCosmosdbAccountStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AzureCosmosdbAccountStackOutputs) GetAccountId() string {
+func (x *AzureCosmosdbAccountStackOutputs) GetCosmosdbAccountId() string {
 	if x != nil {
-		return x.AccountId
+		return x.CosmosdbAccountId
 	}
 	return ""
 }
 
-func (x *AzureCosmosdbAccountStackOutputs) GetAccountName() string {
+func (x *AzureCosmosdbAccountStackOutputs) GetCosmosdbAccountName() string {
 	if x != nil {
-		return x.AccountName
+		return x.CosmosdbAccountName
 	}
 	return ""
 }
@@ -132,6 +145,20 @@ func (x *AzureCosmosdbAccountStackOutputs) GetEndpoint() string {
 	return ""
 }
 
+func (x *AzureCosmosdbAccountStackOutputs) GetReadEndpoints() []string {
+	if x != nil {
+		return x.ReadEndpoints
+	}
+	return nil
+}
+
+func (x *AzureCosmosdbAccountStackOutputs) GetWriteEndpoints() []string {
+	if x != nil {
+		return x.WriteEndpoints
+	}
+	return nil
+}
+
 func (x *AzureCosmosdbAccountStackOutputs) GetPrimaryKey() string {
 	if x != nil {
 		return x.PrimaryKey
@@ -139,9 +166,51 @@ func (x *AzureCosmosdbAccountStackOutputs) GetPrimaryKey() string {
 	return ""
 }
 
-func (x *AzureCosmosdbAccountStackOutputs) GetPrimaryConnectionString() string {
+func (x *AzureCosmosdbAccountStackOutputs) GetSecondaryKey() string {
 	if x != nil {
-		return x.PrimaryConnectionString
+		return x.SecondaryKey
+	}
+	return ""
+}
+
+func (x *AzureCosmosdbAccountStackOutputs) GetPrimaryReadonlyKey() string {
+	if x != nil {
+		return x.PrimaryReadonlyKey
+	}
+	return ""
+}
+
+func (x *AzureCosmosdbAccountStackOutputs) GetSecondaryReadonlyKey() string {
+	if x != nil {
+		return x.SecondaryReadonlyKey
+	}
+	return ""
+}
+
+func (x *AzureCosmosdbAccountStackOutputs) GetPrimarySqlConnectionString() string {
+	if x != nil {
+		return x.PrimarySqlConnectionString
+	}
+	return ""
+}
+
+func (x *AzureCosmosdbAccountStackOutputs) GetSecondarySqlConnectionString() string {
+	if x != nil {
+		return x.SecondarySqlConnectionString
+	}
+	return ""
+}
+
+func (x *AzureCosmosdbAccountStackOutputs) GetPrimaryReadonlySqlConnectionString() string {
+	if x != nil {
+		return x.PrimaryReadonlySqlConnectionString
+	}
+	return ""
+}
+
+func (x *AzureCosmosdbAccountStackOutputs) GetSecondaryReadonlySqlConnectionString() string {
+	if x != nil {
+		return x.SecondaryReadonlySqlConnectionString
 	}
 	return ""
 }
@@ -153,31 +222,60 @@ func (x *AzureCosmosdbAccountStackOutputs) GetPrimaryMongodbConnectionString() s
 	return ""
 }
 
-func (x *AzureCosmosdbAccountStackOutputs) GetDatabaseIds() map[string]string {
+func (x *AzureCosmosdbAccountStackOutputs) GetSecondaryMongodbConnectionString() string {
 	if x != nil {
-		return x.DatabaseIds
+		return x.SecondaryMongodbConnectionString
 	}
-	return nil
+	return ""
+}
+
+func (x *AzureCosmosdbAccountStackOutputs) GetPrimaryReadonlyMongodbConnectionString() string {
+	if x != nil {
+		return x.PrimaryReadonlyMongodbConnectionString
+	}
+	return ""
+}
+
+func (x *AzureCosmosdbAccountStackOutputs) GetSecondaryReadonlyMongodbConnectionString() string {
+	if x != nil {
+		return x.SecondaryReadonlyMongodbConnectionString
+	}
+	return ""
+}
+
+func (x *AzureCosmosdbAccountStackOutputs) GetIdentityPrincipalId() string {
+	if x != nil {
+		return x.IdentityPrincipalId
+	}
+	return ""
 }
 
 var File_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/azure/azurecosmosdbaccount/v1/stack_outputs.proto\x122dev.planton.provider.azure.azurecosmosdbaccount.v1\"\xf3\x03\n" +
-	" AzureCosmosdbAccountStackOutputs\x12\x1d\n" +
-	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\x12!\n" +
-	"\faccount_name\x18\x02 \x01(\tR\vaccountName\x12\x1a\n" +
-	"\bendpoint\x18\x03 \x01(\tR\bendpoint\x12\x1f\n" +
-	"\vprimary_key\x18\x04 \x01(\tR\n" +
-	"primaryKey\x12:\n" +
-	"\x19primary_connection_string\x18\x05 \x01(\tR\x17primaryConnectionString\x12I\n" +
-	"!primary_mongodb_connection_string\x18\x06 \x01(\tR\x1eprimaryMongodbConnectionString\x12\x88\x01\n" +
-	"\fdatabase_ids\x18\a \x03(\v2e.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountStackOutputs.DatabaseIdsEntryR\vdatabaseIds\x1a>\n" +
-	"\x10DatabaseIdsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xa7\x03\n" +
+	"Fdev/planton/provider/azure/azurecosmosdbaccount/v1/stack_outputs.proto\x122dev.planton.provider.azure.azurecosmosdbaccount.v1\"\xe0\b\n" +
+	" AzureCosmosdbAccountStackOutputs\x12.\n" +
+	"\x13cosmosdb_account_id\x18\x01 \x01(\tR\x11cosmosdbAccountId\x122\n" +
+	"\x15cosmosdb_account_name\x18\x02 \x01(\tR\x13cosmosdbAccountName\x12\x1a\n" +
+	"\bendpoint\x18\x03 \x01(\tR\bendpoint\x12%\n" +
+	"\x0eread_endpoints\x18\x04 \x03(\tR\rreadEndpoints\x12'\n" +
+	"\x0fwrite_endpoints\x18\x05 \x03(\tR\x0ewriteEndpoints\x12\x1f\n" +
+	"\vprimary_key\x18\x06 \x01(\tR\n" +
+	"primaryKey\x12#\n" +
+	"\rsecondary_key\x18\a \x01(\tR\fsecondaryKey\x120\n" +
+	"\x14primary_readonly_key\x18\b \x01(\tR\x12primaryReadonlyKey\x124\n" +
+	"\x16secondary_readonly_key\x18\t \x01(\tR\x14secondaryReadonlyKey\x12A\n" +
+	"\x1dprimary_sql_connection_string\x18\n" +
+	" \x01(\tR\x1aprimarySqlConnectionString\x12E\n" +
+	"\x1fsecondary_sql_connection_string\x18\v \x01(\tR\x1csecondarySqlConnectionString\x12R\n" +
+	"&primary_readonly_sql_connection_string\x18\f \x01(\tR\"primaryReadonlySqlConnectionString\x12V\n" +
+	"(secondary_readonly_sql_connection_string\x18\r \x01(\tR$secondaryReadonlySqlConnectionString\x12I\n" +
+	"!primary_mongodb_connection_string\x18\x0e \x01(\tR\x1eprimaryMongodbConnectionString\x12M\n" +
+	"#secondary_mongodb_connection_string\x18\x0f \x01(\tR secondaryMongodbConnectionString\x12Z\n" +
+	"*primary_readonly_mongodb_connection_string\x18\x10 \x01(\tR&primaryReadonlyMongodbConnectionString\x12^\n" +
+	",secondary_readonly_mongodb_connection_string\x18\x11 \x01(\tR(secondaryReadonlyMongodbConnectionString\x122\n" +
+	"\x15identity_principal_id\x18\x12 \x01(\tR\x13identityPrincipalIdB\xa7\x03\n" +
 	"6com.dev.planton.provider.azure.azurecosmosdbaccount.v1B\x11StackOutputsProtoP\x01Zkgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecosmosdbaccount/v1;azurecosmosdbaccountv1\xa2\x02\x05DPPAA\xaa\x022Dev.Planton.Provider.Azure.Azurecosmosdbaccount.V1\xca\x022Dev\\Planton\\Provider\\Azure\\Azurecosmosdbaccount\\V1\xe2\x02>Dev\\Planton\\Provider\\Azure\\Azurecosmosdbaccount\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Azure::Azurecosmosdbaccount::V1b\x06proto3"
 
 var (
@@ -192,18 +290,16 @@ func file_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto
 	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto_goTypes = []any{
 	(*AzureCosmosdbAccountStackOutputs)(nil), // 0: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountStackOutputs
-	nil,                                      // 1: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountStackOutputs.DatabaseIdsEntry
 }
 var file_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountStackOutputs.database_ids:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountStackOutputs.DatabaseIdsEntry
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto_init() }
@@ -217,7 +313,7 @@ func file_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto_rawDesc), len(file_dev_planton_provider_azure_azurecosmosdbaccount_v1_stack_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

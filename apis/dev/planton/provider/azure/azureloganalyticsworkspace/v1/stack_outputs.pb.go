@@ -24,30 +24,43 @@ const (
 // **AzureLogAnalyticsWorkspaceStackOutputs** captures the outputs of provisioning
 // an Azure Log Analytics Workspace.
 //
-// These outputs provide essential identifiers and authentication keys for:
-//   - Downstream resources that send logs to this workspace (Container Insights, App Insights)
-//   - Applications that need to query log data via the Log Analytics API
-//   - Infra chart wiring (workspace_id referenced by AzureApplicationInsights,
-//     AzureContainerAppEnvironment, and AzureAksCluster)
+// The `workspace_id` output (the ARM resource ID) is the composition seam:
+// AzureApplicationInsights, AzureAksCluster addons, AzureContainerAppEnvironment,
+// AzureMonitorDiagnosticSetting, and AzureMonitorScheduledQueryAlert all
+// reference the workspace by its ARM ID. The customer ID (a GUID Azure agents
+// authenticate against) is exported separately as `workspace_customer_id`.
 type AzureLogAnalyticsWorkspaceStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Azure Resource Manager ID of the Log Analytics Workspace.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.OperationalInsights/workspaces/{name}
-	// This is the full ARM resource ID used by Azure APIs and downstream resources
-	// that need to reference this workspace (e.g., Container Insights, diagnostic settings).
+	// This is what downstream resources reference: Application Insights
+	// workspace binding, AKS Container Insights, Container App Environment log
+	// destinations, diagnostic settings, and log-query alert scopes.
 	WorkspaceId string `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
 	// The name of the Log Analytics Workspace.
 	WorkspaceName string `protobuf:"bytes,2,opt,name=workspace_name,json=workspaceName,proto3" json:"workspace_name,omitempty"`
-	// The primary shared key for agent authentication.
-	// Used by the Log Analytics agent (MMA/AMA) and direct ingestion APIs to authenticate
-	// when sending data to the workspace. Treat as a secret.
-	PrimarySharedKey string `protobuf:"bytes,3,opt,name=primary_shared_key,json=primarySharedKey,proto3" json:"primary_shared_key,omitempty"`
-	// The secondary shared key for agent authentication.
-	// A backup key that allows key rotation without downtime. When rotating keys,
-	// update agents to use the secondary key, then regenerate the primary.
-	SecondarySharedKey string `protobuf:"bytes,4,opt,name=secondary_shared_key,json=secondarySharedKey,proto3" json:"secondary_shared_key,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The workspace customer ID -- the GUID agents and direct-ingestion APIs
+	// identify the workspace by (the portal calls it "Workspace ID" on the
+	// agents page; distinct from the ARM resource ID above).
+	WorkspaceCustomerId string `protobuf:"bytes,3,opt,name=workspace_customer_id,json=workspaceCustomerId,proto3" json:"workspace_customer_id,omitempty"`
+	// The name of the resource group containing the workspace.
+	ResourceGroupName string `protobuf:"bytes,4,opt,name=resource_group_name,json=resourceGroupName,proto3" json:"resource_group_name,omitempty"`
+	// The primary shared key for agent authentication. Secret-bearing: used by
+	// Azure Monitor agents and direct ingestion APIs to authenticate when
+	// sending data. Unusable as a credential when
+	// local_authentication_enabled is false (keyless posture).
+	PrimarySharedKey string `protobuf:"bytes,5,opt,name=primary_shared_key,json=primarySharedKey,proto3" json:"primary_shared_key,omitempty"`
+	// The secondary shared key for agent authentication. Secret-bearing: a
+	// backup key that allows rotation without downtime -- point agents at the
+	// secondary, regenerate the primary, then swap back.
+	SecondarySharedKey string `protobuf:"bytes,6,opt,name=secondary_shared_key,json=secondarySharedKey,proto3" json:"secondary_shared_key,omitempty"`
+	// The principal ID of the workspace's system-assigned managed identity.
+	// Empty unless the identity block enables SYSTEM_ASSIGNED. Grant this
+	// principal access (for example to a Key Vault key) when the workspace
+	// itself must read other resources.
+	IdentityPrincipalId string `protobuf:"bytes,7,opt,name=identity_principal_id,json=identityPrincipalId,proto3" json:"identity_principal_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AzureLogAnalyticsWorkspaceStackOutputs) Reset() {
@@ -94,6 +107,20 @@ func (x *AzureLogAnalyticsWorkspaceStackOutputs) GetWorkspaceName() string {
 	return ""
 }
 
+func (x *AzureLogAnalyticsWorkspaceStackOutputs) GetWorkspaceCustomerId() string {
+	if x != nil {
+		return x.WorkspaceCustomerId
+	}
+	return ""
+}
+
+func (x *AzureLogAnalyticsWorkspaceStackOutputs) GetResourceGroupName() string {
+	if x != nil {
+		return x.ResourceGroupName
+	}
+	return ""
+}
+
 func (x *AzureLogAnalyticsWorkspaceStackOutputs) GetPrimarySharedKey() string {
 	if x != nil {
 		return x.PrimarySharedKey
@@ -108,16 +135,26 @@ func (x *AzureLogAnalyticsWorkspaceStackOutputs) GetSecondarySharedKey() string 
 	return ""
 }
 
+func (x *AzureLogAnalyticsWorkspaceStackOutputs) GetIdentityPrincipalId() string {
+	if x != nil {
+		return x.IdentityPrincipalId
+	}
+	return ""
+}
+
 var File_dev_planton_provider_azure_azureloganalyticsworkspace_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azureloganalyticsworkspace_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ldev/planton/provider/azure/azureloganalyticsworkspace/v1/stack_outputs.proto\x128dev.planton.provider.azure.azureloganalyticsworkspace.v1\"\xd2\x01\n" +
+	"Ldev/planton/provider/azure/azureloganalyticsworkspace/v1/stack_outputs.proto\x128dev.planton.provider.azure.azureloganalyticsworkspace.v1\"\xea\x02\n" +
 	"&AzureLogAnalyticsWorkspaceStackOutputs\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12%\n" +
-	"\x0eworkspace_name\x18\x02 \x01(\tR\rworkspaceName\x12,\n" +
-	"\x12primary_shared_key\x18\x03 \x01(\tR\x10primarySharedKey\x120\n" +
-	"\x14secondary_shared_key\x18\x04 \x01(\tR\x12secondarySharedKeyB\xd1\x03\n" +
+	"\x0eworkspace_name\x18\x02 \x01(\tR\rworkspaceName\x122\n" +
+	"\x15workspace_customer_id\x18\x03 \x01(\tR\x13workspaceCustomerId\x12.\n" +
+	"\x13resource_group_name\x18\x04 \x01(\tR\x11resourceGroupName\x12,\n" +
+	"\x12primary_shared_key\x18\x05 \x01(\tR\x10primarySharedKey\x120\n" +
+	"\x14secondary_shared_key\x18\x06 \x01(\tR\x12secondarySharedKey\x122\n" +
+	"\x15identity_principal_id\x18\a \x01(\tR\x13identityPrincipalIdB\xd1\x03\n" +
 	"<com.dev.planton.provider.azure.azureloganalyticsworkspace.v1B\x11StackOutputsProtoP\x01Zwgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureloganalyticsworkspace/v1;azureloganalyticsworkspacev1\xa2\x02\x05DPPAA\xaa\x028Dev.Planton.Provider.Azure.Azureloganalyticsworkspace.V1\xca\x028Dev\\Planton\\Provider\\Azure\\Azureloganalyticsworkspace\\V1\xe2\x02DDev\\Planton\\Provider\\Azure\\Azureloganalyticsworkspace\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Azure::Azureloganalyticsworkspace::V1b\x06proto3"
 
 var (

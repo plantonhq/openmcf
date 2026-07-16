@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestoragelocaluser.v1;
+
+// **AzureStorageLocalUserStackOutputs** captures the outputs of
+// provisioning a storage local user. The sid and password outputs carry
+// SECRET-BEARING material (the password is the user's login secret; the
+// SID identifies the principal in Azure Files ACLs) -- treat any surface
+// that renders stack outputs accordingly, and hand the password to the
+// partner over a secure channel.
+message AzureStorageLocalUserStackOutputs {
+  // The local user's Azure Resource Manager ID.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{account}/localUsers/{name}
+  string local_user_id = 1;
+
+  // The user's name within the account -- the second half of the SFTP
+  // login.
+  string user_name = 2;
+
+  // The full SFTP login: {account-name}.{user-name} -- what a client
+  // passes as the username when connecting to
+  // {account-name}.blob.core.windows.net on port 22.
+  string sftp_username = 3;
+
+  // The user's unique Security Identifier (SID) -- Azure generates it at
+  // creation; Azure Files NTFS-style ACLs reference principals by SID.
+  // Secret-bearing by Azure's own classification.
+  string sid = 4;
+
+  // The Azure-generated SSH password -- returned EXACTLY ONCE, at the
+  // creation that enabled ssh_password_enabled (empty when password
+  // auth is off). Azure never returns it again: losing it means
+  // regenerating it (flip ssh_password_enabled off and on). SECRET.
+  string password = 5;
+
+  // The name of the storage account the user lives on, parsed from the
+  // resolved account ID -- saves consumers a second reference when they
+  // need the account/user pair.
+  string storage_account_name = 6;
+}

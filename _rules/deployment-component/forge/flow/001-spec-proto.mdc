@@ -89,6 +89,25 @@ PROACTIVE DEFAULT IDENTIFICATION (MANDATORY STEP)
 - The heuristic: if the large majority of users would use the same value, it deserves a default.
 - This step prevents IaC modules from needing defensive default logic and ensures
   Planton middleware handles defaults centrally.
+- **A field whose provider vocabulary has exactly ONE legal value is a constant,
+  not configuration -- do NOT model it.** Providers sometimes keep a field whose
+  other values have been retired (e.g. a minimum-TLS-version field that accepts
+  only TLS 1.2 after the 1.0/1.1 retirement). Modeling it would ship a dead knob
+  that can only be set to one thing. Instead: send the constant unconditionally
+  in BOTH IaC modules and record the skip (with the re-enable trigger -- "lands
+  as a real field if the provider adds a second value") in the component's
+  docs/README.md. The same reasoning applies to a condition/action whose operator
+  vocabulary is a single value: omit the operator field and let the provider
+  default apply.
+- **A REQUIRED bool whose `false` is meaningful must be `optional bool` +
+  `required` (presence-tracked), never a plain `bool` + `required`.** On a plain
+  proto3 bool, `false` IS the zero value, so `(buf.validate.field).required`
+  rejects an explicit false -- the one value the field exists to express (e.g. a
+  provider-Required `enabled` flag inside an optional block, where enabled=false
+  legally means "keep the configuration, pause the behavior"). `optional` makes
+  presence explicit so required accepts a stated false and still rejects absence.
+  A spec test asserting the explicit-false shape validates is the guard for this
+  class.
 
 PROACTIVE SENSITIVE-FIELD IDENTIFICATION (MANDATORY STEP)
 - While authoring the schema, review EVERY string field and the literal of EVERY

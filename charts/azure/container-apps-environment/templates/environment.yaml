@@ -1,0 +1,86 @@
+# The Container App Environment: the secure boundary every app in this
+# chart runs inside. VNet-injected (the subnet is fixed at creation --
+# this is the once-only chance), logs bound to the estate's workspace.
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppEnvironment
+metadata:
+  name: "{{ values.env }}-capps"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-container-apps"
+      fieldPath: status.outputs.resource_group_name
+  environmentName: "{{ values.env }}-capps"
+  logsDestination: LOG_ANALYTICS
+  logAnalyticsWorkspaceId:
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: "{{ values.env }}-capps-logs"
+      fieldPath: status.outputs.workspace_id
+  infrastructureSubnetId:
+    valueFrom:
+      kind: AzureSubnet
+      name: "{{ values.env }}-capps-infra-subnet"
+      fieldPath: status.outputs.subnet_id
+  {% if values.zone_redundancy_enabled | bool %}
+  # Spread the platform's infrastructure across availability zones --
+  # fixed at creation, so the production answer is decided here.
+  zoneRedundancyEnabled: true
+  {% endif %}
+  {% if values.internal_only_enabled | bool %}
+  # Internal load balancer: "external" ingress means VNet-reachable,
+  # never internet-reachable. Requires VNet injection (always on here).
+  internalLoadBalancerEnabled: true
+  {% endif %}
+---
+# The Dapr pub/sub component -- the estate's messaging contract.
+# Application code calls Dapr's pub/sub API with the component name
+# ("pubsub") and stays broker-agnostic; this registration binds it to
+# Service Bus with KEYLESS auth: the sidecars authenticate as the
+# workload identity via Entra, so no connection string exists anywhere
+# in the deployment.
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppEnvironmentDaprComponent
+metadata:
+  name: "{{ values.env }}-capps-pubsub"
+spec:
+  containerAppEnvironmentId:
+    valueFrom:
+      kind: AzureContainerAppEnvironment
+      name: "{{ values.env }}-capps"
+      fieldPath: status.outputs.environment_id
+  componentName: pubsub
+  # The queue-based component: each Dapr topic maps to a Service Bus
+  # queue of the same name (competing consumers on one queue). The
+  # topics variant fans out through Service Bus subscriptions instead --
+  # switch when multiple independent consumers need every message.
+  componentType: pubsub.azure.servicebus.queues
+  version: v1
+  metadata:
+    # Keyless (Entra) authentication: namespace by name, identity by
+    # client id. The client id is referenced from the identity's own
+    # output so the wiring survives identity recreation.
+    - name: namespaceName
+      value:
+        value: "{{ values.servicebus_namespace_name }}.servicebus.windows.net"
+    - name: azureClientId
+      value:
+        valueFrom:
+          kind: AzureUserAssignedIdentity
+          name: "{{ values.env }}-capps-identity"
+          fieldPath: status.outputs.client_id
+    # IaC owns the topology: Dapr consumes the queue this chart
+    # provisioned (with real DLQ posture) and never creates entities
+    # behind the infrastructure's back. This is also what lets the
+    # identity's grant stay at Sender/Receiver instead of Data Owner.
+    - name: disableEntityManagement
+      value:
+        value: "true"
+  # Only the API (publisher) and worker (subscriber) see the component;
+  # a future app added to the environment gets no implicit broker
+  # access.
+  scopes:
+    - api
+    - worker

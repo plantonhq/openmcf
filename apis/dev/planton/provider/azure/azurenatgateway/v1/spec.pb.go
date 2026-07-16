@@ -9,6 +9,7 @@ package azurenatgatewayv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -23,26 +24,130 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Azure NAT Gateway spec defines configuration for an Azure NAT Gateway resource.
+// The SKU of a NAT gateway. Unspecified means Azure's default (Standard).
+type AzureNatGatewaySkuName int32
+
+const (
+	// Not specified: Azure's default (Standard).
+	AzureNatGatewaySkuName_azure_nat_gateway_sku_name_unspecified AzureNatGatewaySkuName = 0
+	// The zonal production SKU: lives in one availability zone (or
+	// non-zonal), pairs with Standard public IPs.
+	AzureNatGatewaySkuName_STANDARD AzureNatGatewaySkuName = 1
+	// Azure's next-generation SKU: zone-redundant automatically (zones must
+	// be empty), pairs with StandardV2 public IPs/prefixes.
+	AzureNatGatewaySkuName_STANDARD_V2 AzureNatGatewaySkuName = 2
+)
+
+// Enum value maps for AzureNatGatewaySkuName.
+var (
+	AzureNatGatewaySkuName_name = map[int32]string{
+		0: "azure_nat_gateway_sku_name_unspecified",
+		1: "STANDARD",
+		2: "STANDARD_V2",
+	}
+	AzureNatGatewaySkuName_value = map[string]int32{
+		"azure_nat_gateway_sku_name_unspecified": 0,
+		"STANDARD":                               1,
+		"STANDARD_V2":                            2,
+	}
+)
+
+func (x AzureNatGatewaySkuName) Enum() *AzureNatGatewaySkuName {
+	p := new(AzureNatGatewaySkuName)
+	*p = x
+	return p
+}
+
+func (x AzureNatGatewaySkuName) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureNatGatewaySkuName) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (AzureNatGatewaySkuName) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_enumTypes[0]
+}
+
+func (x AzureNatGatewaySkuName) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureNatGatewaySkuName.Descriptor instead.
+func (AzureNatGatewaySkuName) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+// **AzureNatGatewaySpec** defines the configuration for creating an Azure
+// NAT Gateway: the managed source-network-address-translation (SNAT)
+// service that gives every workload in its attached subnets stable,
+// scalable outbound internet connectivity -- the production answer to
+// Azure retiring implicit default outbound access.
+//
+// The gateway is deliberately just the gateway. What it composes with is
+// referenced, never created here:
+//   - The public addresses it SNATs through are first-class AzurePublicIp
+//     and AzurePublicIpPrefix resources (public_ip_ids / public_ip_prefix_ids)
+//     -- visible in the resource graph, allowlistable, and reusable.
+//   - The subnets it serves declare the attachment themselves
+//     (AzureSubnet's nat_gateway_id), matching Azure's model: one gateway
+//     serves many subnets without listing them.
+//
+// A gateway with no addresses deploys but cannot translate anything --
+// associate at least one IP or prefix for it to actually carry traffic.
+// Each address provides 64,512 SNAT ports; a /28 prefix (16 addresses)
+// scales that by 16 in one contiguous, allowlistable range.
 type AzureNatGatewaySpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Reference to the subnet to attach this NAT Gateway to (usually an existing Azure Subnet).
-	// Defaults to referencing an AzureSubnet resource’s ID output.
-	SubnetId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
-	// Idle timeout in minutes for TCP connections through the NAT Gateway.
-	// Defaults to 4 if not set. Valid range: 4 to 120 (inclusive).
-	IdleTimeoutMinutes *int32 `protobuf:"varint,2,opt,name=idle_timeout_minutes,json=idleTimeoutMinutes,proto3,oneof" json:"idle_timeout_minutes,omitempty"`
-	// Optional prefix length for allocating a Public IP Prefix for this NAT Gateway.
-	// If set (allowed values 28–31), a Public IP Prefix of /<prefix_length> is created instead of a single IP.
-	PublicIpPrefixLength *int32 `protobuf:"varint,3,opt,name=public_ip_prefix_length,json=publicIpPrefixLength,proto3,oneof" json:"public_ip_prefix_length,omitempty"`
-	// Optional tags to assign to the NAT Gateway resource.
-	Tags map[string]string `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// The Azure region where the NAT Gateway will be deployed.
-	// Examples: "eastus", "westus2", "westeurope".
-	Region string `protobuf:"bytes,5,opt,name=region,proto3" json:"region,omitempty"`
-	// The Azure Resource Group where the NAT Gateway will be created.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
-	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
+	// The Azure region where the NAT gateway will be created, e.g. "eastus",
+	// "westeurope". A gateway only serves subnets in its own region.
+	// Changing the region replaces the gateway.
+	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
+	// The Azure resource group the NAT gateway will be created in. Can be a
+	// literal resource-group name or a reference to an AzureResourceGroup's
+	// name output.
+	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
+	// The name of the NAT gateway, unique within the resource group. 1-80
+	// characters (alphanumerics, underscores, periods, and hyphens; must
+	// start with a letter or number and end with a letter, number, or
+	// underscore). Changing the name replaces the gateway, briefly
+	// interrupting egress for every attached subnet.
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// The SKU. Unspecified applies Azure's default (STANDARD) -- a zonal
+	// gateway, optionally pinned to one availability zone. STANDARD_V2 is
+	// Azure's next-generation SKU: zone-redundant by default (zones must be
+	// left empty) and requiring StandardV2 public IPs/prefixes. Fixed at
+	// creation.
+	SkuName AzureNatGatewaySkuName `protobuf:"varint,4,opt,name=sku_name,json=skuName,proto3,enum=dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySkuName" json:"sku_name,omitempty"`
+	// How long the gateway keeps an idle outbound TCP connection's SNAT port
+	// reserved, in minutes (4-120). Unset uses Azure's default (4). Raise it
+	// only for long-lived idle connections that must not be re-established;
+	// higher values hold ports longer and hasten SNAT exhaustion. Updatable
+	// in place.
+	IdleTimeoutInMinutes *int32 `protobuf:"varint,5,opt,name=idle_timeout_in_minutes,json=idleTimeoutInMinutes,proto3,oneof" json:"idle_timeout_in_minutes,omitempty"`
+	// The availability zone to pin a STANDARD gateway to (e.g. ["1"]). A
+	// STANDARD gateway is zonal: it lives in one zone (or non-zonal when
+	// empty), and zone-resilient architectures deploy one gateway per zone
+	// with per-zone subnets. Must be empty for STANDARD_V2, which is
+	// zone-redundant automatically. Fixed at creation.
+	Zones []string `protobuf:"bytes,6,rep,name=zones,proto3" json:"zones,omitempty"`
+	// The public IP addresses the gateway SNATs through, by ARM ID. Each
+	// address adds 64,512 SNAT ports. References first-class AzurePublicIp
+	// resources so the egress addresses are visible in the resource graph
+	// and reusable (a StandardV2 gateway needs StandardV2 addresses).
+	// Updatable in place.
+	PublicIpIds []*v1.StringValueOrRef `protobuf:"bytes,7,rep,name=public_ip_ids,json=publicIpIds,proto3" json:"public_ip_ids,omitempty"`
+	// The public IP prefixes (contiguous reserved ranges) the gateway SNATs
+	// through, by ARM ID -- the scalable, allowlistable alternative to
+	// individual addresses. Updatable in place.
+	PublicIpPrefixIds []*v1.StringValueOrRef `protobuf:"bytes,8,rep,name=public_ip_prefix_ids,json=publicIpPrefixIds,proto3" json:"public_ip_prefix_ids,omitempty"`
+	// Free-form tags applied to the NAT gateway, merged over the
+	// Planton-derived resource tags (organization, environment, resource
+	// id); a user tag with the same key wins. Tags are Azure's governance
+	// surface -- Azure Policy enforces them and Microsoft Cost Management
+	// groups by them. Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,9,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -77,34 +182,6 @@ func (*AzureNatGatewaySpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AzureNatGatewaySpec) GetSubnetId() *v1.StringValueOrRef {
-	if x != nil {
-		return x.SubnetId
-	}
-	return nil
-}
-
-func (x *AzureNatGatewaySpec) GetIdleTimeoutMinutes() int32 {
-	if x != nil && x.IdleTimeoutMinutes != nil {
-		return *x.IdleTimeoutMinutes
-	}
-	return 0
-}
-
-func (x *AzureNatGatewaySpec) GetPublicIpPrefixLength() int32 {
-	if x != nil && x.PublicIpPrefixLength != nil {
-		return *x.PublicIpPrefixLength
-	}
-	return 0
-}
-
-func (x *AzureNatGatewaySpec) GetTags() map[string]string {
-	if x != nil {
-		return x.Tags
-	}
-	return nil
-}
-
 func (x *AzureNatGatewaySpec) GetRegion() string {
 	if x != nil {
 		return x.Region
@@ -119,24 +196,82 @@ func (x *AzureNatGatewaySpec) GetResourceGroup() *v1.StringValueOrRef {
 	return nil
 }
 
+func (x *AzureNatGatewaySpec) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AzureNatGatewaySpec) GetSkuName() AzureNatGatewaySkuName {
+	if x != nil {
+		return x.SkuName
+	}
+	return AzureNatGatewaySkuName_azure_nat_gateway_sku_name_unspecified
+}
+
+func (x *AzureNatGatewaySpec) GetIdleTimeoutInMinutes() int32 {
+	if x != nil && x.IdleTimeoutInMinutes != nil {
+		return *x.IdleTimeoutInMinutes
+	}
+	return 0
+}
+
+func (x *AzureNatGatewaySpec) GetZones() []string {
+	if x != nil {
+		return x.Zones
+	}
+	return nil
+}
+
+func (x *AzureNatGatewaySpec) GetPublicIpIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.PublicIpIds
+	}
+	return nil
+}
+
+func (x *AzureNatGatewaySpec) GetPublicIpPrefixIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.PublicIpPrefixIds
+	}
+	return nil
+}
+
+func (x *AzureNatGatewaySpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 var File_dev_planton_provider_azure_azurenatgateway_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8dev/planton/provider/azure/azurenatgateway/v1/spec.proto\x12-dev.planton.provider.azure.azurenatgateway.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9b\x05\n" +
-	"\x13AzureNatGatewaySpec\x12x\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12@\n" +
-	"\x14idle_timeout_minutes\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18x(\x04H\x00R\x12idleTimeoutMinutes\x88\x01\x01\x12E\n" +
-	"\x17public_ip_prefix_length\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x1f(\x1cH\x01R\x14publicIpPrefixLength\x88\x01\x01\x12`\n" +
-	"\x04tags\x18\x04 \x03(\v2L.dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.TagsEntryR\x04tags\x12\"\n" +
-	"\x06region\x18\x05 \x01(\tB\n" +
+	"8dev/planton/provider/azure/azurenatgateway/v1/spec.proto\x12-dev.planton.provider.azure.azurenatgateway.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc4\n" +
+	"\n" +
+	"\x13AzureNatGatewaySpec\x12\"\n" +
+	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x1a7\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xa8\x02\n" +
+	"\x04name\x18\x03 \x01(\tB\x93\x02\xbaH\x8f\x02\xba\x01\x82\x02\n" +
+	"\x17nat_gateway_name_format\x12\x9b\x01NAT gateway names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12`\n" +
+	"\bsku_name\x18\x04 \x01(\x0e2E.dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySkuNameR\askuName\x12J\n" +
+	"\x17idle_timeout_in_minutes\x18\x05 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18x(\x04\x8a\xa6\x1d\x014H\x00R\x14idleTimeoutInMinutes\x88\x01\x01\x12)\n" +
+	"\x05zones\x18\x06 \x03(\tB\x13\xbaH\x10\x92\x01\r\"\vr\tR\x011R\x012R\x013R\x05zones\x12|\n" +
+	"\rpublic_ip_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x9d\x03\x92\xd4a\x1bstatus.outputs.public_ip_idR\vpublicIpIds\x12\x90\x01\n" +
+	"\x14public_ip_prefix_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xa5\x03\x92\xd4a\"status.outputs.public_ip_prefix_idR\x11publicIpPrefixIds\x12`\n" +
+	"\x04tags\x18\t \x03(\v2L.dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x17\n" +
-	"\x15_idle_timeout_minutesB\x1a\n" +
-	"\x18_public_ip_prefix_lengthB\xfc\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xad\x01\xbaH\xa9\x01\x1a\xa6\x01\n" +
+	"\x1dstandard_v2_is_zone_redundant\x12Wzones must be empty for a STANDARD_V2 NAT gateway -- it is zone-redundant automatically\x1a,this.sku_name != 2 || this.zones.size() == 0B\x1a\n" +
+	"\x18_idle_timeout_in_minutes*c\n" +
+	"\x16AzureNatGatewaySkuName\x12*\n" +
+	"&azure_nat_gateway_sku_name_unspecified\x10\x00\x12\f\n" +
+	"\bSTANDARD\x10\x01\x12\x0f\n" +
+	"\vSTANDARD_V2\x10\x02B\xfc\x02\n" +
 	"1com.dev.planton.provider.azure.azurenatgateway.v1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurenatgateway/v1;azurenatgatewayv1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Azure.Azurenatgateway.V1\xca\x02-Dev\\Planton\\Provider\\Azure\\Azurenatgateway\\V1\xe2\x029Dev\\Planton\\Provider\\Azure\\Azurenatgateway\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Azure::Azurenatgateway::V1b\x06proto3"
 
 var (
@@ -151,21 +286,25 @@ func file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_rawDescGZIP()
 	return file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_rawDescData
 }
 
+var file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_goTypes = []any{
-	(*AzureNatGatewaySpec)(nil), // 0: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec
-	nil,                         // 1: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.TagsEntry
-	(*v1.StringValueOrRef)(nil), // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureNatGatewaySkuName)(0), // 0: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySkuName
+	(*AzureNatGatewaySpec)(nil), // 1: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec
+	nil,                         // 2: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.tags:type_name -> dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.TagsEntry
-	2, // 2: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 0: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0, // 1: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.sku_name:type_name -> dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySkuName
+	3, // 2: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.public_ip_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 3: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.public_ip_prefix_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 4: dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.tags:type_name -> dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.TagsEntry
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_init() }
@@ -179,13 +318,14 @@ func file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_depIdxs,
+		EnumInfos:         file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_azure_azurenatgateway_v1_spec_proto = out.File

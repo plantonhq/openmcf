@@ -1,0 +1,53 @@
+# The operations group: where routine alerts land -- failed admin
+# operations, error spikes, anything a human should see during working
+# hours. Action groups are global resources (no region), so
+# notifications keep flowing during a regional outage -- exactly when
+# they matter most. Alert rules are the volatile edge; this group is the
+# stable routing node they all point at.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorActionGroup
+metadata:
+  name: "{{ values.env }}-ops-alerts"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-observability"
+      fieldPath: status.outputs.resource_group_name
+  # The short name is the sender identity on SMS and mobile push --
+  # keep it recognizable on a phone screen (12-character limit).
+  shortName: OpsAlerts
+  emailReceivers:
+    - name: ops-email
+      emailAddress: "{{ values.ops_email }}"
+      # The common alert schema is one consistent JSON shape across all
+      # alert types -- what anything parsing the mail (or the webhook
+      # below) should receive.
+      useCommonAlertSchema: true
+  {% if values.ops_webhook_url %}
+  webhookReceivers:
+    - name: ops-webhook
+      serviceUri: "{{ values.ops_webhook_url }}"
+      useCommonAlertSchema: true
+  {% endif %}
+---
+# The critical group: paging conditions only -- service-health incidents
+# and availability failures. It is a separate group (not a receiver on
+# the ops group) so its membership can stay an on-call intake while the
+# ops group fans out to a team, and so a maintenance-window disable of
+# routine noise never silences a page.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorActionGroup
+metadata:
+  name: "{{ values.env }}-critical-alerts"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-observability"
+      fieldPath: status.outputs.resource_group_name
+  shortName: Critical
+  emailReceivers:
+    - name: oncall-email
+      emailAddress: "{{ values.critical_email }}"
+      useCommonAlertSchema: true

@@ -1,0 +1,57 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureLoadBalancer
+metadata:
+  name: my-egress-lb
+spec:
+  region: <azure-region>
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: <your-lb-name>
+  frontendIpConfigurations:
+    - name: public
+      publicIpAddressId:
+        value: "<public-ip-resource-id>"
+  backendPools:
+    - name: web
+  healthProbes:
+    - name: http-health
+      protocol: PROBE_HTTP
+      port: 80
+      requestPath: /healthz
+  rules:
+    - name: http
+      protocol: TCP
+      frontendPort: 80
+      backendPort: 80
+      backendPoolNames: [web]
+      probeName: http-health
+      tcpResetEnabled: true
+      # Required when the pool's egress is governed by an explicit
+      # outbound rule: implicit rule-level SNAT must be off.
+      disableOutboundSnat: true
+  natRules:
+    # Single-target port forward: the receiving instance is chosen from
+    # the member side -- a NIC ip_configuration references
+    # status.outputs.natRuleIds.ssh-admin to complete the attachment.
+    - name: ssh-admin
+      protocol: TCP
+      frontendPort: 2222
+      backendPort: 22
+    # Pool-style NAT: every member of the pool gets its own frontend port
+    # from the range (the scale-set per-instance-SSH pattern).
+    - name: per-instance-ssh
+      protocol: TCP
+      backendPort: 22
+      backendPoolName: web
+      frontendPortStart: 50000
+      frontendPortEnd: 50099
+  outboundRules:
+    # Explicit SNAT: predictable egress through the public frontend with
+    # an explicitly sized port budget (64,000 ports per frontend IP /
+    # max expected instances, in multiples of 8).
+    - name: egress
+      frontendIpConfigurationNames: [public]
+      backendPoolName: web
+      protocol: ALL
+      allocatedOutboundPorts: 2048
+      tcpResetEnabled: true

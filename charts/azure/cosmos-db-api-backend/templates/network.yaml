@@ -1,0 +1,107 @@
+# The data-plane network. With the account's public access off, this
+# VNet (and anything peered to it) is the only place the API's data
+# plane exists. Application workloads share the VNet with their own
+# subnets or peer their VNet in -- either way they resolve the account
+# through the private DNS zone below.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: "{{ values.env }}-cosmos-vnet"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-cosmos-api"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-cosmos-vnet"
+  addressSpaces:
+    - "{{ values.vnet_cidr }}"
+---
+# The private-endpoint subnet. Plain (no delegation) -- private
+# endpoints are NICs, not a delegated PaaS service, and Azure disables
+# endpoint network policies on the subnet by default.
+apiVersion: azure.planton.dev/v1
+kind: AzureSubnet
+metadata:
+  name: "{{ values.env }}-cosmos-pe-subnet"
+spec:
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-cosmos-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  name: private-endpoints
+  addressPrefixes:
+    - "{{ values.pe_subnet_cidr }}"
+---
+# Private DNS for the account's hostname: privatelink.documents.azure.com
+# is Azure's zone for the Cosmos SQL data plane. Clients keep using the
+# public FQDN ({account}.documents.azure.com) -- Azure CNAMEs it into
+# this zone, which answers with the endpoint's private address.
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZone
+metadata:
+  name: "{{ values.env }}-cosmos-dns"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-cosmos-api"
+      fieldPath: status.outputs.resource_group_name
+  name: privatelink.documents.azure.com
+---
+# Link the zone to the VNet so resolution works from inside it. Peered
+# application VNets add their own links -- see the README's day-2 notes.
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZoneVirtualNetworkLink
+metadata:
+  name: "{{ values.env }}-cosmos-dns-link"
+spec:
+  name: "{{ values.env }}-cosmos-link"
+  privateDnsZoneId:
+    valueFrom:
+      kind: AzurePrivateDnsZone
+      name: "{{ values.env }}-cosmos-dns"
+      fieldPath: status.outputs.zone_id
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-cosmos-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  registrationEnabled: false
+---
+# The private endpoint: a NIC in the subnet carrying the account's SQL
+# data plane ("Sql" is the Cosmos SQL-API subresource; a Mongo account
+# would use "MongoDB"). The DNS-zone reference makes Azure manage the
+# A records -- endpoint address changes never become client incidents.
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateEndpoint
+metadata:
+  name: "{{ values.env }}-cosmos-pe"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-cosmos-api"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-cosmos-pe"
+  subnetId:
+    valueFrom:
+      kind: AzureSubnet
+      name: "{{ values.env }}-cosmos-pe-subnet"
+      fieldPath: status.outputs.subnet_id
+  privateServiceConnection:
+    privateConnectionResourceId:
+      valueFrom:
+        kind: AzureCosmosdbAccount
+        name: "{{ values.env }}-cosmos"
+        fieldPath: status.outputs.cosmosdb_account_id
+    subresourceNames:
+      - Sql
+  privateDnsZoneIds:
+    - valueFrom:
+        kind: AzurePrivateDnsZone
+        name: "{{ values.env }}-cosmos-dns"
+        fieldPath: status.outputs.zone_id
