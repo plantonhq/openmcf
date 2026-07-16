@@ -67,9 +67,9 @@ spec:
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the server in | The resource group's `status.outputs.resource_group_name` |
-| `<globally-unique-server-name>` | 3-63 lowercase chars, globally unique | Your naming convention |
+| `myorg-prod-postgres` | 3-63 lowercase chars, globally unique | Your naming convention |
 | `<admin-login>` / `<admin-password>` | PostgreSQL admin credentials | A secret manager; never commit literals |
 | `<database-subnet-resource-name>` | The delegated AzureSubnet resource | Your network manifests |
 | `<postgres-dns-zone-resource-name>` | The AzurePrivateDnsZone resource | Your network manifests |
-| `<application-database-name>` | The application's database | Your application |
+| `appdb` | The application's database | Your application |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |

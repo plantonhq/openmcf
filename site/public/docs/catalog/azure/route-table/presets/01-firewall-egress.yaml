@@ -11,7 +11,11 @@ spec:
     - name: default-via-firewall
       addressPrefix: "0.0.0.0/0"
       nextHopType: VIRTUAL_APPLIANCE
-      nextHopInIpAddress: <firewall-private-ip>
+      # References the hub firewall's private IP output directly -- no
+      # hand-copied address; the route follows the firewall.
+      nextHopInIpAddress:
+        valueFrom:
+          name: <firewall-resource-name>
   bgpRoutePropagationEnabled: false
   tags:
     cost-center: <cost-center>

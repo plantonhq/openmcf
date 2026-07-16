@@ -5,7 +5,8 @@ metadata:
 spec:
   resourceGroup:
     value: <resource-group-name>
-  name: <internal-domain>
+  # Replace with your internal domain (a valid DNS name).
+  name: corp.internal
   soaRecord:
     email: <dns-admin-email-soa-format>
     minimumTtl: 30

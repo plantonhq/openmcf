@@ -9,9 +9,9 @@ spec:
       kind: AzureResourceGroup
       name: <resource-group-resource-name>
       fieldPath: status.outputs.resource_group_name
-  # 3-24 lowercase letters and digits ONLY (no hyphens), globally unique
-  # across all of Azure -- it becomes the DNS prefix of every endpoint.
-  accountName: <accountname>
+  # Replace: 3-24 lowercase letters and digits ONLY (no hyphens), globally
+  # unique across all of Azure -- it becomes the DNS prefix of every endpoint.
+  accountName: myorgappstorage
   # StorageV2 / Standard / LRS are the spec defaults -- the
   # general-purpose baseline for app assets, uploads, and scratch data.
   replicationType: LRS

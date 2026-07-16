@@ -10,7 +10,8 @@ spec:
       fieldPath: status.outputs.storage_account_id
   # 4-63 letters and digits, NO hyphens; what containers and blobs
   # reference within the account.
-  scopeName: <scopeName>
+  # Replace: 4-63 letters and digits only (no hyphens).
+  scopeName: appdatascope
   # A platform-managed key Azure creates and rotates -- key isolation
   # without any Key Vault involvement.
   source: MICROSOFT_STORAGE

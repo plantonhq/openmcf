@@ -27,5 +27,5 @@ less-technical counterparties.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The SFTP AzureStorageAccount's Planton resource name | Your exchange composition |
-| `<userName>` | 3-64 lowercase letters and digits | Your counterparty naming convention |
+| `vendordropbox` | 3-64 lowercase letters and digits | Your counterparty naming convention |
 | `<containerName>` / `<container-resource-name>` | The intake container | Your exchange composition |

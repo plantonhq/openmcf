@@ -28,6 +28,6 @@ partners.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The SFTP AzureStorageAccount's Planton resource name | Your exchange composition |
-| `<userName>` | 3-64 lowercase letters and digits | Your partner naming convention |
-| `<ssh-public-key>` | The partner's OpenSSH public key ("ssh-ed25519 AAAA...") | Provided by the partner |
+| `partneracme` | 3-64 lowercase letters and digits | Your partner naming convention |
+| `ssh-ed25519 AAAA...` | The partner's OpenSSH public key ("ssh-ed25519 AAAA...") | Provided by the partner |
 | `<containerName>` / `<container-resource-name>` | The partner's container | Your exchange composition |

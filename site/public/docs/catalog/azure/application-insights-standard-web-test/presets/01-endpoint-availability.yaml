@@ -14,7 +14,9 @@ spec:
   timeout: 30
   retryEnabled: true
   request:
-    url: <https://your-endpoint/health>
+    # Replace with your endpoint. Must stay https: the SSL checks below
+    # are rejected on plain-http URLs.
+    url: https://www.example.com/health
     httpVerb: GET
   validationRules:
     expectedStatusCode: 200

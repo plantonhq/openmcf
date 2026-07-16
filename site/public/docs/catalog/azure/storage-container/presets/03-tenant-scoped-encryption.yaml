@@ -8,7 +8,8 @@ spec:
       kind: AzureStorageAccount
       name: <storage-account-resource-name>
       fieldPath: status.outputs.storage_account_id
-  containerName: <container-name>
+  # Replace: 3-63 lowercase letters, digits, and single hyphens.
+  containerName: tenant-data
   containerAccessType: PRIVATE
   # Blobs written without their own scope encrypt under this one --
   # per-tenant key isolation inside a shared account. References an

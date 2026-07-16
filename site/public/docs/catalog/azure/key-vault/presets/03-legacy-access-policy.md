@@ -52,7 +52,7 @@ first-class `AzureRoleAssignment` resources.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the vault in | The resource group's `status.outputs.resource_group_name` |
-| `<globally-unique-vault-name>` | 3-24 chars, globally unique | Your naming convention |
+| `myorg-legacy-vault` | 3-24 chars, globally unique | Your naming convention |
 | `<identity-name>` | The AzureUserAssignedIdentity being granted access | The identity resource's metadata name |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |
 

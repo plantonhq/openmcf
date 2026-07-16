@@ -6,7 +6,9 @@ spec:
   region: eastus
   resourceGroup:
     value: <resource-group-name>
-  serverName: <globally-unique-server-name>
+  # Replace: lowercase letters, digits, and hyphens, globally unique -- it
+  # becomes {name}.postgres.database.azure.com.
+  serverName: myorg-hardened-postgres
   skuName: GP_Standard_D4ds_v5
   storageMb: 131072
   # Entra-only authentication: password auth is OFF, so no admin

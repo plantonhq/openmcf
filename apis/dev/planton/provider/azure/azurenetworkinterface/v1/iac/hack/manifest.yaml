@@ -30,7 +30,7 @@ spec:
       loadBalancerInboundNatRuleIds:
         - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/loadBalancers/test-lb/inboundNatRules/ssh-admin
       applicationGatewayBackendAddressPoolIds:
-        - /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationGateways/test-agw/backendAddressPools/web
+        - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationGateways/test-agw/backendAddressPools/web
 
   # Production NICs on supported VM sizes should enable SR-IOV.
   acceleratedNetworkingEnabled: true

@@ -102,7 +102,9 @@ var _ = ginkgo.Describe("AzureNetworkInterfaceSpec Custom Validation Tests", fun
 
 		ginkgo.It("should accept ASG memberships, DNS overrides, and tags", func() {
 			spec := validSpec()
-			spec.ApplicationSecurityGroupIds = []string{"/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/applicationSecurityGroups/web"}
+			spec.ApplicationSecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
+				stringRef("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/applicationSecurityGroups/web"),
+			}
 			spec.DnsServers = []string{"10.0.0.4"}
 			spec.InternalDnsNameLabel = "app-1"
 			spec.Tags = map[string]string{"cost-center": "platform"}

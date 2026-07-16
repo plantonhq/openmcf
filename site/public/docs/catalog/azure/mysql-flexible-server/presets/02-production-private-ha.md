@@ -54,8 +54,8 @@ window, and TLS-only connections.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the server in | The resource group's `status.outputs.resource_group_name` |
-| `<globally-unique-server-name>` | 3-63 lowercase chars, globally unique | Your naming convention |
-| `<admin-login>` | The MySQL admin login | Your convention |
+| `myorg-prod-mysql` | 3-63 lowercase chars, globally unique | Your naming convention |
+| `mysqladmin` | The MySQL admin login | Your convention |
 | `<admin-password>` | 8-128 chars from 3+ character classes | A secret manager; never commit literals |
 | `<database-subnet-resource-name>` | The delegated subnet's Planton resource name | Your network composition |
 | `<mysql-dns-zone-resource-name>` | The private DNS zone's Planton resource name | Your network composition |

@@ -9,7 +9,9 @@ spec:
       kind: AzureResourceGroup
       name: my-data-rg
       fieldPath: status.outputs.resource_group_name
-  accountName: <globally-unique-account-name>
+  # Replace: 3-50 lowercase letters, digits, and hyphens, globally unique --
+  # it becomes {name}.mongo.cosmos.azure.com.
+  accountName: myorg-catalog-mongo
   # The MongoDB-compatible API: existing drivers and tools work
   # unchanged. Fixed at creation.
   kind: MONGO_DB

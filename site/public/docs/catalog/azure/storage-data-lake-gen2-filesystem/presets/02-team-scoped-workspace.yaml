@@ -10,8 +10,11 @@ spec:
       fieldPath: status.outputs.storage_account_id
   filesystemName: analytics-team
   # A named Entra group owns the workspace root -- team membership IS
-  # the access list, managed in Entra instead of per-filesystem.
-  group: <team-entra-group-object-id>
+  # the access list, managed in Entra instead of per-filesystem. (A
+  # workload identity in the same graph would be referenced instead:
+  # valueFrom an AzureUserAssignedIdentity's principal_id output.)
+  group:
+    value: <team-entra-group-object-id>
   aces:
     - type: USER
       permissions: rwx

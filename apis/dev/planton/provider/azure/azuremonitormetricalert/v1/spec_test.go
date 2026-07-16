@@ -107,7 +107,7 @@ var _ = ginkgo.Describe("AzureMonitorMetricAlertSpec Validation Tests", func() {
 			input := buildValidMetricAlert()
 			input.Spec.StaticCriteria = nil
 			input.Spec.WebTestAvailabilityCriteria = &AzureMonitorMetricAlertWebTestCriteria{
-				WebTestId:           "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Insights/webTests/homepage",
+				WebTestId:           literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Insights/webTests/homepage"),
 				ComponentId:         literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Insights/components/app"),
 				FailedLocationCount: 3,
 			}
@@ -247,7 +247,7 @@ var _ = ginkgo.Describe("AzureMonitorMetricAlertSpec Validation Tests", func() {
 			input := buildValidMetricAlert()
 			input.Spec.StaticCriteria = nil
 			input.Spec.WebTestAvailabilityCriteria = &AzureMonitorMetricAlertWebTestCriteria{
-				WebTestId:           "/subscriptions/s/resourceGroups/rg/providers/Microsoft.Insights/webTests/homepage",
+				WebTestId:           literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Insights/webTests/homepage"),
 				ComponentId:         literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Insights/components/app"),
 				FailedLocationCount: 0,
 			}

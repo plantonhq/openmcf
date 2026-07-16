@@ -38,7 +38,7 @@ disabled: a client must know an object's URL to fetch it.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
-| `<container-name>` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
+| `public-assets` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
 
 ## Downstream Wiring
 

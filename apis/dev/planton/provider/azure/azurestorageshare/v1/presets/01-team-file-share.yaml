@@ -10,7 +10,8 @@ spec:
       fieldPath: status.outputs.storage_account_id
   # 3-63 lowercase letters, digits, and hyphens; unique within the
   # account; becomes the mount path segment.
-  shareName: <share-name>
+  # Replace: 3-63 lowercase letters, digits, and single hyphens.
+  shareName: team-files
   # The provisioned maximum size -- what SMB clients see as the drive
   # size. Grows in place; shrinking below used capacity fails.
   quotaGb: 500

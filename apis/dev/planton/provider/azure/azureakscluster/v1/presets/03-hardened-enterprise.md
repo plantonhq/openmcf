@@ -26,7 +26,7 @@ This preset deploys a compliance-posture AKS cluster: Azure AD RBAC with local a
 | `<azure-region>` | Azure region | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
 | `<pinned-k8s-version>` | Kubernetes version to pin (e.g., `1.35`) | `az aks get-versions --location <region>` |
-| `<office-cidr>` | CIDR block allowed to reach the API server | Your network team |
+| `203.0.113.0/24` | CIDR block allowed to reach the API server | Your network team |
 | `<nodes-subnet-id>` | ARM ID of the subnet for cluster nodes | Azure portal or an `AzureSubnet`'s `status.outputs.subnet_id` |
 | `<log-analytics-workspace-id>` | ARM ID of the Log Analytics workspace | Azure portal or `AzureLogAnalyticsWorkspace` status outputs |
 

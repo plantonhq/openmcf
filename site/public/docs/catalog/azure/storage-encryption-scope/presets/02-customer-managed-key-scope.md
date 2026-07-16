@@ -42,5 +42,5 @@ the rest of the account stays on platform-managed keys.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
-| `<scopeName>` | 4-63 letters and digits, no hyphens | Your tenancy/data taxonomy |
+| `tenantcmkscope` | 4-63 letters and digits, no hyphens | Your tenancy/data taxonomy |
 | `<key-vault-key-resource-name>` | The AzureKeyVaultKey's Planton resource name | Your key composition |

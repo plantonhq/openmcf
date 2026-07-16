@@ -25,4 +25,4 @@ infrastructure.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
-| `<work-queue-name>` | The work queue this companion serves | Your queue composition |
+| `order-processing` | The work queue this companion serves | Your queue composition |

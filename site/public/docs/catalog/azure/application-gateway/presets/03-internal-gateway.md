@@ -43,7 +43,7 @@ out without dropping in-flight requests.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the gateway in | The resource group's `status.outputs.resource_group_name` |
-| `<gateway-name>` | The gateway's name, unique within the resource group | Your naming convention |
+| `internal-gateway` | The gateway's name, unique within the resource group | Your naming convention |
 | `<gateway-subnet-arm-id>` | The DEDICATED gateway subnet | The subnet's `status.outputs.subnet_id` |
 | `<static-private-ip>` | An unassigned address in the gateway subnet | Your IP address plan |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |

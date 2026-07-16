@@ -9,7 +9,9 @@ spec:
       kind: AzureResourceGroup
       name: <resource-group-resource-name>
       fieldPath: status.outputs.resource_group_name
-  accountName: <accountname>
+  # Replace: 3-24 lowercase letters and digits ONLY (no hyphens), globally
+  # unique across all of Azure -- it becomes the DNS prefix of every endpoint.
+  accountName: myorgprodstorage
   # Zone-redundant at home plus geo-replication: survives a zone loss
   # and a regional disaster.
   replicationType: GZRS

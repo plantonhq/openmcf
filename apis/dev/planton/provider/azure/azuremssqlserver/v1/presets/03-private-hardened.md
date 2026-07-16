@@ -41,7 +41,7 @@ Monitor, and Microsoft Defender threat detection.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the server in | The resource group's `status.outputs.resource_group_name` |
-| `<globally-unique-server-name>` | 1-63 lowercase chars, globally unique | Your naming convention |
+| `myorg-prod-sql` | 1-63 lowercase chars, globally unique | Your naming convention |
 | `<admin-login>` / `<admin-password>` | SQL admin credentials | A secret manager; never commit literals |
 | `<tde-identity-resource-name>` | The user-assigned identity's Planton resource name | Your identity composition |
 | `<tde-key-resource-name>` | The Key Vault key's Planton resource name | Your Key Vault composition |

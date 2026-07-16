@@ -40,5 +40,5 @@ cost while paused.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<server-resource-name>` | The AzureMssqlServer's Planton resource name | Your server composition |
-| `<database-name>` | The database's name on the server | Your application |
+| `dev-scratch-db` | The database's name on the server | Your application |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |

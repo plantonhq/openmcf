@@ -30,7 +30,7 @@ end-to-end TLS and everything else to the web pool.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the gateway in | The resource group's `status.outputs.resource_group_name` |
-| `<gateway-name>` | The gateway's name, unique within the resource group | Your naming convention |
+| `waf-gateway` | The gateway's name, unique within the resource group | Your naming convention |
 | `<gateway-subnet-arm-id>` | The DEDICATED gateway subnet | The subnet's `status.outputs.subnet_id` |
 | `<gateway-identity-arm-id>` | The user-assigned identity with vault access | The identity's `status.outputs.identity_id` |
 | `<waf-policy-resource-name>` | The AzureWebApplicationFirewallPolicy resource | Your security manifests |

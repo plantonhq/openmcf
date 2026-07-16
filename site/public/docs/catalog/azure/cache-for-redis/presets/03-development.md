@@ -39,5 +39,5 @@ single Basic-tier C0 node with an IP allow-list on the public endpoint.
 | --- | --- | --- |
 | `<region>` | Azure region, e.g. `eastus` | Your region strategy |
 | `<resource-group-resource-name>` | The AzureResourceGroup's Planton resource name | Your foundation composition |
-| `<cacheName>` | Globally unique DNS name (1-63 letters/digits/hyphens) | Becomes `{cacheName}.redis.cache.windows.net` |
-| `<startIp>` / `<endIp>` | The allowed IPv4 range (inclusive) | Your office/VPN egress range |
+| `myorg-dev-cache` | Globally unique DNS name (1-63 letters/digits/hyphens) | Becomes `{cacheName}.redis.cache.windows.net` |
+| `203.0.113.0` / `203.0.113.255` | The allowed IPv4 range (inclusive) | Your office/VPN egress range |

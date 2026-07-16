@@ -6,7 +6,9 @@ spec:
   region: eastus
   resourceGroup:
     value: <resource-group-name>
-  serverName: <globally-unique-server-name>
+  # Replace: lowercase letters, digits, and hyphens, globally unique -- it
+  # becomes {name}.postgres.database.azure.com.
+  serverName: myorg-dev-postgres
   administratorLogin: <admin-login>
   administratorPassword:
     value: <admin-password>
@@ -14,7 +16,9 @@ spec:
   # Burstable SKUs do not support high availability or read replicas.
   skuName: B_Standard_B1ms
   databases:
-    - name: <application-database-name>
+    # Replace with your application database name (letters first, then
+    # letters/digits/hyphens/underscores).
+    - name: appdb
   firewallRules:
     # 0.0.0.0-0.0.0.0 admits Azure-internal services only (not the
     # internet); add your workstation or CI ranges as separate rules.

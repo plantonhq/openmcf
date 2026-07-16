@@ -29,7 +29,7 @@ on it.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the server in | The resource group's `status.outputs.resource_group_name` |
-| `<globally-unique-server-name>` | 1-63 lowercase chars, globally unique | Your naming convention (org prefix recommended) |
+| `myorg-app-sql` | 1-63 lowercase chars, globally unique | Your naming convention (org prefix recommended) |
 | `<admin-login>` | The SQL admin login (not `admin`/`sa`/`root`) | Your convention |
 | `<admin-password>` | 8-128 chars from 3+ character classes | A secret manager; never commit literals |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |

@@ -9,7 +9,9 @@ spec:
       kind: AzureResourceGroup
       name: my-data-rg
       fieldPath: status.outputs.resource_group_name
-  accountName: <globally-unique-account-name>
+  # Replace: 3-50 lowercase letters, digits, and hyphens, globally unique --
+  # it becomes {name}.documents.azure.com.
+  accountName: myorg-orders-cosmos
   # The SQL (NoSQL) API -- the default, stated for clarity.
   kind: GLOBAL_DOCUMENT_DB
   # Session consistency: read-your-writes within a session -- Azure's

@@ -26,4 +26,4 @@ storage-account prices with zero provisioned throughput.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
-| `<AuditTableName>` | Letter-start 3-63 alphanumerics | Your naming convention |
+| `AuditTrail` | Letter-start 3-63 alphanumerics | Your naming convention |

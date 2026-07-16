@@ -26,7 +26,7 @@ AzureStorageContainer resources referencing this account.
 | --- | --- | --- |
 | `<azure-region>` | The Azure region, e.g. `eastus` | Your region strategy |
 | `<resource-group-resource-name>` | The AzureResourceGroup's Planton resource name | Your resource-group composition |
-| `<accountname>` | 3-24 lowercase letters/digits, globally unique | Your naming convention (no hyphens!) |
+| `myorgappstorage` | 3-24 lowercase letters/digits, globally unique | Your naming convention (no hyphens!) |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |
 
 ## Downstream Wiring

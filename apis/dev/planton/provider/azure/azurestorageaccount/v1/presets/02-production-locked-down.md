@@ -33,7 +33,7 @@ that tiers stale data down automatically.
 | --- | --- | --- |
 | `<azure-region>` | The Azure region, e.g. `eastus` | Your region strategy |
 | `<resource-group-resource-name>` | The AzureResourceGroup's Planton resource name | Your resource-group composition |
-| `<accountname>` | 3-24 lowercase letters/digits, globally unique | Your naming convention (no hyphens!) |
+| `myorgprodstorage` | 3-24 lowercase letters/digits, globally unique | Your naming convention (no hyphens!) |
 | `<app-subnet-resource-name>` | The AzureSubnet admitted through the firewall (needs the Microsoft.Storage service endpoint) | Your network composition |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |
 

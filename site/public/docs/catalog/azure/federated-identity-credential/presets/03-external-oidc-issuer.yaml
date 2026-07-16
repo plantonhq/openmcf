@@ -6,6 +6,7 @@ spec:
   name: <external-system>-trust
   userAssignedIdentity:
     value: <user-assigned-identity-arm-id>
-  issuer: <external-oidc-issuer-url>
+  issuer:
+    value: <external-oidc-issuer-url>
   subject: <external-subject>
   audience: api://AzureADTokenExchange

@@ -37,7 +37,7 @@ management: Azure creates and rotates the key.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
-| `<scopeName>` | 4-63 letters and digits, no hyphens | Your tenancy/data taxonomy |
+| `appdatascope` | 4-63 letters and digits, no hyphens | Your tenancy/data taxonomy |
 
 ## Downstream Wiring
 

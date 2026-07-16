@@ -26,6 +26,6 @@ revokes every token anchored to it.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
-| `<TableName>` | Letter-start 3-63 alphanumerics | Your naming convention |
+| `SharedEntities` | Letter-start 3-63 alphanumerics | Your naming convention |
 | `<window-start-rfc3339>` | Policy validity start, e.g. `2026-07-01T00:00:00Z` | Your sharing agreement |
 | `<window-expiry-rfc3339>` | Policy validity end -- the revocation backstop | Your sharing agreement |

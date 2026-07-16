@@ -8,7 +8,8 @@ spec:
       kind: AzureMssqlServer
       name: <server-resource-name>
       fieldPath: status.outputs.server_id
-  databaseName: <database-name>
+  # Replace with your database name (no <>*%&:\/? characters).
+  databaseName: analytics-db
   # Hyperscale: storage grows elastically to 100 TB and compute scales
   # independently; maxSizeGb is ignored by design.
   skuName: HS_Gen5_4

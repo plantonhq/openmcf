@@ -9,7 +9,9 @@ spec:
       kind: AzureResourceGroup
       name: <resource-group-resource-name>
       fieldPath: status.outputs.resource_group_name
-  cacheName: <cacheName>
+  # Replace: 1-63 letters, digits, and hyphens (no repeats), globally
+  # unique -- it becomes {name}.redis.cache.windows.net.
+  cacheName: myorg-prod-cache
   # PREMIUM unlocks clustering, persistence, zone pinning, VNet
   # injection, and geo-replication (AzureRedisLinkedServer).
   skuName: PREMIUM

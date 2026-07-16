@@ -49,7 +49,7 @@ even behind the DENY posture.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the vault in | The resource group's `status.outputs.resource_group_name` |
-| `<globally-unique-vault-name>` | 3-24 chars, globally unique | Your naming convention |
+| `myorg-prod-cmk-vault` | 3-24 chars, globally unique | Your naming convention |
 | `<office-or-ci-cidr>` | Public IPv4 CIDR allowed through the firewall | Your office/VPN/CI egress range |
 | `<app-subnet-arm-id>` | The subnet whose workloads reach the vault (or a `valueFrom` reference to an AzureSubnet's `subnet_id` output) | The subnet's `status.outputs.subnet_id` |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |

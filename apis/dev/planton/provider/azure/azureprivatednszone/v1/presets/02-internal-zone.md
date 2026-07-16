@@ -32,6 +32,6 @@ component's presets.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the zone in | The resource group's `status.outputs.resource_group_name` |
-| `<internal-domain>` | Your internal domain (e.g. `corp.internal`) | Your DNS architecture |
+| `corp.internal` | Your internal domain (e.g. `corp.internal`) | Your DNS architecture |
 | `<dns-admin-email-soa-format>` | DNS contact in SOA host format | Your ops contact conventions |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |

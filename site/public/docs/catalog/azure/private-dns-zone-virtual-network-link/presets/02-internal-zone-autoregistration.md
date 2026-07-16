@@ -39,6 +39,6 @@ link to the same network with registration off.
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<network-name>` | A short name identifying the linked network | Your naming convention |
+| `workload-vnet-link` | A short name identifying the linked network | Your naming convention |
 | `<private-dns-zone-arm-id>` | The internal zone's full ARM ID | The zone's `status.outputs.zone_id` |
 | `<virtual-network-arm-id>` | The network's full ARM ID | The network's `status.outputs.virtual_network_id` |

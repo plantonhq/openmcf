@@ -8,7 +8,8 @@ spec:
       kind: AzureStorageAccount
       name: <filestorage-account-resource-name>
       fieldPath: status.outputs.storage_account_id
-  shareName: <share-name>
+  # Replace: 3-63 lowercase letters, digits, and single hyphens.
+  shareName: app-nfs-data
   # Premium FileStorage floors at 100 GB and bills the provisioned
   # capacity whether used or not -- size to the workload's real need.
   quotaGb: 100

@@ -26,6 +26,6 @@ shared storage account.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
-| `<container-name>` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
+| `tenant-data` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
 | `<encryption-scope-resource-name>` | The AzureStorageEncryptionScope's Planton resource name (must live on the same account) | Your storage composition |
 | `<tenant-id>` | The tenant this container isolates | Your tenancy model |

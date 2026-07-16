@@ -10,7 +10,8 @@ spec:
       fieldPath: status.outputs.storage_account_id
   # 3-63 lowercase letters, digits, and hyphens; unique within the
   # account; becomes the URL path segment.
-  containerName: <container-name>
+  # Replace: 3-63 lowercase letters, digits, and single hyphens.
+  containerName: app-data
   # Private is the spec default -- stated explicitly here because the
   # access posture is the one decision every container owner must make.
   containerAccessType: PRIVATE

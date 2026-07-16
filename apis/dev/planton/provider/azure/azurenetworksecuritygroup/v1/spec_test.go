@@ -130,8 +130,8 @@ var _ = ginkgo.Describe("AzureNetworkSecurityGroupSpec Validation Tests", func()
 			ginkgo.It("should accept application security group addressing", func() {
 				input := validResource()
 				rule := validRule()
-				rule.SourceApplicationSecurityGroupIds = []string{
-					"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationSecurityGroups/web-servers",
+				rule.SourceApplicationSecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
+					literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationSecurityGroups/web-servers"),
 				}
 				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
 				err := protovalidate.Validate(input)
@@ -269,8 +269,8 @@ var _ = ginkgo.Describe("AzureNetworkSecurityGroupSpec Validation Tests", func()
 				input := validResource()
 				rule := validRule()
 				rule.DestinationAddressPrefix = strPtr("10.0.1.0/24")
-				rule.DestinationApplicationSecurityGroupIds = []string{
-					"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationSecurityGroups/db-servers",
+				rule.DestinationApplicationSecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
+					literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationSecurityGroups/db-servers"),
 				}
 				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
 				err := protovalidate.Validate(input)
@@ -282,7 +282,7 @@ var _ = ginkgo.Describe("AzureNetworkSecurityGroupSpec Validation Tests", func()
 				rule := validRule()
 				for i := 0; i < 11; i++ {
 					rule.SourceApplicationSecurityGroupIds = append(rule.SourceApplicationSecurityGroupIds,
-						"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationSecurityGroups/asg")
+						literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationSecurityGroups/asg"))
 				}
 				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
 				err := protovalidate.Validate(input)

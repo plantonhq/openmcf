@@ -12,10 +12,11 @@ spec:
   networkProfile:
     networkPlugin: AZURE_CNI
     networkPluginMode: OVERLAY
-    networkPolicy: AZURE
+    networkPolicy: NETWORK_POLICY_AZURE
   apiServerAccessProfile:
+    # Replace with your office/VPN and CI egress CIDRs.
     authorizedIpRanges:
-      - "<office-cidr>"
+      - "203.0.113.0/24"
   azureActiveDirectoryRoleBasedAccessControl:
     azureRbacEnabled: true
   localAccountDisabled: true

@@ -45,7 +45,7 @@ spec in RBAC mode.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the vault in | The resource group's `status.outputs.resource_group_name` |
-| `<globally-unique-vault-name>` | 3-24 chars, letters/digits/hyphens, globally unique | Your naming convention (org prefix recommended) |
+| `myorg-platform-vault` | 3-24 chars, letters/digits/hyphens, globally unique | Your naming convention (org prefix recommended) |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |
 
 ## Downstream Wiring

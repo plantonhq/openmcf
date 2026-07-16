@@ -36,7 +36,7 @@ them at its own pace.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
-| `<queue-name>` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
+| `order-processing` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
 | `<work-type>` | What flows through this queue | Your job taxonomy |
 
 ## Downstream Wiring

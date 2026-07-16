@@ -6,7 +6,9 @@ spec:
   region: eastus
   resourceGroup:
     value: <resource-group-name>
-  name: <gateway-name>
+  # Replace with the gateway name (alphanumerics, underscores, periods,
+  # hyphens; starts alphanumeric).
+  name: waf-gateway
   subnetId:
     value: <gateway-subnet-arm-id>
   sku: WAF_V2

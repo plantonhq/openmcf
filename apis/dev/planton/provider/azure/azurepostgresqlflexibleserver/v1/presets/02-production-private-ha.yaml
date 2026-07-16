@@ -6,7 +6,9 @@ spec:
   region: eastus
   resourceGroup:
     value: <resource-group-name>
-  serverName: <globally-unique-server-name>
+  # Replace: lowercase letters, digits, and hyphens, globally unique -- it
+  # becomes {name}.postgres.database.azure.com.
+  serverName: myorg-prod-postgres
   administratorLogin: <admin-login>
   administratorPassword:
     value: <admin-password>
@@ -39,6 +41,8 @@ spec:
     startHour: 3
     startMinute: 0
   databases:
-    - name: <application-database-name>
+    # Replace with your application database name (letters first, then
+    # letters/digits/hyphens/underscores).
+    - name: appdb
   tags:
     cost-center: <cost-center>

@@ -40,10 +40,10 @@ Azure's defaults.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the server in | The resource group's `status.outputs.resource_group_name` |
-| `<globally-unique-server-name>` | 3-63 lowercase chars, globally unique | Your naming convention (org prefix recommended) |
+| `myorg-dev-postgres` | 3-63 lowercase chars, globally unique | Your naming convention (org prefix recommended) |
 | `<admin-login>` | The PostgreSQL admin login (not `admin`/`root`/`pg_*`) | Your convention |
 | `<admin-password>` | 8-128 chars from 3+ character classes | A secret manager; never commit literals |
-| `<application-database-name>` | The application's database | Your application |
+| `appdb` | The application's database | Your application |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |
 
 ## Downstream Wiring

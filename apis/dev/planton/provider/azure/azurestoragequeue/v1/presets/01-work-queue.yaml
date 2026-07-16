@@ -10,6 +10,7 @@ spec:
       fieldPath: status.outputs.storage_account_id
   # 3-63 lowercase letters, digits, and hyphens; unique within the
   # account; becomes the URL path segment.
-  queueName: <queue-name>
+  # Replace: 3-63 lowercase letters, digits, and single hyphens.
+  queueName: order-processing
   metadata:
     purpose: <work-type>

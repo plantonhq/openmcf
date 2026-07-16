@@ -70,6 +70,11 @@ SEQUENTIAL STEPS
    - Verify all `StringValueOrRef` fields use `value:` wrapper
    - Verify naming convention: `{NN}-{kebab-case}.yaml` + `.md`
    - Verify no duplicate ranks
+   - **Run `planton validate-manifest` (CLI built from the working tree) on every
+     preset YAML and confirm each passes.** This is the authoritative check for the
+     placeholder rule above — a `<placeholder>` in a format-validated field, a missing
+     `value:` wrapper, or a wrong enum spelling is invisible to review and caught only
+     by executing the validator.
 
 OUTPUT
 - Confirm number of presets created

@@ -12,7 +12,9 @@ spec:
   # NAMING CONVENTION -- declaring the companion makes the dead-letter
   # destination owned infrastructure instead of an implicitly-created
   # accident.
-  queueName: <work-queue-name>-poison
+  # Replace the prefix with the work queue's name -- keep the -poison
+  # suffix so tooling pairs the two by convention.
+  queueName: order-processing-poison
   metadata:
     purpose: dead-letter
     companion-of: <work-queue-name>

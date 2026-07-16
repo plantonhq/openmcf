@@ -42,5 +42,5 @@ break.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<filestorage-account-resource-name>` | A PREMIUM FileStorage-kind AzureStorageAccount's Planton resource name | Your storage composition |
-| `<share-name>` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
+| `app-nfs-data` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
 | `<workload>` | What mounts this volume | Your workload inventory |

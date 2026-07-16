@@ -10,4 +10,6 @@ spec:
       fieldPath: status.outputs.storage_account_id
   # Append-heavy tables conventionally partition by time bucket or
   # tenant so writes spread and range scans stay cheap.
-  tableName: <AuditTableName>
+  # Replace: 3-63 alphanumerics starting with a letter (no hyphens; the
+  # literal word "table" is reserved).
+  tableName: AuditTrail

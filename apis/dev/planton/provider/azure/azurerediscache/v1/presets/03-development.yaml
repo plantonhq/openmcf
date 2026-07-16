@@ -9,7 +9,9 @@ spec:
       kind: AzureResourceGroup
       name: <resource-group-resource-name>
       fieldPath: status.outputs.resource_group_name
-  cacheName: <cacheName>
+  # Replace: 1-63 letters, digits, and hyphens (no repeats), globally
+  # unique -- it becomes {name}.redis.cache.windows.net.
+  cacheName: myorg-dev-cache
   # BASIC: one node, no replica, NO SLA -- the cheapest tier, for
   # development and testing only.
   skuName: BASIC
@@ -18,6 +20,7 @@ spec:
   # Lock the public endpoint to the office/VPN range even in dev --
   # a cache with data is a cache worth protecting.
   firewallRules:
+    # Replace with your team's real IP range.
     - name: dev_allowlist
-      startIp: <startIp>
-      endIp: <endIp>
+      startIp: 203.0.113.0
+      endIp: 203.0.113.255

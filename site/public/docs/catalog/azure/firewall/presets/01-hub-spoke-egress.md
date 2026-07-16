@@ -54,6 +54,8 @@ spec:
     - name: default-via-firewall
       addressPrefix: "0.0.0.0/0"
       nextHopType: VIRTUAL_APPLIANCE
-      nextHopInIpAddress: <the firewall's status.outputs.private_ip_address>
+      nextHopInIpAddress:
+        valueFrom:
+          name: <the firewall resource's name>
   bgpRoutePropagationEnabled: false
 ```

@@ -9,7 +9,9 @@ spec:
       kind: AzureResourceGroup
       name: <resource-group-resource-name>
       fieldPath: status.outputs.resource_group_name
-  accountName: <accountname>
+  # Replace: 3-24 lowercase letters and digits ONLY (no hyphens), globally
+  # unique across all of Azure -- it becomes the DNS prefix of every endpoint.
+  accountName: myorgdatalake
   # Zone-redundant: analytics data is expensive to regenerate.
   replicationType: ZRS
   # The hierarchical namespace turns the blob service into Data Lake

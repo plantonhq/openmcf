@@ -88,8 +88,8 @@ After deployment, read `status.outputs.private_ip_address` — the address spoke
 | `managementIpConfiguration` | `object` | -- | Dedicated `AzureFirewallManagementSubnet` + required public IP. Required for BASIC tier and forced tunneling. ForceNew. |
 | `firewallPolicyId` | `StringValueOrRef` | -- | The `AzureFirewallPolicy` to enforce. |
 | `threatIntelMode` | `enum` | Azure's `Alert` | Only meaningful without a policy. |
-| `dnsServers` | `list(string)` | -- | Custom upstreams; setting them implicitly enables the DNS proxy. |
-| `dnsProxyEnabled` | `bool` | `false` | Run the firewall as a DNS proxy (needed for FQDN network rules). |
+| `dnsServers` | `list(string)` | -- | Custom upstreams; setting them implicitly enables the DNS proxy. Policy-less firewalls only -- a policy-attached firewall takes DNS from the policy (validated). |
+| `dnsProxyEnabled` | `bool` | `false` | Run the firewall as a DNS proxy (needed for FQDN network rules). Policy-less firewalls only. |
 | `privateIpRanges` | `list(string)` | IANA private | SNAT-exempt ranges; CIDRs or the literal `IANAPrivateRanges`. |
 | `virtualHub` | `object` | -- | `AZFW_HUB` model: hub ARM id + Azure-assigned public IP count. |
 | `zones` | `list(string)` | -- | Availability zones (free on Azure Firewall). ForceNew. |
@@ -116,7 +116,11 @@ spec:
     - name: default-via-firewall
       addressPrefix: "0.0.0.0/0"
       nextHopType: VIRTUAL_APPLIANCE
-      nextHopInIpAddress: "10.0.255.4"  # the firewall's private_ip_address output
+      # Resolves to the firewall's private_ip_address output -- the route
+      # follows the firewall instead of pinning a hand-copied IP.
+      nextHopInIpAddress:
+        valueFrom:
+          name: hub-firewall
   bgpRoutePropagationEnabled: false
 ```
 

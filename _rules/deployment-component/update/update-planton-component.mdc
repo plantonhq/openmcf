@@ -98,6 +98,13 @@ Use update when you need to:
    - Checks for changed `StringValueOrRef` types (may need `value:` wrapper added or removed)
    - Checks for changed `recommended_default` / `default` annotations (preset values and comments may need updating)
    - Updates stale presets to match the new schema
+   - **Mechanically validates every preset AND the hack manifest** with the CLI built
+     from the working tree: `planton validate-manifest <file>` must pass for each
+     `v1/presets/*.yaml` and `v1/iac/hack/manifest.yaml` of the touched kind. Eyeballing
+     is not validation — angle-bracket placeholders in format-validated fields, bare
+     strings where a `StringValueOrRef` wrapper is required, and stale enum spellings
+     all pass review and fail this command. These files are public catalog artifacts;
+     an invalid one ships a broken copy-paste experience.
 6. **Annotates secret-by-default fields**: any newly added or renamed secret-bearing field MUST be
    annotated `(dev.planton.shared.options.sensitive) = true` (a look-alike non-secret gets
    `(sensitive_exempt_reason)` instead); then `planton secret-coverage --check` MUST pass. See rule

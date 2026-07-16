@@ -23,7 +23,7 @@ storage addressed by partition key + row key.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
-| `<TableName>` | Letter-start 3-63 alphanumerics | Your naming convention |
+| `AppEntities` | Letter-start 3-63 alphanumerics | Your naming convention |
 
 ## Downstream Wiring
 

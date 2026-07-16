@@ -6,8 +6,12 @@ spec:
   region: eastus
   resourceGroup:
     value: <resource-group-name>
-  serverName: <globally-unique-server-name>
-  administratorLogin: <admin-login>
+  # Replace: lowercase letters, digits, and hyphens, globally unique -- it
+  # becomes {name}.mysql.database.azure.com.
+  serverName: myorg-dev-mysql
+  # Replace: letters, digits, and underscores only; reserved names
+  # (admin, administrator, root, guest, public, azure_superuser) rejected.
+  administratorLogin: mysqladmin
   administratorPassword:
     value: <admin-password>
   # Burstable compute: the cheapest way to run a real MySQL server.

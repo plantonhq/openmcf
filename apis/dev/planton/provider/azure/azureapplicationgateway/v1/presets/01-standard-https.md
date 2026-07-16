@@ -33,7 +33,7 @@ backends on `/healthz`, and pins the Microsoft strict TLS policy
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the gateway in | The resource group's `status.outputs.resource_group_name` |
-| `<gateway-name>` | The gateway's name, unique within the resource group | Your naming convention |
+| `web-gateway` | The gateway's name, unique within the resource group | Your naming convention |
 | `<gateway-subnet-arm-id>` | The DEDICATED gateway subnet (/24 recommended) | The subnet's `status.outputs.subnet_id` |
 | `<gateway-identity-arm-id>` | The user-assigned identity with vault access | The identity's `status.outputs.identity_id` |
 | `<public-ip-arm-id>` | A Standard static public IP | The public IP's `status.outputs.public_ip_id` |

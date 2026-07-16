@@ -42,6 +42,6 @@ are created and removed by private endpoints, never by VM registration.
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<network-name>` | A short name identifying the linked network | Your naming convention |
+| `app-vnet-link` | A short name identifying the linked network | Your naming convention |
 | `<private-dns-zone-arm-id>` | The zone's full ARM ID | The zone's `status.outputs.zone_id` |
 | `<virtual-network-arm-id>` | The network's full ARM ID | The network's `status.outputs.virtual_network_id` |

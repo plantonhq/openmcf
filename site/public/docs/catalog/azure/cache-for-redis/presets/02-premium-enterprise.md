@@ -48,4 +48,4 @@ regulated or high-scale workload reaches for.
 | --- | --- | --- |
 | `<region>` | Azure region, e.g. `eastus` | Your region strategy |
 | `<resource-group-resource-name>` | The AzureResourceGroup's Planton resource name | Your foundation composition |
-| `<cacheName>` | Globally unique DNS name (1-63 letters/digits/hyphens) | Becomes `{cacheName}.redis.cache.windows.net` |
+| `myorg-prod-cache` | Globally unique DNS name (1-63 letters/digits/hyphens) | Becomes `{cacheName}.redis.cache.windows.net` |

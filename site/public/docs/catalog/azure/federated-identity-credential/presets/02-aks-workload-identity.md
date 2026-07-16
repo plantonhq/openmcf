@@ -53,10 +53,19 @@ and `azure.workload.identity/use: "true"` on the pod template.
 - **Identity per workload** -- prefer a dedicated `AzureUserAssignedIdentity`
   per application over one shared identity with broad grants
 
+## Key Configuration Choices (continued)
+
+- **Issuer by reference** -- the preset wires the issuer to the cluster's
+  `oidc_issuer_url` output, so the trust always matches the cluster it is
+  deployed beside and never needs a hand-copied URL. For a cluster managed
+  outside the environment, replace the reference with a literal
+  `issuer: { value: <url> }` (find the URL with
+  `az aks show --query oidcIssuerProfile.issuerUrl`).
+
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<user-assigned-identity-arm-id>` | The parent identity's ARM ID (or use `valueFrom` against an `AzureUserAssignedIdentity`) | The identity's `status.outputs.identity_id` |
-| `<aks-oidc-issuer-url>` | The cluster's OIDC issuer URL (OIDC issuer must be enabled) | `az aks show --query oidcIssuerProfile.issuerUrl` |
+| `<aks-cluster-name>` | The `AzureAksCluster` resource whose OIDC issuer signs the tokens (OIDC issuer must be enabled -- it is by default) | Your environment's cluster resource |
 | `<namespace>` / `<serviceaccount>` | The Kubernetes workload allowed to authenticate | Your workload manifests |

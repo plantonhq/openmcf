@@ -44,7 +44,7 @@ rides Entra ID.
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<globally-unique-account-name>` | 3-50 lowercase letters/digits/hyphens, unique across all of Azure | Your naming convention |
+| `myorg-events-cosmos` | 3-50 lowercase letters/digits/hyphens, unique across all of Azure | Your naming convention |
 | `my-data-rg` | The AzureResourceGroup's Planton resource name | Your resource-group composition |
 
 ## Downstream Wiring

@@ -6,7 +6,9 @@ spec:
   region: eastus
   resourceGroup:
     value: <resource-group-name>
-  vaultName: <globally-unique-vault-name>
+  # Replace: 3-24 chars, letters/digits/hyphens, globally unique -- it
+  # becomes {name}.vault.azure.net.
+  vaultName: myorg-legacy-vault
   rbacAuthorizationEnabled: false
   accessPolicies:
     - objectId:

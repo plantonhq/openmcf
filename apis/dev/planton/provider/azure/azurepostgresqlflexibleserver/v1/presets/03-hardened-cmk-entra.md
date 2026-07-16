@@ -54,7 +54,7 @@ spec:
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the server in | The resource group's `status.outputs.resource_group_name` |
-| `<globally-unique-server-name>` | 3-63 lowercase chars, globally unique | Your naming convention |
+| `myorg-hardened-postgres` | 3-63 lowercase chars, globally unique | Your naming convention |
 | `<entra-group-object-id>` | The admin group's directory object ID | Entra ID -> Groups -> Overview |
 | `<entra-group-name>` | The group's display name (the PostgreSQL role name) | Entra ID -> Groups |
 | `<cmk-identity-resource-name>` | The AzureUserAssignedIdentity resource | Your identity manifests |

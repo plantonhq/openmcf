@@ -53,8 +53,8 @@ identity, a Microsoft Entra administrator for token-based administration,
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the server in | The resource group's `status.outputs.resource_group_name` |
-| `<globally-unique-server-name>` | 3-63 lowercase chars, globally unique | Your naming convention |
-| `<admin-login>` | The MySQL admin login | Your convention |
+| `myorg-hardened-mysql` | 3-63 lowercase chars, globally unique | Your naming convention |
+| `mysqladmin` | The MySQL admin login | Your convention |
 | `<admin-password>` | 8-128 chars from 3+ character classes | A secret manager; never commit literals |
 | `<cmk-identity-resource-name>` | The user-assigned identity's Planton resource name | Your identity composition |
 | `<cmk-key-resource-name>` | The Key Vault key's Planton resource name | Your Key Vault composition |

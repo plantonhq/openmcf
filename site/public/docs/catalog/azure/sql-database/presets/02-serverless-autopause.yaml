@@ -8,7 +8,8 @@ spec:
       kind: AzureMssqlServer
       name: <server-resource-name>
       fieldPath: status.outputs.server_id
-  databaseName: <database-name>
+  # Replace with your database name (no <>*%&:\/? characters).
+  databaseName: dev-scratch-db
   # Serverless: per-second billing that scales between the min-capacity
   # floor and the sku's vCore ceiling, pausing entirely when idle.
   skuName: GP_S_Gen5_2

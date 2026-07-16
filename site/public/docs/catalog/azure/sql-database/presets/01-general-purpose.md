@@ -39,11 +39,11 @@ encryption and geo-redundant backup storage ride Azure's defaults.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<server-resource-name>` | The AzureMssqlServer's Planton resource name | Your server composition |
-| `<database-name>` | The database's name on the server | Your application |
+| `orders-db` | The database's name on the server | Your application |
 | `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |
 
 ## Downstream Wiring
 
 ```text
-Server={server fqdn},1433;Database=<database-name>;User ID={admin};Password={password};Encrypt=True;
+Server={server fqdn},1433;Database=orders-db;User ID={admin};Password={password};Encrypt=True;
 ```

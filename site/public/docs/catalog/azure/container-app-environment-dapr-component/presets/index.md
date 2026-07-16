@@ -14,8 +14,8 @@ presets:
     excerpt: "This preset registers a Dapr state store backed by Azure Blob Storage. Dapr-enabled apps whose `dapr.app_id` appears in `scopes` call the Dapr state API with the component name (`statestore`) and..."
   - slug: "02-servicebus-pubsub"
     rank: "02"
-    title: "Service Bus Pub/Sub"
-    excerpt: "This preset registers a Dapr pub/sub component backed by Azure Service Bus topics. Publisher and subscriber apps use Dapr's pub/sub API with the component name (`pubsub`); Dapr manages the topics,..."
+    title: "Service Bus Pub/Sub (Keyless)"
+    excerpt: "This preset registers a Dapr pub/sub component backed by Azure Service Bus, authenticating with a managed identity instead of a connection string. Publisher and subscriber apps use Dapr's pub/sub API..."
 ---
 
 # Container App Environment Dapr Component Presets

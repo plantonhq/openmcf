@@ -23,7 +23,7 @@ public website or CDN origin.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
-| `<container-name>` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
+| `app-data` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
 | `<data-domain>` | What lives in this container | Your data taxonomy |
 
 ## Downstream Wiring

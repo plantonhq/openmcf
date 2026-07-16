@@ -42,7 +42,7 @@ Defender's threat detection and express vulnerability assessment on.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<resource-group-name>` | The resource group to create the server in | The resource group's `status.outputs.resource_group_name` |
-| `<globally-unique-server-name>` | 1-63 lowercase chars, globally unique | Your naming convention |
+| `myorg-entra-sql` | 1-63 lowercase chars, globally unique | Your naming convention |
 | `<entra-group-name>` | The Entra group's display name (the login name) | Microsoft Entra ID -> Groups |
 | `<entra-group-object-id>` | The Entra group's directory object ID | Microsoft Entra ID -> Groups -> Overview |
 | `<security-team-email>` | Where Defender alerts go | Your security team |

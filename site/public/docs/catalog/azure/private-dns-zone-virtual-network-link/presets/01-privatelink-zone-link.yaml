@@ -3,7 +3,9 @@ kind: AzurePrivateDnsZoneVirtualNetworkLink
 metadata:
   name: my-zone-link
 spec:
-  name: <network-name>
+  # Replace with the link name -- one per VNet, so the VNet's name is the
+  # natural choice.
+  name: app-vnet-link
   privateDnsZoneId:
     value: <private-dns-zone-arm-id>
   virtualNetworkId:

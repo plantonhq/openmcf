@@ -28,4 +28,4 @@ infrastructure encryption (which is creation-time-only on the account).
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
-| `<scopeName>` | 4-63 letters and digits, no hyphens | Your data classification |
+| `regulatedscope` | 4-63 letters and digits, no hyphens | Your data classification |

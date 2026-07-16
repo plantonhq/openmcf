@@ -6,11 +6,15 @@ spec:
   region: eastus
   resourceGroup:
     value: <resource-group-name>
-  serverName: <globally-unique-server-name>
+  # Replace: lowercase letters, digits, and hyphens, globally unique -- it
+  # becomes {name}.mysql.database.azure.com.
+  serverName: myorg-hardened-mysql
   # MySQL always keeps password auth on (it cannot be disabled, unlike
   # PostgreSQL Flexible Server) -- keep the password in a secret manager
   # and layer the Entra administrator on top for token-based access.
-  administratorLogin: <admin-login>
+  # Replace: letters, digits, and underscores only; reserved names
+  # (admin, administrator, root, guest, public, azure_superuser) rejected.
+  administratorLogin: mysqladmin
   administratorPassword:
     value: <admin-password>
   skuName: GP_Standard_D4ds_v4

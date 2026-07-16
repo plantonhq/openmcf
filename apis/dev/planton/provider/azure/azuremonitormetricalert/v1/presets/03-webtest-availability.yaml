@@ -12,12 +12,21 @@ spec:
       name: my-observability-rg
       fieldPath: status.outputs.resource_group_name
   alertName: homepage-unreachable
+  # Web-test criteria scope the alert at the web test itself -- reference
+  # its ARM id so the alert follows the test, never a hand-copied id.
   scopes:
-    - value: /subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.Insights/webTests/homepage-test
+    - valueFrom:
+        kind: AzureApplicationInsightsStandardWebTest
+        name: my-homepage-web-test
+        fieldPath: status.outputs.web_test_id
   description: The homepage availability test is failing from multiple locations -- the site is likely down for real users.
   severity: 0
   webTestAvailabilityCriteria:
-    webTestId: /subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.Insights/webTests/homepage-test
+    webTestId:
+      valueFrom:
+        kind: AzureApplicationInsightsStandardWebTest
+        name: my-homepage-web-test
+        fieldPath: status.outputs.web_test_id
     componentId:
       valueFrom:
         kind: AzureApplicationInsights

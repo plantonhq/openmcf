@@ -41,6 +41,6 @@ tokens lack.
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
-| `<share-name>` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
+| `partner-exchange` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
 | `<window-start-rfc3339>` | Policy validity start, e.g. `2026-07-01T00:00:00Z` | Your exchange agreement |
 | `<window-expiry-rfc3339>` | Policy validity end -- the revocation backstop | Your exchange agreement |

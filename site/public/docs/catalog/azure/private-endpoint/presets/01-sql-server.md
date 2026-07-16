@@ -35,7 +35,7 @@ This preset creates an Azure Private Endpoint that connects an Azure SQL Databas
 | --- | --- | --- |
 | `<azure-region>` | Azure region (must match the subnet region) | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-pe-name>` | Name for the private endpoint (unique within resource group) | Your naming convention |
+| `sql-private-endpoint` | Name for the private endpoint (unique within resource group) | Your naming convention |
 | `<subnet-resource-id>` | Full ARM resource ID of the subnet for private IP allocation | Azure portal or `AzureSubnet` status outputs |
 | `<sql-server-resource-id>` | Full ARM resource ID of the Azure SQL Server | Azure portal or `AzureMssqlServer` status outputs |
 | `<private-dns-zone-id>` | Full ARM resource ID of the `privatelink.database.windows.net` private DNS zone | Azure portal or `AzurePrivateDnsZone` status outputs |

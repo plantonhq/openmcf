@@ -42,4 +42,4 @@ access keys -- the on-ramp to a fully keyless cache.
 | --- | --- | --- |
 | `<region>` | Azure region, e.g. `eastus` | Your region strategy |
 | `<resource-group-resource-name>` | The AzureResourceGroup's Planton resource name | Your foundation composition |
-| `<cacheName>` | Globally unique DNS name (1-63 letters/digits/hyphens) | Becomes `{cacheName}.redis.cache.windows.net` |
+| `myorg-app-cache` | Globally unique DNS name (1-63 letters/digits/hyphens) | Becomes `{cacheName}.redis.cache.windows.net` |
