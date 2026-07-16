@@ -101,6 +101,18 @@ VERIFY FLAG SEMANTICS IN THE PROVIDER'S CRUD FUNCTIONS, NOT THE ARGUMENT NAME
   bucket-level toggle, an account posture), the field comment must state that
   coupling explicitly so manifests do not wire it blindly.
 
+PLAIN ASCII PUNCTUATION IN FIELD COMMENTS
+- Use plain ASCII punctuation in proto field comments: hyphens (`-`) instead of
+  em/en dashes, straight quotes (`'`/`"`) instead of smart quotes, `...` instead
+  of the ellipsis character.
+- Why: these comments do not stay in the proto. They flow into JSON schemas, Go
+  struct tags, CLI help text, and web catalog pages across downstream consumers,
+  where plain single-byte punctuation is the most predictable. (A multi-byte em
+  dash once landed exactly on a downstream generator's truncation boundary and
+  broke the platform repo's planton upgrade with an invalid-UTF-8 gofmt error.)
+- This applies to prose punctuation only -- technical content that genuinely
+  needs a non-ASCII character (e.g. a provider-mandated literal) is fine.
+
 PROACTIVE DEFAULT IDENTIFICATION (MANDATORY STEP)
 - During spec authoring, you MUST review EVERY field and ask: "Does this field have a well-known sensible default from the provider's documentation?"
 - If the provider docs say "if not specified, defaults to X", add `optional` + `(dev.planton.shared.options.default)`.
