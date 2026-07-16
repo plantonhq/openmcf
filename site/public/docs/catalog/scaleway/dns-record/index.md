@@ -33,7 +33,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayDnsRecord
 metadata:
   name: www-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -103,7 +103,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayDnsRecord
 metadata:
   name: api-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -129,7 +129,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayDnsRecord
 metadata:
   name: mx-primary
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -153,7 +153,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayDnsRecord
 metadata:
   name: mx-backup
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -179,7 +179,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayDnsRecord
 metadata:
   name: lb-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -208,7 +208,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayDnsRecord
 metadata:
   name: k8s-ingress
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

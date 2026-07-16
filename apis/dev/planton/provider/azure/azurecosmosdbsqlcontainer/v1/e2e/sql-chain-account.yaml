@@ -1,0 +1,29 @@
+# Scenario-local SQL API account for the container chain. Distinct
+# account name from the database-only scenario to avoid cross-scenario
+# recreate hangs.
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbAccount
+metadata:
+  name: planton-oss-e2e-cosmossqlchain-fixture-account
+  id: planton-oss-e2e-cosmossqlchain-fixture-account
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecosmosdbaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: westus3
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  accountName: pltnosse2ecossqlch
+  kind: GLOBAL_DOCUMENT_DB
+  consistencyPolicy:
+    consistencyLevel: SESSION
+  geoLocations:
+    - location: westus3
+      failoverPriority: 0

@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsapprunnerautoscalingconfiguration
+spec:
+  # A dependency-free leaf: the scenario registers a fully tuned
+  # configuration revision, verifies it is active
+  # (DescribeAutoScalingConfiguration), destroys it, and verifies the
+  # revision flipped to inactive -- on both provisioners. Registration is
+  # near-instant (the provider waiter caps it at 2 minutes).
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

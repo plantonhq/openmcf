@@ -1,57 +1,56 @@
 # AzureMssqlServer - Pulumi Module
 
-## Overview
+Pulumi implementation for the AzureMssqlServer deployment component.
 
-This Pulumi module provisions an Azure SQL Database logical server with databases
-and firewall rules using the Azure Classic provider (v6).
+## Architecture
 
-## Package
-
-```go
-import "github.com/pulumi/pulumi-azure/sdk/v6/go/azure/mssql"
+```
+mssql.Server
+├── mssql.FirewallRule (per firewall_rules entry, Parent: server)
+├── mssql.VirtualNetworkRule (per virtual_network_rules entry, Parent: server)
+├── mssql.OutboundFirewallRule (per outbound_firewall_rules FQDN, Parent: server)
+├── mssql.ServerExtendedAuditingPolicy (when extended_auditing is present, Parent: server)
+└── mssql.ServerSecurityAlertPolicy (when security_alert_policy is present, Parent: server)
 ```
 
-## Resources Created
+The deploying credential's client configuration (`core.GetClientConfig`)
+supplies the tenant fallback for the Entra administrator when the spec
+does not pin one.
 
-| Resource | Pulumi Constructor | Identifier |
-|----------|-------------------|------------|
-| SQL Server | `mssql.NewServer` | Server name |
-| Database | `mssql.NewDatabase` | `{server}-{db}` |
-| Firewall Rule | `mssql.NewFirewallRule` | `{server}-{rule}` |
+## Key Design Decisions
 
-## Architecture Note
+- **Enums map through exhaustive vocabularies** in `locals.go`
+  (connection policy, identity type, Defender state, detector types --
+  the detectors carry ARM's Snake_Pascal wire strings). Unspecified
+  connection_policy is not sent at all, matching the Terraform module's
+  null.
+- **Presence guards on every optional-with-default field** (version, TLS
+  floor, public network access, auditing retention/log-monitoring):
+  stack inputs built from a manifest do not materialize proto defaults,
+  so unset falls back to the documented default explicitly.
+- **The Entra-only contract lives in spec validation** -- the module
+  simply omits credentials when they are empty, so an Entra-only server
+  deploys without ever materializing a password.
+- **`identity_principal_id` is exported conditionally** -- populated only
+  when the identity type includes SYSTEM_ASSIGNED, empty otherwise,
+  matching the Terraform module's conditional output.
+- **The Defender policy addresses the server by name + resource group**
+  while everything else uses the server ID -- each child matches its
+  azurerm resource's own contract.
 
-Unlike PostgreSQL (`postgresql.FlexibleServer`) and MySQL (`mysql.FlexibleServer`),
-the Azure SQL logical server has **no compute or storage**. Each database
-(`mssql.Database`) carries its own SKU and max storage size. The server is purely
-an administrative endpoint.
+## Provider
 
-## Entry Point
+The Azure provider is built by the shared
+`pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)` builder, which
+dispatches static client-secret, keyless (web identity), and ambient
+credential chains. Never construct the provider inline.
 
-```go
-// module/main.go
-func Resources(ctx *pulumi.Context, stackInput *AzureMssqlServerStackInput) error
-```
-
-## Outputs
-
-- `server_id` - Azure Resource Manager ID
-- `server_name` - Server name
-- `fqdn` - `{name}.database.windows.net`
-- `administrator_login` - Admin login
-- `database_ids` - Map of database name to ARM ID
-
-## Local Development
+## Running Locally
 
 ```bash
-make deps    # go mod tidy
-make build   # compile module and entrypoint
-make test    # run tests
-make run     # run the Pulumi program
-```
+# Build
+make build
 
-## Debugging
-
-```bash
-./debug.sh   # starts delve debugger on port 2345
+# Run with Pulumi
+make run
 ```

@@ -1,0 +1,26 @@
+# The production data-encryption key: a two-resource instance (key +
+# friendly alias) of a kind the deterministic baseline has no mapper for.
+# Grouping the alias with its key requires reading the alias's TargetKeyId
+# -- and downstream, the DynamoDB table and the SQS queue reference this
+# key's ARN, the cross-service edges a mapper must infer rather than
+# freeze into literals.
+apiVersion: aws.planton.dev/v1
+kind: AwsKmsKey
+metadata:
+  name: orders-prod-data-key
+  id: orders-prod-data-key
+  org: planton-oss
+  env: prod
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awskmskey
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Encryption key for orders production data stores
+  enableKeyRotation: true
+  aliases:
+    - alias/orders-prod-data-key

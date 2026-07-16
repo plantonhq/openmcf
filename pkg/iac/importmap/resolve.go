@@ -1,0 +1,153 @@
+package importmap
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+
+	componentv1 "github.com/plantonhq/planton/apis/dev/planton/iac/componentimportmap/v1"
+)
+
+// ResolveContext carries everything a component's derivations may draw from
+// when resolving import-ID placeholder values for ONE enumerated address.
+type ResolveContext struct {
+	// The Planton resource's metadata.name (from_metadata_name).
+	MetadataName string
+	// The kind's spec message (from_spec_field). May be nil.
+	Spec proto.Message
+	// Flattened stack outputs, key -> value (from_stack_output). May be nil.
+	StackOutputs map[string]string
+	// The enumerated address's instance key, e.g. "archive" from
+	// `...intelligent_tiering_configuration.this["archive"]`
+	// (from_address_key). Empty for non-repeated resources.
+	AddressKey string
+	// Parsed parts of a user-pasted ARN, keyed "resource_id" |
+	// "resource_name" | "account_id" | "region" | "arn" (the full ARN as
+	// pasted) for from_arn_part. May be nil or partial: deterministic
+	// contexts without a pasted ARN (the E2E round-trip) still populate the
+	// ACCOUNT-LEVEL parts ("account_id", "region") from facts they hold,
+	// because those are properties of the connected account, not of any one
+	// resource -- but never the per-resource parts.
+	ArnParts map[string]string
+}
+
+// ResolveValues resolves the named placeholders through the component map's
+// ordered derivations. The first derivation that yields a non-empty value
+// wins. Returns the resolved values and the names nothing could derive --
+// the caller decides whether unresolved names are user inputs (the wizard)
+// or a failure (the round-trip proof).
+func ResolveValues(
+	m *componentv1.ComponentImportMap,
+	names []string,
+	rctx ResolveContext,
+) (resolved map[string]string, unresolved []string) {
+	valuesByName := make(map[string]*componentv1.ImportValue)
+	for _, v := range m.GetSpec().GetValues() {
+		valuesByName[v.GetName()] = v
+	}
+
+	resolved = make(map[string]string)
+	for _, name := range names {
+		value := ""
+		if importValue, declared := valuesByName[name]; declared {
+			for _, derivation := range importValue.GetDerivations() {
+				value = resolveDerivation(derivation, rctx)
+				if value != "" {
+					break
+				}
+			}
+		}
+		if value == "" {
+			unresolved = append(unresolved, name)
+			continue
+		}
+		resolved[name] = value
+	}
+	return resolved, unresolved
+}
+
+func resolveDerivation(d *componentv1.ImportValueDerivation, rctx ResolveContext) string {
+	switch source := d.GetSource().(type) {
+	case *componentv1.ImportValueDerivation_FromMetadataName:
+		if source.FromMetadataName {
+			return rctx.MetadataName
+		}
+	case *componentv1.ImportValueDerivation_FromSpecField:
+		return specFieldValue(rctx.Spec, source.FromSpecField)
+	case *componentv1.ImportValueDerivation_FromStackOutput:
+		return rctx.StackOutputs[source.FromStackOutput]
+	case *componentv1.ImportValueDerivation_FromArnPart:
+		return rctx.ArnParts[source.FromArnPart]
+	case *componentv1.ImportValueDerivation_FromAddressKey:
+		if source.FromAddressKey {
+			return rctx.AddressKey
+		}
+	}
+	return ""
+}
+
+// specFieldValue walks a dot path of proto field names through the spec
+// message and returns the scalar leaf as a string. Any miss along the path
+// (unknown field, nil message, non-scalar leaf, repeated segment) resolves to
+// "" -- derivations are best-effort by contract; validation of the PATH
+// itself is the conformance guard's job.
+func specFieldValue(spec proto.Message, dotPath string) string {
+	if spec == nil || dotPath == "" {
+		return ""
+	}
+	current := spec.ProtoReflect()
+	segments := strings.Split(dotPath, ".")
+	for i, segment := range segments {
+		field := current.Descriptor().Fields().ByName(protoreflect.Name(segment))
+		if field == nil || field.IsList() || field.IsMap() {
+			return ""
+		}
+		value := current.Get(field)
+		if i == len(segments)-1 {
+			if field.Kind() == protoreflect.MessageKind || field.Kind() == protoreflect.GroupKind {
+				return ""
+			}
+			return fmt.Sprintf("%v", value.Interface())
+		}
+		if field.Kind() != protoreflect.MessageKind {
+			return ""
+		}
+		current = value.Message()
+	}
+	return ""
+}
+
+// tofuAddressPattern splits a Terraform/OpenTofu resource address into
+// type, logical name, and optional instance key:
+//
+//	aws_s3_bucket.this                     -> (aws_s3_bucket, this, "")
+//	aws_s3_bucket_intelligent_tiering_configuration.this["archive"]
+//	                                       -> (..., this, archive)
+//	aws_vpc_ipv4_cidr_block_association.secondary["10.1.0.0/16"]
+//	                                       -> (..., secondary, 10.1.0.0/16)
+//	count instances use [0]                -> key "" (see below)
+var tofuAddressPattern = regexp.MustCompile(`^([a-z0-9_]+)\.([A-Za-z0-9_-]+)(?:\[(?:"([^\]"]*)"|\d+)\])?$`)
+
+// ParseTofuAddress decomposes an enumerated OpenTofu address. Returns ok=false
+// for shapes this package does not map (module-nested addresses, data sources).
+//
+// Only quoted for_each keys surface as the instance key: modules key
+// for_each instances by exactly the discriminator an import ID needs (an
+// alias name, a policy ARN), which is what from_address_key exists for. A
+// numeric count index is positional, never identity -- letting it leak into
+// an import ID would import a resource literally named "0" -- so count
+// instances parse with an empty key (their conditional resources derive
+// their ID from elsewhere, or the segment is optional).
+func ParseTofuAddress(address string) (resourceType, logicalName, instanceKey string, ok bool) {
+	if strings.HasPrefix(address, "module.") || strings.HasPrefix(address, "data.") {
+		return "", "", "", false
+	}
+	m := tofuAddressPattern.FindStringSubmatch(address)
+	if m == nil {
+		return "", "", "", false
+	}
+	return m[1], m[2], m[3], true
+}

@@ -5,6 +5,12 @@
 > load balancer, certificates, registry — into a single, parameterized blueprint
 > you deploy with your own values.
 
+> Not to be confused with the repository's [`helm/`](../helm) directory — those
+> are **Helm charts** that deploy Planton itself onto your Kubernetes cluster.
+> The charts here are Planton's own blueprint format for deploying
+> infrastructure *through* Planton. Looking to self-host Planton? Start at
+> [`helm/`](../helm).
+
 ## What you get
 
 A curated catalog of production-ready infrastructure blueprints across AWS, GCP,
@@ -52,36 +58,49 @@ components in this repo.
 ## Design principles
 
 - **Every chart is a real-world architecture.** A chart earns its slot by
-  being something teams recognize and want — and by removing genuinely hard
-  wiring (dependency ordering, reference plumbing, posture decisions). A
-  single resource is not a chart; that is what presets are for.
+  being a complete, production-shaped environment for one real scenario —
+  something teams recognize and want, that would take a skilled engineer days
+  to compose by hand — and by removing genuinely hard wiring (dependency
+  ordering, reference plumbing, posture decisions). No filler charts, no demo
+  charts; a single resource is not a chart — that is what presets are for.
+- **Each provider's charts stand on their own merit.** Chart anatomy is
+  shared structure; which charts exist for a provider and how each is designed
+  comes only from that cloud's own architectural grain — the architectures its
+  services are actually shaped for — never by mirroring how another provider's
+  catalog composed something similar.
 - **Composability first.** Charts compose first-class, independently ownable
   resources by reference (`valueFrom`), so a chart is a starting point you can
   extend and recombine — not a monolith.
 - **Defaults deploy.** Rendering any chart with its `values.yaml` defaults
   produces valid, deployable manifests. Feature toggles render valid in both
   positions.
-- **Each provider's catalog stands on its own.** Chart anatomy is shared
-  structure; which charts exist for a provider and how each is designed comes
-  only from that provider's own architecture space — never from how another
-  provider's catalog happened to model something similar.
+- **Secure by default.** Where the composed components offer a hardened path
+  (private networking, identity-based auth, RBAC-only data planes,
+  customer-managed keys), the chart defaults to it and makes relaxation the
+  explicit parameter — never the reverse.
+- **Documentation is part of the artifact.** Template comments, parameter
+  descriptions, and READMEs render publicly and are held to the same bar as
+  the component schemas' field comments.
 - **No hardcoded provisioner.** Chart resources must not carry a
-  `planton.dev/provisioner` label. The IaC provisioner (OpenTofu vs Pulumi) is a
-  property of the deployment target, resolved from the organization's mapping,
-  not baked into the chart. Omit the label and let each resource inherit the
-  deploying organization's choice.
+  `planton.dev/provisioner` annotation. The IaC provisioner (OpenTofu vs
+  Pulumi) is a property of the deployment target, resolved from the
+  organization's mapping, not baked into the chart. Omit the annotation and
+  let each resource inherit the deploying organization's choice.
 
 ## Validating a chart
 
 Two gates, one offline and one server-side:
 
 ```bash
-# Offline (this repo's CLI): renders with default values, validates every
-# rendered manifest against the compiled-in protos, and verifies that every
-# valueFrom reference resolves. No control plane needed.
+# Offline (this repo's CLI): renders every template with its default values —
+# flipping each bool toggle once so conditional manifests are exercised in
+# both branches — and validates each rendered manifest against the compiled-in
+# protos: the kind must exist, every field must exist on the spec, the spec
+# must pass its validation rules, and every valueFrom reference must resolve.
+# No control plane needed.
 planton chart validate charts/<provider>/<chart>
 
-# Exercise a feature toggle in its non-default position:
+# Exercise a specific parameter combination beyond the automatic toggle flips:
 planton chart validate charts/<provider>/<chart> --set dnsEnabled=false
 
 # Every chart in the tree (run from charts/):
@@ -95,4 +114,4 @@ planton chart build <provider>/<chart> --no-browser
 
 The full authoring standard — the catalog design method, the per-file quality
 bar, and the template-language contract — lives in
-[`_rules/charts/author-planton-infra-chart.mdc`](../_rules/charts/author-planton-infra-chart.mdc).
+[`_rules/charts/forge-planton-infra-chart.mdc`](../_rules/charts/forge-planton-infra-chart.mdc).

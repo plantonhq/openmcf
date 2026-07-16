@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureservicebussubscription
+spec:
+  # The harness composes fixture RG -> scenario-local namespace ->
+  # fixture topic + fixture work queue (path-form extra prerequisites,
+  # deploy order), then creates a subscription carrying BOTH filter-rule
+  # families -- a SQL rule named $Default (overwriting Azure's
+  # auto-created catch-all, proving the upsert-by-name contract live)
+  # and a correlation rule -- plus dead-letter forwarding into the
+  # fixture queue (proving the forward seam resolves through the
+  # queue-name output and Azure's target-must-exist contract). Verifies
+  # via the ARM API, destroys, verifies gone -- on both provisioners.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

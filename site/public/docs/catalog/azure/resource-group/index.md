@@ -32,7 +32,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureResourceGroup
 metadata:
   name: my-rg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -74,7 +74,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureResourceGroup
 metadata:
   name: dev-rg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -95,7 +95,7 @@ metadata:
   name: prod-eu-rg
   env: prod
   org: acme-corp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: acme-infra
@@ -118,7 +118,7 @@ metadata:
   name: app-primary-rg
   env: prod
   org: acme-corp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: acme-infra
@@ -137,7 +137,7 @@ metadata:
   name: app-secondary-rg
   env: prod
   org: acme-corp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: acme-infra
@@ -161,6 +161,6 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [AzureKeyVault](/docs/catalog/azure/key-vault) — stores secrets, keys, and certificates within this resource group
 - [AzureAksCluster](/docs/catalog/azure/aks-cluster) — deploys a Kubernetes cluster into this resource group
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) — creates a Virtual Network within this resource group
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) — creates a Virtual Network within this resource group
 - [AzureStorageAccount](/docs/catalog/azure/storage-account) — provisions blob, file, table, and queue storage in this resource group
 - [AzurePostgresqlFlexibleServer](/docs/catalog/azure/postgresql-flexible-server) — deploys a PostgreSQL Flexible Server in this resource group

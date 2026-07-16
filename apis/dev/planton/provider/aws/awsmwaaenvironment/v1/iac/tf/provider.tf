@@ -1,8 +1,10 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+      source = "hashicorp/aws"
+      # Floor, not a cap: worker_replacement_strategy landed in 6.11.0;
+      # everything else this module uses predates the v6 line.
+      version = ">= 6.11.0"
     }
   }
 }

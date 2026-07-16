@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: test-network
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: test-vnet
+  addressSpaces:
+    - "10.0.0.0/16"
+  dnsServers:
+    - "10.0.0.4"
+  flowTimeoutInMinutes: 10
+  tags:
+    cost-center: platform
+    owner: network-team

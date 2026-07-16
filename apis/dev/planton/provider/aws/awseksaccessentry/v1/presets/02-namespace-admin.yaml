@@ -1,0 +1,29 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsEksAccessEntry
+metadata:
+  name: <entry-resource-name>
+spec:
+  region: <aws-region>
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: <cluster-resource-name>
+      fieldPath: status.outputs.name
+  principalArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: <team-role-resource-name>
+      fieldPath: status.outputs.role_arn
+  # Full admin inside the team's namespaces, nothing outside them --
+  # the delegated-namespace pattern without any in-cluster RBAC.
+  policyAssociations:
+    - policyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy
+      accessScope:
+        type: namespace
+        namespaces:
+          - <team-namespace>
+    # Cluster-wide read alongside namespace admin, so the team can see
+    # (but not touch) shared resources like nodes and CRDs.
+    - policyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy
+      accessScope:
+        type: cluster

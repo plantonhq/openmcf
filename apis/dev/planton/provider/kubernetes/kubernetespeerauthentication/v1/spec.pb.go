@@ -31,7 +31,7 @@ const (
 // 100% fidelity with the upstream istio.io/api PeerAuthentication
 // (security/v1beta1/peer_authentication.proto, served as security.istio.io/v1),
 // pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened
-// directly after the Planton namespaced envelope (target_cluster, namespace);
+// directly after the Planton namespaced envelope (namespace);
 // there is no nested `peer_authentication` sub-message.
 //
 // Scope semantics (upstream): if `selector` is omitted the policy applies to all
@@ -40,10 +40,6 @@ const (
 // present (enforced below).
 type KubernetesPeerAuthenticationSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where this PeerAuthentication is created. The Istio
-	// CRDs (KubernetesIstioBaseCrds) must already be present on the cluster; the
-	// policy is only enforced where istiod (the Istio control plane) is running.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace in which the PeerAuthentication is created. The policy's scope is
 	// this namespace (or mesh-wide if this is the Istio root namespace and no
 	// selector is set).
@@ -106,13 +102,6 @@ func (x *KubernetesPeerAuthenticationSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesPeerAuthenticationSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesPeerAuthenticationSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetespeerauthentication_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesPeerAuthenticationSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesPeerAuthenticationSpec) GetNamespace() *v1.StringValueOrRef {
@@ -208,9 +197,8 @@ var File_dev_planton_provider_kubernetes_kubernetespeerauthentication_v1_spec_pr
 
 const file_dev_planton_provider_kubernetes_kubernetespeerauthentication_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Jdev/planton/provider/kubernetes/kubernetespeerauthentication/v1/spec.proto\x12?dev.planton.provider.kubernetes.kubernetespeerauthentication.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x94\b\n" +
-	" KubernetesPeerAuthenticationSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Jdev/planton/provider/kubernetes/kubernetespeerauthentication/v1/spec.proto\x12?dev.planton.provider.kubernetes.kubernetespeerauthentication.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb1\a\n" +
+	" KubernetesPeerAuthenticationSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12_\n" +
 	"\bselector\x18\x03 \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\bselector\x12z\n" +
 	"\x04mtls\x18\x04 \x01(\v2f.dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationMutualTlsR\x04mtls\x12\xae\x01\n" +
@@ -241,23 +229,21 @@ var file_dev_planton_provider_kubernetes_kubernetespeerauthentication_v1_spec_pr
 var file_dev_planton_provider_kubernetes_kubernetespeerauthentication_v1_spec_proto_goTypes = []any{
 	(*KubernetesPeerAuthenticationSpec)(nil),      // 0: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec
 	(*KubernetesPeerAuthenticationMutualTls)(nil), // 1: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationMutualTls
-	nil, // 2: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.PortLevelMtlsEntry
-	(*kubernetes.KubernetesClusterSelector)(nil),          // 3: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                           // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesIstioApiWorkloadSelector)(nil), // 5: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
+	nil,                         // 2: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.PortLevelMtlsEntry
+	(*v1.StringValueOrRef)(nil), // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesIstioApiWorkloadSelector)(nil), // 4: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
 }
 var file_dev_planton_provider_kubernetes_kubernetespeerauthentication_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	4, // 1: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // 2: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
-	1, // 3: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.mtls:type_name -> dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationMutualTls
-	2, // 4: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.port_level_mtls:type_name -> dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.PortLevelMtlsEntry
-	1, // 5: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.PortLevelMtlsEntry.value:type_name -> dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationMutualTls
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	3, // 0: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 1: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
+	1, // 2: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.mtls:type_name -> dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationMutualTls
+	2, // 3: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.port_level_mtls:type_name -> dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.PortLevelMtlsEntry
+	1, // 4: dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.PortLevelMtlsEntry.value:type_name -> dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationMutualTls
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetespeerauthentication_v1_spec_proto_init() }

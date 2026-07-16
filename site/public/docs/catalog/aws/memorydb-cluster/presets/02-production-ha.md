@@ -56,7 +56,7 @@ subnetIds:
 
 ## Common Additions
 
-- Add `kmsKeyId` for customer-managed encryption keys
+- Add `kmsKeyArn` for customer-managed encryption keys
 - Add `snsTopicArn` for SNS alerts on cluster events
 - Increase `numShards` to 4+ for higher write throughput
 - Add more `parameters` for advanced Redis tuning (timeout, tcp-keepalive)

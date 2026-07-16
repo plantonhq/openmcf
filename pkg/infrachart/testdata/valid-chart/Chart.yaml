@@ -1,0 +1,8 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: Validation Fixture
+spec:
+  selector:
+    kind: platform
+  description: Hermetic fixture chart exercising the offline validation pipeline.

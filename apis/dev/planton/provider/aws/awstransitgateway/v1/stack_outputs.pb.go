@@ -22,40 +22,37 @@ const (
 )
 
 // AwsTransitGatewayStackOutputs captures observable identifiers from a
-// provisioned Transit Gateway and its VPC attachments.
+// provisioned Transit Gateway.
 //
-// These outputs are the primary interface for downstream resources. The
-// transit_gateway_id is referenced by VPN connections, Direct Connect
-// gateways, and any future Transit Gateway route or peering resources.
-// The route table IDs enable future static route management without
-// modifying the Transit Gateway itself.
+// These outputs are the primary interface for downstream resources:
+// transit_gateway_id is referenced by AwsTransitGatewayVpcAttachment and
+// AwsTransitGatewayRouteTable resources, by subnet routes targeting the
+// gateway, and by VPN connections and Direct Connect gateways. The default
+// route table IDs let route-table-aware tooling address the built-in tables
+// without introspecting the gateway.
 type AwsTransitGatewayStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Transit Gateway ID (e.g., "tgw-0123456789abcdef0"). This is the
-	// primary identifier used by VPN connections, Direct Connect gateways,
-	// peering attachments, and any resource that attaches to the TGW.
+	// primary identifier used by VPC attachments, route tables, subnet routes,
+	// VPN connections, Direct Connect gateways, and peering attachments.
 	TransitGatewayId string `protobuf:"bytes,1,opt,name=transit_gateway_id,json=transitGatewayId,proto3" json:"transit_gateway_id,omitempty"`
 	// The Amazon Resource Name (ARN) of the Transit Gateway. Used for IAM
 	// policies, resource-level permissions, and AWS RAM sharing.
 	TransitGatewayArn string `protobuf:"bytes,2,opt,name=transit_gateway_arn,json=transitGatewayArn,proto3" json:"transit_gateway_arn,omitempty"`
 	// The AWS account ID that owns this Transit Gateway.
 	OwnerId string `protobuf:"bytes,3,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
-	// The ID of the default association route table. Attachments with
-	// default_route_table_association enabled are automatically associated
-	// with this route table. Useful for creating static routes via a
-	// future AwsTransitGatewayRoute component.
+	// The ID of the default association route table. Attachments created with
+	// default route table association enabled are automatically associated
+	// with this table. Empty when the gateway is created with default
+	// association disabled.
 	AssociationDefaultRouteTableId string `protobuf:"bytes,4,opt,name=association_default_route_table_id,json=associationDefaultRouteTableId,proto3" json:"association_default_route_table_id,omitempty"`
-	// The ID of the default propagation route table. Attachments with
-	// default_route_table_propagation enabled automatically propagate their
-	// routes to this table.
+	// The ID of the default propagation route table. Attachments created with
+	// default route table propagation enabled automatically advertise their
+	// routes into this table. Empty when the gateway is created with default
+	// propagation disabled.
 	PropagationDefaultRouteTableId string `protobuf:"bytes,5,opt,name=propagation_default_route_table_id,json=propagationDefaultRouteTableId,proto3" json:"propagation_default_route_table_id,omitempty"`
-	// Map of attachment name to VPC attachment ID. The keys correspond to
-	// the name field of each entry in spec.vpc_attachments. Downstream
-	// resources can reference specific attachment IDs via valueFrom using
-	// status.outputs.vpc_attachment_ids.{name}.
-	VpcAttachmentIds map[string]string `protobuf:"bytes,6,rep,name=vpc_attachment_ids,json=vpcAttachmentIds,proto3" json:"vpc_attachment_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *AwsTransitGatewayStackOutputs) Reset() {
@@ -123,28 +120,17 @@ func (x *AwsTransitGatewayStackOutputs) GetPropagationDefaultRouteTableId() stri
 	return ""
 }
 
-func (x *AwsTransitGatewayStackOutputs) GetVpcAttachmentIds() map[string]string {
-	if x != nil {
-		return x.VpcAttachmentIds
-	}
-	return nil
-}
-
 var File_dev_planton_provider_aws_awstransitgateway_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awstransitgateway_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/aws/awstransitgateway/v1/stack_outputs.proto\x12-dev.planton.provider.aws.awstransitgateway.v1\"\x88\x04\n" +
+	"Adev/planton/provider/aws/awstransitgateway/v1/stack_outputs.proto\x12-dev.planton.provider.aws.awstransitgateway.v1\"\xb0\x02\n" +
 	"\x1dAwsTransitGatewayStackOutputs\x12,\n" +
 	"\x12transit_gateway_id\x18\x01 \x01(\tR\x10transitGatewayId\x12.\n" +
 	"\x13transit_gateway_arn\x18\x02 \x01(\tR\x11transitGatewayArn\x12\x19\n" +
 	"\bowner_id\x18\x03 \x01(\tR\aownerId\x12J\n" +
 	"\"association_default_route_table_id\x18\x04 \x01(\tR\x1eassociationDefaultRouteTableId\x12J\n" +
-	"\"propagation_default_route_table_id\x18\x05 \x01(\tR\x1epropagationDefaultRouteTableId\x12\x90\x01\n" +
-	"\x12vpc_attachment_ids\x18\x06 \x03(\v2b.dev.planton.provider.aws.awstransitgateway.v1.AwsTransitGatewayStackOutputs.VpcAttachmentIdsEntryR\x10vpcAttachmentIds\x1aC\n" +
-	"\x15VpcAttachmentIdsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x86\x03\n" +
+	"\"propagation_default_route_table_id\x18\x05 \x01(\tR\x1epropagationDefaultRouteTableIdB\x86\x03\n" +
 	"1com.dev.planton.provider.aws.awstransitgateway.v1B\x11StackOutputsProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awstransitgateway/v1;awstransitgatewayv1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Aws.Awstransitgateway.V1\xca\x02-Dev\\Planton\\Provider\\Aws\\Awstransitgateway\\V1\xe2\x029Dev\\Planton\\Provider\\Aws\\Awstransitgateway\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Aws::Awstransitgateway::V1b\x06proto3"
 
 var (
@@ -159,18 +145,16 @@ func file_dev_planton_provider_aws_awstransitgateway_v1_stack_outputs_proto_rawD
 	return file_dev_planton_provider_aws_awstransitgateway_v1_stack_outputs_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awstransitgateway_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_aws_awstransitgateway_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_aws_awstransitgateway_v1_stack_outputs_proto_goTypes = []any{
 	(*AwsTransitGatewayStackOutputs)(nil), // 0: dev.planton.provider.aws.awstransitgateway.v1.AwsTransitGatewayStackOutputs
-	nil,                                   // 1: dev.planton.provider.aws.awstransitgateway.v1.AwsTransitGatewayStackOutputs.VpcAttachmentIdsEntry
 }
 var file_dev_planton_provider_aws_awstransitgateway_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.aws.awstransitgateway.v1.AwsTransitGatewayStackOutputs.vpc_attachment_ids:type_name -> dev.planton.provider.aws.awstransitgateway.v1.AwsTransitGatewayStackOutputs.VpcAttachmentIdsEntry
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awstransitgateway_v1_stack_outputs_proto_init() }
@@ -184,7 +168,7 @@ func file_dev_planton_provider_aws_awstransitgateway_v1_stack_outputs_proto_init
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awstransitgateway_v1_stack_outputs_proto_rawDesc), len(file_dev_planton_provider_aws_awstransitgateway_v1_stack_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

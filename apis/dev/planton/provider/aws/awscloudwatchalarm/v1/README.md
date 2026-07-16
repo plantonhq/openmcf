@@ -1,21 +1,24 @@
 # AwsCloudwatchAlarm
 
-A **CloudWatch metric alarm** watches a single metric or metric math expression and performs one or more actions when the value crosses a threshold for a sustained number of evaluation periods. It is the fundamental building block for AWS-native monitoring, driving notifications, auto-scaling decisions, and automated remediation.
+A **CloudWatch metric alarm** watches a metric (or a computed signal) and performs one or more actions when the value crosses a threshold for a sustained number of evaluation periods. It is the fundamental building block for AWS-native monitoring, driving notifications, auto-scaling decisions, and automated remediation.
+
+The alarm supports three metric definition modes (exactly one per alarm): **simple metric** (a single metric + statistic), **metric queries** (metric math, anomaly detection bands, multi-metric and cross-account evaluation), and **PromQL** (a query against an Amazon Managed Service for Prometheus workspace, where the query itself expresses the condition).
 
 ## When to Use
 
 - **Threshold-based alerting** — Monitor a standard AWS metric (CPU, memory, error count, queue depth) and notify an SNS topic when it breaches a static threshold.
 - **Anomaly detection** — Use machine-learning-based anomaly detection bands instead of hard-coded thresholds for metrics with seasonal or unpredictable patterns.
 - **Metric math alerting** — Combine multiple metrics into a single alarm (e.g., error rate = 5xx errors / total requests * 100) using metric math expressions.
+- **Prometheus-native alerting** — Alarm on PromQL queries against a Prometheus workspace with Prometheus-style pending/recovery semantics, while keeping CloudWatch's action routing.
 - **M-of-N evaluation** — Reduce false positives by requiring only M breaching data points within the last N evaluation periods before transitioning to ALARM state.
 - **Auto-scaling triggers** — Drive EC2 Auto Scaling policies based on metric thresholds (though most users prefer Target Tracking policies for scaling).
 
 ## When NOT to Use
 
-- For **composite alarms** that combine the states of multiple alarms — use `aws_cloudwatch_composite_alarm` (separate resource, planned for a future Planton component).
+- For **combining the states of multiple alarms** with boolean logic — use `AwsCloudwatchCompositeAlarm`, which pages once for shared-cause outages and supports maintenance suppression.
 - For **dashboard widgets** or visual monitoring — use CloudWatch Dashboards (separate resource).
 - For **third-party monitoring** (Datadog, Grafana Cloud, PagerDuty native) where CloudWatch is not the primary alerting plane.
-- For **log-based alerting** — use CloudWatch Metric Filters to extract metrics from logs, then alarm on those metrics.
+- For **log-based alerting** — attach a metric filter on the `AwsCloudwatchLogGroup` to extract a metric from log events, then alarm on that metric here.
 
 ## Prerequisites
 
@@ -53,13 +56,13 @@ spec:
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `comparisonOperator` | string | **Yes** | — | Arithmetic operation to compare the statistic against the threshold. **Standard:** `GreaterThanOrEqualToThreshold`, `GreaterThanThreshold`, `LessThanThreshold`, `LessThanOrEqualToThreshold`. **Anomaly detection:** `LessThanLowerOrGreaterThanUpperThreshold`, `LessThanLowerThreshold`, `GreaterThanUpperThreshold`. |
-| `evaluationPeriods` | int32 | **Yes** | — | Number of consecutive periods over which the metric is compared. Must be >= 1. Combined with `datapointsToAlarm` for M-of-N evaluation. |
+| `comparisonOperator` | string | Conditional | — | Arithmetic operation to compare the statistic against the threshold. Required for simple-metric and metric-query alarms; must be omitted for PromQL alarms. **Standard:** `GreaterThanOrEqualToThreshold`, `GreaterThanThreshold`, `LessThanThreshold`, `LessThanOrEqualToThreshold`. **Anomaly detection:** `LessThanLowerOrGreaterThanUpperThreshold`, `LessThanLowerThreshold`, `GreaterThanUpperThreshold`. |
+| `evaluationPeriods` | int32 | Conditional | — | Number of consecutive periods over which the metric is compared. Required (>= 1) for simple-metric and metric-query alarms; must be omitted for PromQL alarms. Combined with `datapointsToAlarm` for M-of-N evaluation. |
 | `datapointsToAlarm` | int32 | No | Same as `evaluationPeriods` | Number of data points within the evaluation window that must breach to trigger ALARM. Must be <= `evaluationPeriods`. Use for M-of-N patterns to reduce false positives. |
 | `threshold` | double | Conditional | — | Static threshold value. Required for static threshold alarms. Mutually exclusive with `thresholdMetricId`. |
 | `thresholdMetricId` | string | Conditional | — | ID of the `ANOMALY_DETECTION_BAND` function in `metricQueries`. Used for anomaly detection alarms. Mutually exclusive with `threshold`. Max 255 chars. |
 | `treatMissingData` | string | No | `"missing"` | How missing data points are treated during evaluation. Valid values: `missing`, `notBreaching`, `breaching`, `ignore`. |
-| `actionsEnabled` | bool | No | `true` | Whether actions execute during state transitions. Set to `false` to suppress actions during maintenance or tuning. |
+| `actionsEnabled` | bool | No | `true` (AWS default) | Whether actions execute during state transitions. Unset lets AWS default to enabled; an explicit `false` suppresses actions during maintenance or tuning while the alarm keeps evaluating. |
 
 ### Simple Metric Mode
 
@@ -77,11 +80,22 @@ Use these fields for single-metric alarms. **Mutually exclusive** with `metricQu
 
 ### Metric Query Mode
 
-Use `metricQueries` for metric math, anomaly detection, or multi-metric alarms. **Mutually exclusive** with simple metric fields.
+Use `metricQueries` for metric math, anomaly detection, or multi-metric alarms. **Mutually exclusive** with simple metric fields and `evaluationCriteria`.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `metricQueries` | repeated MetricQuery | Conditional | — | Up to 20 metric queries. Exactly one must set `returnData: true`. See [Nested Messages](#nested-messages) below. |
+| `metricQueries` | repeated MetricQuery | Conditional | — | Up to 20 metric queries. Exactly one must set `returnData: true`; each query sets exactly one of `expression`/`metric`. See [Nested Messages](#nested-messages) below. |
+
+### PromQL Mode
+
+Use `evaluationCriteria` to alarm on a PromQL query against an Amazon Managed Service for Prometheus workspace. **Mutually exclusive** with the other two modes — and because the query itself expresses the alarm condition, the threshold fields (`comparisonOperator`, `evaluationPeriods`, `threshold`, `datapointsToAlarm`, and the simple-metric fields) must be omitted.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `evaluationCriteria.promqlCriteria.query` | string | **Yes** | — | The PromQL query, producing a boolean-style firing signal (e.g. `avg(rate(node_cpu_seconds_total{mode!="idle"}[5m])) > 0.8`). Max 10000 chars. |
+| `evaluationCriteria.promqlCriteria.pendingPeriod` | int32 | No | AWS default | Seconds the query must continuously fire before ALARM — the PromQL analog of Prometheus `for:`. 0–86400. |
+| `evaluationCriteria.promqlCriteria.recoveryPeriod` | int32 | No | AWS default | Seconds the query must continuously be quiet before returning to OK (dampens flapping). 0–86400. |
+| `evaluationInterval` | int32 | No | AWS default | How often (seconds) the query runs. Valid: `10`, `20`, `30`, or any multiple of 60. Only valid with `evaluationCriteria`. |
 
 ### Actions
 
@@ -123,8 +137,8 @@ Raw CloudWatch metric definition within a metric query.
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `metricName` | string | **Yes** | — | CloudWatch metric name (e.g., `CPUUtilization`, `5XXError`). Max 255 chars. |
-| `namespace` | string | **Yes** | — | Metric namespace (e.g., `AWS/EC2`, `AWS/ApplicationELB`). Max 255 chars. |
-| `period` | int32 | **Yes** | — | Period in seconds. Must be >= 1. High-resolution: `1`, `5`, `10`, `20`, `30`. Standard: multiples of 60. |
+| `namespace` | string | No | — | Metric namespace (e.g., `AWS/EC2`, `AWS/ApplicationELB`). Optional in the CloudWatch API but virtually always needed to address a metric unambiguously. Max 255 chars. |
+| `period` | int32 | **Yes** | — | Period in seconds. High-resolution: `1`, `5`, `10`, `20`, `30`. Standard: multiples of 60. |
 | `stat` | string | **Yes** | — | Statistic to apply. Standard (`Average`, `Sum`, etc.) or extended (`p95`, `p99.9`, `IQM`). |
 | `dimensions` | map\<string, string\> | No | — | Dimensions to narrow the metric stream. |
 | `unit` | string | No | — | Unit filter for data point selection. |
@@ -138,8 +152,7 @@ Raw CloudWatch metric definition within a metric query.
 
 ## What Is Deliberately Omitted (v1)
 
-- **Composite alarms** — Composite alarms combine the states of multiple metric alarms using boolean logic. They are a separate Terraform resource (`aws_cloudwatch_composite_alarm`) with an independent lifecycle and will be a separate Planton component.
+- **Composite alarms** — Combining the states of multiple alarms with boolean logic is its own first-class component, `AwsCloudwatchCompositeAlarm` (independent AWS identity and lifecycle; compose by this alarm's exported `alarm_name`).
 - **Dashboard integration** — CloudWatch Dashboards are a distinct resource type. Alarm widgets on dashboards reference the alarm ARN from `status.outputs.alarm_arn`.
-- **Extended statistic regex validation** — The `extendedStatistic` field accepts freeform strings (`p95`, `TM(10%:90%)`, etc.). Full regex validation of all extended statistic patterns is deferred to v2.
-- **Unit enum validation** — The `unit` field accepts freeform strings. AWS has a finite set of valid units, but enforcing an enum would require tracking AWS API changes. Validation is delegated to the AWS API at deploy time.
-- **Tags** — Tags are automatically derived from `metadata` fields (org, env, resource kind, resource ID). Custom tag support may be added in v2.
+- **Extended statistic regex validation** — The `extendedStatistic` field accepts freeform strings (`p95`, `TM(10%:90%)`, etc.). The full pattern grammar (trimmed means, winsorized ranges) is validated by the AWS API at deploy time.
+- **Tags** — Tags are automatically derived from `metadata` fields (org, env, resource kind, resource ID); custom user tags are a platform-wide concern, not per-component scope.

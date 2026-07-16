@@ -33,7 +33,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudDnsZone
 metadata:
   name: my-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ metadata:
   name: acme-zone
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: dns
@@ -141,7 +141,7 @@ metadata:
   name: webapp-dns
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: webapp
@@ -190,7 +190,7 @@ metadata:
   name: internal-dns
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: internal

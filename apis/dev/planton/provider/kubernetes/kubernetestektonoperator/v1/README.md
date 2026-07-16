@@ -74,7 +74,6 @@ kubernetes-tekton-operator
 ├── kind: "KubernetesTektonOperator"
 ├── metadata: CloudResourceMetadata
 └── spec: KubernetesTektonOperatorSpec
-    ├── target_cluster: KubernetesClusterSelector
     ├── container: KubernetesTektonOperatorSpecContainer
     │   └── resources: ContainerResources
     │       ├── limits: {cpu, memory}
@@ -139,8 +138,6 @@ kind: KubernetesTektonOperator
 metadata:
   name: tekton-operator
 spec:
-  target_cluster:
-    cluster_name: "my-cluster"
   container:
     resources:
       requests:
@@ -163,8 +160,6 @@ kind: KubernetesTektonOperator
 metadata:
   name: tekton-operator
 spec:
-  target_cluster:
-    cluster_name: "my-cluster"
   container: {}
   components:
     pipelines: true

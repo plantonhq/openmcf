@@ -23,6 +23,29 @@
 // so a builder-side exchange here would add a dependency and put credentials in our process for
 // zero benefit. Do not "converge" this builder toward the AWS workaround shape.
 //
+// Why the keyless arm registers RAW provider properties (and not the typed
+// gcp.ProviderExternalCredentialsArgs): the provider-config encoder in the engine's
+// pulumi-terraform-bridge layer mishandles the external_credentials max-items-one block when it
+// arrives as an object, failing every stack operation at ValidateProviderConfig with
+// `objectEncoder failed on property "external_credentials": Expected an Array PropertyValue` --
+// before any GCP call is made. Passing the same three fields in their raw terraform LIST shape
+// (a single-element array) encodes correctly and drives the provider's normal WIF exchange. The
+// failure is independent of the secret wrap and of SDK/CLI versions, so this is an upstream
+// encoding bug, not a token-contract problem: github.com/pulumi/pulumi-gcp/issues/3869. Note
+// the bridge's EXPERIMENTAL type checker warns the opposite way about the array shape
+// ("expected object type ... will become a hard error in the future") -- the two engine layers
+// disagree about this field's wire shape, which is the bug. If that warning ever hardens into
+// an error before the encoder is fixed, revisit this arm immediately.
+//
+// SWITCH BACK TO THE TYPED ExternalCredentials ARGS once pulumi-gcp#3869 is fixed:
+// verify the fix with a real keyless preview that gets PAST provider configuration (the bug,
+// when present, fires before any GCP call -- a fake token that fails at the STS exchange is
+// proof enough), then replace the raw ctx.RegisterResource call in Get with gcp.NewProvider +
+// gcp.ProviderExternalCredentialsArgs{Audience, IdentityToken, ServiceAccountEmail}
+// (IdentityToken still pulumi.ToSecret-wrapped) and drop the raw property map and the explicit
+// pulumi.Version stamp (gcp.NewProvider stamps the plugin version itself). (The AWS classic
+// builder carries the analogous note for its own upstream gap, pulumi-aws#6228.)
+//
 // Freshness: the inline token is consumed at provider configure time and the resulting
 // impersonated credentials are provider-managed for the run. Each pulumi operation re-runs the
 // module program with a freshly minted JWT, so the exchange always sees a fresh token whose
@@ -38,6 +61,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"runtime/debug"
+	"strings"
 
 	gcpprovider "github.com/plantonhq/planton/apis/dev/planton/provider/gcp"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/pulumi/pulumioutput"
@@ -47,17 +72,42 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// gcpSdkModulePath is the Go module that vends the pulumi-gcp SDK; gcpPluginVersion resolves
+// the compiled version of exactly this module from build info.
+const gcpSdkModulePath = "github.com/pulumi/pulumi-gcp/sdk/v9"
+
+// fallbackGcpPluginVersion mirrors the pulumi-gcp SDK version pinned in go.mod, for build modes
+// whose binaries carry no embedded module info (e.g. Bazel). TestGcpPluginVersion_MatchesSdkPin
+// guards this constant against go.mod drift, so an SDK bump cannot strand a stale version here.
+const fallbackGcpPluginVersion = "9.4.0"
+
 // Get builds a gcp.Provider from the given GcpProviderConfig. There is no region argument: the
 // GCP provider is not region-scoped -- each resource carries its own location. nameSuffixes
 // disambiguate the provider resource name when a module needs more than one provider.
 func Get(ctx *pulumi.Context, gcpProviderConfig *gcpprovider.GcpProviderConfig,
 	nameSuffixes ...string) (*gcp.Provider, error) {
-	providerArgs, err := buildProviderArgs(gcpProviderConfig)
+	inputs, err := buildProviderInputs(gcpProviderConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build google provider args")
 	}
 
-	googleProvider, err := gcp.NewProvider(ctx, ProviderResourceName(nameSuffixes), providerArgs)
+	if inputs.webIdentityProps != nil {
+		// Raw registration for the keyless arm (see the package doc for why this cannot go
+		// through the typed gcp.NewProvider path). The registration is otherwise identical to
+		// what NewProvider does: same resource type token, same resource name -- so the
+		// provider's URN (and therefore its identity in existing stacks) is unchanged. The
+		// explicit pulumi.Version stamp replaces the one NewProvider applies internally; without
+		// it the engine would resolve the gcp plugin version nondeterministically.
+		googleProvider := &gcp.Provider{}
+		err := ctx.RegisterResource("pulumi:providers:gcp", ProviderResourceName(nameSuffixes),
+			inputs.webIdentityProps, googleProvider, pulumi.Version(gcpPluginVersion()))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create google provider")
+		}
+		return googleProvider, nil
+	}
+
+	googleProvider, err := gcp.NewProvider(ctx, ProviderResourceName(nameSuffixes), inputs.args)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create google provider")
 	}
@@ -65,21 +115,30 @@ func Get(ctx *pulumi.Context, gcpProviderConfig *gcpprovider.GcpProviderConfig,
 	return googleProvider, nil
 }
 
-// buildProviderArgs is the pure, side-effect-free core of the builder: it maps a
-// GcpProviderConfig to gcp.ProviderArgs. It is split out from Get so the credential dispatch
-// (the security-critical part) is unit-testable without a Pulumi context. Unlike the AWS
-// builders it needs no injectable exchange seam -- the provider plugin does the token exchange
-// itself.
-func buildProviderArgs(gcpProviderConfig *gcpprovider.GcpProviderConfig) (*gcp.ProviderArgs, error) {
-	providerArgs := &gcp.ProviderArgs{}
+// providerInputs is the discriminated result of the pure credential dispatch. Exactly one form
+// is populated: webIdentityProps (raw property map) for the keyless arm, args (typed) for every
+// other arm. The split exists only because of the upstream encoder bug described in the package
+// doc; when that is fixed, this collapses back to a single *gcp.ProviderArgs.
+type providerInputs struct {
+	args             *gcp.ProviderArgs
+	webIdentityProps pulumi.Map
+}
 
+// buildProviderInputs is the pure, side-effect-free core of the builder: it maps a
+// GcpProviderConfig to the provider's registration inputs. It is split out from Get so the
+// credential dispatch (the security-critical part) is unit-testable without a Pulumi context.
+// Unlike the AWS builders it needs no injectable exchange seam -- the provider plugin does the
+// token exchange itself.
+func buildProviderInputs(gcpProviderConfig *gcpprovider.GcpProviderConfig) (*providerInputs, error) {
 	// No config -> ambient Application Default Credentials chain.
 	if gcpProviderConfig == nil {
-		return providerArgs, nil
+		return &providerInputs{args: &gcp.ProviderArgs{}}, nil
 	}
 
 	switch {
 	case gcpProviderConfig.GetWebIdentity() != nil:
+		// Web identity is the deliberate mode switch: it wins even if a stale
+		// service_account_key is still present on the config.
 		webIdentity := gcpProviderConfig.GetWebIdentity()
 		if webIdentity.GetWebIdentityToken() == "" {
 			return nil, errors.New("web_identity is set but web_identity_token is empty")
@@ -96,26 +155,51 @@ func buildProviderArgs(gcpProviderConfig *gcpprovider.GcpProviderConfig) (*gcp.P
 		// byte-identical to the token's `aud` claim and the pool provider's allowed
 		// audiences, or GCP denies the exchange. The SDK does NOT auto-secret-wrap
 		// identity_token (only the plain AccessToken field), so wrap it here to keep the
-		// minted JWT out of plaintext Pulumi state.
-		providerArgs.ExternalCredentials = &gcp.ProviderExternalCredentialsArgs{
-			Audience:            pulumi.String(webIdentity.GetAudience()),
-			IdentityToken:       pulumi.ToSecret(pulumi.String(webIdentity.GetWebIdentityToken())).(pulumi.StringInput),
-			ServiceAccountEmail: pulumi.String(webIdentity.GetServiceAccountEmail()),
-		}
+		// minted JWT out of plaintext Pulumi state. The single-element array is the field's
+		// raw terraform LIST wire shape -- the one form the provider-config encoder accepts
+		// (see the package doc).
+		return &providerInputs{webIdentityProps: pulumi.Map{
+			"externalCredentials": pulumi.Array{pulumi.Map{
+				"audience":            pulumi.String(webIdentity.GetAudience()),
+				"identityToken":       pulumi.ToSecret(pulumi.String(webIdentity.GetWebIdentityToken())),
+				"serviceAccountEmail": pulumi.String(webIdentity.GetServiceAccountEmail()),
+			}},
+		}}, nil
 
 	case gcpProviderConfig.GetServiceAccountKey() != "":
 		// Static service-account key JSON.
 		if err := validateServiceAccountKey(gcpProviderConfig.GetServiceAccountKey()); err != nil {
 			return nil, err
 		}
-		providerArgs.Credentials = pulumi.String(gcpProviderConfig.GetServiceAccountKey())
+		return &providerInputs{args: &gcp.ProviderArgs{
+			Credentials: pulumi.String(gcpProviderConfig.GetServiceAccountKey()),
+		}}, nil
 
 	default:
 		// No explicit credential: the provider resolves credentials from the ambient
 		// Application Default Credentials chain.
+		return &providerInputs{args: &gcp.ProviderArgs{}}, nil
 	}
+}
 
-	return providerArgs, nil
+// gcpPluginVersion returns the gcp plugin version to stamp on the raw web-identity provider
+// registration, preferring the compiled pulumi-gcp module version from build info (present in
+// module builds, which is how the pulumi Go runtime compiles this program) so an SDK bump is
+// picked up automatically without touching this package.
+func gcpPluginVersion() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range info.Deps {
+			if dep.Path == gcpSdkModulePath {
+				if dep.Replace != nil {
+					dep = dep.Replace
+				}
+				if v := strings.TrimPrefix(dep.Version, "v"); v != "" {
+					return v
+				}
+			}
+		}
+	}
+	return fallbackGcpPluginVersion
 }
 
 // validateServiceAccountKey fails fast on malformed service-account key JSON so the error

@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "Google",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientId:        "123456789.apps.googleusercontent.com",
@@ -54,7 +54,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "Facebook",
-				ProviderType: AwsCognitoIdentityProviderType_Facebook,
+				ProviderType: "Facebook",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Facebook{
 					Facebook: &AwsCognitoIdpFacebookConfig{
 						ClientId:        "1234567890",
@@ -78,7 +78,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "LoginWithAmazon",
-				ProviderType: AwsCognitoIdentityProviderType_LoginWithAmazon,
+				ProviderType: "LoginWithAmazon",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_LoginWithAmazon{
 					LoginWithAmazon: &AwsCognitoIdpLoginWithAmazonConfig{
 						ClientId:        "amzn1.application-oa2-client.example",
@@ -101,7 +101,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "SignInWithApple",
-				ProviderType: AwsCognitoIdentityProviderType_SignInWithApple,
+				ProviderType: "SignInWithApple",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_SignInWithApple{
 					SignInWithApple: &AwsCognitoIdpSignInWithAppleConfig{
 						ClientId:        "com.example.app",
@@ -126,7 +126,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "CorpOkta",
-				ProviderType: AwsCognitoIdentityProviderType_OIDC,
+				ProviderType: "OIDC",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Oidc{
 					Oidc: &AwsCognitoIdpOidcConfig{
 						ClientId:   "0oa1b2c3d4e5f6g7h8i9",
@@ -148,7 +148,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "AzureAD",
-				ProviderType: AwsCognitoIdentityProviderType_OIDC,
+				ProviderType: "OIDC",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Oidc{
 					Oidc: &AwsCognitoIdpOidcConfig{
 						ClientId:                "app-client-id",
@@ -177,7 +177,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "AzureAD-SAML",
-				ProviderType: AwsCognitoIdentityProviderType_SAML,
+				ProviderType: "SAML",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Saml{
 					Saml: &AwsCognitoIdpSamlConfig{
 						MetadataFile: "<EntityDescriptor>...</EntityDescriptor>",
@@ -198,7 +198,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "ADFS-Corp",
-				ProviderType: AwsCognitoIdentityProviderType_SAML,
+				ProviderType: "SAML",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Saml{
 					Saml: &AwsCognitoIdpSamlConfig{
 						MetadataUrl:             "https://adfs.corp.example.com/FederationMetadata/2007-06/FederationMetadata.xml",
@@ -223,7 +223,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "Google",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientId:        "123456789.apps.googleusercontent.com",
@@ -251,7 +251,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "CorpSSO",
-				ProviderType: AwsCognitoIdentityProviderType_OIDC,
+				ProviderType: "OIDC",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Oidc{
 					Oidc: &AwsCognitoIdpOidcConfig{
 						ClientId:   "client-id",
@@ -282,7 +282,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 					},
 				},
 				ProviderName: "Google",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientId:        "123456789.apps.googleusercontent.com",
@@ -307,7 +307,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 			Metadata:   &shared.CloudResourceMetadata{Name: "no-pool"},
 			Spec: &AwsCognitoIdentityProviderSpec{
 				ProviderName: "Google",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientId:        "client-id",
@@ -330,7 +330,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientId:        "client-id",
@@ -353,7 +353,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "Google",
-				ProviderType: AwsCognitoIdentityProviderType_unspecified,
+				ProviderType: "",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientId:        "client-id",
@@ -376,7 +376,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "Google",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 			},
 		}
 		err := protovalidate.Validate(input)
@@ -396,7 +396,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "Google",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Saml{
 					Saml: &AwsCognitoIdpSamlConfig{
 						MetadataUrl: "https://example.com/metadata",
@@ -417,7 +417,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "CorpSSO",
-				ProviderType: AwsCognitoIdentityProviderType_OIDC,
+				ProviderType: "OIDC",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientId:        "client-id",
@@ -440,7 +440,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "ADFS",
-				ProviderType: AwsCognitoIdentityProviderType_SAML,
+				ProviderType: "SAML",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Facebook{
 					Facebook: &AwsCognitoIdpFacebookConfig{
 						ClientId:        "fb-app-id",
@@ -467,7 +467,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "ThisProviderNameExceedsThirtyTwoCharactersLimit",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientId:        "client-id",
@@ -494,7 +494,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "ADFS",
-				ProviderType: AwsCognitoIdentityProviderType_SAML,
+				ProviderType: "SAML",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Saml{
 					Saml: &AwsCognitoIdpSamlConfig{
 						MetadataFile: "<EntityDescriptor>...</EntityDescriptor>",
@@ -516,7 +516,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "ADFS",
-				ProviderType: AwsCognitoIdentityProviderType_SAML,
+				ProviderType: "SAML",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Saml{
 					Saml: &AwsCognitoIdpSamlConfig{},
 				},
@@ -539,7 +539,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "BadOIDC",
-				ProviderType: AwsCognitoIdentityProviderType_OIDC,
+				ProviderType: "OIDC",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Oidc{
 					Oidc: &AwsCognitoIdpOidcConfig{
 						ClientId:                "client-id",
@@ -566,7 +566,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "Google",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientSecret:    "client-secret",
@@ -588,7 +588,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "BadOIDC",
-				ProviderType: AwsCognitoIdentityProviderType_OIDC,
+				ProviderType: "OIDC",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Oidc{
 					Oidc: &AwsCognitoIdpOidcConfig{
 						ClientId: "client-id",
@@ -609,7 +609,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "Apple",
-				ProviderType: AwsCognitoIdentityProviderType_SignInWithApple,
+				ProviderType: "SignInWithApple",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_SignInWithApple{
 					SignInWithApple: &AwsCognitoIdpSignInWithAppleConfig{
 						ClientId:        "com.example.app",
@@ -641,7 +641,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
 				ProviderName: "Google",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientId:        "client-id",
@@ -669,7 +669,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "pool-id"}},
 				ProviderName: "Google",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientId: "id", ClientSecret: "secret", AuthorizeScopes: "email",
@@ -690,7 +690,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "pool-id"}},
 				ProviderName: "Google",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientId: "id", ClientSecret: "secret", AuthorizeScopes: "email",
@@ -710,7 +710,7 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 				Region:       "us-west-2",
 				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "pool-id"}},
 				ProviderName: "Google",
-				ProviderType: AwsCognitoIdentityProviderType_Google,
+				ProviderType: "Google",
 				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
 					Google: &AwsCognitoIdpGoogleConfig{
 						ClientId: "id", ClientSecret: "secret", AuthorizeScopes: "email",

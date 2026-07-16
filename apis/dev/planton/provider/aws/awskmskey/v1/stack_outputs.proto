@@ -2,17 +2,19 @@ syntax = "proto3";
 
 package dev.planton.provider.aws.awskmskey.v1;
 
-// AwsKmsKeyStackOutputs describes the outputs returned by Pulumi/Terraform after creating a KMS key.
+// AwsKmsKeyStackOutputs captures the observable identifiers of a
+// deployed KMS key -- the join keys everything that encrypts with it
+// references.
 message AwsKmsKeyStackOutputs {
-  // key_id is the unique identifier of the KMS key (UUID).
+  // The generated key ID (UUID; "mrk-..." for multi-Region keys).
   string key_id = 1;
 
-  // key_arn is the full Amazon Resource Name of the KMS key.
+  // The key ARN -- the join key encryption-at-rest fields across the
+  // catalog reference (databases, queues, buckets, functions, ...).
   string key_arn = 2;
 
-  // alias_name echoes the alias assigned to the KMS key (if any).
-  string alias_name = 3;
-
-  // rotation_enabled indicates whether automatic key rotation is enabled (true) or disabled (false).
-  bool rotation_enabled = 4;
+  // The alias names attached to the key (each "alias/..."), in spec
+  // order -- the human-friendly addresses SDK callers may use instead
+  // of the key ID.
+  repeated string alias_names = 3;
 }

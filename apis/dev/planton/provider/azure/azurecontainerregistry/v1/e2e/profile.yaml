@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurecontainerregistry
+spec:
+  # The harness deploys the fixture resource group (registry prerequisite),
+  # creates a Standard registry with the admin account on (exercising the
+  # credential outputs), verifies it via the ARM API (generic GetByID on
+  # the registry's ARM id), destroys it, and verifies it is gone -- on both
+  # provisioners. Premium-only features (geo-replication, network rules,
+  # CMK) are proven offline: a live geo-replicated run replicates real
+  # storage across regions and adds cost/time without exercising any
+  # additional module seam.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

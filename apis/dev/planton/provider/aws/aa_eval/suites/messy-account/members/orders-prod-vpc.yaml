@@ -1,0 +1,26 @@
+# The production network of the fictional "orders" organization. Its
+# staging twin (orders-stg-vpc) deliberately carries the IDENTICAL CIDR and
+# DNS settings -- on the scan, the two VPCs are look-alikes distinguishable
+# only by their Name tags and by what each contains. metadata.env carries
+# the environment for the future partition-scoring axis. The managed-by
+# label marks the fixture for orphan sweeps; the eval pipeline redacts it
+# (and every planton.ai/* identity tag) from the proposer's view.
+apiVersion: aws.planton.dev/v1
+kind: AwsVpc
+metadata:
+  name: orders-prod-vpc
+  id: orders-prod-vpc
+  org: planton-oss
+  env: prod
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsvpc
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  cidrBlock: 10.20.0.0/16
+  enableDnsHostnames: true
+  enableDnsSupport: true

@@ -15,991 +15,606 @@ func TestAzureLoadBalancerSpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "AzureLoadBalancerSpec Validation Tests")
 }
 
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+const (
+	testSubnetId   = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/default"
+	testPublicIpId = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/publicIPAddresses/pip"
+	testPrefixId   = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/publicIPPrefixes/prefix"
+	testVnetId     = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet"
+)
+
+// baseLoadBalancer returns a minimal valid public load balancer that
+// individual cases mutate to exercise one contract at a time.
+func baseLoadBalancer() *AzureLoadBalancer {
+	return &AzureLoadBalancer{
+		ApiVersion: "azure.planton.dev/v1",
+		Kind:       "AzureLoadBalancer",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "test-lb",
+		},
+		Spec: &AzureLoadBalancerSpec{
+			Region:        "eastus",
+			ResourceGroup: literal("my-rg"),
+			Name:          "test-lb",
+			FrontendIpConfigurations: []*AzureLoadBalancerFrontendIpConfiguration{
+				{
+					Name:              "public",
+					PublicIpAddressId: literal(testPublicIpId),
+				},
+			},
+			BackendPools: []*AzureLoadBalancerBackendPool{
+				{Name: "web"},
+			},
+			HealthProbes: []*AzureLoadBalancerHealthProbe{
+				{
+					Name:     "tcp-health",
+					Protocol: AzureLoadBalancerProbeProtocol_PROBE_TCP,
+					Port:     80,
+				},
+			},
+			Rules: []*AzureLoadBalancerRule{
+				{
+					Name:             "http",
+					Protocol:         AzureLoadBalancerTransportProtocol_TCP,
+					FrontendPort:     80,
+					BackendPort:      80,
+					BackendPoolNames: []string{"web"},
+					ProbeName:        "tcp-health",
+				},
+			},
+		},
+	}
+}
+
 var _ = ginkgo.Describe("AzureLoadBalancerSpec Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("azure_load_balancer", func() {
 
-			ginkgo.It("should not return a validation error for a minimal public LB", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/publicIPAddresses/pip",
-							},
-						},
-						BackendPools: []*AzureBackendPool{
-							{Name: "default"},
-						},
-						HealthProbes: []*AzureHealthProbe{
-							{
-								Name:     "tcp-probe",
-								Protocol: "Tcp",
-								Port:     80,
-							},
-						},
-						Rules: []*AzureLoadBalancingRule{
-							{
-								Name:            "http-rule",
-								Protocol:        "Tcp",
-								FrontendPort:    80,
-								BackendPort:     80,
-								BackendPoolName: "default",
-								ProbeName:       "tcp-probe",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept a minimal public load balancer", func() {
+			err := protovalidate.Validate(baseLoadBalancer())
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for a minimal internal LB", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "internal-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "westeurope",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "prod-rg",
-							},
-						},
-						Name: "internal-lb",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/default",
-							},
-						},
-						BackendPools: []*AzureBackendPool{
-							{Name: "default"},
-						},
-						HealthProbes: []*AzureHealthProbe{
-							{
-								Name:     "tcp-probe",
-								Protocol: "Tcp",
-								Port:     8080,
-							},
-						},
-						Rules: []*AzureLoadBalancingRule{
-							{
-								Name:            "app-rule",
-								Protocol:        "Tcp",
-								FrontendPort:    8080,
-								BackendPort:     8080,
-								BackendPoolName: "default",
-								ProbeName:       "tcp-probe",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept a frontend-only load balancer (no pools, probes, or rules)", func() {
+			input := baseLoadBalancer()
+			input.Spec.BackendPools = nil
+			input.Spec.HealthProbes = nil
+			input.Spec.Rules = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for internal LB with static private IP", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "static-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "static-lb",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/default",
-							},
-						},
-						PrivateIpAddress: "10.0.1.100",
-						BackendPools: []*AzureBackendPool{
-							{Name: "default"},
-						},
-						HealthProbes: []*AzureHealthProbe{
-							{
-								Name:        "http-probe",
-								Protocol:    "Http",
-								Port:        80,
-								RequestPath: "/health",
-							},
-						},
-						Rules: []*AzureLoadBalancingRule{
-							{
-								Name:            "http-rule",
-								Protocol:        "Tcp",
-								FrontendPort:    80,
-								BackendPort:     80,
-								BackendPoolName: "default",
-								ProbeName:       "http-probe",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept a rule without a probe", func() {
+			input := baseLoadBalancer()
+			input.Spec.Rules[0].ProbeName = ""
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with multiple backend pools and rules", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "multi-pool-lb",
-						Org:  "mycompany",
-						Env:  "production",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "prod-rg",
-							},
-						},
-						Name: "multi-pool-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/publicIPAddresses/pip",
-							},
-						},
-						BackendPools: []*AzureBackendPool{
-							{Name: "web-pool"},
-							{Name: "api-pool"},
-						},
-						HealthProbes: []*AzureHealthProbe{
-							{
-								Name:        "http-probe",
-								Protocol:    "Http",
-								Port:        80,
-								RequestPath: "/health",
-							},
-							{
-								Name:     "tcp-8080-probe",
-								Protocol: "Tcp",
-								Port:     8080,
-							},
-						},
-						Rules: []*AzureLoadBalancingRule{
-							{
-								Name:            "web-http",
-								Protocol:        "Tcp",
-								FrontendPort:    80,
-								BackendPort:     80,
-								BackendPoolName: "web-pool",
-								ProbeName:       "http-probe",
-							},
-							{
-								Name:            "web-https",
-								Protocol:        "Tcp",
-								FrontendPort:    443,
-								BackendPort:     443,
-								BackendPoolName: "web-pool",
-								ProbeName:       "http-probe",
-							},
-							{
-								Name:            "api",
-								Protocol:        "Tcp",
-								FrontendPort:    8080,
-								BackendPort:     8080,
-								BackendPoolName: "api-pool",
-								ProbeName:       "tcp-8080-probe",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept an internal frontend with a pinned static address and zones", func() {
+			input := baseLoadBalancer()
+			input.Spec.FrontendIpConfigurations = []*AzureLoadBalancerFrontendIpConfiguration{
+				{
+					Name:             "internal",
+					SubnetId:         literal(testSubnetId),
+					PrivateIpAddress: "10.0.1.100",
+					Zones:            []string{"1", "2", "3"},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with Https probe", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/publicIPAddresses/pip",
-							},
-						},
-						BackendPools: []*AzureBackendPool{
-							{Name: "default"},
-						},
-						HealthProbes: []*AzureHealthProbe{
-							{
-								Name:        "https-probe",
-								Protocol:    "Https",
-								Port:        443,
-								RequestPath: "/healthz",
-							},
-						},
-						Rules: []*AzureLoadBalancingRule{
-							{
-								Name:            "https-rule",
-								Protocol:        "Tcp",
-								FrontendPort:    443,
-								BackendPort:     443,
-								BackendPoolName: "default",
-								ProbeName:       "https-probe",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept a public-IP-prefix frontend", func() {
+			input := baseLoadBalancer()
+			input.Spec.FrontendIpConfigurations = []*AzureLoadBalancerFrontendIpConfiguration{
+				{
+					Name:             "prefix-frontend",
+					PublicIpPrefixId: literal(testPrefixId),
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with HA ports rule (protocol All)", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "ha-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "ha-lb",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/default",
-							},
-						},
-						BackendPools: []*AzureBackendPool{
-							{Name: "default"},
-						},
-						HealthProbes: []*AzureHealthProbe{
-							{
-								Name:     "tcp-probe",
-								Protocol: "Tcp",
-								Port:     443,
-							},
-						},
-						Rules: []*AzureLoadBalancingRule{
-							{
-								Name:            "ha-ports",
-								Protocol:        "All",
-								FrontendPort:    0,
-								BackendPort:     0,
-								BackendPoolName: "default",
-								ProbeName:       "tcp-probe",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept multiple frontends with rules naming their frontend", func() {
+			input := baseLoadBalancer()
+			input.Spec.FrontendIpConfigurations = append(input.Spec.FrontendIpConfigurations,
+				&AzureLoadBalancerFrontendIpConfiguration{
+					Name:     "internal",
+					SubnetId: literal(testSubnetId),
+				})
+			input.Spec.Rules[0].FrontendIpConfigurationName = "public"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with Udp rule protocol", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "udp-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "udp-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/publicIPAddresses/pip",
-							},
-						},
-						BackendPools: []*AzureBackendPool{
-							{Name: "default"},
-						},
-						HealthProbes: []*AzureHealthProbe{
-							{
-								Name:     "tcp-probe",
-								Protocol: "Tcp",
-								Port:     53,
-							},
-						},
-						Rules: []*AzureLoadBalancingRule{
-							{
-								Name:            "dns-rule",
-								Protocol:        "Udp",
-								FrontendPort:    53,
-								BackendPort:     53,
-								BackendPoolName: "default",
-								ProbeName:       "tcp-probe",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept an HA-ports rule (protocol ALL, ports 0) ", func() {
+			input := baseLoadBalancer()
+			input.Spec.FrontendIpConfigurations[0] = &AzureLoadBalancerFrontendIpConfiguration{
+				Name:     "internal",
+				SubnetId: literal(testSubnetId),
+			}
+			input.Spec.Rules[0].Protocol = AzureLoadBalancerTransportProtocol_ALL
+			input.Spec.Rules[0].FrontendPort = 0
+			input.Spec.Rules[0].BackendPort = 0
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with floating IP and SNAT disabled", func() {
-				floatingIp := true
-				disableSnat := true
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "advanced-lb",
+		ginkgo.It("should accept HTTP and HTTPS probes with request paths and a probe threshold", func() {
+			threshold := int32(3)
+			input := baseLoadBalancer()
+			input.Spec.HealthProbes = []*AzureLoadBalancerHealthProbe{
+				{
+					Name:           "http-health",
+					Protocol:       AzureLoadBalancerProbeProtocol_PROBE_HTTP,
+					Port:           80,
+					RequestPath:    "/healthz",
+					ProbeThreshold: &threshold,
+				},
+				{
+					Name:        "https-health",
+					Protocol:    AzureLoadBalancerProbeProtocol_PROBE_HTTPS,
+					Port:        443,
+					RequestPath: "/healthz",
+				},
+			}
+			input.Spec.Rules[0].ProbeName = "http-health"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a GATEWAY SKU load balancer with tunnel interfaces", func() {
+			input := baseLoadBalancer()
+			input.Spec.Sku = AzureLoadBalancerSku_GATEWAY
+			input.Spec.FrontendIpConfigurations[0] = &AzureLoadBalancerFrontendIpConfiguration{
+				Name:     "gateway-frontend",
+				SubnetId: literal(testSubnetId),
+			}
+			input.Spec.BackendPools = []*AzureLoadBalancerBackendPool{
+				{
+					Name: "nva-pool",
+					TunnelInterfaces: []*AzureLoadBalancerBackendPoolTunnelInterface{
+						{
+							Identifier: 800,
+							Port:       10800,
+							Protocol:   AzureLoadBalancerTunnelProtocol_VXLAN,
+							Type:       AzureLoadBalancerTunnelType_INTERNAL,
+						},
+						{
+							Identifier: 801,
+							Port:       10801,
+							Protocol:   AzureLoadBalancerTunnelProtocol_VXLAN,
+							Type:       AzureLoadBalancerTunnelType_EXTERNAL,
+						},
 					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "advanced-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/publicIPAddresses/pip",
-							},
-						},
-						BackendPools: []*AzureBackendPool{
-							{Name: "default"},
-						},
-						HealthProbes: []*AzureHealthProbe{
-							{
-								Name:     "tcp-probe",
-								Protocol: "Tcp",
-								Port:     1433,
-							},
-						},
-						Rules: []*AzureLoadBalancingRule{
-							{
-								Name:                "sql-always-on",
-								Protocol:            "Tcp",
-								FrontendPort:        1433,
-								BackendPort:         1433,
-								BackendPoolName:     "default",
-								ProbeName:           "tcp-probe",
-								EnableFloatingIp:    &floatingIp,
-								DisableOutboundSnat: &disableSnat,
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+				},
+			}
+			input.Spec.Rules = []*AzureLoadBalancerRule{
+				{
+					Name:             "chain",
+					Protocol:         AzureLoadBalancerTransportProtocol_ALL,
+					FrontendPort:     0,
+					BackendPort:      0,
+					BackendPoolNames: []string{"nva-pool"},
+				},
+			}
+			input.Spec.HealthProbes = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept IP-based pool addresses on a vnet-scoped pool", func() {
+			input := baseLoadBalancer()
+			input.Spec.BackendPools[0].VirtualNetworkId = literal(testVnetId)
+			input.Spec.BackendPools[0].Addresses = []*AzureLoadBalancerBackendPoolAddress{
+				{Name: "appliance-1", IpAddress: "10.0.1.10"},
+				{Name: "appliance-2", IpAddress: "10.0.1.11"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a GLOBAL-tier pool of regional load balancer frontends", func() {
+			input := baseLoadBalancer()
+			input.Spec.SkuTier = AzureLoadBalancerSkuTier_GLOBAL
+			input.Spec.BackendPools[0].Addresses = []*AzureLoadBalancerBackendPoolAddress{
+				{
+					Name:                                  "eastus-lb",
+					LoadBalancerFrontendIpConfigurationId: "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/loadBalancers/regional/frontendIPConfigurations/public",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a single-target NAT rule", func() {
+			input := baseLoadBalancer()
+			input.Spec.NatRules = []*AzureLoadBalancerNatRule{
+				{
+					Name:         "ssh-admin",
+					Protocol:     AzureLoadBalancerTransportProtocol_TCP,
+					FrontendPort: 2222,
+					BackendPort:  22,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a pool-style NAT rule with a port range", func() {
+			input := baseLoadBalancer()
+			input.Spec.NatRules = []*AzureLoadBalancerNatRule{
+				{
+					Name:              "per-instance-ssh",
+					Protocol:          AzureLoadBalancerTransportProtocol_TCP,
+					BackendPort:       22,
+					BackendPoolName:   "web",
+					FrontendPortStart: 50000,
+					FrontendPortEnd:   50099,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept an outbound rule against a declared pool and frontend", func() {
+			ports := int32(2048)
+			disableSnat := true
+			input := baseLoadBalancer()
+			input.Spec.Rules[0].DisableOutboundSnat = &disableSnat
+			input.Spec.OutboundRules = []*AzureLoadBalancerOutboundRule{
+				{
+					Name:                         "egress",
+					FrontendIpConfigurationNames: []string{"public"},
+					BackendPoolName:              "web",
+					Protocol:                     AzureLoadBalancerTransportProtocol_ALL,
+					AllocatedOutboundPorts:       &ports,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept user tags and load distribution", func() {
+			input := baseLoadBalancer()
+			input.Spec.Tags = map[string]string{"cost-center": "networking"}
+			input.Spec.Rules[0].LoadDistribution = AzureLoadBalancerLoadDistribution_SOURCE_IP
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("azure_load_balancer", func() {
 
-			ginkgo.It("should return a validation error when region is missing", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules:        []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a missing region", func() {
+			input := baseLoadBalancer()
+			input.Spec.Region = ""
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when resource_group is missing", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						Name:   "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules:        []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a missing resource group", func() {
+			input := baseLoadBalancer()
+			input.Spec.ResourceGroup = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when name is missing", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules:        []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a missing name", func() {
+			input := baseLoadBalancer()
+			input.Spec.Name = ""
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when name exceeds 80 characters", func() {
-				tooLongName := ""
-				for len(tooLongName) < 81 {
-					tooLongName += "a"
-				}
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: tooLongName,
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules:        []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject an empty frontend list", func() {
+			input := baseLoadBalancer()
+			input.Spec.FrontendIpConfigurations = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when metadata is missing", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules:        []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a frontend with two address sources", func() {
+			input := baseLoadBalancer()
+			input.Spec.FrontendIpConfigurations[0].SubnetId = literal(testSubnetId)
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when spec is missing", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a pinned private address on a public frontend", func() {
+			input := baseLoadBalancer()
+			input.Spec.FrontendIpConfigurations[0].PrivateIpAddress = "10.0.1.100"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when api_version is incorrect", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "wrong.version/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules:        []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject zones on a public frontend", func() {
+			input := baseLoadBalancer()
+			input.Spec.FrontendIpConfigurations[0].Zones = []string{"1"}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when kind is incorrect", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "WrongKind",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules:        []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject GLOBAL tier on the GATEWAY SKU", func() {
+			input := baseLoadBalancer()
+			input.Spec.Sku = AzureLoadBalancerSku_GATEWAY
+			input.Spec.SkuTier = AzureLoadBalancerSkuTier_GLOBAL
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when backend_pools is empty", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules:        []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a GATEWAY load balancer whose pool lacks tunnel interfaces", func() {
+			input := baseLoadBalancer()
+			input.Spec.Sku = AzureLoadBalancerSku_GATEWAY
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when health_probes is empty", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{},
-						Rules:        []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject tunnel interfaces on the STANDARD SKU", func() {
+			input := baseLoadBalancer()
+			input.Spec.BackendPools[0].TunnelInterfaces = []*AzureLoadBalancerBackendPoolTunnelInterface{
+				{
+					Identifier: 800,
+					Port:       10800,
+					Protocol:   AzureLoadBalancerTunnelProtocol_VXLAN,
+					Type:       AzureLoadBalancerTunnelType_INTERNAL,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when rules is empty", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules:        []*AzureLoadBalancingRule{},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a two-pool rule on the STANDARD SKU", func() {
+			input := baseLoadBalancer()
+			input.Spec.BackendPools = append(input.Spec.BackendPools, &AzureLoadBalancerBackendPool{Name: "api"})
+			input.Spec.Rules[0].BackendPoolNames = []string{"web", "api"}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when probe protocol is invalid", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{
-							{Name: "bad-probe", Protocol: "UDP", Port: 80},
-						},
-						Rules: []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "bad-probe"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a rule referencing an undeclared pool", func() {
+			input := baseLoadBalancer()
+			input.Spec.Rules[0].BackendPoolNames = []string{"missing"}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when rule protocol is invalid", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules: []*AzureLoadBalancingRule{
-							{Name: "bad-rule", Protocol: "HTTP", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe"},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a rule referencing an undeclared probe", func() {
+			input := baseLoadBalancer()
+			input.Spec.Rules[0].ProbeName = "missing"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when probe port is out of range", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{
-							{Name: "bad-port", Protocol: "Tcp", Port: 70000},
-						},
-						Rules: []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "bad-port"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a rule omitting the frontend when several frontends exist", func() {
+			input := baseLoadBalancer()
+			input.Spec.FrontendIpConfigurations = append(input.Spec.FrontendIpConfigurations,
+				&AzureLoadBalancerFrontendIpConfiguration{
+					Name:     "internal",
+					SubnetId: literal(testSubnetId),
+				})
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when probe interval is below minimum", func() {
-				interval := int32(3)
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{
-							{Name: "fast-probe", Protocol: "Tcp", Port: 80, IntervalInSeconds: &interval},
-						},
-						Rules: []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "fast-probe"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a rule naming an undeclared frontend", func() {
+			input := baseLoadBalancer()
+			input.Spec.Rules[0].FrontendIpConfigurationName = "missing"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when rule idle_timeout_in_minutes is below minimum", func() {
-				timeout := int32(2)
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules: []*AzureLoadBalancingRule{
-							{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe", IdleTimeoutInMinutes: &timeout},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject an HA-ports rule with non-zero ports", func() {
+			input := baseLoadBalancer()
+			input.Spec.Rules[0].Protocol = AzureLoadBalancerTransportProtocol_ALL
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when rule idle_timeout_in_minutes exceeds maximum", func() {
-				timeout := int32(101)
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules: []*AzureLoadBalancingRule{
-							{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe", IdleTimeoutInMinutes: &timeout},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a non-ALL rule with port 0", func() {
+			input := baseLoadBalancer()
+			input.Spec.Rules[0].FrontendPort = 0
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when backend pool name is missing", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: ""}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules:        []*AzureLoadBalancingRule{{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default", ProbeName: "probe"}},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a rule without a protocol", func() {
+			input := baseLoadBalancer()
+			input.Spec.Rules[0].Protocol = AzureLoadBalancerTransportProtocol_azure_load_balancer_transport_protocol_unspecified
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when rule backend_pool_name is missing", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules: []*AzureLoadBalancingRule{
-							{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, ProbeName: "probe"},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject an HTTP probe without a request path", func() {
+			input := baseLoadBalancer()
+			input.Spec.HealthProbes[0].Protocol = AzureLoadBalancerProbeProtocol_PROBE_HTTP
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when rule probe_name is missing", func() {
-				input := &AzureLoadBalancer{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureLoadBalancer",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-lb",
-					},
-					Spec: &AzureLoadBalancerSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-lb",
-						PublicIpId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "pip-id",
-							},
-						},
-						BackendPools: []*AzureBackendPool{{Name: "default"}},
-						HealthProbes: []*AzureHealthProbe{{Name: "probe", Protocol: "Tcp", Port: 80}},
-						Rules: []*AzureLoadBalancingRule{
-							{Name: "rule", Protocol: "Tcp", FrontendPort: 80, BackendPort: 80, BackendPoolName: "default"},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("should reject a TCP probe with a request path", func() {
+			input := baseLoadBalancer()
+			input.Spec.HealthProbes[0].RequestPath = "/healthz"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a probe interval below 5 seconds", func() {
+			interval := int32(3)
+			input := baseLoadBalancer()
+			input.Spec.HealthProbes[0].IntervalInSeconds = &interval
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a probe threshold above 100", func() {
+			threshold := int32(101)
+			input := baseLoadBalancer()
+			input.Spec.HealthProbes[0].ProbeThreshold = &threshold
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a rule idle timeout outside 4-100", func() {
+			timeout := int32(101)
+			input := baseLoadBalancer()
+			input.Spec.Rules[0].IdleTimeoutInMinutes = &timeout
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject synchronous_mode without a pool virtual network", func() {
+			input := baseLoadBalancer()
+			input.Spec.BackendPools[0].SynchronousMode = AzureLoadBalancerBackendPoolSyncMode_AUTOMATIC
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject IP-based addresses without the pool virtual network", func() {
+			input := baseLoadBalancer()
+			input.Spec.BackendPools[0].Addresses = []*AzureLoadBalancerBackendPoolAddress{
+				{Name: "appliance-1", IpAddress: "10.0.1.10"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a pool address with both an IP and a regional frontend", func() {
+			input := baseLoadBalancer()
+			input.Spec.BackendPools[0].VirtualNetworkId = literal(testVnetId)
+			input.Spec.BackendPools[0].Addresses = []*AzureLoadBalancerBackendPoolAddress{
+				{
+					Name:                                  "bad",
+					IpAddress:                             "10.0.1.10",
+					LoadBalancerFrontendIpConfigurationId: "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/loadBalancers/r/frontendIPConfigurations/f",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a NAT rule setting both modes", func() {
+			input := baseLoadBalancer()
+			input.Spec.NatRules = []*AzureLoadBalancerNatRule{
+				{
+					Name:              "bad",
+					Protocol:          AzureLoadBalancerTransportProtocol_TCP,
+					FrontendPort:      2222,
+					BackendPort:       22,
+					BackendPoolName:   "web",
+					FrontendPortStart: 50000,
+					FrontendPortEnd:   50099,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a NAT rule with neither mode", func() {
+			input := baseLoadBalancer()
+			input.Spec.NatRules = []*AzureLoadBalancerNatRule{
+				{
+					Name:        "bad",
+					Protocol:    AzureLoadBalancerTransportProtocol_TCP,
+					BackendPort: 22,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a pool-style NAT rule missing its port range", func() {
+			input := baseLoadBalancer()
+			input.Spec.NatRules = []*AzureLoadBalancerNatRule{
+				{
+					Name:            "bad",
+					Protocol:        AzureLoadBalancerTransportProtocol_TCP,
+					BackendPort:     22,
+					BackendPoolName: "web",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a pool-style NAT rule referencing an undeclared pool", func() {
+			input := baseLoadBalancer()
+			input.Spec.NatRules = []*AzureLoadBalancerNatRule{
+				{
+					Name:              "bad",
+					Protocol:          AzureLoadBalancerTransportProtocol_TCP,
+					BackendPort:       22,
+					BackendPoolName:   "missing",
+					FrontendPortStart: 50000,
+					FrontendPortEnd:   50099,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a NAT rule idle timeout above 30 minutes", func() {
+			timeout := int32(31)
+			input := baseLoadBalancer()
+			input.Spec.NatRules = []*AzureLoadBalancerNatRule{
+				{
+					Name:                 "bad",
+					Protocol:             AzureLoadBalancerTransportProtocol_TCP,
+					FrontendPort:         2222,
+					BackendPort:          22,
+					IdleTimeoutInMinutes: &timeout,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an outbound rule referencing an undeclared pool", func() {
+			input := baseLoadBalancer()
+			input.Spec.OutboundRules = []*AzureLoadBalancerOutboundRule{
+				{
+					Name:                         "bad",
+					FrontendIpConfigurationNames: []string{"public"},
+					BackendPoolName:              "missing",
+					Protocol:                     AzureLoadBalancerTransportProtocol_ALL,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an outbound rule with no frontends", func() {
+			input := baseLoadBalancer()
+			input.Spec.OutboundRules = []*AzureLoadBalancerOutboundRule{
+				{
+					Name:            "bad",
+					BackendPoolName: "web",
+					Protocol:        AzureLoadBalancerTransportProtocol_ALL,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an outbound rule naming an undeclared frontend", func() {
+			input := baseLoadBalancer()
+			input.Spec.OutboundRules = []*AzureLoadBalancerOutboundRule{
+				{
+					Name:                         "bad",
+					FrontendIpConfigurationNames: []string{"missing"},
+					BackendPoolName:              "web",
+					Protocol:                     AzureLoadBalancerTransportProtocol_ALL,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 	})
 })

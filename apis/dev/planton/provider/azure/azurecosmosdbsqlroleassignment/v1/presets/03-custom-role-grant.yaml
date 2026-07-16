@@ -1,0 +1,27 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbSqlRoleAssignment
+metadata:
+  name: my-custom-role-grant
+spec:
+  cosmosdbAccountId:
+    valueFrom:
+      kind: AzureCosmosdbAccount
+      name: <cosmosdb-account-resource-name>
+      fieldPath: status.outputs.cosmosdb_account_id
+  # A custom role's fully-scoped ID, referenced from its
+  # AzureCosmosdbSqlRoleDefinition with zero translation -- the
+  # definition and the grant compose in one manifest set.
+  roleDefinitionId:
+    valueFrom:
+      kind: AzureCosmosdbSqlRoleDefinition
+      name: <role-definition-resource-name>
+      fieldPath: status.outputs.role_definition_id
+  principalId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: <identity-resource-name>
+      fieldPath: status.outputs.principal_id
+  # One database: the grant's scope must sit at or below one of the
+  # definition's assignable scopes.
+  scope:
+    value: /subscriptions/<subscription-id>/resourceGroups/<resource-group-name>/providers/Microsoft.DocumentDB/databaseAccounts/<account-name>/dbs/<database-name>

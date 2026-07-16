@@ -1,6 +1,6 @@
 ---
-title: "Cosmos DB Serverless (SQL API)"
-description: "This preset creates an Azure Cosmos DB account in serverless mode with the SQL (NoSQL) API. Serverless mode uses pay-per-request pricing with no provisioned throughput -- you only pay for the Request..."
+title: "Serverless, Entra-Only Account"
+description: "This preset creates a serverless SQL-API account with the fully locked-down access posture: pay-per-request billing, no public endpoint, and no key-based authentication -- every data-plane caller..."
 type: "preset"
 rank: "03"
 presetSlug: "03-serverless"
@@ -11,39 +11,53 @@ icon: "package"
 order: 3
 ---
 
-# Cosmos DB Serverless (SQL API)
+# Serverless, Entra-Only Account
 
-This preset creates an Azure Cosmos DB account in serverless mode with the SQL (NoSQL) API. Serverless mode uses pay-per-request pricing with no provisioned throughput -- you only pay for the Request Units consumed by your operations and the storage used. No `throughput` or `autoscaleMaxThroughput` configuration is needed. This is the most cost-effective option for low-traffic, spiky, or development workloads.
+This preset creates a serverless SQL-API account with the fully
+locked-down access posture: pay-per-request billing, no public
+endpoint, and no key-based authentication -- every data-plane caller
+rides Entra ID.
 
 ## When to Use
 
-- Development and testing environments with unpredictable or low traffic patterns
-- Event-driven workloads with long idle periods punctuated by bursts of activity
-- Proof-of-concept and prototyping where cost minimization is the priority
-- Applications consuming fewer than ~5000 RU/s on average that benefit from pay-per-request billing
+- Development and staging environments with idle periods (serverless
+  bills nothing when nothing runs)
+- Spiky or unpredictable workloads where provisioned RU/s would sit
+  idle
+- Regulated workloads that must not expose a public endpoint or share
+  account keys
 
 ## Key Configuration Choices
 
-- **Serverless mode** (`capabilities: ["EnableServerless"]`) -- Pay-per-request with no provisioned throughput. Maximum burst of 5000 RU/s per container. This capability is ForceNew -- cannot be changed after creation
-- **SQL API** (`kind: GlobalDocumentDB`) -- Query JSON documents with SQL-like syntax
-- **No throughput configuration** -- Throughput fields (`throughput`, `autoscaleMaxThroughput`) are omitted because serverless mode handles scaling automatically
-- **Session consistency** (`consistencyPolicy.consistencyLevel: Session`) -- Read-your-writes within a session
-- **Single region only** -- Serverless accounts support only a single write region. Multi-region writes and additional geo-locations are not available
-- **No automatic failover** -- Not applicable in serverless single-region mode
-- **50 GB storage limit per container** -- Serverless containers have a maximum of 50 GB. Use provisioned throughput for larger data volumes
+- **`capabilities: [ENABLE_SERVERLESS]`** -- pay-per-request; databases
+  and containers referencing this account must NOT declare throughput
+  (Azure rejects it). Serverless accounts are single-region
+- **`publicNetworkAccessEnabled: false`** -- reachable only through an
+  AzurePrivateEndpoint referencing `cosmosdb_account_id`
+- **`localAuthenticationEnabled: false`** -- the exported keys and
+  connection strings stop authenticating; applications use Entra ID
+  and Cosmos DB data-plane RBAC
+- **`accessKeyMetadataWritesEnabled: false`** -- database/container
+  management is restricted to ARM (Entra-authenticated) callers
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<azure-region>` | Azure region (e.g., "eastus", "westeurope") | Your regional deployment strategy |
-| `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-account-name>` | Globally unique account name (3-50 chars, lowercase/numbers/hyphens) | Choose a name; becomes `https://{name}.documents.azure.com:443/` |
-| `<your-database-name>` | Name of the SQL database (1-255 chars) | Your application design |
-| `<your-container-name>` | Name of the container (1-255 chars) | Your application design |
-| `/partitionKey` | Partition key path (e.g., `/tenantId`, `/userId`, `/region`) | Choose based on query patterns and data cardinality |
+| `myorg-events-cosmos` | 3-50 lowercase letters/digits/hyphens, unique across all of Azure | Your naming convention |
+| `my-data-rg` | The AzureResourceGroup's Planton resource name | Your resource-group composition |
 
-## Related Presets
+## Downstream Wiring
 
-- **01-sql-api** -- Use instead for predictable production workloads where provisioned or autoscale throughput provides better cost efficiency
-- **02-mongodb-api** -- Use instead for MongoDB wire-protocol compatibility with provisioned throughput
+Private connectivity to the locked-down account:
+
+```yaml
+# On an AzurePrivateEndpoint
+privateConnectionResourceId:
+  valueFrom:
+    kind: AzureCosmosdbAccount
+    name: my-serverless-cosmos
+    fieldPath: status.outputs.cosmosdb_account_id
+subresourceNames:
+  - Sql
+```

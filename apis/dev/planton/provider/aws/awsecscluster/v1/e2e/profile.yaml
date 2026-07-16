@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsecscluster
+spec:
+  # An ECS cluster under live E2E, two scenarios per engine. The Fargate
+  # scenario is a true leaf (no prerequisites): enhanced Container
+  # Insights, an exec-audit configuration, and the built-in provider
+  # association, running in ~2-3 minutes at zero cost (a cluster bills
+  # nothing until tasks run). The EC2-capacity scenario composes the
+  # VPC -> subnets -> launch template -> zero-capacity auto-scaling
+  # group chain (declared by its e2e-prerequisites annotation -- the
+  # kind itself honestly requires nothing) and proves the folded
+  # capacity provider materializes as its own resource plus the
+  # single association PUT, with no instance ever launched.
+  # Deliberately not in the live scenarios: Fargate managed-storage
+  # KMS (needs a key-policy-prepared KMS fixture) and Service Connect
+  # defaults (needs a Cloud Map namespace) -- both proven by CEL spec
+  # tests and the offline gate.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 25

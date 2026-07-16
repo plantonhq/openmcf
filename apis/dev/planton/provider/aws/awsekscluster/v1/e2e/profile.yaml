@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsekscluster
+spec:
+  # An EKS control plane under live E2E: deploy -> DescribeCluster verify ->
+  # destroy -> verify-destroyed on both provisioners. The control plane is
+  # the slowest single resource in the AWS suite -- AWS takes ~10-15 minutes
+  # to create one and ~10 to delete it -- so the timeout is sized for a full
+  # cycle plus the subnet/role prerequisite chain.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 60

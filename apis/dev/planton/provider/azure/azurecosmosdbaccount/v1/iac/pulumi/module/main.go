@@ -1,330 +1,339 @@
 package module
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	azurecosmosdbaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecosmosdbaccount/v1"
-	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider"
 	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/cosmosdb"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func Resources(ctx *pulumi.Context, stackInput *azurecosmosdbaccountv1.AzureCosmosdbAccountStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
-	azureProviderConfig := stackInput.ProviderConfig
 
-	// Create azure provider using the credentials from the input
-	azureProvider, err := azure.NewProvider(ctx,
-		"azure",
-		&azure.ProviderArgs{
-			ClientId:       pulumi.String(azureProviderConfig.ClientId),
-			ClientSecret:   pulumi.String(azureProviderConfig.ClientSecret),
-			SubscriptionId: pulumi.String(azureProviderConfig.SubscriptionId),
-			TenantId:       pulumi.String(azureProviderConfig.TenantId),
-		})
+	// Build the Azure provider from the stack input via the shared builder, which resolves
+	// the right credential mechanism (static client secret, keyless web identity, or ambient chain).
+	azureProvider, err := pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to create azure provider")
 	}
 
 	spec := locals.AzureCosmosdbAccount.Spec
 
-	// Resolve kind with default
-	kind := spec.GetKind()
-	if kind == "" {
-		kind = "GlobalDocumentDB"
+	// Unspecified kind materializes GlobalDocumentDB -- the SQL API,
+	// azurerm's own default. Fixed at creation: the wire protocol
+	// shapes how every byte is stored.
+	kind := "GlobalDocumentDB"
+	if spec.Kind != azurecosmosdbaccountv1.AzureCosmosdbAccountKind_azure_cosmosdb_account_kind_unspecified {
+		kind = kindStrings[spec.Kind]
 	}
 
-	// Build capabilities array; if kind is MongoDB, auto-add EnableMongo if not present
-	capabilities := spec.GetCapabilities()
-	hasEnableMongo := false
-	for _, c := range capabilities {
-		if c == "EnableMongo" {
-			hasEnableMongo = true
-			break
-		}
+	// Unspecified consistency materializes Session -- Azure's
+	// recommended default. The staleness dials carry the proto defaults
+	// (5 / 100) when unset: stack inputs built from a manifest do NOT
+	// materialize proto defaults, so bare getters would send zeros the
+	// API rejects.
+	consistencyLevel := "Session"
+	if spec.ConsistencyPolicy.ConsistencyLevel != azurecosmosdbaccountv1.AzureCosmosdbAccountConsistencyLevel_azure_cosmosdb_account_consistency_level_unspecified {
+		consistencyLevel = consistencyLevelStrings[spec.ConsistencyPolicy.ConsistencyLevel]
 	}
-	if kind == "MongoDB" && !hasEnableMongo {
-		capabilities = append([]string{"EnableMongo"}, capabilities...)
+	maxIntervalInSeconds := 5
+	if spec.ConsistencyPolicy.MaxIntervalInSeconds != nil {
+		maxIntervalInSeconds = int(spec.ConsistencyPolicy.GetMaxIntervalInSeconds())
 	}
-
-	// Build consistency policy block
-	consistencyPolicy := &cosmosdb.AccountConsistencyPolicyArgs{
-		ConsistencyLevel: pulumi.String("Session"),
-	}
-	if spec.ConsistencyPolicy != nil {
-		cl := spec.ConsistencyPolicy.GetConsistencyLevel()
-		if cl != "" {
-			consistencyPolicy.ConsistencyLevel = pulumi.String(cl)
-		}
-		if cl == "BoundedStaleness" {
-			mi := spec.ConsistencyPolicy.GetMaxIntervalInSeconds()
-			if mi > 0 {
-				consistencyPolicy.MaxIntervalInSeconds = pulumi.Int(int(mi))
-			} else {
-				consistencyPolicy.MaxIntervalInSeconds = pulumi.Int(5)
-			}
-			mp := spec.ConsistencyPolicy.GetMaxStalenessPrefix()
-			if mp > 0 {
-				consistencyPolicy.MaxStalenessPrefix = pulumi.Int(int(mp))
-			} else {
-				consistencyPolicy.MaxStalenessPrefix = pulumi.Int(100)
-			}
-		}
+	maxStalenessPrefix := 100
+	if spec.ConsistencyPolicy.MaxStalenessPrefix != nil {
+		maxStalenessPrefix = int(spec.ConsistencyPolicy.GetMaxStalenessPrefix())
 	}
 
-	// Build geo_location array
-	geoLocations := make(cosmosdb.AccountGeoLocationArray, 0, len(spec.GeoLocations))
-	for _, gl := range spec.GeoLocations {
-		geoLocations = append(geoLocations, &cosmosdb.AccountGeoLocationArgs{
-			Location:         pulumi.String(gl.Location),
-			FailoverPriority: pulumi.Int(int(gl.FailoverPriority)),
-			ZoneRedundant:    pulumi.BoolPtr(gl.GetZoneRedundant()),
+	// The replicated regions: the priority-0 entry is the write region;
+	// adding/removing regions is an in-place update.
+	geoLocations := cosmosdb.AccountGeoLocationArray{}
+	for _, geo := range spec.GeoLocations {
+		geoLocations = append(geoLocations, cosmosdb.AccountGeoLocationArgs{
+			Location:         pulumi.String(geo.Location),
+			FailoverPriority: pulumi.Int(int(geo.FailoverPriority)),
+			ZoneRedundant:    pulumi.Bool(geo.GetZoneRedundant()),
 		})
 	}
 
-	// Build capabilities array for Pulumi
-	capabilityArgs := make(cosmosdb.AccountCapabilityArray, 0, len(capabilities))
-	for _, cap := range capabilities {
-		capabilityArgs = append(capabilityArgs, &cosmosdb.AccountCapabilityArgs{
-			Name: pulumi.String(cap),
-		})
-	}
-
-	// Build virtual network rules
-	var vnetRules cosmosdb.AccountVirtualNetworkRuleArray
-	for _, rule := range spec.GetVirtualNetworkRules() {
-		if rule != nil && rule.SubnetId != nil {
-			subnetId := rule.SubnetId.GetValue()
-			if subnetId != "" {
-				vnetRules = append(vnetRules, &cosmosdb.AccountVirtualNetworkRuleArgs{
-					Id: pulumi.String(subnetId),
-				})
-			}
-		}
-	}
-
-	// Build IP range filters (Pulumi uses IpRangeFilters)
-	var ipRangeFilters pulumi.StringArray
-	for _, ip := range spec.GetIpRangeFilter() {
-		ipRangeFilters = append(ipRangeFilters, pulumi.String(ip))
-	}
-
-	// Build backup policy
-	var backupArgs *cosmosdb.AccountBackupArgs
-	if spec.Backup != nil {
-		backupArgs = &cosmosdb.AccountBackupArgs{
-			Type: pulumi.String(spec.Backup.Type),
-		}
-		if spec.Backup.Type == "Periodic" {
-			if spec.Backup.IntervalInMinutes != nil {
-				backupArgs.IntervalInMinutes = pulumi.Int(int(*spec.Backup.IntervalInMinutes))
-			}
-			if spec.Backup.RetentionInHours != nil {
-				backupArgs.RetentionInHours = pulumi.Int(int(*spec.Backup.RetentionInHours))
-			}
-			if spec.Backup.StorageRedundancy != nil && *spec.Backup.StorageRedundancy != "" {
-				backupArgs.StorageRedundancy = pulumi.String(*spec.Backup.StorageRedundancy)
-			}
-		}
-		if spec.Backup.Type == "Continuous" && spec.Backup.Tier != nil && *spec.Backup.Tier != "" {
-			backupArgs.Tier = pulumi.String(*spec.Backup.Tier)
-		}
-	}
-
-	// Build account args
 	accountArgs := &cosmosdb.AccountArgs{
-		Name:                          pulumi.String(spec.Name),
-		Location:                      pulumi.String(spec.Region),
-		ResourceGroupName:             pulumi.String(locals.ResourceGroupName),
-		OfferType:                     pulumi.String("Standard"),
-		Kind:                          pulumi.String(kind),
-		ConsistencyPolicy:             consistencyPolicy,
-		GeoLocations:                  geoLocations,
-		Capabilities:                  capabilityArgs,
-		FreeTierEnabled:               pulumi.BoolPtr(spec.GetFreeTierEnabled()),
-		AutomaticFailoverEnabled:      pulumi.BoolPtr(spec.GetAutomaticFailoverEnabled()),
-		MultipleWriteLocationsEnabled: pulumi.BoolPtr(spec.GetMultipleWriteLocationsEnabled()),
-		PublicNetworkAccessEnabled:    pulumi.BoolPtr(spec.GetPublicNetworkAccessEnabled()),
-		IsVirtualNetworkFilterEnabled: pulumi.BoolPtr(spec.GetIsVirtualNetworkFilterEnabled()),
-		Tags:                          pulumi.ToStringMap(locals.AzureTags),
+		Name:              pulumi.String(spec.AccountName),
+		Location:          pulumi.String(spec.Region),
+		ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+		// Azure's only offer type -- nothing to choose, so not modeled
+		// in the spec.
+		OfferType: pulumi.String("Standard"),
+		Kind:      pulumi.String(kind),
+		ConsistencyPolicy: cosmosdb.AccountConsistencyPolicyArgs{
+			ConsistencyLevel:     pulumi.String(consistencyLevel),
+			MaxIntervalInSeconds: pulumi.Int(maxIntervalInSeconds),
+			MaxStalenessPrefix:   pulumi.Int(maxStalenessPrefix),
+		},
+		GeoLocations: geoLocations,
+		// Presence-guarded to the proto defaults: bare getters on unset
+		// optional bools would silently flip Azure's own defaults.
+		FreeTierEnabled:               pulumi.Bool(spec.GetFreeTierEnabled()),
+		AutomaticFailoverEnabled:      pulumi.Bool(spec.GetAutomaticFailoverEnabled()),
+		MultipleWriteLocationsEnabled: pulumi.Bool(spec.GetMultipleWriteLocationsEnabled()),
+		PublicNetworkAccessEnabled:    pulumi.Bool(publicNetworkAccessEnabled(spec)),
+		IsVirtualNetworkFilterEnabled: pulumi.Bool(spec.GetIsVirtualNetworkFilterEnabled()),
+		// Key- and metadata-write posture: disabling local auth forces
+		// every data-plane caller through Entra ID (the exported account
+		// keys stop authenticating).
+		//
+		// PARITY-EXCEPTION: pulumi-azure v6.38 has bridged only the
+		// deprecated localAuthenticationDisabled input, so this module
+		// sends the negation of the spec's local_authentication_enabled;
+		// the Terraform module uses azurerm's non-deprecated
+		// local_authentication_enabled directly. Both set the same
+		// DisableLocalAuth wire property -- the created account is
+		// identical. Re-align here when the bridge exposes
+		// localAuthenticationEnabled.
+		AccessKeyMetadataWritesEnabled:   pulumi.Bool(accessKeyMetadataWritesEnabled(spec)),
+		LocalAuthenticationDisabled:      pulumi.Bool(!localAuthenticationEnabled(spec)),
+		NetworkAclBypassForAzureServices: pulumi.Bool(spec.GetNetworkAclBypassForAzureServices()),
+		AnalyticalStorageEnabled:         pulumi.Bool(spec.GetAnalyticalStorageEnabled()),
+		BurstCapacityEnabled:             pulumi.Bool(spec.GetBurstCapacityEnabled()),
+		PartitionMergeEnabled:            pulumi.Bool(spec.GetPartitionMergeEnabled()),
+		Tags:                             pulumi.ToStringMap(locals.AzureTags),
 	}
 
-	if len(vnetRules) > 0 {
-		accountArgs.VirtualNetworkRules = vnetRules
+	// Capabilities are exactly what the spec declares -- never injected
+	// silently (a MONGO_DB account declares ENABLE_MONGO itself; presets
+	// and docs teach this). Most capability changes recreate the account.
+	if len(spec.Capabilities) > 0 {
+		capabilityArray := cosmosdb.AccountCapabilityArray{}
+		for _, capability := range spec.Capabilities {
+			capabilityArray = append(capabilityArray, cosmosdb.AccountCapabilityArgs{
+				Name: pulumi.String(capabilityStrings[capability]),
+			})
+		}
+		accountArgs.Capabilities = capabilityArray
 	}
-	if len(ipRangeFilters) > 0 {
-		accountArgs.IpRangeFilters = ipRangeFilters
+
+	// Network posture: the virtual-network filter admits the declared
+	// subnets; the IP filter admits the declared addresses.
+	if len(spec.VirtualNetworkRules) > 0 {
+		ruleArray := cosmosdb.AccountVirtualNetworkRuleArray{}
+		for _, rule := range spec.VirtualNetworkRules {
+			ruleArray = append(ruleArray, cosmosdb.AccountVirtualNetworkRuleArgs{
+				Id:                               pulumi.String(rule.SubnetId.GetValue()),
+				IgnoreMissingVnetServiceEndpoint: pulumi.Bool(rule.GetIgnoreMissingVnetServiceEndpoint()),
+			})
+		}
+		accountArgs.VirtualNetworkRules = ruleArray
 	}
-	if backupArgs != nil {
+	if len(spec.IpRangeFilter) > 0 {
+		accountArgs.IpRangeFilters = pulumi.ToStringArray(spec.IpRangeFilter)
+	}
+	if len(spec.NetworkAclBypassIds) > 0 {
+		accountArgs.NetworkAclBypassIds = pulumi.ToStringArray(spec.NetworkAclBypassIds)
+	}
+
+	// Backup: PERIODIC -> CONTINUOUS upgrades in place; the reverse
+	// recreates the account. Per-mode field pairings are enforced by the
+	// spec's validation rules; unset dials are omitted so Azure's own
+	// defaults apply.
+	if spec.Backup != nil {
+		backupArgs := cosmosdb.AccountBackupArgs{
+			Type: pulumi.String(backupTypeStrings[spec.Backup.Type]),
+		}
+		if spec.Backup.Tier != azurecosmosdbaccountv1.AzureCosmosdbAccountContinuousTier_azure_cosmosdb_account_continuous_tier_unspecified {
+			backupArgs.Tier = pulumi.String(continuousTierStrings[spec.Backup.Tier])
+		}
+		if spec.Backup.IntervalInMinutes != nil {
+			backupArgs.IntervalInMinutes = pulumi.Int(int(spec.Backup.GetIntervalInMinutes()))
+		}
+		if spec.Backup.RetentionInHours != nil {
+			backupArgs.RetentionInHours = pulumi.Int(int(spec.Backup.GetRetentionInHours()))
+		}
+		if spec.Backup.StorageRedundancy != azurecosmosdbaccountv1.AzureCosmosdbAccountBackupStorageRedundancy_azure_cosmosdb_account_backup_storage_redundancy_unspecified {
+			backupArgs.StorageRedundancy = pulumi.String(backupStorageRedundancyStrings[spec.Backup.StorageRedundancy])
+		}
 		accountArgs.Backup = backupArgs
 	}
-	if kind == "MongoDB" && spec.GetMongoServerVersion() != "" {
-		accountArgs.MongoServerVersion = pulumi.StringPtr(spec.GetMongoServerVersion())
+
+	if spec.MongoServerVersion != azurecosmosdbaccountv1.AzureCosmosdbAccountMongoServerVersion_azure_cosmosdb_account_mongo_server_version_unspecified {
+		accountArgs.MongoServerVersion = pulumi.String(mongoServerVersionStrings[spec.MongoServerVersion])
 	}
 
-	// Create Cosmos DB Account
-	account, err := cosmosdb.NewAccount(ctx,
-		spec.Name,
+	// The TLS floor for every endpoint. Unset materializes Tls12 --
+	// Azure's own default since April 2023 -- so both engines send the
+	// same value; 1.0/1.1 exist only for legacy-client migrations.
+	minimalTlsVersion := "Tls12"
+	if spec.MinimalTlsVersion != azurecosmosdbaccountv1.AzureCosmosdbAccountMinimalTlsVersion_azure_cosmosdb_account_minimal_tls_version_unspecified {
+		minimalTlsVersion = minimalTlsVersionStrings[spec.MinimalTlsVersion]
+	}
+	accountArgs.MinimalTlsVersion = pulumi.String(minimalTlsVersion)
+
+	// The managed identity, and which identity the account acts AS by
+	// default against other services (CMK unwrapping): the composed
+	// "UserAssignedIdentity=<id>" form makes CMK ride an identity that
+	// exists -- and holds Key Vault grants -- before the account does.
+	if spec.Identity != nil {
+		identityArgs := cosmosdb.AccountIdentityArgs{
+			Type: pulumi.String(identityTypeStrings[spec.Identity.Type]),
+		}
+		if len(spec.Identity.IdentityIds) > 0 {
+			identityIds := pulumi.StringArray{}
+			for _, identityId := range spec.Identity.IdentityIds {
+				identityIds = append(identityIds, pulumi.String(identityId.GetValue()))
+			}
+			identityArgs.IdentityIds = identityIds
+		}
+		accountArgs.Identity = identityArgs
+	}
+	if spec.DefaultIdentity != nil {
+		switch spec.DefaultIdentity.Type {
+		case azurecosmosdbaccountv1.AzureCosmosdbAccountDefaultIdentityType_FIRST_PARTY:
+			accountArgs.DefaultIdentityType = pulumi.String("FirstPartyIdentity")
+		case azurecosmosdbaccountv1.AzureCosmosdbAccountDefaultIdentityType_SYSTEM_ASSIGNED_DEFAULT:
+			accountArgs.DefaultIdentityType = pulumi.String("SystemAssignedIdentity")
+		case azurecosmosdbaccountv1.AzureCosmosdbAccountDefaultIdentityType_USER_ASSIGNED_DEFAULT:
+			accountArgs.DefaultIdentityType = pulumi.String("UserAssignedIdentity=" + spec.DefaultIdentity.UserAssignedIdentityId.GetValue())
+		}
+	}
+
+	// CMK encryption rides the key's VERSIONLESS Key Vault identifier so
+	// rotation propagates without touching the account. Fixed at creation.
+	if spec.KeyVaultKeyId.GetValue() != "" {
+		accountArgs.KeyVaultKeyId = pulumi.String(spec.KeyVaultKeyId.GetValue())
+	}
+
+	if spec.AnalyticalStorage != nil {
+		accountArgs.AnalyticalStorage = cosmosdb.AccountAnalyticalStorageArgs{
+			SchemaType: pulumi.String(analyticalSchemaTypeStrings[spec.AnalyticalStorage.SchemaType]),
+		}
+	}
+
+	// The account-wide provisioned-throughput cap (-1 = unlimited) --
+	// the guardrail against runaway RU provisioning cost.
+	if spec.Capacity != nil {
+		accountArgs.Capacity = cosmosdb.AccountCapacityArgs{
+			TotalThroughputLimit: pulumi.Int(int(spec.Capacity.TotalThroughputLimit)),
+		}
+	}
+
+	if spec.CorsRule != nil {
+		corsArgs := cosmosdb.AccountCorsRuleArgs{
+			AllowedOrigins: pulumi.ToStringArray(spec.CorsRule.AllowedOrigins),
+			AllowedMethods: pulumi.ToStringArray(spec.CorsRule.AllowedMethods),
+			AllowedHeaders: pulumi.ToStringArray(spec.CorsRule.AllowedHeaders),
+			ExposedHeaders: pulumi.ToStringArray(spec.CorsRule.ExposedHeaders),
+		}
+		if spec.CorsRule.MaxAgeInSeconds != nil {
+			corsArgs.MaxAgeInSeconds = pulumi.Int(int(spec.CorsRule.GetMaxAgeInSeconds()))
+		}
+		accountArgs.CorsRule = corsArgs
+	}
+
+	// RESTORE creates the account FROM a continuous-backup restore
+	// point; sent only when the spec sets it (azurerm rejects
+	// create_mode on accounts without continuous backup).
+	if spec.CreateMode != azurecosmosdbaccountv1.AzureCosmosdbAccountCreateMode_azure_cosmosdb_account_create_mode_unspecified {
+		accountArgs.CreateMode = pulumi.String(createModeStrings[spec.CreateMode])
+	}
+	if spec.Restore != nil {
+		restoreArgs := cosmosdb.AccountRestoreArgs{
+			SourceCosmosdbAccountId: pulumi.String(spec.Restore.SourceCosmosdbAccountId),
+			RestoreTimestampInUtc:   pulumi.String(spec.Restore.RestoreTimestampInUtc),
+		}
+		if len(spec.Restore.Databases) > 0 {
+			databaseArray := cosmosdb.AccountRestoreDatabaseArray{}
+			for _, database := range spec.Restore.Databases {
+				databaseArgs := cosmosdb.AccountRestoreDatabaseArgs{
+					Name: pulumi.String(database.Name),
+				}
+				if len(database.CollectionNames) > 0 {
+					databaseArgs.CollectionNames = pulumi.ToStringArray(database.CollectionNames)
+				}
+				databaseArray = append(databaseArray, databaseArgs)
+			}
+			restoreArgs.Databases = databaseArray
+		}
+		if len(spec.Restore.GremlinDatabases) > 0 {
+			gremlinArray := cosmosdb.AccountRestoreGremlinDatabaseArray{}
+			for _, gremlinDatabase := range spec.Restore.GremlinDatabases {
+				gremlinArgs := cosmosdb.AccountRestoreGremlinDatabaseArgs{
+					Name: pulumi.String(gremlinDatabase.Name),
+				}
+				if len(gremlinDatabase.GraphNames) > 0 {
+					gremlinArgs.GraphNames = pulumi.ToStringArray(gremlinDatabase.GraphNames)
+				}
+				gremlinArray = append(gremlinArray, gremlinArgs)
+			}
+			restoreArgs.GremlinDatabases = gremlinArray
+		}
+		if len(spec.Restore.TablesToRestore) > 0 {
+			restoreArgs.TablesToRestores = pulumi.ToStringArray(spec.Restore.TablesToRestore)
+		}
+		accountArgs.Restore = restoreArgs
+	}
+
+	createdAccount, err := cosmosdb.NewAccount(ctx,
+		spec.AccountName,
 		accountArgs,
 		pulumi.Provider(azureProvider))
 	if err != nil {
-		return errors.Wrapf(err, "failed to create Cosmos DB Account %s", spec.Name)
+		return errors.Wrapf(err, "failed to create cosmosdb account %s", spec.AccountName)
 	}
 
-	databaseIdMap := make(map[string]pulumi.StringOutput)
-
-	if kind == "GlobalDocumentDB" || kind == "" {
-		// SQL API: create sql_databases and containers
-		for _, db := range spec.GetSqlDatabases() {
-			dbArgs := &cosmosdb.SqlDatabaseArgs{
-				Name:              pulumi.String(db.Name),
-				AccountName:       account.Name,
-				ResourceGroupName: pulumi.String(locals.ResourceGroupName),
-			}
-			if db.Throughput != nil {
-				dbArgs.Throughput = pulumi.IntPtr(int(*db.Throughput))
-			}
-			if db.AutoscaleMaxThroughput != nil {
-				dbArgs.AutoscaleSettings = &cosmosdb.SqlDatabaseAutoscaleSettingsArgs{
-					MaxThroughput: pulumi.Int(int(*db.AutoscaleMaxThroughput)),
-				}
-			}
-
-			database, err := cosmosdb.NewSqlDatabase(ctx,
-				fmt.Sprintf("%s-%s", spec.Name, db.Name),
-				dbArgs,
-				pulumi.Provider(azureProvider),
-				pulumi.DependsOn([]pulumi.Resource{account}))
-			if err != nil {
-				return errors.Wrapf(err, "failed to create SQL database %s", db.Name)
-			}
-			databaseIdMap[db.Name] = database.ID().ToStringOutput()
-
-			for _, c := range db.GetContainers() {
-				pkKind := c.GetPartitionKeyKind()
-				if pkKind == "" {
-					pkKind = "Hash"
-				}
-				pkVersion := 1
-				if pkKind == "MultiHash" {
-					pkVersion = 2
-				}
-				containerArgs := &cosmosdb.SqlContainerArgs{
-					Name:                pulumi.String(c.Name),
-					AccountName:         account.Name,
-					ResourceGroupName:   pulumi.String(locals.ResourceGroupName),
-					DatabaseName:        database.Name,
-					PartitionKeyPaths:   pulumi.ToStringArray(c.PartitionKeyPaths),
-					PartitionKeyKind:    pulumi.String(pkKind),
-					PartitionKeyVersion: pulumi.Int(pkVersion),
-				}
-				if c.Throughput != nil {
-					containerArgs.Throughput = pulumi.IntPtr(int(*c.Throughput))
-				}
-				if c.AutoscaleMaxThroughput != nil {
-					containerArgs.AutoscaleSettings = &cosmosdb.SqlContainerAutoscaleSettingsArgs{
-						MaxThroughput: pulumi.Int(int(*c.AutoscaleMaxThroughput)),
-					}
-				}
-				if c.DefaultTtl != nil {
-					containerArgs.DefaultTtl = pulumi.IntPtr(int(*c.DefaultTtl))
-				}
-
-				_, err = cosmosdb.NewSqlContainer(ctx,
-					fmt.Sprintf("%s-%s-%s", spec.Name, db.Name, c.Name),
-					containerArgs,
-					pulumi.Provider(azureProvider),
-					pulumi.DependsOn([]pulumi.Resource{database}))
-				if err != nil {
-					return errors.Wrapf(err, "failed to create SQL container %s", c.Name)
-				}
-			}
+	// Export stack outputs. The keys and connection strings are the
+	// credential surface (secret-bearing); databases and containers are
+	// their own kinds, so no database ids are exported here.
+	ctx.Export(OpCosmosdbAccountId, createdAccount.ID())
+	ctx.Export(OpCosmosdbAccountName, createdAccount.Name)
+	ctx.Export(OpEndpoint, createdAccount.Endpoint)
+	ctx.Export(OpReadEndpoints, createdAccount.ReadEndpoints)
+	ctx.Export(OpWriteEndpoints, createdAccount.WriteEndpoints)
+	ctx.Export(OpPrimaryKey, createdAccount.PrimaryKey)
+	ctx.Export(OpSecondaryKey, createdAccount.SecondaryKey)
+	ctx.Export(OpPrimaryReadonlyKey, createdAccount.PrimaryReadonlyKey)
+	ctx.Export(OpSecondaryReadonlyKey, createdAccount.SecondaryReadonlyKey)
+	ctx.Export(OpPrimarySqlConnectionString, createdAccount.PrimarySqlConnectionString)
+	ctx.Export(OpSecondarySqlConnectionString, createdAccount.SecondarySqlConnectionString)
+	ctx.Export(OpPrimaryReadonlySqlConnectionString, createdAccount.PrimaryReadonlySqlConnectionString)
+	ctx.Export(OpSecondaryReadonlySqlConnectionString, createdAccount.SecondaryReadonlySqlConnectionString)
+	ctx.Export(OpPrimaryMongodbConnectionString, createdAccount.PrimaryMongodbConnectionString)
+	ctx.Export(OpSecondaryMongodbConnectionString, createdAccount.SecondaryMongodbConnectionString)
+	ctx.Export(OpPrimaryReadonlyMongodbConnectionString, createdAccount.PrimaryReadonlyMongodbConnectionString)
+	ctx.Export(OpSecondaryReadonlyMongodbConnectionString, createdAccount.SecondaryReadonlyMongodbConnectionString)
+	// The system-assigned principal id, empty when no identity (or a
+	// user-assigned-only identity) is requested.
+	ctx.Export(OpIdentityPrincipalId, createdAccount.Identity.ApplyT(func(identity *cosmosdb.AccountIdentity) string {
+		if identity == nil || identity.PrincipalId == nil {
+			return ""
 		}
-	} else if kind == "MongoDB" {
-		// MongoDB API: create mongo_databases and collections
-		for _, db := range spec.GetMongoDatabases() {
-			dbArgs := &cosmosdb.MongoDatabaseArgs{
-				Name:              pulumi.String(db.Name),
-				AccountName:       account.Name,
-				ResourceGroupName: pulumi.String(locals.ResourceGroupName),
-			}
-			if db.Throughput != nil {
-				dbArgs.Throughput = pulumi.IntPtr(int(*db.Throughput))
-			}
-			if db.AutoscaleMaxThroughput != nil {
-				dbArgs.AutoscaleSettings = &cosmosdb.MongoDatabaseAutoscaleSettingsArgs{
-					MaxThroughput: pulumi.Int(int(*db.AutoscaleMaxThroughput)),
-				}
-			}
-
-			database, err := cosmosdb.NewMongoDatabase(ctx,
-				fmt.Sprintf("%s-%s", spec.Name, db.Name),
-				dbArgs,
-				pulumi.Provider(azureProvider),
-				pulumi.DependsOn([]pulumi.Resource{account}))
-			if err != nil {
-				return errors.Wrapf(err, "failed to create MongoDB database %s", db.Name)
-			}
-			databaseIdMap[db.Name] = database.ID().ToStringOutput()
-
-			for _, col := range db.GetCollections() {
-				collectionArgs := &cosmosdb.MongoCollectionArgs{
-					Name:              pulumi.String(col.Name),
-					AccountName:       account.Name,
-					ResourceGroupName: pulumi.String(locals.ResourceGroupName),
-					DatabaseName:      database.Name,
-					ShardKey:          pulumi.String(col.ShardKey),
-				}
-				if col.Throughput != nil {
-					collectionArgs.Throughput = pulumi.IntPtr(int(*col.Throughput))
-				}
-				if col.AutoscaleMaxThroughput != nil {
-					collectionArgs.AutoscaleSettings = &cosmosdb.MongoCollectionAutoscaleSettingsArgs{
-						MaxThroughput: pulumi.Int(int(*col.AutoscaleMaxThroughput)),
-					}
-				}
-				if col.DefaultTtlSeconds != nil {
-					collectionArgs.DefaultTtlSeconds = pulumi.IntPtr(int(*col.DefaultTtlSeconds))
-				}
-				if len(col.GetIndexes()) > 0 {
-					indexArgs := make(cosmosdb.MongoCollectionIndexArray, 0, len(col.Indexes))
-					for _, idx := range col.Indexes {
-						indexArgs = append(indexArgs, &cosmosdb.MongoCollectionIndexArgs{
-							Keys:   pulumi.ToStringArray(idx.Keys),
-							Unique: pulumi.BoolPtr(idx.GetUnique()),
-						})
-					}
-					collectionArgs.Indices = indexArgs
-				}
-
-				_, err = cosmosdb.NewMongoCollection(ctx,
-					fmt.Sprintf("%s-%s-%s", spec.Name, db.Name, col.Name),
-					collectionArgs,
-					pulumi.Provider(azureProvider),
-					pulumi.DependsOn([]pulumi.Resource{database}))
-				if err != nil {
-					return errors.Wrapf(err, "failed to create MongoDB collection %s", col.Name)
-				}
-			}
-		}
-	}
-
-	// Export outputs
-	ctx.Export(OpAccountId, account.ID())
-	ctx.Export(OpAccountName, account.Name)
-	ctx.Export(OpEndpoint, account.Endpoint)
-	ctx.Export(OpPrimaryKey, account.PrimaryKey)
-	ctx.Export(OpPrimaryConnectionString, account.PrimarySqlConnectionString)
-	ctx.Export(OpPrimaryMongodbConnectionString, account.PrimaryMongodbConnectionString)
-
-	if len(databaseIdMap) > 0 {
-		dbIdMapOutput := pulumi.StringMap{}
-		for name, id := range databaseIdMap {
-			dbIdMapOutput[name] = id
-		}
-		ctx.Export(OpDatabaseIds, dbIdMapOutput)
-	}
+		return *identity.PrincipalId
+	}).(pulumi.StringOutput))
 
 	return nil
+}
+
+// publicNetworkAccessEnabled returns the spec value presence-guarded to
+// the proto default (true).
+func publicNetworkAccessEnabled(spec *azurecosmosdbaccountv1.AzureCosmosdbAccountSpec) bool {
+	if spec.PublicNetworkAccessEnabled == nil {
+		return true
+	}
+	return spec.GetPublicNetworkAccessEnabled()
+}
+
+// accessKeyMetadataWritesEnabled returns the spec value presence-guarded
+// to the proto default (true).
+func accessKeyMetadataWritesEnabled(spec *azurecosmosdbaccountv1.AzureCosmosdbAccountSpec) bool {
+	if spec.AccessKeyMetadataWritesEnabled == nil {
+		return true
+	}
+	return spec.GetAccessKeyMetadataWritesEnabled()
+}
+
+// localAuthenticationEnabled returns the spec value presence-guarded to
+// the proto default (true).
+func localAuthenticationEnabled(spec *azurecosmosdbaccountv1.AzureCosmosdbAccountSpec) bool {
+	if spec.LocalAuthenticationEnabled == nil {
+		return true
+	}
+	return spec.GetLocalAuthenticationEnabled()
 }

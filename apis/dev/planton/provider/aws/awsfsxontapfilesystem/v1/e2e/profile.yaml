@@ -1,0 +1,33 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsfsxontapfilesystem
+spec:
+  # An FSx for ONTAP file system under live E2E: two lanes. The minimal lane
+  # proves the implicit-default shape (SINGLE_AZ_2, one HA pair, 1024 GiB
+  # SSD, the 384 MB/s gen2 floor tier — deployment_type, storage_type, and
+  # ha_pairs exercised by omission) on the shared subnet + security-group
+  # fixtures. The multi-AZ lane proves the MULTI_AZ_2 depth surface: two
+  # subnets with a preferred active subnet, the floating endpoint IP range,
+  # user-provisioned disk IOPS, the fsxadmin password, backups with a pinned
+  # window, and a maintenance window. The prerequisite fixture additionally
+  # proves the first-generation whole-file-system throughput_capacity arm
+  # (SINGLE_AZ_1 + 128 MB/s — the cheapest creatable ONTAP shape).
+  # Excluded arms recorded here: route_table_ids (the shared subnet fixtures
+  # ride their VPC's main route table, whose ID the AwsSubnet output
+  # deliberately leaves empty — AWS defaults to the main table anyway),
+  # customer-managed KMS (covered structurally; the account fixture set has
+  # no KMS key fixture), and SINGLE_AZ_2 scale-out ha_pairs > 1 (multiplies
+  # the per-lane cost by the pair count for no additional module-arm
+  # coverage). Verification is DescribeFileSystems keyed on file_system_id,
+  # lifecycle-state-aware (DELETING counts as absent). Expected timings from
+  # AWS's documented provisioning: ~25-40 minutes per create, ~10 per
+  # delete, per engine lane.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision: FSx file systems are long-provisioning and
+    expensive, so the family stops at the offline gate (green tofu plan +
+    pulumi preview per engine). Artifacts are complete and the lanes stay
+    re-runnable.
+  timeout_minutes: 90

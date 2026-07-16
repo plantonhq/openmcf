@@ -28,27 +28,27 @@ Volumes are the atomic data containers. Each volume has its own:
 | `region` | Provider `region` | Required |
 | `storage_virtual_machine_id` | `storage_virtual_machine_id` | Required, ForceNew |
 | `name` | `name` | Required, ForceNew, 1-203 chars |
-| `size_in_megabytes` | `size_in_megabytes` | Minimum 20 |
-| `junction_path` | `junction_path` | Optional, must start with `/` |
+| `size_in_megabytes` | `size_in_megabytes` | Exactly one size arm; minimum 20 |
+| `size_in_bytes` | `size_in_bytes` | Exactly one size arm; byte-precise, required past 2 PiB (FlexGroup scales to ~20 PiB) |
+| `junction_path` | `junction_path` | Optional, must start with `/`, 1-255 chars |
 | `ontap_volume_type` | `ontap_volume_type` | RW or DP, ForceNew |
 | `volume_style` | `volume_style` | FLEXVOL or FLEXGROUP, ForceNew |
 | `security_style` | `security_style` | UNIX, NTFS, MIXED |
-| `snapshot_policy` | `snapshot_policy` | ONTAP policy name |
-| `storage_efficiency_enabled` | `storage_efficiency_enabled` | Boolean |
+| `snapshot_policy` | `snapshot_policy` | ONTAP policy name, 1-255 chars |
+| `storage_efficiency_enabled` | `storage_efficiency_enabled` | Tri-state boolean: true enables, false disables, unset keeps ONTAP's default |
 | `copy_tags_to_backups` | `copy_tags_to_backups` | Boolean |
-| `skip_final_backup` | `skip_final_backup` | Deletion behavior |
-| `bypass_snaplock_enterprise_retention` | `bypass_snaplock_enterprise_retention` | Deletion behavior |
+| `skip_final_backup` | `skip_final_backup` | Deletion behavior — apply BEFORE deleting |
+| `final_backup_tags` | `final_backup_tags` | Tags on the final backup; only when skip_final_backup is false |
+| `bypass_snaplock_enterprise_retention` | `bypass_snaplock_enterprise_retention` | Deletion behavior — apply BEFORE deleting |
 | `tiering_policy.*` | `tiering_policy {}` | Dynamic block |
 | `snaplock_configuration.*` | `snaplock_configuration {}` | Dynamic block |
-| `aggregate_configuration.*` | `aggregate_configuration {}` | Dynamic block |
+| `aggregate_configuration.*` | `aggregate_configuration {}` | Dynamic block; aggregates must match `aggr[0-9]{1,2}` |
 
 ## Deliberate Exclusions
 
 | Feature | Reason |
 |---|---|
-| `size_in_bytes` | Only needed for >2 PB volumes. `size_in_megabytes` covers 99.9% of use cases. |
-| `volume_type` | Always "ONTAP" in this context. Implicit from the component name. |
-| `final_backup_tags` | Deletion-time tag configuration for the final backup. Very niche. |
+| `volume_type` | The provider enum admits `ONTAP` and `OPENZFS`, but only `ONTAP` is valid for this resource — the value is implicit in the component and modeling it would be a decorative knob. |
 
 ## Volume Types
 

@@ -1,0 +1,96 @@
+params:
+  # ── Placement ───────────────────────────────────────────────────────────
+  - name: aws_region
+    description: >
+      AWS region for the pipeline, the build project, the artifact bucket,
+      and the image repository. Keep it the region your workloads deploy
+      in — cross-region image pulls bill transfer and add latency.
+    value: us-east-1
+
+  # ── Identity ────────────────────────────────────────────────────────────
+  - name: pipeline_name
+    description: >
+      Name prefix for every resource this chart creates (pipeline, build
+      project, roles, repository) and the name of the ECR repository your
+      buildspec pushes to. Lowercase letters, digits, and hyphens.
+    value: app
+
+  # ── Source ──────────────────────────────────────────────────────────────
+  - name: connection_arn
+    description: >
+      ARN of the CodeConnections (formerly CodeStar Connections) connection
+      that authorizes AWS to read your repository. Creating one is a
+      one-time console handshake per Git organization — AWS requires a human
+      to approve the app installation, so no chart can automate it. The
+      README walks through it; paste the resulting ARN here.
+    value: arn:aws:codeconnections:us-east-1:123456789012:connection/00000000-0000-0000-0000-000000000000
+
+  - name: repository_id
+    description: >
+      The repository the pipeline watches, as owner/name (e.g.
+      my-org/my-service). Must be reachable through the connection above.
+    value: my-org/my-service
+
+  - name: branch
+    description: >
+      The branch whose pushes trigger the pipeline. Trunk-based teams point
+      this at main; release-branch teams run one chart instance per release
+      line.
+    value: main
+
+  # ── Artifacts ───────────────────────────────────────────────────────────
+  - name: artifacts_bucket_name
+    description: >
+      Globally unique name for the S3 bucket that carries artifacts between
+      pipeline stages (source zip, build output). S3 names are global
+      across all AWS accounts, so prefix with your org.
+    value: my-org-app-pipeline-artifacts
+
+  # ── Build ───────────────────────────────────────────────────────────────
+  - name: build_compute_type
+    description: >
+      CodeBuild fleet size for each build. BUILD_GENERAL1_SMALL (2 vCPU,
+      3 GB) suits most Docker builds and bills the least per minute; step
+      up to MEDIUM (4 vCPU, 7 GB) or LARGE when image builds or test suites
+      become the bottleneck — build minutes are the pipeline's main cost.
+    value: BUILD_GENERAL1_SMALL
+
+  - name: build_image
+    description: >
+      The managed image the build runs in. AWS's Amazon Linux standard
+      image carries Docker, the AWS CLI, and every mainstream toolchain;
+      pin a newer standard:X.0 tag as AWS releases them.
+    value: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+
+  - name: buildspec_path
+    description: >
+      Path to the buildspec file inside your repository. Keeping the build
+      recipe in the repo (not in this chart) means build changes ride the
+      same review flow as code changes. The README ships a complete
+      copy-paste buildspec that builds a Docker image, pushes it to this
+      chart's ECR repository, and emits the deploy artifact.
+    value: buildspec.yml
+
+  # ── Deploy (optional) ───────────────────────────────────────────────────
+  - name: ecs_deploy_enabled
+    type: bool
+    description: >
+      Add a Deploy stage that rolls an ECS service to the freshly built
+      image (the fargate-web-service chart's service in the common case).
+      The build must emit imagedefinitions.json — the README's buildspec
+      does. Off by default: build-and-push alone is already a complete CI
+      pipeline; deployment being explicit is a posture many teams want.
+    value: false
+
+  - name: ecs_cluster_name
+    description: >
+      Name of the ECS cluster hosting the service to deploy. With the
+      fargate-web-service chart this is "<service_name>-cluster". Only used
+      when ecs_deploy_enabled is true.
+    value: web-cluster
+
+  - name: ecs_service_name
+    description: >
+      Name of the ECS service to roll. With the fargate-web-service chart
+      this is its service_name. Only used when ecs_deploy_enabled is true.
+    value: web

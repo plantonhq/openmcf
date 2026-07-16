@@ -24,7 +24,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayKapsuleCluster
 metadata:
   name: my-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -107,7 +107,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayKapsuleCluster
 metadata:
   name: dev-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -133,7 +133,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayKapsuleCluster
 metadata:
   name: prod-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -179,7 +179,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayKapsuleCluster
 metadata:
   name: ref-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

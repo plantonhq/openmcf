@@ -1,0 +1,13 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsElasticacheUser
+metadata:
+  name: <default-user-id>
+spec:
+  region: <aws-region>
+  engine: redis
+  # Every user group MUST include a user whose userName is exactly "default".
+  userName: default
+  # "off" rejects unauthenticated clients outright — the production default.
+  accessString: "off ~* +@all"
+  authenticationMode:
+    type: no-password-required

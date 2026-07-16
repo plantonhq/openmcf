@@ -10,12 +10,16 @@ order: 200
 presets:
   - slug: "01-ubuntu-ssh"
     rank: "01"
-    title: "Ubuntu 22.04 LTS with SSH Key Authentication"
-    excerpt: "This preset deploys an Ubuntu 22.04 LTS Gen2 VM with SSH key authentication, no public IP, boot diagnostics enabled, and a 30 GB Premium SSD OS disk. This is the standard configuration for secure..."
-  - slug: "02-windows-rdp"
+    title: "Ubuntu Server with SSH Keys"
+    excerpt: "This preset creates a zonal Ubuntu 24.04 LTS VM authenticated by SSH keys only, attached to a referenced `AzureNetworkInterface`, with managed boot diagnostics. It is the canonical Linux production..."
+  - slug: "02-windows-server"
     rank: "02"
-    title: "Windows Server 2022 with RDP Access"
-    excerpt: "This preset deploys a Windows Server 2022 Datacenter Gen2 VM with password authentication, a public IP for RDP access, boot diagnostics enabled, and a 128 GB Premium SSD OS disk. This configuration..."
+    title: "Windows Server with Trusted Launch"
+    excerpt: "This preset creates a zonal Windows Server 2022 VM with trusted launch (secure boot + vTPM), password authentication sourced from a secret reference, and Azure Hybrid Benefit licensing. The Windows..."
+  - slug: "03-spot-data-disk"
+    rank: "03"
+    title: "Spot Worker with a Persistent Data Disk"
+    excerpt: "This preset creates a spot (evictable, deeply discounted) Linux worker whose working data lives on a referenced `AzureManagedDisk` that survives eviction, with a system-assigned identity for..."
 ---
 
 # Virtual Machine Presets

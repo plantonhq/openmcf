@@ -33,10 +33,18 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackDnsZone
 metadata:
   name: my-zone
-  labels:
-    planton.dev/provisioner: pulumi
+  annotations:
+    planton.dev/stack.jobId: prod.OpenstackDnsZone.replica-zone
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackDnsZone.mail-zone
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
+    planton.dev/stack.jobId: dev.OpenstackDnsZone.app-zone
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
+    planton.dev/stack.jobId: dev.OpenstackDnsZone.example-zone
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackDnsZone.my-zone
     planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
+    planton.dev/provisioner: pulumi
 spec:
   domainName: example.com
   email: admin@example.com
@@ -92,10 +100,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackDnsZone
 metadata:
   name: example-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: dev.OpenstackDnsZone.example-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
 spec:
   domainName: example.com
   email: dns-admin@example.com
@@ -112,10 +118,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackDnsZone
 metadata:
   name: app-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: dev.OpenstackDnsZone.app-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
 spec:
   domainName: app.example.com
   email: ops@example.com
@@ -143,10 +147,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackDnsZone
 metadata:
   name: mail-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackDnsZone.mail-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
 spec:
   domainName: corp.example.com
   email: postmaster@corp.example.com
@@ -184,10 +186,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackDnsZone
 metadata:
   name: replica-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackDnsZone.replica-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
 spec:
   domainName: replicated.example.com
   description: Secondary zone replicated from upstream nameservers

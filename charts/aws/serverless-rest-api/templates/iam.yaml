@@ -1,0 +1,56 @@
+# The function's execution role — the ONLY identity the application code
+# gets. Everything the handler is allowed to touch is granted here, in one
+# auditable place, and nothing else in the account trusts it.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: "{{ values.api_name }}-fn-role"
+spec:
+  region: "{{ values.aws_region }}"
+  # Only the Lambda service can assume this role — a container or EC2
+  # instance presenting stolen credentials cannot borrow the API's
+  # permissions.
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: lambda.amazonaws.com
+        Action: sts:AssumeRole
+  managedPolicyArns:
+    # CloudWatch Logs write — create the log group/stream and put events.
+    # This is the baseline every Lambda needs; without it the function
+    # runs but its logs vanish.
+    - value: arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  # Table access is granted BY NAME, composed from the same rendered
+  # values the table resource itself uses — the policy and the table can
+  # never drift apart. An IAM policy document is plain JSON (it cannot
+  # carry references), which is why the ARN is assembled here instead of
+  # referencing the table's output. Item-level actions only: the handler
+  # can read and write data but cannot alter or delete the table itself.
+  inlinePolicies:
+    table-access:
+      Version: "2012-10-17"
+      Statement:
+        - Sid: TableCrud
+          Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:BatchGetItem
+            - dynamodb:Query
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:ConditionCheckItem
+          Resource:
+            - arn:aws:dynamodb:{{ values.aws_region }}:{{ values.aws_account_id }}:table/{{ values.api_name }}-table
+            # Queries against any secondary index you add later are
+            # pre-authorized — indexes are query shapes over the same
+            # data, not a separate trust boundary.
+            - arn:aws:dynamodb:{{ values.aws_region }}:{{ values.aws_account_id }}:table/{{ values.api_name }}-table/index/*
+        # Deliberately NO Scan: a handler that lists an entire table is
+        # almost always a bug (cost and latency grow with table size).
+        # Grant it explicitly on this role if a background job truly
+        # needs a full sweep.

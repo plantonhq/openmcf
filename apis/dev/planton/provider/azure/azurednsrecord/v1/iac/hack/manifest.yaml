@@ -1,13 +1,23 @@
+# The CAA payload deliberately exercises the record kind's riskiest
+# translation seam: the tag enum arrives as the proto value name (ISSUE)
+# and must map to Azure's lowercase wire vocabulary in both modules.
 apiVersion: azure.planton.dev/v1
 kind: AzureDnsRecord
 metadata:
-  name: test-dns-record
+  name: test-caa-record
 spec:
-  resource_group: test-resource-group
+  resource_group:
+    value: test-rg
   zone_name:
-    value: example.com
-  record_type: A
-  name: www
-  values:
-    - "192.0.2.1"
+    value: test-zone.example.com
+  name: "@"
   ttl_seconds: 300
+  caa:
+    - flags: 0
+      tag: ISSUE
+      value: letsencrypt.org
+    - flags: 0
+      tag: IODEF
+      value: mailto:security@example.com
+  tags:
+    team: platform

@@ -5,21 +5,33 @@ metadata:
 spec:
   region: us-west-2
   subnetIds:
-    - value: "<private-subnet-id-az1>"
-    - value: "<private-subnet-id-az2>"
+    - value: subnet-replace-with-private-az1
+    - value: subnet-replace-with-private-az2
   securityGroupIds:
-    - value: "<security-group-id>"
+    - value: sg-replace-with-database-sg
   engine: aurora-postgresql
-  engineVersion: "15.4"
-  databaseName: <database-name>
-  manageMasterUserPassword: true  # recommended_default from spec
-  username: master  # default from spec
-  storageEncrypted: true
-  deletionProtection: true
+  # Empty engineVersion would keep the AWS default; pinning is the
+  # production posture so upgrades are deliberate.
+  engineVersion: "16.4"
+  databaseName: appdb
+  masterUsername: dbadmin # AWS has no default master username -- pick one (avoid reserved names like rdsadmin)
+  manageMasterUserPassword: true # recommended_default -- AWS generates, stores, and rotates the password in Secrets Manager
+  storageEncrypted: true # recommended_default -- create-time-only, cannot be enabled later
   backupRetentionPeriod: 7
   skipFinalSnapshot: false
-  finalSnapshotIdentifier: <final-snapshot-name>
+  finalSnapshotIdentifier: my-aurora-serverless-v2-final
+  # Serverless v2 = provisioned engine mode + these bounds +
+  # db.serverless instances. minCapacity 0 enables automatic pause:
+  # compute cost drops to zero after 5 idle minutes (storage still
+  # billed), resumed on the next connection in ~15 seconds. Set
+  # minCapacity to 0.5+ for latency-sensitive production that must
+  # never pause.
   serverlessV2Scaling:
-    minCapacity: 0.5  # Minimum ACUs; scales to zero-ish for cost savings
-    maxCapacity: 16  # Maximum ACUs; adjust based on peak load
-  enableHttpEndpoint: true  # Data API for serverless access
+    minCapacity: 0
+    maxCapacity: 16
+  # SQL over HTTPS with IAM auth -- no persistent connections; the
+  # natural fit for Lambda callers.
+  enableHttpEndpoint: true
+  instances:
+    - name: writer
+      instanceClass: db.serverless

@@ -1,0 +1,26 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsCognitoUserPoolClient
+metadata:
+  name: test-web-app
+  org: test-org
+  env: dev
+  id: awscogclient-test-001
+spec:
+  region: us-west-2
+  userPoolId:
+    value: us-west-2_TestPool123
+  allowedOauthFlowsUserPoolClient: true
+  allowedOauthFlows:
+    - code
+  allowedOauthScopes:
+    - openid
+    - email
+    - profile
+  callbackUrls:
+    - http://localhost:3000/callback
+  logoutUrls:
+    - http://localhost:3000/logout
+  explicitAuthFlows:
+    - ALLOW_USER_SRP_AUTH
+    - ALLOW_REFRESH_TOKEN_AUTH
+  preventUserExistenceErrors: ENABLED

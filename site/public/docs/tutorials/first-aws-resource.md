@@ -37,7 +37,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3Bucket
 metadata:
   name: my-first-bucket
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
 spec:
   awsRegion: us-east-1
@@ -129,7 +129,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3Bucket
 metadata:
   name: my-first-bucket
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
 spec:
   awsRegion: us-east-1

@@ -8,7 +8,7 @@ componentName: "awsserverlesselasticache"
 
 # AWS Serverless ElastiCache
 
-Deploys an AWS ElastiCache Serverless cache with consumption-based pricing and automatic scaling of both compute (ECPU) and storage (GB). Supports Redis, Valkey, and Memcached engines with configurable scaling limits, VPC networking, encryption, snapshots, and Redis ACL authentication.
+Deploys an AWS ElastiCache Serverless cache with consumption-based pricing and automatic scaling of both compute (ECPU) and storage (GB). Supports Redis, Valkey, and Memcached engines with configurable scaling limits, VPC networking, dual-stack IP addressing, encryption, snapshot restore, and Redis ACL authentication.
 
 ## What Gets Created
 
@@ -27,7 +27,7 @@ When you deploy an AwsServerlessElasticache resource, Planton provisions:
 - **A VPC with subnets** where the serverless cache endpoints will be placed
 - **A security group** allowing inbound traffic on the cache port (default 6379 for Redis/Valkey, 11211 for Memcached)
 - **A KMS key** if using customer-managed at-rest encryption
-- **A Redis ACL user group** if using fine-grained access control (Redis/Valkey only)
+- **A Redis ACL user group** (`AwsElasticacheUserGroup`) if using fine-grained access control — compose via `AwsElasticacheUser` → `AwsElasticacheUserGroup` → `userGroupId`
 
 ## Quick Start
 
@@ -38,7 +38,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsServerlessElasticache
 metadata:
   name: my-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -82,10 +82,12 @@ This creates a Redis Serverless cache with AWS-managed scaling defaults, placed 
 | `ecpuMin` | `int` | AWS default | Minimum ElastiCache Processing Units per second. Range: 1000–15000000. Must not exceed `ecpuMax`. |
 | `subnetIds` | `StringValueOrRef[]` | `[]` | Subnet IDs for the cache's VPC endpoints. **ForceNew** — changing this destroys and recreates the cache. Can reference `AwsVpc` via `valueFrom`. |
 | `securityGroupIds` | `StringValueOrRef[]` | `[]` | Security group IDs to attach to the cache endpoint. Can reference `AwsSecurityGroup` via `valueFrom`. |
+| `networkType` | `string` | `ipv4` | IP addressing: `ipv4`, `ipv6`, `dual_stack`. **ForceNew**. Dual-stack requires subnets with both IPv4 and IPv6 CIDRs. |
 | `kmsKeyId` | `StringValueOrRef` | AWS-managed key | Customer-managed KMS key ARN for at-rest encryption. **ForceNew** — changing this destroys and recreates the cache. Can reference `AwsKmsKey` via `valueFrom`. |
 | `dailySnapshotTime` | `string` | — | Daily automatic snapshot time in UTC, format `HH:mm` (e.g., `05:00`). Redis/Valkey only. |
 | `snapshotRetentionLimit` | `int` | `0` | Number of days to retain automatic snapshots. Range: 0–35. 0 disables snapshots. Redis/Valkey only. |
-| `userGroupId` | `string` | — | Redis ACL user group ID for fine-grained access control. Redis/Valkey only. |
+| `snapshotArnsToRestore` | `string[]` | `[]` | ARNs of existing ElastiCache snapshots to seed from. Create-time only. Redis/Valkey only. |
+| `userGroupId` | `StringValueOrRef` | — | Redis ACL user group via `AwsElasticacheUserGroup`. Exactly one group. Redis/Valkey only. |
 
 ## Examples
 
@@ -98,7 +100,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsServerlessElasticache
 metadata:
   name: session-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -128,7 +130,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsServerlessElasticache
 metadata:
   name: prod-kv-store
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -151,7 +153,11 @@ spec:
   kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/abcd-1234-efgh-5678
   dailySnapshotTime: "05:00"
   snapshotRetentionLimit: 7
-  userGroupId: my-redis-acl-group
+  userGroupId:
+    valueFrom:
+      kind: AwsElasticacheUserGroup
+      name: prod-redis-group
+      fieldPath: status.outputs.user_group_id
 ```
 
 ### Memcached for Volatile Caching
@@ -163,7 +169,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsServerlessElasticache
 metadata:
   name: html-fragment-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -191,7 +197,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsServerlessElasticache
 metadata:
   name: ref-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -242,3 +248,5 @@ After deployment, the following outputs are available in `status.outputs`:
 - [AwsVpc](/docs/catalog/aws/vpc) — provides the subnets for cache endpoint placement
 - [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls network-level access to the cache endpoint
 - [AwsKmsKey](/docs/catalog/aws/kms-key) — provides the customer-managed encryption key for at-rest encryption
+- [AwsElasticacheUser](/docs/catalog/aws/elasticache-user) — RBAC identity referenced via user groups
+- [AwsElasticacheUserGroup](/docs/catalog/aws/elasticache-user-group) — collects users; referenced in `userGroupId`

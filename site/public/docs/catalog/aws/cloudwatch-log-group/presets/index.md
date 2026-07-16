@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Preset: Infrequent Access Long Retention"
     excerpt: "**Use case:** High-volume logs with long retention at reduced cost."
+  - slug: "04-error-metric-filter"
+    rank: "04"
+    title: "Preset: Error-Count Metric Filter"
+    excerpt: "**Use case:** Alarm on errors that only exist in application logs."
 ---
 
 # CloudWatch Log Group Presets

@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awseksfargateprofile
+spec:
+  # An EKS Fargate profile under live E2E: deploy ->
+  # DescribeFargateProfile verify -> destroy -> verify-destroyed on both
+  # provisioners. Profile creation takes a few minutes (AWS serializes
+  # profile operations per cluster), and every run rides the full
+  # VPC -> subnets -> roles -> cluster prerequisite chain (~15 minutes to
+  # stand up, ~10 to tear down), so the timeout is sized for the chain.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 60

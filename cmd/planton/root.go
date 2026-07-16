@@ -38,6 +38,7 @@ func init() {
 		root.Chart,
 		root.Downgrade,
 		root.E2E,
+		root.Explain,
 		root.Upgrade,
 		root.Version,
 	)

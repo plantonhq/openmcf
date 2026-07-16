@@ -1,0 +1,3 @@
+name: awsplantonrunner-pulumi-project
+runtime:
+  name: go

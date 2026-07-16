@@ -29,8 +29,6 @@ const (
 // deployment within a Kubernetes environment. It includes container specifications to control resource allocation.
 type KubernetesPerconaMongoOperatorSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -69,13 +67,6 @@ func (x *KubernetesPerconaMongoOperatorSpec) ProtoReflect() protoreflect.Message
 // Deprecated: Use KubernetesPerconaMongoOperatorSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesPerconaMongoOperatorSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesperconamongooperator_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesPerconaMongoOperatorSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesPerconaMongoOperatorSpec) GetNamespace() *v1.StringValueOrRef {
@@ -150,9 +141,8 @@ var File_dev_planton_provider_kubernetes_kubernetesperconamongooperator_v1_spec_
 
 const file_dev_planton_provider_kubernetes_kubernetesperconamongooperator_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ldev/planton/provider/kubernetes/kubernetesperconamongooperator/v1/spec.proto\x12Adev.planton.provider.kubernetes.kubernetesperconamongooperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb5\x03\n" +
-	"\"KubernetesPerconaMongoOperatorSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Ldev/planton/provider/kubernetes/kubernetesperconamongooperator/v1/spec.proto\x12Adev.planton.provider.kubernetes.kubernetesperconamongooperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd2\x02\n" +
+	"\"KubernetesPerconaMongoOperatorSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x94\x01\n" +
 	"\tcontainer\x18\x04 \x01(\v2n.dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\"\xa4\x01\n" +
@@ -179,20 +169,18 @@ var file_dev_planton_provider_kubernetes_kubernetesperconamongooperator_v1_spec_
 var file_dev_planton_provider_kubernetes_kubernetesperconamongooperator_v1_spec_proto_goTypes = []any{
 	(*KubernetesPerconaMongoOperatorSpec)(nil),          // 0: dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpec
 	(*KubernetesPerconaMongoOperatorSpecContainer)(nil), // 1: dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpecContainer
-	(*kubernetes.KubernetesClusterSelector)(nil),        // 2: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                         // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),               // 4: dev.planton.provider.kubernetes.ContainerResources
+	(*v1.StringValueOrRef)(nil),                         // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),               // 3: dev.planton.provider.kubernetes.ContainerResources
 }
 var file_dev_planton_provider_kubernetes_kubernetesperconamongooperator_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	3, // 1: dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpecContainer
-	4, // 3: dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	2, // 0: dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpecContainer
+	3, // 2: dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesperconamongooperator_v1_spec_proto_init() }

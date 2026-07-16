@@ -40,30 +40,31 @@ type AwsFsxOntapFileSystemStackOutputs struct {
 	// The Amazon Resource Name of the file system. Used in IAM policies for
 	// resource-level permissions.
 	FileSystemArn string `protobuf:"bytes,2,opt,name=file_system_arn,json=fileSystemArn,proto3" json:"file_system_arn,omitempty"`
-	// The DNS name for the file system (e.g.,
-	// "fs-0123456789abcdef0.fsx.us-east-1.amazonaws.com").
-	DnsName string `protobuf:"bytes,3,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
 	// The management endpoint DNS name. Used for SSH (ONTAP CLI) and REST API
 	// access to the file system. Connect via: ssh fsxadmin@<management_dns_name>
-	ManagementDnsName string `protobuf:"bytes,4,opt,name=management_dns_name,json=managementDnsName,proto3" json:"management_dns_name,omitempty"`
+	//
+	// Data access (NFS/SMB/iSCSI) endpoints live on the SVM — see
+	// AwsFsxOntapStorageVirtualMachine outputs. An ONTAP file system has no
+	// file-system-level data DNS name.
+	ManagementDnsName string `protobuf:"bytes,3,opt,name=management_dns_name,json=managementDnsName,proto3" json:"management_dns_name,omitempty"`
 	// The management endpoint IP addresses. Alternative to DNS for direct IP
 	// access to the ONTAP management interface.
-	ManagementIpAddresses []string `protobuf:"bytes,5,rep,name=management_ip_addresses,json=managementIpAddresses,proto3" json:"management_ip_addresses,omitempty"`
+	ManagementIpAddresses []string `protobuf:"bytes,4,rep,name=management_ip_addresses,json=managementIpAddresses,proto3" json:"management_ip_addresses,omitempty"`
 	// The intercluster endpoint DNS name. Used for NetApp SnapMirror replication
 	// between FSx for ONTAP file systems (same or cross-region).
-	InterclusterDnsName string `protobuf:"bytes,6,opt,name=intercluster_dns_name,json=interclusterDnsName,proto3" json:"intercluster_dns_name,omitempty"`
+	InterclusterDnsName string `protobuf:"bytes,5,opt,name=intercluster_dns_name,json=interclusterDnsName,proto3" json:"intercluster_dns_name,omitempty"`
 	// The intercluster endpoint IP addresses. Used for SnapMirror peering when
 	// DNS resolution is not available.
-	InterclusterIpAddresses []string `protobuf:"bytes,7,rep,name=intercluster_ip_addresses,json=interclusterIpAddresses,proto3" json:"intercluster_ip_addresses,omitempty"`
+	InterclusterIpAddresses []string `protobuf:"bytes,6,rep,name=intercluster_ip_addresses,json=interclusterIpAddresses,proto3" json:"intercluster_ip_addresses,omitempty"`
 	// The network interface IDs created for the file system, in order. Single-AZ
 	// creates 1 ENI per HA pair; multi-AZ creates 2 ENIs. Useful for security
 	// group debugging and network troubleshooting.
-	NetworkInterfaceIds []string `protobuf:"bytes,8,rep,name=network_interface_ids,json=networkInterfaceIds,proto3" json:"network_interface_ids,omitempty"`
+	NetworkInterfaceIds []string `protobuf:"bytes,7,rep,name=network_interface_ids,json=networkInterfaceIds,proto3" json:"network_interface_ids,omitempty"`
 	// The VPC ID in which the file system was created. Computed from the subnets.
 	// Useful for constructing security group rules and verifying network placement.
-	VpcId string `protobuf:"bytes,9,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
+	VpcId string `protobuf:"bytes,8,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
 	// The AWS account ID of the file system owner.
-	OwnerId       string `protobuf:"bytes,10,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	OwnerId       string `protobuf:"bytes,9,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -108,13 +109,6 @@ func (x *AwsFsxOntapFileSystemStackOutputs) GetFileSystemId() string {
 func (x *AwsFsxOntapFileSystemStackOutputs) GetFileSystemArn() string {
 	if x != nil {
 		return x.FileSystemArn
-	}
-	return ""
-}
-
-func (x *AwsFsxOntapFileSystemStackOutputs) GetDnsName() string {
-	if x != nil {
-		return x.DnsName
 	}
 	return ""
 }
@@ -172,19 +166,17 @@ var File_dev_planton_provider_aws_awsfsxontapfilesystem_v1_stack_outputs_proto p
 
 const file_dev_planton_provider_aws_awsfsxontapfilesystem_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/aws/awsfsxontapfilesystem/v1/stack_outputs.proto\x121dev.planton.provider.aws.awsfsxontapfilesystem.v1\"\xca\x03\n" +
+	"Edev/planton/provider/aws/awsfsxontapfilesystem/v1/stack_outputs.proto\x121dev.planton.provider.aws.awsfsxontapfilesystem.v1\"\xaf\x03\n" +
 	"!AwsFsxOntapFileSystemStackOutputs\x12$\n" +
 	"\x0efile_system_id\x18\x01 \x01(\tR\ffileSystemId\x12&\n" +
-	"\x0ffile_system_arn\x18\x02 \x01(\tR\rfileSystemArn\x12\x19\n" +
-	"\bdns_name\x18\x03 \x01(\tR\adnsName\x12.\n" +
-	"\x13management_dns_name\x18\x04 \x01(\tR\x11managementDnsName\x126\n" +
-	"\x17management_ip_addresses\x18\x05 \x03(\tR\x15managementIpAddresses\x122\n" +
-	"\x15intercluster_dns_name\x18\x06 \x01(\tR\x13interclusterDnsName\x12:\n" +
-	"\x19intercluster_ip_addresses\x18\a \x03(\tR\x17interclusterIpAddresses\x122\n" +
-	"\x15network_interface_ids\x18\b \x03(\tR\x13networkInterfaceIds\x12\x15\n" +
-	"\x06vpc_id\x18\t \x01(\tR\x05vpcId\x12\x19\n" +
-	"\bowner_id\x18\n" +
-	" \x01(\tR\aownerIdB\xa2\x03\n" +
+	"\x0ffile_system_arn\x18\x02 \x01(\tR\rfileSystemArn\x12.\n" +
+	"\x13management_dns_name\x18\x03 \x01(\tR\x11managementDnsName\x126\n" +
+	"\x17management_ip_addresses\x18\x04 \x03(\tR\x15managementIpAddresses\x122\n" +
+	"\x15intercluster_dns_name\x18\x05 \x01(\tR\x13interclusterDnsName\x12:\n" +
+	"\x19intercluster_ip_addresses\x18\x06 \x03(\tR\x17interclusterIpAddresses\x122\n" +
+	"\x15network_interface_ids\x18\a \x03(\tR\x13networkInterfaceIds\x12\x15\n" +
+	"\x06vpc_id\x18\b \x01(\tR\x05vpcId\x12\x19\n" +
+	"\bowner_id\x18\t \x01(\tR\aownerIdB\xa2\x03\n" +
 	"5com.dev.planton.provider.aws.awsfsxontapfilesystem.v1B\x11StackOutputsProtoP\x01Zkgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxontapfilesystem/v1;awsfsxontapfilesystemv1\xa2\x02\x05DPPAA\xaa\x021Dev.Planton.Provider.Aws.Awsfsxontapfilesystem.V1\xca\x021Dev\\Planton\\Provider\\Aws\\Awsfsxontapfilesystem\\V1\xe2\x02=Dev\\Planton\\Provider\\Aws\\Awsfsxontapfilesystem\\V1\\GPBMetadata\xea\x026Dev::Planton::Provider::Aws::Awsfsxontapfilesystem::V1b\x06proto3"
 
 var (

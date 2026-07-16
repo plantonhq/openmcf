@@ -1,0 +1,30 @@
+# Minimal AzureContainerAppCustomDomain scenario: a managed-certificate
+# flow binding (no certificate fields) on the fixture app (registry
+# prerequisite; its environment and resource group chain transitively).
+#
+# READY-TO-RUN, NOT RUNNABLE AS-IS: Azure validates the asuid TXT record
+# against PUBLIC DNS while creating the binding, and the test tenant
+# owns no registrar-delegated domain (see this component's E2E profile).
+# To run: replace domain_name with a hostname under a real domain
+# delegated to Azure DNS, publish the asuid.{domain_name} TXT record
+# (the app's custom_domain_verification_id output) and the CNAME to the
+# app's ingress_fqdn output, then run the lane unchanged.
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppCustomDomain
+metadata:
+  name: planton-oss-e2e-azurecadom-smoke
+  id: planton-oss-e2e-azurecadom-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecontainerappcustomdomain
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  domainName: app.e2e.planton.test
+  containerAppId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-ca

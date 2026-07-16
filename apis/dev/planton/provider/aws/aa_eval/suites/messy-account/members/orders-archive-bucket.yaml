@@ -1,0 +1,24 @@
+# The production archive bucket. S3's import recipe derives the import id
+# from metadata.name, so the name-derivability rule applies here exactly as
+# in the staples suite -- amid the messier account. The name carries a
+# planton-eval suffix purely because bucket names are GLOBAL: a realistic
+# short name like "orders-archive" could collide with any AWS customer on
+# earth. forceDestroy is a declared config-only attribute (excluded from
+# the spec axis) and lets teardown remove a non-empty bucket cleanly.
+apiVersion: aws.planton.dev/v1
+kind: AwsS3Bucket
+metadata:
+  name: orders-archive-planton-eval
+  id: orders-archive-planton-eval
+  org: planton-oss
+  env: prod
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3bucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  forceDestroy: true

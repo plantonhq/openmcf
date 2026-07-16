@@ -1,17 +1,16 @@
 # AzureContainerApp Terraform Module
 
-This directory contains the Terraform IaC implementation for the `AzureContainerApp` component.
+The Terraform/OpenTofu implementation of the `AzureContainerApp` component.
 
 ## Structure
 
 ```
 tf/
-├── main.tf          # Container App resource definition with all dynamic blocks
+├── main.tf          # The container app (template, ingress, secrets, registries, dapr, identity)
 ├── variables.tf     # Input variables (metadata + spec)
-├── outputs.tf       # Output values
-├── locals.tf        # Local computations (tags)
-├── provider.tf      # Azure provider configuration
-└── README.md        # This file
+├── outputs.tf       # Stack outputs (custom_domain_verification_id is sensitive)
+├── locals.tf        # Tag merge + enum wire-value maps
+└── provider.tf      # Empty azurerm provider (credentials injected as ARM_* env)
 ```
 
 ## Resources Created
@@ -20,99 +19,16 @@ tf/
 |----------|------|-----------|
 | Container App | `azurerm_container_app` | Always |
 
-## Usage
+## Behavior Notes
 
-```hcl
-module "container_app" {
-  source = "./path/to/module"
+- Enum vocabularies (revision mode, probe/ingress transports, mTLS modes, restriction actions, volume storage types, Dapr protocol, identity types) map to ARM wire values in `locals.tf`; the mTLS vocabulary is lowercase on the wire (`accept`/`require`/`ignore`).
+- Per-probe-type initial-delay defaults (1 liveness, 0 readiness/startup) are applied with `coalesce`, matching azurerm's own schema defaults; the other scaler/replica dials resolve in `variables.tf`.
+- `custom_domain_verification_id` carries `sensitive = true` -- the provider marks the attribute Sensitive and OpenTofu rejects the configuration at plan time without the flag.
+- User `spec.tags` merge over the metadata-derived tags; user tags win on key collision.
 
-  metadata = {
-    name = "my-app"
-    org  = "mycompany"
-    env  = "production"
-  }
+## Validation
 
-  spec = {
-    resource_group               = "my-rg"
-    name                         = "my-web-app"
-    container_app_environment_id = "/subscriptions/.../managedEnvironments/my-env"
-    revision_mode                = "Single"
-
-    containers = [
-      {
-        name   = "web"
-        image  = "mcr.microsoft.com/k8se/quickstart:latest"
-        cpu    = 0.5
-        memory = "1Gi"
-
-        env = [
-          { name = "APP_ENV", value = "production" },
-          { name = "DB_PASSWORD", secret_name = "db-password" }
-        ]
-
-        liveness_probe = {
-          transport = "HTTP"
-          port      = 8080
-          path      = "/healthz"
-        }
-
-        readiness_probe = {
-          transport = "HTTP"
-          port      = 8080
-          path      = "/ready"
-        }
-      }
-    ]
-
-    min_replicas = 1
-    max_replicas = 10
-
-    http_scale_rules = [
-      {
-        name                = "http-rule"
-        concurrent_requests = "100"
-      }
-    ]
-
-    secrets = [
-      { name = "db-password", value = "supersecret" }
-    ]
-
-    ingress = {
-      external_enabled = true
-      target_port      = 8080
-
-      traffic_weight = [
-        {
-          latest_revision = true
-          percentage      = 100
-        }
-      ]
-
-      cors_policy = {
-        allowed_origins = ["https://example.com"]
-        allowed_methods = ["GET", "POST"]
-      }
-    }
-
-    dapr = {
-      app_id   = "my-web-app"
-      app_port = 8080
-    }
-
-    identity = {
-      type = "SystemAssigned"
-    }
-  }
-}
+```bash
+tofu init -backend=false && tofu validate
+planton tofu plan --manifest ../hack/manifest.yaml --module-dir .
 ```
-
-## Outputs
-
-| Output | Description |
-|--------|-------------|
-| `container_app_id` | ARM resource ID of the Container App |
-| `latest_revision_name` | Name of the latest Container Revision |
-| `latest_revision_fqdn` | FQDN of the latest Container Revision |
-| `outbound_ip_addresses` | Outbound IP addresses of the Container App |
-| `ingress_fqdn` | Ingress FQDN (empty string if ingress is not configured) |

@@ -1,34 +1,29 @@
 locals {
-  # Extract VNet name from the ARM resource ID.
-  # ARM ID format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name}
-  vnet_id_parts = split("/", var.spec.vnet_id)
-  vnet_name     = element(local.vnet_id_parts, length(local.vnet_id_parts) - 1)
+  # The subnet is an ARM child of the virtual network: the network's ARM ID
+  # (/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name})
+  # carries the network name and resource group, and the module derives both
+  # rather than modeling redundant fields that could contradict the
+  # referenced network. regex() fails the plan loudly on a malformed ID --
+  # better than sending a half-parsed request to ARM.
+  virtual_network_id_parts = regex(
+    "(?i)/subscriptions/[^/]+/resourceGroups/(?P<resource_group>[^/]+)/providers/Microsoft\\.Network/virtualNetworks/(?P<network_name>[^/]+)",
+    var.spec.virtual_network_id
+  )
+  resource_group_name  = local.virtual_network_id_parts.resource_group
+  virtual_network_name = local.virtual_network_id_parts.network_name
 
-  # Derive a stable resource ID
-  resource_id = (
-    var.metadata.id != null && var.metadata.id != ""
-    ? var.metadata.id
-    : var.metadata.name
+  # Map the spec enum's name string to ARM's PrivateEndpointNetworkPolicies
+  # value. null lets Azure apply its default (Disabled); only an explicit
+  # mode is ever sent, so an unspecified spec and Azure's default deploy
+  # identically on both engines.
+  private_endpoint_network_policies = (
+    var.spec.private_endpoint_network_policies == "ENABLED" ? "Enabled" :
+    var.spec.private_endpoint_network_policies == "NETWORK_SECURITY_GROUP_ENABLED" ? "NetworkSecurityGroupEnabled" :
+    var.spec.private_endpoint_network_policies == "ROUTE_TABLE_ENABLED" ? "RouteTableEnabled" : null
   )
 
-  # Base tags for Azure resources
-  base_tags = {
-    "resource"      = "true"
-    "resource_id"   = local.resource_id
-    "resource_kind" = "azure_subnet"
-    "resource_name" = var.metadata.name
-  }
-
-  # Organization tag only if var.metadata.org is non-empty
-  org_tag = (
-    var.metadata.org != null && var.metadata.org != ""
-  ) ? { "organization" = var.metadata.org } : {}
-
-  # Environment tag only if var.metadata.env is non-empty
-  env_tag = (
-    var.metadata.env != null && var.metadata.env != ""
-  ) ? { "environment" = var.metadata.env } : {}
-
-  # Merge base, org, and environment tags
-  final_tags = merge(local.base_tags, local.org_tag, local.env_tag)
+  # Map the spec enum's name string to ARM's SharingScope value. ARM only
+  # accepts it alongside disabled default outbound access (spec-level
+  # validation enforces the pairing).
+  sharing_scope = var.spec.sharing_scope == "TENANT" ? "Tenant" : null
 }

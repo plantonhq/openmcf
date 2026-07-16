@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurecosmosdbmongodatabase.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureCosmosdbMongoDatabaseSpec** defines the configuration for
+// creating a MongoDB API database inside an Azure Cosmos DB account: the
+// namespace collections live in and the boundary for SHARED throughput.
+//
+// Databases are many-per-account with independent lifecycles, which is
+// why they are a first-class kind referencing the account rather than a
+// list folded into the account's spec. The parent is fixed at creation:
+// a database cannot move between accounts.
+//
+// **Throughput model**: a database may provision throughput (fixed RU/s
+// or autoscale) that all its collections SHARE, or provision nothing and
+// let each collection bring its own dedicated throughput. On serverless
+// accounts (ENABLE_SERVERLESS capability) neither field may be set.
+message AzureCosmosdbMongoDatabaseSpec {
+  // The Cosmos DB account the database lives in, by ARM ID. References
+  // an AzureCosmosdbAccount's cosmosdb_account_id output so the account
+  // and its databases compose in one manifest set. The account must be a
+  // MONGO_DB-kind account with the ENABLE_MONGO capability. Fixed at
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cosmosdb_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureCosmosdbAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cosmosdb_account_id"
+  ];
+
+  // The database's name -- unique within the account, 1-255 characters
+  // (Azure's only constraint on Cosmos entity names). Changing the name
+  // replaces the database AND everything in it.
+  string database_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // Fixed provisioned throughput in RU/s, SHARED by every collection in
+  // the database that does not bring its own. Minimum 400, in increments
+  // of 100. Mutually exclusive with `autoscale_max_throughput`; leave
+  // both unset for serverless accounts or when every collection
+  // provisions its own throughput.
+  optional int32 throughput = 3 [
+    (buf.validate.field).int32.gte = 400,
+    (buf.validate.field).cel = {
+      id: "cosmosdb_mongo_db_throughput_increment"
+      message: "throughput must be set in increments of 100 RU/s"
+      expression: "this % 100 == 0"
+    }
+  ];
+
+  // Autoscale ceiling in RU/s: Azure scales the database's shared
+  // throughput between 10% of this value and this value. Minimum 1000,
+  // in increments of 1000. Mutually exclusive with `throughput`.
+  optional int32 autoscale_max_throughput = 4 [
+    (buf.validate.field).int32.gte = 1000,
+    (buf.validate.field).cel = {
+      id: "cosmosdb_mongo_db_autoscale_increment"
+      message: "autoscale_max_throughput must be set in increments of 1000 RU/s"
+      expression: "this % 1000 == 0"
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "cosmosdb_mongo_db_throughput_xor"
+    message: "throughput and autoscale_max_throughput are mutually exclusive"
+    expression: "!(has(this.throughput) && has(this.autoscale_max_throughput))"
+  };
+}

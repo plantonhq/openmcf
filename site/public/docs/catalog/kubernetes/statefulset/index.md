@@ -45,7 +45,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStatefulSet
 metadata:
   name: my-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -91,8 +91,6 @@ This creates a single-replica PostgreSQL StatefulSet with a headless service, a 
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `container.app.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation. |
 | `container.app.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation. |
@@ -135,7 +133,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStatefulSet
 metadata:
   name: postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -188,7 +186,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStatefulSet
 metadata:
   name: redis-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -278,7 +276,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStatefulSet
 metadata:
   name: event-store
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

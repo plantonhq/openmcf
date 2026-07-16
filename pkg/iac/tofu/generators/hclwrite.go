@@ -55,7 +55,7 @@ func WriteMapToHCL(buf *bytes.Buffer, data map[string]interface{}, indentLevel i
 			buf.WriteString(fmt.Sprintf("%s]\n", indent))
 
 		case string:
-			buf.WriteString(fmt.Sprintf("%s%s = %q\n", indent, formattedKey, typedVal))
+			buf.WriteString(fmt.Sprintf("%s%s = %s\n", indent, formattedKey, quoteHCLString(typedVal)))
 
 		case bool:
 			buf.WriteString(fmt.Sprintf("%s%s = %t\n", indent, formattedKey, typedVal))
@@ -82,7 +82,7 @@ func writeArrayToHCL(buf *bytes.Buffer, arr []interface{}, indentLevel int) erro
 	for _, elem := range arr {
 		switch typedElem := elem.(type) {
 		case string:
-			buf.WriteString(fmt.Sprintf("%s%q,\n", indent, typedElem))
+			buf.WriteString(fmt.Sprintf("%s%s,\n", indent, quoteHCLString(typedElem)))
 
 		case bool:
 			buf.WriteString(fmt.Sprintf("%s%t,\n", indent, typedElem))
@@ -123,4 +123,20 @@ func formatKey(key string, indentLevel int) string {
 		return key
 	}
 	return fmt.Sprintf("%q", key)
+}
+
+// quoteHCLString renders a string value as an HCL quoted literal. Unlike a
+// plain Go %q, it escapes HCL's template introducers ("${" and "%{") so user
+// content that contains them -- IAM policy condition variables like
+// ${aws:ResourceAccount}, shell snippets in user data, and similar -- arrives
+// in Terraform as the literal characters instead of being parsed as a template
+// interpolation (which fails `tofu init` on anything that is not a valid HCL
+// expression). HCL's own escape for a literal "${" is "$${" (and "%%{" for
+// "%{"); JSON-style escapes for quotes/backslashes/control characters come
+// from %q first.
+func quoteHCLString(value string) string {
+	quoted := fmt.Sprintf("%q", value)
+	quoted = strings.ReplaceAll(quoted, "${", "$${")
+	quoted = strings.ReplaceAll(quoted, "%{", "%%{")
+	return quoted
 }

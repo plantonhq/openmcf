@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbatchjobdefinition
+spec:
+  # A Batch job definition under live E2E: registration-only (no compute is
+  # ever provisioned to register a definition), so the lane is a
+  # dependency-free leaf. The EC2 scenario exercises the rich container
+  # surface with no IAM role requirement: parameterized command,
+  # environment, ulimits, Linux parameters, retry discrimination
+  # (RETRY on Spot-reclaim status reasons vs EXIT on real failures),
+  # timeout, and fair-share scheduling priority. Deregistration flips the
+  # revision to INACTIVE (Batch never hard-deletes job definitions), so
+  # verify-absent asserts "no ACTIVE revision". Deliberately not in the
+  # live lane: the Fargate arm (needs an execution-role fixture; the
+  # Fargate-only fields are proven by CEL spec tests and the serializer
+  # unit tests) and secrets/EFS volumes (need Secrets Manager / EFS
+  # fixtures; serialization locked by the container-properties unit tests).
+  # Live dual-engine run 2026-07-08: Terraform 36s; both lanes green (the
+  # combined scheduling-policy + job-definition four-lane run took 2m01s).
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

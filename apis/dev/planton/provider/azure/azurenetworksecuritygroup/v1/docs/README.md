@@ -37,7 +37,7 @@ Each rule matches traffic based on:
 | Source Port | Source port/range | `*`, `1024-65535` |
 | Destination IP | Destination address/CIDR/tag | `10.0.2.0/24`, `Internet` |
 | Destination Port | Destination port/range | `443`, `80`, `22` |
-| Protocol | Transport protocol | `Tcp`, `Udp`, `Icmp`, `*` |
+| Protocol | Transport protocol | `TCP`, `UDP`, `ICMP`, `AH`, `ESP`, `ANY` |
 
 ### Implicit Default Rules
 
@@ -86,8 +86,8 @@ The AzureRM Terraform provider offers two approaches for NSG rules:
 2. **Separate rules** -- `azurerm_network_security_rule` as standalone resources
 
 **Important:** These two approaches conflict. Using both inline and separate rules for
-the same NSG causes Terraform state conflicts. Planton uses separate rules exclusively
-to provide per-rule lifecycle management and better error reporting.
+the same NSG causes Terraform state conflicts. Planton's Terraform module uses separate
+rules exclusively, giving each rule its own state identity and plan line.
 
 ### Azure Pulumi Provider Resources
 
@@ -96,15 +96,19 @@ The Pulumi Azure Classic SDK (v6) mirrors the Terraform resources:
 - `network.NetworkSecurityGroup` -- NSG resource
 - `network.NetworkSecurityRule` -- Individual rule resource
 
+Planton's Pulumi module manages rules inline on the group instead: the pinned SDK's
+standalone rule resource flattens the application-security-group ID lists to a single
+value, while the inline form carries the full lists. Both engines put the identical
+rule set into ARM, and removing the last rule removes it on both.
+
 ### NSG vs Application Security Groups (ASGs)
 
 Azure also offers Application Security Groups (ASGs) for grouping VMs by application
-role. ASGs can be used as source or destination in NSG rules instead of IP addresses.
-Planton omits ASG support in this 80/20 design because:
-
-1. ASGs add complexity with marginal benefit for most deployments
-2. CIDR-based rules cover the vast majority of enterprise use cases
-3. ASGs can be added as a future enhancement without breaking changes
+role. ASGs can be used as source or destination in NSG rules instead of IP addresses --
+identity-based addressing that follows workloads as they scale instead of pinning CIDRs.
+Rules reference ASGs via `source_application_security_group_ids` and
+`destination_application_security_group_ids` as plain ARM IDs (up to 10 each):
+application security groups are not yet modeled as a Planton kind.
 
 ### NSG Flow Logs
 
@@ -115,29 +119,29 @@ by a separate Planton component or infra chart configuration.
 
 ## Design Rationale
 
-### Why Strings with CEL Validation (Not Proto Enums)
+### Why Closed Proto Enums (Not Strings)
 
-The `direction`, `access`, and `protocol` fields use string types with CEL `in`
-validation instead of protobuf enums. This design choice was established across
-R02-R05 (AzureApplicationInsights, AzurePublicIp, AzureSubnet) and is grounded in:
+The `direction`, `access`, and `protocol` fields are closed protobuf enums
+(`INBOUND`/`OUTBOUND`, `ALLOW`/`DENY`, `ANY`/`TCP`/`UDP`/`ICMP`/`AH`/`ESP`) validated
+with `defined_only`:
 
-1. **Provider authenticity** -- Azure API values are mixed-case strings (`"Tcp"`, `"Inbound"`,
-   `"Allow"`). Proto enums use UPPER_CASE, requiring a mapping layer in IaC modules
-2. **Zero mapping** -- String values pass through directly to Azure provider calls
-3. **Consistency** -- All Azure resources in Planton use this pattern
-4. **Extensibility** -- Adding new protocol values (e.g., `"Ah"`, `"Esp"`) only requires
-   updating the CEL expression, not adding proto enum values and regenerating code
+1. **Invalid values cannot reach Azure** -- a typo like `Tpc` is rejected at manifest
+   validation time instead of failing mid-deployment
+2. **The value set is part of the API contract** -- what the field accepts is visible
+   in the schema itself, not buried in a validation expression
+3. **The ARM mapping is trivial and contained** -- each IaC module maps enum values to
+   ARM's mixed-case strings (`INBOUND` becomes `Inbound`, `ANY` becomes `*`) in one place
 
-### Why Separate Rules (Not Inline)
+### Why Rules Are Folded into the NSG
 
-Security rules are created as separate `NetworkSecurityRule` resources rather than
-inline on the NSG. This follows the AzureUserAssignedIdentity pattern (separate
-role assignments) and provides:
+Security rules live inside the NSG spec rather than as their own Planton resource:
 
-1. **Per-rule error messages** -- If rule creation fails, the error identifies the specific rule
-2. **Per-rule state management** -- Each rule has its own entry in Pulumi/Terraform state
-3. **Conflict avoidance** -- Terraform's inline vs separate rule conflict is eliminated
-4. **Explicit naming** -- Each rule gets a descriptive Pulumi resource name
+1. **No independent life** -- a rule has no meaning outside its group and is never
+   referenced by anything else
+2. **Reviewed as one unit** -- a group's rule set is designed and audited together;
+   splitting it across resources hides the whole picture
+3. **Empty is meaningful** -- an NSG with no rules is still useful: Azure's implicit
+   default rules then govern all traffic
 
 ### Why No Subnet Association
 
@@ -152,16 +156,15 @@ The NSG-to-subnet association is deliberately excluded from this component:
 4. **Separation of concerns** -- NSG defines "what traffic to allow/deny";
    association defines "where to enforce it"
 
-### Why Description Field Was Added
+### Why Rules Have a Description Field
 
-The T02 plan did not include a `description` field on security rules. It was added
-because:
+Each rule carries an optional `description` (max 140 characters) because:
 
-1. Azure supports it (max 140 characters)
+1. Azure supports it natively
 2. It serves a real operational need -- when reviewing NSGs in Azure Portal or via CLI,
    descriptions explain the intent behind each rule
 3. It has zero cost (optional field, no IaC module complexity)
-4. It follows the "production-quality infrastructure" philosophy of the platform
+4. Auditors and future operators read descriptions before they read the tuples
 
 ### 80/20 Omissions
 
@@ -169,11 +172,8 @@ The following Azure NSG features are deliberately omitted:
 
 | Feature | Reason for Omission |
 |---------|---------------------|
-| Application Security Groups (ASGs) | Adds complexity, CIDR-based rules cover 80% of use cases |
-| Plural port ranges (`source_port_ranges`) | Single port range covers most rules; multiple rules handle edge cases |
-| `Ah` and `Esp` protocols | IPsec protocols are edge cases for enterprise NSGs |
+| Application Security Groups as a Planton kind | Rules accept plain ARM IDs; a dedicated kind can be added later without breaking changes |
 | NSG Flow Logs | Separate operational concern, different lifecycle |
-| Augmented security rules | Preview feature, not GA stable |
 
 All omissions can be added later without breaking changes.
 

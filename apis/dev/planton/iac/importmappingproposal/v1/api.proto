@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package dev.planton.iac.importmappingproposal.v1;
+
+import "dev/planton/iac/importmappingproposal/v1/spec.proto";
+import "dev/planton/shared/metadata.proto";
+
+// ImportMappingProposal is a mapper's structured answer to "how do these
+// discovered cloud resources map into Planton components?" -- proposed
+// manifests plus an accounting of which discovered resources each one
+// covers, and the honest remainder that maps to nothing. Follows the KRM
+// pattern (apiVersion + kind + metadata + spec).
+//
+// It is the seam between proposers and consumers: a deterministic mapper or
+// an AI mapping agent emits it; the mapping eval harness scores it against
+// a seeded ground truth; review surfaces render it for human approval.
+// Nothing is ever created from a proposal without an explicit human gate.
+//
+// Example:
+//   apiVersion: iac.planton.dev/v1
+//   kind: ImportMappingProposal
+//   metadata:
+//     name: network-staples-baseline
+//   spec:
+//     resources:
+//       - manifest:
+//           apiVersion: aws.planton.dev/v1
+//           kind: AwsVpc
+//           metadata:
+//             name: prod-network
+//           spec:
+//             region: us-west-2
+//             cidrBlock: 10.0.0.0/16
+//         claims:
+//           - type_name: AWS::EC2::VPC
+//             identifier: vpc-0abc123
+//     unmapped:
+//       - type_name: AWS::EC2::RouteTable
+//         identifier: rtb-0main456
+//         reason: VPC main route table -- implicitly created by AWS, not modeled
+message ImportMappingProposal {
+  string api_version = 1;
+  string kind = 2;
+  dev.planton.shared.CloudResourceMetadata metadata = 3;
+  ImportMappingProposalSpec spec = 4;
+}

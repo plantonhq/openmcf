@@ -31,7 +31,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRamPolicy
 metadata:
   name: my-oss-reader
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,7 +90,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRamPolicy
 metadata:
   name: oss-reader
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -125,7 +125,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRamPolicy
 metadata:
   name: app-data-access
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -163,7 +163,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRamPolicy
 metadata:
   name: cicd-deploy-policy
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

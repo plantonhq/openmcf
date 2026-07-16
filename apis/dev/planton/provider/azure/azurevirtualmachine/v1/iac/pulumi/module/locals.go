@@ -1,13 +1,63 @@
 package module
 
 import (
+	"strings"
+
 	azurevirtualmachinev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualmachine/v1"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type Locals struct {
 	AzureVirtualMachine *azurevirtualmachinev1.AzureVirtualMachine
-	ResourceGroupName   string
+
+	// ResourceGroupName is a StringValueOrRef field; the platform middleware
+	// resolves valueFrom references before IaC modules run, so GetValue()
+	// always returns the resolved literal name.
+	ResourceGroupName string
+
+	// NetworkInterfaceIds are the resolved ARM IDs of the attached NICs
+	// (repeated StringValueOrRef in the spec; the first is primary).
+	NetworkInterfaceIds []string
+
+	// IsLinux is the explicit OS discriminator -- which of ARM's two VM
+	// surfaces this spec deploys through.
+	IsLinux bool
+
+	// Enum-to-ARM string mappings, empty when unspecified so both engines
+	// send nothing and Azure's defaults apply.
+	OsDiskCaching          string
+	OsDiskStorageType      string
+	DiffDiskPlacement      string
+	SecurityEncryptionType string
+	IdentityType           string
+	IdentityIds            []string
+	EvictionPolicy         string
+	LinuxPatchMode         string
+	WindowsPatchMode       string
+	PatchAssessmentMode    string
+	RebootSetting          string
+	LinuxLicenseType       string
+	WindowsLicenseType     string
+	DiskControllerType     string
+
+	// AzureTags is the metadata-derived tag map with the spec's user tags
+	// merged over it (user tags win on key collision), mirroring the
+	// Terraform module's merge order.
+	AzureTags map[string]string
+}
+
+// cachingToArm maps the shared disk-caching enum to ARM's strings.
+func cachingToArm(caching azurevirtualmachinev1.AzureVirtualMachineDiskCaching) string {
+	switch caching {
+	case azurevirtualmachinev1.AzureVirtualMachineDiskCaching_NONE:
+		return "None"
+	case azurevirtualmachinev1.AzureVirtualMachineDiskCaching_READ_ONLY:
+		return "ReadOnly"
+	case azurevirtualmachinev1.AzureVirtualMachineDiskCaching_READ_WRITE:
+		return "ReadWrite"
+	}
+	return ""
 }
 
 func initializeLocals(ctx *pulumi.Context, stackInput *azurevirtualmachinev1.AzureVirtualMachineStackInput) *Locals {
@@ -15,11 +65,159 @@ func initializeLocals(ctx *pulumi.Context, stackInput *azurevirtualmachinev1.Azu
 
 	locals.AzureVirtualMachine = stackInput.Target
 	target := stackInput.Target
+	spec := target.Spec
 
-	// The resource_group field is a StringValueOrRef. The platform middleware resolves
-	// valueFrom references before IaC modules run, so .GetValue() always returns the
-	// resolved literal string.
-	locals.ResourceGroupName = target.Spec.ResourceGroup.GetValue()
+	locals.ResourceGroupName = spec.ResourceGroup.GetValue()
+
+	for _, networkInterfaceId := range spec.NetworkInterfaceIds {
+		locals.NetworkInterfaceIds = append(locals.NetworkInterfaceIds, networkInterfaceId.GetValue())
+	}
+
+	locals.IsLinux = spec.OsProfile.GetLinux() != nil
+
+	locals.OsDiskCaching = cachingToArm(spec.OsDisk.Caching)
+
+	switch spec.OsDisk.StorageAccountType {
+	case azurevirtualmachinev1.AzureVirtualMachineOsDiskStorageAccountType_STANDARD_LRS:
+		locals.OsDiskStorageType = "Standard_LRS"
+	case azurevirtualmachinev1.AzureVirtualMachineOsDiskStorageAccountType_STANDARD_SSD_LRS:
+		locals.OsDiskStorageType = "StandardSSD_LRS"
+	case azurevirtualmachinev1.AzureVirtualMachineOsDiskStorageAccountType_PREMIUM_LRS:
+		locals.OsDiskStorageType = "Premium_LRS"
+	case azurevirtualmachinev1.AzureVirtualMachineOsDiskStorageAccountType_STANDARD_SSD_ZRS:
+		locals.OsDiskStorageType = "StandardSSD_ZRS"
+	case azurevirtualmachinev1.AzureVirtualMachineOsDiskStorageAccountType_PREMIUM_ZRS:
+		locals.OsDiskStorageType = "Premium_ZRS"
+	}
+
+	if spec.OsDisk.DiffDiskSettings != nil {
+		switch spec.OsDisk.DiffDiskSettings.Placement {
+		case azurevirtualmachinev1.AzureVirtualMachineDiffDiskPlacement_CACHE_DISK:
+			locals.DiffDiskPlacement = "CacheDisk"
+		case azurevirtualmachinev1.AzureVirtualMachineDiffDiskPlacement_RESOURCE_DISK:
+			locals.DiffDiskPlacement = "ResourceDisk"
+		case azurevirtualmachinev1.AzureVirtualMachineDiffDiskPlacement_NVME_DISK:
+			locals.DiffDiskPlacement = "NvmeDisk"
+		}
+	}
+
+	switch spec.OsDisk.SecurityEncryptionType {
+	case azurevirtualmachinev1.AzureVirtualMachineSecurityEncryptionType_VM_GUEST_STATE_ONLY:
+		locals.SecurityEncryptionType = "VMGuestStateOnly"
+	case azurevirtualmachinev1.AzureVirtualMachineSecurityEncryptionType_DISK_WITH_VM_GUEST_STATE:
+		locals.SecurityEncryptionType = "DiskWithVMGuestState"
+	}
+
+	if spec.Identity != nil {
+		switch spec.Identity.Type {
+		case azurevirtualmachinev1.AzureVirtualMachineIdentityType_SYSTEM_ASSIGNED:
+			locals.IdentityType = "SystemAssigned"
+		case azurevirtualmachinev1.AzureVirtualMachineIdentityType_USER_ASSIGNED:
+			locals.IdentityType = "UserAssigned"
+		case azurevirtualmachinev1.AzureVirtualMachineIdentityType_SYSTEM_AND_USER_ASSIGNED:
+			locals.IdentityType = "SystemAssigned, UserAssigned"
+		}
+		for _, identityId := range spec.Identity.IdentityIds {
+			locals.IdentityIds = append(locals.IdentityIds, identityId.GetValue())
+		}
+	}
+
+	if spec.Spot != nil {
+		switch spec.Spot.EvictionPolicy {
+		case azurevirtualmachinev1.AzureVirtualMachineEvictionPolicy_DEALLOCATE:
+			locals.EvictionPolicy = "Deallocate"
+		case azurevirtualmachinev1.AzureVirtualMachineEvictionPolicy_DELETE:
+			locals.EvictionPolicy = "Delete"
+		}
+	}
+
+	if linux := spec.OsProfile.GetLinux(); linux != nil {
+		switch linux.PatchMode {
+		case azurevirtualmachinev1.AzureVirtualMachineLinuxPatchMode_LINUX_IMAGE_DEFAULT:
+			locals.LinuxPatchMode = "ImageDefault"
+		case azurevirtualmachinev1.AzureVirtualMachineLinuxPatchMode_LINUX_AUTOMATIC_BY_PLATFORM:
+			locals.LinuxPatchMode = "AutomaticByPlatform"
+		}
+		// The Linux license enum's names ARE ARM's literal values.
+		if linux.LicenseType != azurevirtualmachinev1.AzureVirtualMachineLinuxLicenseType_azure_virtual_machine_linux_license_type_unspecified {
+			locals.LinuxLicenseType = linux.LicenseType.String()
+		}
+	}
+
+	if windows := spec.OsProfile.GetWindows(); windows != nil {
+		switch windows.PatchMode {
+		case azurevirtualmachinev1.AzureVirtualMachineWindowsPatchMode_MANUAL:
+			locals.WindowsPatchMode = "Manual"
+		case azurevirtualmachinev1.AzureVirtualMachineWindowsPatchMode_AUTOMATIC_BY_OS:
+			locals.WindowsPatchMode = "AutomaticByOS"
+		case azurevirtualmachinev1.AzureVirtualMachineWindowsPatchMode_WINDOWS_AUTOMATIC_BY_PLATFORM:
+			locals.WindowsPatchMode = "AutomaticByPlatform"
+		}
+		switch windows.LicenseType {
+		case azurevirtualmachinev1.AzureVirtualMachineWindowsLicenseType_WINDOWS_LICENSE_NONE:
+			locals.WindowsLicenseType = "None"
+		case azurevirtualmachinev1.AzureVirtualMachineWindowsLicenseType_WINDOWS_CLIENT:
+			locals.WindowsLicenseType = "Windows_Client"
+		case azurevirtualmachinev1.AzureVirtualMachineWindowsLicenseType_WINDOWS_SERVER:
+			locals.WindowsLicenseType = "Windows_Server"
+		}
+	}
+
+	if spec.Patching != nil {
+		switch spec.Patching.AssessmentMode {
+		case azurevirtualmachinev1.AzureVirtualMachinePatchAssessmentMode_ASSESSMENT_IMAGE_DEFAULT:
+			locals.PatchAssessmentMode = "ImageDefault"
+		case azurevirtualmachinev1.AzureVirtualMachinePatchAssessmentMode_ASSESSMENT_AUTOMATIC_BY_PLATFORM:
+			locals.PatchAssessmentMode = "AutomaticByPlatform"
+		}
+		switch spec.Patching.RebootSetting {
+		case azurevirtualmachinev1.AzureVirtualMachineRebootSetting_ALWAYS:
+			locals.RebootSetting = "Always"
+		case azurevirtualmachinev1.AzureVirtualMachineRebootSetting_IF_REQUIRED:
+			locals.RebootSetting = "IfRequired"
+		case azurevirtualmachinev1.AzureVirtualMachineRebootSetting_NEVER:
+			locals.RebootSetting = "Never"
+		}
+	}
+
+	switch spec.DiskControllerType {
+	case azurevirtualmachinev1.AzureVirtualMachineDiskControllerType_SCSI:
+		locals.DiskControllerType = "SCSI"
+	case azurevirtualmachinev1.AzureVirtualMachineDiskControllerType_NVME:
+		locals.DiskControllerType = "NVMe"
+	}
+
+	// Metadata-derived tags first, then the user's spec tags merged over
+	// them: user tags deliberately win so an org's governance conventions
+	// (cost center, owner) can override the derived values where they
+	// collide.
+	locals.AzureTags = map[string]string{
+		// PARITY-EXCEPTION: resource_kind here is the lowered
+		// CloudResourceKind enum string and resource_id is omitted when
+		// metadata.id is empty, while the Terraform module emits the
+		// family-wide snake-case literal and falls back to metadata.name.
+		// Output-neutral (tags never feed stack outputs); aligning the two
+		// shapes is a family-wide convention change, not a per-kind fix.
+		"resource":      "true",
+		"resource_name": target.Metadata.Name,
+		"resource_kind": strings.ToLower(cloudresourcekind.CloudResourceKind_AzureVirtualMachine.String()),
+	}
+
+	if target.Metadata.Id != "" {
+		locals.AzureTags["resource_id"] = target.Metadata.Id
+	}
+
+	if target.Metadata.Org != "" {
+		locals.AzureTags["organization"] = target.Metadata.Org
+	}
+
+	if target.Metadata.Env != "" {
+		locals.AzureTags["environment"] = target.Metadata.Env
+	}
+
+	for k, v := range spec.Tags {
+		locals.AzureTags[k] = v
+	}
 
 	return locals
 }

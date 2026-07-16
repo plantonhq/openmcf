@@ -1,0 +1,96 @@
+# Where the streaming alerts land. Action groups are global (no
+# region), so notification delivery survives a regional outage.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorActionGroup
+metadata:
+  name: "{{ values.env }}-streaming-ops"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-streaming"
+      fieldPath: status.outputs.resource_group_name
+  # The short name is the sender identity on SMS and mobile push --
+  # 12-character limit, keep it recognizable.
+  shortName: StreamOps
+  emailReceivers:
+    - name: ops-email
+      emailAddress: "{{ values.ops_email }}"
+      useCommonAlertSchema: true
+---
+# Throttling is the streaming estate's capacity alarm: Event Hubs
+# rejecting requests means producers are already losing data or backing
+# up. With auto-inflate on, sustained throttling means the TU CEILING is
+# the bottleneck -- raise max_throughput_units or move to PREMIUM.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorMetricAlert
+metadata:
+  name: "{{ values.env }}-streaming-throttle-alert"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-streaming"
+      fieldPath: status.outputs.resource_group_name
+  alertName: "{{ values.env }}-streaming-throttle-alert"
+  scopes:
+    - valueFrom:
+        kind: AzureEventHubNamespace
+        name: "{{ values.env }}-streams"
+        fieldPath: status.outputs.namespace_id
+  # Severity 1: producers are being rejected right now.
+  severity: 1
+  staticCriteria:
+    - metricNamespace: Microsoft.EventHub/namespaces
+      metricName: ThrottledRequests
+      aggregation: TOTAL
+      operator: GREATER_THAN
+      # Zero tolerance: a correctly-sized namespace never throttles;
+      # the first rejected request is the signal.
+      threshold: 0
+  actions:
+    - actionGroupId:
+        valueFrom:
+          kind: AzureMonitorActionGroup
+          name: "{{ values.env }}-streaming-ops"
+          fieldPath: status.outputs.action_group_id
+  description: Event Hubs is throttling requests -- producers are being rejected; raise the throughput ceiling or reduce ingress
+{% if values.capture_enabled | bool %}
+---
+# Capture falling behind means the archive is silently incomplete --
+# the exact failure mode nobody notices until they need the replay.
+# Backlog above ~500 MB across a sustained window says the storage
+# account is slow or the capture windows are undersized for ingress.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorMetricAlert
+metadata:
+  name: "{{ values.env }}-streaming-capture-backlog-alert"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-streaming"
+      fieldPath: status.outputs.resource_group_name
+  alertName: "{{ values.env }}-streaming-capture-backlog-alert"
+  scopes:
+    - valueFrom:
+        kind: AzureEventHubNamespace
+        name: "{{ values.env }}-streams"
+        fieldPath: status.outputs.namespace_id
+  severity: 2
+  staticCriteria:
+    - metricNamespace: Microsoft.EventHub/namespaces
+      metricName: CaptureBacklog
+      aggregation: AVERAGE
+      operator: GREATER_THAN
+      # Bytes awaiting capture -- ~500 MB sustained means archival is
+      # not keeping up with ingress.
+      threshold: 524288000
+  actions:
+    - actionGroupId:
+        valueFrom:
+          kind: AzureMonitorActionGroup
+          name: "{{ values.env }}-streaming-ops"
+          fieldPath: status.outputs.action_group_id
+  description: Event Hubs capture is falling behind ingress -- the Data Lake archive is incomplete until the backlog drains
+{% endif %}

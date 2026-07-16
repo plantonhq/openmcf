@@ -41,11 +41,20 @@ func GetModulePath(moduleDir, kindName, moduleVersion string, noCleanup bool) (*
 			return nil, errors.Wrapf(err, "failed to check if %s is a valid terraform module directory", moduleDir)
 		}
 
-		// If the module directory is a valid terraform module directory, return the module directory
+		// If the module directory is a valid terraform module directory, return the module directory.
+		// Normalize to an absolute path: downstream steps build the generated var-file path by
+		// joining this directory, then execute tofu with its working directory SET to this
+		// directory -- so a caller-relative path would make the child process resolve the
+		// var-file argument against the module dir instead of the caller's CWD and fail with
+		// "variables file does not exist".
 		if isTerraformModuleDir {
+			absModuleDir, err := filepath.Abs(moduleDir)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to resolve absolute path for module directory %s", moduleDir)
+			}
 			return &GetModulePathResult{
-				ModulePath:    moduleDir,
-				RepoPath:      moduleDir,
+				ModulePath:    absModuleDir,
+				RepoPath:      absModuleDir,
 				CleanupFunc:   func() error { return nil },
 				ShouldCleanup: false,
 			}, nil

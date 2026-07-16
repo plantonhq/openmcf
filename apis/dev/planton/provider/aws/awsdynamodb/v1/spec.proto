@@ -3,206 +3,710 @@ syntax = "proto3";
 package dev.planton.provider.aws.awsdynamodb.v1;
 
 import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
-// AwsDynamodbSpec captures common fields for an AWS DynamoDB table.
+// AwsDynamodbSpec defines an Amazon DynamoDB table: key schema and
+// indexes, capacity (on-demand, provisioned, or price-tuned with warm
+// throughput), streams, global-table replication, encryption, recovery,
+// and the table-scoped governance surface (resource policy, Kinesis
+// change-data destinations, CloudWatch contributor insights).
+//
+// The table name comes from metadata.name (create-time immutable in
+// AWS). Everything the table composes with attaches by reference: the
+// KMS key that encrypts it, the Kinesis streams that receive its change
+// data, and the S3 bucket an import seeds it from. A table is a true
+// leaf -- nothing has to exist before it.
+//
+// Capacity guidance: PAY_PER_REQUEST (on-demand) is the right default
+// for almost every new table -- zero capacity planning, scale-to-zero
+// cost, optional ceiling via on_demand_throughput. Choose PROVISIONED
+// only for sustained, predictable traffic where reserved capacity
+// pricing wins.
 message AwsDynamodbSpec {
-  // Billing mode for the table.
-  // Values match AWS API expected strings.
-  enum BillingMode {
-    BILLING_MODE_UNSPECIFIED = 0;
-    PROVISIONED = 1; // Specify RCUs/WCUs
-    PAY_PER_REQUEST = 2; // On-demand
-  }
-
-  // Attribute data types supported by DynamoDB keys and indexes.
-  // Values match AWS API expected strings.
-  enum AttributeType {
-    ATTRIBUTE_TYPE_UNSPECIFIED = 0;
-    S = 1; // String
-    N = 2; // Number
-    B = 3; // Binary
-  }
-
-  // Stream view type for DynamoDB Streams.
-  // Values match AWS API expected strings.
-  enum StreamViewType {
-    STREAM_VIEW_TYPE_UNSPECIFIED = 0;
-    KEYS_ONLY = 1;
-    NEW_IMAGE = 2;
-    OLD_IMAGE = 3;
-    NEW_AND_OLD_IMAGES = 4;
-  }
-
-  // Projection type for indexes.
-  // Values match AWS API expected strings.
-  enum ProjectionType {
-    PROJECTION_TYPE_UNSPECIFIED = 0;
-    ALL = 1;
-    KEYS_ONLY_PROJECTION = 2; // Note: Can't reuse KEYS_ONLY from StreamViewType
-    INCLUDE = 3; // Include selected non-key attributes
-  }
-
-  // Table storage class.
-  // Values match AWS API expected strings.
-  enum TableClass {
-    TABLE_CLASS_UNSPECIFIED = 0;
-    STANDARD = 1;
-    STANDARD_INFREQUENT_ACCESS = 2;
-  }
-
-  // Defines an attribute name and type.
-  message AttributeDefinition {
-    string name = 1 [(buf.validate.field).string.min_len = 1]; // Attribute name
-    AttributeType type = 2 [(buf.validate.field).enum.defined_only = true]; // Attribute type
-  }
-
-  // Element of the key schema.
-  message KeySchemaElement {
-    string attribute_name = 1 [(buf.validate.field).string.min_len = 1]; // Must reference an attribute defined in attribute_definitions
-    // Values match AWS API expected strings.
-    enum KeyType {
-      KEY_TYPE_UNSPECIFIED = 0;
-      HASH = 1; // Partition key
-      RANGE = 2; // Sort key
-    }
-    KeyType key_type = 2 [(buf.validate.field).enum.defined_only = true];
-  }
-
-  // Index projection configuration.
-  message Projection {
-    ProjectionType type = 1 [(buf.validate.field).enum.defined_only = true]; // ALL, KEYS_ONLY, or INCLUDE
-    repeated string non_key_attributes = 2 [(buf.validate.field).repeated.unique = true]; // Used when type == INCLUDE
-
-    option (buf.validate.message).cel = {
-      id: "include_requires_attributes"
-      message: "non_key_attributes must be set when projection type is INCLUDE, otherwise it must be empty"
-      expression: "this.type == 3 ? this.non_key_attributes.size() > 0 : this.non_key_attributes.size() == 0"
-    };
-  }
-
-  // Provisioned capacity settings.
-  message ProvisionedThroughput {
-    int64 read_capacity_units = 1 [(buf.validate.field).int64.gte = 0]; // RCUs
-    int64 write_capacity_units = 2 [(buf.validate.field).int64.gte = 0]; // WCUs
-  }
-
-  // Global secondary index definition.
-  message GlobalSecondaryIndex {
-    string name = 1 [(buf.validate.field).string.min_len = 1]; // Index name
-    repeated KeySchemaElement key_schema = 2 [(buf.validate.field).repeated.min_items = 1]; // HASH and optional RANGE
-    Projection projection = 3; // Projection configuration
-    ProvisionedThroughput provisioned_throughput = 4; // Required when billing_mode is PROVISIONED
-
-    option (buf.validate.message).cel = {
-      id: "gsi_key_schema_shape"
-      message: "GSI must have exactly one HASH key and at most one RANGE key"
-      expression: "this.key_schema.filter(k, k.key_type == 1).size() == 1 && this.key_schema.filter(k, k.key_type == 2).size() <= 1 && this.key_schema.size() >= 1 && this.key_schema.size() <= 2"
-    };
-  }
-
-  // Local secondary index definition.
-  message LocalSecondaryIndex {
-    string name = 1 [(buf.validate.field).string.min_len = 1]; // Index name
-    repeated KeySchemaElement key_schema = 2 [(buf.validate.field).repeated.min_items = 2]; // Same HASH as table; alternate RANGE
-    Projection projection = 3; // Projection configuration
-
-    option (buf.validate.message).cel = {
-      id: "lsi_key_schema_shape"
-      message: "LSI must have exactly one HASH key and one RANGE key"
-      expression: "this.key_schema.size() == 2 && this.key_schema.filter(k, k.key_type == 1).size() == 1 && this.key_schema.filter(k, k.key_type == 2).size() == 1"
-    };
-  }
-
-  // Server-side encryption settings.
-  message ServerSideEncryption {
-    bool enabled = 1; // Enable SSE
-    string kms_key_arn = 2; // Optional customer-managed KMS key ARN
-  }
-
-  // Time-to-live (TTL) configuration.
-  message TimeToLive {
-    bool enabled = 1; // Enable TTL
-    string attribute_name = 2; // Attribute storing TTL epoch time (in seconds)
-  }
-
-  // The AWS region where the resource will be created.
-  // Example: "us-west-2", "eu-west-1"
+  // The AWS region the table is created in. Must match the region of
+  // any KMS key or Kinesis stream it references. Replicas live in
+  // OTHER regions and are listed under replicas.
+  // Example: "us-west-2", "eu-west-1".
   string region = 1 [(buf.validate.field).string.min_len = 1];
 
-  // Billing configuration for the table.
-  BillingMode billing_mode = 2 [(buf.validate.field).enum.defined_only = true];
+  // How the table is billed and how capacity is managed:
+  // "PAY_PER_REQUEST" (on-demand -- pay per read/write, no capacity
+  // planning, the recommended default for new tables) or "PROVISIONED"
+  // (reserved read/write units, required for reserved-capacity
+  // pricing). Empty keeps the AWS default (PROVISIONED) -- which then
+  // requires provisioned_throughput, so most manifests set this
+  // explicitly. Switching modes on a live table is an in-place update
+  // (AWS allows one switch per 24 hours).
+  string billing_mode = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "PROVISIONED",
+        "PAY_PER_REQUEST"
+      ]
+    }
+  ];
 
-  // Provisioned throughput for the table (used when billing_mode is PROVISIONED).
-  ProvisionedThroughput provisioned_throughput = 3;
+  // Attributes referenced by the table key schema and by every index
+  // key schema. Only KEY attributes are declared here -- DynamoDB is
+  // schemaless for everything else. Required unless the table is
+  // created by restore (the source table carries the schema).
+  repeated AwsDynamodbAttribute attribute_definitions = 3;
 
-  // Attribute definitions referenced by the primary key and indexes.
-  repeated AttributeDefinition attribute_definitions = 4 [(buf.validate.field).repeated.min_items = 1];
+  // The table's primary key: exactly one HASH (partition) element and
+  // at most one RANGE (sort) element, each naming a declared
+  // attribute. Create-time immutable -- changing the key schema
+  // replaces the table. Required unless the table is created by
+  // restore (the source table carries the key schema).
+  repeated AwsDynamodbKeySchemaElement key_schema = 4;
 
-  // Primary key schema for the table: includes HASH and optional RANGE.
-  repeated KeySchemaElement key_schema = 5 [(buf.validate.field).repeated.min_items = 1];
+  // Reserved read/write capacity for the table. Required when the
+  // effective billing mode is PROVISIONED; must stay unset for
+  // PAY_PER_REQUEST. Pair with auto-scaling needs by sizing for the
+  // sustained baseline -- on-demand is usually the better answer for
+  // spiky traffic.
+  AwsDynamodbProvisionedThroughput provisioned_throughput = 5;
 
-  // Global secondary indexes.
-  repeated GlobalSecondaryIndex global_secondary_indexes = 6;
+  // Optional ceilings on on-demand consumption -- a spend guardrail
+  // for PAY_PER_REQUEST tables. Requests beyond the ceiling are
+  // throttled rather than billed. Only meaningful on
+  // PAY_PER_REQUEST tables.
+  AwsDynamodbOnDemandThroughput on_demand_throughput = 6;
 
-  // Local secondary indexes.
-  repeated LocalSecondaryIndex local_secondary_indexes = 7;
+  // Pre-warmed minimum throughput the table can serve instantly,
+  // decoupled from billing mode -- for launch events and traffic
+  // cliffs where waiting for organic scale-up is not acceptable. AWS
+  // only allows warm throughput to INCREASE; lowering it replaces the
+  // table. Leave unset to keep AWS's defaults (12,000 reads/s, 4,000
+  // writes/s warm).
+  AwsDynamodbWarmThroughput warm_throughput = 7;
 
-  // Time-to-live configuration.
-  TimeToLive ttl = 8;
+  // Global secondary indexes: alternate query shapes with their own
+  // key schema (including multi-attribute keys), projection, and --
+  // on PROVISIONED tables -- their own capacity. Added, modified, and
+  // removed in place on a live table (one GSI mutation at a time, an
+  // AWS serialization rule).
+  repeated AwsDynamodbGlobalSecondaryIndex global_secondary_indexes = 8;
 
-  // DynamoDB Streams configuration.
-  bool stream_enabled = 9;
-  StreamViewType stream_view_type = 10 [(buf.validate.field).enum.defined_only = true];
+  // Local secondary indexes: alternate sort orders sharing the table's
+  // partition key. CREATE-TIME ONLY -- LSIs can never be added or
+  // removed after the table exists, and their presence permanently
+  // caps each item collection at 10 GB. Prefer a GSI unless you need
+  // strongly consistent reads on the alternate sort order.
+  repeated AwsDynamodbLocalSecondaryIndex local_secondary_indexes = 9;
 
-  // Point-in-time recovery (PITR) setting.
-  bool point_in_time_recovery_enabled = 11;
+  // Time-to-live: DynamoDB deletes items (within ~48h, free of write
+  // cost) once the epoch-seconds value in the named attribute passes.
+  AwsDynamodbTtl ttl = 10;
 
-  // Server-side encryption settings.
-  ServerSideEncryption server_side_encryption = 12;
+  // Emit an ordered change stream of item modifications, consumable by
+  // Lambda event sources and Kinesis. Required (with view type
+  // NEW_AND_OLD_IMAGES) when the table has replicas.
+  bool stream_enabled = 11;
 
-  // Table storage class.
-  TableClass table_class = 13 [(buf.validate.field).enum.defined_only = true];
+  // What each stream record carries: "KEYS_ONLY", "NEW_IMAGE",
+  // "OLD_IMAGE", or "NEW_AND_OLD_IMAGES". Required when stream_enabled
+  // is true; must stay empty when disabled. Global tables require
+  // NEW_AND_OLD_IMAGES.
+  string stream_view_type = 12 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "KEYS_ONLY",
+        "NEW_IMAGE",
+        "OLD_IMAGE",
+        "NEW_AND_OLD_IMAGES"
+      ]
+    }
+  ];
 
-  // Deletion protection setting.
-  bool deletion_protection_enabled = 14;
+  // Continuous backups with per-second restore granularity over the
+  // recovery window. The insurance policy for fat-finger deletes and
+  // bad deploys -- production tables should enable it.
+  AwsDynamodbPointInTimeRecovery point_in_time_recovery = 13;
 
-  // Contributor Insights setting.
-  bool contributor_insights_enabled = 15;
+  // Encryption at rest. DynamoDB always encrypts with an AWS-owned key
+  // even when this is unset; enable this to switch to the AWS-managed
+  // aws/dynamodb key or a customer-managed KMS key you control
+  // (required for cross-account access patterns and key-rotation
+  // policies of your own).
+  AwsDynamodbServerSideEncryption server_side_encryption = 14;
 
-  // Message-level validations
+  // Storage class: "STANDARD" (the default) or
+  // "STANDARD_INFREQUENT_ACCESS" (~60% cheaper storage, ~25% costlier
+  // reads/writes -- for large, rarely-read tables like audit logs).
+  // Empty keeps the AWS default. Switchable in place (twice per 30
+  // days per AWS).
+  string table_class = 15 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "STANDARD",
+        "STANDARD_INFREQUENT_ACCESS"
+      ]
+    }
+  ];
+
+  // Refuse deletion of the table while true. Flip to false (an
+  // in-place update) before a genuine teardown.
+  bool deletion_protection_enabled = 16;
+
+  // CloudWatch Contributor Insights: per-key access profiling that
+  // answers "which partition keys are hot / throttled". Enables at the
+  // table level and, optionally, per GSI.
+  AwsDynamodbContributorInsights contributor_insights = 17;
+
+  // A resource-based IAM policy attached to the table, as a JSON
+  // document -- cross-account access grants without assuming roles.
+  // Table-scoped only (stream policies are a separate niche surface).
+  string resource_policy = 18;
+
+  // A Kinesis Data Stream that receives the table's item-level change
+  // data -- the fan-out path for analytics and search-indexing
+  // pipelines (independent of DynamoDB Streams and usable alongside
+  // it). AWS allows exactly one Kinesis destination per table.
+  AwsDynamodbKinesisStreamingDestination kinesis_streaming_destination = 19;
+
+  // Global Tables v2: multi-region replicas of this table, each an
+  // active read/write endpoint. Requires streams with
+  // NEW_AND_OLD_IMAGES. Adding/removing an entry adds/removes that
+  // region's replica in place. For Multi-Region Strong Consistency,
+  // set consistency_mode STRONG on every replica (exactly two
+  // replicas, or one replica plus global_table_witness).
+  repeated AwsDynamodbReplica replicas = 20;
+
+  // The witness region of a Multi-Region Strong Consistency global
+  // table -- it stores replicated writes to support quorum but serves
+  // no reads or writes. Must accompany exactly one replica with
+  // consistency_mode STRONG (the cheaper MRSC topology; the
+  // alternative is two STRONG replicas and no witness).
+  AwsDynamodbGlobalTableWitness global_table_witness = 21;
+
+  // Create this table by restoring another table's point-in-time
+  // state: the name of the source table in this account and region.
+  // Key schema and attributes are inherited from the source. Mutually
+  // exclusive with the other restore/import sources.
+  string restore_source_name = 22;
+
+  // Create this table by restoring from a source table ARN -- the
+  // cross-region / cross-account form of point-in-time restore.
+  // Server-side encryption must be configured on the restored table.
+  // Mutually exclusive with the other restore/import sources.
+  string restore_source_table_arn = 23;
+
+  // The point in time to restore, as a UTC RFC3339 timestamp (e.g.
+  // "2026-07-04T06:00:00Z"). Exactly one of restore_date_time or
+  // restore_to_latest_time accompanies a point-in-time restore source.
+  string restore_date_time = 24;
+
+  // Restore the most recent recoverable state of the source table
+  // instead of a specific timestamp.
+  bool restore_to_latest_time = 25;
+
+  // Create this table by restoring an on-demand or AWS Backup backup,
+  // by ARN. Key schema and attributes are inherited from the backup.
+  // Mutually exclusive with the other restore/import sources.
+  string restore_backup_arn = 26;
+
+  // Create this table pre-loaded with data imported from S3 (CSV,
+  // DynamoDB JSON, or Amazon Ion) -- billed as a one-time import, far
+  // cheaper than writing items individually. Mutually exclusive with
+  // the restore sources; the key schema and attributes above are
+  // required (imports define a brand-new table).
+  AwsDynamodbImportTable import_table = 27;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
   option (buf.validate.message).cel = {
-    id: "billing_mode_set"
-    message: "billing_mode must be set to PROVISIONED or PAY_PER_REQUEST"
-    expression: "this.billing_mode != 0"
+    id: "key_schema_required_unless_restored"
+    message: "key_schema and attribute_definitions are required -- omit them only when the table is created by restore (restore_source_name, restore_source_table_arn, or restore_backup_arn), which inherits them from the source"
+    expression: "(this.restore_source_name != '' || this.restore_source_table_arn != '' || this.restore_backup_arn != '') || (this.key_schema.size() > 0 && this.attribute_definitions.size() > 0)"
   };
 
   option (buf.validate.message).cel = {
     id: "table_key_schema_shape"
-    message: "Table key_schema must have exactly one HASH key and at most one RANGE key (max 2 elements)"
-    expression: "this.key_schema.filter(k, k.key_type == 1).size() == 1 && this.key_schema.filter(k, k.key_type == 2).size() <= 1 && this.key_schema.size() >= 1 && this.key_schema.size() <= 2"
+    message: "key_schema must have exactly one HASH element and at most one RANGE element, HASH first"
+    expression: "this.key_schema.size() == 0 || (this.key_schema.size() <= 2 && this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() == 1)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "key_attributes_declared"
+    message: "every key_schema element must name an attribute declared in attribute_definitions"
+    expression: "this.key_schema.all(k, this.attribute_definitions.exists(a, a.name == k.attribute_name))"
   };
 
   option (buf.validate.message).cel = {
     id: "provisioned_requires_throughput"
-    message: "When billing_mode is PROVISIONED, provisioned_throughput must be set with RCUs and WCUs > 0; for PAY_PER_REQUEST it must be unset or zero"
-    expression: "this.billing_mode == 1 ? (has(this.provisioned_throughput) && this.provisioned_throughput.read_capacity_units > 0 && this.provisioned_throughput.write_capacity_units > 0) : (!has(this.provisioned_throughput) || (this.provisioned_throughput.read_capacity_units == 0 && this.provisioned_throughput.write_capacity_units == 0))"
+    message: "the effective billing mode is PROVISIONED (the AWS default when billing_mode is empty), which requires provisioned_throughput with read and write capacity > 0"
+    expression: "this.billing_mode == 'PAY_PER_REQUEST' || (this.restore_source_name != '' || this.restore_source_table_arn != '' || this.restore_backup_arn != '') || (has(this.provisioned_throughput) && this.provisioned_throughput.read_capacity_units > 0 && this.provisioned_throughput.write_capacity_units > 0)"
   };
 
   option (buf.validate.message).cel = {
-    id: "stream_view_requires_enabled"
-    message: "stream_view_type must be set when stream_enabled is true, and must be UNSPECIFIED when disabled"
-    expression: "this.stream_enabled ? this.stream_view_type != 0 : this.stream_view_type == 0"
+    id: "on_demand_forbids_provisioned_throughput"
+    message: "provisioned_throughput must stay unset on a PAY_PER_REQUEST table"
+    expression: "this.billing_mode != 'PAY_PER_REQUEST' || !has(this.provisioned_throughput)"
   };
 
   option (buf.validate.message).cel = {
-    id: "ttl_attribute_when_enabled"
-    message: "ttl.attribute_name must be set when TTL is enabled, and must be empty when disabled"
-    expression: "!has(this.ttl) || (this.ttl.enabled ? this.ttl.attribute_name != \"\" : this.ttl.attribute_name == \"\")"
+    id: "on_demand_throughput_needs_on_demand"
+    message: "on_demand_throughput ceilings only apply to PAY_PER_REQUEST tables"
+    expression: "!has(this.on_demand_throughput) || this.billing_mode == 'PAY_PER_REQUEST'"
   };
 
   option (buf.validate.message).cel = {
     id: "gsi_throughput_matches_billing"
-    message: "For each GSI: when billing_mode is PROVISIONED, provisioned_throughput must be set with RCUs/WCUs > 0; for PAY_PER_REQUEST it must be unset or zero"
-    expression: "this.global_secondary_indexes.all(i, this.billing_mode == 1 ? (has(i.provisioned_throughput) && i.provisioned_throughput.read_capacity_units > 0 && i.provisioned_throughput.write_capacity_units > 0) : (!has(i.provisioned_throughput) || (i.provisioned_throughput.read_capacity_units == 0 && i.provisioned_throughput.write_capacity_units == 0)))"
+    message: "each global secondary index must carry provisioned_throughput (read and write > 0) when the effective billing mode is PROVISIONED, and must not carry it on a PAY_PER_REQUEST table; per-index on_demand_throughput only applies to PAY_PER_REQUEST tables"
+    expression: "this.global_secondary_indexes.all(i, this.billing_mode == 'PAY_PER_REQUEST' ? (!has(i.provisioned_throughput) ) : (has(i.provisioned_throughput) && i.provisioned_throughput.read_capacity_units > 0 && i.provisioned_throughput.write_capacity_units > 0)) && (this.billing_mode == 'PAY_PER_REQUEST' || this.global_secondary_indexes.all(i, !has(i.on_demand_throughput)))"
   };
+
+  option (buf.validate.message).cel = {
+    id: "index_key_attributes_declared"
+    message: "every index key element (GSI key_schema, LSI range_key) must name an attribute declared in attribute_definitions"
+    expression: "this.global_secondary_indexes.all(i, i.key_schema.all(k, this.attribute_definitions.exists(a, a.name == k.attribute_name))) && this.local_secondary_indexes.all(i, this.attribute_definitions.exists(a, a.name == i.range_key))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "stream_view_requires_enabled"
+    message: "stream_view_type is required when stream_enabled is true and must stay empty when streams are disabled"
+    expression: "this.stream_enabled ? this.stream_view_type != '' : this.stream_view_type == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "replicas_require_streams"
+    message: "global-table replicas require stream_enabled with stream_view_type NEW_AND_OLD_IMAGES"
+    expression: "this.replicas.size() == 0 || (this.stream_enabled && this.stream_view_type == 'NEW_AND_OLD_IMAGES')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "replica_consistency_modes_agree"
+    message: "all replicas must use the same consistency_mode -- mixing STRONG and EVENTUAL replicas is not a valid global-table topology"
+    expression: "!(this.replicas.exists(r, r.consistency_mode == 'STRONG') && this.replicas.exists(r, r.consistency_mode == '' || r.consistency_mode == 'EVENTUAL'))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mrsc_topology"
+    message: "Multi-Region Strong Consistency requires exactly two STRONG replicas, or exactly one STRONG replica plus global_table_witness"
+    expression: "!this.replicas.exists(r, r.consistency_mode == 'STRONG') ? !has(this.global_table_witness) : (has(this.global_table_witness) ? this.replicas.size() == 1 : this.replicas.size() == 2)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "restore_import_sources_exclusive"
+    message: "at most one create source may be set: restore_source_name, restore_source_table_arn, restore_backup_arn, or import_table"
+    expression: "[this.restore_source_name != '', this.restore_source_table_arn != '', this.restore_backup_arn != '', has(this.import_table)].filter(x, x).size() <= 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "restore_point_requires_pitr_source"
+    message: "restore_date_time / restore_to_latest_time require a point-in-time restore source (restore_source_name or restore_source_table_arn), and exactly one of the two must be chosen"
+    expression: "(this.restore_source_name != '' || this.restore_source_table_arn != '') ? ((this.restore_date_time != '') != this.restore_to_latest_time) : (this.restore_date_time == '' && !this.restore_to_latest_time)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "insights_indexes_exist"
+    message: "contributor_insights.gsi_index_names must name global secondary indexes defined on this table"
+    expression: "!has(this.contributor_insights) || this.contributor_insights.gsi_index_names.all(n, this.global_secondary_indexes.exists(g, g.name == n))"
+  };
+}
+
+// AwsDynamodbAttribute declares one KEY attribute: its name and scalar
+// type. Non-key attributes are never declared -- DynamoDB is schemaless
+// beyond the keys.
+message AwsDynamodbAttribute {
+  // The attribute name.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The scalar type: "S" (string), "N" (number), or "B" (binary).
+  string type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "S",
+        "N",
+        "B"
+      ]
+    }
+  ];
+}
+
+// AwsDynamodbKeySchemaElement is one element of a table or index key.
+message AwsDynamodbKeySchemaElement {
+  // The declared attribute this key element uses.
+  string attribute_name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // "HASH" (partition key) or "RANGE" (sort key).
+  string key_type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "HASH",
+        "RANGE"
+      ]
+    }
+  ];
+}
+
+// AwsDynamodbProvisionedThroughput reserves read/write capacity on a
+// PROVISIONED table or index.
+message AwsDynamodbProvisionedThroughput {
+  // Reserved read capacity units (one strongly consistent 4 KB read
+  // per second each).
+  int64 read_capacity_units = 1 [(buf.validate.field).int64.gte = 0];
+
+  // Reserved write capacity units (one 1 KB write per second each).
+  int64 write_capacity_units = 2 [(buf.validate.field).int64.gte = 0];
+}
+
+// AwsDynamodbOnDemandThroughput caps what an on-demand table or index
+// may consume -- a spend guardrail; requests beyond the ceiling are
+// throttled instead of billed. Set -1 to explicitly remove a
+// previously-set ceiling.
+message AwsDynamodbOnDemandThroughput {
+  // Maximum read request units per second. 0 = no ceiling configured;
+  // -1 removes a previously-set ceiling.
+  int64 max_read_request_units = 1 [(buf.validate.field).int64.gte = -1];
+
+  // Maximum write request units per second. 0 = no ceiling configured;
+  // -1 removes a previously-set ceiling.
+  int64 max_write_request_units = 2 [(buf.validate.field).int64.gte = -1];
+}
+
+// AwsDynamodbWarmThroughput pre-warms the minimum throughput the table
+// or index serves instantly. AWS only allows these values to INCREASE
+// -- lowering warm throughput replaces the table.
+message AwsDynamodbWarmThroughput {
+  // Warm read units per second. 0 keeps the AWS default (12,000);
+  // when set, AWS requires at least 12,000.
+  int64 read_units_per_second = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int64.gte = 12000
+  ];
+
+  // Warm write units per second. 0 keeps the AWS default (4,000);
+  // when set, AWS requires at least 4,000.
+  int64 write_units_per_second = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int64.gte = 4000
+  ];
+}
+
+// AwsDynamodbProjection selects which attributes an index carries.
+message AwsDynamodbProjection {
+  // "ALL" (every attribute), "KEYS_ONLY" (table + index keys), or
+  // "INCLUDE" (keys plus non_key_attributes). Projecting less makes
+  // the index cheaper to store and write; projecting too little forces
+  // costly fetch-backs to the table at query time.
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "ALL",
+        "KEYS_ONLY",
+        "INCLUDE"
+      ]
+    }
+  ];
+
+  // The non-key attributes projected when type is "INCLUDE". These do
+  // not need to be declared in attribute_definitions.
+  repeated string non_key_attributes = 2 [(buf.validate.field).repeated.unique = true];
+
+  option (buf.validate.message).cel = {
+    id: "include_requires_attributes"
+    message: "non_key_attributes must be set when projection type is INCLUDE and must stay empty otherwise"
+    expression: "this.type == 'INCLUDE' ? this.non_key_attributes.size() > 0 : this.non_key_attributes.size() == 0"
+  };
+}
+
+// AwsDynamodbGlobalSecondaryIndex is an alternate query shape with its
+// own key schema and projection. GSIs are added, modified, and removed
+// in place on a live table.
+message AwsDynamodbGlobalSecondaryIndex {
+  // The index name, unique within the table.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The index key: 1-4 HASH elements first (multi-attribute partition
+  // keys), then 0-4 RANGE elements (multi-attribute sort keys). Every
+  // element names a declared attribute. The common case is one HASH
+  // and at most one RANGE.
+  repeated AwsDynamodbKeySchemaElement key_schema = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Which attributes the index carries.
+  AwsDynamodbProjection projection = 3 [(buf.validate.field).required = true];
+
+  // Per-index reserved capacity. Required when the table's effective
+  // billing mode is PROVISIONED; must stay unset for PAY_PER_REQUEST.
+  AwsDynamodbProvisionedThroughput provisioned_throughput = 4;
+
+  // Per-index on-demand ceilings (PAY_PER_REQUEST tables only).
+  AwsDynamodbOnDemandThroughput on_demand_throughput = 5;
+
+  // Per-index pre-warmed throughput; increase-only, like the table's.
+  AwsDynamodbWarmThroughput warm_throughput = 6;
+
+  option (buf.validate.message).cel = {
+    id: "gsi_key_schema_shape"
+    message: "GSI key_schema must start with a HASH element and carry 1-4 HASH elements (all before any RANGE) and at most 4 RANGE elements"
+    expression: "this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() <= 4 && this.key_schema.filter(k, k.key_type == 'RANGE').size() <= 4"
+  };
+}
+
+// AwsDynamodbLocalSecondaryIndex is an alternate sort order over the
+// table's partition key. CREATE-TIME ONLY: LSIs can never be added or
+// removed after the table exists, and their presence permanently caps
+// each item collection at 10 GB.
+message AwsDynamodbLocalSecondaryIndex {
+  // The index name, unique within the table.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The alternate sort-key attribute (the partition key is always the
+  // table's own HASH key). Must be declared in attribute_definitions.
+  string range_key = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Which attributes the index carries.
+  AwsDynamodbProjection projection = 3 [(buf.validate.field).required = true];
+}
+
+// AwsDynamodbTtl expires items automatically once the epoch-seconds
+// value in the named attribute passes -- deletion is free of write
+// cost and happens within ~48 hours of expiry.
+message AwsDynamodbTtl {
+  // Turn TTL on.
+  bool enabled = 1;
+
+  // The attribute holding the expiry time as epoch seconds. Required
+  // when enabled; must stay empty when disabled.
+  string attribute_name = 2;
+
+  option (buf.validate.message).cel = {
+    id: "ttl_attribute_when_enabled"
+    message: "attribute_name is required when TTL is enabled and must stay empty when disabled"
+    expression: "this.enabled ? this.attribute_name != '' : this.attribute_name == ''"
+  };
+}
+
+// AwsDynamodbPointInTimeRecovery enables continuous backups with
+// per-second restore granularity.
+message AwsDynamodbPointInTimeRecovery {
+  // Turn point-in-time recovery on.
+  bool enabled = 1;
+
+  // How many days of history to retain, 1-35. 0 keeps the AWS default
+  // (35 days).
+  int32 recovery_period_in_days = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 35
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "recovery_period_requires_enabled"
+    message: "recovery_period_in_days only applies when point-in-time recovery is enabled"
+    expression: "this.enabled || this.recovery_period_in_days == 0"
+  };
+}
+
+// AwsDynamodbServerSideEncryption selects the key that encrypts the
+// table at rest. DynamoDB always encrypts -- unset means an AWS-owned
+// key; enabled with no KMS key means the AWS-managed aws/dynamodb key;
+// enabled with a KMS key means a customer-managed key you control.
+message AwsDynamodbServerSideEncryption {
+  // Switch from the AWS-owned key to an AWS-managed or
+  // customer-managed KMS key.
+  bool enabled = 1;
+
+  // The customer-managed KMS key that encrypts the table. Empty (with
+  // enabled true) uses the AWS-managed aws/dynamodb key. Reference an
+  // AwsKmsKey key_arn output or pass a literal key ARN. Required to be
+  // configured when the table is created by cross-region/cross-account
+  // restore.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Note: this rule deliberately checks only message presence --
+  // dereferencing StringValueOrRef sub-fields in message-level CEL
+  // breaks protovalidate-java.
+  option (buf.validate.message).cel = {
+    id: "kms_key_requires_enabled"
+    message: "kms_key_arn only applies when server-side encryption is enabled"
+    expression: "this.enabled || !has(this.kms_key_arn)"
+  };
+}
+
+// AwsDynamodbContributorInsights turns on CloudWatch per-key access
+// profiling -- the tool that answers "which partition keys are hot or
+// throttled".
+message AwsDynamodbContributorInsights {
+  // Enable insights on the table itself.
+  bool enabled = 1;
+
+  // What to profile: "ACCESSED_AND_THROTTLED_KEYS" (the AWS default)
+  // or "THROTTLED_KEYS" (cheaper -- only throttle diagnostics). Empty
+  // keeps the AWS default. Applies to the table and every listed
+  // index.
+  string mode = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ACCESSED_AND_THROTTLED_KEYS",
+        "THROTTLED_KEYS"
+      ]
+    }
+  ];
+
+  // Global secondary indexes (by name) that also get insights, in
+  // addition to the table.
+  repeated string gsi_index_names = 3 [(buf.validate.field).repeated.unique = true];
+
+  option (buf.validate.message).cel = {
+    id: "insights_fields_require_enabled"
+    message: "mode and gsi_index_names only apply when contributor insights is enabled"
+    expression: "this.enabled || (this.mode == '' && this.gsi_index_names.size() == 0)"
+  };
+}
+
+// AwsDynamodbKinesisStreamingDestination streams the table's item-level
+// change data into a Kinesis Data Stream.
+message AwsDynamodbKinesisStreamingDestination {
+  // The destination Kinesis Data Stream. Reference an AwsKinesisStream
+  // stream_arn output or pass a literal stream ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef stream_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKinesisStream,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.stream_arn"
+  ];
+
+  // Timestamp precision on emitted records: "MILLISECOND" or
+  // "MICROSECOND". Empty keeps the AWS default (MICROSECOND).
+  string approximate_creation_date_time_precision = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "MILLISECOND",
+        "MICROSECOND"
+      ]
+    }
+  ];
+}
+
+// AwsDynamodbReplica is one region of a Global Tables v2 deployment --
+// a full active read/write copy of the table.
+message AwsDynamodbReplica {
+  // The region the replica lives in. Must differ from the table's own
+  // region.
+  string region_name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The customer-managed KMS key encrypting THIS replica (each region
+  // encrypts independently). Empty uses the AWS-managed aws/dynamodb
+  // key in the replica region. Changing it recreates the replica, not
+  // the table. Reference an AwsKmsKey key_arn output or pass a literal
+  // key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Enable point-in-time recovery on the replica (independent of the
+  // source table's setting).
+  bool point_in_time_recovery = 3;
+
+  // Refuse deletion of the replica while true.
+  bool deletion_protection_enabled = 4;
+
+  // Propagate the table's tags to the replica. One-way: tag changes
+  // flow from the table to the replica; replica-side drift is left
+  // alone.
+  bool propagate_tags = 5;
+
+  // "EVENTUAL" (the default -- classic global tables, last-writer-wins)
+  // or "STRONG" (Multi-Region Strong Consistency -- synchronous quorum
+  // writes; requires exactly two STRONG replicas, or one STRONG
+  // replica plus the witness region).
+  string consistency_mode = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "EVENTUAL",
+        "STRONG"
+      ]
+    }
+  ];
+}
+
+// AwsDynamodbGlobalTableWitness is the witness region of a Multi-Region
+// Strong Consistency global table: it persists replicated writes for
+// quorum but serves no application reads or writes.
+message AwsDynamodbGlobalTableWitness {
+  // The witness region. Must differ from the table's region and the
+  // replica's region.
+  string region_name = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsDynamodbImportTable seeds a brand-new table from data in S3 --
+// billed as a one-time import (far cheaper than item-by-item writes).
+message AwsDynamodbImportTable {
+  // The S3 bucket holding the source data. Reference an AwsS3Bucket
+  // bucket_id output or pass a literal bucket name.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef s3_bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // The bucket owner's account ID -- set when importing from a bucket
+  // in another account.
+  string s3_bucket_owner = 2;
+
+  // Only objects under this key prefix are imported. Empty imports the
+  // whole bucket.
+  string s3_key_prefix = 3;
+
+  // The source data format: "CSV", "DYNAMODB_JSON", or "ION".
+  string input_format = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "CSV",
+        "DYNAMODB_JSON",
+        "ION"
+      ]
+    }
+  ];
+
+  // How the source objects are compressed: "GZIP", "ZSTD", or "NONE".
+  // Empty keeps the AWS default (NONE).
+  string input_compression_type = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "GZIP",
+        "ZSTD",
+        "NONE"
+      ]
+    }
+  ];
+
+  // CSV parsing options; only meaningful when input_format is "CSV".
+  AwsDynamodbImportTableCsv csv = 6;
+
+  option (buf.validate.message).cel = {
+    id: "csv_options_require_csv_format"
+    message: "csv options only apply when input_format is CSV"
+    expression: "!has(this.csv) || this.input_format == 'CSV'"
+  };
+}
+
+// AwsDynamodbImportTableCsv tunes CSV parsing for an S3 import.
+message AwsDynamodbImportTableCsv {
+  // The field delimiter. Empty keeps the AWS default (",").
+  string delimiter = 1;
+
+  // Column names, when the files carry no header row. Empty treats the
+  // first row of each file as the header.
+  repeated string header_list = 2;
 }

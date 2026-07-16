@@ -1,0 +1,4 @@
+name: aws-sns-subscription
+runtime:
+  name: go
+description: AWS SNS Subscription deployment component

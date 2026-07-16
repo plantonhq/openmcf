@@ -36,7 +36,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPrometheus
 metadata:
   name: my-prometheus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -69,8 +69,6 @@ This creates a single-replica Prometheus instance in the `monitoring` namespace 
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `container.replicas` | `int32` | `1` | Number of Prometheus pods to deploy. |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for each Prometheus pod. |
@@ -93,7 +91,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPrometheus
 metadata:
   name: dev-prometheus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +119,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPrometheus
 metadata:
   name: prod-prometheus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -150,7 +148,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPrometheus
 metadata:
   name: shared-prometheus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -182,7 +180,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPrometheus
 metadata:
   name: metrics
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -1,0 +1,145 @@
+{% if values.cmk_enabled | bool %}
+# The key vault holding the zone encryption key. RBAC authorization
+# (the spec's default): data-plane access is ordinary Azure role
+# assignments, never the legacy per-vault access-policy list.
+apiVersion: azure.planton.dev/v1
+kind: AzureKeyVault
+metadata:
+  name: "{{ values.env }}-lakehouse-vault"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-lakehouse"
+      fieldPath: status.outputs.resource_group_name
+  vaultName: "{{ values.key_vault_name }}"
+  # Azure refuses CMK enrollment against a vault that can be purged --
+  # a purged key would brick every zone encrypted under it.
+  # IRREVERSIBLE once on: after teardown the vault name stays reserved
+  # until the soft-delete window passes.
+  purgeProtectionEnabled: true
+---
+# The zone encryption key. Referenced by VERSIONLESS id below, so
+# rotating the key (manually or by policy) re-encrypts forward without
+# touching the scopes. Wrap/unwrap are the only operations envelope
+# encryption needs.
+apiVersion: azure.planton.dev/v1
+kind: AzureKeyVaultKey
+metadata:
+  name: "{{ values.env }}-lakehouse-cmk"
+spec:
+  keyVaultId:
+    valueFrom:
+      kind: AzureKeyVault
+      name: "{{ values.env }}-lakehouse-vault"
+      fieldPath: status.outputs.key_vault_id
+  name: "{{ values.env }}-lakehouse-cmk"
+  keyType: RSA
+  # 3072-bit for a long-lived infrastructure key -- 2048 is the floor,
+  # not the recommendation, for keys that protect data at rest for
+  # years.
+  keySize: 3072
+  keyOpts:
+    - WRAP_KEY
+    - UNWRAP_KEY
+---
+# The unwrap grant: the ACCOUNT's system identity may use (never read,
+# never manage) the key -- encryption scopes unwrap through the account
+# identity, the same pattern as account-level CMK. "Crypto Service
+# Encryption User" is the exact built-in role Azure services need.
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: "{{ values.env }}-lakehouse-cmk-grant"
+spec:
+  scope:
+    valueFrom:
+      kind: AzureKeyVault
+      name: "{{ values.env }}-lakehouse-vault"
+      fieldPath: status.outputs.key_vault_id
+  roleDefinitionName: Key Vault Crypto Service Encryption User
+  principalId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: "{{ values.env }}-lakehouse-store"
+      fieldPath: status.outputs.identity_principal_id
+  principalType: SERVICE_PRINCIPAL
+  # The account is created moments before this grant; skipping the
+  # directory existence check avoids losing the race against Entra's
+  # asynchronous replication (PrincipalNotFound).
+  skipServicePrincipalAadCheck: true
+  description: The lake account's identity wraps and unwraps the zone encryption key -- use-only, never manage
+{% endif %}
+---
+# Per-zone encryption scopes: each zone encrypts under its own named
+# scope, so key custody and crypto separation are per-zone facts (an
+# auditor question answered by architecture, not by policy documents).
+# With cmk_enabled the scopes unwrap the vault key through the account
+# identity; without it each scope still isolates under its own
+# Microsoft-managed key.
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageEncryptionScope
+metadata:
+  name: "{{ values.env }}-scope-raw"
+spec:
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: "{{ values.env }}-lakehouse-store"
+      fieldPath: status.outputs.storage_account_id
+  scopeName: rawzone
+{% if values.cmk_enabled | bool %}
+  source: MICROSOFT_KEY_VAULT
+  keyVaultKeyId:
+    valueFrom:
+      kind: AzureKeyVaultKey
+      name: "{{ values.env }}-lakehouse-cmk"
+      fieldPath: status.outputs.versionless_id
+{% else %}
+  source: MICROSOFT_STORAGE
+{% endif %}
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageEncryptionScope
+metadata:
+  name: "{{ values.env }}-scope-curated"
+spec:
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: "{{ values.env }}-lakehouse-store"
+      fieldPath: status.outputs.storage_account_id
+  scopeName: curatedzone
+{% if values.cmk_enabled | bool %}
+  source: MICROSOFT_KEY_VAULT
+  keyVaultKeyId:
+    valueFrom:
+      kind: AzureKeyVaultKey
+      name: "{{ values.env }}-lakehouse-cmk"
+      fieldPath: status.outputs.versionless_id
+{% else %}
+  source: MICROSOFT_STORAGE
+{% endif %}
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageEncryptionScope
+metadata:
+  name: "{{ values.env }}-scope-sandbox"
+spec:
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: "{{ values.env }}-lakehouse-store"
+      fieldPath: status.outputs.storage_account_id
+  scopeName: sandboxzone
+{% if values.cmk_enabled | bool %}
+  source: MICROSOFT_KEY_VAULT
+  keyVaultKeyId:
+    valueFrom:
+      kind: AzureKeyVaultKey
+      name: "{{ values.env }}-lakehouse-cmk"
+      fieldPath: status.outputs.versionless_id
+{% else %}
+  source: MICROSOFT_STORAGE
+{% endif %}

@@ -1,120 +1,67 @@
-# Azure Storage Account Terraform Module
+# AzureStorageAccount - Terraform Module
 
-This Terraform module deploys Azure Storage Accounts with blob containers, network access controls, and data protection features.
+Terraform implementation for the AzureStorageAccount deployment
+component.
+
+## Resources Created
+
+- `azurerm_storage_account.main` -- the account: SKU trio, security
+  posture, identity, customer-managed key, firewall, blob/file service
+  settings, routing, custom domain, Azure Files authentication, and the
+  account-level immutability policy
+- `azurerm_storage_management_policy.main` (when `lifecycle_rules` are
+  declared) -- the account's SINGLETON blob lifecycle policy document
+  (ARM hardcodes its name to "default", which is why the rules fold into
+  the account spec)
+- `azurerm_storage_account_static_website.main` (when `static_website`
+  is declared) -- realized via the standalone resource because the
+  inline `static_website` block is deprecated for removal in azurerm v5
+
+## Variable Highlights
+
+| Variable | Notes |
+| --- | --- |
+| `spec.account_name` | Globally unique, 3-24 lowercase alphanumerics ONLY -- no hyphens |
+| `spec.account_kind` / `account_tier` / `replication_type` | Spec enum name strings; unset materializes the documented defaults (StorageV2/Standard/LRS) in `locals.tf` -- azurerm REQUIRES tier and replication |
+| `spec.access_tier` / `dns_endpoint_type` | Unset maps to null so Azure computes/defaults them itself |
+| `spec.replication_type` | `RA_GRS` → `RAGRS` etc. -- the RA_ prefix collapses in the SKU suffix |
+| `spec.network_rules.bypass` | Empty list maps to null so azurerm computes Azure's default (AzureServices) |
+| `spec.azure_files_authentication.default_share_level_permission` | `SHARE_PERMISSION_*` enum names mapped to ARM's role-name vocabulary |
+| `spec.lifecycle_rules[].actions.*` | Absent aging thresholds are simply not rendered -- the provider's -1 sentinel is never needed |
+
+## Secret-Bearing Outputs
+
+`primary_access_key`, `secondary_access_key`, and the four connection
+strings are marked `sensitive` -- they authorize every data-plane
+operation on the account. Prefer Entra data-plane roles scoped to
+`storage_account_id`; reference the keys only where a consumer genuinely
+requires key auth (e.g. a Function App's storage binding).
 
 ## Usage
-
-### Standalone Module Usage
 
 ```hcl
 module "storage_account" {
   source = "./path/to/module"
 
   metadata = {
-    name = "myapp-storage"
+    name = "app-storage"
     org  = "mycompany"
     env  = "production"
   }
 
   spec = {
     region         = "eastus"
-    resource_group = "myapp-rg"
-    account_kind   = "StorageV2"
-    account_tier   = "Standard"
-    replication_type = "GRS"
-    access_tier    = "Hot"
+    resource_group = "app-rg"
+    account_name   = "myappstorage001"
 
-    network_rules = {
-      default_action        = "Deny"
-      bypass_azure_services = true
-      ip_rules              = ["203.0.113.0/24"]
-    }
+    replication_type = "ZRS"
 
     blob_properties = {
-      enable_versioning          = true
-      soft_delete_retention_days = 30
+      versioning_enabled = true
+      delete_retention_policy = {
+        days = 14
+      }
     }
-
-    containers = [
-      { name = "data", access_type = "private" },
-      { name = "logs", access_type = "private" }
-    ]
   }
 }
 ```
-
-### Via Planton CLI
-
-```bash
-# Deploy using OpenTofu/Terraform
-planton tofu apply \
-  --manifest storage.yaml \
-  --auto-approve
-```
-
-## Required Azure Credentials
-
-The module requires Azure authentication. Set these environment variables:
-
-```bash
-export ARM_CLIENT_ID="your-client-id"
-export ARM_CLIENT_SECRET="your-client-secret"
-export ARM_TENANT_ID="your-tenant-id"
-export ARM_SUBSCRIPTION_ID="your-subscription-id"
-```
-
-Or use Azure CLI authentication:
-
-```bash
-az login
-```
-
-## Variables
-
-### metadata (required)
-
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| name | string | Resource name (used for storage account naming) |
-| id | string | Optional resource ID |
-| org | string | Organization name (for tagging) |
-| env | string | Environment name (for tagging) |
-
-### spec (required)
-
-| Attribute | Type | Default | Description |
-|-----------|------|---------|-------------|
-| region | string | - | Azure region |
-| resource_group | string | - | Resource group name |
-| account_kind | string | StorageV2 | Storage account kind |
-| account_tier | string | Standard | Performance tier |
-| replication_type | string | LRS | Replication strategy |
-| access_tier | string | Hot | Default blob access tier |
-| enable_https_traffic_only | bool | true | Require HTTPS |
-| min_tls_version | string | TLS1_2 | Minimum TLS version |
-| network_rules | object | - | Network ACL configuration |
-| blob_properties | object | - | Blob service properties |
-| containers | list | [] | Blob containers to create |
-
-## Outputs
-
-| Output | Description |
-|--------|-------------|
-| storage_account_id | Azure Resource Manager ID |
-| storage_account_name | Storage account name |
-| primary_blob_endpoint | Primary blob service URL |
-| primary_queue_endpoint | Primary queue service URL |
-| primary_table_endpoint | Primary table service URL |
-| primary_file_endpoint | Primary file service URL |
-| primary_dfs_endpoint | Primary DFS (Data Lake) URL |
-| primary_web_endpoint | Primary static website URL |
-| container_url_map | Map of container names to URLs |
-| region | Azure region |
-| resource_group | Resource group name |
-
-## Notes
-
-- Storage account names must be globally unique (3-24 lowercase alphanumeric characters)
-- Network rules default to "Deny" for security
-- Blob soft delete is enabled by default (7 days)
-- TLS 1.2 is enforced by default

@@ -1,3 +1,7 @@
+# Full-surface offline-plan manifest. This exercises every optional block the
+# module renders -- including the arms excluded from live E2E lanes (webhook,
+# source auth, public visibility, EFS mounts, batch builds) -- so the
+# `tofu plan` / `pulumi preview` proofs cover the whole contract.
 apiVersion: aws.planton.dev/v1
 kind: AwsCodeBuildProject
 metadata:
@@ -5,7 +9,7 @@ metadata:
   id: test-codebuild
   org: test-org
   env: dev
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: test
     pulumi.planton.dev/project: test
@@ -15,11 +19,135 @@ spec:
   source:
     type: GITHUB
     location: https://github.com/example/repo.git
+    buildspec: ci/buildspec.yml
+    gitCloneDepth: 1
+    gitSubmodulesConfig:
+      fetchSubmodules: true
+    reportBuildStatus: true
+    buildStatusConfig:
+      context: ci/codebuild
+      targetUrl: https://ci.example.com/builds
+    auth:
+      type: CODECONNECTIONS
+      resource: arn:aws:codeconnections:us-west-2:123456789012:connection/aaaa1111-22bb-33cc-44dd-5555eeee6666
+  secondarySources:
+    - sourceIdentifier: tooling
+      type: GITHUB
+      location: https://github.com/example/build-tooling.git
+      gitCloneDepth: 1
+  secondarySourceVersions:
+    - sourceIdentifier: tooling
+      sourceVersion: main
   environment:
     type: LINUX_CONTAINER
-    computeType: BUILD_GENERAL1_SMALL
+    computeType: BUILD_GENERAL1_MEDIUM
     image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+    certificate: certs-bucket/private-ca.pem
+    privilegedMode: true
+    imagePullCredentialsType: CODEBUILD
+    environmentVariables:
+      - name: STAGE
+        value: dev
+      - name: DB_PASSWORD
+        value: arn:aws:secretsmanager:us-west-2:123456789012:secret:db-pass
+        type: SECRETS_MANAGER
+    dockerServer:
+      computeType: BUILD_GENERAL1_MEDIUM
+      securityGroupIds:
+        - value: sg-0123456789abcdef0
   artifacts:
-    type: NO_ARTIFACTS
+    type: S3
+    location:
+      value: my-artifact-bucket
+    name: app.zip
+    path: releases
+    packaging: ZIP
+    namespaceType: BUILD_ID
+    overrideArtifactName: true
+    bucketOwnerAccess: READ_ONLY
+  secondaryArtifacts:
+    - artifactIdentifier: reports
+      type: S3
+      location:
+        value: my-reports-bucket
+      path: test-reports
   serviceRole:
     value: arn:aws:iam::123456789012:role/codebuild-service-role
+  description: Full-surface CodeBuild plan proof
+  encryptionKey:
+    value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+  buildTimeout: 90
+  queuedTimeout: 120
+  concurrentBuildLimit: 4
+  autoRetryLimit: 2
+  badgeEnabled: true
+  sourceVersion: main
+  cache:
+    type: S3
+    location:
+      value: my-cache-bucket
+    cacheNamespace: main-branch
+  logsConfig:
+    cloudwatchLogs:
+      status: ENABLED
+      groupName:
+        value: /codebuild/test-codebuild
+      streamName: builds
+    s3Logs:
+      status: ENABLED
+      location:
+        value: my-log-bucket/build-logs
+      bucketOwnerAccess: FULL
+  vpcConfig:
+    vpcId:
+      value: vpc-0123456789abcdef0
+    subnetIds:
+      - value: subnet-0123456789abcdef0
+      - value: subnet-0123456789abcdef1
+    securityGroupIds:
+      - value: sg-0123456789abcdef0
+  fileSystemLocations:
+    - identifier: build_cache
+      location: fs-0123456789abcdef0.efs.us-west-2.amazonaws.com:/build-cache
+      mountPoint: /mnt/build-cache
+  buildBatchConfig:
+    serviceRole:
+      value: arn:aws:iam::123456789012:role/codebuild-batch-role
+    combineArtifacts: true
+    timeoutInMins: 120
+    restrictions:
+      computeTypesAllowed:
+        - BUILD_GENERAL1_SMALL
+        - BUILD_GENERAL1_MEDIUM
+      maximumBuildsAllowed: 10
+  resourcePolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: SharedBuildAccess
+        Effect: Allow
+        Principal:
+          AWS: arn:aws:iam::210987654321:root
+        Action:
+          - codebuild:BatchGetProjects
+          - codebuild:StartBuild
+        Resource: "*"
+        Condition:
+          StringEquals:
+            aws:ResourceAccount: "${aws:PrincipalAccount}"
+  webhook:
+    buildType: BUILD
+    filterGroups:
+      - filters:
+          - type: EVENT
+            pattern: PUSH, PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED
+          - type: HEAD_REF
+            pattern: ^refs/heads/main$
+          - type: FILE_PATH
+            pattern: ^src/.*
+            excludeMatchedPattern: false
+    pullRequestBuildPolicy:
+      requiresCommentApproval: FORK_PULL_REQUESTS
+      approverRoles:
+        - GITHUB_WRITE
+        - GITHUB_MAINTAIN
+        - GITHUB_ADMIN

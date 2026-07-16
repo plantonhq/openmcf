@@ -1,0 +1,80 @@
+params:
+  # ─── Placement ───────────────────────────────────────────────────────────────
+  - name: region
+    description: Azure region for the estate. Zone-redundant HA requires a region with availability zones
+    value: centralus
+
+  # ─── Network ─────────────────────────────────────────────────────────────────
+  - name: vnet_cidr
+    description: Address space of the database virtual network
+    value: 10.30.0.0/16
+
+  - name: db_subnet_cidr
+    description: CIDR of the PostgreSQL delegated subnet, inside vnet_cidr. The subnet is dedicated to flexible servers (Azure's delegation contract) -- application workloads peer in or share the VNet with their own subnets
+    value: 10.30.1.0/24
+
+  # ─── Global names (must change) ──────────────────────────────────────────────
+  - name: key_vault_name
+    description: Globally unique Key Vault name (3-24 alphanumerics and hyphens, no consecutive hyphens) holding the customer-managed encryption key. MUST be changed before deploying (only used when cmk_enabled)
+    value: myhapostgreskv
+
+  # ─── Credentials ─────────────────────────────────────────────────────────────
+  - name: postgres_admin_login
+    description: PostgreSQL administrator login for password authentication (Entra administration is also enabled -- see the identity the chart creates)
+    value: pgadmin
+
+  - name: postgres_admin_password
+    description: PostgreSQL administrator password (8-128 characters). MUST be changed before deploying -- nothing in the graph outputs a database password
+    value: ChangeMe-HA-Postgres-2026!
+
+  # ─── Engine and capacity ─────────────────────────────────────────────────────
+  - name: postgres_version
+    description: PostgreSQL major version. New estates start on 16 (17 is current but 16 has the widest extension coverage); upgrades are in-place
+    value: "16"
+
+  - name: sku_name
+    description: "Compute SKU in Azure's tier_prefix_size form: GP_Standard_D2s_v3 (2 vCPU General Purpose) is the production floor; B-series burstable cannot run HA or replicas"
+    value: GP_Standard_D2s_v3
+
+  - name: storage_mb
+    description: "Storage in MB from Azure's fixed ladder: 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304... Storage can grow but never shrink; auto-grow is on, so this is the starting rung"
+    value: 65536
+    type: number
+
+  # ─── Availability and durability ─────────────────────────────────────────────
+  - name: ha_enabled
+    description: Zone-redundant high availability -- a synchronous standby in another availability zone with automatic failover. Doubles compute cost; off is acceptable only where minutes of recovery time are
+    value: true
+    type: bool
+
+  - name: backup_retention_days
+    description: The point-in-time-restore window in days (7-35). Fourteen covers "we noticed the bad deploy a week later" without archive-grade cost
+    value: 14
+    type: number
+
+  - name: geo_redundant_backup_enabled
+    description: Replicate backups to the paired region for cross-region disaster recovery. Fixed at creation; adds backup storage cost and (with CMK) requires a geo-backup key configured directly on the server resource
+    value: false
+    type: bool
+
+  - name: replica_enabled
+    description: Deploy a read replica in the same VNet -- asynchronous replication, promotable to a standalone server. For read scale-out and as a warm recovery target; not a substitute for HA (replication is async)
+    value: false
+    type: bool
+
+  # ─── Encryption ──────────────────────────────────────────────────────────────
+  - name: cmk_enabled
+    description: Encrypt the server with a customer-managed key (RBAC Key Vault + RSA key + identity wiring, all provisioned by the chart). The vault carries purge protection, which is IRREVERSIBLE on that vault -- after teardown the vault name stays reserved until the soft-delete window passes. Off falls back to Azure service-managed encryption
+    value: true
+    type: bool
+
+  # ─── Notifications ───────────────────────────────────────────────────────────
+  - name: ops_email
+    description: Email address for CPU, storage, and connection-failure alerts
+    value: ops@example.com
+
+  # ─── Telemetry ───────────────────────────────────────────────────────────────
+  - name: log_retention_days
+    description: Log Analytics workspace retention in days
+    value: 30
+    type: number

@@ -1,0 +1,47 @@
+# Planton on Amazon EKS.
+#
+#   helm install planton oci://ghcr.io/plantonhq/charts/planton \
+#     --namespace planton --create-namespace \
+#     --values https://raw.githubusercontent.com/plantonhq/planton/main/helm/planton/values.eks.yaml
+#
+# EKS ships no ingress controller and every remaining choice is specific to
+# YOUR account (role ARNs, domains, certificates), so this file is a recipe:
+# nothing here is active -- the base install already works on EKS with zero
+# values -- and each block below is one uncommented edit away.
+
+platform:
+  spec: {}
+    # -- Publish at your own URL. Requires an ingress controller (the AWS
+    # Load Balancer Controller or ingress-nginx are the common choices on
+    # EKS; install one first, then point your domain's DNS at it).
+    # ingress:
+    #   enabled: true
+    #   hostname: planton.example.com
+    #   ingressClassName: alb          # or nginx; omit to use the cluster default
+    #   # ALB terminates TLS with an ACM certificate via annotations instead
+    #   # of the tls block:
+    #   annotations:
+    #     alb.ingress.kubernetes.io/scheme: internet-facing
+    #     alb.ingress.kubernetes.io/target-type: ip
+    #     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:123456789012:certificate/...
+    #     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+
+    # -- Give the in-cluster runner a cloud identity with IRSA -- no keys
+    # stored anywhere. Create an IAM role trusting this cluster's OIDC
+    # provider for the "runner-default" ServiceAccount in the install
+    # namespace, then:
+    # runner:
+    #   serviceAccountAnnotations:
+    #     eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/planton-runner
+
+    # -- Keep platform secrets in AWS Secrets Manager (pod identity + a KMS
+    # key; the control plane's ServiceAccount needs its own IRSA role):
+    # controlPlane:
+    #   serviceAccountAnnotations:
+    #     eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/planton-control-plane
+    # bootstrap:
+    #   secretBackend:
+    #     type: awsSecretsManager
+    #     awsSecretsManager:
+    #       region: us-east-1
+    #       kmsKeyArn: arn:aws:kms:us-east-1:123456789012:key/...

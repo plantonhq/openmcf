@@ -1,0 +1,122 @@
+{% if values.custom_domain_enabled | bool %}
+# Custom domain wiring: a public DNS zone, Front Door custom domain with
+# managed TLS, and the TXT/CNAME records that self-complete validation.
+# Deploys in pending-validation state until registrar NS delegation is live.
+apiVersion: azure.planton.dev/v1
+kind: AzureDnsZone
+metadata:
+  name: "{{ values.env }}-public-dns"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.resource_group_name
+  zoneName: "{{ values.dns_zone_name }}"
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorCustomDomain
+metadata:
+  name: "{{ values.env }}-web-custom-domain"
+spec:
+  profileId:
+    valueFrom:
+      kind: AzureFrontDoorProfile
+      name: "{{ values.env }}-web-fd"
+      fieldPath: status.outputs.profile_id
+  domainName: "{{ values.custom_domain_label }}-{{ values.dns_zone_name | replace('.', '-') }}"
+  hostName: "{{ values.custom_domain_label }}.{{ values.dns_zone_name }}"
+  dnsZoneId:
+    valueFrom:
+      kind: AzureDnsZone
+      name: "{{ values.env }}-public-dns"
+      fieldPath: status.outputs.zone_id
+  tls:
+    certificateType: MANAGED_CERTIFICATE
+---
+# The _dnsauth TXT record publishes the validation token Front Door mints.
+apiVersion: azure.planton.dev/v1
+kind: AzureDnsRecord
+metadata:
+  name: "{{ values.env }}-dnsauth-txt"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.resource_group_name
+  zoneName:
+    valueFrom:
+      kind: AzureDnsZone
+      name: "{{ values.env }}-public-dns"
+      fieldPath: status.outputs.zone_name
+  name: "_dnsauth.{{ values.custom_domain_label }}"
+  ttlSeconds: 60
+  txt:
+    - valueFrom:
+        kind: AzureFrontDoorCustomDomain
+        name: "{{ values.env }}-web-custom-domain"
+        fieldPath: status.outputs.validation_token
+---
+# The subdomain CNAME routes user traffic to the Front Door endpoint hostname.
+apiVersion: azure.planton.dev/v1
+kind: AzureDnsRecord
+metadata:
+  name: "{{ values.env }}-custom-domain-cname"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.resource_group_name
+  zoneName:
+    valueFrom:
+      kind: AzureDnsZone
+      name: "{{ values.env }}-public-dns"
+      fieldPath: status.outputs.zone_name
+  name: "{{ values.custom_domain_label }}"
+  ttlSeconds: 300
+  cname:
+    value:
+      valueFrom:
+        kind: AzureFrontDoorEndpoint
+        name: "{{ values.env }}-web-fd-endpoint"
+        fieldPath: status.outputs.host_name
+---
+# Attach the custom domain to the route.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorRoute
+metadata:
+  name: "{{ values.env }}-web-custom-route"
+spec:
+  endpointId:
+    valueFrom:
+      kind: AzureFrontDoorEndpoint
+      name: "{{ values.env }}-web-fd-endpoint"
+      fieldPath: status.outputs.endpoint_id
+  routeName: custom-domain
+  originGroupId:
+    valueFrom:
+      kind: AzureFrontDoorOriginGroup
+      name: "{{ values.env }}-web-origin-group"
+      fieldPath: status.outputs.origin_group_id
+  originIds:
+    - valueFrom:
+        kind: AzureFrontDoorOrigin
+        name: "{{ values.env }}-web-origin"
+        fieldPath: status.outputs.origin_id
+  patternsToMatch:
+    - "/*"
+  supportedProtocols:
+    - HTTP
+    - HTTPS
+  forwardingProtocol: HTTPS_ONLY
+  httpsRedirectEnabled: true
+  linkToDefaultDomain: false
+  customDomainIds:
+    - valueFrom:
+        kind: AzureFrontDoorCustomDomain
+        name: "{{ values.env }}-web-custom-domain"
+        fieldPath: status.outputs.custom_domain_id
+  enabled: true
+{% endif %}

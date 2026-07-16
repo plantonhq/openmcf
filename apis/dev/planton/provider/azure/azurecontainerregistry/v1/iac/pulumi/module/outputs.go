@@ -1,9 +1,11 @@
 package module
 
 const (
-	// OpRegistryLoginServer is the output key for the registry's login server URL
-	OpRegistryLoginServer = "registry_login_server"
-
-	// OpRegistryResourceId is the output key for the Azure Resource Manager ID
-	OpRegistryResourceId = "registry_resource_id"
+	OpContainerRegistryId               = "container_registry_id"
+	OpContainerRegistryName             = "container_registry_name"
+	OpLoginServer                       = "login_server"
+	OpAdminUsername                     = "admin_username"
+	OpAdminPassword                     = "admin_password"
+	OpSystemAssignedIdentityPrincipalId = "system_assigned_identity_principal_id"
+	OpDataEndpointHostNames             = "data_endpoint_host_names"
 )

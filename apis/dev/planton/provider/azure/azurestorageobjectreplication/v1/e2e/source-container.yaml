@@ -1,0 +1,21 @@
+# The container on the SOURCE account that the replication rule copies
+# from.
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageContainer
+metadata:
+  name: planton-oss-e2e-orsrc-fixture-container
+  id: planton-oss-e2e-orsrc-fixture-container
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestoragecontainer
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-orsrc-fixture-account
+  containerName: invoices

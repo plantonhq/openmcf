@@ -1,6 +1,6 @@
 ---
 title: "Standard Managed Identity"
-description: "This preset creates an Azure User-Assigned Managed Identity with a single RBAC role assignment. This is the most common pattern -- a single identity with one targeted permission grant, used for..."
+description: "This preset creates a plain user-assigned managed identity -- the anchor of every keyless-auth story on Azure. The identity is deliberately just the identity: what it may do and who may act as it are..."
 type: "preset"
 rank: "01"
 presetSlug: "01-standard"
@@ -13,19 +13,44 @@ order: 1
 
 # Standard Managed Identity
 
-This preset creates an Azure User-Assigned Managed Identity with a single RBAC role assignment. This is the most common pattern -- a single identity with one targeted permission grant, used for workloads like AKS pods, Container Apps, or Function Apps that need to access a single Azure resource (typically Key Vault).
+This preset creates a plain user-assigned managed identity -- the anchor of
+every keyless-auth story on Azure. The identity is deliberately just the
+identity: what it may do and who may act as it are separate, composable
+resources you add alongside it.
+
+Grant it permissions with an `AzureRoleAssignment` referencing the identity's
+`principal_id` output:
+
+```yaml
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: my-identity-kv-reader
+spec:
+  scope:
+    value: "<target-resource-id>"
+  roleDefinitionName: Key Vault Secrets User
+  principalId:
+    valueFrom:
+      name: my-identity
+```
 
 ## When to Use
 
-- An application that needs to read secrets from a Key Vault
-- AKS workload identity bindings that need a single permission
-- Any workload needing credential-free authentication to one Azure resource
+- Any workload (AKS pods, Container Apps, Function Apps, VMs) that needs
+  credential-free authentication to Azure services
+- As the shared anchor an application's grants and trust rules attach to
+- Whenever you would otherwise create a service principal with a client
+  secret
 
 ## Key Configuration Choices
 
-- **Single role assignment** -- One identity with one permission. The simplest and most auditable pattern
-- **Key Vault Secrets User** (`roleDefinitionName: Key Vault Secrets User`) -- Read-only access to Key Vault secrets. Change to the appropriate role for other resources (see 02-multi-role for examples)
-- **Scoped to a specific resource** -- The role is granted on a single resource ID, not a subscription or resource group. This follows the principle of least privilege
+- **Identity only** -- permissions live in `AzureRoleAssignment` resources
+  and external trust in `AzureFederatedIdentityCredential` resources, each
+  individually reviewable and removable
+- **Durable name** -- renaming replaces the identity and mints a new
+  principal, invalidating existing grants; name it after the workload or
+  duty ("ci-deployer", "payments-api")
 
 ## Placeholders to Replace
 
@@ -34,8 +59,8 @@ This preset creates an Azure User-Assigned Managed Identity with a single RBAC r
 | `<azure-region>` | Azure region | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
 | `<your-identity-name>` | Name for the managed identity (3-128 chars) | Your naming convention |
-| `<target-resource-id>` | Full ARM resource ID of the target resource | Azure portal or target resource's status outputs |
 
 ## Related Presets
 
-- **02-multi-role** -- Use instead when a single identity needs permissions across multiple resources
+- **02-ci-deployer** -- the complete keyless-CI composition
+- **03-governance-tagged** -- identity carrying org governance tags and regional isolation

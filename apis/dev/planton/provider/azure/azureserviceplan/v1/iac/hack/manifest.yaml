@@ -4,6 +4,20 @@ metadata:
   name: test-plan
 spec:
   region: eastus
-  resource_group: test-rg
-  name: test-service-plan
-  sku_name: P1v3
+  resourceGroup:
+    value: test-rg
+  servicePlanName: planton-hack-plan
+  # Explicit OS type exercises the enum mapping; unset deploys LINUX.
+  osType: LINUX
+  # Premium v3 exercises the premium range gates: auto-scale plus the
+  # elastic scale-out ceiling that requires it.
+  skuName: PREMIUM_P1V3
+  workerCount: 3
+  premiumPlanAutoScaleEnabled: true
+  maximumElasticWorkerCount: 10
+  # Zone balancing exercises the tier gate (premium and above) and the
+  # worker-count >= 2 recreate nuance.
+  zoneBalancingEnabled: true
+  perSiteScalingEnabled: true
+  tags:
+    cost-center: platform

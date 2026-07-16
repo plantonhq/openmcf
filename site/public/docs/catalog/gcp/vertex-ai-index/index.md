@@ -31,7 +31,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiIndex
 metadata:
   name: product-embeddings
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -95,7 +95,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiIndex
 metadata:
   name: rag-chunks
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -126,7 +126,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiIndex
 metadata:
   name: catalog-embeddings
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -152,7 +152,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiIndex
 metadata:
   name: eval-ground-truth
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -177,7 +177,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiIndex
 metadata:
   name: composed-index
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform

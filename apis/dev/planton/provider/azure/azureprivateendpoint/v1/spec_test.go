@@ -15,283 +15,98 @@ func TestAzurePrivateEndpointSpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "AzurePrivateEndpointSpec Validation Tests")
 }
 
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+func ref(name string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{Name: name},
+		},
+	}
+}
+
+// validResource returns a minimal valid AzurePrivateEndpoint that individual
+// cases then mutate into the shape under test.
+func validResource() *AzurePrivateEndpoint {
+	return &AzurePrivateEndpoint{
+		ApiVersion: "azure.planton.dev/v1",
+		Kind:       "AzurePrivateEndpoint",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "pg-pe",
+		},
+		Spec: &AzurePrivateEndpointSpec{
+			Region:        "eastus",
+			ResourceGroup: literal("my-rg"),
+			Name:          "pg-private-endpoint",
+			SubnetId:      literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet"),
+			PrivateServiceConnection: &AzurePrivateEndpointServiceConnection{
+				PrivateConnectionResourceId: literal("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/test-pg"),
+				SubresourceNames:            []string{"postgresqlServer"},
+			},
+		},
+	}
+}
+
 var _ = ginkgo.Describe("AzurePrivateEndpointSpec Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
 		ginkgo.Context("azure_private_endpoint", func() {
 
 			ginkgo.It("should not return a validation error for minimal valid fields", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "pg-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "pg-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/my-pg",
-							},
-						},
-						SubresourceNames: []string{"postgresqlServer"},
-					},
+				err := protovalidate.Validate(validResource())
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept references for subnet, resource group, and connection target", func() {
+				input := validResource()
+				input.Spec.ResourceGroup = ref("network-rg")
+				input.Spec.SubnetId = ref("pe-subnet")
+				input.Spec.PrivateServiceConnection.PrivateConnectionResourceId = ref("prod-postgres")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a connection by alias instead of resource id", func() {
+				input := validResource()
+				input.Spec.PrivateServiceConnection.PrivateConnectionResourceId = nil
+				input.Spec.PrivateServiceConnection.ConnectionAlias = "partner-pls.d20286c8-4ea5-11eb-9584.centralus.azure.privatelinkservice"
+				input.Spec.PrivateServiceConnection.SubresourceNames = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a manual connection with a request message", func() {
+				input := validResource()
+				manual := true
+				input.Spec.PrivateServiceConnection.IsManualConnection = &manual
+				input.Spec.PrivateServiceConnection.RequestMessage = "please approve cross-tenant access"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept private DNS zone references", func() {
+				input := validResource()
+				input.Spec.PrivateDnsZoneIds = []*foreignkeyv1.StringValueOrRef{ref("postgres-privatelink-zone")}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept static ip configurations", func() {
+				input := validResource()
+				input.Spec.IpConfigurations = []*AzurePrivateEndpointIpConfiguration{
+					{Name: "pg-ip", PrivateIpAddress: "10.0.1.10", SubresourceName: "postgresqlServer"},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with full metadata", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "prod-pg-pe",
-						Org:  "mycompany",
-						Env:  "production",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "westeurope",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "prod-network-rg",
-							},
-						},
-						Name: "prod-pg-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/prod-pg",
-							},
-						},
-						SubresourceNames: []string{"postgresqlServer"},
-						PrivateDnsZoneId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.Network/privateDnsZones/privatelink.postgres.database.azure.com",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for key vault private endpoint", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "kv-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "kv-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.KeyVault/vaults/my-kv",
-							},
-						},
-						SubresourceNames: []string{"vault"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for storage blob private endpoint", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "blob-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "blob-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Storage/storageAccounts/mystorage",
-							},
-						},
-						SubresourceNames: []string{"blob"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error without subresource names", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "custom-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "custom-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/privateLinkServices/my-pls",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error without private DNS zone", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "pg-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "pg-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/my-pg",
-							},
-						},
-						SubresourceNames: []string{"postgresqlServer"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with valueFrom references", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "pg-pe",
-						Org:  "mycompany",
-						Env:  "production",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-								ValueFrom: &foreignkeyv1.ValueFromRef{
-									Name: "prod-rg",
-								},
-							},
-						},
-						Name: "pg-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-								ValueFrom: &foreignkeyv1.ValueFromRef{
-									Name: "pe-subnet",
-								},
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-								ValueFrom: &foreignkeyv1.ValueFromRef{
-									Name: "prod-postgresql",
-								},
-							},
-						},
-						SubresourceNames: []string{"postgresqlServer"},
-						PrivateDnsZoneId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-								ValueFrom: &foreignkeyv1.ValueFromRef{
-									Name: "pg-dns-zone",
-								},
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with max length name", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "max-name-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "abcdefghij-abcdefghij-abcdefghij-abcdefghij-abcdefghij-abcdefghij-abcdefghij12",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/my-pg",
-							},
-						},
-					},
-				}
+			ginkgo.It("should accept application security group references", func() {
+				input := validResource()
+				input.Spec.ApplicationSecurityGroupIds = []*foreignkeyv1.StringValueOrRef{ref("data-tier")}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -302,272 +117,97 @@ var _ = ginkgo.Describe("AzurePrivateEndpointSpec Validation Tests", func() {
 		ginkgo.Context("azure_private_endpoint", func() {
 
 			ginkgo.It("should return a validation error when region is missing", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/my-pg",
-							},
-						},
-					},
-				}
+				input := validResource()
+				input.Spec.Region = ""
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when resource_group is missing", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						Name:   "test-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/my-pg",
-							},
-						},
-					},
+			ginkgo.It("should return a validation error when subnet is missing", func() {
+				input := validResource()
+				input.Spec.SubnetId = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when the connection block is missing", func() {
+				input := validResource()
+				input.Spec.PrivateServiceConnection = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when both resource id and alias are set", func() {
+				input := validResource()
+				input.Spec.PrivateServiceConnection.ConnectionAlias = "some-alias"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when neither resource id nor alias is set", func() {
+				input := validResource()
+				input.Spec.PrivateServiceConnection.PrivateConnectionResourceId = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when the alias lacks the privatelinkservice suffix", func() {
+				input := validResource()
+				input.Spec.PrivateServiceConnection.PrivateConnectionResourceId = nil
+				input.Spec.PrivateServiceConnection.ConnectionAlias = "partner-pls.centralus.example.com"
+				input.Spec.PrivateServiceConnection.SubresourceNames = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when a manual connection has no request message", func() {
+				input := validResource()
+				manual := true
+				input.Spec.PrivateServiceConnection.IsManualConnection = &manual
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when a request message is set on an auto-approved connection", func() {
+				input := validResource()
+				input.Spec.PrivateServiceConnection.RequestMessage = "should not be here"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when an ip configuration has no private ip", func() {
+				input := validResource()
+				input.Spec.IpConfigurations = []*AzurePrivateEndpointIpConfiguration{
+					{Name: "pg-ip"},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when name is missing", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/my-pg",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when name exceeds 80 characters", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "abcdefghij-abcdefghij-abcdefghij-abcdefghij-abcdefghij-abcdefghij-abcdefghij-too-long",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/my-pg",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when subnet_id is missing", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-private-endpoint",
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/my-pg",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when private_connection_resource_id is missing", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-					},
-				}
+				input := validResource()
+				input.Spec.Name = ""
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when api_version is incorrect", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "wrong.version/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/my-pg",
-							},
-						},
-					},
-				}
+				input := validResource()
+				input.ApiVersion = "wrong.version/v1"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when kind is incorrect", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "WrongKind",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pe",
-					},
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/my-pg",
-							},
-						},
-					},
-				}
+				input := validResource()
+				input.Kind = "WrongKind"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when metadata is missing", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Spec: &AzurePrivateEndpointSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-private-endpoint",
-						SubnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/pe-subnet",
-							},
-						},
-						PrivateConnectionResourceId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/my-pg",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when spec is missing", func() {
-				input := &AzurePrivateEndpoint{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateEndpoint",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-pe",
-					},
-				}
+				input := validResource()
+				input.Metadata = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

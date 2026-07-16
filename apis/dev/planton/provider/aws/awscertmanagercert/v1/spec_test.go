@@ -8,7 +8,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestAwsCertManagerCert(t *testing.T) {
@@ -34,7 +33,7 @@ var _ = ginkgo.Describe("AwsCertManagerCert", func() {
 					"www.example.com",
 					"test.example.com",
 				},
-				ValidationMethod: proto.String("DNS"),
+				ValidationMethod: "DNS",
 				Route53HostedZoneId: &foreignkeyv1.StringValueOrRef{
 					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-zone-id"},
 				},
@@ -95,6 +94,195 @@ var _ = ginkgo.Describe("AwsCertManagerCert", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})
+		})
+	})
+
+	ginkgo.Context("Creation Modes (exactly_one_creation_mode)", func() {
+		ginkgo.It("should reject a spec with neither a domain nor imported material", func() {
+			input.Spec.PrimaryDomainName = ""
+			input.Spec.AlternateDomainNames = nil
+			input.Spec.ValidationMethod = ""
+			input.Spec.Route53HostedZoneId = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a spec with both a domain and imported material", func() {
+			input.Spec.Imported = &AwsCertManagerCertImported{
+				CertificateBody: "-----BEGIN CERTIFICATE-----",
+				PrivateKey:      "-----BEGIN PRIVATE KEY-----",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a pure imported spec", func() {
+			input.Spec.PrimaryDomainName = ""
+			input.Spec.AlternateDomainNames = nil
+			input.Spec.ValidationMethod = ""
+			input.Spec.Route53HostedZoneId = nil
+			input.Spec.Imported = &AwsCertManagerCertImported{
+				CertificateBody: "-----BEGIN CERTIFICATE-----",
+				PrivateKey:      "-----BEGIN PRIVATE KEY-----",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject imported material missing the private key", func() {
+			input.Spec.PrimaryDomainName = ""
+			input.Spec.AlternateDomainNames = nil
+			input.Spec.ValidationMethod = ""
+			input.Spec.Route53HostedZoneId = nil
+			input.Spec.Imported = &AwsCertManagerCertImported{
+				CertificateBody: "-----BEGIN CERTIFICATE-----",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Imported arm exclusions (imported_excludes_issuance_fields)", func() {
+		ginkgo.BeforeEach(func() {
+			input.Spec.PrimaryDomainName = ""
+			input.Spec.AlternateDomainNames = nil
+			input.Spec.ValidationMethod = ""
+			input.Spec.Route53HostedZoneId = nil
+			input.Spec.Imported = &AwsCertManagerCertImported{
+				CertificateBody: "-----BEGIN CERTIFICATE-----",
+				PrivateKey:      "-----BEGIN PRIVATE KEY-----",
+			}
+		})
+
+		ginkgo.It("should reject imported with a validation method", func() {
+			input.Spec.ValidationMethod = "DNS"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject imported with a key algorithm", func() {
+			input.Spec.KeyAlgorithm = "RSA_2048"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject imported with options", func() {
+			input.Spec.Options = &AwsCertManagerCertOptions{
+				CertificateTransparencyLoggingPreference: "DISABLED",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject imported with a Route53 zone", func() {
+			input.Spec.Route53HostedZoneId = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-zone-id"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Private CA arm (private_ca_excludes_validation)", func() {
+		ginkgo.BeforeEach(func() {
+			input.Spec.ValidationMethod = ""
+			input.Spec.Route53HostedZoneId = nil
+			input.Spec.CertificateAuthorityArn = "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/abc-123"
+		})
+
+		ginkgo.It("should accept a private certificate", func() {
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a private certificate with a validation method", func() {
+			input.Spec.ValidationMethod = "DNS"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a private certificate with a Route53 zone", func() {
+			input.Spec.Route53HostedZoneId = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-zone-id"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a malformed CA ARN", func() {
+			input.Spec.CertificateAuthorityArn = "not-an-arn"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Validation method coupling (route53_zone_requires_dns_validation)", func() {
+		ginkgo.It("should reject EMAIL validation with a Route53 zone", func() {
+			input.Spec.ValidationMethod = "EMAIL"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept EMAIL validation without a zone", func() {
+			input.Spec.ValidationMethod = "EMAIL"
+			input.Spec.Route53HostedZoneId = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an unknown validation method", func() {
+			input.Spec.ValidationMethod = "HTTP"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Key algorithm", func() {
+		ginkgo.It("should accept a supported EC algorithm", func() {
+			input.Spec.KeyAlgorithm = "EC_prime256v1"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an unsupported algorithm", func() {
+			input.Spec.KeyAlgorithm = "RSA_1024"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Options", func() {
+		ginkgo.It("should accept exportable certificates with CT logging disabled", func() {
+			input.Spec.Options = &AwsCertManagerCertOptions{
+				CertificateTransparencyLoggingPreference: "DISABLED",
+				Export:                                   "ENABLED",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid export value", func() {
+			input.Spec.Options = &AwsCertManagerCertOptions{Export: "MAYBE"}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Validation options", func() {
+		ginkgo.It("should accept a parent-domain validation option", func() {
+			input.Spec.ValidationOptions = []*AwsCertManagerCertValidationOption{
+				{DomainName: "app.example.com", ValidationDomain: "example.com"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a validation option missing the validation domain", func() {
+			input.Spec.ValidationOptions = []*AwsCertManagerCertValidationOption{
+				{DomainName: "app.example.com"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 	})
 })

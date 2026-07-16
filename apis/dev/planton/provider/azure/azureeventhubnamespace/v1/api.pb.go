@@ -24,9 +24,13 @@ const (
 )
 
 // AzureEventHubNamespace is the top-level API resource for an Azure Event
-// Hubs namespace. Azure Event Hubs provides fully managed, real-time data
-// ingestion capable of receiving and processing millions of events per second
-// for telemetry, log aggregation, IoT, and real-time analytics.
+// Hubs namespace -- the container and billing boundary for high-throughput
+// event streaming. The namespace sets the pricing tier, throughput
+// capacity, network posture, and authentication mode; the streaming
+// entities compose onto it as first-class kinds (AzureEventHub,
+// AzureEventHubConsumerGroup, AzureEventHubAuthorizationRule,
+// AzureEventHubSchemaGroup, AzureEventHubDisasterRecoveryConfig,
+// AzureEventHubNamespaceCustomerManagedKey).
 type AzureEventHubNamespace struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version

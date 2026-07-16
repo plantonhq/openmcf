@@ -50,8 +50,8 @@ func buildExtendedS3Args(dest *awskinesisfirehose.AwsKinesisFirehoseExtendedS3De
 		args.S3BackupConfiguration = buildS3BackupConfig(dest.S3Backup)
 	}
 
-	// Processing
-	if proc := buildProcessingConfig(dest.Processing); proc != nil {
+	// Processing pipeline (normalized typed processors)
+	if proc := buildExtendedS3Processing(dest.Processing); proc != nil {
 		args.ProcessingConfiguration = proc
 	}
 

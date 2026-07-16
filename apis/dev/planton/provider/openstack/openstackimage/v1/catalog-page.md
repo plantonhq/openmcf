@@ -23,7 +23,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackImage
 metadata:
   name: ubuntu-2204
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -75,7 +75,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackImage
 metadata:
   name: ubuntu-2204
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -99,7 +99,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackImage
 metadata:
   name: golden-rhel9
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -128,7 +128,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackImage
 metadata:
   name: debian-12-netinst
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

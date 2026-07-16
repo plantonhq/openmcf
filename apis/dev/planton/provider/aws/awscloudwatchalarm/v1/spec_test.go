@@ -387,7 +387,7 @@ var _ = ginkgo.Describe("AwsCloudwatchAlarmSpec validations", func() {
 				Namespace:          "AWS/EC2",
 				Period:             300,
 				Statistic:          "Average",
-				ActionsEnabled:     false,
+				ActionsEnabled:     boolPtr(false),
 			},
 		}
 		err := protovalidate.Validate(input)
@@ -470,7 +470,7 @@ var _ = ginkgo.Describe("AwsCloudwatchAlarmSpec validations", func() {
 					"ServiceName": "api",
 				},
 				TreatMissingData:        "notBreaching",
-				ActionsEnabled:          true,
+				ActionsEnabled:          boolPtr(true),
 				AlarmDescription:        "ECS API service CPU utilization is too high. Consider scaling out or investigating hot code paths.",
 				AlarmActions:            []*fkv1.StringValueOrRef{snsArn},
 				OkActions:               []*fkv1.StringValueOrRef{snsArn},
@@ -1048,4 +1048,394 @@ var _ = ginkgo.Describe("AwsCloudwatchAlarmSpec validations", func() {
 		err := protovalidate.Validate(input)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
+
+	// -------------------------------------------------------------------------
+	// PromQL mode (evaluation_criteria)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a PromQL alarm (evaluation_criteria only, no threshold fields)", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "promql-cpu-high",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region: "us-west-2",
+				EvaluationCriteria: &AwsCloudwatchAlarmEvaluationCriteria{
+					PromqlCriteria: &AwsCloudwatchAlarmPromqlCriteria{
+						Query:          `avg(rate(node_cpu_seconds_total{mode!="idle"}[5m])) > 0.8`,
+						PendingPeriod:  int32Ptr(300),
+						RecoveryPeriod: int32Ptr(120),
+					},
+				},
+				EvaluationInterval: 60,
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when evaluation_criteria is combined with metric_name", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "promql-and-metric",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				MetricName:         "CPUUtilization",
+				Namespace:          "AWS/EC2",
+				Period:             300,
+				Statistic:          "Average",
+				EvaluationCriteria: &AwsCloudwatchAlarmEvaluationCriteria{
+					PromqlCriteria: &AwsCloudwatchAlarmPromqlCriteria{
+						Query: "up == 0",
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a PromQL alarm sets comparison_operator", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "promql-with-operator",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationCriteria: &AwsCloudwatchAlarmEvaluationCriteria{
+					PromqlCriteria: &AwsCloudwatchAlarmPromqlCriteria{
+						Query: "up == 0",
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a PromQL alarm sets evaluation_periods", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "promql-with-periods",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:            "us-west-2",
+				EvaluationPeriods: 3,
+				EvaluationCriteria: &AwsCloudwatchAlarmEvaluationCriteria{
+					PromqlCriteria: &AwsCloudwatchAlarmPromqlCriteria{
+						Query: "up == 0",
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when evaluation_interval is set without evaluation_criteria", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "interval-without-promql",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          80.0,
+				MetricName:         "CPUUtilization",
+				Namespace:          "AWS/EC2",
+				Period:             300,
+				Statistic:          "Average",
+				EvaluationInterval: 60,
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when evaluation_interval is 45 (not 10/20/30 or a multiple of 60)", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "promql-bad-interval",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region: "us-west-2",
+				EvaluationCriteria: &AwsCloudwatchAlarmEvaluationCriteria{
+					PromqlCriteria: &AwsCloudwatchAlarmPromqlCriteria{
+						Query: "up == 0",
+					},
+				},
+				EvaluationInterval: 45,
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when evaluation_criteria is present without promql_criteria", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "empty-criteria",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				EvaluationCriteria: &AwsCloudwatchAlarmEvaluationCriteria{},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when pending_period exceeds 86400 seconds", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "promql-pending-too-long",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region: "us-west-2",
+				EvaluationCriteria: &AwsCloudwatchAlarmEvaluationCriteria{
+					PromqlCriteria: &AwsCloudwatchAlarmPromqlCriteria{
+						Query:         "up == 0",
+						PendingPeriod: int32Ptr(90000),
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Per-query contract (expression XOR metric; exactly one return_data)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when a metric query sets both expression and metric", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "query-both-arms",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          5.0,
+				MetricQueries: []*AwsCloudwatchAlarmMetricQuery{
+					{
+						Id:         "m1",
+						Expression: "m2*2",
+						Metric: &AwsCloudwatchAlarmMetricQueryMetric{
+							MetricName: "CPUUtilization",
+							Namespace:  "AWS/EC2",
+							Period:     300,
+							Stat:       "Average",
+						},
+						ReturnData: true,
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a metric query sets neither expression nor metric", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "query-neither-arm",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          5.0,
+				MetricQueries: []*AwsCloudwatchAlarmMetricQuery{
+					{
+						Id:         "m1",
+						ReturnData: true,
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when no metric query sets return_data", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "no-return-data",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          5.0,
+				MetricQueries: []*AwsCloudwatchAlarmMetricQuery{
+					{
+						Id: "m1",
+						Metric: &AwsCloudwatchAlarmMetricQueryMetric{
+							MetricName: "CPUUtilization",
+							Namespace:  "AWS/EC2",
+							Period:     300,
+							Stat:       "Average",
+						},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when two metric queries set return_data", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "double-return-data",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          5.0,
+				MetricQueries: []*AwsCloudwatchAlarmMetricQuery{
+					{
+						Id: "m1",
+						Metric: &AwsCloudwatchAlarmMetricQueryMetric{
+							MetricName: "HTTPCode_Target_5XX_Count",
+							Namespace:  "AWS/ApplicationELB",
+							Period:     60,
+							Stat:       "Sum",
+						},
+						ReturnData: true,
+					},
+					{
+						Id: "m2",
+						Metric: &AwsCloudwatchAlarmMetricQueryMetric{
+							MetricName: "RequestCount",
+							Namespace:  "AWS/ApplicationELB",
+							Period:     60,
+							Stat:       "Sum",
+						},
+						ReturnData: true,
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a query metric without namespace (provider-optional)", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "no-namespace-metric",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          5.0,
+				MetricQueries: []*AwsCloudwatchAlarmMetricQuery{
+					{
+						Id: "m1",
+						Metric: &AwsCloudwatchAlarmMetricQueryMetric{
+							MetricName: "CustomMetric",
+							Period:     60,
+							Stat:       "Sum",
+						},
+						ReturnData: true,
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a query metric period is 45", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-query-period",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          5.0,
+				MetricQueries: []*AwsCloudwatchAlarmMetricQuery{
+					{
+						Id: "m1",
+						Metric: &AwsCloudwatchAlarmMetricQueryMetric{
+							MetricName: "CPUUtilization",
+							Namespace:  "AWS/EC2",
+							Period:     45,
+							Stat:       "Average",
+						},
+						ReturnData: true,
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when unit is not a valid CloudWatch StandardUnit", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-unit",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          80.0,
+				MetricName:         "CPUUtilization",
+				Namespace:          "AWS/EC2",
+				Period:             300,
+				Statistic:          "Average",
+				Unit:               "Percentage",
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
 })
+
+func boolPtr(b bool) *bool { return &b }
+
+func int32Ptr(i int32) *int32 { return &i }

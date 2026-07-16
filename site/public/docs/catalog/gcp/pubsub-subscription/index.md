@@ -36,7 +36,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpPubSubSubscription
 metadata:
   name: my-subscription
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -117,7 +117,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpPubSubSubscription
 metadata:
   name: push-subscription
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -147,7 +147,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpPubSubSubscription
 metadata:
   name: bq-subscription
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -183,7 +183,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpPubSubSubscription
 metadata:
   name: gcs-subscription
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -218,7 +218,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpPubSubSubscription
 metadata:
   name: ref-subscription
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

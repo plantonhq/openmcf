@@ -33,7 +33,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNats
 metadata:
   name: my-nats
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -63,8 +63,6 @@ This creates a single-replica NATS server with JetStream enabled, a 10Gi Persist
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `serverContainer.replicas` | `int32` | `1` | Number of NATS server replicas. Use an odd value for quorum in clustered mode. Must be greater than 0. |
 | `serverContainer.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for each NATS pod. |
@@ -121,7 +119,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNats
 metadata:
   name: dev-nats
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -150,7 +148,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNats
 metadata:
   name: prod-nats
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -185,7 +183,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNats
 metadata:
   name: event-bus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -255,7 +253,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNats
 metadata:
   name: my-nats
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

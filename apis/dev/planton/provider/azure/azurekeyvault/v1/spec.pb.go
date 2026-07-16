@@ -24,31 +24,31 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzureKeyVaultSku** defines the SKU tier for Azure Key Vault.
+// The pricing tier of a Key Vault. Unspecified means STANDARD.
 type AzureKeyVaultSku int32
 
 const (
-	// Unspecified SKU (will default to STANDARD)
-	AzureKeyVaultSku_SKU_UNSPECIFIED AzureKeyVaultSku = 0
-	// Standard SKU: Software-protected keys and secrets
-	// Suitable for most applications, development, and non-regulated production workloads
+	// Not specified: STANDARD.
+	AzureKeyVaultSku_azure_key_vault_sku_unspecified AzureKeyVaultSku = 0
+	// Software-protected keys and secrets -- the right tier for most
+	// workloads.
 	AzureKeyVaultSku_STANDARD AzureKeyVaultSku = 1
-	// Premium SKU: HSM-backed keys (FIPS 140-2 Level 3 validated)
-	// Required for compliance scenarios (PCI-DSS, HIPAA, FedRAMP, financial services)
+	// Adds HSM-backed keys (FIPS 140-2 Level 3) -- required for the
+	// EC_HSM/RSA_HSM key types and hardware-protection compliance regimes.
 	AzureKeyVaultSku_PREMIUM AzureKeyVaultSku = 2
 )
 
 // Enum value maps for AzureKeyVaultSku.
 var (
 	AzureKeyVaultSku_name = map[int32]string{
-		0: "SKU_UNSPECIFIED",
+		0: "azure_key_vault_sku_unspecified",
 		1: "STANDARD",
 		2: "PREMIUM",
 	}
 	AzureKeyVaultSku_value = map[string]int32{
-		"SKU_UNSPECIFIED": 0,
-		"STANDARD":        1,
-		"PREMIUM":         2,
+		"azure_key_vault_sku_unspecified": 0,
+		"STANDARD":                        1,
+		"PREMIUM":                         2,
 	}
 )
 
@@ -79,94 +79,642 @@ func (AzureKeyVaultSku) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-// **AzureKeyVaultNetworkAction** defines the default network action for Key Vault.
-type AzureKeyVaultNetworkAction int32
+// The default action for vault requests matching no network rule.
+type AzureKeyVaultNetworkAclsDefaultAction int32
 
 const (
-	// Unspecified action (will default to DENY)
-	AzureKeyVaultNetworkAction_ACTION_UNSPECIFIED AzureKeyVaultNetworkAction = 0
-	// Allow all network traffic (not recommended for production)
-	AzureKeyVaultNetworkAction_ALLOW AzureKeyVaultNetworkAction = 1
-	// Deny all network traffic unless explicitly allowed (recommended for production)
-	AzureKeyVaultNetworkAction_DENY AzureKeyVaultNetworkAction = 2
+	// Not specified -- invalid; ARM requires an explicit choice when
+	// network rules are configured.
+	AzureKeyVaultNetworkAclsDefaultAction_azure_key_vault_network_acls_default_action_unspecified AzureKeyVaultNetworkAclsDefaultAction = 0
+	// Requests matching no rules are allowed (the rule set is effectively
+	// off).
+	AzureKeyVaultNetworkAclsDefaultAction_ALLOW AzureKeyVaultNetworkAclsDefaultAction = 1
+	// Requests matching no rules are denied -- the allowlist posture.
+	AzureKeyVaultNetworkAclsDefaultAction_DENY AzureKeyVaultNetworkAclsDefaultAction = 2
 )
 
-// Enum value maps for AzureKeyVaultNetworkAction.
+// Enum value maps for AzureKeyVaultNetworkAclsDefaultAction.
 var (
-	AzureKeyVaultNetworkAction_name = map[int32]string{
-		0: "ACTION_UNSPECIFIED",
+	AzureKeyVaultNetworkAclsDefaultAction_name = map[int32]string{
+		0: "azure_key_vault_network_acls_default_action_unspecified",
 		1: "ALLOW",
 		2: "DENY",
 	}
-	AzureKeyVaultNetworkAction_value = map[string]int32{
-		"ACTION_UNSPECIFIED": 0,
-		"ALLOW":              1,
-		"DENY":               2,
+	AzureKeyVaultNetworkAclsDefaultAction_value = map[string]int32{
+		"azure_key_vault_network_acls_default_action_unspecified": 0,
+		"ALLOW": 1,
+		"DENY":  2,
 	}
 )
 
-func (x AzureKeyVaultNetworkAction) Enum() *AzureKeyVaultNetworkAction {
-	p := new(AzureKeyVaultNetworkAction)
+func (x AzureKeyVaultNetworkAclsDefaultAction) Enum() *AzureKeyVaultNetworkAclsDefaultAction {
+	p := new(AzureKeyVaultNetworkAclsDefaultAction)
 	*p = x
 	return p
 }
 
-func (x AzureKeyVaultNetworkAction) String() string {
+func (x AzureKeyVaultNetworkAclsDefaultAction) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (AzureKeyVaultNetworkAction) Descriptor() protoreflect.EnumDescriptor {
+func (AzureKeyVaultNetworkAclsDefaultAction) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes[1].Descriptor()
 }
 
-func (AzureKeyVaultNetworkAction) Type() protoreflect.EnumType {
+func (AzureKeyVaultNetworkAclsDefaultAction) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes[1]
 }
 
-func (x AzureKeyVaultNetworkAction) Number() protoreflect.EnumNumber {
+func (x AzureKeyVaultNetworkAclsDefaultAction) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AzureKeyVaultNetworkAction.Descriptor instead.
-func (AzureKeyVaultNetworkAction) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use AzureKeyVaultNetworkAclsDefaultAction.Descriptor instead.
+func (AzureKeyVaultNetworkAclsDefaultAction) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-// **AzureKeyVaultSpec** defines the configuration for creating an Azure Key Vault.
-// This follows the 80/20 principle: exposing the 20% of configurations that 80% of users need.
+// Whether trusted Microsoft services bypass the vault's network rules.
+// Unspecified means Azure's default (AzureServices).
+type AzureKeyVaultNetworkAclsBypass int32
+
+const (
+	// Not specified: Azure's default (AzureServices).
+	AzureKeyVaultNetworkAclsBypass_azure_key_vault_network_acls_bypass_unspecified AzureKeyVaultNetworkAclsBypass = 0
+	// Trusted Microsoft services may reach the vault despite network rules.
+	AzureKeyVaultNetworkAclsBypass_AZURE_SERVICES AzureKeyVaultNetworkAclsBypass = 1
+	// No bypass: network rules apply to everything, first-party services
+	// included.
+	AzureKeyVaultNetworkAclsBypass_NONE AzureKeyVaultNetworkAclsBypass = 2
+)
+
+// Enum value maps for AzureKeyVaultNetworkAclsBypass.
+var (
+	AzureKeyVaultNetworkAclsBypass_name = map[int32]string{
+		0: "azure_key_vault_network_acls_bypass_unspecified",
+		1: "AZURE_SERVICES",
+		2: "NONE",
+	}
+	AzureKeyVaultNetworkAclsBypass_value = map[string]int32{
+		"azure_key_vault_network_acls_bypass_unspecified": 0,
+		"AZURE_SERVICES": 1,
+		"NONE":           2,
+	}
+)
+
+func (x AzureKeyVaultNetworkAclsBypass) Enum() *AzureKeyVaultNetworkAclsBypass {
+	p := new(AzureKeyVaultNetworkAclsBypass)
+	*p = x
+	return p
+}
+
+func (x AzureKeyVaultNetworkAclsBypass) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureKeyVaultNetworkAclsBypass) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes[2].Descriptor()
+}
+
+func (AzureKeyVaultNetworkAclsBypass) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes[2]
+}
+
+func (x AzureKeyVaultNetworkAclsBypass) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureKeyVaultNetworkAclsBypass.Descriptor instead.
+func (AzureKeyVaultNetworkAclsBypass) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+// Data-plane permissions over KEYS a legacy access policy can grant.
+type AzureKeyVaultKeyPermission int32
+
+const (
+	// Not specified -- invalid; grant an explicit permission.
+	AzureKeyVaultKeyPermission_azure_key_vault_key_permission_unspecified AzureKeyVaultKeyPermission = 0
+	// Read key metadata and the public part.
+	AzureKeyVaultKeyPermission_KEY_GET AzureKeyVaultKeyPermission = 1
+	// List keys in the vault.
+	AzureKeyVaultKeyPermission_KEY_LIST AzureKeyVaultKeyPermission = 2
+	// Update a key's attributes.
+	AzureKeyVaultKeyPermission_KEY_UPDATE AzureKeyVaultKeyPermission = 3
+	// Create new keys.
+	AzureKeyVaultKeyPermission_KEY_CREATE AzureKeyVaultKeyPermission = 4
+	// Import externally generated key material.
+	AzureKeyVaultKeyPermission_KEY_IMPORT AzureKeyVaultKeyPermission = 5
+	// Delete keys (soft delete).
+	AzureKeyVaultKeyPermission_KEY_DELETE AzureKeyVaultKeyPermission = 6
+	// Recover soft-deleted keys.
+	AzureKeyVaultKeyPermission_KEY_RECOVER AzureKeyVaultKeyPermission = 7
+	// Download a protected key backup.
+	AzureKeyVaultKeyPermission_KEY_BACKUP AzureKeyVaultKeyPermission = 8
+	// Restore a key from backup.
+	AzureKeyVaultKeyPermission_KEY_RESTORE AzureKeyVaultKeyPermission = 9
+	// Decrypt with the key.
+	AzureKeyVaultKeyPermission_KEY_DECRYPT AzureKeyVaultKeyPermission = 10
+	// Encrypt with the key.
+	AzureKeyVaultKeyPermission_KEY_ENCRYPT AzureKeyVaultKeyPermission = 11
+	// Unwrap (decrypt) a data-encryption key -- the permission
+	// customer-managed-key consumers need.
+	AzureKeyVaultKeyPermission_KEY_UNWRAP_KEY AzureKeyVaultKeyPermission = 12
+	// Wrap (encrypt) a data-encryption key.
+	AzureKeyVaultKeyPermission_KEY_WRAP_KEY AzureKeyVaultKeyPermission = 13
+	// Verify a signature with the public key.
+	AzureKeyVaultKeyPermission_KEY_VERIFY AzureKeyVaultKeyPermission = 14
+	// Sign with the private key.
+	AzureKeyVaultKeyPermission_KEY_SIGN AzureKeyVaultKeyPermission = 15
+	// Permanently delete (purge) a soft-deleted key.
+	AzureKeyVaultKeyPermission_KEY_PURGE AzureKeyVaultKeyPermission = 16
+	// Release the key to a trusted execution environment (secure key
+	// release).
+	AzureKeyVaultKeyPermission_KEY_RELEASE AzureKeyVaultKeyPermission = 17
+	// Rotate the key to a new version on demand.
+	AzureKeyVaultKeyPermission_KEY_ROTATE AzureKeyVaultKeyPermission = 18
+	// Read the key's rotation policy.
+	AzureKeyVaultKeyPermission_KEY_GET_ROTATION_POLICY AzureKeyVaultKeyPermission = 19
+	// Set the key's rotation policy.
+	AzureKeyVaultKeyPermission_KEY_SET_ROTATION_POLICY AzureKeyVaultKeyPermission = 20
+)
+
+// Enum value maps for AzureKeyVaultKeyPermission.
+var (
+	AzureKeyVaultKeyPermission_name = map[int32]string{
+		0:  "azure_key_vault_key_permission_unspecified",
+		1:  "KEY_GET",
+		2:  "KEY_LIST",
+		3:  "KEY_UPDATE",
+		4:  "KEY_CREATE",
+		5:  "KEY_IMPORT",
+		6:  "KEY_DELETE",
+		7:  "KEY_RECOVER",
+		8:  "KEY_BACKUP",
+		9:  "KEY_RESTORE",
+		10: "KEY_DECRYPT",
+		11: "KEY_ENCRYPT",
+		12: "KEY_UNWRAP_KEY",
+		13: "KEY_WRAP_KEY",
+		14: "KEY_VERIFY",
+		15: "KEY_SIGN",
+		16: "KEY_PURGE",
+		17: "KEY_RELEASE",
+		18: "KEY_ROTATE",
+		19: "KEY_GET_ROTATION_POLICY",
+		20: "KEY_SET_ROTATION_POLICY",
+	}
+	AzureKeyVaultKeyPermission_value = map[string]int32{
+		"azure_key_vault_key_permission_unspecified": 0,
+		"KEY_GET":                 1,
+		"KEY_LIST":                2,
+		"KEY_UPDATE":              3,
+		"KEY_CREATE":              4,
+		"KEY_IMPORT":              5,
+		"KEY_DELETE":              6,
+		"KEY_RECOVER":             7,
+		"KEY_BACKUP":              8,
+		"KEY_RESTORE":             9,
+		"KEY_DECRYPT":             10,
+		"KEY_ENCRYPT":             11,
+		"KEY_UNWRAP_KEY":          12,
+		"KEY_WRAP_KEY":            13,
+		"KEY_VERIFY":              14,
+		"KEY_SIGN":                15,
+		"KEY_PURGE":               16,
+		"KEY_RELEASE":             17,
+		"KEY_ROTATE":              18,
+		"KEY_GET_ROTATION_POLICY": 19,
+		"KEY_SET_ROTATION_POLICY": 20,
+	}
+)
+
+func (x AzureKeyVaultKeyPermission) Enum() *AzureKeyVaultKeyPermission {
+	p := new(AzureKeyVaultKeyPermission)
+	*p = x
+	return p
+}
+
+func (x AzureKeyVaultKeyPermission) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureKeyVaultKeyPermission) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes[3].Descriptor()
+}
+
+func (AzureKeyVaultKeyPermission) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes[3]
+}
+
+func (x AzureKeyVaultKeyPermission) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureKeyVaultKeyPermission.Descriptor instead.
+func (AzureKeyVaultKeyPermission) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+// Data-plane permissions over SECRETS a legacy access policy can grant.
+type AzureKeyVaultSecretPermission int32
+
+const (
+	// Not specified -- invalid; grant an explicit permission.
+	AzureKeyVaultSecretPermission_azure_key_vault_secret_permission_unspecified AzureKeyVaultSecretPermission = 0
+	// Read secret values -- the consumer permission.
+	AzureKeyVaultSecretPermission_SECRET_GET AzureKeyVaultSecretPermission = 1
+	// List secrets in the vault (names only, not values).
+	AzureKeyVaultSecretPermission_SECRET_LIST AzureKeyVaultSecretPermission = 2
+	// Create or update secret values.
+	AzureKeyVaultSecretPermission_SECRET_SET AzureKeyVaultSecretPermission = 3
+	// Delete secrets (soft delete).
+	AzureKeyVaultSecretPermission_SECRET_DELETE AzureKeyVaultSecretPermission = 4
+	// Recover soft-deleted secrets.
+	AzureKeyVaultSecretPermission_SECRET_RECOVER AzureKeyVaultSecretPermission = 5
+	// Download a protected secret backup.
+	AzureKeyVaultSecretPermission_SECRET_BACKUP AzureKeyVaultSecretPermission = 6
+	// Restore a secret from backup.
+	AzureKeyVaultSecretPermission_SECRET_RESTORE AzureKeyVaultSecretPermission = 7
+	// Permanently delete (purge) a soft-deleted secret.
+	AzureKeyVaultSecretPermission_SECRET_PURGE AzureKeyVaultSecretPermission = 8
+)
+
+// Enum value maps for AzureKeyVaultSecretPermission.
+var (
+	AzureKeyVaultSecretPermission_name = map[int32]string{
+		0: "azure_key_vault_secret_permission_unspecified",
+		1: "SECRET_GET",
+		2: "SECRET_LIST",
+		3: "SECRET_SET",
+		4: "SECRET_DELETE",
+		5: "SECRET_RECOVER",
+		6: "SECRET_BACKUP",
+		7: "SECRET_RESTORE",
+		8: "SECRET_PURGE",
+	}
+	AzureKeyVaultSecretPermission_value = map[string]int32{
+		"azure_key_vault_secret_permission_unspecified": 0,
+		"SECRET_GET":     1,
+		"SECRET_LIST":    2,
+		"SECRET_SET":     3,
+		"SECRET_DELETE":  4,
+		"SECRET_RECOVER": 5,
+		"SECRET_BACKUP":  6,
+		"SECRET_RESTORE": 7,
+		"SECRET_PURGE":   8,
+	}
+)
+
+func (x AzureKeyVaultSecretPermission) Enum() *AzureKeyVaultSecretPermission {
+	p := new(AzureKeyVaultSecretPermission)
+	*p = x
+	return p
+}
+
+func (x AzureKeyVaultSecretPermission) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureKeyVaultSecretPermission) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes[4].Descriptor()
+}
+
+func (AzureKeyVaultSecretPermission) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes[4]
+}
+
+func (x AzureKeyVaultSecretPermission) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureKeyVaultSecretPermission.Descriptor instead.
+func (AzureKeyVaultSecretPermission) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+// Data-plane permissions over CERTIFICATES a legacy access policy can grant.
+type AzureKeyVaultCertificatePermission int32
+
+const (
+	// Not specified -- invalid; grant an explicit permission.
+	AzureKeyVaultCertificatePermission_azure_key_vault_certificate_permission_unspecified AzureKeyVaultCertificatePermission = 0
+	// Read certificates (public part and policy) -- the consumer
+	// permission.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_GET AzureKeyVaultCertificatePermission = 1
+	// List certificates in the vault.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_LIST AzureKeyVaultCertificatePermission = 2
+	// Update a certificate's attributes or policy.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_UPDATE AzureKeyVaultCertificatePermission = 3
+	// Create (enroll) new certificates.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_CREATE AzureKeyVaultCertificatePermission = 4
+	// Import existing certificate bundles.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_IMPORT AzureKeyVaultCertificatePermission = 5
+	// Delete certificates (soft delete).
+	AzureKeyVaultCertificatePermission_CERTIFICATE_DELETE AzureKeyVaultCertificatePermission = 6
+	// Recover soft-deleted certificates.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_RECOVER AzureKeyVaultCertificatePermission = 7
+	// Download a protected certificate backup.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_BACKUP AzureKeyVaultCertificatePermission = 8
+	// Restore a certificate from backup.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_RESTORE AzureKeyVaultCertificatePermission = 9
+	// Manage the vault's certificate contacts (expiry notifications).
+	AzureKeyVaultCertificatePermission_CERTIFICATE_MANAGE_CONTACTS AzureKeyVaultCertificatePermission = 10
+	// Manage certificate-authority issuer configurations.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_MANAGE_ISSUERS AzureKeyVaultCertificatePermission = 11
+	// Read a specific issuer configuration.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_GET_ISSUERS AzureKeyVaultCertificatePermission = 12
+	// List issuer configurations.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_LIST_ISSUERS AzureKeyVaultCertificatePermission = 13
+	// Create or update issuer configurations.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_SET_ISSUERS AzureKeyVaultCertificatePermission = 14
+	// Delete issuer configurations.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_DELETE_ISSUERS AzureKeyVaultCertificatePermission = 15
+	// Permanently delete (purge) a soft-deleted certificate.
+	AzureKeyVaultCertificatePermission_CERTIFICATE_PURGE AzureKeyVaultCertificatePermission = 16
+)
+
+// Enum value maps for AzureKeyVaultCertificatePermission.
+var (
+	AzureKeyVaultCertificatePermission_name = map[int32]string{
+		0:  "azure_key_vault_certificate_permission_unspecified",
+		1:  "CERTIFICATE_GET",
+		2:  "CERTIFICATE_LIST",
+		3:  "CERTIFICATE_UPDATE",
+		4:  "CERTIFICATE_CREATE",
+		5:  "CERTIFICATE_IMPORT",
+		6:  "CERTIFICATE_DELETE",
+		7:  "CERTIFICATE_RECOVER",
+		8:  "CERTIFICATE_BACKUP",
+		9:  "CERTIFICATE_RESTORE",
+		10: "CERTIFICATE_MANAGE_CONTACTS",
+		11: "CERTIFICATE_MANAGE_ISSUERS",
+		12: "CERTIFICATE_GET_ISSUERS",
+		13: "CERTIFICATE_LIST_ISSUERS",
+		14: "CERTIFICATE_SET_ISSUERS",
+		15: "CERTIFICATE_DELETE_ISSUERS",
+		16: "CERTIFICATE_PURGE",
+	}
+	AzureKeyVaultCertificatePermission_value = map[string]int32{
+		"azure_key_vault_certificate_permission_unspecified": 0,
+		"CERTIFICATE_GET":             1,
+		"CERTIFICATE_LIST":            2,
+		"CERTIFICATE_UPDATE":          3,
+		"CERTIFICATE_CREATE":          4,
+		"CERTIFICATE_IMPORT":          5,
+		"CERTIFICATE_DELETE":          6,
+		"CERTIFICATE_RECOVER":         7,
+		"CERTIFICATE_BACKUP":          8,
+		"CERTIFICATE_RESTORE":         9,
+		"CERTIFICATE_MANAGE_CONTACTS": 10,
+		"CERTIFICATE_MANAGE_ISSUERS":  11,
+		"CERTIFICATE_GET_ISSUERS":     12,
+		"CERTIFICATE_LIST_ISSUERS":    13,
+		"CERTIFICATE_SET_ISSUERS":     14,
+		"CERTIFICATE_DELETE_ISSUERS":  15,
+		"CERTIFICATE_PURGE":           16,
+	}
+)
+
+func (x AzureKeyVaultCertificatePermission) Enum() *AzureKeyVaultCertificatePermission {
+	p := new(AzureKeyVaultCertificatePermission)
+	*p = x
+	return p
+}
+
+func (x AzureKeyVaultCertificatePermission) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureKeyVaultCertificatePermission) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes[5].Descriptor()
+}
+
+func (AzureKeyVaultCertificatePermission) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes[5]
+}
+
+func (x AzureKeyVaultCertificatePermission) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureKeyVaultCertificatePermission.Descriptor instead.
+func (AzureKeyVaultCertificatePermission) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+// Permissions over MANAGED STORAGE ACCOUNTS a legacy access policy can grant
+// (the legacy Key Vault storage-key-rotation feature).
+type AzureKeyVaultStoragePermission int32
+
+const (
+	// Not specified -- invalid; grant an explicit permission.
+	AzureKeyVaultStoragePermission_azure_key_vault_storage_permission_unspecified AzureKeyVaultStoragePermission = 0
+	// Read managed storage account definitions.
+	AzureKeyVaultStoragePermission_STORAGE_GET AzureKeyVaultStoragePermission = 1
+	// List managed storage accounts.
+	AzureKeyVaultStoragePermission_STORAGE_LIST AzureKeyVaultStoragePermission = 2
+	// Create or update managed storage account definitions.
+	AzureKeyVaultStoragePermission_STORAGE_SET AzureKeyVaultStoragePermission = 3
+	// Update managed storage account attributes.
+	AzureKeyVaultStoragePermission_STORAGE_UPDATE AzureKeyVaultStoragePermission = 4
+	// Delete managed storage account definitions (soft delete).
+	AzureKeyVaultStoragePermission_STORAGE_DELETE AzureKeyVaultStoragePermission = 5
+	// Recover soft-deleted managed storage accounts.
+	AzureKeyVaultStoragePermission_STORAGE_RECOVER AzureKeyVaultStoragePermission = 6
+	// Download a protected managed-storage backup.
+	AzureKeyVaultStoragePermission_STORAGE_BACKUP AzureKeyVaultStoragePermission = 7
+	// Restore a managed storage account from backup.
+	AzureKeyVaultStoragePermission_STORAGE_RESTORE AzureKeyVaultStoragePermission = 8
+	// Permanently delete (purge) a soft-deleted managed storage account.
+	AzureKeyVaultStoragePermission_STORAGE_PURGE AzureKeyVaultStoragePermission = 9
+	// Regenerate the managed storage account's keys.
+	AzureKeyVaultStoragePermission_STORAGE_REGENERATE_KEY AzureKeyVaultStoragePermission = 10
+	// Read a SAS definition.
+	AzureKeyVaultStoragePermission_STORAGE_GET_SAS AzureKeyVaultStoragePermission = 11
+	// List SAS definitions.
+	AzureKeyVaultStoragePermission_STORAGE_LIST_SAS AzureKeyVaultStoragePermission = 12
+	// Create or update SAS definitions.
+	AzureKeyVaultStoragePermission_STORAGE_SET_SAS AzureKeyVaultStoragePermission = 13
+	// Delete SAS definitions.
+	AzureKeyVaultStoragePermission_STORAGE_DELETE_SAS AzureKeyVaultStoragePermission = 14
+)
+
+// Enum value maps for AzureKeyVaultStoragePermission.
+var (
+	AzureKeyVaultStoragePermission_name = map[int32]string{
+		0:  "azure_key_vault_storage_permission_unspecified",
+		1:  "STORAGE_GET",
+		2:  "STORAGE_LIST",
+		3:  "STORAGE_SET",
+		4:  "STORAGE_UPDATE",
+		5:  "STORAGE_DELETE",
+		6:  "STORAGE_RECOVER",
+		7:  "STORAGE_BACKUP",
+		8:  "STORAGE_RESTORE",
+		9:  "STORAGE_PURGE",
+		10: "STORAGE_REGENERATE_KEY",
+		11: "STORAGE_GET_SAS",
+		12: "STORAGE_LIST_SAS",
+		13: "STORAGE_SET_SAS",
+		14: "STORAGE_DELETE_SAS",
+	}
+	AzureKeyVaultStoragePermission_value = map[string]int32{
+		"azure_key_vault_storage_permission_unspecified": 0,
+		"STORAGE_GET":            1,
+		"STORAGE_LIST":           2,
+		"STORAGE_SET":            3,
+		"STORAGE_UPDATE":         4,
+		"STORAGE_DELETE":         5,
+		"STORAGE_RECOVER":        6,
+		"STORAGE_BACKUP":         7,
+		"STORAGE_RESTORE":        8,
+		"STORAGE_PURGE":          9,
+		"STORAGE_REGENERATE_KEY": 10,
+		"STORAGE_GET_SAS":        11,
+		"STORAGE_LIST_SAS":       12,
+		"STORAGE_SET_SAS":        13,
+		"STORAGE_DELETE_SAS":     14,
+	}
+)
+
+func (x AzureKeyVaultStoragePermission) Enum() *AzureKeyVaultStoragePermission {
+	p := new(AzureKeyVaultStoragePermission)
+	*p = x
+	return p
+}
+
+func (x AzureKeyVaultStoragePermission) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureKeyVaultStoragePermission) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes[6].Descriptor()
+}
+
+func (AzureKeyVaultStoragePermission) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes[6]
+}
+
+func (x AzureKeyVaultStoragePermission) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureKeyVaultStoragePermission.Descriptor instead.
+func (AzureKeyVaultStoragePermission) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+// **AzureKeyVaultSpec** defines the configuration for creating an Azure Key
+// Vault: the tenant-scoped container where an organization's encryption keys,
+// TLS certificates, and application secrets live behind one security
+// boundary.
+//
+// The vault is where governance is set -- authorization mode (Azure RBAC vs
+// legacy access policies), network isolation (public access, IP allowlists,
+// VNet service endpoints), deletion safety (soft delete and purge
+// protection), and the pricing tier that gates HSM-backed keys. Azure orgs
+// deliberately run FEW vaults with MANY objects inside, because every one of
+// those controls applies vault-wide.
+//
+// What lives inside the vault is composed, never bundled here: encryption
+// keys are first-class AzureKeyVaultKey resources and TLS certificates are
+// first-class AzureKeyVaultCertificate resources, each referencing this
+// vault's key_vault_id output. Secret VALUES are deliberately out of scope
+// for infrastructure-as-code -- provision the vault here and manage secret
+// content through a secrets-management workflow, so plaintext never enters
+// deployment manifests or state.
+//
+// The vault is created in the deploying credential's Azure AD tenant (a
+// vault cannot be managed cross-tenant, so modeling the tenant would only
+// invite a contradiction); the tenant_id output reports it.
 type AzureKeyVaultSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure region where the Key Vault will be deployed (e.g., "eastus", "westus2", "westeurope").
-	// This is required as Key Vault is a regional service.
+	// The Azure region where the Key Vault will be deployed (e.g. "eastus",
+	// "westeurope"). Key Vault is a regional service; changing the region
+	// replaces the vault.
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// The Azure Resource Group where the Key Vault will be created.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
+	// The Azure resource group the vault will be created in. Can be a literal
+	// resource-group name or a reference to an AzureResourceGroup's name
+	// output.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// The SKU tier for the Key Vault.
-	// - STANDARD: Software-protected keys, suitable for most applications
-	// - PREMIUM: HSM-backed keys, required for compliance (PCI-DSS, FIPS 140-2 Level 3)
-	// Default: STANDARD
-	Sku *AzureKeyVaultSku `protobuf:"varint,3,opt,name=sku,proto3,enum=dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSku,oneof" json:"sku,omitempty"`
-	// Enable Azure RBAC for authorization instead of vault access policies.
-	// RBAC is the modern, recommended approach that integrates with Azure AD and PIM.
-	// Default: true (strongly recommended for new deployments)
-	EnableRbacAuthorization *bool `protobuf:"varint,4,opt,name=enable_rbac_authorization,json=enableRbacAuthorization,proto3,oneof" json:"enable_rbac_authorization,omitempty"`
-	// Enable purge protection to prevent permanent deletion of the vault and its contents.
-	// When enabled, deleted vaults are retained for the soft delete retention period and cannot be purged.
-	// CRITICAL: Should always be true for production environments.
-	// Default: true
-	EnablePurgeProtection *bool `protobuf:"varint,5,opt,name=enable_purge_protection,json=enablePurgeProtection,proto3,oneof" json:"enable_purge_protection,omitempty"`
-	// Soft delete retention period in days (7-90 days).
-	// Deleted secrets, keys, and certificates are retained for this period and can be recovered.
-	// Default: 90 days (maximum retention)
-	SoftDeleteRetentionDays *int32 `protobuf:"varint,6,opt,name=soft_delete_retention_days,json=softDeleteRetentionDays,proto3,oneof" json:"soft_delete_retention_days,omitempty"`
-	// Network access control configuration for the Key Vault.
-	// Controls who can access the vault from where (public internet, specific IPs, VNets).
-	NetworkAcls *AzureKeyVaultNetworkAcls `protobuf:"bytes,7,opt,name=network_acls,json=networkAcls,proto3,oneof" json:"network_acls,omitempty"`
-	// List of secret names to create in the Key Vault.
-	// The actual secret values should be set separately after vault creation using Azure SDK,
-	// Azure CLI, or the Key Vault API (never hardcoded in IaC).
-	SecretNames   []string `protobuf:"bytes,8,rep,name=secret_names,json=secretNames,proto3" json:"secret_names,omitempty"`
+	// The name of the vault: 3-24 characters of letters, digits, and hyphens,
+	// starting with a letter, ending with a letter or digit, no consecutive
+	// hyphens -- and GLOBALLY unique across all of Azure, because it becomes
+	// the vault's DNS name ({name}.vault.azure.net, the vault_uri output).
+	// Changing the name replaces the vault. A deleted vault's name stays
+	// reserved for the soft-delete retention window unless the vault is
+	// purged.
+	VaultName string `protobuf:"bytes,3,opt,name=vault_name,json=vaultName,proto3" json:"vault_name,omitempty"`
+	// The pricing tier. Unspecified applies STANDARD: software-protected
+	// keys, the right tier for most workloads. PREMIUM adds HSM-backed keys
+	// (FIPS 140-2 Level 3) -- required before any AzureKeyVaultKey in this
+	// vault can use the EC_HSM/RSA_HSM key types, and for compliance regimes
+	// that mandate hardware protection (PCI-DSS, FedRAMP High). The SKU can
+	// be changed in place.
+	Sku AzureKeyVaultSku `protobuf:"varint,4,opt,name=sku,proto3,enum=dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSku" json:"sku,omitempty"`
+	// Whether data-plane authorization uses Azure RBAC (true) or legacy
+	// vault access policies (false). Azure's own guidance is RBAC: grants
+	// become ordinary role assignments (compose AzureRoleAssignment with
+	// roles like "Key Vault Administrator" or "Key Vault Secrets User"),
+	// participate in PIM and access reviews, and support fine-grained scopes.
+	// ARM's default for a new vault is the legacy access-policy mode, but
+	// this spec defaults to RBAC as the recommended posture -- set false
+	// explicitly (and populate access_policies) to run the legacy mode.
+	// Switching modes on a live vault requires Microsoft.Authorization write
+	// permission (Owner / User Access Administrator) on the vault.
+	RbacAuthorizationEnabled *bool `protobuf:"varint,5,opt,name=rbac_authorization_enabled,json=rbacAuthorizationEnabled,proto3,oneof" json:"rbac_authorization_enabled,omitempty"`
+	// Legacy access-policy grants (up to 1024). Only honored when
+	// rbac_authorization_enabled is false -- ARM stores but IGNORES access
+	// policies on an RBAC-mode vault, so populating both is almost always a
+	// mistake. Each entry grants one Azure AD principal (user, group,
+	// service principal, or managed identity) explicit permission lists over
+	// keys, secrets, certificates, and managed-storage objects in this
+	// vault. Prefer RBAC for new vaults; model policies only when an
+	// existing workload or org standard requires the legacy mode.
+	AccessPolicies []*AzureKeyVaultAccessPolicy `protobuf:"bytes,6,rep,name=access_policies,json=accessPolicies,proto3" json:"access_policies,omitempty"`
+	// Whether Azure Virtual Machines may retrieve certificates stored as
+	// secrets from this vault (the VM deployment integration). Azure's
+	// default is false.
+	EnabledForDeployment bool `protobuf:"varint,7,opt,name=enabled_for_deployment,json=enabledForDeployment,proto3" json:"enabled_for_deployment,omitempty"`
+	// Whether Azure Disk Encryption may retrieve secrets and unwrap keys
+	// from this vault (the legacy in-guest ADE flow; modern server-side
+	// encryption uses disk encryption sets instead). Azure's default is
+	// false.
+	EnabledForDiskEncryption bool `protobuf:"varint,8,opt,name=enabled_for_disk_encryption,json=enabledForDiskEncryption,proto3" json:"enabled_for_disk_encryption,omitempty"`
+	// Whether Azure Resource Manager (template deployments) may retrieve
+	// secrets from this vault. Azure's default is false.
+	EnabledForTemplateDeployment bool `protobuf:"varint,9,opt,name=enabled_for_template_deployment,json=enabledForTemplateDeployment,proto3" json:"enabled_for_template_deployment,omitempty"`
+	// Whether the vault accepts connections from the public internet.
+	// Azure's default is true. Setting false takes the vault fully private
+	// -- reachable only through private endpoints. For a public vault
+	// restricted to known networks, keep this true and use network_acls
+	// instead. Updatable in place.
+	PublicNetworkAccessEnabled *bool `protobuf:"varint,10,opt,name=public_network_access_enabled,json=publicNetworkAccessEnabled,proto3,oneof" json:"public_network_access_enabled,omitempty"`
+	// Whether purge protection is on: a deleted vault (or key/certificate
+	// inside it) can then only be recovered -- never permanently purged --
+	// until the soft-delete retention window expires. Azure's default is
+	// false. Turn it on for production vaults, and ALWAYS for vaults whose
+	// keys encrypt other resources (customer-managed keys refuse to enroll
+	// against a vault without it in many services). Irreversible: once
+	// enabled it cannot be disabled, and destroying the vault then means
+	// waiting out the retention window before the name frees up.
+	PurgeProtectionEnabled bool `protobuf:"varint,11,opt,name=purge_protection_enabled,json=purgeProtectionEnabled,proto3" json:"purge_protection_enabled,omitempty"`
+	// How many days deleted vaults and vault objects remain recoverable
+	// (soft delete). 7-90; unspecified applies Azure's default of 90. Can
+	// only be set at creation -- changing it replaces the vault.
+	SoftDeleteRetentionDays *int32 `protobuf:"varint,12,opt,name=soft_delete_retention_days,json=softDeleteRetentionDays,proto3,oneof" json:"soft_delete_retention_days,omitempty"`
+	// Network access rules for a PUBLIC vault: a default action, a bypass
+	// carve-out for trusted Microsoft services, an IP allowlist, and a VNet
+	// subnet allowlist. The middle ground between "open to the internet"
+	// and "private endpoints only". Updatable in place.
+	NetworkAcls *AzureKeyVaultNetworkAcls `protobuf:"bytes,13,opt,name=network_acls,json=networkAcls,proto3" json:"network_acls,omitempty"`
+	// Free-form tags applied to the vault, merged over the Planton-derived
+	// resource tags (organization, environment, resource id); a user tag
+	// with the same key wins. Tags are Azure's governance surface -- Azure
+	// Policy enforces them and Microsoft Cost Management groups by them.
+	// Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,14,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -215,23 +763,65 @@ func (x *AzureKeyVaultSpec) GetResourceGroup() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureKeyVaultSpec) GetSku() AzureKeyVaultSku {
-	if x != nil && x.Sku != nil {
-		return *x.Sku
+func (x *AzureKeyVaultSpec) GetVaultName() string {
+	if x != nil {
+		return x.VaultName
 	}
-	return AzureKeyVaultSku_SKU_UNSPECIFIED
+	return ""
 }
 
-func (x *AzureKeyVaultSpec) GetEnableRbacAuthorization() bool {
-	if x != nil && x.EnableRbacAuthorization != nil {
-		return *x.EnableRbacAuthorization
+func (x *AzureKeyVaultSpec) GetSku() AzureKeyVaultSku {
+	if x != nil {
+		return x.Sku
+	}
+	return AzureKeyVaultSku_azure_key_vault_sku_unspecified
+}
+
+func (x *AzureKeyVaultSpec) GetRbacAuthorizationEnabled() bool {
+	if x != nil && x.RbacAuthorizationEnabled != nil {
+		return *x.RbacAuthorizationEnabled
 	}
 	return false
 }
 
-func (x *AzureKeyVaultSpec) GetEnablePurgeProtection() bool {
-	if x != nil && x.EnablePurgeProtection != nil {
-		return *x.EnablePurgeProtection
+func (x *AzureKeyVaultSpec) GetAccessPolicies() []*AzureKeyVaultAccessPolicy {
+	if x != nil {
+		return x.AccessPolicies
+	}
+	return nil
+}
+
+func (x *AzureKeyVaultSpec) GetEnabledForDeployment() bool {
+	if x != nil {
+		return x.EnabledForDeployment
+	}
+	return false
+}
+
+func (x *AzureKeyVaultSpec) GetEnabledForDiskEncryption() bool {
+	if x != nil {
+		return x.EnabledForDiskEncryption
+	}
+	return false
+}
+
+func (x *AzureKeyVaultSpec) GetEnabledForTemplateDeployment() bool {
+	if x != nil {
+		return x.EnabledForTemplateDeployment
+	}
+	return false
+}
+
+func (x *AzureKeyVaultSpec) GetPublicNetworkAccessEnabled() bool {
+	if x != nil && x.PublicNetworkAccessEnabled != nil {
+		return *x.PublicNetworkAccessEnabled
+	}
+	return false
+}
+
+func (x *AzureKeyVaultSpec) GetPurgeProtectionEnabled() bool {
+	if x != nil {
+		return x.PurgeProtectionEnabled
 	}
 	return false
 }
@@ -250,40 +840,161 @@ func (x *AzureKeyVaultSpec) GetNetworkAcls() *AzureKeyVaultNetworkAcls {
 	return nil
 }
 
-func (x *AzureKeyVaultSpec) GetSecretNames() []string {
+func (x *AzureKeyVaultSpec) GetTags() map[string]string {
 	if x != nil {
-		return x.SecretNames
+		return x.Tags
 	}
 	return nil
 }
 
-// **AzureKeyVaultNetworkAcls** defines network access control rules for the Key Vault.
+// One legacy access-policy grant: a principal and its permission lists.
+type AzureKeyVaultAccessPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The object ID of the Azure AD principal being granted access (a user,
+	// group, service principal, or managed identity). Defaults to
+	// referencing an AzureUserAssignedIdentity's principal_id output in
+	// composed environments -- note this is the identity's PRINCIPAL id
+	// (the directory object), not its client id.
+	ObjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=object_id,json=objectId,proto3" json:"object_id,omitempty"`
+	// The Azure AD tenant the principal lives in. Leave unset to use the
+	// vault's own tenant (the deploying credential's tenant) -- the correct
+	// value for virtually every grant, since access policies cannot span
+	// tenants in practice.
+	TenantId *string `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`
+	// For grants to a specific application acting on behalf of the
+	// principal (the rarely-used compound-identity flow): that
+	// application's client ID. Leave unset for ordinary grants.
+	ApplicationId *string `protobuf:"bytes,3,opt,name=application_id,json=applicationId,proto3,oneof" json:"application_id,omitempty"`
+	// Key permissions granted to the principal. KEY_GET + cryptographic
+	// operations (KEY_ENCRYPT/KEY_DECRYPT, KEY_WRAP_KEY/KEY_UNWRAP_KEY,
+	// KEY_SIGN/KEY_VERIFY) cover consumers; management permissions
+	// (KEY_CREATE, KEY_DELETE, rotation-policy permissions) belong to
+	// operators.
+	KeyPermissions []AzureKeyVaultKeyPermission `protobuf:"varint,4,rep,packed,name=key_permissions,json=keyPermissions,proto3,enum=dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultKeyPermission" json:"key_permissions,omitempty"`
+	// Secret permissions granted to the principal. SECRET_GET is the
+	// consumer permission; SECRET_SET/SECRET_DELETE are the writer surface.
+	SecretPermissions []AzureKeyVaultSecretPermission `protobuf:"varint,5,rep,packed,name=secret_permissions,json=secretPermissions,proto3,enum=dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSecretPermission" json:"secret_permissions,omitempty"`
+	// Certificate permissions granted to the principal. CERTIFICATE_GET
+	// covers consumers; CERTIFICATE_CREATE/CERTIFICATE_IMPORT plus the
+	// issuer-management permissions belong to certificate operators.
+	CertificatePermissions []AzureKeyVaultCertificatePermission `protobuf:"varint,6,rep,packed,name=certificate_permissions,json=certificatePermissions,proto3,enum=dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultCertificatePermission" json:"certificate_permissions,omitempty"`
+	// Managed-storage-account permissions granted to the principal (the
+	// legacy Key Vault storage-key-rotation feature; rarely used today).
+	StoragePermissions []AzureKeyVaultStoragePermission `protobuf:"varint,7,rep,packed,name=storage_permissions,json=storagePermissions,proto3,enum=dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultStoragePermission" json:"storage_permissions,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *AzureKeyVaultAccessPolicy) Reset() {
+	*x = AzureKeyVaultAccessPolicy{}
+	mi := &file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureKeyVaultAccessPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureKeyVaultAccessPolicy) ProtoMessage() {}
+
+func (x *AzureKeyVaultAccessPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureKeyVaultAccessPolicy.ProtoReflect.Descriptor instead.
+func (*AzureKeyVaultAccessPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AzureKeyVaultAccessPolicy) GetObjectId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ObjectId
+	}
+	return nil
+}
+
+func (x *AzureKeyVaultAccessPolicy) GetTenantId() string {
+	if x != nil && x.TenantId != nil {
+		return *x.TenantId
+	}
+	return ""
+}
+
+func (x *AzureKeyVaultAccessPolicy) GetApplicationId() string {
+	if x != nil && x.ApplicationId != nil {
+		return *x.ApplicationId
+	}
+	return ""
+}
+
+func (x *AzureKeyVaultAccessPolicy) GetKeyPermissions() []AzureKeyVaultKeyPermission {
+	if x != nil {
+		return x.KeyPermissions
+	}
+	return nil
+}
+
+func (x *AzureKeyVaultAccessPolicy) GetSecretPermissions() []AzureKeyVaultSecretPermission {
+	if x != nil {
+		return x.SecretPermissions
+	}
+	return nil
+}
+
+func (x *AzureKeyVaultAccessPolicy) GetCertificatePermissions() []AzureKeyVaultCertificatePermission {
+	if x != nil {
+		return x.CertificatePermissions
+	}
+	return nil
+}
+
+func (x *AzureKeyVaultAccessPolicy) GetStoragePermissions() []AzureKeyVaultStoragePermission {
+	if x != nil {
+		return x.StoragePermissions
+	}
+	return nil
+}
+
+// Network access rules for the vault's public endpoint.
 type AzureKeyVaultNetworkAcls struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Default action when no explicit rule matches.
-	// - ALLOW: Permit all traffic (not recommended for production)
-	// - DENY: Block all traffic unless explicitly allowed (recommended)
-	// Default: DENY
-	DefaultAction *AzureKeyVaultNetworkAction `protobuf:"varint,1,opt,name=default_action,json=defaultAction,proto3,enum=dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAction,oneof" json:"default_action,omitempty"`
-	// Allow traffic from trusted Azure services even when default_action is DENY.
-	// This includes services like Azure Backup, Azure Site Recovery, Azure Monitor, etc.
-	// Default: true (recommended to allow Azure service integrations)
-	BypassAzureServices *bool `protobuf:"varint,2,opt,name=bypass_azure_services,json=bypassAzureServices,proto3,oneof" json:"bypass_azure_services,omitempty"`
-	// List of IP addresses or CIDR ranges allowed to access the vault.
-	// Example: ["203.0.113.0/24", "198.51.100.42"]
-	// Used for office IPs, VPN gateways, CI/CD runners, etc.
+	// What happens to requests matching no ip_rules or subnet rule: ALLOW
+	// leaves the vault open (the rule set is effectively off); DENY is the
+	// allowlist posture. ARM requires a value whenever network rules are
+	// configured.
+	DefaultAction AzureKeyVaultNetworkAclsDefaultAction `protobuf:"varint,1,opt,name=default_action,json=defaultAction,proto3,enum=dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsDefaultAction" json:"default_action,omitempty"`
+	// Whether trusted Microsoft services (Azure Backup, Disk Encryption,
+	// Azure Monitor, ...) may reach the vault even when default_action is
+	// DENY. Unspecified applies Azure's default (AZURE_SERVICES) -- the
+	// pragmatic choice that keeps first-party integrations working. NONE
+	// closes even that door.
+	Bypass AzureKeyVaultNetworkAclsBypass `protobuf:"varint,2,opt,name=bypass,proto3,enum=dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsBypass" json:"bypass,omitempty"`
+	// Public IPv4 addresses or CIDR ranges allowed to reach the vault
+	// (office egress, VPN gateways, CI runners). E.g. "203.0.113.0/24" or
+	// "198.51.100.42".
 	IpRules []string `protobuf:"bytes,3,rep,name=ip_rules,json=ipRules,proto3" json:"ip_rules,omitempty"`
-	// List of Azure Virtual Network subnet resource IDs allowed to access the vault.
-	// Example: ["/subscriptions/{sub-id}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{vnet}/subnets/{subnet}"]
-	// Used to restrict access to specific VNets/subnets.
-	VirtualNetworkSubnetIds []string `protobuf:"bytes,4,rep,name=virtual_network_subnet_ids,json=virtualNetworkSubnetIds,proto3" json:"virtual_network_subnet_ids,omitempty"`
+	// Virtual-network subnets allowed to reach the vault over service
+	// endpoints, by subnet ARM ID. The referenced subnets must have the
+	// "Microsoft.KeyVault" service endpoint enabled. Defaults to
+	// referencing an AzureSubnet's subnet_id output in composed
+	// environments.
+	VirtualNetworkSubnetIds []*v1.StringValueOrRef `protobuf:"bytes,4,rep,name=virtual_network_subnet_ids,json=virtualNetworkSubnetIds,proto3" json:"virtual_network_subnet_ids,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
 
 func (x *AzureKeyVaultNetworkAcls) Reset() {
 	*x = AzureKeyVaultNetworkAcls{}
-	mi := &file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -295,7 +1006,7 @@ func (x *AzureKeyVaultNetworkAcls) String() string {
 func (*AzureKeyVaultNetworkAcls) ProtoMessage() {}
 
 func (x *AzureKeyVaultNetworkAcls) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -308,21 +1019,21 @@ func (x *AzureKeyVaultNetworkAcls) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AzureKeyVaultNetworkAcls.ProtoReflect.Descriptor instead.
 func (*AzureKeyVaultNetworkAcls) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *AzureKeyVaultNetworkAcls) GetDefaultAction() AzureKeyVaultNetworkAction {
-	if x != nil && x.DefaultAction != nil {
-		return *x.DefaultAction
+func (x *AzureKeyVaultNetworkAcls) GetDefaultAction() AzureKeyVaultNetworkAclsDefaultAction {
+	if x != nil {
+		return x.DefaultAction
 	}
-	return AzureKeyVaultNetworkAction_ACTION_UNSPECIFIED
+	return AzureKeyVaultNetworkAclsDefaultAction_azure_key_vault_network_acls_default_action_unspecified
 }
 
-func (x *AzureKeyVaultNetworkAcls) GetBypassAzureServices() bool {
-	if x != nil && x.BypassAzureServices != nil {
-		return *x.BypassAzureServices
+func (x *AzureKeyVaultNetworkAcls) GetBypass() AzureKeyVaultNetworkAclsBypass {
+	if x != nil {
+		return x.Bypass
 	}
-	return false
+	return AzureKeyVaultNetworkAclsBypass_azure_key_vault_network_acls_bypass_unspecified
 }
 
 func (x *AzureKeyVaultNetworkAcls) GetIpRules() []string {
@@ -332,7 +1043,7 @@ func (x *AzureKeyVaultNetworkAcls) GetIpRules() []string {
 	return nil
 }
 
-func (x *AzureKeyVaultNetworkAcls) GetVirtualNetworkSubnetIds() []string {
+func (x *AzureKeyVaultNetworkAcls) GetVirtualNetworkSubnetIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.VirtualNetworkSubnetIds
 	}
@@ -343,37 +1054,138 @@ var File_dev_planton_provider_azure_azurekeyvault_v1_spec_proto protoreflect.Fil
 
 const file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"6dev/planton/provider/azure/azurekeyvault/v1/spec.proto\x12+dev.planton.provider.azure.azurekeyvault.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x92\a\n" +
+	"6dev/planton/provider/azure/azurekeyvault/v1/spec.proto\x12+dev.planton.provider.azure.azurekeyvault.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa7\v\n" +
 	"\x11AzureKeyVaultSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12b\n" +
-	"\x03sku\x18\x03 \x01(\x0e2=.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSkuB\f\x8a\xa6\x1d\bSTANDARDH\x00R\x03sku\x88\x01\x01\x12I\n" +
-	"\x19enable_rbac_authorization\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x17enableRbacAuthorization\x88\x01\x01\x12E\n" +
-	"\x17enable_purge_protection\x18\x05 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x15enablePurgeProtection\x88\x01\x01\x12Q\n" +
-	"\x1asoft_delete_retention_days\x18\x06 \x01(\x05B\x0f\xbaH\x06\x1a\x04\x18Z(\a\x8a\xa6\x1d\x0290H\x03R\x17softDeleteRetentionDays\x88\x01\x01\x12m\n" +
-	"\fnetwork_acls\x18\a \x01(\v2E.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsH\x04R\vnetworkAcls\x88\x01\x01\x12\x9f\x01\n" +
-	"\fsecret_names\x18\b \x03(\tB|\xbaH\a\x92\x01\x04\b\x00\x10d\xaa\xa6\x1dnNames of secrets to create in the Key Vault, not secret values (the values are set separately after creation).R\vsecretNamesB\x06\n" +
-	"\x04_skuB\x1c\n" +
-	"\x1a_enable_rbac_authorizationB\x1a\n" +
-	"\x18_enable_purge_protectionB\x1d\n" +
-	"\x1b_soft_delete_retention_daysB\x0f\n" +
-	"\r_network_acls\"\xf6\x02\n" +
-	"\x18AzureKeyVaultNetworkAcls\x12}\n" +
-	"\x0edefault_action\x18\x01 \x01(\x0e2G.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkActionB\b\x8a\xa6\x1d\x04DENYH\x00R\rdefaultAction\x88\x01\x01\x12A\n" +
-	"\x15bypass_azure_services\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x13bypassAzureServices\x88\x01\x01\x12$\n" +
-	"\bip_rules\x18\x03 \x03(\tB\t\xbaH\x06\x92\x01\x03\x10\xc8\x01R\aipRules\x12E\n" +
-	"\x1avirtual_network_subnet_ids\x18\x04 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10dR\x17virtualNetworkSubnetIdsB\x11\n" +
-	"\x0f_default_actionB\x18\n" +
-	"\x16_bypass_azure_services*B\n" +
-	"\x10AzureKeyVaultSku\x12\x13\n" +
-	"\x0fSKU_UNSPECIFIED\x10\x00\x12\f\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xc8\x01\n" +
+	"\n" +
+	"vault_name\x18\x03 \x01(\tB\xa8\x01\xbaH\xa4\x01\xba\x01s\n" +
+	"%key_vault_name_no_consecutive_hyphens\x124vault_name cannot contain consecutive hyphens (\"--\")\x1a\x14!this.contains('--')\xc8\x01\x01r)2'^[a-zA-Z][a-zA-Z0-9-]{1,22}[a-zA-Z0-9]$R\tvaultName\x12O\n" +
+	"\x03sku\x18\x04 \x01(\x0e2=.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSkuR\x03sku\x12K\n" +
+	"\x1arbac_authorization_enabled\x18\x05 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x18rbacAuthorizationEnabled\x88\x01\x01\x12z\n" +
+	"\x0faccess_policies\x18\x06 \x03(\v2F.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultAccessPolicyB\t\xbaH\x06\x92\x01\x03\x10\x80\bR\x0eaccessPolicies\x124\n" +
+	"\x16enabled_for_deployment\x18\a \x01(\bR\x14enabledForDeployment\x12=\n" +
+	"\x1benabled_for_disk_encryption\x18\b \x01(\bR\x18enabledForDiskEncryption\x12E\n" +
+	"\x1fenabled_for_template_deployment\x18\t \x01(\bR\x1cenabledForTemplateDeployment\x12P\n" +
+	"\x1dpublic_network_access_enabled\x18\n" +
+	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x1apublicNetworkAccessEnabled\x88\x01\x01\x128\n" +
+	"\x18purge_protection_enabled\x18\v \x01(\bR\x16purgeProtectionEnabled\x12Q\n" +
+	"\x1asoft_delete_retention_days\x18\f \x01(\x05B\x0f\xbaH\x06\x1a\x04\x18Z(\a\x8a\xa6\x1d\x0290H\x02R\x17softDeleteRetentionDays\x88\x01\x01\x12h\n" +
+	"\fnetwork_acls\x18\r \x01(\v2E.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsR\vnetworkAcls\x12\\\n" +
+	"\x04tags\x18\x0e \x03(\v2H.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x1d\n" +
+	"\x1b_rbac_authorization_enabledB \n" +
+	"\x1e_public_network_access_enabledB\x1d\n" +
+	"\x1b_soft_delete_retention_days\"\xd8\x06\n" +
+	"\x19AzureKeyVaultAccessPolicy\x12{\n" +
+	"\tobject_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectId\x12*\n" +
+	"\ttenant_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\btenantId\x88\x01\x01\x124\n" +
+	"\x0eapplication_id\x18\x03 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x01R\rapplicationId\x88\x01\x01\x12\x81\x01\n" +
+	"\x0fkey_permissions\x18\x04 \x03(\x0e2G.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultKeyPermissionB\x0f\xbaH\f\x92\x01\t\"\a\x82\x01\x04\x10\x01 \x00R\x0ekeyPermissions\x12\x8a\x01\n" +
+	"\x12secret_permissions\x18\x05 \x03(\x0e2J.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSecretPermissionB\x0f\xbaH\f\x92\x01\t\"\a\x82\x01\x04\x10\x01 \x00R\x11secretPermissions\x12\x99\x01\n" +
+	"\x17certificate_permissions\x18\x06 \x03(\x0e2O.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultCertificatePermissionB\x0f\xbaH\f\x92\x01\t\"\a\x82\x01\x04\x10\x01 \x00R\x16certificatePermissions\x12\x8d\x01\n" +
+	"\x13storage_permissions\x18\a \x03(\x0e2K.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultStoragePermissionB\x0f\xbaH\f\x92\x01\t\"\a\x82\x01\x04\x10\x01 \x00R\x12storagePermissionsB\f\n" +
+	"\n" +
+	"_tenant_idB\x11\n" +
+	"\x0f_application_id\"\xc6\x03\n" +
+	"\x18AzureKeyVaultNetworkAcls\x12\x81\x01\n" +
+	"\x0edefault_action\x18\x01 \x01(\x0e2R.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsDefaultActionB\x06\xbaH\x03\xc8\x01\x01R\rdefaultAction\x12c\n" +
+	"\x06bypass\x18\x02 \x01(\x0e2K.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsBypassR\x06bypass\x12$\n" +
+	"\bip_rules\x18\x03 \x03(\tB\t\xbaH\x06\x92\x01\x03\x10\xc8\x01R\aipRules\x12\x9a\x01\n" +
+	"\x1avirtual_network_subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\x10d\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x17virtualNetworkSubnetIds*R\n" +
+	"\x10AzureKeyVaultSku\x12#\n" +
+	"\x1fazure_key_vault_sku_unspecified\x10\x00\x12\f\n" +
 	"\bSTANDARD\x10\x01\x12\v\n" +
-	"\aPREMIUM\x10\x02*I\n" +
-	"\x1aAzureKeyVaultNetworkAction\x12\x16\n" +
-	"\x12ACTION_UNSPECIFIED\x10\x00\x12\t\n" +
+	"\aPREMIUM\x10\x02*y\n" +
+	"%AzureKeyVaultNetworkAclsDefaultAction\x12;\n" +
+	"7azure_key_vault_network_acls_default_action_unspecified\x10\x00\x12\t\n" +
 	"\x05ALLOW\x10\x01\x12\b\n" +
-	"\x04DENY\x10\x02B\xee\x02\n" +
+	"\x04DENY\x10\x02*s\n" +
+	"\x1eAzureKeyVaultNetworkAclsBypass\x123\n" +
+	"/azure_key_vault_network_acls_bypass_unspecified\x10\x00\x12\x12\n" +
+	"\x0eAZURE_SERVICES\x10\x01\x12\b\n" +
+	"\x04NONE\x10\x02*\xa9\x03\n" +
+	"\x1aAzureKeyVaultKeyPermission\x12.\n" +
+	"*azure_key_vault_key_permission_unspecified\x10\x00\x12\v\n" +
+	"\aKEY_GET\x10\x01\x12\f\n" +
+	"\bKEY_LIST\x10\x02\x12\x0e\n" +
+	"\n" +
+	"KEY_UPDATE\x10\x03\x12\x0e\n" +
+	"\n" +
+	"KEY_CREATE\x10\x04\x12\x0e\n" +
+	"\n" +
+	"KEY_IMPORT\x10\x05\x12\x0e\n" +
+	"\n" +
+	"KEY_DELETE\x10\x06\x12\x0f\n" +
+	"\vKEY_RECOVER\x10\a\x12\x0e\n" +
+	"\n" +
+	"KEY_BACKUP\x10\b\x12\x0f\n" +
+	"\vKEY_RESTORE\x10\t\x12\x0f\n" +
+	"\vKEY_DECRYPT\x10\n" +
+	"\x12\x0f\n" +
+	"\vKEY_ENCRYPT\x10\v\x12\x12\n" +
+	"\x0eKEY_UNWRAP_KEY\x10\f\x12\x10\n" +
+	"\fKEY_WRAP_KEY\x10\r\x12\x0e\n" +
+	"\n" +
+	"KEY_VERIFY\x10\x0e\x12\f\n" +
+	"\bKEY_SIGN\x10\x0f\x12\r\n" +
+	"\tKEY_PURGE\x10\x10\x12\x0f\n" +
+	"\vKEY_RELEASE\x10\x11\x12\x0e\n" +
+	"\n" +
+	"KEY_ROTATE\x10\x12\x12\x1b\n" +
+	"\x17KEY_GET_ROTATION_POLICY\x10\x13\x12\x1b\n" +
+	"\x17KEY_SET_ROTATION_POLICY\x10\x14*\xe3\x01\n" +
+	"\x1dAzureKeyVaultSecretPermission\x121\n" +
+	"-azure_key_vault_secret_permission_unspecified\x10\x00\x12\x0e\n" +
+	"\n" +
+	"SECRET_GET\x10\x01\x12\x0f\n" +
+	"\vSECRET_LIST\x10\x02\x12\x0e\n" +
+	"\n" +
+	"SECRET_SET\x10\x03\x12\x11\n" +
+	"\rSECRET_DELETE\x10\x04\x12\x12\n" +
+	"\x0eSECRET_RECOVER\x10\x05\x12\x11\n" +
+	"\rSECRET_BACKUP\x10\x06\x12\x12\n" +
+	"\x0eSECRET_RESTORE\x10\a\x12\x10\n" +
+	"\fSECRET_PURGE\x10\b*\x81\x04\n" +
+	"\"AzureKeyVaultCertificatePermission\x126\n" +
+	"2azure_key_vault_certificate_permission_unspecified\x10\x00\x12\x13\n" +
+	"\x0fCERTIFICATE_GET\x10\x01\x12\x14\n" +
+	"\x10CERTIFICATE_LIST\x10\x02\x12\x16\n" +
+	"\x12CERTIFICATE_UPDATE\x10\x03\x12\x16\n" +
+	"\x12CERTIFICATE_CREATE\x10\x04\x12\x16\n" +
+	"\x12CERTIFICATE_IMPORT\x10\x05\x12\x16\n" +
+	"\x12CERTIFICATE_DELETE\x10\x06\x12\x17\n" +
+	"\x13CERTIFICATE_RECOVER\x10\a\x12\x16\n" +
+	"\x12CERTIFICATE_BACKUP\x10\b\x12\x17\n" +
+	"\x13CERTIFICATE_RESTORE\x10\t\x12\x1f\n" +
+	"\x1bCERTIFICATE_MANAGE_CONTACTS\x10\n" +
+	"\x12\x1e\n" +
+	"\x1aCERTIFICATE_MANAGE_ISSUERS\x10\v\x12\x1b\n" +
+	"\x17CERTIFICATE_GET_ISSUERS\x10\f\x12\x1c\n" +
+	"\x18CERTIFICATE_LIST_ISSUERS\x10\r\x12\x1b\n" +
+	"\x17CERTIFICATE_SET_ISSUERS\x10\x0e\x12\x1e\n" +
+	"\x1aCERTIFICATE_DELETE_ISSUERS\x10\x0f\x12\x15\n" +
+	"\x11CERTIFICATE_PURGE\x10\x10*\xf5\x02\n" +
+	"\x1eAzureKeyVaultStoragePermission\x122\n" +
+	".azure_key_vault_storage_permission_unspecified\x10\x00\x12\x0f\n" +
+	"\vSTORAGE_GET\x10\x01\x12\x10\n" +
+	"\fSTORAGE_LIST\x10\x02\x12\x0f\n" +
+	"\vSTORAGE_SET\x10\x03\x12\x12\n" +
+	"\x0eSTORAGE_UPDATE\x10\x04\x12\x12\n" +
+	"\x0eSTORAGE_DELETE\x10\x05\x12\x13\n" +
+	"\x0fSTORAGE_RECOVER\x10\x06\x12\x12\n" +
+	"\x0eSTORAGE_BACKUP\x10\a\x12\x13\n" +
+	"\x0fSTORAGE_RESTORE\x10\b\x12\x11\n" +
+	"\rSTORAGE_PURGE\x10\t\x12\x1a\n" +
+	"\x16STORAGE_REGENERATE_KEY\x10\n" +
+	"\x12\x13\n" +
+	"\x0fSTORAGE_GET_SAS\x10\v\x12\x14\n" +
+	"\x10STORAGE_LIST_SAS\x10\f\x12\x13\n" +
+	"\x0fSTORAGE_SET_SAS\x10\r\x12\x16\n" +
+	"\x12STORAGE_DELETE_SAS\x10\x0eB\xee\x02\n" +
 	"/com.dev.planton.provider.azure.azurekeyvault.v1B\tSpecProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurekeyvault/v1;azurekeyvaultv1\xa2\x02\x05DPPAA\xaa\x02+Dev.Planton.Provider.Azure.Azurekeyvault.V1\xca\x02+Dev\\Planton\\Provider\\Azure\\Azurekeyvault\\V1\xe2\x027Dev\\Planton\\Provider\\Azure\\Azurekeyvault\\V1\\GPBMetadata\xea\x020Dev::Planton::Provider::Azure::Azurekeyvault::V1b\x06proto3"
 
 var (
@@ -388,25 +1200,41 @@ func file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDescGZIP() [
 	return file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
+var file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_goTypes = []any{
-	(AzureKeyVaultSku)(0),            // 0: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSku
-	(AzureKeyVaultNetworkAction)(0),  // 1: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAction
-	(*AzureKeyVaultSpec)(nil),        // 2: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec
-	(*AzureKeyVaultNetworkAcls)(nil), // 3: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAcls
-	(*v1.StringValueOrRef)(nil),      // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureKeyVaultSku)(0),                      // 0: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSku
+	(AzureKeyVaultNetworkAclsDefaultAction)(0), // 1: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsDefaultAction
+	(AzureKeyVaultNetworkAclsBypass)(0),        // 2: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsBypass
+	(AzureKeyVaultKeyPermission)(0),            // 3: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultKeyPermission
+	(AzureKeyVaultSecretPermission)(0),         // 4: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSecretPermission
+	(AzureKeyVaultCertificatePermission)(0),    // 5: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultCertificatePermission
+	(AzureKeyVaultStoragePermission)(0),        // 6: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultStoragePermission
+	(*AzureKeyVaultSpec)(nil),                  // 7: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec
+	(*AzureKeyVaultAccessPolicy)(nil),          // 8: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultAccessPolicy
+	(*AzureKeyVaultNetworkAcls)(nil),           // 9: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAcls
+	nil,                                        // 10: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil),                // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0, // 1: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec.sku:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSku
-	3, // 2: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec.network_acls:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAcls
-	1, // 3: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAcls.default_action:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAction
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	11, // 0: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 1: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec.sku:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSku
+	8,  // 2: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec.access_policies:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultAccessPolicy
+	9,  // 3: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec.network_acls:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAcls
+	10, // 4: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec.tags:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSpec.TagsEntry
+	11, // 5: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultAccessPolicy.object_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 6: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultAccessPolicy.key_permissions:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultKeyPermission
+	4,  // 7: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultAccessPolicy.secret_permissions:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultSecretPermission
+	5,  // 8: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultAccessPolicy.certificate_permissions:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultCertificatePermission
+	6,  // 9: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultAccessPolicy.storage_permissions:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultStoragePermission
+	1,  // 10: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAcls.default_action:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsDefaultAction
+	2,  // 11: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAcls.bypass:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsBypass
+	11, // 12: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAcls.virtual_network_subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_init() }
@@ -421,8 +1249,8 @@ func file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   2,
+			NumEnums:      7,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

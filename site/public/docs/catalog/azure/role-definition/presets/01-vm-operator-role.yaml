@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleDefinition
+metadata:
+  name: my-vm-operator-role
+spec:
+  name: <org-prefix>-vm-operator
+  scope:
+    value: <subscription-arm-id>
+  description: Operate existing VMs (start/stop/restart) without create or delete rights
+  permissions:
+    - actions:
+        - Microsoft.Compute/virtualMachines/read
+        - Microsoft.Compute/virtualMachines/start/action
+        - Microsoft.Compute/virtualMachines/restart/action
+        - Microsoft.Compute/virtualMachines/deallocate/action
+        - Microsoft.Insights/metrics/read

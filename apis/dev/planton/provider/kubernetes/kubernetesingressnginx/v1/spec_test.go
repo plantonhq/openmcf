@@ -6,8 +6,6 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -21,10 +19,6 @@ var _ = ginkgo.Describe("KubernetesIngressNginxSpec validations", func() {
 
 	ginkgo.BeforeEach(func() {
 		spec = &KubernetesIngressNginxSpec{
-			TargetCluster: &kubernetes.KubernetesClusterSelector{
-				ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-				ClusterName: "test-cluster",
-			},
 			Namespace: &foreignkeyv1.StringValueOrRef{
 				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 					Value: "ingress-nginx",
@@ -133,6 +127,4 @@ var _ = ginkgo.Describe("KubernetesIngressNginxSpec validations", func() {
 		})
 	})
 
-	// Note: The spec.proto does not currently have required validations on target_cluster
-	// If validations are added in the future, add corresponding tests here
 })

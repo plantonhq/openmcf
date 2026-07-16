@@ -24,7 +24,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoComputeInstance
 metadata:
   name: my-instance
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -80,7 +80,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoComputeInstance
 metadata:
   name: basic-vm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -103,7 +103,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoComputeInstance
 metadata:
   name: ssh-vm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -133,7 +133,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoComputeInstance
 metadata:
   name: prod-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

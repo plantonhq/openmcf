@@ -21,30 +21,46 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// aws_rds_cluster stack outputs
+// AwsRdsClusterStackOutputs captures the observable identifiers and
+// connection endpoints of the RDS cluster after deployment.
 type AwsRdsClusterStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The primary writer endpoint for the DB cluster.
-	RdsClusterEndpoint string `protobuf:"bytes,1,opt,name=rds_cluster_endpoint,json=rdsClusterEndpoint,proto3" json:"rds_cluster_endpoint,omitempty"`
-	// The reader endpoint for load-balanced read traffic across replicas.
-	RdsClusterReaderEndpoint string `protobuf:"bytes,2,opt,name=rds_cluster_reader_endpoint,json=rdsClusterReaderEndpoint,proto3" json:"rds_cluster_reader_endpoint,omitempty"`
-	// The AWS identifier of the DB cluster.
-	RdsClusterId string `protobuf:"bytes,3,opt,name=rds_cluster_id,json=rdsClusterId,proto3" json:"rds_cluster_id,omitempty"`
-	// The Amazon Resource Name of the DB cluster.
-	RdsClusterArn string `protobuf:"bytes,4,opt,name=rds_cluster_arn,json=rdsClusterArn,proto3" json:"rds_cluster_arn,omitempty"`
-	// The engine and its version used by the cluster (e.g., aurora-mysql, aurora-postgresql).
-	RdsClusterEngine        string `protobuf:"bytes,5,opt,name=rds_cluster_engine,json=rdsClusterEngine,proto3" json:"rds_cluster_engine,omitempty"`
-	RdsClusterEngineVersion string `protobuf:"bytes,6,opt,name=rds_cluster_engine_version,json=rdsClusterEngineVersion,proto3" json:"rds_cluster_engine_version,omitempty"`
-	// The port on which the DB cluster accepts connections.
-	RdsClusterPort int32 `protobuf:"varint,7,opt,name=rds_cluster_port,json=rdsClusterPort,proto3" json:"rds_cluster_port,omitempty"`
-	// The name of the DB subnet group associated with the cluster.
-	RdsSubnetGroup string `protobuf:"bytes,8,opt,name=rds_subnet_group,json=rdsSubnetGroup,proto3" json:"rds_subnet_group,omitempty"`
-	// The security group associated with the cluster (if one is created/managed by the module).
-	RdsSecurityGroup string `protobuf:"bytes,9,opt,name=rds_security_group,json=rdsSecurityGroup,proto3" json:"rds_security_group,omitempty"`
-	// The DB cluster parameter group in use by the cluster.
-	RdsClusterParameterGroup string `protobuf:"bytes,10,opt,name=rds_cluster_parameter_group,json=rdsClusterParameterGroup,proto3" json:"rds_cluster_parameter_group,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// The cluster identifier (e.g. "orders-db").
+	ClusterIdentifier string `protobuf:"bytes,1,opt,name=cluster_identifier,json=clusterIdentifier,proto3" json:"cluster_identifier,omitempty"`
+	// The Amazon Resource Name of the cluster.
+	Arn string `protobuf:"bytes,2,opt,name=arn,proto3" json:"arn,omitempty"`
+	// The immutable cluster resource ID (cluster-...). Survives
+	// identifier renames -- the durable handle for point-in-time restores
+	// and CloudWatch dimensions.
+	ClusterResourceId string `protobuf:"bytes,3,opt,name=cluster_resource_id,json=clusterResourceId,proto3" json:"cluster_resource_id,omitempty"`
+	// The writer endpoint -- connect here for reads and writes.
+	Endpoint string `protobuf:"bytes,4,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// The reader endpoint -- load-balances connections across the
+	// cluster's reader instances.
+	ReaderEndpoint string `protobuf:"bytes,5,opt,name=reader_endpoint,json=readerEndpoint,proto3" json:"reader_endpoint,omitempty"`
+	// The port the cluster accepts connections on.
+	Port int32 `protobuf:"varint,6,opt,name=port,proto3" json:"port,omitempty"`
+	// The Route53 hosted zone ID of the cluster endpoints, for DNS alias
+	// records.
+	HostedZoneId string `protobuf:"bytes,7,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
+	// The resolved engine version actually running (meaningful when the
+	// spec leaves engine_version to the AWS default).
+	EngineVersionActual string `protobuf:"bytes,8,opt,name=engine_version_actual,json=engineVersionActual,proto3" json:"engine_version_actual,omitempty"`
+	// The ARN of the AWS-managed master-user secret in Secrets Manager.
+	// Populated only when manage_master_user_password is true -- the
+	// handle applications use to fetch credentials at runtime.
+	MasterUserSecretArn string `protobuf:"bytes,9,opt,name=master_user_secret_arn,json=masterUserSecretArn,proto3" json:"master_user_secret_arn,omitempty"`
+	// The name of the DB subnet group the cluster runs in.
+	DbSubnetGroupName string `protobuf:"bytes,10,opt,name=db_subnet_group_name,json=dbSubnetGroupName,proto3" json:"db_subnet_group_name,omitempty"`
+	// The name of the cluster parameter group in use (module-managed or
+	// the referenced existing group).
+	DbClusterParameterGroupName string `protobuf:"bytes,11,opt,name=db_cluster_parameter_group_name,json=dbClusterParameterGroupName,proto3" json:"db_cluster_parameter_group_name,omitempty"`
+	// Per-instance endpoints of the cluster's folded instances, ordered
+	// as declared in spec.instances. Empty for Aurora Serverless v1 and
+	// Multi-AZ RDS clusters, where AWS owns the compute.
+	InstanceEndpoints []string `protobuf:"bytes,12,rep,name=instance_endpoints,json=instanceEndpoints,proto3" json:"instance_endpoints,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *AwsRdsClusterStackOutputs) Reset() {
@@ -77,93 +93,109 @@ func (*AwsRdsClusterStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsrdscluster_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AwsRdsClusterStackOutputs) GetRdsClusterEndpoint() string {
+func (x *AwsRdsClusterStackOutputs) GetClusterIdentifier() string {
 	if x != nil {
-		return x.RdsClusterEndpoint
+		return x.ClusterIdentifier
 	}
 	return ""
 }
 
-func (x *AwsRdsClusterStackOutputs) GetRdsClusterReaderEndpoint() string {
+func (x *AwsRdsClusterStackOutputs) GetArn() string {
 	if x != nil {
-		return x.RdsClusterReaderEndpoint
+		return x.Arn
 	}
 	return ""
 }
 
-func (x *AwsRdsClusterStackOutputs) GetRdsClusterId() string {
+func (x *AwsRdsClusterStackOutputs) GetClusterResourceId() string {
 	if x != nil {
-		return x.RdsClusterId
+		return x.ClusterResourceId
 	}
 	return ""
 }
 
-func (x *AwsRdsClusterStackOutputs) GetRdsClusterArn() string {
+func (x *AwsRdsClusterStackOutputs) GetEndpoint() string {
 	if x != nil {
-		return x.RdsClusterArn
+		return x.Endpoint
 	}
 	return ""
 }
 
-func (x *AwsRdsClusterStackOutputs) GetRdsClusterEngine() string {
+func (x *AwsRdsClusterStackOutputs) GetReaderEndpoint() string {
 	if x != nil {
-		return x.RdsClusterEngine
+		return x.ReaderEndpoint
 	}
 	return ""
 }
 
-func (x *AwsRdsClusterStackOutputs) GetRdsClusterEngineVersion() string {
+func (x *AwsRdsClusterStackOutputs) GetPort() int32 {
 	if x != nil {
-		return x.RdsClusterEngineVersion
-	}
-	return ""
-}
-
-func (x *AwsRdsClusterStackOutputs) GetRdsClusterPort() int32 {
-	if x != nil {
-		return x.RdsClusterPort
+		return x.Port
 	}
 	return 0
 }
 
-func (x *AwsRdsClusterStackOutputs) GetRdsSubnetGroup() string {
+func (x *AwsRdsClusterStackOutputs) GetHostedZoneId() string {
 	if x != nil {
-		return x.RdsSubnetGroup
+		return x.HostedZoneId
 	}
 	return ""
 }
 
-func (x *AwsRdsClusterStackOutputs) GetRdsSecurityGroup() string {
+func (x *AwsRdsClusterStackOutputs) GetEngineVersionActual() string {
 	if x != nil {
-		return x.RdsSecurityGroup
+		return x.EngineVersionActual
 	}
 	return ""
 }
 
-func (x *AwsRdsClusterStackOutputs) GetRdsClusterParameterGroup() string {
+func (x *AwsRdsClusterStackOutputs) GetMasterUserSecretArn() string {
 	if x != nil {
-		return x.RdsClusterParameterGroup
+		return x.MasterUserSecretArn
 	}
 	return ""
+}
+
+func (x *AwsRdsClusterStackOutputs) GetDbSubnetGroupName() string {
+	if x != nil {
+		return x.DbSubnetGroupName
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterStackOutputs) GetDbClusterParameterGroupName() string {
+	if x != nil {
+		return x.DbClusterParameterGroupName
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterStackOutputs) GetInstanceEndpoints() []string {
+	if x != nil {
+		return x.InstanceEndpoints
+	}
+	return nil
 }
 
 var File_dev_planton_provider_aws_awsrdscluster_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsrdscluster_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/aws/awsrdscluster/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awsrdscluster.v1\"\x86\x04\n" +
-	"\x19AwsRdsClusterStackOutputs\x120\n" +
-	"\x14rds_cluster_endpoint\x18\x01 \x01(\tR\x12rdsClusterEndpoint\x12=\n" +
-	"\x1brds_cluster_reader_endpoint\x18\x02 \x01(\tR\x18rdsClusterReaderEndpoint\x12$\n" +
-	"\x0erds_cluster_id\x18\x03 \x01(\tR\frdsClusterId\x12&\n" +
-	"\x0frds_cluster_arn\x18\x04 \x01(\tR\rrdsClusterArn\x12,\n" +
-	"\x12rds_cluster_engine\x18\x05 \x01(\tR\x10rdsClusterEngine\x12;\n" +
-	"\x1ards_cluster_engine_version\x18\x06 \x01(\tR\x17rdsClusterEngineVersion\x12(\n" +
-	"\x10rds_cluster_port\x18\a \x01(\x05R\x0erdsClusterPort\x12(\n" +
-	"\x10rds_subnet_group\x18\b \x01(\tR\x0erdsSubnetGroup\x12,\n" +
-	"\x12rds_security_group\x18\t \x01(\tR\x10rdsSecurityGroup\x12=\n" +
-	"\x1brds_cluster_parameter_group\x18\n" +
-	" \x01(\tR\x18rdsClusterParameterGroupB\xea\x02\n" +
+	"=dev/planton/provider/aws/awsrdscluster/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awsrdscluster.v1\"\x9a\x04\n" +
+	"\x19AwsRdsClusterStackOutputs\x12-\n" +
+	"\x12cluster_identifier\x18\x01 \x01(\tR\x11clusterIdentifier\x12\x10\n" +
+	"\x03arn\x18\x02 \x01(\tR\x03arn\x12.\n" +
+	"\x13cluster_resource_id\x18\x03 \x01(\tR\x11clusterResourceId\x12\x1a\n" +
+	"\bendpoint\x18\x04 \x01(\tR\bendpoint\x12'\n" +
+	"\x0freader_endpoint\x18\x05 \x01(\tR\x0ereaderEndpoint\x12\x12\n" +
+	"\x04port\x18\x06 \x01(\x05R\x04port\x12$\n" +
+	"\x0ehosted_zone_id\x18\a \x01(\tR\fhostedZoneId\x122\n" +
+	"\x15engine_version_actual\x18\b \x01(\tR\x13engineVersionActual\x123\n" +
+	"\x16master_user_secret_arn\x18\t \x01(\tR\x13masterUserSecretArn\x12/\n" +
+	"\x14db_subnet_group_name\x18\n" +
+	" \x01(\tR\x11dbSubnetGroupName\x12D\n" +
+	"\x1fdb_cluster_parameter_group_name\x18\v \x01(\tR\x1bdbClusterParameterGroupName\x12-\n" +
+	"\x12instance_endpoints\x18\f \x03(\tR\x11instanceEndpointsB\xea\x02\n" +
 	"-com.dev.planton.provider.aws.awsrdscluster.v1B\x11StackOutputsProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrdscluster/v1;awsrdsclusterv1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Aws.Awsrdscluster.V1\xca\x02)Dev\\Planton\\Provider\\Aws\\Awsrdscluster\\V1\xe2\x025Dev\\Planton\\Provider\\Aws\\Awsrdscluster\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Aws::Awsrdscluster::V1b\x06proto3"
 
 var (

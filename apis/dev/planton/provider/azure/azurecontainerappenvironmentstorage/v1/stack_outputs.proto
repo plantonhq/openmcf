@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurecontainerappenvironmentstorage.v1;
+
+// **AzureContainerAppEnvironmentStorageStackOutputs** captures the outputs
+// of registering an Azure Files share on a Container App Environment.
+//
+// The `storage_name` output is the composition seam: AzureContainerApp and
+// AzureContainerAppJob volumes reference it in their `storage_name` field
+// to mount the share.
+message AzureContainerAppEnvironmentStorageStackOutputs {
+  // The Azure Resource Manager ID of the storage registration.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.App/managedEnvironments/{env}/storages/{name}
+  string storage_id = 1;
+
+  // The name of the storage registration -- what app and job volumes
+  // reference in their storage_name field.
+  string storage_name = 2;
+}

@@ -32,7 +32,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSecurityGroup
 metadata:
   name: web-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSecurityGroup
 metadata:
   name: web-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -154,7 +154,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSecurityGroup
 metadata:
   name: db-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -201,7 +201,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackSecurityGroup
 metadata:
   name: app-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

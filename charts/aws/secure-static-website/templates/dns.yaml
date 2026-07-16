@@ -1,0 +1,115 @@
+# The custom-domain plane: the hosted zone (optional — most established
+# domains already have one), the TLS certificate, and the alias records that
+# point the domain at the distribution. Everything here renders only when
+# custom_domain_enabled is true.
+{% if values.custom_domain_enabled | bool %}
+{% if values.dns_zone_enabled | bool %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsRoute53Zone
+metadata:
+  # The zone's domain IS the resource name (create-time immutable).
+  name: "{{ values.dns_zone_name }}"
+spec:
+  # Route 53 is a global service; the region names the provider connection.
+  region: "{{ values.aws_region }}"
+  isPrivate: false
+{% endif %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsCertManagerCert
+metadata:
+  name: "{{ values.site_name }}-cert"
+spec:
+  # NOT configurable: CloudFront only accepts certificates from us-east-1,
+  # regardless of where anything else lives. This is AWS's contract, not a
+  # chart choice.
+  region: us-east-1
+  primaryDomainName: "{{ values.domain_name }}"
+  validationMethod: DNS
+  # Pointing the certificate at the hosted zone makes issuance hands-free:
+  # the validation CNAMEs are created in the zone and the certificate waits
+  # until it is ISSUED before anything consumes it.
+{% if values.dns_zone_enabled | bool %}
+  route53HostedZoneId:
+    valueFrom:
+      kind: AwsRoute53Zone
+      name: "{{ values.dns_zone_name }}"
+      fieldPath: status.outputs.zone_id
+{% else %}
+  route53HostedZoneId:
+    value: "{{ values.existing_zone_id }}"
+{% endif %}
+---
+# The apex-capable way to point DNS at CloudFront: alias records, not CNAMEs.
+# Aliases resolve at Route 53's edge for free, work on zone apexes (a CNAME
+# cannot), and track the distribution's own address set. The alias target's
+# dnsName/zoneId are read from the distribution's outputs — CloudFront's
+# alias hosted zone id is a single global constant, but reading it from the
+# output keeps the template free of magic values.
+apiVersion: aws.planton.dev/v1
+kind: AwsRoute53DnsRecord
+metadata:
+  name: "{{ values.site_name }}-alias-a"
+spec:
+  region: "{{ values.aws_region }}"
+{% if values.dns_zone_enabled | bool %}
+  zoneId:
+    valueFrom:
+      kind: AwsRoute53Zone
+      name: "{{ values.dns_zone_name }}"
+      fieldPath: status.outputs.zone_id
+{% else %}
+  zoneId:
+    value: "{{ values.existing_zone_id }}"
+{% endif %}
+  name: "{{ values.domain_name }}"
+  type: A
+  aliasTarget:
+    dnsName:
+      valueFrom:
+        kind: AwsCloudFront
+        name: "{{ values.site_name }}-cdn"
+        fieldPath: status.outputs.domain_name
+    zoneId:
+      valueFrom:
+        kind: AwsCloudFront
+        name: "{{ values.site_name }}-cdn"
+        fieldPath: status.outputs.hosted_zone_id
+    # CloudFront does its own origin health handling; alias health evaluation
+    # adds nothing for a CDN target.
+    evaluateTargetHealth: false
+---
+# The IPv6 twin of the A record — the distribution is dual-stack
+# (isIpv6Enabled in cdn.yaml), so IPv6-only clients need the AAAA alias.
+apiVersion: aws.planton.dev/v1
+kind: AwsRoute53DnsRecord
+metadata:
+  name: "{{ values.site_name }}-alias-aaaa"
+spec:
+  region: "{{ values.aws_region }}"
+{% if values.dns_zone_enabled | bool %}
+  zoneId:
+    valueFrom:
+      kind: AwsRoute53Zone
+      name: "{{ values.dns_zone_name }}"
+      fieldPath: status.outputs.zone_id
+{% else %}
+  zoneId:
+    value: "{{ values.existing_zone_id }}"
+{% endif %}
+  name: "{{ values.domain_name }}"
+  type: AAAA
+  aliasTarget:
+    dnsName:
+      valueFrom:
+        kind: AwsCloudFront
+        name: "{{ values.site_name }}-cdn"
+        fieldPath: status.outputs.domain_name
+    zoneId:
+      valueFrom:
+        kind: AwsCloudFront
+        name: "{{ values.site_name }}-cdn"
+        fieldPath: status.outputs.hosted_zone_id
+    evaluateTargetHealth: false
+{% endif %}

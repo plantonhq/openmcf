@@ -33,7 +33,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGlobalAddress
 metadata:
   name: prod-lb-ip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -84,7 +84,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGlobalAddress
 metadata:
   name: web-lb-ip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -105,7 +105,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGlobalAddress
 metadata:
   name: managed-services-range
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGlobalAddress
 metadata:
   name: psc-google-apis
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -156,7 +156,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGlobalAddress
 metadata:
   name: lb-ip-with-ref
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

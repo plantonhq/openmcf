@@ -1,0 +1,110 @@
+# The raw ingest hub: everything lands here first, exactly as produced.
+# Partition count is the parallelism ceiling for consumers and is fixed
+# for life on a shared namespace -- sized for peak up front.
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHub
+metadata:
+  name: "{{ values.env }}-ingest-hub"
+spec:
+  namespaceId:
+    valueFrom:
+      kind: AzureEventHubNamespace
+      name: "{{ values.env }}-streams"
+      fieldPath: status.outputs.namespace_id
+  eventHubName: ingest
+  partitionCount: {{ values.ingest_partition_count }}
+  # Stream retention covers reprocessing windows; capture (below) is the
+  # long-term archive. STANDARD caps at 7 days.
+  messageRetention: {{ values.retention_days }}
+  {% if values.capture_enabled | bool %}
+  # The streaming-to-batch bridge: every event lands in the Data Lake
+  # archive in Avro, on a five-minute-or-300MB window cadence, written
+  # KEYLESSLY by the namespace's own identity. Replay beyond stream
+  # retention, audit trails, and batch analytics -- with no consumer
+  # application to run.
+  captureDescription:
+    enabled: true
+    encoding: AVRO
+    destination:
+      # Every placeholder is required by Azure; the layout groups
+      # archives by hub and partition, then by time -- the shape batch
+      # engines expect to glob.
+      archiveNameFormat: "{Namespace}/{EventHub}/{PartitionId}/{Year}/{Month}/{Day}/{Hour}/{Minute}/{Second}"
+      blobContainerName:
+        valueFrom:
+          kind: AzureStorageContainer
+          name: "{{ values.env }}-event-archive-container"
+          fieldPath: status.outputs.container_name
+      storageAccountId:
+        valueFrom:
+          kind: AzureStorageAccount
+          name: "{{ values.env }}-event-archive"
+          fieldPath: status.outputs.storage_account_id
+      # The namespace's system identity writes the archive -- no storage
+      # key is minted, shared, or rotated for capture.
+      storageAuthenticationType: SYSTEM_ASSIGNED
+  {% endif %}
+---
+# The processed hub: enriched/validated events re-published by the
+# stream processor. A separate hub (not a consumer group) because the
+# DATA is different -- downstream consumers should never accidentally
+# read raw.
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHub
+metadata:
+  name: "{{ values.env }}-processed-hub"
+spec:
+  namespaceId:
+    valueFrom:
+      kind: AzureEventHubNamespace
+      name: "{{ values.env }}-streams"
+      fieldPath: status.outputs.namespace_id
+  eventHubName: processed
+  partitionCount: {{ values.processed_partition_count }}
+  messageRetention: {{ values.retention_days }}
+---
+# One consumer group per consuming APPLICATION -- each group tracks its
+# own offsets, so the processor and any future consumer replay
+# independently. Reading through $Default couples every consumer to one
+# offset cursor; named groups are the production discipline.
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHubConsumerGroup
+metadata:
+  name: "{{ values.env }}-processor-cg"
+spec:
+  eventHubId:
+    valueFrom:
+      kind: AzureEventHub
+      name: "{{ values.env }}-ingest-hub"
+      fieldPath: status.outputs.event_hub_id
+  consumerGroupName: stream-processor
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHubConsumerGroup
+metadata:
+  name: "{{ values.env }}-dashboard-cg"
+spec:
+  eventHubId:
+    valueFrom:
+      kind: AzureEventHub
+      name: "{{ values.env }}-processed-hub"
+      fieldPath: status.outputs.event_hub_id
+  consumerGroupName: dashboard
+---
+# The schema registry group: producers register Avro schemas here and
+# consumers resolve them by id, so events carry a reference instead of
+# a schema copy. BACKWARD compatibility means new schemas can still
+# read old data -- consumers upgrade first, producers follow.
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHubSchemaGroup
+metadata:
+  name: "{{ values.env }}-event-schemas"
+spec:
+  namespaceId:
+    valueFrom:
+      kind: AzureEventHubNamespace
+      name: "{{ values.env }}-streams"
+      fieldPath: status.outputs.namespace_id
+  schemaGroupName: event-schemas
+  schemaType: AVRO
+  schemaCompatibility: BACKWARD

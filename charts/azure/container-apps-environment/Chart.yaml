@@ -5,12 +5,8 @@ metadata:
 spec:
   selector:
     kind: platform
-  description: >
-    Serverless container platform on Azure. Deploys a VNet-injected Container App
-    Environment with Log Analytics monitoring, an optional sample Container App,
-    and optional Application Insights for APM. Ideal for microservices, APIs, and
-    event-driven workloads that benefit from scale-to-zero and consumption pricing.
-  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/provider/azure/azurecontainerappenvironment/v1/assets/logo.svg
+  description: Serverless microservices on Azure Container Apps -- a VNet-injected, zone-redundant environment running a public API, a queue-driven worker that scales to zero, and a scheduled job, wired together with keyless Dapr pub/sub over Service Bus and a shared Azure Files volume
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/azure/azurecontainerappenvironment/v1/logo.svg
   isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/azure/container-apps-environment

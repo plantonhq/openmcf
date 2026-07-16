@@ -80,8 +80,6 @@ kind: KubernetesExternalDns
 metadata:
   name: external-dns-prod
 spec:
-  target_cluster:
-    cluster_name: my-gke-cluster
   namespace:
     value: kubernetes-external-dns
   gke:
@@ -143,7 +141,6 @@ This creates an ExternalDNS deployment that:
 
 | Field | Description | Default |
 |-------|-------------|---------|
-| `target_cluster` | Kubernetes cluster to deploy ExternalDNS on | Required |
 | `namespace` | Kubernetes namespace for ExternalDNS | `kubernetes-external-dns` |
 | `create_namespace` | Whether to create the namespace (if false, namespace must exist) | `false` |
 | `kubernetes_external_dns_version` | ExternalDNS image version | `v0.19.0` |

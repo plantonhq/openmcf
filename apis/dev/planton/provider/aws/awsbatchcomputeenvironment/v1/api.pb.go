@@ -23,10 +23,10 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsBatchComputeEnvironment is a deployment component for creating and managing
-// AWS Batch compute environments with bundled job queues and an optional
-// fair-share scheduling policy. This component covers MANAGED compute
-// environments with EC2, SPOT, FARGATE, and FARGATE_SPOT resource types.
+// AwsBatchComputeEnvironment is the API envelope for an AWS Batch MANAGED
+// compute environment -- the elastic EC2 / Spot / Fargate compute pool that
+// AWS Batch scales to run jobs. Queues (AwsBatchJobQueue) map onto it and
+// job definitions (AwsBatchJobDefinition) describe what runs on it.
 type AwsBatchComputeEnvironment struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api_version specifies the API version for this resource.

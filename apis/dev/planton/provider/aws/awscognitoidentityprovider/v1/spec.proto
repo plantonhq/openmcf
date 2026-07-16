@@ -6,26 +6,6 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
-// AwsCognitoIdentityProviderType enumerates the supported identity provider
-// types for Amazon Cognito User Pool federation. Values match the AWS API
-// exactly.
-enum AwsCognitoIdentityProviderType {
-  // unspecified is the zero value; set an explicit provider type.
-  unspecified = 0;
-  // Google OAuth 2.0 social identity provider.
-  Google = 1;
-  // Facebook Login social identity provider.
-  Facebook = 2;
-  // Login with Amazon social identity provider.
-  LoginWithAmazon = 3;
-  // Sign in with Apple social identity provider.
-  SignInWithApple = 4;
-  // Generic OpenID Connect identity provider.
-  OIDC = 5;
-  // SAML 2.0 federation identity provider.
-  SAML = 6;
-}
-
 // AwsCognitoIdpGoogleConfig holds the OAuth 2.0 configuration for a Google
 // identity provider. Cognito auto-discovers authorize_url, token_url, and
 // oidc_issuer from Google's well-known endpoints.
@@ -137,6 +117,11 @@ message AwsCognitoIdpOidcConfig {
 
   // Override the auto-discovered JWKS endpoint URL.
   string jwks_uri = 9;
+
+  // When true, Cognito appends the requested attributes as query parameters
+  // to the userinfo (attributes_url) request instead of relying on the
+  // provider returning them by default. Only some providers need this.
+  bool attributes_url_add_attributes = 10;
 }
 
 // AwsCognitoIdpSamlConfig holds the configuration for a SAML 2.0 federation
@@ -225,15 +210,13 @@ message AwsCognitoIdentityProviderSpec {
     (buf.validate.field).string.max_len = 32
   ];
 
-  // The type of identity provider. Determines which provider configuration
-  // field to populate (google, facebook, login_with_amazon, sign_in_with_apple,
-  // oidc, or saml).
+  // The type of identity provider, exactly as the AWS API spells it. Valid
+  // values: "Google", "Facebook", "LoginWithAmazon", "SignInWithApple",
+  // "OIDC", "SAML". Determines which provider configuration field to populate
+  // (google, facebook, login_with_amazon, sign_in_with_apple, oidc, or saml).
   //
   // This field is ForceNew: changing it requires replacing the identity provider.
-  AwsCognitoIdentityProviderType provider_type = 4 [(buf.validate.field).enum = {
-    defined_only: true
-    not_in: [0]
-  }];
+  string provider_type = 4 [(buf.validate.field).required = true];
 
   // ---------------------------------------------------------------------------
   // Provider configuration (exactly one must be set, matching provider_type)
@@ -282,13 +265,20 @@ message AwsCognitoIdentityProviderSpec {
   // CEL validations
   // ---------------------------------------------------------------------------
 
+  // provider_type valid values.
+  option (buf.validate.message).cel = {
+    id: "provider_type_valid"
+    message: "provider_type must be 'Google', 'Facebook', 'LoginWithAmazon', 'SignInWithApple', 'OIDC', or 'SAML'"
+    expression: "this.provider_type in ['Google', 'Facebook', 'LoginWithAmazon', 'SignInWithApple', 'OIDC', 'SAML']"
+  };
+
   // The provider_type must match the oneof provider_config field that is set.
   // This ensures type-safe configuration: a Google provider_type requires
   // google config, an OIDC provider_type requires oidc config, etc.
   option (buf.validate.message).cel = {
     id: "provider_type_config_match"
     message: "provider_type must match the provider configuration field: Google requires 'google', Facebook requires 'facebook', LoginWithAmazon requires 'loginWithAmazon', SignInWithApple requires 'signInWithApple', OIDC requires 'oidc', SAML requires 'saml'"
-    expression: "(this.provider_type == 1 && has(this.google)) || (this.provider_type == 2 && has(this.facebook)) || (this.provider_type == 3 && has(this.login_with_amazon)) || (this.provider_type == 4 && has(this.sign_in_with_apple)) || (this.provider_type == 5 && has(this.oidc)) || (this.provider_type == 6 && has(this.saml))"
+    expression: "(this.provider_type == 'Google' && has(this.google)) || (this.provider_type == 'Facebook' && has(this.facebook)) || (this.provider_type == 'LoginWithAmazon' && has(this.login_with_amazon)) || (this.provider_type == 'SignInWithApple' && has(this.sign_in_with_apple)) || (this.provider_type == 'OIDC' && has(this.oidc)) || (this.provider_type == 'SAML' && has(this.saml))"
   };
 
   // SAML providers must provide at least one metadata source.

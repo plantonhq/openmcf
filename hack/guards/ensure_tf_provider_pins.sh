@@ -53,7 +53,11 @@ extract_referenced() {
 
 while IFS= read -r tfdir; do
   [[ -z "$tfdir" ]] && continue
-  mapfile -t tffiles < <(find "$tfdir" -maxdepth 1 -type f -name '*.tf' 2>/dev/null)
+  # Portable array fill (mapfile is bash-4+; macOS ships bash 3.2).
+  tffiles=()
+  while IFS= read -r tf; do
+    [[ -n "$tf" ]] && tffiles+=("$tf")
+  done < <(find "$tfdir" -maxdepth 1 -type f -name '*.tf' 2>/dev/null)
   [[ ${#tffiles[@]} -eq 0 ]] && continue
 
   declared="$(extract_declared "${tffiles[@]}")"

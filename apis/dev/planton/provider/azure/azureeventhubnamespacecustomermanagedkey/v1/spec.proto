@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureeventhubnamespacecustomermanagedkey.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureEventHubNamespaceCustomerManagedKeySpec** configures
+// customer-managed-key (BYOK) encryption on an Event Hubs namespace:
+// event data at rest is encrypted with YOUR Key Vault keys instead of
+// Microsoft-managed keys.
+//
+// Azure models CMK as a configuration applied ONTO an existing namespace
+// (not a create-time property), and this kind mirrors that grain -- for a
+// real reason: encrypting with the namespace's own system-assigned
+// identity is only possible as a second step (create the namespace with
+// its identity -> grant that identity wrap/unwrap on the vault, e.g. a
+// "Key Vault Crypto Service Encryption User" AzureRoleAssignment -> apply
+// this kind). A folded create-time block could never express that
+// sequence.
+//
+// **Platform contract enforced by Azure at apply time**: CMK requires
+// single-tenant capacity -- a namespace placed on a dedicated cluster
+// (dedicated_cluster_id) or on the PREMIUM tier. Multi-tenant
+// BASIC/STANDARD namespaces share hardware and cannot take tenant keys;
+// Azure rejects the encryption patch on them.
+//
+// **Identity contract**: with user_assigned_identity_id set, that
+// identity unwraps the keys and MUST already be attached via the
+// namespace's identity block (with vault access granted before this kind
+// applies). Without it, the namespace's system-assigned identity is used.
+//
+// **Add-only lifecycle (Azure's own contract)**: once CMK is enabled it
+// can never be removed -- Azure has no decrypt-back path. Deleting this
+// resource intentionally changes NOTHING on the namespace (the delete is
+// a no-op); returning to Microsoft-managed keys requires replacing the
+// namespace itself. Key ROTATION is routine, though: with versionless key
+// references, vault rotation propagates automatically.
+//
+// **ForceNew fields**: `eventhub_namespace_id`,
+// `infrastructure_encryption_enabled`.
+message AzureEventHubNamespaceCustomerManagedKeySpec {
+  // The namespace to encrypt, by ARM ID. References an
+  // AzureEventHubNamespace's namespace_id output. The namespace must have
+  // single-tenant capacity (a dedicated cluster or PREMIUM) and already
+  // carry the unwrapping identity. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef eventhub_namespace_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHubNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.namespace_id"
+  ];
+
+  // The Key Vault keys that encrypt the namespace's data, by data-plane
+  // key ID (1-10 keys; Azure applies them across the namespace). Each
+  // defaults to referencing an AzureKeyVaultKey's versionless_id output
+  // so vault-side rotation propagates automatically; pin versioned IDs
+  // only when a compliance regime demands immutable key versions. The
+  // keys' vault must have purge protection enabled.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_ids = 2 [
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 10
+    },
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+
+  // Whether Azure applies a second layer of encryption (infrastructure
+  // encryption) beneath the customer-managed keys.
+  //
+  // **ForceNew**: fixed the moment CMK is first configured.
+  optional bool infrastructure_encryption_enabled = 3;
+
+  // The user-assigned identity Azure uses to unwrap the keys, by ARM ID.
+  // References an AzureUserAssignedIdentity's identity_id output. Must
+  // already be attached via the namespace's identity block, with
+  // wrap/unwrap access on the keys' vault. Unset uses the namespace's
+  // system-assigned identity instead (grant IT the vault access, using
+  // the namespace's identity_principal_id output).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+}

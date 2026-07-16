@@ -3,17 +3,18 @@ syntax = "proto3";
 package dev.planton.provider.aws.awstransitgateway.v1;
 
 // AwsTransitGatewayStackOutputs captures observable identifiers from a
-// provisioned Transit Gateway and its VPC attachments.
+// provisioned Transit Gateway.
 //
-// These outputs are the primary interface for downstream resources. The
-// transit_gateway_id is referenced by VPN connections, Direct Connect
-// gateways, and any future Transit Gateway route or peering resources.
-// The route table IDs enable future static route management without
-// modifying the Transit Gateway itself.
+// These outputs are the primary interface for downstream resources:
+// transit_gateway_id is referenced by AwsTransitGatewayVpcAttachment and
+// AwsTransitGatewayRouteTable resources, by subnet routes targeting the
+// gateway, and by VPN connections and Direct Connect gateways. The default
+// route table IDs let route-table-aware tooling address the built-in tables
+// without introspecting the gateway.
 message AwsTransitGatewayStackOutputs {
   // The Transit Gateway ID (e.g., "tgw-0123456789abcdef0"). This is the
-  // primary identifier used by VPN connections, Direct Connect gateways,
-  // peering attachments, and any resource that attaches to the TGW.
+  // primary identifier used by VPC attachments, route tables, subnet routes,
+  // VPN connections, Direct Connect gateways, and peering attachments.
   string transit_gateway_id = 1;
 
   // The Amazon Resource Name (ARN) of the Transit Gateway. Used for IAM
@@ -23,20 +24,15 @@ message AwsTransitGatewayStackOutputs {
   // The AWS account ID that owns this Transit Gateway.
   string owner_id = 3;
 
-  // The ID of the default association route table. Attachments with
-  // default_route_table_association enabled are automatically associated
-  // with this route table. Useful for creating static routes via a
-  // future AwsTransitGatewayRoute component.
+  // The ID of the default association route table. Attachments created with
+  // default route table association enabled are automatically associated
+  // with this table. Empty when the gateway is created with default
+  // association disabled.
   string association_default_route_table_id = 4;
 
-  // The ID of the default propagation route table. Attachments with
-  // default_route_table_propagation enabled automatically propagate their
-  // routes to this table.
+  // The ID of the default propagation route table. Attachments created with
+  // default route table propagation enabled automatically advertise their
+  // routes into this table. Empty when the gateway is created with default
+  // propagation disabled.
   string propagation_default_route_table_id = 5;
-
-  // Map of attachment name to VPC attachment ID. The keys correspond to
-  // the name field of each entry in spec.vpc_attachments. Downstream
-  // resources can reference specific attachment IDs via valueFrom using
-  // status.outputs.vpc_attachment_ids.{name}.
-  map<string, string> vpc_attachment_ids = 6;
 }

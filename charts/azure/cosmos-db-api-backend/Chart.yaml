@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: Azure Cosmos DB API Backend
+spec:
+  selector:
+    kind: platform
+  description: A planet-scale API data layer with the keyless posture Azure documents but few assemble -- key-based access disabled entirely, a least-privilege data-plane role granted to a workload identity, a private endpoint with no public data plane, continuous backup, and the request-throttling alert that catches undersized throughput
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/azure/azurecosmosdbaccount/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/azure/cosmos-db-api-backend
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/azure/cosmos-db-api-backend/README.md

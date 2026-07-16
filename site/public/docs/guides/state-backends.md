@@ -25,7 +25,7 @@ For the conceptual overview of state management — what state is, why it matter
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
     terraform.planton.dev/backend.type: s3
     terraform.planton.dev/backend.bucket: my-terraform-state
@@ -155,7 +155,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPostgres
 metadata:
   name: app-database
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/stack.name: prod.KubernetesPostgres.app-database
 spec:
@@ -226,7 +226,7 @@ Each provisioner uses its own label prefix. The backend configuration requires t
 **For Terraform (S3 backend):**
 ```yaml
 metadata:
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
     terraform.planton.dev/backend.type: s3
     terraform.planton.dev/backend.bucket: my-terraform-state
@@ -237,7 +237,7 @@ metadata:
 **For OpenTofu (GCS backend):**
 ```yaml
 metadata:
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
     tofu.planton.dev/backend.type: gcs
     tofu.planton.dev/backend.bucket: my-tofu-state
@@ -252,7 +252,7 @@ For backward compatibility:
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
     # Legacy labels - still work
     terraform.planton.dev/backend.type: s3
@@ -276,7 +276,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsVpc
 metadata:
   name: production-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
     terraform.planton.dev/backend.type: s3
     terraform.planton.dev/backend.bucket: my-terraform-state
@@ -323,7 +323,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsVpc
 metadata:
   name: production-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
     terraform.planton.dev/backend.type: s3
     terraform.planton.dev/backend.bucket: my-r2-state-bucket
@@ -349,7 +349,7 @@ planton apply -f manifest.yaml \
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
     tofu.planton.dev/backend.type: s3
     tofu.planton.dev/backend.bucket: terraform-state
@@ -378,7 +378,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GkeCluster
 metadata:
   name: staging-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
     tofu.planton.dev/backend.type: gcs
     tofu.planton.dev/backend.bucket: my-gcs-state-bucket
@@ -408,7 +408,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureAksCluster
 metadata:
   name: production-aks
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
     terraform.planton.dev/backend.type: azurerm
     terraform.planton.dev/backend.bucket: tfstate-container
@@ -439,7 +439,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDeployment
 metadata:
   name: test-service
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
     tofu.planton.dev/backend.type: local
     tofu.planton.dev/backend.key: /tmp/test-service.tfstate
@@ -472,10 +472,9 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRdsInstance
 metadata:
   name: app-database
-  labels:
+  annotations:
     # Provisioner selection
     planton.dev/provisioner: terraform
-    
     # Backend configuration
     terraform.planton.dev/backend.type: s3
     terraform.planton.dev/backend.bucket: company-terraform-state
@@ -503,10 +502,9 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudRun
 metadata:
   name: api-service
-  labels:
+  annotations:
     # Provisioner selection
     planton.dev/provisioner: tofu
-    
     # Backend configuration (OpenTofu-specific)
     tofu.planton.dev/backend.type: gcs
     tofu.planton.dev/backend.bucket: company-tofu-state
@@ -532,12 +530,11 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRdsInstance
 metadata:
   name: app-database
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
     terraform.planton.dev/backend.type: s3
     terraform.planton.dev/backend.bucket: company-terraform-state
     terraform.planton.dev/backend.region: us-west-2
-    # Key will be patched per environment
 spec:
   engine: postgres
   instanceClass: db.t3.small
@@ -571,10 +568,9 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPostgres
 metadata:
   name: analytics-db
-  labels:
+  annotations:
     # Provisioner selection
     planton.dev/provisioner: pulumi
-    
     # Stack name for state identification
     pulumi.planton.dev/stack.name: production.KubernetesPostgres.analytics-db
 spec:
@@ -687,7 +683,7 @@ aws dynamodb create-table \
 **Solution:** For remote backends, all required labels must be specified:
 
 ```yaml
-labels:
+annotations:
   # S3 backend - all four labels required
   terraform.planton.dev/backend.type: s3
   terraform.planton.dev/backend.bucket: my-terraform-state
@@ -771,7 +767,7 @@ planton apply -f manifest.yaml --reconfigure
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     terraform.planton.dev/backend.region: auto
     terraform.planton.dev/backend.endpoint: https://<account-id>.r2.cloudflarestorage.com
 ```

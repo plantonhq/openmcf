@@ -7,22 +7,36 @@ spec:
   resourceGroup:
     value: "<your-resource-group-name>"
   name: <your-lb-name>
-  publicIpId:
-    value: "<public-ip-resource-id>"
+  # STANDARD SKU and REGIONAL tier apply by default -- the production shape.
+  frontendIpConfigurations:
+    - name: public
+      # A Standard SKU public IP (zone posture comes from the IP resource).
+      publicIpAddressId:
+        value: "<public-ip-resource-id>"
   backendPools:
-    - name: default
+    # Membership joins from the member side: a NIC ip_configuration or a
+    # VM scale set references status.outputs.backendPoolIds.web.
+    - name: web
   healthProbes:
-    - name: http-probe
-      protocol: Http
+    - name: http-health
+      protocol: PROBE_HTTP
       port: 80
-      requestPath: /health
-      intervalInSeconds: 15  # default from spec
-      numberOfProbes: 2  # default from spec
+      requestPath: /healthz
+      intervalInSeconds: 15 # default from spec
+      numberOfProbes: 2 # default from spec
   rules:
-    - name: http-rule
-      protocol: Tcp
+    - name: http
+      protocol: TCP
       frontendPort: 80
       backendPort: 80
-      backendPoolName: default
-      probeName: http-probe
-      idleTimeoutInMinutes: 4  # default from spec
+      backendPoolNames: [web]
+      probeName: http-health
+      # Fail fast on idle drops -- production TCP rules generally want this.
+      tcpResetEnabled: true
+    - name: https
+      protocol: TCP
+      frontendPort: 443
+      backendPort: 443
+      backendPoolNames: [web]
+      probeName: http-health
+      tcpResetEnabled: true

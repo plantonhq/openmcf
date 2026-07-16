@@ -28,7 +28,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: my-ontap
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -36,7 +36,7 @@ metadata:
 spec:
   region: us-east-1
   storageCapacityGib: 1024
-  throughputCapacityPerHaPair: 128
+  throughputCapacityPerHaPair: 384
   subnetIds:
     - subnet-0123456789abcdef0
 ```
@@ -47,7 +47,7 @@ Deploy:
 planton apply -f ontap.yaml
 ```
 
-This creates a SINGLE_AZ_2 ONTAP file system with 1024 GiB SSD storage, 128 MB/s throughput per HA pair, and one HA pair in the specified subnet.
+This creates a SINGLE_AZ_2 ONTAP file system with 1024 GiB SSD storage, 384 MB/s throughput per HA pair, and one HA pair in the specified subnet.
 
 ## Configuration Reference
 
@@ -56,30 +56,38 @@ This creates a SINGLE_AZ_2 ONTAP file system with 1024 GiB SSD storage, 128 MB/s
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `region` | `string` | AWS region where the FSx ONTAP file system will be created (e.g., `us-east-1`). | Required; non-empty |
-| `storageCapacityGib` | `int32` | Storage capacity in GiB. Can be increased after creation but never decreased. | 1024–1048576 (1 TiB – 1 PiB) |
-| `throughputCapacityPerHaPair` | `int32` | Throughput per HA pair in MB/s. Total throughput = this value × number of HA pairs. | One of: 128, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144 |
-| `subnetIds` | `StringValueOrRef[]` | Subnet IDs. 1 for single-AZ, 2 for multi-AZ. Can reference AwsVpc via `valueFrom`. | Minimum 1 item |
+| `storageCapacityGib` | `int32` | Storage capacity in GiB. Can be increased after creation but never decreased. | 1024 GiB per HA pair minimum, 524288 GiB (512 TiB) per pair maximum, up to 1 PiB total; first-generation deployments cap at 196608 GiB |
+| `subnetIds` | `StringValueOrRef[]` | Subnet IDs. Exactly 1 for single-AZ, exactly 2 for multi-AZ. Can reference AwsSubnet via `valueFrom`. | 1–2 items |
+
+Exactly one of the two throughput fields must also be set — see below.
+
+### Throughput (exactly one)
+
+| Field | Type | Description | Valid values |
+|-------|------|-------------|--------------|
+| `throughputCapacity` | `int32` | Total file system throughput in MB/s — the first-generation sizing arm (use for SINGLE_AZ_1 / MULTI_AZ_1). | 128, 256, 512, 1024, 2048, 4096 |
+| `throughputCapacityPerHaPair` | `int32` | Throughput per HA pair in MB/s. Total throughput = this value × HA pairs. Preferred for SINGLE_AZ_2 / MULTI_AZ_2. | Gen1: 128–4096 (gen1 tiers); Gen2 single pair: 384, 768, 1536, 3072, 6144; scale-out (haPairs > 1): 1536, 3072, 6144 |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `deploymentType` | `string` | `SINGLE_AZ_2` | `SINGLE_AZ_1`, `SINGLE_AZ_2`, `MULTI_AZ_1`, or `MULTI_AZ_2`. ForceNew. SINGLE_AZ_2 recommended for most workloads; MULTI_AZ_2 for HA. |
-| `storageType` | `string` | `SSD` | `SSD` (sub-millisecond latency) or `HDD` (throughput-oriented with SSD cache). ForceNew. |
-| `haPairs` | `int32` | `1` | Number of HA pairs (1–12). Single-AZ only; multi-AZ is fixed at 1. Scale-out for throughput. |
-| `preferredSubnetId` | `StringValueOrRef` | — | Active file server subnet. Required for MULTI_AZ_1 and MULTI_AZ_2. ForceNew. Can reference AwsVpc via `valueFrom`. |
+| `storageType` | `string` | `SSD` | `SSD` only — ONTAP file systems are SSD-backed; cost tiering happens per volume via tiering policies. ForceNew. |
+| `haPairs` | `int32` | `1` | Number of HA pairs (1–12). Scale-out is SINGLE_AZ_2 only; every other deployment type is fixed at 1. |
+| `preferredSubnetId` | `StringValueOrRef` | — | Active file server subnet. Required for MULTI_AZ_1 and MULTI_AZ_2, invalid for single-AZ. ForceNew. Can reference AwsSubnet via `valueFrom`. |
 | `securityGroupIds` | `StringValueOrRef[]` | `[]` | Security group IDs. Can reference AwsSecurityGroup via `valueFrom`. ForceNew. Up to 50. |
-| `endpointIpAddressRange` | `string` | — | CIDR range for endpoint floating IPs. MULTI_AZ only. ForceNew. |
-| `routeTableIds` | `StringValueOrRef[]` | `[]` | Route tables for failover routing. MULTI_AZ only. Up to 50. |
+| `endpointIpAddressRange` | `string` | AWS-chosen | Floating-IP CIDR for the multi-AZ endpoints; must not overlap any VPC subnet (AWS recommends the 198.19.0.0/16 block). MULTI_AZ only. ForceNew. |
+| `routeTableIds` | `StringValueOrRef[]` | VPC main table | Route tables in which AWS manages failover routes. MULTI_AZ only. Up to 50. |
 | `kmsKeyId` | `StringValueOrRef` | AWS-managed | Customer-managed KMS key ARN. Can reference AwsKmsKey via `valueFrom`. ForceNew. |
 | `fsxAdminPassword` | `string` | — | Password for fsxadmin (ONTAP CLI and REST API). 8–50 characters. Sensitive; not returned in reads. |
 | `diskIopsConfiguration.mode` | `string` | `AUTOMATIC` | `AUTOMATIC` (3 IOPS per GiB) or `USER_PROVISIONED` (explicit IOPS). |
 | `diskIopsConfiguration.iops` | `int32` | — | Total SSD IOPS. Only when mode is `USER_PROVISIONED`. Range: 0–2,400,000. |
 | `automaticBackupRetentionDays` | `int32` | `0` | Days to retain automatic backups (0–90). 0 disables. |
 | `dailyAutomaticBackupStartTime` | `string` | — | Backup window in HH:MM UTC format. Requires `automaticBackupRetentionDays` > 0. |
-| `copyTagsToBackups` | `bool` | `false` | Propagate file system tags to backups. |
-| `skipFinalBackup` | `bool` | `true` | Skip final backup on deletion. |
 | `weeklyMaintenanceStartTime` | `string` | — | Maintenance window in d:HH:MM UTC (1=Mon, 7=Sun). |
+
+Backup-skip and tag-copy decisions are volume-scoped in ONTAP — configure them on AwsFsxOntapVolume, not here.
 
 ## Examples
 
@@ -92,7 +100,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: app-storage
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -102,7 +110,7 @@ spec:
   deploymentType: SINGLE_AZ_2
   storageCapacityGib: 2048
   storageType: SSD
-  throughputCapacityPerHaPair: 512
+  throughputCapacityPerHaPair: 768
   haPairs: 1
   subnetIds:
     - subnet-private-az1
@@ -114,7 +122,6 @@ spec:
     iops: 50000
   automaticBackupRetentionDays: 7
   dailyAutomaticBackupStartTime: "05:00"
-  copyTagsToBackups: true
 ```
 
 ### Scale-Out Single-AZ with Multiple HA Pairs
@@ -126,7 +133,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: throughput-tier
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -135,7 +142,7 @@ spec:
   region: us-east-1
   deploymentType: SINGLE_AZ_2
   storageCapacityGib: 8192
-  throughputCapacityPerHaPair: 1024
+  throughputCapacityPerHaPair: 1536
   haPairs: 4
   subnetIds:
     - subnet-private-az1
@@ -154,7 +161,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: ha-ontap
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -163,12 +170,12 @@ spec:
   region: us-east-1
   deploymentType: MULTI_AZ_2
   storageCapacityGib: 4096
-  throughputCapacityPerHaPair: 512
+  throughputCapacityPerHaPair: 768
   subnetIds:
     - subnet-private-az1
     - subnet-private-az2
   preferredSubnetId: subnet-private-az1
-  endpointIpAddressRange: 10.0.100.0/24
+  endpointIpAddressRange: 198.19.255.0/24
   routeTableIds:
     - rtb-private-az1
     - rtb-private-az2
@@ -177,7 +184,6 @@ spec:
   kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/prod-key
   automaticBackupRetentionDays: 14
   dailyAutomaticBackupStartTime: "03:00"
-  copyTagsToBackups: true
 ```
 
 ### Using Foreign Key References
@@ -189,7 +195,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: ref-ontap
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -197,7 +203,7 @@ metadata:
 spec:
   region: us-east-1
   storageCapacityGib: 2048
-  throughputCapacityPerHaPair: 256
+  throughputCapacityPerHaPair: 384
   subnetIds:
     - valueFrom:
         kind: AwsSubnet
@@ -207,12 +213,12 @@ spec:
     - valueFrom:
         kind: AwsSecurityGroup
         name: ontap-sg
-        field: status.outputs.security_group_id
+        fieldPath: status.outputs.security_group_id
   kmsKeyId:
     valueFrom:
       kind: AwsKmsKey
       name: data-key
-      field: status.outputs.key_arn
+      fieldPath: status.outputs.key_arn
 ```
 
 ## Stack Outputs
@@ -223,7 +229,6 @@ After deployment, the following outputs are available in `status.outputs`:
 |--------|------|-------------|
 | `file_system_id` | `string` | File system ID (e.g., `fs-0123456789abcdef0`). Primary identifier for SVMs, volumes, and other integrations. |
 | `file_system_arn` | `string` | ARN for IAM resource-level permissions and cross-account access. |
-| `dns_name` | `string` | DNS name for the file system (e.g., `fs-xxx.fsx.us-east-1.amazonaws.com`). |
 | `management_dns_name` | `string` | Management endpoint DNS name for ONTAP CLI (SSH) and REST API. Connect via `ssh fsxadmin@<management_dns_name>`. |
 | `management_ip_addresses` | `string[]` | Management endpoint IP addresses. Alternative to DNS for direct IP access. |
 | `intercluster_dns_name` | `string` | Intercluster endpoint DNS name for NetApp SnapMirror replication between FSx for ONTAP file systems. |

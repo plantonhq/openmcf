@@ -17,13 +17,13 @@ Deploys an external identity provider federated into an Amazon Cognito User Pool
 | `OIDC` | Generic OpenID Connect (Okta, Azure AD, Auth0) | `oidc` |
 | `SAML` | SAML 2.0 federation (Azure AD, Salesforce, ADFS) | `saml` |
 
-The `provider_type` field is a proto enum that matches AWS API values exactly. Each provider type has its own typed configuration message — there is no flat map; the schema is strongly typed for each IdP.
+The `provider_type` field takes the AWS API's spelling exactly (`Google`, `Facebook`, `LoginWithAmazon`, `SignInWithApple`, `OIDC`, `SAML`). Each provider type has its own typed configuration message — there is no flat map; the schema is strongly typed for each IdP.
 
 ## Child Resource Relationship
 
 **This is a child resource of `AwsCognitoUserPool`.** The User Pool must exist before creating identity providers. You cannot create an IdP without a pool.
 
-After creating an identity provider, add its `provider_name` to the User Pool Client's `supported_identity_providers` list to enable federated sign-in for that client.
+After creating an identity provider, list it in an `AwsCognitoUserPoolClient`'s `supported_identity_providers` to enable federated sign-in for that client — reference this resource's `provider_name` output so the graph orders the provider before the client.
 
 ## ForceNew Fields
 
@@ -43,9 +43,10 @@ Attribute mapping is **optional**. When omitted, AWS applies default mappings ba
 
 | Field | Type | Required | ForceNew | Description |
 |-------|------|----------|----------|-------------|
+| `region` | `string` | Yes | — | AWS region of the user pool. |
 | `userPoolId` | `StringValueOrRef` | Yes | Yes | User Pool ID (format: `{region}_{poolId}`). Can reference `AwsCognitoUserPool` via `valueFrom`. |
 | `providerName` | `string` | Yes | Yes | Display name (1–32 chars). Unique within pool. Referenced in User Pool Client's `supported_identity_providers`. |
-| `providerType` | `enum` | Yes | Yes | One of: `Google`, `Facebook`, `LoginWithAmazon`, `SignInWithApple`, `OIDC`, `SAML`. |
+| `providerType` | `string` | Yes | Yes | One of: `Google`, `Facebook`, `LoginWithAmazon`, `SignInWithApple`, `OIDC`, `SAML`. |
 | `google` | `AwsCognitoIdpGoogleConfig` | When `providerType: Google` | — | Google OAuth config. |
 | `facebook` | `AwsCognitoIdpFacebookConfig` | When `providerType: Facebook` | — | Facebook Login config. |
 | `loginWithAmazon` | `AwsCognitoIdpLoginWithAmazonConfig` | When `providerType: LoginWithAmazon` | — | Login with Amazon config. |
@@ -97,6 +98,7 @@ Attribute mapping is **optional**. When omitted, AWS applies default mappings ba
 | `tokenUrl` | `string` | No | Override auto-discovered token URL |
 | `attributesUrl` | `string` | No | Override auto-discovered userinfo URL |
 | `jwksUri` | `string` | No | Override auto-discovered JWKS URL |
+| `attributesUrlAddAttributes` | `bool` | No | Append requested attributes as query parameters to the userinfo request (only some providers need this) |
 
 **SAML** (`saml`):
 
@@ -115,6 +117,7 @@ Attribute mapping is **optional**. When omitted, AWS applies default mappings ba
 |--------|------|-------------|
 | `provider_name` | `string` | The name registered in the User Pool. Add this to User Pool Client's `supported_identity_providers` to enable federated sign-in. |
 | `provider_type` | `string` | The provider type (e.g., `"Google"`, `"OIDC"`, `"SAML"`). Informational. |
+| `user_pool_id` | `string` | The pool this provider is attached to, resolved from the spec reference. |
 
 ## Prerequisites
 
@@ -124,5 +127,5 @@ Attribute mapping is **optional**. When omitted, AWS applies default mappings ba
 
 ## Related Components
 
-- [AwsCognitoUserPool](../awscognitouserpool/v1/README.md) — parent resource; must be created first
-- [AwsCognitoUserPoolClient](../awscognitouserpool/v1/README.md) — add `provider_name` to `supported_identity_providers` to enable federated sign-in
+- [AwsCognitoUserPool](../../awscognitouserpool/v1/README.md) — parent resource; must be created first
+- [AwsCognitoUserPoolClient](../../awscognitouserpoolclient/v1/README.md) — list this provider (by reference to its `provider_name` output) in `supportedIdentityProviders` to enable federated sign-in

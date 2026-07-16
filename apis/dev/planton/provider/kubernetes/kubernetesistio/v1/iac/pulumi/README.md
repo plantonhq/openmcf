@@ -56,9 +56,6 @@ import (
 func main() {
     pulumi.Run(func(ctx *pulumi.Context) error {
         istioSpec := &kubernetesistiov1.KubernetesIstioSpec{
-            TargetCluster: &kubernetes.KubernetesClusterSelector{
-                ClusterName: "my-gke-cluster",
-            },
             Namespace: &foreignkeyv1.StringValueOrRef{
                 LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
                     Value: "istio-system",
@@ -105,9 +102,6 @@ func main() {
 
 ```go
 istioSpec := &kubernetesistiov1.KubernetesIstioSpec{
-    TargetCluster: &kubernetes.KubernetesClusterSelector{
-        ClusterName: "prod-gke-cluster",
-    },
     Namespace: &foreignkeyv1.StringValueOrRef{
         LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
             Value: "istio-system",
@@ -133,9 +127,6 @@ istioSpec := &kubernetesistiov1.KubernetesIstioSpec{
 
 ```go
 istioSpec := &kubernetesistiov1.KubernetesIstioSpec{
-    TargetCluster: &kubernetes.KubernetesClusterSelector{
-        ClusterName: "prod-ha-gke-cluster",
-    },
     Namespace: &foreignkeyv1.StringValueOrRef{
         LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
             Value: "istio-system",

@@ -1,138 +1,116 @@
 # AzureMysqlFlexibleServer
 
-Azure Database for MySQL Flexible Server is a fully managed relational database service
-that provides granular control over database management and configuration. It supports
-burstable, general-purpose, and memory-optimized compute tiers, zone-redundant and same-zone
-high availability, automatic backups with point-in-time restore, and private VNet integration.
+Azure Database for MySQL Flexible Server is Azure's managed MySQL:
+per-server compute/storage sizing, zone-redundant high availability with
+automatic failover, a Microsoft Entra (Azure AD) administrator,
+customer-managed-key encryption, read replicas, and point-in-time restore.
+Databases, firewall rules, server parameters, and the Entra administrator
+are configured on the server and managed with it.
 
 ## When to Use
 
 Use AzureMysqlFlexibleServer when you need:
 
 - **Managed MySQL** with automatic patching, backups, and monitoring
-- **Flexible compute tiers** from burstable dev/test (B_Standard_B1ms) to production (GP_Standard_D4ds_v4)
-- **High availability** with automatic failover (ZoneRedundant or SameZone)
-- **Private VNet access** using delegated subnets and private DNS zones
-- **Multiple databases** on a single server instance
+- **Flexible compute tiers** from burstable dev/test (`B_Standard_B1ms`) to
+  memory-optimized production (`MO_Standard_E4ds_v4`)
+- **High availability** with a synchronously replicated standby
+  (zone-redundant or same-zone) and automatic failover
+- **Private networking** via VNet injection (delegated subnet + private DNS
+  zone) or private endpoints
+- **An Entra administrator** for token-based administration alongside
+  password auth (MySQL cannot disable password auth)
+- **Customer-managed-key encryption** composed against `AzureKeyVaultKey`
+- **Read replicas and restores** -- a replica or restored server is another
+  `AzureMysqlFlexibleServer` referencing the source's `server_id`
 
 ## Key Configuration
 
-### Compute Tiers (sku_name)
+### Compute Tiers (`sku_name`)
 
 | Tier | Prefix | Use Case | Example |
 |------|--------|----------|---------|
 | Burstable | `B_Standard_` | Dev/test, low-traffic | `B_Standard_B1ms` (1 vCPU, 2 GiB) |
-| General Purpose | `GP_Standard_` | Production workloads | `GP_Standard_D2ds_v4` (2 vCPU, 8 GiB) |
-| Memory Optimized | `MO_Standard_` | Analytics, caching | `MO_Standard_E2ds_v4` (2 vCPU, 16 GiB) |
+| General Purpose | `GP_Standard_` | Production workloads | `GP_Standard_D4ds_v4` (4 vCPU, 16 GiB) |
+| Memory Optimized | `MO_Standard_` | Analytics, caching | `MO_Standard_E4ds_v4` (4 vCPU, 32 GiB) |
 
-MySQL Flexible Server uses the `_v4` and `_v5` series SKU families (e.g., `D2ds_v4`, `D4ads_v5`),
-which differ from the PostgreSQL Flexible Server `_v3` series. Common production SKUs:
+Burstable SKUs support neither high availability nor read replicas.
 
-- `GP_Standard_D2ds_v4` -- 2 vCPU, 8 GiB RAM
-- `GP_Standard_D4ds_v4` -- 4 vCPU, 16 GiB RAM
-- `GP_Standard_D8ds_v4` -- 8 vCPU, 32 GiB RAM
-- `MO_Standard_E4ds_v4` -- 4 vCPU, 32 GiB RAM
+### Storage (the `storage` block)
 
-### Storage (storage_size_gb)
+Capacity is `size_gb` (20-16384; only grows -- shrinking replaces the
+server). IOPS comes in two mutually exclusive shapes: a provisioned `iops`
+value (360-48000, bounded by SKU and size) or elastic scaling
+(`io_scaling_enabled`) that rides workload demand. `auto_grow_enabled`
+defaults to true (Azure's MySQL default); `log_on_disk_enabled` places the
+slow query log on the server's own storage for compliance regimes that
+require it.
 
-Storage is provisioned in **GB** (not MB like PostgreSQL). Range: 20 GB to 16,384 GB (16 TB).
+### Networking
 
-| Size | Value |
-|------|-------|
-| 20 GB | `20` |
-| 64 GB | `64` |
-| 128 GB | `128` |
-| 256 GB | `256` |
-| 512 GB | `512` |
-| 1 TB | `1024` |
-| 16 TB | `16384` |
+Two postures, matching Azure's contract:
 
-Storage cannot be downgraded once provisioned. `auto_grow_enabled` defaults to **true** (unlike
-PostgreSQL where it defaults to false), so storage automatically expands when free space is low.
+- **Public endpoint** (Azure's derived default) -- allowlisted by
+  `firewall_rules`
+- **VNet injection** -- `delegated_subnet_id` (a subnet delegated to
+  `Microsoft.DBforMySQL/flexibleServers`) + `private_dns_zone_id`; a
+  VNet-injected server cannot have a public endpoint (leave
+  `public_network_access` unset and Azure derives DISABLED)
 
-### Network Access
+### Authentication
 
-**Public access** (default): The server is accessible over the internet. Use `firewall_rules` to restrict which IP addresses can connect.
+- **Password auth is always on** -- MySQL Flexible Server cannot disable it
+  (unlike PostgreSQL Flexible Server)
+- **Microsoft Entra is additive**: declare the single `aad_administrator`
+  (a group admits a team), backed by a user-assigned identity attached via
+  `user_assigned_identity_ids`
 
-**Private VNet access**: Set `delegated_subnet_id` to a subnet delegated to `Microsoft.DBforMySQL/flexibleServers`. Public access is automatically disabled. Optionally set `private_dns_zone_id` for DNS resolution within the VNet (typically `privatelink.mysql.database.azure.com`).
+### Lifecycle (`create_mode`)
 
-### High Availability
+| Mode | What it creates | Requires |
+|------|-----------------|----------|
+| DEFAULT (unset) | A fresh, empty server | `sku_name` + credentials |
+| REPLICA | An asynchronous read replica | `source_server_id` |
+| POINT_IN_TIME_RESTORE | Same-region restore | `source_server_id` + restore timestamp |
+| GEO_RESTORE | Paired-region restore of the latest geo-backup | source with geo-redundant backups (no timestamp) |
 
-Set the `high_availability` block to enable automatic failover:
+Promote a replica by setting `replication_role: NONE` on it (irreversible).
 
-- **ZoneRedundant**: Standby in a different availability zone (recommended for production)
-- **SameZone**: Standby in the same zone (faster failover, no zone-level protection)
+### Versions
 
-Burstable SKUs do NOT support high availability.
+Supported: `5.7` (legacy migrations), `8.0.21` (the 8.0 series -- the
+default and production standard), `8.4` (newest LTS). In-place upgrade goes
+5.7 to 8.0.21 only; downgrades replace the server.
 
-### MySQL Versions
+## Fields That Replace the Server When Changed
 
-Supported: **5.7**, **8.0.21** (default), **8.4**
-
-- `"5.7"` -- Approaching EOL, use only for legacy migration
-- `"8.0.21"` -- Current production standard, recommended for most workloads
-- `"8.4"` -- Latest GA release with performance improvements and new features
-
-### Database Defaults
-
-- **Charset**: `utf8mb4` (full Unicode support including emojis)
-- **Collation**: `utf8mb4_0900_ai_ci` (accent-insensitive, case-insensitive; for MySQL 5.7 use `utf8mb4_unicode_ci`)
-
-## ForceNew Fields
-
-Changing these fields destroys and recreates the server (data loss risk):
-
-- `name` -- server hostname
-- `administrator_login` -- admin username
-- `delegated_subnet_id` -- VNet integration
-- `private_dns_zone_id` -- private DNS resolution
-- `geo_redundant_backup_enabled` -- backup configuration
+`server_name`, `region`, `resource_group`, `administrator_login` (once
+set), `delegated_subnet_id`, `private_dns_zone_id`,
+`geo_redundant_backup_enabled`, the restore/replica trio, a `version`
+downgrade, and a `storage.size_gb` shrink.
 
 ## Stack Outputs
 
 | Output | Description |
 |--------|-------------|
-| `server_id` | Azure Resource Manager ID |
+| `server_id` | ARM ID -- the seam for private endpoints and replica/restore sources |
 | `server_name` | Server name |
-| `fqdn` | Fully qualified domain name (`{name}.mysql.database.azure.com`) |
-| `administrator_login` | Admin login name |
-| `database_ids` | Map of database name to resource ID |
+| `fqdn` | `{name}.mysql.database.azure.com` -- resolves privately when VNet-injected |
+| `administrator_login` | Admin login, echoed for connection strings |
+| `database_ids` | Name-keyed map of database ARM IDs |
+| `replica_capacity` | How many read replicas the server can still accept |
 
 **Connection string format:**
 
-```
+```text
 mysql://{administrator_login}:{password}@{fqdn}:3306/{database}?ssl-mode=REQUIRED
 ```
 
 ## Related Resources
 
-- **AzureSubnet** -- Delegated subnet for VNet integration (delegation: `Microsoft.DBforMySQL/flexibleServers`)
-- **AzurePrivateDnsZone** -- DNS resolution for private access (`privatelink.mysql.database.azure.com`)
-- **AzurePrivateEndpoint** -- Alternative private connectivity (via Private Link)
-- **AzureResourceGroup** -- Container for the server
-
-## Infra Chart Usage
-
-This resource is a key component of:
-
-- **database-stack** -- MySQL + optional PostgreSQL + MSSQL + Redis + PrivateEndpoint
-- **container-apps-environment** -- Optional database backend
-- **web-app-environment** -- Optional database backend
-
-## Differences from AzurePostgresqlFlexibleServer
-
-| Aspect | MySQL | PostgreSQL |
-|--------|-------|------------|
-| Storage unit | GB (`storage_size_gb`) | MB (`storage_mb`) |
-| Storage minimum | 20 GB | 32 GB (32768 MB) |
-| auto_grow_enabled default | `true` | `false` |
-| Versions | 5.7, 8.0.21, 8.4 | 12-17 |
-| FQDN suffix | `.mysql.database.azure.com` | `.postgres.database.azure.com` |
-| Default charset | `utf8mb4` | `UTF8` |
-| Default collation | `utf8mb4_0900_ai_ci` | `en_US.utf8` |
-| Backup retention range | 1-35 days | 7-35 days |
-| Server name start char | Letter or number | Letter only |
-| Subnet delegation | `Microsoft.DBforMySQL/flexibleServers` | `Microsoft.DBforPostgreSQL/flexibleServers` |
-| SKU families | `_v4`, `_v5` series | `_v3` series |
-| ForceNew: private_dns_zone_id | Yes | No |
-| Default port | 3306 | 5432 |
+- **AzureResourceGroup** -- the server's container
+- **AzureSubnet** -- the delegated subnet for VNet injection
+- **AzurePrivateDnsZone** -- private name resolution for the fqdn
+- **AzurePrivateEndpoint** -- alternative private connectivity (Private Link)
+- **AzureUserAssignedIdentity** -- CMK unwrap identity / the Entra administrator's backing identity
+- **AzureKeyVaultKey** -- the customer-managed encryption key

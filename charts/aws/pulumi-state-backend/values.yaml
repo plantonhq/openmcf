@@ -1,0 +1,17 @@
+params:
+  # ── Placement ───────────────────────────────────────────────────────────
+  - name: aws_region
+    description: >
+      AWS region for the state bucket. Every `pulumi up` reads and writes
+      state here, so pick the region closest to where your deployments run
+      (CI runners, Planton runners, or your laptop).
+    value: us-east-1
+
+  # ── Identity ────────────────────────────────────────────────────────────
+  - name: bucket_name
+    description: >
+      Globally unique name for the S3 bucket that stores Pulumi state
+      (checkpoints, stack history, and locks). Recommended convention:
+      <org>-pulumi-state. S3 bucket names are global across all AWS accounts,
+      so a generic name will already be taken.
+    value: my-org-pulumi-state

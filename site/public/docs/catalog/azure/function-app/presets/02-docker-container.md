@@ -37,7 +37,7 @@ This preset deploys a containerized Function App running a custom Docker image f
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<your-resource-group-name>` | Name of the Azure resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-elastic-premium-plan-id>` | ARM ID of an Elastic Premium (EP*) or Dedicated (P*v3) App Service Plan | Azure portal or `AzureServicePlan` status outputs (`plan_id`) |
+| `<your-elastic-premium-plan-id>` | ARM ID of an Elastic Premium (EP*) or Dedicated (P*v3) App Service Plan | Azure portal or `AzureServicePlan` status outputs (`service_plan_id`) |
 | `<your-storage-account-name>` | Name of the storage account for Functions runtime | Azure portal or `AzureStorageAccount` status outputs |
 | `<your-storage-access-key>` | Access key for the storage account | Azure portal -> Storage Account -> Access keys |
 | `<your-registry>.azurecr.io` | Azure Container Registry login server | Azure portal -> Container Registry -> Login server |

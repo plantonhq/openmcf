@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureapplicationinsightsstandardwebtest
+spec:
+  # The scenario deploys the fixture Application Insights component
+  # (registry prerequisite, which brings its Log Analytics workspace and
+  # resource group), then a standard web test bound to it that pings a
+  # public URL from one Azure region. The verifier confirms the test exists
+  # via the ARM API, then destroys and confirms it is gone -- on both
+  # provisioners. Web tests provision in seconds.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

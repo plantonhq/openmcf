@@ -27,7 +27,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSolrOperator
 metadata:
   name: main
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -66,8 +66,6 @@ This installs the Solr Operator v0.9.1 into the `solr-system` namespace with def
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `operatorVersion` | `string` | `v0.9.1` | Version of the Apache Solr Operator to deploy. Must match a tag from the [solr-operator releases](https://github.com/apache/solr-operator/releases). |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for the operator pod. |
@@ -88,7 +86,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSolrOperator
 metadata:
   name: dev-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -116,7 +114,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSolrOperator
 metadata:
   name: prod-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +141,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSolrOperator
 metadata:
   name: search-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

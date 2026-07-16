@@ -1,0 +1,34 @@
+# Minimal AwsFsxOntapFileSystem scenario: the implicit-default shape.
+# SINGLE_AZ_2 (the spec default, exercised by omission) at the 1024 GiB SSD
+# floor with the 384 MB/s gen2 throughput tier, on the shared subnet +
+# security-group fixtures. Defaults exercised by omission: deployment_type,
+# storage_type, ha_pairs, disk IOPS mode, and every backup/maintenance dial.
+# Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsFsxOntapFileSystem
+metadata:
+  name: planton-oss-e2e-awsfxo-minimal
+  id: planton-oss-e2e-awsfxo-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsfsxontapfilesystem
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  storageCapacityGib: 1024
+  throughputCapacityPerHaPair: 384
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: planton-oss-e2e-awssg-prereq
+        fieldPath: status.outputs.security_group_id

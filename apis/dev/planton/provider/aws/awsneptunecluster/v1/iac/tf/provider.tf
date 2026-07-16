@@ -1,8 +1,11 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      source = "hashicorp/aws"
+      # Floor, not a cap: the v6 floor keeps the module on the modern
+      # major where the whole modeled Neptune surface (serverless
+      # scaling, iopt1 storage, global cluster membership) is present.
+      version = ">= 6.0.0"
     }
   }
 }

@@ -8,21 +8,19 @@ componentName: "azureuserassignedidentity"
 
 # Azure User Assigned Identity
 
-Deploys an Azure User-Assigned Managed Identity with optional RBAC role assignments. The component creates the identity resource and binds it to specified roles at specified scopes, providing a credential-free authentication mechanism that can be shared across multiple Azure resources.
+Deploys a user-assigned managed identity -- the standalone, credential-free Azure AD identity workloads authenticate as. The identity is deliberately just the identity: grant it permissions with `AzureRoleAssignment` resources and trust external workloads to act as it with `AzureFederatedIdentityCredential` resources, each attaching to this identity's outputs.
 
 ## What Gets Created
 
 When you deploy an AzureUserAssignedIdentity resource, Planton provisions:
 
-- **User-Assigned Managed Identity** — an `authorization.UserAssignedIdentity` resource in the specified region and resource group, tagged with resource metadata for tracking and governance
-- **RBAC Role Assignments** — an `authorization.Assignment` for each entry in `roleAssignments`, binding the identity's principal to a specific role at a specific Azure resource scope
-- **Azure Tags** — resource metadata tags applied to the identity including resource name, kind, organization, and environment
+- **User-Assigned Managed Identity** — an `azurerm_user_assigned_identity` in the specified region and resource group
+- **Azure Tags** — the Planton-derived resource tags (resource name, kind, organization, environment) with your spec tags merged over them (user tags win on key collision)
 
 ## Prerequisites
 
 - **Azure credentials** configured via environment variables or Planton provider config
 - **An Azure Resource Group** where the identity will be created (can reference an AzureResourceGroup resource)
-- **Azure resource IDs** for any scopes you want to grant role assignments on (Key Vault IDs, Storage Account IDs, subscription IDs, etc.)
 
 ## Quick Start
 
@@ -33,14 +31,15 @@ apiVersion: azure.planton.dev/v1
 kind: AzureUserAssignedIdentity
 metadata:
   name: my-identity
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: dev.AzureUserAssignedIdentity.my-identity
 spec:
   region: eastus
-  resourceGroup: my-rg
+  resourceGroup:
+    value: my-rg
   name: my-identity
 ```
 
@@ -50,7 +49,7 @@ Deploy:
 planton apply -f identity.yaml
 ```
 
-This creates a User-Assigned Managed Identity with no role assignments. The identity exists but has no permissions until role assignments are added.
+This creates the identity. It has no permissions until `AzureRoleAssignment` resources grant them, and no external workload can act as it until `AzureFederatedIdentityCredential` resources trust one.
 
 ## Configuration Reference
 
@@ -58,148 +57,108 @@ This creates a User-Assigned Managed Identity with no role assignments. The iden
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `region` | `string` | Azure region for the Managed Identity (e.g., `eastus`, `westeurope`). Must match the region of the resource group. | Required, minimum length 1 |
+| `region` | `string` | Azure region for the identity (e.g., `eastus`, `westeurope`). The identity is a regional resource. | Required, minimum length 1 |
 | `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `name` | `string` | Name of the User-Assigned Managed Identity. Must be unique within the resource group. | Required, 3-128 characters: alphanumeric, hyphens, underscores |
+| `name` | `string` | Name of the identity, unique within the resource group. Renaming replaces the identity and mints a new principal, invalidating existing grants. | Required, 3-128 characters |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `roleAssignments` | `RoleAssignment[]` | `[]` | RBAC role assignments granting this identity permissions on Azure resources. Each entry has a `scope` (StringValueOrRef) and a `roleDefinitionName` (string). |
-| `roleAssignments[].scope` | `StringValueOrRef` | — | Azure resource ID to scope the role assignment to. Can be a subscription, resource group, or individual resource ID. Supports `valueFrom` to reference another resource's output. |
-| `roleAssignments[].roleDefinitionName` | `string` | — | Name of a built-in or custom Azure RBAC role (e.g., `Key Vault Secrets User`, `Storage Blob Data Contributor`, `AcrPull`, `Network Contributor`). |
+| `isolationScope` | `enum` | unset | `REGIONAL` restricts token issuance to the identity's own region (a data-residency control). Unset means the identity is usable by resources in any region. Updates in place. |
+| `tags` | `map<string,string>` | `{}` | User tags merged over the Planton-derived tags; a user tag with the same key wins. Updates in place. |
 
 ## Examples
 
-### Identity with No Role Assignments
-
-A bare identity for development or testing. It has no permissions and cannot access any Azure resources until role assignments are added:
+### Identity for a Workload
 
 ```yaml
 apiVersion: azure.planton.dev/v1
 kind: AzureUserAssignedIdentity
 metadata:
-  name: dev-identity
-  labels:
+  name: payments-identity
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureUserAssignedIdentity.dev-identity
-spec:
-  region: eastus
-  resourceGroup: dev-rg
-  name: dev-identity
-```
-
-### Identity with Key Vault Access
-
-An identity granted read access to Key Vault secrets, suitable for applications that need to retrieve configuration secrets:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureUserAssignedIdentity
-metadata:
-  name: app-identity
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureUserAssignedIdentity.app-identity
-spec:
-  region: eastus
-  resourceGroup: prod-rg
-  name: app-identity
-  roleAssignments:
-    - scope: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.KeyVault/vaults/prod-vault
-      roleDefinitionName: Key Vault Secrets User
-```
-
-### Identity with Multiple Role Assignments
-
-An identity for a workload that needs access to several Azure services -- Key Vault for secrets, a Storage Account for blob data, and an ACR for pulling container images:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureUserAssignedIdentity
-metadata:
-  name: workload-identity
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureUserAssignedIdentity.workload-identity
-spec:
-  region: westeurope
-  resourceGroup: prod-rg
-  name: workload-identity
-  roleAssignments:
-    - scope: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.KeyVault/vaults/prod-vault
-      roleDefinitionName: Key Vault Secrets User
-    - scope: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.Storage/storageAccounts/prodstorage
-      roleDefinitionName: Storage Blob Data Contributor
-    - scope: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.ContainerRegistry/registries/prodacr
-      roleDefinitionName: AcrPull
-```
-
-### Using Foreign Key References for Scope
-
-Reference Planton-managed resources instead of hardcoding Azure resource IDs. The `valueFrom` syntax resolves the scope from another resource's stack outputs:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureUserAssignedIdentity
-metadata:
-  name: ref-identity
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureUserAssignedIdentity.ref-identity
+    pulumi.planton.dev/stack.name: prod.AzureUserAssignedIdentity.payments-identity
 spec:
   region: eastus
   resourceGroup:
     valueFrom:
-      kind: AzureResourceGroup
       name: platform-rg
-      field: status.outputs.resource_group_name
-  name: ref-identity
-  roleAssignments:
-    - scope:
-        valueFrom:
-          kind: AzureKeyVault
-          name: platform-kv
-          fieldPath: status.outputs.vault_id
-      roleDefinitionName: Key Vault Secrets User
-    - scope:
-        valueFrom:
-          kind: AzureStorageAccount
-          name: platform-storage
-          fieldPath: status.outputs.storage_account_id
-      roleDefinitionName: Storage Blob Data Contributor
+  name: payments-api
+  tags:
+    owner: payments-team
 ```
 
-### Subscription-Level Contributor
+Then grant what it needs -- for example, read access to Key Vault secrets:
 
-An identity with Contributor access at the subscription level, useful for automation or deployment pipelines that manage resources across resource groups:
+```yaml
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: payments-kv-reader
+spec:
+  scope:
+    valueFrom:
+      kind: AzureKeyVault
+      name: platform-kv
+      fieldPath: status.outputs.key_vault_id
+  roleDefinitionName: Key Vault Secrets User
+  principalId:
+    valueFrom:
+      name: payments-identity
+```
+
+### Regionally Isolated, Governance-Tagged Identity
+
+For regulated environments -- token issuance restricted to the identity's region and tags aligned with the org's Azure Policy conventions:
 
 ```yaml
 apiVersion: azure.planton.dev/v1
 kind: AzureUserAssignedIdentity
 metadata:
-  name: deployer-identity
-  labels:
+  name: regulated-identity
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureUserAssignedIdentity.deployer-identity
+    pulumi.planton.dev/stack.name: prod.AzureUserAssignedIdentity.regulated-identity
+spec:
+  region: westeurope
+  resourceGroup:
+    valueFrom:
+      name: regulated-rg
+  name: regulated-workload
+  isolationScope: REGIONAL
+  tags:
+    cost-center: compliance
+    data-classification: restricted
+```
+
+### The Keyless-CI Composition
+
+The identity anchors keyless CI/CD: an `AzureRoleAssignment` grants it deployment rights, and an `AzureFederatedIdentityCredential` lets a GitHub Actions workflow act as it -- no secret anywhere:
+
+```yaml
+apiVersion: azure.planton.dev/v1
+kind: AzureUserAssignedIdentity
+metadata:
+  name: ci-deployer
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: my-org
+    pulumi.planton.dev/project: my-project
+    pulumi.planton.dev/stack.name: prod.AzureUserAssignedIdentity.ci-deployer
 spec:
   region: eastus
-  resourceGroup: infra-rg
-  name: deployer-identity
-  roleAssignments:
-    - scope: /subscriptions/00000000-0000-0000-0000-000000000000
-      roleDefinitionName: Contributor
+  resourceGroup:
+    valueFrom:
+      name: platform-rg
+  name: ci-deployer
+  tags:
+    purpose: ci-deployment
 ```
 
 ## Stack Outputs
@@ -208,14 +167,15 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `identity_id` | `string` | Azure Resource Manager ID of the User-Assigned Managed Identity. Format: `/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{name}` |
-| `principal_id` | `string` | Service Principal Object ID in Azure AD. Used for RBAC role assignments and Key Vault access policies that accept object IDs. |
-| `client_id` | `string` | Client ID (Application ID) of the Managed Identity. Applications use this to authenticate as the identity via the Azure SDK (e.g., set as `AZURE_CLIENT_ID`). |
-| `tenant_id` | `string` | Azure AD Tenant ID that the Managed Identity belongs to. Used with `client_id` for cross-tenant or multi-tenant scenarios. |
+| `identity_id` | `string` | ARM ID of the identity. Format: `/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{name}`. What consuming resources and federated credentials attach to. |
+| `principal_id` | `string` | Service principal object ID in Azure AD. What `AzureRoleAssignment` grants roles to. |
+| `client_id` | `string` | Client (application) ID. What workloads present to authenticate as the identity (e.g., `AZURE_CLIENT_ID`). |
+| `tenant_id` | `string` | Azure AD tenant ID the identity belongs to. |
 
 ## Related Components
 
+- [AzureRoleAssignment](/docs/catalog/azure/role-assignment) -- grants this identity its permissions
+- [AzureFederatedIdentityCredential](/docs/catalog/azure/federated-identity-credential) -- lets external OIDC workloads act as this identity
+- [AzureRoleDefinition](/docs/catalog/azure/role-definition) -- custom roles for grants the built-ins don't express
 - [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group where the identity is created
-- [AzureKeyVault](/docs/catalog/azure/key-vault) -- a common scope target for granting secret, key, or certificate access
-- [AzureStorageAccount](/docs/catalog/azure/storage-account) -- a common scope target for granting blob, queue, or table data access
 - [AzureAksCluster](/docs/catalog/azure/aks-cluster) -- AKS clusters can use user-assigned identities for kubelet or control plane authentication

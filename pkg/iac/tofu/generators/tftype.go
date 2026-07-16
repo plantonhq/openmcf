@@ -54,6 +54,20 @@ func (TFFreeFormMap) Format(_ int) string {
 	return "any"
 }
 
+// TFFreeFormList represents a repeated proto field whose element type is
+// free-form (a JSON well-known type, or a recursive message collapsed to
+// `any`). It renders as the bare `any` keyword rather than `list(any)` for the
+// same reason TFFreeFormMap exists: Terraform's `list(any)` requires every
+// element to converge to a single common type ("all list elements must have
+// the same type"), which arbitrary or recursive elements cannot guarantee.
+// Its zero default is an empty list ([]) so a pruned field reconstructs to
+// something a `for` expression can iterate.
+type TFFreeFormList struct{}
+
+func (TFFreeFormList) Format(_ int) string {
+	return "any"
+}
+
 // TFObject represents a Terraform object type with named fields.
 type TFObject struct {
 	Fields []TFField
@@ -69,10 +83,20 @@ type TFObject struct {
 // default equal to the proto zero value -- otherwise the module fails input
 // validation on a pruned tfvars. Required attributes (those the renderer always
 // emits, identified from buf.validate constraints) stay bare.
+//
+// Presence marks a proto3 `optional` scalar -- a field whose absence is
+// meaningfully DIFFERENT from its zero value (a tri-state: the cloud default
+// applies when unset, an explicit zero overrides it). protojson emits such a
+// field whenever it is set, including at its zero value, so the attribute must
+// default to null (optional(type) with no literal) rather than to the zero
+// value: collapsing "unset" into false/0 would silently override the cloud's
+// own default on every resource that left the field out. Modules null-guard
+// these attributes (`x == null ? ... : x`).
 type TFField struct {
 	Name     string
 	Type     TFType
 	Optional bool
+	Presence bool
 }
 
 func (o TFObject) Format(indent int) string {
@@ -87,7 +111,12 @@ func (o TFObject) Format(indent int) string {
 	for _, f := range o.Fields {
 		typeExpr := f.Type.Format(indent + 1)
 		if f.Optional {
-			typeExpr = wrapOptional(typeExpr, f.Type)
+			if f.Presence {
+				// Tri-state: default to null, never to the zero value.
+				typeExpr = fmt.Sprintf("optional(%s)", typeExpr)
+			} else {
+				typeExpr = wrapOptional(typeExpr, f.Type)
+			}
 		}
 		lines = append(lines, fmt.Sprintf("%s%s = %s", nextIndent, f.Name, typeExpr))
 	}
@@ -132,6 +161,10 @@ func zeroDefaultLiteral(t TFType) (string, bool) {
 	case TFFreeFormMap:
 		// Still a map semantically (just untyped values): default to an empty map.
 		return "{}", true
+	case TFFreeFormList:
+		// Still a list semantically (just untyped elements): default to an
+		// empty list.
+		return "[]", true
 	default: // TFObject and anything else: default to null
 		return "", false
 	}

@@ -1,0 +1,19 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsPlantonRunner
+metadata:
+  name: <runner-name>
+spec:
+  region: <aws-region>
+  subnets:
+    - valueFrom:
+        kind: AwsSubnet
+        name: <private-subnet-a-resource-name>
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: <private-subnet-b-resource-name>
+        fieldPath: status.outputs.subnet_id
+  credentials: $secret/<runner-credentials-secret-slug>
+  # temporal is the default execution mode: a pull-based worker that
+  # polls its queue and needs no inbound path at all.
+  executionMode: temporal

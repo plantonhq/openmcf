@@ -1,0 +1,11 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRedisCacheAccessPolicy
+metadata:
+  name: test-redis-access-policy
+spec:
+  redisCacheId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cache/redis/planton-hack-redis
+  policyName: app-read-only
+  # Read-only on one key prefix -- the finer-than-built-in case a custom
+  # policy exists for.
+  permissions: "+@read +@connection ~app:*"

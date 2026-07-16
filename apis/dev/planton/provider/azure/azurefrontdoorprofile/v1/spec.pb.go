@@ -24,107 +24,255 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// The pricing/capability tier of the Front Door profile.
+type AzureFrontDoorProfileSku int32
+
+const (
+	// Not specified -- deploys STANDARD, the production default.
+	AzureFrontDoorProfileSku_azure_front_door_profile_sku_unspecified AzureFrontDoorProfileSku = 0
+	// Global load balancing, SSL offloading, caching, compression, and
+	// URL-based routing. No Private Link to origins, no managed WAF rules.
+	AzureFrontDoorProfileSku_STANDARD AzureFrontDoorProfileSku = 1
+	// Everything in STANDARD plus Private Link to origins, managed WAF
+	// rule sets (Microsoft_DefaultRuleSet, Bot Manager), and JS
+	// challenge/CAPTCHA custom-rule actions.
+	AzureFrontDoorProfileSku_PREMIUM AzureFrontDoorProfileSku = 2
+)
+
+// Enum value maps for AzureFrontDoorProfileSku.
+var (
+	AzureFrontDoorProfileSku_name = map[int32]string{
+		0: "azure_front_door_profile_sku_unspecified",
+		1: "STANDARD",
+		2: "PREMIUM",
+	}
+	AzureFrontDoorProfileSku_value = map[string]int32{
+		"azure_front_door_profile_sku_unspecified": 0,
+		"STANDARD": 1,
+		"PREMIUM":  2,
+	}
+)
+
+func (x AzureFrontDoorProfileSku) Enum() *AzureFrontDoorProfileSku {
+	p := new(AzureFrontDoorProfileSku)
+	*p = x
+	return p
+}
+
+func (x AzureFrontDoorProfileSku) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFrontDoorProfileSku) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (AzureFrontDoorProfileSku) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_enumTypes[0]
+}
+
+func (x AzureFrontDoorProfileSku) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFrontDoorProfileSku.Descriptor instead.
+func (AzureFrontDoorProfileSku) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+// The managed-identity model for the profile.
+type AzureFrontDoorProfileIdentityType int32
+
+const (
+	// Not specified -- invalid; choose an explicit identity model.
+	AzureFrontDoorProfileIdentityType_azure_front_door_profile_identity_type_unspecified AzureFrontDoorProfileIdentityType = 0
+	// Azure creates a service principal bound to the profile's lifecycle.
+	AzureFrontDoorProfileIdentityType_SYSTEM_ASSIGNED AzureFrontDoorProfileIdentityType = 1
+	// Bring your own AzureUserAssignedIdentity entries -- shareable across
+	// resources and grantable before the profile exists.
+	AzureFrontDoorProfileIdentityType_USER_ASSIGNED AzureFrontDoorProfileIdentityType = 2
+	// Both a system-assigned principal and user-assigned identities.
+	AzureFrontDoorProfileIdentityType_SYSTEM_AND_USER_ASSIGNED AzureFrontDoorProfileIdentityType = 3
+)
+
+// Enum value maps for AzureFrontDoorProfileIdentityType.
+var (
+	AzureFrontDoorProfileIdentityType_name = map[int32]string{
+		0: "azure_front_door_profile_identity_type_unspecified",
+		1: "SYSTEM_ASSIGNED",
+		2: "USER_ASSIGNED",
+		3: "SYSTEM_AND_USER_ASSIGNED",
+	}
+	AzureFrontDoorProfileIdentityType_value = map[string]int32{
+		"azure_front_door_profile_identity_type_unspecified": 0,
+		"SYSTEM_ASSIGNED":          1,
+		"USER_ASSIGNED":            2,
+		"SYSTEM_AND_USER_ASSIGNED": 3,
+	}
+)
+
+func (x AzureFrontDoorProfileIdentityType) Enum() *AzureFrontDoorProfileIdentityType {
+	p := new(AzureFrontDoorProfileIdentityType)
+	*p = x
+	return p
+}
+
+func (x AzureFrontDoorProfileIdentityType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFrontDoorProfileIdentityType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_enumTypes[1].Descriptor()
+}
+
+func (AzureFrontDoorProfileIdentityType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_enumTypes[1]
+}
+
+func (x AzureFrontDoorProfileIdentityType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFrontDoorProfileIdentityType.Descriptor instead.
+func (AzureFrontDoorProfileIdentityType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+// The request parts Front Door can scrub from its access logs.
+type AzureFrontDoorProfileLogScrubbingVariable int32
+
+const (
+	// Not specified -- invalid; name the request part to scrub.
+	AzureFrontDoorProfileLogScrubbingVariable_azure_front_door_profile_log_scrubbing_variable_unspecified AzureFrontDoorProfileLogScrubbingVariable = 0
+	// Mask every query-string argument name/value in logged request URLs.
+	AzureFrontDoorProfileLogScrubbingVariable_QUERY_STRING_ARG_NAMES AzureFrontDoorProfileLogScrubbingVariable = 1
+	// Mask the client IP address in access-log entries.
+	AzureFrontDoorProfileLogScrubbingVariable_REQUEST_IP_ADDRESS AzureFrontDoorProfileLogScrubbingVariable = 2
+	// Mask the request URI (path and query) in access-log entries.
+	AzureFrontDoorProfileLogScrubbingVariable_REQUEST_URI AzureFrontDoorProfileLogScrubbingVariable = 3
+)
+
+// Enum value maps for AzureFrontDoorProfileLogScrubbingVariable.
+var (
+	AzureFrontDoorProfileLogScrubbingVariable_name = map[int32]string{
+		0: "azure_front_door_profile_log_scrubbing_variable_unspecified",
+		1: "QUERY_STRING_ARG_NAMES",
+		2: "REQUEST_IP_ADDRESS",
+		3: "REQUEST_URI",
+	}
+	AzureFrontDoorProfileLogScrubbingVariable_value = map[string]int32{
+		"azure_front_door_profile_log_scrubbing_variable_unspecified": 0,
+		"QUERY_STRING_ARG_NAMES": 1,
+		"REQUEST_IP_ADDRESS":     2,
+		"REQUEST_URI":            3,
+	}
+)
+
+func (x AzureFrontDoorProfileLogScrubbingVariable) Enum() *AzureFrontDoorProfileLogScrubbingVariable {
+	p := new(AzureFrontDoorProfileLogScrubbingVariable)
+	*p = x
+	return p
+}
+
+func (x AzureFrontDoorProfileLogScrubbingVariable) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFrontDoorProfileLogScrubbingVariable) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_enumTypes[2].Descriptor()
+}
+
+func (AzureFrontDoorProfileLogScrubbingVariable) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_enumTypes[2]
+}
+
+func (x AzureFrontDoorProfileLogScrubbingVariable) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFrontDoorProfileLogScrubbingVariable.Descriptor instead.
+func (AzureFrontDoorProfileLogScrubbingVariable) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
 // **AzureFrontDoorProfileSpec** defines the configuration for creating an
-// Azure Front Door profile with endpoints, origin groups, origins, and routes.
+// Azure Front Door (Standard/Premium) profile -- the top-level container
+// for a global content-delivery and application-acceleration deployment on
+// Microsoft's edge network.
 //
-// Azure Front Door is a global, scalable entry point that uses the Microsoft
-// global edge network to create fast, secure, and widely scalable web
-// applications. It combines global HTTP load balancing with instant failover,
-// SSL offloading, caching, and application acceleration in a single service.
+// The profile is deliberately just the container: it owns the SKU tier,
+// the origin response timeout, the managed identity, access-log scrubbing,
+// and tags. The delivery surface composes from first-class resources that
+// reference this profile:
+//   - AzureFrontDoorEndpoint -- the public entry hostname (*.azurefd.net)
+//   - AzureFrontDoorOriginGroup -- a load-balanced backend pool
+//   - AzureFrontDoorOrigin -- one backend inside an origin group
+//   - AzureFrontDoorRoute -- connects an endpoint to an origin group by
+//     URL pattern
 //
-// The component bundles the profile (`azurerm_cdn_frontdoor_profile`) with
-// endpoints (`azurerm_cdn_frontdoor_endpoint`), origin groups
-// (`azurerm_cdn_frontdoor_origin_group`), origins
-// (`azurerm_cdn_frontdoor_origin`), and routes
-// (`azurerm_cdn_frontdoor_route`) because these five resources form a single
-// coherent routing unit. A profile without at least one endpoint, origin group,
-// origin, and route cannot serve traffic. This follows DD03 (Composite
-// Bundling Rules).
+// This mirrors Azure's own resource model (each is a separate ARM child
+// resource with an independent lifecycle) and keeps regional stamps
+// composable: a new region can add its origin to a shared origin group
+// without touching the profile or any other region's resources.
 //
 // **SKU tiers**:
-//   - **Standard_AzureFrontDoor** (default): Global load balancing, SSL
-//     offloading, caching, compression, and URL-based routing. No WAF policy
-//     support or private link to origins.
-//   - **Premium_AzureFrontDoor**: All Standard features plus private link to
-//     origins, enhanced WAF integration, and Bot Manager. Required for
-//     workloads that need private connectivity to backends.
+//   - STANDARD: global HTTP load balancing, SSL offloading, caching,
+//     compression, URL routing. 99.99% SLA.
+//   - PREMIUM: everything in STANDARD plus Private Link to origins,
+//     managed WAF rule sets, and Bot Manager.
 //
-// **Azure Front Door is a global resource** -- it does not have a region.
-// Azure automatically deploys it across all edge locations worldwide.
-// This is similar to AzurePrivateDnsZone (also global).
+// **Azure Front Door is a global resource** -- it has no region; Azure
+// deploys it across all edge locations worldwide. It still lives inside a
+// resource group for ARM organization.
 //
-// **Deliberately omitted (80/20)**:
-// - Custom domains (separate TF resource with DNS validation + certificate lifecycle)
-// - WAF/firewall policies (separate TF resource with complex rule structure)
-// - Rule sets (advanced URL rewriting and header manipulation)
-// - Security policies (WAF-to-profile association)
-// - Secrets (custom domain certificates)
-// - Identity on profile (needed for managed certs, not required without custom domains)
-// - Log scrubbing (niche compliance feature)
-//
-// **ForceNew fields**: `name`, `sku`.
+// **ForceNew fields**: `profile_name`, `sku`. Additionally, Azure rejects
+// a PREMIUM -> STANDARD change outright (upgrades recreate; downgrades are
+// not supported at all).
 type AzureFrontDoorProfileSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Group where the Front Door profile will be created.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
-	//
-	// While Front Door is a global resource (no region), it must belong to
-	// a resource group for Azure Resource Manager organization.
+	// The Azure Resource Group the Front Door profile is created in.
+	// Front Door is global (no region), but every ARM resource belongs to a
+	// resource group for organization, RBAC scoping, and lifecycle grouping.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// The name of the Front Door profile.
-	// Must be globally unique within Azure. Used to identify the profile
-	// in the Azure portal and API.
+	// The profile's name -- unique within the resource group. This is the
+	// ARM identity every child resource (endpoint, origin group, rule set,
+	// custom domain, secret, security policy) is nested under.
 	//
-	// Naming rules:
-	// - 2 to 46 characters
-	// - Must start and end with a letter or number
-	// - Can contain letters, numbers, and hyphens
+	// 2-90 characters; letters, digits, and hyphens; must start and end
+	// with a letter or digit.
 	//
-	// **ForceNew**: Changing this destroys and recreates the profile.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// The SKU tier for the Front Door profile.
-	// Uses Azure's exact API values for provider authenticity.
+	// **ForceNew**: changing the name replaces the profile AND everything
+	// nested under it.
+	ProfileName string `protobuf:"bytes,2,opt,name=profile_name,json=profileName,proto3" json:"profile_name,omitempty"`
+	// The pricing/capability tier. Unspecified deploys STANDARD -- the
+	// right answer unless you need Private Link to origins or the managed
+	// WAF rule sets, which are PREMIUM-only.
 	//
-	// Valid values:
-	//   - "Standard_AzureFrontDoor" (default): Global load balancing, SSL
-	//     offloading, caching, compression, URL routing. 99.99% SLA.
-	//   - "Premium_AzureFrontDoor": All Standard features plus private link
-	//     to origins, enhanced WAF, and Bot Manager. Required for private
-	//     backend connectivity.
-	//
-	// **ForceNew**: SKU cannot be changed after creation.
-	Sku *string `protobuf:"bytes,3,opt,name=sku,proto3,oneof" json:"sku,omitempty"`
-	// Response timeout in seconds for the Front Door profile.
-	// Controls how long Front Door waits for a response from the origin
-	// before returning a timeout error to the client.
-	//
-	// Range: 16-240 seconds.
-	// Default: 120 seconds.
-	//
-	// Increase for slow APIs or large file downloads. Decrease for
-	// latency-sensitive applications where fast failover is preferred.
+	// **ForceNew** -- and Azure additionally refuses a PREMIUM -> STANDARD
+	// downgrade even as a replace, so choose PREMIUM deliberately.
+	Sku AzureFrontDoorProfileSku `protobuf:"varint,3,opt,name=sku,proto3,enum=dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSku" json:"sku,omitempty"`
+	// How long Front Door waits for the origin's response before returning
+	// a 504 to the client, in seconds (16-240, default 120). Raise it for
+	// slow APIs and large downloads; lower it when fast failover matters
+	// more than slow origins completing.
 	ResponseTimeoutSeconds *int32 `protobuf:"varint,4,opt,name=response_timeout_seconds,json=responseTimeoutSeconds,proto3,oneof" json:"response_timeout_seconds,omitempty"`
-	// Endpoints for this Front Door profile.
-	// Each endpoint gets a unique hostname (*.azurefd.net) that serves
-	// as the entry point for client traffic. Routes connect endpoints
-	// to origin groups.
-	//
-	// At least one endpoint is required for the profile to serve traffic.
-	Endpoints []*AzureFrontDoorEndpoint `protobuf:"bytes,5,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
-	// Origin groups for this Front Door profile.
-	// Each origin group is a logical grouping of origins (backends) with
-	// load balancing and health probe configuration. Origins are nested
-	// within their origin group.
-	//
-	// At least one origin group with at least one origin is required.
-	OriginGroups []*AzureFrontDoorOriginGroup `protobuf:"bytes,6,rep,name=origin_groups,json=originGroups,proto3" json:"origin_groups,omitempty"`
-	// Routes for this Front Door profile.
-	// Routes connect endpoints to origin groups by matching URL patterns
-	// to specific backend pools. Each route defines which endpoint receives
-	// traffic, which origin group serves it, and optional caching behavior.
-	//
-	// At least one route is required for traffic to flow through the profile.
-	Routes        []*AzureFrontDoorRoute `protobuf:"bytes,7,rep,name=routes,proto3" json:"routes,omitempty"`
+	// The profile's managed identity. Front Door uses it to read
+	// customer-managed TLS certificates from Key Vault (via
+	// AzureFrontDoorSecret) without an access-policy secret -- assign one
+	// when custom domains will carry bring-your-own certificates.
+	Identity *AzureFrontDoorProfileIdentity `protobuf:"bytes,5,opt,name=identity,proto3" json:"identity,omitempty"`
+	// Scrub (mask) sensitive request data out of Front Door's access logs
+	// before they are written. Each entry names one request part to scrub;
+	// listing at least one entry enables scrubbing, an empty list leaves it
+	// disabled. Azure scrubs ALL values of the selected part (the service
+	// supports only the match-everything operator on profiles).
+	LogScrubbingVariables []AzureFrontDoorProfileLogScrubbingVariable `protobuf:"varint,6,rep,packed,name=log_scrubbing_variables,json=logScrubbingVariables,proto3,enum=dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileLogScrubbingVariable" json:"log_scrubbing_variables,omitempty"`
+	// Free-form tags applied to the profile, merged over the
+	// Planton-derived resource tags (organization, environment, resource
+	// id); a user tag with the same key wins. Tags are Azure's governance
+	// surface -- Azure Policy enforces them and Microsoft Cost Management
+	// groups by them. Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -166,18 +314,18 @@ func (x *AzureFrontDoorProfileSpec) GetResourceGroup() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureFrontDoorProfileSpec) GetName() string {
+func (x *AzureFrontDoorProfileSpec) GetProfileName() string {
 	if x != nil {
-		return x.Name
+		return x.ProfileName
 	}
 	return ""
 }
 
-func (x *AzureFrontDoorProfileSpec) GetSku() string {
-	if x != nil && x.Sku != nil {
-		return *x.Sku
+func (x *AzureFrontDoorProfileSpec) GetSku() AzureFrontDoorProfileSku {
+	if x != nil {
+		return x.Sku
 	}
-	return ""
+	return AzureFrontDoorProfileSku_azure_front_door_profile_sku_unspecified
 }
 
 func (x *AzureFrontDoorProfileSpec) GetResponseTimeoutSeconds() int32 {
@@ -187,71 +335,59 @@ func (x *AzureFrontDoorProfileSpec) GetResponseTimeoutSeconds() int32 {
 	return 0
 }
 
-func (x *AzureFrontDoorProfileSpec) GetEndpoints() []*AzureFrontDoorEndpoint {
+func (x *AzureFrontDoorProfileSpec) GetIdentity() *AzureFrontDoorProfileIdentity {
 	if x != nil {
-		return x.Endpoints
+		return x.Identity
 	}
 	return nil
 }
 
-func (x *AzureFrontDoorProfileSpec) GetOriginGroups() []*AzureFrontDoorOriginGroup {
+func (x *AzureFrontDoorProfileSpec) GetLogScrubbingVariables() []AzureFrontDoorProfileLogScrubbingVariable {
 	if x != nil {
-		return x.OriginGroups
+		return x.LogScrubbingVariables
 	}
 	return nil
 }
 
-func (x *AzureFrontDoorProfileSpec) GetRoutes() []*AzureFrontDoorRoute {
+func (x *AzureFrontDoorProfileSpec) GetTags() map[string]string {
 	if x != nil {
-		return x.Routes
+		return x.Tags
 	}
 	return nil
 }
 
-// AzureFrontDoorEndpoint defines an endpoint within the Front Door profile.
-//
-// An endpoint is the public-facing entry point. Each endpoint gets a
-// generated hostname like `{name}-{hash}.z01.azurefd.net` that clients
-// connect to. Endpoints can be enabled/disabled without deletion.
-//
-// **ForceNew fields**: `name`.
-type AzureFrontDoorEndpoint struct {
+// AzureFrontDoorProfileIdentity assigns a managed identity to the
+// profile, used for keyless access to Key Vault certificates
+// (bring-your-own TLS for custom domains).
+type AzureFrontDoorProfileIdentity struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The endpoint name.
-	// Must be unique within the profile. Used to generate the public
-	// hostname: `{name}-{hash}.z01.azurefd.net`.
-	//
-	// Naming rules:
-	// - 2 to 46 characters
-	// - Must start and end with a letter or number
-	// - Can contain letters, numbers, and hyphens
-	//
-	// **ForceNew**: Changing this destroys and recreates the endpoint.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Whether the endpoint is enabled and serving traffic.
-	// When false, the endpoint stops accepting requests but is not deleted.
-	// Useful for maintenance windows or gradual rollouts.
-	//
-	// Default: true
-	Enabled       *bool `protobuf:"varint,2,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The identity model: SYSTEM_ASSIGNED (Azure creates and rotates a
+	// service principal bound to the profile's lifecycle), USER_ASSIGNED
+	// (bring identities from user_assigned_identity_ids, shareable across
+	// resources), or SYSTEM_AND_USER_ASSIGNED (both).
+	Type AzureFrontDoorProfileIdentityType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileIdentityType" json:"type,omitempty"`
+	// The user-assigned identities to attach -- required when (and only
+	// meaningful when) type includes USER_ASSIGNED. Each entry references
+	// an AzureUserAssignedIdentity's ARM id.
+	UserAssignedIdentityIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=user_assigned_identity_ids,json=userAssignedIdentityIds,proto3" json:"user_assigned_identity_ids,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
-func (x *AzureFrontDoorEndpoint) Reset() {
-	*x = AzureFrontDoorEndpoint{}
+func (x *AzureFrontDoorProfileIdentity) Reset() {
+	*x = AzureFrontDoorProfileIdentity{}
 	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureFrontDoorEndpoint) String() string {
+func (x *AzureFrontDoorProfileIdentity) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureFrontDoorEndpoint) ProtoMessage() {}
+func (*AzureFrontDoorProfileIdentity) ProtoMessage() {}
 
-func (x *AzureFrontDoorEndpoint) ProtoReflect() protoreflect.Message {
+func (x *AzureFrontDoorProfileIdentity) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -263,929 +399,21 @@ func (x *AzureFrontDoorEndpoint) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureFrontDoorEndpoint.ProtoReflect.Descriptor instead.
-func (*AzureFrontDoorEndpoint) Descriptor() ([]byte, []int) {
+// Deprecated: Use AzureFrontDoorProfileIdentity.ProtoReflect.Descriptor instead.
+func (*AzureFrontDoorProfileIdentity) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AzureFrontDoorEndpoint) GetName() string {
+func (x *AzureFrontDoorProfileIdentity) GetType() AzureFrontDoorProfileIdentityType {
 	if x != nil {
-		return x.Name
+		return x.Type
 	}
-	return ""
+	return AzureFrontDoorProfileIdentityType_azure_front_door_profile_identity_type_unspecified
 }
 
-func (x *AzureFrontDoorEndpoint) GetEnabled() bool {
-	if x != nil && x.Enabled != nil {
-		return *x.Enabled
-	}
-	return false
-}
-
-// AzureFrontDoorOriginGroup defines an origin group within the profile.
-//
-// An origin group is a collection of origins (backends) that Front Door
-// load-balances traffic across. Each group has its own load balancing
-// configuration and optional health probes to detect unhealthy origins.
-//
-// Origins are nested within origin groups because an origin without
-// a group has no routing context. This matches DD03 bundling rules.
-type AzureFrontDoorOriginGroup struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The origin group name.
-	// Must be unique within the profile. Referenced by routes to direct
-	// traffic to this group of backends.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Enable session affinity (sticky sessions) for this origin group.
-	// When enabled, Front Door routes subsequent requests from the same
-	// client to cookies.
-	//
-	// Important for stateful backends (e.g., session-based web apps).
-	// Disable for stateless APIs where even distribution is preferred.
-	//
-	// Default: true
-	SessionAffinityEnabled *bool `protobuf:"varint,2,opt,name=session_affinity_enabled,json=sessionAffinityEnabled,proto3,oneof" json:"session_affinity_enabled,omitempty"`
-	// Load balancing configuration for distributing traffic across origins.
-	// Controls how Front Door samples origin health and selects origins.
-	LoadBalancing *AzureFrontDoorLoadBalancing `protobuf:"bytes,3,opt,name=load_balancing,json=loadBalancing,proto3" json:"load_balancing,omitempty"`
-	// Health probe configuration for detecting unhealthy origins.
-	// When configured, Front Door periodically sends requests to each origin
-	// to verify availability. Unhealthy origins are removed from rotation.
-	//
-	// Omit to disable health probing (all origins assumed healthy).
-	// Recommended for production workloads.
-	HealthProbe *AzureFrontDoorHealthProbe `protobuf:"bytes,4,opt,name=health_probe,json=healthProbe,proto3" json:"health_probe,omitempty"`
-	// Origins (backends) in this origin group.
-	// Front Door distributes traffic across these origins based on
-	// priority and weight. At least one origin is required.
-	Origins       []*AzureFrontDoorOrigin `protobuf:"bytes,5,rep,name=origins,proto3" json:"origins,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AzureFrontDoorOriginGroup) Reset() {
-	*x = AzureFrontDoorOriginGroup{}
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AzureFrontDoorOriginGroup) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AzureFrontDoorOriginGroup) ProtoMessage() {}
-
-func (x *AzureFrontDoorOriginGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[2]
+func (x *AzureFrontDoorProfileIdentity) GetUserAssignedIdentityIds() []*v1.StringValueOrRef {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AzureFrontDoorOriginGroup.ProtoReflect.Descriptor instead.
-func (*AzureFrontDoorOriginGroup) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *AzureFrontDoorOriginGroup) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorOriginGroup) GetSessionAffinityEnabled() bool {
-	if x != nil && x.SessionAffinityEnabled != nil {
-		return *x.SessionAffinityEnabled
-	}
-	return false
-}
-
-func (x *AzureFrontDoorOriginGroup) GetLoadBalancing() *AzureFrontDoorLoadBalancing {
-	if x != nil {
-		return x.LoadBalancing
-	}
-	return nil
-}
-
-func (x *AzureFrontDoorOriginGroup) GetHealthProbe() *AzureFrontDoorHealthProbe {
-	if x != nil {
-		return x.HealthProbe
-	}
-	return nil
-}
-
-func (x *AzureFrontDoorOriginGroup) GetOrigins() []*AzureFrontDoorOrigin {
-	if x != nil {
-		return x.Origins
-	}
-	return nil
-}
-
-// AzureFrontDoorLoadBalancing configures how Front Door distributes
-// traffic across origins within an origin group.
-//
-// Front Door uses a latency-aware, weighted algorithm:
-// 1. Sample a number of recent health probe results (sample_size)
-// 2. Identify origins with enough successful probes (successful_samples_required)
-// 3. Among healthy origins, select based on latency + additional_latency threshold
-// 4. Apply priority (lower = preferred) and weight (higher = more traffic)
-type AzureFrontDoorLoadBalancing struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Number of recent health probe samples to evaluate.
-	// Front Door considers this many of the most recent probe results
-	// when determining origin health.
-	//
-	// Range: 0-255. Default: 4.
-	SampleSize *int32 `protobuf:"varint,1,opt,name=sample_size,json=sampleSize,proto3,oneof" json:"sample_size,omitempty"`
-	// Number of successful probe samples required to consider an origin healthy.
-	// Out of the `sample_size` samples, at least this many must be successful
-	// for the origin to remain in the healthy pool.
-	//
-	// Range: 0-255. Default: 3.
-	SuccessfulSamplesRequired *int32 `protobuf:"varint,2,opt,name=successful_samples_required,json=successfulSamplesRequired,proto3,oneof" json:"successful_samples_required,omitempty"`
-	// Additional latency tolerance in milliseconds for origin selection.
-	// Origins whose latency is within this threshold of the fastest origin
-	// are considered equally fast and receive traffic based on weight.
-	//
-	// Higher values = more even distribution across geographically dispersed origins.
-	// Lower values = stricter preference for the lowest-latency origin.
-	//
-	// Range: 0-1000 milliseconds. Default: 50.
-	AdditionalLatencyInMilliseconds *int32 `protobuf:"varint,3,opt,name=additional_latency_in_milliseconds,json=additionalLatencyInMilliseconds,proto3,oneof" json:"additional_latency_in_milliseconds,omitempty"`
-	unknownFields                   protoimpl.UnknownFields
-	sizeCache                       protoimpl.SizeCache
-}
-
-func (x *AzureFrontDoorLoadBalancing) Reset() {
-	*x = AzureFrontDoorLoadBalancing{}
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AzureFrontDoorLoadBalancing) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AzureFrontDoorLoadBalancing) ProtoMessage() {}
-
-func (x *AzureFrontDoorLoadBalancing) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AzureFrontDoorLoadBalancing.ProtoReflect.Descriptor instead.
-func (*AzureFrontDoorLoadBalancing) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *AzureFrontDoorLoadBalancing) GetSampleSize() int32 {
-	if x != nil && x.SampleSize != nil {
-		return *x.SampleSize
-	}
-	return 0
-}
-
-func (x *AzureFrontDoorLoadBalancing) GetSuccessfulSamplesRequired() int32 {
-	if x != nil && x.SuccessfulSamplesRequired != nil {
-		return *x.SuccessfulSamplesRequired
-	}
-	return 0
-}
-
-func (x *AzureFrontDoorLoadBalancing) GetAdditionalLatencyInMilliseconds() int32 {
-	if x != nil && x.AdditionalLatencyInMilliseconds != nil {
-		return *x.AdditionalLatencyInMilliseconds
-	}
-	return 0
-}
-
-// AzureFrontDoorHealthProbe configures periodic health checks for origins.
-//
-// Front Door sends probe requests at the specified interval to each origin
-// in the group. Origins that fail to respond successfully are marked
-// unhealthy and removed from the load balancing rotation until they recover.
-type AzureFrontDoorHealthProbe struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Protocol used for health probe requests.
-	// Uses Azure's exact API values.
-	//
-	// Valid values:
-	// - "Http": Probe over HTTP (port 80 by default)
-	// - "Https": Probe over HTTPS (port 443 by default)
-	Protocol string `protobuf:"bytes,1,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	// URL path for the health probe request.
-	// Front Door sends the probe to `{protocol}://{origin_host}:{port}{path}`.
-	//
-	// Common patterns:
-	// - "/" (default): Simple connectivity check
-	// - "/health": Dedicated health endpoint
-	// - "/api/healthz": Kubernetes-style health check
-	//
-	// Default: "/"
-	Path *string `protobuf:"bytes,2,opt,name=path,proto3,oneof" json:"path,omitempty"`
-	// HTTP method for the health probe request.
-	// Uses Azure's exact API values.
-	//
-	// Valid values:
-	//   - "HEAD" (default): Sends a HEAD request (no body). More efficient,
-	//     checks only that the origin responds with 200.
-	//   - "GET": Sends a GET request. Use when the health endpoint needs
-	//     to evaluate the response body.
-	//
-	// Default: "HEAD"
-	RequestType *string `protobuf:"bytes,3,opt,name=request_type,json=requestType,proto3,oneof" json:"request_type,omitempty"`
-	// Interval between health probe requests in seconds.
-	// Shorter intervals detect failures faster but generate more probe traffic.
-	//
-	// Range: 1-255 seconds.
-	//
-	// Guidelines:
-	// - 5-15 seconds: Fast detection for latency-sensitive workloads
-	// - 30-60 seconds: Balanced for most production workloads
-	// - 120-255 seconds: Low probe overhead for stable backends
-	IntervalInSeconds int32 `protobuf:"varint,4,opt,name=interval_in_seconds,json=intervalInSeconds,proto3" json:"interval_in_seconds,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *AzureFrontDoorHealthProbe) Reset() {
-	*x = AzureFrontDoorHealthProbe{}
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AzureFrontDoorHealthProbe) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AzureFrontDoorHealthProbe) ProtoMessage() {}
-
-func (x *AzureFrontDoorHealthProbe) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AzureFrontDoorHealthProbe.ProtoReflect.Descriptor instead.
-func (*AzureFrontDoorHealthProbe) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *AzureFrontDoorHealthProbe) GetProtocol() string {
-	if x != nil {
-		return x.Protocol
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorHealthProbe) GetPath() string {
-	if x != nil && x.Path != nil {
-		return *x.Path
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorHealthProbe) GetRequestType() string {
-	if x != nil && x.RequestType != nil {
-		return *x.RequestType
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorHealthProbe) GetIntervalInSeconds() int32 {
-	if x != nil {
-		return x.IntervalInSeconds
-	}
-	return 0
-}
-
-// AzureFrontDoorOrigin defines a backend origin within an origin group.
-//
-// An origin is a backend server or service that Front Door routes
-// traffic to. Origins can be any publicly accessible (or privately
-// linked for Premium SKU) endpoint: App Service, Container Apps,
-// Storage Account, custom server, another CDN, etc.
-//
-// **ForceNew fields**: `name`.
-type AzureFrontDoorOrigin struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The origin name.
-	// Must be unique within the origin group.
-	//
-	// **ForceNew**: Changing this destroys and recreates the origin.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The hostname of the origin.
-	// Front Door connects to this address to retrieve content.
-	//
-	// Examples:
-	// - "myapp.azurewebsites.net" (App Service)
-	// - "myapp.eastus.azurecontainerapps.io" (Container Apps)
-	// - "mystorageaccount.blob.core.windows.net" (Blob Storage)
-	// - "api.example.com" (custom server)
-	//
-	// Cannot be empty or null.
-	HostName string `protobuf:"bytes,2,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
-	// Whether Front Door validates the origin's SSL certificate hostname.
-	// When true, Front Door verifies that the certificate CN or SAN
-	// matches the origin host header or host name.
-	//
-	// **IMPORTANT**: Set to true for production workloads. Setting to false
-	// disables certificate validation and is a security risk.
-	//
-	// Required by Azure when private_link is configured (must be true).
-	//
-	// Default: true
-	CertificateNameCheckEnabled *bool `protobuf:"varint,3,opt,name=certificate_name_check_enabled,json=certificateNameCheckEnabled,proto3,oneof" json:"certificate_name_check_enabled,omitempty"`
-	// The Host header value sent to the origin.
-	// Overrides the default Host header (which is the origin hostname).
-	//
-	// **Critical for multi-tenant backends**: Azure App Service, Function Apps,
-	// and Container Apps use the Host header to route to the correct app.
-	// Without this, origins may return 404 or route to the wrong app.
-	//
-	// Common patterns:
-	// - Omit: Uses host_name as the Host header (simple backends)
-	// - "myapp.azurewebsites.net": For App Service origins
-	// - "myapp.eastus.azurecontainerapps.io": For Container App origins
-	OriginHostHeader *string `protobuf:"bytes,4,opt,name=origin_host_header,json=originHostHeader,proto3,oneof" json:"origin_host_header,omitempty"`
-	// HTTP port for the origin.
-	// Used when Front Door connects to the origin over HTTP.
-	//
-	// Range: 1-65535. Default: 80.
-	HttpPort *int32 `protobuf:"varint,5,opt,name=http_port,json=httpPort,proto3,oneof" json:"http_port,omitempty"`
-	// HTTPS port for the origin.
-	// Used when Front Door connects to the origin over HTTPS.
-	//
-	// Range: 1-65535. Default: 443.
-	HttpsPort *int32 `protobuf:"varint,6,opt,name=https_port,json=httpsPort,proto3,oneof" json:"https_port,omitempty"`
-	// Priority of this origin within the origin group.
-	// Lower priority origins receive traffic first. Traffic shifts to
-	// higher priority origins only when all lower priority origins are
-	// unhealthy.
-	//
-	// Range: 1-5. Default: 1.
-	//
-	// Use priorities to define active-passive failover:
-	// - Priority 1: Primary origins (active)
-	// - Priority 2+: Failover origins (used only when primaries are down)
-	Priority *int32 `protobuf:"varint,7,opt,name=priority,proto3,oneof" json:"priority,omitempty"`
-	// Traffic weight for this origin within the same priority level.
-	// Among origins with equal priority, traffic is distributed
-	// proportionally by weight.
-	//
-	// Range: 1-1000. Default: 500.
-	//
-	// Examples:
-	// - Equal distribution: All origins weight 500
-	// - 70/30 split: Origin A weight 700, Origin B weight 300
-	// - Canary: Main origin weight 950, canary origin weight 50
-	Weight *int32 `protobuf:"varint,8,opt,name=weight,proto3,oneof" json:"weight,omitempty"`
-	// Whether this origin is enabled and receiving traffic.
-	// When false, Front Door skips this origin during load balancing
-	// but does not delete it.
-	//
-	// Useful for draining traffic during maintenance.
-	//
-	// Default: true
-	Enabled *bool `protobuf:"varint,9,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
-	// Private link configuration for connecting to the origin privately.
-	// When configured, Front Door connects to the origin through Azure
-	// Private Link instead of over the public internet.
-	//
-	// **Requires Premium_AzureFrontDoor SKU.**
-	// Also requires certificate_name_check_enabled = true.
-	//
-	// After provisioning, the private link connection must be approved
-	// on the target resource (auto-approval is not supported via IaC).
-	PrivateLink   *AzureFrontDoorPrivateLink `protobuf:"bytes,10,opt,name=private_link,json=privateLink,proto3" json:"private_link,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AzureFrontDoorOrigin) Reset() {
-	*x = AzureFrontDoorOrigin{}
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AzureFrontDoorOrigin) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AzureFrontDoorOrigin) ProtoMessage() {}
-
-func (x *AzureFrontDoorOrigin) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AzureFrontDoorOrigin.ProtoReflect.Descriptor instead.
-func (*AzureFrontDoorOrigin) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *AzureFrontDoorOrigin) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorOrigin) GetHostName() string {
-	if x != nil {
-		return x.HostName
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorOrigin) GetCertificateNameCheckEnabled() bool {
-	if x != nil && x.CertificateNameCheckEnabled != nil {
-		return *x.CertificateNameCheckEnabled
-	}
-	return false
-}
-
-func (x *AzureFrontDoorOrigin) GetOriginHostHeader() string {
-	if x != nil && x.OriginHostHeader != nil {
-		return *x.OriginHostHeader
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorOrigin) GetHttpPort() int32 {
-	if x != nil && x.HttpPort != nil {
-		return *x.HttpPort
-	}
-	return 0
-}
-
-func (x *AzureFrontDoorOrigin) GetHttpsPort() int32 {
-	if x != nil && x.HttpsPort != nil {
-		return *x.HttpsPort
-	}
-	return 0
-}
-
-func (x *AzureFrontDoorOrigin) GetPriority() int32 {
-	if x != nil && x.Priority != nil {
-		return *x.Priority
-	}
-	return 0
-}
-
-func (x *AzureFrontDoorOrigin) GetWeight() int32 {
-	if x != nil && x.Weight != nil {
-		return *x.Weight
-	}
-	return 0
-}
-
-func (x *AzureFrontDoorOrigin) GetEnabled() bool {
-	if x != nil && x.Enabled != nil {
-		return *x.Enabled
-	}
-	return false
-}
-
-func (x *AzureFrontDoorOrigin) GetPrivateLink() *AzureFrontDoorPrivateLink {
-	if x != nil {
-		return x.PrivateLink
-	}
-	return nil
-}
-
-// AzureFrontDoorPrivateLink configures private connectivity from
-// Front Door to an origin through Azure Private Link.
-//
-// This enables Front Door to access backend origins without exposing
-// them to the public internet. The origin can have public access
-// completely disabled while still being reachable from Front Door.
-//
-// **Premium SKU only.** Standard SKU does not support private link.
-//
-// After the private link is provisioned, the connection request must
-// be approved on the target resource. This is a manual step in the
-// Azure portal or via CLI.
-type AzureFrontDoorPrivateLink struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure region where the private link target is located.
-	// Private link connections are regional -- the location must match
-	// the target resource's region.
-	//
-	// Examples: "eastus", "westus2", "westeurope"
-	Location string `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
-	// The Azure Resource Manager ID of the private link target.
-	// This is the resource that Front Door will connect to privately.
-	//
-	// Common targets:
-	// - App Service: /subscriptions/.../sites/{name}
-	// - Storage Account: /subscriptions/.../storageAccounts/{name}
-	// - Container Apps Environment: /subscriptions/.../managedEnvironments/{name}
-	PrivateLinkTargetId string `protobuf:"bytes,2,opt,name=private_link_target_id,json=privateLinkTargetId,proto3" json:"private_link_target_id,omitempty"`
-	// The approval message sent to the target resource owner.
-	// Appears in the private endpoint connection approval screen.
-	//
-	// Maximum: 140 characters.
-	//
-	// Default: "Access request for CDN FrontDoor Private Link Origin"
-	RequestMessage *string `protobuf:"bytes,3,opt,name=request_message,json=requestMessage,proto3,oneof" json:"request_message,omitempty"`
-	// The target sub-resource type for the private link connection.
-	// Required for most target types except Private Link Services.
-	//
-	// Common values:
-	// - "sites": App Service / Function App
-	// - "blob": Storage Account Blob
-	// - "blob_secondary": Storage Account Blob (secondary)
-	// - "web": Static Web App
-	// - "web_secondary": Static Web App (secondary)
-	// - "managedEnvironments": Container Apps Environment
-	// - "Gateway": Application Gateway
-	TargetType    *string `protobuf:"bytes,4,opt,name=target_type,json=targetType,proto3,oneof" json:"target_type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AzureFrontDoorPrivateLink) Reset() {
-	*x = AzureFrontDoorPrivateLink{}
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AzureFrontDoorPrivateLink) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AzureFrontDoorPrivateLink) ProtoMessage() {}
-
-func (x *AzureFrontDoorPrivateLink) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AzureFrontDoorPrivateLink.ProtoReflect.Descriptor instead.
-func (*AzureFrontDoorPrivateLink) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *AzureFrontDoorPrivateLink) GetLocation() string {
-	if x != nil {
-		return x.Location
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorPrivateLink) GetPrivateLinkTargetId() string {
-	if x != nil {
-		return x.PrivateLinkTargetId
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorPrivateLink) GetRequestMessage() string {
-	if x != nil && x.RequestMessage != nil {
-		return *x.RequestMessage
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorPrivateLink) GetTargetType() string {
-	if x != nil && x.TargetType != nil {
-		return *x.TargetType
-	}
-	return ""
-}
-
-// AzureFrontDoorRoute defines how traffic flows from an endpoint
-// to an origin group based on URL pattern matching.
-//
-// Routes are the glue that connects Front Door endpoints (entry points)
-// to origin groups (backends). Each route matches URL patterns and
-// forwards matching requests to the specified origin group, with
-// optional caching and protocol behavior.
-//
-// **ForceNew fields**: `name`.
-type AzureFrontDoorRoute struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The route name.
-	// Must be unique within the profile.
-	//
-	// **ForceNew**: Changing this destroys and recreates the route.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The endpoint name this route is associated with.
-	// Must reference an endpoint defined in `endpoints[]` by name.
-	// Traffic arriving at this endpoint matching `patterns_to_match`
-	// is routed through this route.
-	EndpointName string `protobuf:"bytes,2,opt,name=endpoint_name,json=endpointName,proto3" json:"endpoint_name,omitempty"`
-	// The origin group name this route forwards traffic to.
-	// Must reference an origin group defined in `origin_groups[]` by name.
-	OriginGroupName string `protobuf:"bytes,3,opt,name=origin_group_name,json=originGroupName,proto3" json:"origin_group_name,omitempty"`
-	// URL patterns to match for this route.
-	// Front Door evaluates incoming request paths against these patterns
-	// and routes matching requests to the origin group.
-	//
-	// Pattern syntax:
-	// - "/*" matches all paths (catch-all)
-	// - "/api/*" matches all paths under /api/
-	// - "/images/*" matches all paths under /images/
-	//
-	// At least one pattern is required.
-	PatternsToMatch []string `protobuf:"bytes,4,rep,name=patterns_to_match,json=patternsToMatch,proto3" json:"patterns_to_match,omitempty"`
-	// Protocols supported by this route.
-	// Uses Azure's exact API values.
-	//
-	// Valid values: "Http", "Https"
-	//
-	// Include both "Http" and "Https" when https_redirect_enabled is true
-	// (so HTTP requests can be received and redirected to HTTPS).
-	SupportedProtocols []string `protobuf:"bytes,5,rep,name=supported_protocols,json=supportedProtocols,proto3" json:"supported_protocols,omitempty"`
-	// Protocol used when forwarding requests from Front Door to the origin.
-	// Uses Azure's exact API values.
-	//
-	// Valid values:
-	// - "MatchRequest" (default): Use the same protocol as the client request
-	// - "HttpOnly": Always forward to origin over HTTP
-	// - "HttpsOnly": Always forward to origin over HTTPS
-	//
-	// Default: "MatchRequest"
-	ForwardingProtocol *string `protobuf:"bytes,6,opt,name=forwarding_protocol,json=forwardingProtocol,proto3,oneof" json:"forwarding_protocol,omitempty"`
-	// Enable automatic HTTPS redirect for HTTP requests.
-	// When true, HTTP requests are automatically redirected to HTTPS
-	// with a 301 status code.
-	//
-	// Requires both "Http" and "Https" in supported_protocols.
-	//
-	// Default: true
-	HttpsRedirectEnabled *bool `protobuf:"varint,7,opt,name=https_redirect_enabled,json=httpsRedirectEnabled,proto3,oneof" json:"https_redirect_enabled,omitempty"`
-	// Whether to link this route to the endpoint's default domain.
-	// When true, the route is accessible via the endpoint's generated
-	// hostname (*.azurefd.net).
-	//
-	// Must be true if no custom domains are associated with the route.
-	//
-	// Default: true
-	LinkToDefaultDomain *bool `protobuf:"varint,8,opt,name=link_to_default_domain,json=linkToDefaultDomain,proto3,oneof" json:"link_to_default_domain,omitempty"`
-	// Whether this route is enabled and processing traffic.
-	// When false, the route stops matching requests but is not deleted.
-	//
-	// Default: true
-	Enabled *bool `protobuf:"varint,9,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
-	// Cache configuration for this route.
-	// When configured, Front Door caches responses from the origin at
-	// edge locations to reduce origin load and improve latency.
-	//
-	// Omit to disable caching (all requests forwarded to origin).
-	Cache         *AzureFrontDoorRouteCache `protobuf:"bytes,10,opt,name=cache,proto3" json:"cache,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AzureFrontDoorRoute) Reset() {
-	*x = AzureFrontDoorRoute{}
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AzureFrontDoorRoute) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AzureFrontDoorRoute) ProtoMessage() {}
-
-func (x *AzureFrontDoorRoute) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AzureFrontDoorRoute.ProtoReflect.Descriptor instead.
-func (*AzureFrontDoorRoute) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *AzureFrontDoorRoute) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorRoute) GetEndpointName() string {
-	if x != nil {
-		return x.EndpointName
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorRoute) GetOriginGroupName() string {
-	if x != nil {
-		return x.OriginGroupName
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorRoute) GetPatternsToMatch() []string {
-	if x != nil {
-		return x.PatternsToMatch
-	}
-	return nil
-}
-
-func (x *AzureFrontDoorRoute) GetSupportedProtocols() []string {
-	if x != nil {
-		return x.SupportedProtocols
-	}
-	return nil
-}
-
-func (x *AzureFrontDoorRoute) GetForwardingProtocol() string {
-	if x != nil && x.ForwardingProtocol != nil {
-		return *x.ForwardingProtocol
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorRoute) GetHttpsRedirectEnabled() bool {
-	if x != nil && x.HttpsRedirectEnabled != nil {
-		return *x.HttpsRedirectEnabled
-	}
-	return false
-}
-
-func (x *AzureFrontDoorRoute) GetLinkToDefaultDomain() bool {
-	if x != nil && x.LinkToDefaultDomain != nil {
-		return *x.LinkToDefaultDomain
-	}
-	return false
-}
-
-func (x *AzureFrontDoorRoute) GetEnabled() bool {
-	if x != nil && x.Enabled != nil {
-		return *x.Enabled
-	}
-	return false
-}
-
-func (x *AzureFrontDoorRoute) GetCache() *AzureFrontDoorRouteCache {
-	if x != nil {
-		return x.Cache
-	}
-	return nil
-}
-
-// AzureFrontDoorRouteCache configures caching behavior for a route.
-//
-// Caching is the primary value proposition of a CDN. When enabled,
-// Front Door stores origin responses at edge locations worldwide
-// and serves subsequent requests from cache, reducing origin load
-// and improving end-user latency.
-type AzureFrontDoorRouteCache struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// How query strings affect cache key generation.
-	// Uses Azure's exact API values.
-	//
-	// Valid values:
-	//   - "IgnoreQueryString" (default): All query string variations share
-	//     the same cache entry. Best for static content.
-	//   - "UseQueryString": Each unique query string produces a separate
-	//     cache entry. Best for dynamic content with query parameters.
-	//   - "IgnoreSpecifiedQueryStrings": Specified query strings are removed
-	//     from the cache key. Use with query_strings field.
-	//   - "IncludeSpecifiedQueryStrings": Only specified query strings are
-	//     included in the cache key. Use with query_strings field.
-	//
-	// Default: "IgnoreQueryString"
-	QueryStringCachingBehavior *string `protobuf:"bytes,1,opt,name=query_string_caching_behavior,json=queryStringCachingBehavior,proto3,oneof" json:"query_string_caching_behavior,omitempty"`
-	// Query strings to include or exclude from cache keys.
-	// Behavior depends on query_string_caching_behavior:
-	// - IgnoreSpecifiedQueryStrings: These strings are excluded from cache key
-	// - IncludeSpecifiedQueryStrings: Only these strings are included in cache key
-	//
-	// Ignored when behavior is IgnoreQueryString or UseQueryString.
-	QueryStrings []string `protobuf:"bytes,2,rep,name=query_strings,json=queryStrings,proto3" json:"query_strings,omitempty"`
-	// Enable compression for cached content.
-	// When true, Front Door compresses responses using gzip or brotli
-	// before delivering to clients, reducing bandwidth.
-	//
-	// Only compresses content types listed in content_types_to_compress.
-	//
-	// Default: false
-	CompressionEnabled *bool `protobuf:"varint,3,opt,name=compression_enabled,json=compressionEnabled,proto3,oneof" json:"compression_enabled,omitempty"`
-	// MIME types eligible for compression.
-	// Front Door compresses responses matching these content types.
-	//
-	// Only used when compression_enabled is true.
-	//
-	// Common web content types:
-	// - "text/html", "text/css", "text/javascript"
-	// - "application/javascript", "application/json"
-	// - "application/xml", "image/svg+xml"
-	//
-	// If empty and compression is enabled, IaC modules apply a default
-	// set of web content types.
-	ContentTypesToCompress []string `protobuf:"bytes,4,rep,name=content_types_to_compress,json=contentTypesToCompress,proto3" json:"content_types_to_compress,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *AzureFrontDoorRouteCache) Reset() {
-	*x = AzureFrontDoorRouteCache{}
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AzureFrontDoorRouteCache) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AzureFrontDoorRouteCache) ProtoMessage() {}
-
-func (x *AzureFrontDoorRouteCache) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AzureFrontDoorRouteCache.ProtoReflect.Descriptor instead.
-func (*AzureFrontDoorRouteCache) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *AzureFrontDoorRouteCache) GetQueryStringCachingBehavior() string {
-	if x != nil && x.QueryStringCachingBehavior != nil {
-		return *x.QueryStringCachingBehavior
-	}
-	return ""
-}
-
-func (x *AzureFrontDoorRouteCache) GetQueryStrings() []string {
-	if x != nil {
-		return x.QueryStrings
-	}
-	return nil
-}
-
-func (x *AzureFrontDoorRouteCache) GetCompressionEnabled() bool {
-	if x != nil && x.CompressionEnabled != nil {
-		return *x.CompressionEnabled
-	}
-	return false
-}
-
-func (x *AzureFrontDoorRouteCache) GetContentTypesToCompress() []string {
-	if x != nil {
-		return x.ContentTypesToCompress
+		return x.UserAssignedIdentityIds
 	}
 	return nil
 }
@@ -1194,114 +422,39 @@ var File_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto protoref
 
 const file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/azure/azurefrontdoorprofile/v1/spec.proto\x123dev.planton.provider.azure.azurefrontdoorprofile.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x93\b\n" +
+	">dev/planton/provider/azure/azurefrontdoorprofile/v1/spec.proto\x123dev.planton.provider.azure.azurefrontdoorprofile.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd8\b\n" +
 	"\x19AzureFrontDoorProfileSpec\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xe0\x01\n" +
-	"\x04name\x18\x02 \x01(\tB\xcb\x01\xbaH\xc7\x01\xba\x01\xba\x01\n" +
-	"\x13profile_name_format\x12gProfile name must start and end with a letter or number, and contain only letters, numbers, and hyphens\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,44}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18.R\x04name\x12\xca\x01\n" +
-	"\x03sku\x18\x03 \x01(\tB\xb2\x01\xbaH\x93\x01\xba\x01\x8f\x01\n" +
-	"\tsku_valid\x12Csku must be one of: Standard_AzureFrontDoor, Premium_AzureFrontDoor\x1a=this in ['Standard_AzureFrontDoor', 'Premium_AzureFrontDoor']\x8a\xa6\x1d\x17Standard_AzureFrontDoorH\x00R\x03sku\x88\x01\x01\x12P\n" +
-	"\x18response_timeout_seconds\x18\x04 \x01(\x05B\x11\xbaH\a\x1a\x05\x18\xf0\x01(\x10\x8a\xa6\x1d\x03120H\x01R\x16responseTimeoutSeconds\x88\x01\x01\x12i\n" +
-	"\tendpoints\x18\x05 \x03(\v2K.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorEndpointR\tendpoints\x12s\n" +
-	"\rorigin_groups\x18\x06 \x03(\v2N.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorOriginGroupR\foriginGroups\x12`\n" +
-	"\x06routes\x18\a \x03(\v2H.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorRouteR\x06routesB\x06\n" +
-	"\x04_skuB\x1b\n" +
-	"\x19_response_timeout_seconds\"\xb2\x02\n" +
-	"\x16AzureFrontDoorEndpoint\x12\xe2\x01\n" +
-	"\x04name\x18\x01 \x01(\tB\xcd\x01\xbaH\xc9\x01\xba\x01\xbc\x01\n" +
-	"\x14endpoint_name_format\x12hEndpoint name must start and end with a letter or number, and contain only letters, numbers, and hyphens\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,44}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18.R\x04name\x12'\n" +
-	"\aenabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01B\n" +
-	"\n" +
-	"\b_enabled\"\xf2\x03\n" +
-	"\x19AzureFrontDoorOriginGroup\x12\x1e\n" +
-	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12G\n" +
-	"\x18session_affinity_enabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x16sessionAffinityEnabled\x88\x01\x01\x12w\n" +
-	"\x0eload_balancing\x18\x03 \x01(\v2P.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorLoadBalancingR\rloadBalancing\x12q\n" +
-	"\fhealth_probe\x18\x04 \x01(\v2N.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorHealthProbeR\vhealthProbe\x12c\n" +
-	"\aorigins\x18\x05 \x03(\v2I.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorOriginR\aoriginsB\x1b\n" +
-	"\x19_session_affinity_enabled\"\xe5\x02\n" +
-	"\x1bAzureFrontDoorLoadBalancing\x125\n" +
-	"\vsample_size\x18\x01 \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xff\x01(\x00\x8a\xa6\x1d\x014H\x00R\n" +
-	"sampleSize\x88\x01\x01\x12T\n" +
-	"\x1bsuccessful_samples_required\x18\x02 \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xff\x01(\x00\x8a\xa6\x1d\x013H\x01R\x19successfulSamplesRequired\x88\x01\x01\x12b\n" +
-	"\"additional_latency_in_milliseconds\x18\x03 \x01(\x05B\x10\xbaH\a\x1a\x05\x18\xe8\a(\x00\x8a\xa6\x1d\x0250H\x02R\x1fadditionalLatencyInMilliseconds\x88\x01\x01B\x0e\n" +
-	"\f_sample_sizeB\x1e\n" +
-	"\x1c_successful_samples_requiredB%\n" +
-	"#_additional_latency_in_milliseconds\"\x9a\x03\n" +
-	"\x19AzureFrontDoorHealthProbe\x12v\n" +
-	"\bprotocol\x18\x01 \x01(\tBZ\xbaHW\xba\x01Q\n" +
-	"\x0eprotocol_valid\x12$protocol must be one of: Http, Https\x1a\x19this in ['Http', 'Https']\xc8\x01\x01R\bprotocol\x12\x1e\n" +
-	"\x04path\x18\x02 \x01(\tB\x05\x8a\xa6\x1d\x01/H\x00R\x04path\x88\x01\x01\x12\x8b\x01\n" +
-	"\frequest_type\x18\x03 \x01(\tBc\xbaHX\xba\x01U\n" +
-	"\x12request_type_valid\x12&request_type must be one of: GET, HEAD\x1a\x17this in ['GET', 'HEAD']\x8a\xa6\x1d\x04HEADH\x01R\vrequestType\x88\x01\x01\x12=\n" +
-	"\x13interval_in_seconds\x18\x04 \x01(\x05B\r\xbaH\n" +
-	"\xc8\x01\x01\x1a\x05\x18\xff\x01(\x01R\x11intervalInSecondsB\a\n" +
-	"\x05_pathB\x0f\n" +
-	"\r_request_type\"\xcb\x05\n" +
-	"\x14AzureFrontDoorOrigin\x12\x1e\n" +
-	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12'\n" +
-	"\thost_name\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\bhostName\x12R\n" +
-	"\x1ecertificate_name_check_enabled\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x1bcertificateNameCheckEnabled\x88\x01\x01\x121\n" +
-	"\x12origin_host_header\x18\x04 \x01(\tH\x01R\x10originHostHeader\x88\x01\x01\x123\n" +
-	"\thttp_port\x18\x05 \x01(\x05B\x11\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x0280H\x02R\bhttpPort\x88\x01\x01\x126\n" +
-	"\n" +
-	"https_port\x18\x06 \x01(\x05B\x12\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x03443H\x03R\thttpsPort\x88\x01\x01\x12/\n" +
-	"\bpriority\x18\a \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x05(\x01\x8a\xa6\x1d\x011H\x04R\bpriority\x88\x01\x01\x12.\n" +
-	"\x06weight\x18\b \x01(\x05B\x11\xbaH\a\x1a\x05\x18\xe8\a(\x01\x8a\xa6\x1d\x03500H\x05R\x06weight\x88\x01\x01\x12'\n" +
-	"\aenabled\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x06R\aenabled\x88\x01\x01\x12q\n" +
-	"\fprivate_link\x18\n" +
-	" \x01(\v2N.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorPrivateLinkR\vprivateLinkB!\n" +
-	"\x1f_certificate_name_check_enabledB\x15\n" +
-	"\x13_origin_host_headerB\f\n" +
-	"\n" +
-	"_http_portB\r\n" +
-	"\v_https_portB\v\n" +
-	"\t_priorityB\t\n" +
-	"\a_weightB\n" +
-	"\n" +
-	"\b_enabled\"\xbe\x02\n" +
-	"\x19AzureFrontDoorPrivateLink\x12&\n" +
-	"\blocation\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\blocation\x12?\n" +
-	"\x16private_link_target_id\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x13privateLinkTargetId\x12n\n" +
-	"\x0frequest_message\x18\x03 \x01(\tB@\xbaH\x05r\x03\x18\x8c\x01\x8a\xa6\x1d4Access request for CDN FrontDoor Private Link OriginH\x00R\x0erequestMessage\x88\x01\x01\x12$\n" +
-	"\vtarget_type\x18\x04 \x01(\tH\x01R\n" +
-	"targetType\x88\x01\x01B\x12\n" +
-	"\x10_request_messageB\x0e\n" +
-	"\f_target_type\"\xd3\x06\n" +
-	"\x13AzureFrontDoorRoute\x12\x1e\n" +
-	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12/\n" +
-	"\rendpoint_name\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\fendpointName\x126\n" +
-	"\x11origin_group_name\x18\x03 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x0foriginGroupName\x12*\n" +
-	"\x11patterns_to_match\x18\x04 \x03(\tR\x0fpatternsToMatch\x12/\n" +
-	"\x13supported_protocols\x18\x05 \x03(\tR\x12supportedProtocols\x12\xe4\x01\n" +
-	"\x13forwarding_protocol\x18\x06 \x01(\tB\xad\x01\xbaH\x99\x01\xba\x01\x95\x01\n" +
-	"\x19forwarding_protocol_valid\x12Eforwarding_protocol must be one of: HttpOnly, HttpsOnly, MatchRequest\x1a1this in ['HttpOnly', 'HttpsOnly', 'MatchRequest']\x8a\xa6\x1d\fMatchRequestH\x00R\x12forwardingProtocol\x88\x01\x01\x12C\n" +
-	"\x16https_redirect_enabled\x18\a \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x14httpsRedirectEnabled\x88\x01\x01\x12B\n" +
-	"\x16link_to_default_domain\x18\b \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x13linkToDefaultDomain\x88\x01\x01\x12'\n" +
-	"\aenabled\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\aenabled\x88\x01\x01\x12c\n" +
-	"\x05cache\x18\n" +
-	" \x01(\v2M.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorRouteCacheR\x05cacheB\x16\n" +
-	"\x14_forwarding_protocolB\x19\n" +
-	"\x17_https_redirect_enabledB\x19\n" +
-	"\x17_link_to_default_domainB\n" +
-	"\n" +
-	"\b_enabled\"\xf7\x04\n" +
-	"\x18AzureFrontDoorRouteCache\x12\xff\x02\n" +
-	"\x1dquery_string_caching_behavior\x18\x01 \x01(\tB\xb6\x02\xbaH\x9d\x02\xba\x01\x99\x02\n" +
-	"\x1aquery_string_caching_valid\x12\x8a\x01query_string_caching_behavior must be one of: IgnoreQueryString, UseQueryString, IgnoreSpecifiedQueryStrings, IncludeSpecifiedQueryStrings\x1anthis in ['IgnoreQueryString', 'UseQueryString', 'IgnoreSpecifiedQueryStrings', 'IncludeSpecifiedQueryStrings']\x8a\xa6\x1d\x11IgnoreQueryStringH\x00R\x1aqueryStringCachingBehavior\x88\x01\x01\x12#\n" +
-	"\rquery_strings\x18\x02 \x03(\tR\fqueryStrings\x12?\n" +
-	"\x13compression_enabled\x18\x03 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x01R\x12compressionEnabled\x88\x01\x01\x129\n" +
-	"\x19content_types_to_compress\x18\x04 \x03(\tR\x16contentTypesToCompressB \n" +
-	"\x1e_query_string_caching_behaviorB\x16\n" +
-	"\x14_compression_enabledB\xa6\x03\n" +
+	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x8c\x02\n" +
+	"\fprofile_name\x18\x02 \x01(\tB\xe8\x01\xbaH\xe4\x01\xba\x01\xd7\x01\n" +
+	"\x1efront_door_profile_name_format\x12yprofile_name must be 2-90 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,88}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18ZR\vprofileName\x12i\n" +
+	"\x03sku\x18\x03 \x01(\x0e2M.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSkuB\b\xbaH\x05\x82\x01\x02\x10\x01R\x03sku\x12P\n" +
+	"\x18response_timeout_seconds\x18\x04 \x01(\x05B\x11\xbaH\a\x1a\x05\x18\xf0\x01(\x10\x8a\xa6\x1d\x03120H\x00R\x16responseTimeoutSeconds\x88\x01\x01\x12n\n" +
+	"\bidentity\x18\x05 \x01(\v2R.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileIdentityR\bidentity\x12\xab\x01\n" +
+	"\x17log_scrubbing_variables\x18\x06 \x03(\x0e2^.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileLogScrubbingVariableB\x13\xbaH\x10\x92\x01\r\x10\x03\x18\x01\"\a\x82\x01\x04\x10\x01 \x00R\x15logScrubbingVariables\x12l\n" +
+	"\x04tags\x18\a \x03(\v2X.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x1b\n" +
+	"\x19_response_timeout_seconds\"\xec\x04\n" +
+	"\x1dAzureFrontDoorProfileIdentity\x12v\n" +
+	"\x04type\x18\x01 \x01(\x0e2V.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileIdentityTypeB\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xbb\x02\xbaH\xb7\x02\x1a\xb4\x02\n" +
+	"*front_door_profile_identity_ids_match_type\x12}user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED\x1a\x86\x01(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)*c\n" +
+	"\x18AzureFrontDoorProfileSku\x12,\n" +
+	"(azure_front_door_profile_sku_unspecified\x10\x00\x12\f\n" +
+	"\bSTANDARD\x10\x01\x12\v\n" +
+	"\aPREMIUM\x10\x02*\xa1\x01\n" +
+	"!AzureFrontDoorProfileIdentityType\x126\n" +
+	"2azure_front_door_profile_identity_type_unspecified\x10\x00\x12\x13\n" +
+	"\x0fSYSTEM_ASSIGNED\x10\x01\x12\x11\n" +
+	"\rUSER_ASSIGNED\x10\x02\x12\x1c\n" +
+	"\x18SYSTEM_AND_USER_ASSIGNED\x10\x03*\xb1\x01\n" +
+	")AzureFrontDoorProfileLogScrubbingVariable\x12?\n" +
+	";azure_front_door_profile_log_scrubbing_variable_unspecified\x10\x00\x12\x1a\n" +
+	"\x16QUERY_STRING_ARG_NAMES\x10\x01\x12\x16\n" +
+	"\x12REQUEST_IP_ADDRESS\x10\x02\x12\x0f\n" +
+	"\vREQUEST_URI\x10\x03B\xa6\x03\n" +
 	"7com.dev.planton.provider.azure.azurefrontdoorprofile.v1B\tSpecProtoP\x01Zmgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorprofile/v1;azurefrontdoorprofilev1\xa2\x02\x05DPPAA\xaa\x023Dev.Planton.Provider.Azure.Azurefrontdoorprofile.V1\xca\x023Dev\\Planton\\Provider\\Azure\\Azurefrontdoorprofile\\V1\xe2\x02?Dev\\Planton\\Provider\\Azure\\Azurefrontdoorprofile\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Azure::Azurefrontdoorprofile::V1b\x06proto3"
 
 var (
@@ -1316,34 +469,30 @@ func file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDesc
 	return file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_goTypes = []any{
-	(*AzureFrontDoorProfileSpec)(nil),   // 0: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec
-	(*AzureFrontDoorEndpoint)(nil),      // 1: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorEndpoint
-	(*AzureFrontDoorOriginGroup)(nil),   // 2: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorOriginGroup
-	(*AzureFrontDoorLoadBalancing)(nil), // 3: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorLoadBalancing
-	(*AzureFrontDoorHealthProbe)(nil),   // 4: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorHealthProbe
-	(*AzureFrontDoorOrigin)(nil),        // 5: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorOrigin
-	(*AzureFrontDoorPrivateLink)(nil),   // 6: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorPrivateLink
-	(*AzureFrontDoorRoute)(nil),         // 7: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorRoute
-	(*AzureFrontDoorRouteCache)(nil),    // 8: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorRouteCache
-	(*v1.StringValueOrRef)(nil),         // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureFrontDoorProfileSku)(0),                  // 0: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSku
+	(AzureFrontDoorProfileIdentityType)(0),         // 1: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileIdentityType
+	(AzureFrontDoorProfileLogScrubbingVariable)(0), // 2: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileLogScrubbingVariable
+	(*AzureFrontDoorProfileSpec)(nil),              // 3: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec
+	(*AzureFrontDoorProfileIdentity)(nil),          // 4: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileIdentity
+	nil,                                            // 5: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil),                    // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_depIdxs = []int32{
-	9, // 0: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.endpoints:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorEndpoint
-	2, // 2: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.origin_groups:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorOriginGroup
-	7, // 3: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.routes:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorRoute
-	3, // 4: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorOriginGroup.load_balancing:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorLoadBalancing
-	4, // 5: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorOriginGroup.health_probe:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorHealthProbe
-	5, // 6: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorOriginGroup.origins:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorOrigin
-	6, // 7: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorOrigin.private_link:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorPrivateLink
-	8, // 8: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorRoute.cache:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorRouteCache
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	6, // 0: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0, // 1: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.sku:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSku
+	4, // 2: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.identity:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileIdentity
+	2, // 3: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.log_scrubbing_variables:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileLogScrubbingVariable
+	5, // 4: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.tags:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.TagsEntry
+	1, // 5: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileIdentity.type:type_name -> dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileIdentityType
+	6, // 6: dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileIdentity.user_assigned_identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_init() }
@@ -1352,26 +501,19 @@ func file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_init() 
 		return
 	}
 	file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   9,
+			NumEnums:      3,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_depIdxs,
+		EnumInfos:         file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto = out.File

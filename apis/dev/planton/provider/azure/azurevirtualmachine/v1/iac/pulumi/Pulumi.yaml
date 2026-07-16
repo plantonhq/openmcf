@@ -1,3 +1,4 @@
-name: azure-virtual-machine
-runtime: go
-description: Pulumi module for AzureVirtualMachine
+#name should be updated based on the choice of 'project' name in pulumi backend
+name: planton-azure-module-test
+runtime:
+  name: go

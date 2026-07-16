@@ -1,0 +1,3 @@
+name: azure-storage-local-user
+runtime: go
+description: Pulumi program for Azure Storage local user

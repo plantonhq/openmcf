@@ -23,7 +23,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciQueue
 metadata:
   name: my-queue
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -81,7 +81,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciQueue
 metadata:
   name: dev-queue
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -100,7 +100,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciQueue
 metadata:
   name: order-processing
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciQueue
 metadata:
   name: event-bus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -6,19 +6,16 @@ import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/container_env.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
 import "dev/planton/provider/kubernetes/options.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
 // TestCloudResourceKubernetesSpec is permanent test infrastructure for
 // Kubernetes-specific proto processing tests: ContainerResources defaults,
-// KubernetesClusterSelector skip rules, ContainerEnv handling, and
-// Flatten/HCL generation for Terraform modules.
+// ContainerEnv handling, and Flatten/HCL generation for Terraform modules.
 //
 // For generic (non-Kubernetes) test fields, use TestCloudResourceGeneric instead.
 //
 // Field coverage:
-//   - KubernetesClusterSelector (Flatten skip-rule testing)
 //   - StringValueOrRef namespace (singular flatten testing)
 //   - ContainerResources with default_container_resources (default strategy testing)
 //   - ContainerEnv with list-based variables/secrets
@@ -26,10 +23,6 @@ import "dev/planton/shared/options/options.proto";
 //   - repeated string command (plain repeated field)
 //   - Scalar with default (schedule-like field for mixed testing)
 message TestCloudResourceKubernetesSpec {
-  // ─── Kubernetes target cluster (Flatten skip-rule testing) ────────────────────
-
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // ─── Namespace as StringValueOrRef ────────────────────────────────────────────
 
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [

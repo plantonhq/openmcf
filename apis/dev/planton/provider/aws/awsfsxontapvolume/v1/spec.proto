@@ -28,14 +28,22 @@ import "dev/planton/shared/options/options.proto";
 // Key design notes:
 // - `storage_virtual_machine_id` and `name` are ForceNew — changing either
 //   requires replacing the volume.
-// - `ontap_volume_type` and `volume_style` are ForceNew — they define the
-//   volume's fundamental architecture.
+// - `ontap_volume_type` and `volume_style` are ForceNew (they define the
+//   volume's fundamental architecture), as are the aggregate layout fields and
+//   the SnapLock type. Everything else — size, junction path, security style,
+//   snapshot policy, storage efficiency, tiering, and the mutable SnapLock
+//   settings — updates in place.
 // - `junction_path` is the mount point in the SVM namespace. Without it, the
 //   volume exists but is not accessible via NFS/SMB.
 // - `security_style` can differ from the SVM's root volume security style,
 //   allowing mixed workloads within a single SVM.
-// - `size_in_megabytes` covers volumes up to ~2.1 PB (int32 max). For the
-//   extremely rare case of >2 PB volumes, use the AWS console or CLI directly.
+// - Size is set through exactly one arm: `size_in_megabytes` for everyday
+//   volumes, or `size_in_bytes` for byte-precise sizing and volumes beyond
+//   2 PiB.
+// - The deletion controls (`skip_final_backup`,
+//   `bypass_snaplock_enterprise_retention`, `final_backup_tags`) take effect
+//   at delete time and must be applied to the volume BEFORE it is destroyed —
+//   set them early, not in the same change that deletes the volume.
 // - Credentials, region, and deployment workflow live outside this spec in stack
 //   inputs.
 message AwsFsxOntapVolumeSpec {
@@ -76,19 +84,31 @@ message AwsFsxOntapVolumeSpec {
   ];
 
   // ---------------------------------------------------------------------------
-  // Size
+  // Size (exactly one arm)
   // ---------------------------------------------------------------------------
 
-  // The size of the volume in megabytes. Required.
+  // The size of the volume in megabytes. Exactly one of `size_in_megabytes`
+  // and `size_in_bytes` must be set.
   //
   // Minimum 20 MB. Maximum is constrained by the file system's total storage
   // capacity. ONTAP volumes support thin provisioning, so the logical size can
   // exceed the physical capacity available — ONTAP handles overcommit at the
-  // aggregate level.
+  // aggregate level. Size can be increased or decreased in place.
   //
-  // Covers volumes up to ~2.1 PB (int32 max). For the extremely rare case of
-  // volumes exceeding 2 PB, use the AWS console or CLI with size_in_bytes.
-  int32 size_in_megabytes = 4 [(buf.validate.field).int32.gte = 20];
+  // Covers volumes up to ~2 PiB (int32 megabytes). For larger volumes or
+  // byte-precise sizing, use `size_in_bytes` instead.
+  optional int32 size_in_megabytes = 4 [(buf.validate.field).int32.gte = 20];
+
+  // The size of the volume in bytes — the byte-precise sizing arm, and the
+  // only way to size volumes beyond 2 PiB (FlexGroup volumes scale to ~20 PiB).
+  // Exactly one of `size_in_megabytes` and `size_in_bytes` must be set.
+  //
+  // Maximum: 22,517,998,000,000,000 bytes (~20 PiB). FLEXGROUP volumes
+  // require at least 100 GiB per constituent.
+  optional int64 size_in_bytes = 5 [
+    (buf.validate.field).int64.gte = 20971520,
+    (buf.validate.field).int64.lte = 22517998000000000
+  ];
 
   // ---------------------------------------------------------------------------
   // Volume Configuration
@@ -101,10 +121,11 @@ message AwsFsxOntapVolumeSpec {
   // but is not accessible via NFS/SMB until a junction path is set.
   //
   // Must start with "/" and be unique within the SVM. Examples: "/vol1",
-  // "/data/prod", "/shares/finance".
+  // "/data/prod", "/shares/finance". Can be changed after creation (the
+  // volume remounts at the new path).
   //
   // Constraints: 1-255 characters.
-  string junction_path = 5;
+  string junction_path = 6 [(buf.validate.field).string.max_len = 255];
 
   // The ONTAP volume type. ForceNew.
   //
@@ -114,7 +135,7 @@ message AwsFsxOntapVolumeSpec {
   //   relationship is broken or the volume is converted.
   //
   // Default: RW
-  optional string ontap_volume_type = 6 [(dev.planton.shared.options.default) = "RW"];
+  optional string ontap_volume_type = 7 [(dev.planton.shared.options.default) = "RW"];
 
   // The volume style. ForceNew.
   //
@@ -125,10 +146,10 @@ message AwsFsxOntapVolumeSpec {
   //   aggregate_configuration. Ideal for data lakes, genomics, and media.
   //
   // Default: FLEXVOL
-  optional string volume_style = 7 [(dev.planton.shared.options.default) = "FLEXVOL"];
+  optional string volume_style = 8 [(dev.planton.shared.options.default) = "FLEXVOL"];
 
   // The security style for this volume's root directory. Controls how file
-  // permissions are evaluated.
+  // permissions are evaluated. Can be changed after creation.
   //
   // - "UNIX": UNIX permissions (mode bits, uid/gid). Best for Linux/NFS.
   // - "NTFS": Windows ACLs. Best for Windows/SMB with Active Directory.
@@ -136,48 +157,58 @@ message AwsFsxOntapVolumeSpec {
   //   depends on which protocol last set permissions on a file.
   //
   // If omitted, inherits from the parent SVM's root_volume_security_style.
-  string security_style = 8;
+  string security_style = 9;
 
   // The name of the ONTAP snapshot policy to apply to this volume. Snapshot
-  // policies control automatic snapshot creation and retention.
+  // policies control automatic snapshot creation and retention. Can be changed
+  // after creation.
   //
   // Common policies: "default" (6 hourly + 2 daily + 2 weekly), "none"
   // (no automatic snapshots). Custom policies can be created via the ONTAP CLI.
   //
   // Constraints: 1-255 characters.
-  string snapshot_policy = 9;
+  string snapshot_policy = 10 [(buf.validate.field).string.max_len = 255];
 
   // Enable ONTAP storage efficiency features: deduplication, compression, and
   // compaction. These features reduce physical storage consumption by
-  // identifying and eliminating redundant data blocks.
+  // identifying and eliminating redundant data blocks. Can be changed after
+  // creation.
   //
-  // Recommended for most workloads. Disable only for workloads that are
-  // already compressed or deduplicated (e.g., encrypted data, pre-compressed
-  // media files) where the CPU overhead provides no benefit.
-  bool storage_efficiency_enabled = 10;
+  // Recommended for most workloads (set true). Disable only for workloads
+  // that are already compressed or deduplicated (e.g., encrypted data,
+  // pre-compressed media files) where the CPU overhead provides no benefit.
+  // When omitted, ONTAP applies its own per-volume-type default.
+  optional bool storage_efficiency_enabled = 11;
 
   // Whether to copy resource tags to automatic volume backups.
   //
   // Default: false
-  optional bool copy_tags_to_backups = 11 [(dev.planton.shared.options.default) = "false"];
+  optional bool copy_tags_to_backups = 12 [(dev.planton.shared.options.default) = "false"];
 
   // ---------------------------------------------------------------------------
   // Deletion Behavior
   // ---------------------------------------------------------------------------
+  // These controls take effect at delete time. They must be applied to the
+  // volume BEFORE the deletion happens — set them early (ideally at creation),
+  // not in the same change that removes the volume.
 
   // Whether to skip the automatic backup that AWS takes when the volume is
   // deleted. Set to true for development/test volumes where the backup is
   // unnecessary.
   //
   // Default: false (a final backup is taken)
-  optional bool skip_final_backup = 12 [(dev.planton.shared.options.default) = "false"];
+  optional bool skip_final_backup = 13 [(dev.planton.shared.options.default) = "false"];
+
+  // Tags applied to the final backup taken on deletion. Only meaningful when
+  // skip_final_backup is false.
+  map<string, string> final_backup_tags = 14;
 
   // Whether to allow deletion of a SnapLock Enterprise volume that contains
   // WORM files with unexpired retention periods. Only relevant for SnapLock
   // Enterprise volumes — Compliance volumes can never bypass retention.
   //
   // Default: false
-  optional bool bypass_snaplock_enterprise_retention = 13 [(dev.planton.shared.options.default) = "false"];
+  optional bool bypass_snaplock_enterprise_retention = 15 [(dev.planton.shared.options.default) = "false"];
 
   // ---------------------------------------------------------------------------
   // Tiering Policy (optional)
@@ -185,8 +216,9 @@ message AwsFsxOntapVolumeSpec {
 
   // Data tiering policy that controls when and how data moves from primary
   // SSD storage to lower-cost capacity pool storage. If omitted, the volume
-  // uses the default tiering policy (SNAPSHOT_ONLY).
-  AwsFsxOntapVolumeTieringPolicy tiering_policy = 14;
+  // uses the default tiering policy (SNAPSHOT_ONLY). Can be changed after
+  // creation.
+  AwsFsxOntapVolumeTieringPolicy tiering_policy = 16;
 
   // ---------------------------------------------------------------------------
   // SnapLock Configuration (optional)
@@ -205,7 +237,7 @@ message AwsFsxOntapVolumeSpec {
   //
   // Once set, the snaplock_type cannot be changed. Choosing the wrong type
   // requires deleting and recreating the volume.
-  AwsFsxOntapVolumeSnaplockConfiguration snaplock_configuration = 15;
+  AwsFsxOntapVolumeSnaplockConfiguration snaplock_configuration = 17;
 
   // ---------------------------------------------------------------------------
   // Aggregate Configuration (optional — for FLEXGROUP volumes)
@@ -217,7 +249,7 @@ message AwsFsxOntapVolumeSpec {
   //
   // All fields in this block are ForceNew — changing the aggregate layout
   // requires recreating the volume.
-  AwsFsxOntapVolumeAggregateConfiguration aggregate_configuration = 16;
+  AwsFsxOntapVolumeAggregateConfiguration aggregate_configuration = 18;
 
   // ---------------------------------------------------------------------------
   // CEL Validations
@@ -228,6 +260,13 @@ message AwsFsxOntapVolumeSpec {
     id: "name_format"
     message: "name must contain only alphanumeric characters and underscores (no hyphens, spaces, or special characters)"
     expression: "this.name == '' || this.name.matches('^[a-zA-Z0-9_]+$')"
+  };
+
+  // Size is set through exactly one arm.
+  option (buf.validate.message).cel = {
+    id: "size_exactly_one_arm"
+    message: "exactly one of size_in_megabytes and size_in_bytes must be set"
+    expression: "has(this.size_in_megabytes) != has(this.size_in_bytes)"
   };
 
   // ontap_volume_type valid values.
@@ -399,7 +438,10 @@ message AwsFsxOntapVolumeAutocommitPeriod {
   // WORM state. Required when type is not "NONE".
   //
   // Range: 1-65535.
-  int32 value = 2;
+  int32 value = 2 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 65535
+  ];
 
   // autocommit type valid values.
   option (buf.validate.message).cel = {
@@ -461,7 +503,10 @@ message AwsFsxOntapVolumeRetentionDuration {
   // "INFINITE" or "UNSPECIFIED".
   //
   // Range: 0-65535.
-  int32 value = 2;
+  int32 value = 2 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 65535
+  ];
 
   // retention duration type valid values.
   option (buf.validate.message).cel = {
@@ -481,10 +526,22 @@ message AwsFsxOntapVolumeRetentionDuration {
 message AwsFsxOntapVolumeAggregateConfiguration {
   // The list of aggregate names to use for the FlexGroup volume. Each name
   // must match the pattern "aggr" followed by 1-2 digits (e.g., "aggr1",
-  // "aggr2"). Maximum 12 aggregates.
+  // "aggr2") — aggregate numbering follows the file system's HA pairs.
+  // Maximum 12 aggregates.
   //
   // ForceNew — changing this requires volume recreation.
-  repeated string aggregates = 1 [(buf.validate.field).repeated.max_items = 12];
+  repeated string aggregates = 1 [
+    (buf.validate.field).repeated.max_items = 12,
+    (buf.validate.field).repeated.items = {
+      cel: [
+        {
+          id: "aggregate_name_format"
+          message: "each aggregate must be 'aggr' followed by 1-2 digits (e.g., 'aggr1')"
+          expression: "this.matches('^aggr[0-9]{1,2}$')"
+        }
+      ]
+    }
+  ];
 
   // The number of FlexGroup constituents (member volumes) to create per
   // aggregate. The total number of constituents equals

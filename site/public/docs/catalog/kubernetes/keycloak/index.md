@@ -39,7 +39,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKeycloak
 metadata:
   name: my-keycloak
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -89,7 +89,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKeycloak
 metadata:
   name: auth-keycloak
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -117,7 +117,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKeycloak
 metadata:
   name: shared-keycloak
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -148,7 +148,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKeycloak
 metadata:
   name: prod-keycloak
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

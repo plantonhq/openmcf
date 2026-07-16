@@ -1,8 +1,11 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+      source = "hashicorp/aws"
+      # Floor 6.33.0: the newest argument this module sends
+      # (domain_settings.trusted_identity_propagation_settings) landed in
+      # provider 6.33.0; every other block in the module predates it.
+      version = ">= 6.33.0"
     }
   }
 }

@@ -24,8 +24,8 @@ comprehensive monitoring, and hardened Kafka server properties.
 ## Infra Chart Composition
 
 This preset uses `valueFrom` references to compose with:
-- **AwsVpc** (subnets and VPC ID)
-- **AwsSecurityGroup** (client access control)
+- **AwsSubnet** (broker placement)
+- **AwsSecurityGroup** (attached to the broker network interfaces; Kafka/ZooKeeper ingress rules live on this first-class node)
 - **AwsKmsKey** (encryption at rest)
 - **AwsCloudwatchLogGroup** (broker log destination)
 
@@ -37,5 +37,5 @@ and tiered storage S3 costs (significantly lower than equivalent local-only stor
 ## Customization
 
 - Add `firehose` and `s3` logging for multi-destination log delivery
-- Add `allowedCidrBlocks` for VPN-based access patterns
+- Open VPN CIDR ranges by adding ingress rules on the referenced security group
 - Add SASL/SCRAM authentication for non-AWS clients

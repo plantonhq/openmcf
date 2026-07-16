@@ -1,0 +1,20 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusNamespace
+metadata:
+  name: my-keyless-bus
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: my-messaging-rg
+      fieldPath: status.outputs.resource_group_name
+  namespaceName: myorg-keyless-bus
+  sku: STANDARD
+  # The keyless posture: SAS authentication is off namespace-wide --
+  # every key (including the root rule in this kind's outputs) stops
+  # working, and clients authenticate with Entra identities holding
+  # data-plane roles.
+  localAuthEnabled: false
+  tags:
+    purpose: order-processing

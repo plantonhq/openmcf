@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awselasticfilesystem
+spec:
+  # A file system under live E2E: the registry-declared AwsSubnet +
+  # AwsSecurityGroup prerequisites deploy first, then the file system proves
+  # create (encrypted + elastic + full lifecycle trio + backup policy +
+  # resource policy with a literal ${...} policy variable), verify
+  # (DescribeFileSystems, lifecycle-state-aware), destroy, and
+  # verify-destroyed on both provisioners. Two distinct-AZ mount targets
+  # exercise the per-subnet map outputs. Recorded exclusions: One Zone
+  # (an alternate create shape, not additive surface), static IPv4/IPv6 and
+  # DUAL_STACK mount targets (the shared subnet fixture carries no IPv6 CIDR),
+  # and replication (a second file system in another region with 20-minute
+  # waiters and overwrite-protection teardown interplay -- wiring is proven by
+  # the offline gate and the conformance case).
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

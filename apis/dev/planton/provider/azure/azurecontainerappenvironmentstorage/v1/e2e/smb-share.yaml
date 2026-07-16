@@ -1,0 +1,24 @@
+# Dedicated AzureStorageShare on the scenario-local account -- the Azure
+# Files share the environment-storage registration exposes to apps and
+# jobs. Scenario-local for the same globally-unique-account reason as the
+# account fixture itself.
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageShare
+metadata:
+  name: planton-oss-e2e-caes-fixture-share
+  id: planton-oss-e2e-caes-fixture-share
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestorageshare
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-caes-fixture-account
+  shareName: caes-e2e-share
+  quotaGb: 1

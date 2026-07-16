@@ -1,0 +1,168 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestorageshare.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureStorageShareSpec** defines the configuration for creating an
+// Azure Files share inside an Azure Storage Account: the SMB/NFS file
+// system unit. VMs, AKS pods, and container apps mount shares for shared
+// POSIX-style state -- lift-and-shift app data, user profiles (FSLogix),
+// CI caches, shared content -- and Azure bills, throttles, tiers, and
+// snapshots at the share level.
+//
+// Shares are many-per-account with independent lifecycles, which is why
+// they are a first-class kind referencing the account rather than a list
+// folded into the account's spec. The parent is fixed at creation: a
+// share cannot move between accounts.
+message AzureStorageShareSpec {
+  // The storage account the share lives in, by ARM ID. References an
+  // AzureStorageAccount's storage_account_id output so the account and
+  // its shares compose in one manifest set. Fixed at creation. The
+  // account's kind gates what the share can be: NFS shares and the
+  // PREMIUM tier need a FileStorage (premium file) account; quotas above
+  // 5120 GB on standard accounts need the account's
+  // large_file_share_enabled.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The share's name: 3-63 lowercase letters, digits, and hyphens;
+  // starts and ends with a letter or digit; no consecutive hyphens.
+  // Unique within the account (it becomes the mount path segment:
+  // //{account}.file.core.windows.net/{name}). Changing the name
+  // replaces the share.
+  string share_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 63,
+    (buf.validate.field).cel = {
+      id: "storage_share_name_format"
+      message: "share_name must be 3-63 lowercase letters, digits, and hyphens, starting and ending with a letter or digit, with no consecutive hyphens"
+      expression: "this.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$') && !this.contains('--')"
+    }
+  ];
+
+  // The share's maximum size in gigabytes -- the provisioned quota SMB
+  // clients see as the drive size and Azure enforces on writes. Standard
+  // accounts allow 1-5120 GB (up to 102400 GB when the account enables
+  // large_file_share_enabled); premium FileStorage accounts require at
+  // least 100 GB and bill provisioned capacity whether used or not.
+  // Grows in place; shrinking below used capacity fails.
+  int32 quota_gb = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 102400
+  ];
+
+  // The file-sharing protocol. Unspecified means SMB -- what Windows
+  // mounts and most Linux distributions mount via cifs. NFS (v4.1) is
+  // for Linux workloads that need POSIX semantics (hard links, chmod)
+  // and requires a premium FileStorage account; NFS shares are reachable
+  // only over private network paths (no public-endpoint mounts).
+  // Fixed at creation.
+  AzureStorageShareProtocol enabled_protocol = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // The share's performance/billing tier. Unspecified lets Azure pick
+  // its default (TRANSACTION_OPTIMIZED on standard accounts, PREMIUM on
+  // FileStorage accounts). HOT and COOL trade lower at-rest prices for
+  // per-operation charges -- COOL suits shares that are mostly read
+  // rarely; PREMIUM (SSD, provisioned) is required -- and the only legal
+  // value -- on FileStorage accounts.
+  AzureStorageShareAccessTier access_tier = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // Stored access policies (signed identifiers) for the share. Each
+  // policy anchors shared-access-signature tokens: revoking or
+  // shortening the policy immediately revokes every SAS issued against
+  // it -- the operational reason to prefer policy-anchored SAS over
+  // ad-hoc SAS. At most five policies per share (Azure's limit).
+  repeated AzureStorageShareAcl acls = 6 [(buf.validate.field).repeated.max_items = 5];
+
+  // Free-form metadata key/value pairs stored on the share (visible to
+  // anyone who can read share properties -- not for secrets). Keys must
+  // be valid C# identifiers per Azure's rule; lowercase is canonical
+  // (Azure lowercases keys on read).
+  map<string, string> metadata = 7;
+}
+
+// A stored access policy (signed identifier) on the share.
+message AzureStorageShareAcl {
+  // The policy's identifier -- the name SAS tokens reference (1-64
+  // characters). Keep it stable: rotating the id orphans SAS tokens
+  // issued against the old one.
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // The policy's validity window and permissions. Azure allows the
+  // window fields to live on the SAS token instead, so both are
+  // optional here; permissions must be declared on the policy.
+  repeated AzureStorageShareAclAccessPolicy access_policies = 2;
+}
+
+// The validity window and permissions of a stored access policy.
+message AzureStorageShareAclAccessPolicy {
+  // The share's data-plane permission letters, in Azure's strict order:
+  // r (read), w (write), d (delete), l (list). E.g. "rl" for
+  // read-and-list consumers, "rwdl" for full data access.
+  string permissions = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "storage_share_acl_permissions"
+      message: "permissions must be a non-empty combination of r, w, d, l in that order (e.g. \"rl\", \"rwdl\")"
+      expression: "this.matches('^r?w?d?l?$') && this != ''"
+    }
+  ];
+
+  // When the policy becomes valid, RFC 3339 UTC (e.g.
+  // "2026-07-01T00:00:00Z"). Omit to leave the start open (valid
+  // immediately or governed by the SAS token's own start).
+  string start = 2;
+
+  // When the policy expires, RFC 3339 UTC. Omit to leave expiry to the
+  // SAS token -- but a policy-level expiry is the revocation lever, so
+  // production policies should set it.
+  string expiry = 3;
+}
+
+// The file-sharing protocol of the share.
+enum AzureStorageShareProtocol {
+  // Not specified: SMB.
+  azure_storage_share_protocol_unspecified = 0;
+
+  // SMB 3.x/2.1 plus the REST API -- what Windows and most Linux
+  // mounts use. Works on every account kind.
+  SMB = 1;
+
+  // NFS v4.1 -- POSIX semantics for Linux workloads. Requires a premium
+  // FileStorage account and private network reachability.
+  NFS = 2;
+}
+
+// The performance/billing tier of the share.
+enum AzureStorageShareAccessTier {
+  // Not specified: Azure's default for the account kind
+  // (TransactionOptimized on standard, Premium on FileStorage).
+  azure_storage_share_access_tier_unspecified = 0;
+
+  // Standard HDD-backed, optimized for transaction-heavy workloads --
+  // the standard-account default.
+  TRANSACTION_OPTIMIZED = 1;
+
+  // Lower per-operation cost than TransactionOptimized with moderate
+  // at-rest cost -- general-purpose file serving.
+  HOT = 2;
+
+  // Cheapest at rest, priciest per operation -- shares that are mostly
+  // archived and read rarely.
+  COOL = 3;
+
+  // SSD-backed provisioned performance -- required (and the only legal
+  // tier) on premium FileStorage accounts.
+  PREMIUM = 4;
+}

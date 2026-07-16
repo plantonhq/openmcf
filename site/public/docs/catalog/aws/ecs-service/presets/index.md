@@ -8,18 +8,18 @@ provider: "aws"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-web-service-alb"
+  - slug: "01-web-service"
     rank: "01"
-    title: "Web Service with ALB"
-    excerpt: "This preset deploys a Fargate-based ECS service fronted by an Application Load Balancer using path-based routing. It runs 2 replicas across two Availability Zones with CloudWatch logging and a..."
-  - slug: "02-api-service-autoscaling"
+    title: "Web Service"
+    excerpt: "This preset runs a load-balanced web service: a referenced task-definition revision scheduled into a referenced cluster, registered into a first-class `AwsLbTargetGroup` that an `AwsLbListener` (or..."
+  - slug: "02-cost-optimized-spot"
     rank: "02"
-    title: "API Service with Autoscaling"
-    excerpt: "This preset deploys a Fargate-based ECS service with hostname-based ALB routing and CPU-based autoscaling. It starts with 2 replicas and scales to 10 based on a 75% CPU target. This is the standard..."
-  - slug: "03-background-worker"
+    title: "Cost-Optimized Spot Blend"
+    excerpt: "This preset blends Fargate capacity instead of naming a launch type: one guaranteed on-demand task as the base, then a 1:4 on-demand:Spot split for everything above it -- roughly 70% Spot at a ~70%..."
+  - slug: "03-blue-green"
     rank: "03"
-    title: "Background Worker"
-    excerpt: "This preset deploys a Fargate-based ECS service for background processing without an ALB. The container has no exposed port -- it pulls work from a queue (SQS, Redis, etc.) or runs scheduled tasks...."
+    title: "Blue/Green with Canary"
+    excerpt: "This preset turns on ECS-native blue/green deployments: new revisions stand up in the green target group, take 5% canary traffic for 5 minutes, then all traffic, and bake 10 minutes before the blue..."
 ---
 
 # ECS Service Presets

@@ -27,7 +27,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRookCephOperator
 metadata:
   name: my-rook-ceph
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -67,8 +67,6 @@ This creates the Rook Ceph Operator in the `rook-ceph` namespace with default CS
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `operatorVersion` | `string` | `v1.16.6` | Helm chart version for the Rook Ceph Operator. Must match a valid [Rook release tag](https://github.com/rook/rook/releases). The `v` prefix is stripped automatically before passing to Helm. |
 | `crdsEnabled` | `bool` | `true` | Whether the Helm chart should install and update CRDs. Only set to `false` if managing CRDs independently. |
@@ -93,7 +91,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRookCephOperator
 metadata:
   name: rook-default
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -122,7 +120,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRookCephOperator
 metadata:
   name: rook-prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -159,7 +157,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRookCephOperator
 metadata:
   name: rook-block-only
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -195,7 +193,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRookCephOperator
 metadata:
   name: rook-with-ref
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

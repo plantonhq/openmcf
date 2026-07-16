@@ -39,11 +39,11 @@ This preset uses a generic `my-fifo-topic` name. Rename `metadata.name` to match
 
 ## Common Additions
 
-- Add `subscriptions` with `protocol: sqs` pointing to FIFO SQS queues
+- Attach FIFO SQS queue consumers with separate `AwsSnsSubscription` resources (`protocol: sqs`) referencing this topic's `topic_arn` output
 - Add `kmsKeyId` for encryption at rest
 - Add `policy` for cross-service publishing permissions
 
 ## Related Presets
 
 - **01-standard-topic** — use when strict ordering and exactly-once delivery are not required
-- **03-fanout-to-sqs** — demonstrates the fan-out pattern (Standard topic only)
+- **03-fifo-with-archive** — adds a message archive so new consumers can replay history

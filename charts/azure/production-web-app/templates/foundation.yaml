@@ -1,0 +1,78 @@
+# The estate's home: one resource group for the web application, its
+# network, database, edge, and monitoring. A customer-facing app is one
+# lifecycle unit -- tear it down together, deploy it together.
+apiVersion: azure.planton.dev/v1
+kind: AzureResourceGroup
+metadata:
+  name: "{{ values.env }}-web-app"
+spec:
+  name: "{{ values.env }}-web-app"
+  region: "{{ values.region }}"
+---
+# The telemetry destination: workspace-based Application Insights and the
+# Log Analytics workspace everything routes into.
+apiVersion: azure.planton.dev/v1
+kind: AzureLogAnalyticsWorkspace
+metadata:
+  name: "{{ values.env }}-web-logs"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.resource_group_name
+  workspaceName: "{{ values.env }}-web-logs"
+  retentionInDays: {{ values.log_retention_days }}
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureApplicationInsights
+metadata:
+  name: "{{ values.env }}-web-insights"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.resource_group_name
+  applicationInsightsName: "{{ values.env }}-web-insights"
+  workspaceId:
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: "{{ values.env }}-web-logs"
+      fieldPath: status.outputs.workspace_id
+---
+# Routine operational notifications.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorActionGroup
+metadata:
+  name: "{{ values.env }}-ops-alerts"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.resource_group_name
+  shortName: ops
+  emailReceivers:
+    - name: ops-team
+      emailAddress: "{{ values.ops_email }}"
+      useCommonAlertSchema: true
+---
+# Paging notifications for availability failures.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorActionGroup
+metadata:
+  name: "{{ values.env }}-critical-alerts"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.resource_group_name
+  shortName: page
+  emailReceivers:
+    - name: oncall
+      emailAddress: "{{ values.critical_email }}"
+      useCommonAlertSchema: true

@@ -4,11 +4,16 @@ metadata:
   name: my-memorydb
 spec:
   region: <aws-region>
-  engine: redis
-  engineVersion: "7.1"
+  engine: valkey
   description: Single-shard MemoryDB for development
   nodeType: db.t4g.small
   numShards: 1
   numReplicasPerShard: 0
-  aclName: open-access
+  # The built-in allow-everything ACL -- development only. Stating open
+  # access is deliberate: production manifests reference an AwsMemorydbAcl.
+  aclName:
+    value: open-access
   tlsEnabled: true
+  subnetIds:
+    - value: <private-subnet-id-az1>
+    - value: <private-subnet-id-az2>

@@ -1,0 +1,13 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureManagedDisk
+metadata:
+  name: my-managed-disk
+spec:
+  region: <azure-region>
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: workload-data  # REPLACE: name the DATA, not the VM
+  storageAccountType: PREMIUM_LRS
+  createOption: EMPTY
+  diskSizeGb: 256
+  zone: "1"  # must match the VM's zone

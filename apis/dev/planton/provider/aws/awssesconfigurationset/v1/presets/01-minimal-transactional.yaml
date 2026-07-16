@@ -1,0 +1,12 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsSesConfigurationSet
+metadata:
+  name: transactional-set
+spec:
+  region: <aws-region>
+  reputationMetricsEnabled: true
+  deliveryOptions:
+    tlsPolicy: REQUIRE
+  suppressedReasons:
+    - BOUNCE
+    - COMPLAINT

@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurekeyvaultkey
+spec:
+  # The harness deploys the fixture resource group and vault (registry
+  # prerequisite chain), creates an RSA-2048 wrap/unwrap key with a rotation
+  # policy, verifies it via its ARM read proxy (generic GetByID on the key's
+  # versionless ARM id), destroys it, and verifies it is gone -- on both
+  # provisioners. The key is a DATA-PLANE object: the run depends on the
+  # subscription-scoped "Key Vault Administrator" bootstrap grant the
+  # harness Setup ensures.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15

@@ -30,16 +30,18 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
   name: my-app-pipeline
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: dev.AwsCodePipeline.my-app-pipeline
 spec:
   region: us-west-2
-  roleArn: arn:aws:iam::123456789012:role/codepipeline-service-role
+  roleArn:
+    value: arn:aws:iam::123456789012:role/codepipeline-service-role
   artifactStores:
-    - location: my-pipeline-artifacts-bucket
+    - location:
+        value: my-pipeline-artifacts-bucket
   stages:
     - name: Source
       actions:
@@ -106,6 +108,37 @@ This creates a V2 pipeline with a GitHub source stage and a CodeBuild build stag
 |-------|------|-------------|------------|
 | `name` | `string` | Stage name. Must be unique within the pipeline. | **Required**, 1–100 characters |
 | `actions` | `Action[]` | Operations performed in this stage. Same `runOrder` = parallel; different `runOrder` = sequential. | **Required**, minimum 1 action |
+| `beforeEntry` | `StageCondition` | Entry gate: rules that must pass before the stage starts (e.g., a `DeploymentWindow` rule). V2 only. | — |
+| `onSuccess` | `StageCondition` | Post-success verification: a failing rule fails the stage despite successful actions (e.g., a `CloudWatchAlarm` check). V2 only. | — |
+| `onFailure` | `FailureHandling` | What happens when the stage fails: roll back, retry, or rule-gated handling. V2 only. | — |
+
+### StageCondition Fields (`beforeEntry` / `onSuccess` / `onFailure.condition`)
+
+| Field | Type | Description | Validation |
+|-------|------|-------------|------------|
+| `result` | `string` | Outcome when the rules do NOT pass: `FAIL` (default) or `SKIP` (skip the stage; entry gates). | — |
+| `rules` | `Rule[]` | Checks making up the condition, AND'd together. | **Required**, 1–5 rules |
+
+### Rule Fields
+
+| Field | Type | Description | Validation |
+|-------|------|-------------|------------|
+| `name` | `string` | Rule name, unique within the condition. | **Required** |
+| `ruleTypeId` | `RuleTypeId` | Which managed rule runs: `provider` is `DeploymentWindow`, `CloudWatchAlarm`, `LambdaInvoke`, `VariableCheck`, or `Commands`; `category`/`owner` default to `Rule`/`AWS`. | **Required** |
+| `configuration` | `map<string,string>` | Rule-provider-specific keys (e.g., `Cron` + `TimeZone` for DeploymentWindow; `AlarmName` + `WaitTime` for CloudWatchAlarm). | — |
+| `commands` | `string[]` | Shell commands for the `Commands` rule provider. | Max 50, each 1–1000 chars |
+| `inputArtifacts` | `string[]` | Artifacts available to the rule. | — |
+| `region` | `string` | Region the rule executes in. | — |
+| `roleArn` | `StringValueOrRef` | Role the rule assumes instead of the pipeline's role. | — |
+| `timeoutInMinutes` | `int` | Rule timeout. | 5–86400 |
+
+### FailureHandling Fields (`onFailure`)
+
+| Field | Type | Description | Validation |
+|-------|------|-------------|------------|
+| `result` | `string` | `ROLLBACK` (revert the stage to its last successful state), `RETRY`, or `FAIL`. | — |
+| `retryConfiguration.retryMode` | `string` | `FAILED_ACTIONS` (re-run only failures) or `ALL_ACTIONS` (whole stage). | Requires `result: RETRY` |
+| `condition` | `StageCondition` | Rules gating the failure handling. | — |
 
 ### Action Fields
 
@@ -123,7 +156,7 @@ This creates a V2 pipeline with a GitHub source stage and a CodeBuild build stag
 | `region` | `string` | — | AWS region where this action executes. Required for cross-region actions. Defaults to the pipeline's region. | — |
 | `roleArn` | `string` | — | IAM role ARN the action assumes instead of the pipeline role. Useful for cross-account deployments. Can reference an AwsIamRole resource via `valueFrom`. | — |
 | `runOrder` | `int` | `1` | Execution order within a stage. Same value = parallel; lower values run first. | 1–999 |
-| `timeoutInMinutes` | `int` | — | Maximum action runtime before timeout. If omitted, the provider default applies. | 5–86400 |
+| `timeoutInMinutes` | `int` | — | Timeout override — AWS supports it ONLY on Manual Approval actions (`category: Approval`, `provider: Manual`); other action types are rejected at creation. | 5–86400 |
 
 ### Trigger Fields
 
@@ -154,7 +187,7 @@ This creates a V2 pipeline with a GitHub source stage and a CodeBuild build stag
 |-------|------|-------------|
 | `branches` | `GitFilter` | Target branch name patterns (glob syntax). |
 | `filePaths` | `GitFilter` | Changed file path patterns (glob syntax). |
-| `events` | `string[]` | PR lifecycle events: `OPEN`, `UPDATE`, `CLOSED`. |
+| `events` | `string[]` | PR lifecycle events: `OPEN`, `UPDATED`, `CLOSED`. |
 
 ### GitFilter Fields
 
@@ -178,6 +211,12 @@ This creates a V2 pipeline with a GitHub source stage and a CodeBuild build stag
 | `triggers_require_v2` | Triggers are only supported on V2 pipelines. Set `pipelineType` to `V2` or remove triggers. |
 | `variables_require_v2` | Variables are only supported on V2 pipelines. Set `pipelineType` to `V2` or remove variables. |
 | `advanced_execution_mode_requires_v2` | Execution modes `QUEUED` and `PARALLEL` are only supported on V2 pipelines. |
+| `stage_conditions_require_v2` | Stage `beforeEntry` / `onSuccess` / `onFailure` conditions are only supported on V2 pipelines. |
+| `artifact_stores_region_shape` | A single artifact store must omit `region`; multiple (cross-region) stores must each set it. |
+| `retry_configuration_requires_retry_result` | `onFailure.retryConfiguration` requires `result: RETRY`. |
+| `git_configuration_needs_filter` | A trigger's git configuration needs at least one push or pull-request filter. |
+| `git_filter_needs_pattern` | A git filter block needs at least one includes or excludes pattern. |
+| `timeout_only_for_approval_actions` | `timeoutInMinutes` is only supported on Manual Approval actions. |
 
 ## Examples
 
@@ -190,7 +229,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
   name: my-app-ci
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -199,9 +238,11 @@ spec:
   region: us-west-2
   pipelineType: V2
   executionMode: QUEUED
-  roleArn: arn:aws:iam::123456789012:role/codepipeline-service-role
+  roleArn:
+    value: arn:aws:iam::123456789012:role/codepipeline-service-role
   artifactStores:
-    - location: my-pipeline-artifacts-bucket
+    - location:
+        value: my-pipeline-artifacts-bucket
   stages:
     - name: Source
       actions:
@@ -250,7 +291,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
   name: my-service-deploy
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -259,9 +300,11 @@ spec:
   region: us-west-2
   pipelineType: V2
   executionMode: QUEUED
-  roleArn: arn:aws:iam::123456789012:role/codepipeline-service-role
+  roleArn:
+    value: arn:aws:iam::123456789012:role/codepipeline-service-role
   artifactStores:
-    - location: my-pipeline-artifacts-bucket
+    - location:
+        value: my-pipeline-artifacts-bucket
   stages:
     - name: Source
       actions:
@@ -312,7 +355,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
   name: my-lambda-deploy
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -321,9 +364,11 @@ spec:
   region: us-west-2
   pipelineType: V2
   executionMode: SUPERSEDED
-  roleArn: arn:aws:iam::123456789012:role/codepipeline-service-role
+  roleArn:
+    value: arn:aws:iam::123456789012:role/codepipeline-service-role
   artifactStores:
-    - location: my-pipeline-artifacts-bucket
+    - location:
+        value: my-pipeline-artifacts-bucket
   stages:
     - name: Source
       actions:
@@ -361,7 +406,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
   name: prod-release-pipeline
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -370,10 +415,14 @@ spec:
   region: us-west-2
   pipelineType: V2
   executionMode: QUEUED
-  roleArn: arn:aws:iam::123456789012:role/codepipeline-service-role
+  roleArn:
+    value: arn:aws:iam::123456789012:role/codepipeline-service-role
   artifactStores:
-    - location: artifacts-us-east-1
-    - location: artifacts-eu-west-1
+    - location:
+        value: artifacts-us-east-1
+      region: us-east-1
+    - location:
+        value: artifacts-eu-west-1
       region: eu-west-1
   stages:
     - name: Source
@@ -463,7 +512,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
   name: ref-pipeline
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

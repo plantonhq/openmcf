@@ -27,7 +27,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJob
 metadata:
   name: db-migrate
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -62,8 +62,6 @@ This creates a Job that runs one pod to completion in the `my-namespace` namespa
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation. |
 | `resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation. |
@@ -95,7 +93,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJob
 metadata:
   name: db-migrate
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -136,7 +134,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJob
 metadata:
   name: batch-processor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -182,7 +180,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJob
 metadata:
   name: etl-pipeline
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

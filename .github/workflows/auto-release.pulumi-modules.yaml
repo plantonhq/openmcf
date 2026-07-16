@@ -127,9 +127,14 @@ jobs:
           \`apis/dev/planton/provider/${PROVIDER}/${COMPONENT}/v1/iac/pulumi/\`
           EOF
             
+            # --latest=false: component point releases carry no infra-charts/version.txt
+            # assets, so they must never move the /releases/latest pointer that chart
+            # consumers (e.g. the desktop daemon's chart seeder) resolve. Only the
+            # strict-semver orchestrated release marks latest.
             gh release create "${TAG}" \
               --title "${TAG}" \
-              --notes-file release-notes.md
+              --notes-file release-notes.md \
+              --latest=false
             
             echo "Created release: ${TAG}"
           fi

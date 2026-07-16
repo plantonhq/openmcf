@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsredshiftserverlessworkgroup
+spec:
+  # A Redshift Serverless workgroup under live E2E: the harness deploys
+  # the AwsVpc + three-AZ AwsSubnet prerequisites (serverless requires
+  # the workgroup's subnets to span three availability zones) and the
+  # AwsRedshiftServerlessNamespace data-plane prerequisite, then runs
+  # deploy -> GetWorkgroup verify -> destroy -> verify-destroyed on both
+  # provisioners. The scenario fixes an 8-RPU baseline and runs no
+  # queries, so RPU charges are effectively zero. Workgroup provisioning
+  # dominates the runtime (the provider allows up to 20 minutes each
+  # way); AWS also serializes namespace/workgroup operations, so lanes
+  # must run serially.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 60

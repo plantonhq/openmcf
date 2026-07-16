@@ -6,6 +6,7 @@ spec:
   region: <azure-region>
   resourceGroup:
     value: "<your-resource-group-name>"
-  name: <environment-name>
+  environmentName: my-container-env
+  logsDestination: LOG_ANALYTICS
   logAnalyticsWorkspaceId:
     value: "<log-analytics-workspace-id>"

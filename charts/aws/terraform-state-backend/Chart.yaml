@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: AWS Terraform State Backend
+spec:
+  selector:
+    kind: platform
+  description: Production-hardened S3 state backend for Terraform and OpenTofu — versioned, encrypted, locked, and ready to wire into Planton in minutes.
+  iconUrl: https://assets.planton.ai/apis/connect/terraformbackendcredential/v1/assets/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/aws/terraform-state-backend
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/aws/terraform-state-backend/README.md

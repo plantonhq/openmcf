@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHubSchemaGroup
+metadata:
+  name: my-telemetry-schemas
+spec:
+  namespaceId:
+    valueFrom:
+      kind: AzureEventHubNamespace
+      name: my-telemetry-hubs
+      fieldPath: status.outputs.namespace_id
+  schemaGroupName: telemetry-schemas
+  # BACKWARD: new schemas read data written with older ones -- upgrade
+  # consumers first. The standard policy for analytics pipelines.
+  schemaCompatibility: BACKWARD
+  # Avro is the registry's first-class format.
+  schemaType: AVRO

@@ -3,73 +3,106 @@ package module
 import (
 	"github.com/pkg/errors"
 	azurepublicipv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurepublicip/v1"
-	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider"
 	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/network"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func Resources(ctx *pulumi.Context, stackInput *azurepublicipv1.AzurePublicIpStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
-	azureProviderConfig := stackInput.ProviderConfig
 
-	// Create azure provider using the credentials from the input
-	azureProvider, err := azure.NewProvider(ctx,
-		"azure",
-		&azure.ProviderArgs{
-			ClientId:       pulumi.String(azureProviderConfig.ClientId),
-			ClientSecret:   pulumi.String(azureProviderConfig.ClientSecret),
-			SubscriptionId: pulumi.String(azureProviderConfig.SubscriptionId),
-			TenantId:       pulumi.String(azureProviderConfig.TenantId),
-		})
+	// Build the Azure provider from the stack input via the shared builder, which resolves
+	// the right credential mechanism (static client secret, keyless web identity, or ambient chain).
+	azureProvider, err := pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to create azure provider")
 	}
 
 	spec := locals.AzurePublicIp.Spec
 
-	// Build Public IP arguments.
-	// SKU is always Standard (Basic was retired Sept 2025).
-	// Allocation is always Static (Standard SKU requires it).
+	// Lifecycle notes worth knowing before operating this resource:
+	// - reverse_fqdn, ddos settings, idle timeout, and tags update IN
+	//   PLACE. Name, SKU/tier, version, zones, prefix membership, ip_tags,
+	//   and edge zone are fixed at creation -- changing any of them
+	//   replaces the resource and with it the ACTUAL ADDRESS, so treat
+	//   replacement as a coordinated migration (DNS, allowlists).
+	// - Allocation is always Static: dynamic allocation existed only for
+	//   the Basic SKU, whose creation Azure discontinued in 2025, and every
+	//   current SKU requires static.
 	publicIpArgs := &network.PublicIpArgs{
 		Name:              pulumi.String(spec.Name),
 		Location:          pulumi.String(spec.Region),
 		ResourceGroupName: pulumi.String(locals.ResourceGroupName),
 		AllocationMethod:  pulumi.String("Static"),
-		Sku:               pulumi.String("Standard"),
 		Tags:              pulumi.ToStringMap(locals.AzureTags),
 	}
 
-	// Set domain name label if specified
+	// Only explicit enum choices are sent, so an unspecified spec and
+	// Azure's defaults (Standard / Regional / IPv4 / region-unique label /
+	// VirtualNetworkInherited DDoS stance) deploy identically on both
+	// engines.
+	if locals.Sku != "" {
+		publicIpArgs.Sku = pulumi.String(locals.Sku)
+	}
+	if locals.SkuTier != "" {
+		publicIpArgs.SkuTier = pulumi.String(locals.SkuTier)
+	}
+	if locals.IpVersion != "" {
+		publicIpArgs.IpVersion = pulumi.String(locals.IpVersion)
+	}
+	if len(spec.Zones) > 0 {
+		publicIpArgs.Zones = pulumi.ToStringArray(spec.Zones)
+	}
+	if locals.PublicIpPrefixId != "" {
+		publicIpArgs.PublicIpPrefixId = pulumi.String(locals.PublicIpPrefixId)
+	}
 	if spec.DomainNameLabel != "" {
 		publicIpArgs.DomainNameLabel = pulumi.String(spec.DomainNameLabel)
 	}
-
-	// Set availability zones if specified
-	if len(spec.Zones) > 0 {
-		zones := pulumi.StringArray{}
-		for _, zone := range spec.Zones {
-			zones = append(zones, pulumi.String(zone))
-		}
-		publicIpArgs.Zones = zones
+	if locals.DomainNameLabelScope != "" {
+		publicIpArgs.DomainNameLabelScope = pulumi.String(locals.DomainNameLabelScope)
+	}
+	if spec.ReverseFqdn != "" {
+		publicIpArgs.ReverseFqdn = pulumi.String(spec.ReverseFqdn)
+	}
+	if len(spec.IpTags) > 0 {
+		publicIpArgs.IpTags = pulumi.ToStringMap(spec.IpTags)
+	}
+	if locals.DdosProtectionMode != "" {
+		publicIpArgs.DdosProtectionMode = pulumi.String(locals.DdosProtectionMode)
+	}
+	// Only valid alongside the ENABLED mode (spec-level validation enforces
+	// the pairing).
+	if spec.DdosProtectionPlanId != "" {
+		publicIpArgs.DdosProtectionPlanId = pulumi.String(spec.DdosProtectionPlanId)
+	}
+	if spec.EdgeZone != "" {
+		publicIpArgs.EdgeZone = pulumi.String(spec.EdgeZone)
 	}
 
-	// Set idle timeout (uses default from proto if not explicitly set)
-	publicIpArgs.IdleTimeoutInMinutes = pulumi.Int(int(spec.GetIdleTimeoutInMinutes()))
+	// Presence-guarded: the getter returns 0 when the optional field is
+	// unset, which azurerm's 4-30 validation rejects. An absent spec value
+	// falls back to Azure's default (4) -- the same value the Terraform
+	// module's optional(number, 4) encodes.
+	if spec.IdleTimeoutInMinutes != nil {
+		publicIpArgs.IdleTimeoutInMinutes = pulumi.Int(int(spec.GetIdleTimeoutInMinutes()))
+	} else {
+		publicIpArgs.IdleTimeoutInMinutes = pulumi.Int(4)
+	}
 
-	// Create the Public IP
-	publicIp, err := network.NewPublicIp(ctx,
+	createdPublicIp, err := network.NewPublicIp(ctx,
 		spec.Name,
 		publicIpArgs,
 		pulumi.Provider(azureProvider))
 	if err != nil {
-		return errors.Wrapf(err, "failed to create Public IP %s", spec.Name)
+		return errors.Wrapf(err, "failed to create public ip %s", spec.Name)
 	}
 
-	// Export stack outputs
-	ctx.Export(OpPublicIpId, publicIp.ID())
-	ctx.Export(OpIpAddress, publicIp.IpAddress)
-	ctx.Export(OpFqdn, publicIp.Fqdn)
-	ctx.Export(OpPublicIpName, publicIp.Name)
+	// Export stack outputs from the created resource.
+	ctx.Export(OpPublicIpId, createdPublicIp.ID())
+	ctx.Export(OpIpAddress, createdPublicIp.IpAddress)
+	ctx.Export(OpFqdn, createdPublicIp.Fqdn)
+	ctx.Export(OpPublicIpName, createdPublicIp.Name)
 
 	return nil
 }

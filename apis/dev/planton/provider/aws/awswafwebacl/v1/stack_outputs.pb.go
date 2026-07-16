@@ -26,8 +26,8 @@ const (
 //
 // The primary output is `web_acl_arn`, which downstream resources use to
 // associate the Web ACL with protected resources via StringValueOrRef. For
-// example, an AwsAlb or AwsHttpApiGateway references the Web ACL ARN to
-// enable WAF protection.
+// example, an AwsAlb (spec.web_acl_arn) or AwsCloudFront (spec.web_acl_arn)
+// references the Web ACL ARN to enable WAF protection.
 type AwsWafWebAclStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Amazon Resource Name (ARN) of the Web ACL. This is the primary
@@ -39,11 +39,15 @@ type AwsWafWebAclStackOutputs struct {
 	// The name of the Web ACL as specified in metadata.
 	WebAclName string `protobuf:"bytes,3,opt,name=web_acl_name,json=webAclName,proto3" json:"web_acl_name,omitempty"`
 	// The Web ACL Capacity Units (WCUs) consumed by all rules in this Web ACL.
-	// Maximum is 5,000 WCUs per Web ACL. Use this output to monitor capacity
-	// usage and plan rule additions.
-	Capacity      int32 `protobuf:"varint,4,opt,name=capacity,proto3" json:"capacity,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The default account limit is 5,000 WCUs per Web ACL. Use this output to
+	// monitor capacity usage and plan rule additions.
+	Capacity int32 `protobuf:"varint,4,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	// The URL to use in your application's client integration when the Web ACL
+	// serves CAPTCHA or Challenge actions (the AWS WAF JavaScript integration
+	// endpoint). Empty when the ACL uses neither action.
+	ApplicationIntegrationUrl string `protobuf:"bytes,5,opt,name=application_integration_url,json=applicationIntegrationUrl,proto3" json:"application_integration_url,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *AwsWafWebAclStackOutputs) Reset() {
@@ -104,18 +108,26 @@ func (x *AwsWafWebAclStackOutputs) GetCapacity() int32 {
 	return 0
 }
 
+func (x *AwsWafWebAclStackOutputs) GetApplicationIntegrationUrl() string {
+	if x != nil {
+		return x.ApplicationIntegrationUrl
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awswafwebacl_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awswafwebacl_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/aws/awswafwebacl/v1/stack_outputs.proto\x12(dev.planton.provider.aws.awswafwebacl.v1\"\x96\x01\n" +
+	"<dev/planton/provider/aws/awswafwebacl/v1/stack_outputs.proto\x12(dev.planton.provider.aws.awswafwebacl.v1\"\xd6\x01\n" +
 	"\x18AwsWafWebAclStackOutputs\x12\x1e\n" +
 	"\vweb_acl_arn\x18\x01 \x01(\tR\twebAclArn\x12\x1c\n" +
 	"\n" +
 	"web_acl_id\x18\x02 \x01(\tR\bwebAclId\x12 \n" +
 	"\fweb_acl_name\x18\x03 \x01(\tR\n" +
 	"webAclName\x12\x1a\n" +
-	"\bcapacity\x18\x04 \x01(\x05R\bcapacityB\xe3\x02\n" +
+	"\bcapacity\x18\x04 \x01(\x05R\bcapacity\x12>\n" +
+	"\x1bapplication_integration_url\x18\x05 \x01(\tR\x19applicationIntegrationUrlB\xe3\x02\n" +
 	",com.dev.planton.provider.aws.awswafwebacl.v1B\x11StackOutputsProtoP\x01ZYgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awswafwebacl/v1;awswafwebaclv1\xa2\x02\x05DPPAA\xaa\x02(Dev.Planton.Provider.Aws.Awswafwebacl.V1\xca\x02(Dev\\Planton\\Provider\\Aws\\Awswafwebacl\\V1\xe2\x024Dev\\Planton\\Provider\\Aws\\Awswafwebacl\\V1\\GPBMetadata\xea\x02-Dev::Planton::Provider::Aws::Awswafwebacl::V1b\x06proto3"
 
 var (

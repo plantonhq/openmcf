@@ -105,8 +105,6 @@ kind: KubernetesZalandoPostgresOperator
 metadata:
   name: postgres-operator
 spec:
-  target_cluster:
-    cluster_name: my-gke-cluster
   namespace:
     value: postgres-operator
   create_namespace: true  # Creates the namespace
@@ -130,8 +128,6 @@ kind: KubernetesZalandoPostgresOperator
 metadata:
   name: postgres-operator
 spec:
-  target_cluster:
-    cluster_name: my-gke-cluster
   namespace:
     value: existing-postgres-namespace
   create_namespace: false  # Use existing namespace
@@ -160,8 +156,6 @@ metadata:
     org: my-company
     env: production
 spec:
-  target_cluster:
-    cluster_name: prod-gke-cluster
   namespace:
     value: postgres-operator
   create_namespace: true
@@ -202,7 +196,6 @@ spec:
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `target_cluster.cluster_name` | string | Yes | - | Name of the target Kubernetes cluster |
 | `namespace.value` | string | Yes | - | Kubernetes namespace for the operator |
 | `create_namespace` | bool | Yes | - | Whether to create the namespace (true) or use existing (false) |
 

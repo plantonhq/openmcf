@@ -12,8 +12,8 @@ This preset creates an Azure App Service Plan with the Consumption (Y1) SKU — 
 
 ## Key Configuration Choices
 
-- **Consumption SKU** (`skuName: Y1`) -- True serverless: scales from 0 to 200 instances automatically. No worker count or scaling configuration needed — Azure manages everything
-- **Linux** (`osType: Linux`) -- ForceNew. Linux plans support Node.js, Python, Java, .NET, and PowerShell. Change to Windows if your functions require Windows-specific features
+- **Consumption SKU** (`skuName: CONSUMPTION_Y1`) -- True serverless: scales from 0 to 200 instances automatically. No worker count or scaling configuration needed — Azure manages everything
+- **Linux** (`osType: LINUX`) -- ForceNew. Linux plans support Node.js, Python, Java, .NET, and PowerShell. Change to WINDOWS if your functions require Windows-specific features
 - **No worker count** -- The Consumption plan auto-manages instances. `workerCount`, `zoneBalancingEnabled`, and `maximumElasticWorkerCount` do not apply
 - **Cold start** -- Functions may experience 1–10 second cold starts after idle periods. Use the Premium (EP) plan if cold starts are unacceptable
 

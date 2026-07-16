@@ -1,27 +1,49 @@
-output "rds_instance_id" {
-  value = aws_db_instance.this.id
+output "instance_identifier" {
+  description = "The instance identifier -- the handle RDS APIs and the console use."
+  value       = aws_db_instance.this.identifier
 }
 
-output "rds_instance_arn" {
-  value = aws_db_instance.this.arn
+output "arn" {
+  description = "The instance's Amazon Resource Name."
+  value       = aws_db_instance.this.arn
 }
 
-output "rds_instance_endpoint" {
-  value = aws_db_instance.this.address
+output "resource_id" {
+  description = "The immutable DB instance resource ID (db-...) -- survives identifier renames; the durable handle for point-in-time restores, IAM auth policies, and CloudWatch dimensions."
+  value       = aws_db_instance.this.resource_id
 }
 
-output "rds_instance_port" {
-  value = aws_db_instance.this.port
+output "endpoint" {
+  description = "The connection endpoint in address:port form."
+  value       = aws_db_instance.this.endpoint
 }
 
-output "rds_subnet_group" {
-  value = coalesce(try(var.spec.db_subnet_group_name.value, null), try(aws_db_subnet_group.this[0].name, null))
+output "address" {
+  description = "The DNS address of the instance (endpoint without the port)."
+  value       = aws_db_instance.this.address
 }
 
-output "rds_security_group" {
-  value = try(element(local.ingress_sg_ids, 0), "")
+output "port" {
+  description = "The port the instance accepts connections on."
+  value       = aws_db_instance.this.port
 }
 
-output "rds_parameter_group" {
-  value = try(var.spec.parameter_group_name, "")
+output "hosted_zone_id" {
+  description = "The Route53 hosted zone ID of the endpoint, for DNS alias records."
+  value       = aws_db_instance.this.hosted_zone_id
+}
+
+output "engine_version_actual" {
+  description = "The engine version actually running -- meaningful when the spec leaves engine_version to the AWS default."
+  value       = aws_db_instance.this.engine_version_actual
+}
+
+output "master_user_secret_arn" {
+  description = "The ARN of the AWS-managed master-user secret in Secrets Manager (only when manage_master_user_password is true) -- the handle applications use to fetch credentials at runtime."
+  value       = try(aws_db_instance.this.master_user_secret[0].secret_arn, "")
+}
+
+output "db_subnet_group_name" {
+  description = "The DB subnet group the instance runs in (managed here or referenced)."
+  value       = try(coalesce(aws_db_instance.this.db_subnet_group_name, ""), "")
 }

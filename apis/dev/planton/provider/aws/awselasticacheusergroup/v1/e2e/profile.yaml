@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awselasticacheusergroup
+spec:
+  # An ElastiCache RBAC user group under live E2E: the harness deploys the
+  # AwsElasticacheUser prerequisite pair first, runs deploy -> DescribeUserGroups
+  # verify -> destroy -> verify-destroyed on both provisioners. The scenario
+  # references the prerequisite users by output — proving composed membership
+  # end to end. User groups are regional, free, and provision in seconds.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15

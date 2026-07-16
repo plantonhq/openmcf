@@ -33,7 +33,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaAuthorizationModel
 metadata:
   name: my-model
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   storeId: "01HXYZ..."
@@ -82,7 +82,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaAuthorizationModel
 metadata:
   name: basic-model
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   storeId: "01HXYZ..."
@@ -108,7 +108,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaAuthorizationModel
 metadata:
   name: json-model
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   storeId: "01HXYZ..."
@@ -148,7 +148,7 @@ apiVersion: openfga.planton.dev/v1
 kind: OpenFgaAuthorizationModel
 metadata:
   name: rbac-model
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
 spec:
   storeId:

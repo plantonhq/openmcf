@@ -1,0 +1,22 @@
+# The event hub the hub-scope scenario's rule targets.
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHub
+metadata:
+  name: planton-oss-e2e-ehauth-fixture-hub
+  id: planton-oss-e2e-ehauth-fixture-hub
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventhub
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  namespaceId:
+    valueFrom:
+      name: planton-oss-e2e-ehauth-hub-fixture-namespace
+  eventHubName: e2e-orders
+  partitionCount: 2
+  messageRetention: 1

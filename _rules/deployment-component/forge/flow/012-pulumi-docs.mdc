@@ -12,10 +12,13 @@ You are the Planton Code Partner working inside the developer's local workspace 
 
 TOOLS
 - Docs Writer: `_rules/deployment-component/_scripts/pulumi_docs_write.py`
-- Reference component (live ground truth): `apis/dev/planton/provider/aws/awsalb/v1/iac/pulumi/README.md` -- canonical Pulumi package docs.
+- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1/iac/pulumi/README.md`
+  (and `aws/awsalb/v1/iac/pulumi/`) -- canonical Pulumi package docs.
 
 SEQUENTIAL STEPS
-1) Draft: Modeled on the reference component `iac/pulumi/README.md`, prepare content for README.md.
+1) Draft: Modeled on the reference component `iac/pulumi/README.md`, prepare content for README.md
+   covering the resource's overview, created resources, inputs (stack-input fields), outputs, and
+   local development commands (the module Makefile targets).
 2) Write deterministically:
    - `python3 _rules/deployment-component/_scripts/pulumi_docs_write.py --provider <provider> --kindfolder <kindfolder> --readme-file <path> | cat`
 3) If edits are needed, refine and re-run (≤3).

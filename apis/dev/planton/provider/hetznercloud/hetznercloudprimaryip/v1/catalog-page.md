@@ -20,7 +20,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudPrimaryIp
 metadata:
   name: my-ip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -65,7 +65,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudPrimaryIp
 metadata:
   name: dev-ip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -86,7 +86,7 @@ metadata:
   name: mail-ip
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
@@ -109,7 +109,7 @@ metadata:
   name: web-ipv6
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
@@ -131,7 +131,7 @@ metadata:
   name: app-ip
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
@@ -152,7 +152,7 @@ metadata:
   name: app-01
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure

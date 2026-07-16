@@ -37,7 +37,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapStorageVirtualMachine
 metadata:
   name: my-svm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -91,7 +91,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapStorageVirtualMachine
 metadata:
   name: nfs-svm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +112,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapStorageVirtualMachine
 metadata:
   name: smb-svm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +143,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapStorageVirtualMachine
 metadata:
   name: multi-svm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -175,7 +175,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapStorageVirtualMachine
 metadata:
   name: linked-svm
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

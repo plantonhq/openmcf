@@ -49,17 +49,27 @@ message AwsMskClusterStackOutputs {
   // Populated when public access and SASL/SCRAM authentication are both enabled.
   string bootstrap_brokers_public_sasl_scram = 11;
 
+  // bootstrap_brokers_vpc_connectivity_tls is a comma-separated list of PrivateLink broker
+  // endpoints for mutual-TLS connections. Populated when vpc_connectivity.tls_enabled is true.
+  string bootstrap_brokers_vpc_connectivity_tls = 12;
+
+  // bootstrap_brokers_vpc_connectivity_sasl_iam is a comma-separated list of PrivateLink broker
+  // endpoints for SASL/IAM connections. Populated when vpc_connectivity.sasl_iam_enabled is true.
+  string bootstrap_brokers_vpc_connectivity_sasl_iam = 13;
+
+  // bootstrap_brokers_vpc_connectivity_sasl_scram is a comma-separated list of PrivateLink broker
+  // endpoints for SASL/SCRAM connections. Populated when vpc_connectivity.sasl_scram_enabled is true.
+  string bootstrap_brokers_vpc_connectivity_sasl_scram = 14;
+
   // zookeeper_connect_string is a comma-separated list of ZooKeeper endpoints for plaintext connections.
-  string zookeeper_connect_string = 12;
+  // Empty on KRaft-mode clusters (Kafka versions without ZooKeeper).
+  string zookeeper_connect_string = 15;
 
   // zookeeper_connect_string_tls is a comma-separated list of ZooKeeper endpoints for TLS connections.
-  string zookeeper_connect_string_tls = 13;
+  // Empty on KRaft-mode clusters (Kafka versions without ZooKeeper).
+  string zookeeper_connect_string_tls = 16;
 
-  // security_group_id is the ID of the managed security group, if one was created
-  // from security_group_ids or allowed_cidr_blocks in the spec.
-  string security_group_id = 14;
-
-  // configuration_arn is the ARN of the inline MSK Configuration resource,
+  // configuration_arn is the ARN of the module-managed MSK Configuration resource,
   // if one was created from server_properties in the spec.
-  string configuration_arn = 15;
+  string configuration_arn = 17;
 }

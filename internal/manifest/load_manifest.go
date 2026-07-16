@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -15,8 +16,10 @@ import (
 	"github.com/plantonhq/planton/internal/manifest/protodefaults"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/ulidgen"
+	"github.com/plantonhq/planton/pkg/yamldiag"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	goyaml "gopkg.in/yaml.v3"
 	"sigs.k8s.io/yaml"
 )
 
@@ -24,10 +27,25 @@ import (
 type ManifestLoadError struct {
 	ManifestPath string
 	Err          error
+	// Kind is the manifest's resolved kind name, for schema-reference hints.
+	Kind string
+	// Mismatches is the YAML-aware diagnosis of the failure: real line
+	// numbers, field paths, expected shapes. Empty when the failure is a
+	// value-format problem only the parser understands.
+	Mismatches []yamldiag.Mismatch
 }
 
+// Error renders the diagnosis when one exists, the parser error otherwise.
+// The diagnosis must live HERE and not only in the styled UI renderer:
+// surfaces that print the error value directly (chart validation reports,
+// wrapped errors in scripts and agent transcripts) would otherwise regress
+// to protojson's offsets into a JSON translation the author never wrote.
 func (e *ManifestLoadError) Error() string {
-	return e.Err.Error()
+	if len(e.Mismatches) == 0 {
+		return e.Err.Error()
+	}
+	return fmt.Sprintf("manifest does not fit the %s schema:\n%s",
+		e.Kind, yamldiag.FormatAll(e.Mismatches, e.Kind))
 }
 
 // IsManifestLoadError checks if an error is a ManifestLoadError.
@@ -40,6 +58,12 @@ func IsManifestLoadError(err error) bool {
 // Returns true if it was handled, false otherwise.
 func HandleManifestLoadError(err error) bool {
 	if mle, ok := err.(*ManifestLoadError); ok {
+		if len(mle.Mismatches) > 0 {
+			ui.ManifestDiagnosis(mle.ManifestPath, mle.Kind, mle.Mismatches)
+			return true
+		}
+		// No certain diagnosis -- fall back to the legacy display, which
+		// salvages what it can from the parser error text.
 		ui.ManifestLoadError(mle.ManifestPath, mle.Err)
 		return true
 	}
@@ -64,14 +88,22 @@ func LoadManifest(manifestPath string) (proto.Message, error) {
 		return nil, errors.Wrapf(err, "failed to read manifest file %s", manifestPath)
 	}
 
+	return LoadManifestBytes(manifestYamlBytes, manifestPath)
+}
+
+// LoadManifestBytes unmarshals an in-memory manifest into its kind's typed proto message
+// and applies proto-declared defaults. The manifest never needs to exist on disk, which is
+// what rendered-template validation (e.g. infra-chart templates) relies on. sourceName is
+// used only in error messages (a file path, or a "chart/template.yaml[docN]" style label).
+func LoadManifestBytes(manifestYamlBytes []byte, sourceName string) (proto.Message, error) {
 	jsonBytes, err := yaml.YAMLToJSON(manifestYamlBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load yaml to json")
 	}
 
-	kindName, err := crkreflect.ExtractKindFromTargetManifest(manifestPath)
+	kindName, err := extractKindName(manifestYamlBytes)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to extract cloudResourceKind from %s stack input yaml", manifestPath)
+		return nil, errors.Wrapf(err, "failed to extract cloudResourceKind from %s", sourceName)
 	}
 
 	cloudResourceKind := crkreflect.KindFromString(kindName)
@@ -81,9 +113,22 @@ func LoadManifest(manifestPath string) (proto.Message, error) {
 	if manifest == nil {
 		return nil, formatUnsupportedResourceError(kindName)
 	}
+	// ToMessageMap holds shared instances; clone so concurrent/repeated loads never
+	// unmarshal into the same message.
+	manifest = proto.Clone(manifest)
 
 	if err := protojson.Unmarshal(jsonBytes, manifest); err != nil {
-		return nil, &ManifestLoadError{ManifestPath: manifestPath, Err: err}
+		// protojson stays the authority on what loads; its error, however,
+		// carries offsets into the single-line JSON translation above --
+		// meaningless to the author. Diagnose against the ORIGINAL bytes,
+		// where the positions still exist. When the diagnoser is not certain
+		// it stays empty and the parser error remains the message.
+		return nil, &ManifestLoadError{
+			ManifestPath: sourceName,
+			Err:          err,
+			Kind:         kindName,
+			Mismatches:   yamldiag.Diagnose(manifestYamlBytes, manifest.ProtoReflect().Descriptor()),
+		}
 	}
 
 	// Apply defaults from proto field options
@@ -92,6 +137,25 @@ func LoadManifest(manifestPath string) (proto.Message, error) {
 	}
 
 	return manifest, nil
+}
+
+// extractKindName reads the top-level 'kind' key from raw manifest YAML. It is the
+// in-memory equivalent of crkreflect.ExtractKindFromTargetManifest so byte- and
+// path-based loading resolve kinds identically.
+func extractKindName(manifestYamlBytes []byte) (string, error) {
+	var yamlData map[string]interface{}
+	if err := goyaml.Unmarshal(manifestYamlBytes, &yamlData); err != nil {
+		return "", errors.Wrap(err, "failed to unmarshal manifest YAML")
+	}
+	kind, ok := yamlData["kind"]
+	if !ok {
+		return "", errors.New("key 'kind' not found in manifest YAML")
+	}
+	kindStr, ok := kind.(string)
+	if !ok {
+		return "", errors.New("value of 'kind' key is not a string")
+	}
+	return kindStr, nil
 }
 
 func downloadManifest(manifestUrl string) (string, error) {

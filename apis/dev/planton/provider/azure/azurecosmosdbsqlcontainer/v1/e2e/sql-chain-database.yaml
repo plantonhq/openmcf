@@ -1,0 +1,22 @@
+# Scenario-local SQL database for the container chain. Deploys after
+# the chain account; containers reference this database by name.
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbSqlDatabase
+metadata:
+  name: planton-oss-e2e-cosmossqlchain-fixture-database
+  id: planton-oss-e2e-cosmossqlchain-fixture-database
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecosmosdbsqldatabase
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cosmosdbAccountId:
+    valueFrom:
+      name: planton-oss-e2e-cosmossqlchain-fixture-account
+  databaseName: chaindb
+  throughput: 400

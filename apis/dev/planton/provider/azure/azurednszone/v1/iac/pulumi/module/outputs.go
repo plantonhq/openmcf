@@ -1,11 +1,9 @@
 package module
 
 const (
-	OpNameservers = "nameservers"
-	OpZoneId      = "zone_id"
-	OpZoneName    = "zone_name"
-)
-
-const (
-	OpOutputKey = "value"
+	OpZoneId                = "zone_id"
+	OpZoneName              = "zone_name"
+	OpResourceGroupName     = "resource_group_name"
+	OpNameServers           = "name_servers"
+	OpMaxNumberOfRecordSets = "max_number_of_record_sets"
 )

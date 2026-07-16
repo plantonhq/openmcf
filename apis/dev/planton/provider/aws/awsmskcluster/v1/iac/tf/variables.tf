@@ -1,69 +1,69 @@
 variable "metadata" {
-  description = "Resource metadata"
+  description = "Cloud resource metadata"
   type = object({
-    id   = string
     name = string
-    org  = optional(string, "")
-    env  = optional(string, "")
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "AwsMskClusterSpec - desired state of the MSK cluster"
+  description = "AwsMskCluster specification"
   type = object({
-    # The AWS region where the MSK cluster will be created.
     region = string
-
-    kafka_version          = string
+    kafka_version = string
     number_of_broker_nodes = number
-    instance_type          = string
-
-    subnet_ids                   = list(string)
-    security_group_ids           = optional(list(string), [])
-    allowed_cidr_blocks          = optional(list(string), [])
-    associate_security_group_ids = optional(list(string), [])
-    vpc_id                       = optional(string, "")
-
-    ebs_volume_size_gib            = optional(number, null)
-    provisioned_throughput_enabled  = optional(bool, false)
-    provisioned_throughput_mbs      = optional(number, 0)
-    storage_mode                   = optional(string, "")
-
-    kms_key_arn              = optional(string, "")
-    client_broker_encryption = optional(string, "TLS")
-    in_cluster_encryption    = optional(bool, true)
-
+    instance_type = string
+    subnet_ids = list(string)
+    security_group_ids = list(string)
+    public_access_type = optional(string, "")
+    vpc_connectivity = optional(object({
+      sasl_iam_enabled = optional(bool, false)
+      sasl_scram_enabled = optional(bool, false)
+      tls_enabled = optional(bool, false)
+    }))
+    network_type = optional(string, "")
+    ebs_volume_size_gib = optional(number)
+    provisioned_throughput_enabled = optional(bool, false)
+    provisioned_throughput_mbs = optional(number, 0)
+    storage_mode = optional(string, "")
+    kms_key_arn = optional(string, "")
+    client_broker_encryption = optional(string)
+    in_cluster_encryption = optional(bool)
     authentication = optional(object({
-      sasl_iam_enabled                = optional(bool, false)
-      sasl_scram_enabled              = optional(bool, false)
-      tls_enabled                     = optional(bool, false)
-      tls_certificate_authority_arns  = optional(list(string), [])
-      unauthenticated                 = optional(bool, false)
-    }), null)
-
-    configuration_arn      = optional(string, "")
+      sasl_iam_enabled = optional(bool, false)
+      sasl_scram_enabled = optional(bool, false)
+      tls_enabled = optional(bool, false)
+      tls_certificate_authority_arns = optional(list(string), [])
+      unauthenticated = optional(bool, false)
+    }))
+    scram_secret_arns = optional(list(string), [])
+    cluster_policy = optional(string, "")
+    configuration_arn = optional(string, "")
     configuration_revision = optional(number, 0)
-    server_properties      = optional(map(string), {})
-
+    server_properties = optional(map(string), {})
     logging = optional(object({
       cloudwatch_logs = optional(object({
-        enabled   = bool
+        enabled = optional(bool, false)
         log_group = optional(string, "")
-      }), null)
+      }))
       firehose = optional(object({
-        enabled         = bool
+        enabled = optional(bool, false)
         delivery_stream = optional(string, "")
-      }), null)
+      }))
       s3 = optional(object({
-        enabled = bool
-        bucket  = optional(string, "")
-        prefix  = optional(string, "")
-      }), null)
-    }), null)
-
-    enhanced_monitoring   = optional(string, "DEFAULT")
-    jmx_exporter_enabled  = optional(bool, false)
+        enabled = optional(bool, false)
+        bucket = optional(string, "")
+        prefix = optional(string, "")
+      }))
+    }))
+    enhanced_monitoring = optional(string, "")
+    jmx_exporter_enabled = optional(bool, false)
     node_exporter_enabled = optional(bool, false)
-    public_access_type    = optional(string, "")
+    rebalancing_status = optional(string, "")
   })
 }

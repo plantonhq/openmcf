@@ -1,0 +1,23 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsBatchJobQueue
+metadata:
+  org: example-org
+  env: prod
+  name: spot-overflow-queue
+  id: spot-overflow-queue-id
+spec:
+  region: <aws-region>
+  priority: 10
+  computeEnvironmentOrder:
+    - order: 1
+      computeEnvironment:
+        valueFrom:
+          kind: AwsBatchComputeEnvironment
+          name: <spot-environment-name>
+          fieldPath: status.outputs.compute_environment_arn
+    - order: 2
+      computeEnvironment:
+        valueFrom:
+          kind: AwsBatchComputeEnvironment
+          name: <ondemand-environment-name>
+          fieldPath: status.outputs.compute_environment_arn

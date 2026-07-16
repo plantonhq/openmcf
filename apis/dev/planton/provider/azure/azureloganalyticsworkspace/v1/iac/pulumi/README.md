@@ -1,41 +1,30 @@
-# AzureLogAnalyticsWorkspace Pulumi Module
+# AzureLogAnalyticsWorkspace - Pulumi Module
 
-## Overview
-
-This Pulumi module provisions an Azure Log Analytics Workspace using the Azure Classic
-provider (`pulumi-azure`). It creates a single `operationalinsights.AnalyticsWorkspace`
-with configurable SKU, retention, and daily quota.
+Pulumi (Go) implementation for the AzureLogAnalyticsWorkspace deployment
+component, at 100% behavioral parity with the Terraform module.
 
 ## Resources Created
 
-- `operationalinsights.AnalyticsWorkspace` -- the Log Analytics Workspace
+- `operationalinsights.AnalyticsWorkspace` -- the workspace, carrying the
+  pricing tier, retention/quota dials, security and network posture, an
+  optional managed identity, and merged governance tags
 
-## Inputs
+## Implementation Notes
 
-The module receives an `AzureLogAnalyticsWorkspaceStackInput` containing:
+- The Azure provider is built through the shared
+  `pulumiazureprovider.Get` builder (static client secret, keyless web
+  identity, or ambient chain) -- never inline `NewProvider`.
+- Enum wire maps live in `locals.go` (SKU and identity-type vocabularies,
+  mechanically identical to the Terraform module's `locals.tf` maps).
+- True-default optional booleans are presence-guarded to the proto
+  defaults: stack inputs built from a manifest materialize defaults, but
+  direct stack-input paths do not.
+- `workspace_customer_id` exports the provider's WorkspaceId attribute
+  (the agent-facing GUID); `workspace_id` exports the ARM resource ID --
+  the FK seam downstream kinds reference.
 
-- `target.spec.region` -- Azure region
-- `target.spec.resource_group` -- resource group name (resolved from StringValueOrRef)
-- `target.spec.name` -- workspace name
-- `target.spec.sku` -- pricing tier (default: PerGB2018)
-- `target.spec.retention_in_days` -- data retention period (default: 30)
-- `target.spec.daily_quota_gb` -- daily ingestion cap (default: -1, unlimited)
-- `target.metadata` -- Planton metadata for tagging
-- `provider_config` -- Azure credentials
-
-## Outputs
-
-| Output | Description |
-|--------|-------------|
-| `workspace_id` | Azure Resource Manager ID |
-| `workspace_name` | Name of the workspace |
-| `primary_shared_key` | Primary authentication key (secret) |
-| `secondary_shared_key` | Secondary authentication key (secret) |
-
-## Local Development
+## Build
 
 ```bash
-make build       # Build the module
-make deps        # Download and tidy dependencies
-make update-deps # Update to latest planton
+make build
 ```

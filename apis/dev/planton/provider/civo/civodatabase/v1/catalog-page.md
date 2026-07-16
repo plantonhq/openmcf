@@ -25,7 +25,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoDatabase
 metadata:
   name: my-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -81,7 +81,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoDatabase
 metadata:
   name: dev-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -105,7 +105,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoDatabase
 metadata:
   name: prod-postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -135,7 +135,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoDatabase
 metadata:
   name: ref-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

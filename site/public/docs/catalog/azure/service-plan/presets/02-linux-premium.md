@@ -24,8 +24,8 @@ This preset creates an Azure App Service Plan on the Premium v3 P1v3 tier with 3
 
 ## Key Configuration Choices
 
-- **P1v3 SKU** (`skuName: P1v3`) -- 2 vCPUs, 8 GiB RAM, SSD storage; auto-scale to 30 instances, 20 staging slots
-- **Linux** (`osType: Linux`) -- Runs Linux-based web apps; sets `reserved = true` in the Azure API
+- **P1v3 SKU** (`skuName: PREMIUM_P1V3`) -- 2 vCPUs, 8 GiB RAM, SSD storage; auto-scale to 30 instances, 20 staging slots
+- **Linux** (`osType: LINUX`) -- Runs Linux-based web apps; sets `reserved = true` in the Azure API
 - **3 workers** (`workerCount: 3`) -- One per availability zone for even distribution; minimum recommended for zone redundancy
 - **Zone balancing** (`zoneBalancingEnabled: true`) -- Distributes instances across availability zones for higher resilience
 

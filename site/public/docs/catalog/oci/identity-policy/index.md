@@ -31,7 +31,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciIdentityPolicy
 metadata:
   name: my-admin-policy
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -80,7 +80,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciIdentityPolicy
 metadata:
   name: compartment-admin-policy
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -102,7 +102,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciIdentityPolicy
 metadata:
   name: workload-service-access
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -126,7 +126,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciIdentityPolicy
 metadata:
   name: auditor-policy
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -150,12 +150,13 @@ kind: OciIdentityPolicy
 metadata:
   name: network-admin-policy
   labels:
+    team: platform
+    cost-center: infrastructure
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: platform-infra
     pulumi.planton.dev/stack.name: prod.OciIdentityPolicy.network-admin-policy
-    team: platform
-    cost-center: infrastructure
 spec:
   compartmentId:
     valueFrom:

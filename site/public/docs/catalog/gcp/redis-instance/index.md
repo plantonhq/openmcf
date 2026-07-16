@@ -36,7 +36,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpRedisInstance
 metadata:
   name: my-redis
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -107,7 +107,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpRedisInstance
 metadata:
   name: prod-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -136,7 +136,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpRedisInstance
 metadata:
   name: analytics-redis
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -168,7 +168,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpRedisInstance
 metadata:
   name: secure-redis
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

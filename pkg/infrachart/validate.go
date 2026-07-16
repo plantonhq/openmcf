@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"buf.build/go/protovalidate"
@@ -48,18 +49,35 @@ type Doc struct {
 	refUses []refUse
 }
 
-// Report is the outcome of validating one chart.
-type Report struct {
-	ChartName string
-	Docs      []Doc
-	Issues    []Issue
+// VariantResult is the outcome of validating one render variant of a chart.
+type VariantResult struct {
+	// Name identifies the variant: "defaults", or "<param>=<value>" for a
+	// flipped bool toggle.
+	Name string
+	// Docs are the successfully loaded manifest documents the variant rendered.
+	Docs []Doc
+	// Issues are the variant's failures and warnings.
+	Issues []Issue
 }
 
-// HasErrors reports whether any issue is error-severity.
+// Report is the outcome of validating one chart across all its render
+// variants: the defaults (plus any --set overrides), then each bool param
+// flipped once so every conditional manifest is exercised in both branches —
+// one variant per toggle keeps the run linear in the number of toggles while
+// still rendering every conditional block at least once in each state.
+type Report struct {
+	ChartName string
+	ChartDir  string
+	Variants  []VariantResult
+}
+
+// HasErrors reports whether any variant carries an error-severity issue.
 func (r *Report) HasErrors() bool {
-	for _, issue := range r.Issues {
-		if issue.Severity == SeverityError {
-			return true
+	for _, v := range r.Variants {
+		for _, issue := range v.Issues {
+			if issue.Severity == SeverityError {
+				return true
+			}
 		}
 	}
 	return false
@@ -74,14 +92,18 @@ type Options struct {
 	Env string
 
 	// Set overrides param values by name (and may override org/env), letting
-	// the gate exercise feature toggles in their non-default positions.
+	// the gate exercise specific parameter combinations beyond the automatic
+	// per-toggle flips.
 	Set map[string]string
 }
 
-// Validate loads the chart at dir, renders it with its default values (plus
-// any overrides), and validates every rendered document and reference. It
-// returns an error only when the chart cannot be processed at all; rendering
-// and validation problems are returned as Issues in the Report.
+// Validate loads the chart at dir and validates it offline across render
+// variants: the defaults variant (declared values plus any Set overrides),
+// then one variant per bool param with that toggle flipped. Every rendered
+// document and reference is checked per variant; reference-target severity is
+// variant-aware (see checkReferences). It returns an error only when the
+// chart cannot be processed at all; rendering and validation problems are
+// returned as Issues in the Report.
 func Validate(dir string, opts Options) (*Report, error) {
 	chart, err := LoadDir(dir)
 	if err != nil {
@@ -97,24 +119,60 @@ func Validate(dir string, opts Options) (*Report, error) {
 		env = "dev"
 	}
 
-	ctx, placeholders, err := buildContext(chart.Params, org, env, opts.Set)
-	if err != nil {
-		return nil, err
-	}
+	report := &Report{ChartName: chart.Name, ChartDir: dir}
 
-	report := &Report{ChartName: chart.Name}
-
-	for _, tpl := range chart.Templates {
-		report.validateTemplate(tpl, ctx, placeholders)
+	for _, variant := range planVariants(chart.Params, opts.Set) {
+		ctx, placeholders, err := buildContext(chart.Params, org, env, variant.set)
+		if err != nil {
+			return nil, err
+		}
+		result := VariantResult{Name: variant.name}
+		for _, tpl := range chart.Templates {
+			result.validateTemplate(tpl, ctx, placeholders)
+		}
+		report.Variants = append(report.Variants, result)
 	}
 
 	report.checkReferences()
 	return report, nil
 }
 
+// variantPlan is one render variant to validate: its display name and the
+// full --set-style override map to build its context with.
+type variantPlan struct {
+	name string
+	set  map[string]string
+}
+
+// planVariants produces the defaults variant (declared values + explicit Set
+// overrides) followed by one variant per bool param with the toggle flipped
+// relative to its effective default. Params the caller explicitly Set are not
+// auto-flipped — an explicit override is a deliberate arm choice.
+func planVariants(params []Param, set map[string]string) []variantPlan {
+	variants := []variantPlan{{name: "defaults", set: set}}
+	for _, p := range params {
+		if p.Type != paramTypeBool {
+			continue
+		}
+		if _, overridden := set[p.Name]; overridden {
+			continue
+		}
+		current, _ := p.Value.(bool)
+		flipped := strconv.FormatBool(!current)
+
+		variantSet := make(map[string]string, len(set)+1)
+		for k, v := range set {
+			variantSet[k] = v
+		}
+		variantSet[p.Name] = flipped
+		variants = append(variants, variantPlan{name: p.Name + "=" + flipped, set: variantSet})
+	}
+	return variants
+}
+
 // validateTemplate renders one template file and validates every document in
-// it, appending issues and docs to the report.
-func (r *Report) validateTemplate(tpl TemplateFile, ctx map[string]any, placeholders []string) {
+// it, appending issues and docs to the variant result.
+func (r *VariantResult) validateTemplate(tpl TemplateFile, ctx map[string]any, placeholders []string) {
 	addError := func(format string, args ...any) {
 		r.Issues = append(r.Issues, Issue{Severity: SeverityError, File: tpl.Name, Message: fmt.Sprintf(format, args...)})
 	}
@@ -156,7 +214,7 @@ func (r *Report) validateTemplate(tpl TemplateFile, ctx map[string]any, placehol
 // validateDoc validates one rendered document: strict schema load, presence
 // of metadata.name, the spec's full protovalidate/CEL rule set, and collects
 // its valueFrom references for the cross-document pass.
-func (r *Report) validateDoc(file string, docYaml []byte) {
+func (r *VariantResult) validateDoc(file string, docYaml []byte) {
 	msg, err := loadRenderedDoc(docYaml)
 	if err != nil {
 		r.Issues = append(r.Issues, Issue{Severity: SeverityError, File: file, Message: compactError(err)})
@@ -201,68 +259,105 @@ func (r *Report) validateDoc(file string, docYaml []byte) {
 	r.Docs = append(r.Docs, doc)
 }
 
-// checkReferences runs the cross-document pass: per-reference integrity
-// (annotations, field-path resolution), in-chart target resolution, and
-// dependency-cycle detection.
+// checkReferences runs the cross-document pass on every variant:
+// per-reference integrity (annotations, field-path resolution), reference
+// target resolution, and dependency-cycle detection.
+//
+// Target resolution is variant-aware, and unresolved targets are WARNINGS
+// with two distinct diagnoses:
+//
+//   - target defined by some OTHER variant of the same chart: either a
+//     toggle removed the resource while a reference still stands (a real
+//     defect), or this is a bring-your-own arm whose parameter redirects
+//     the same reference to a resource owned outside the chart (a designed
+//     pattern — e.g. one network_name param naming the chart's own VPC in
+//     one arm and a landing zone's VPC in the other). The two are
+//     offline-indistinguishable, so the warning says exactly what to verify
+//     rather than false-failing the designed pattern;
+//   - target no variant defines: the plain cross-chart case — charts
+//     compose onto resources owned elsewhere by design, resolved in the
+//     target environment at deploy time.
+//
+// A reference that names an env explicitly points outside this chart's
+// deployment by design and is never treated as an in-chart edge.
 func (r *Report) checkReferences() {
-	// Index the chart's own resources by (kind, name). A duplicate identity
-	// is an error — the platform's dependency graph could not tell the two
-	// resources apart.
-	index := map[refTarget]int{}
-	for i, doc := range r.Docs {
-		if doc.Name == "" {
-			continue
+	// Union of every identity any variant renders — the "this chart can
+	// define it" set that separates toggle breakage from cross-chart intent.
+	anyVariant := map[refTarget]bool{}
+	for _, v := range r.Variants {
+		for _, doc := range v.Docs {
+			if doc.Name == "" {
+				continue
+			}
+			anyVariant[refTarget{kind: crkreflect.KindFromString(doc.Kind), name: doc.Name}] = true
 		}
-		key := refTarget{kind: crkreflect.KindFromString(doc.Kind), name: doc.Name}
-		if prev, dup := index[key]; dup {
-			r.Issues = append(r.Issues, Issue{
-				Severity: SeverityError, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
-				Message: fmt.Sprintf("duplicate resource identity: %s %q is also defined in %s", doc.Kind, doc.Name, r.Docs[prev].File),
-			})
-			continue
-		}
-		index[key] = i
 	}
 
-	edges := make([][]int, len(r.Docs))
-	for i, doc := range r.Docs {
-		for _, use := range doc.refUses {
-			target, problems := checkRef(use)
-			for _, p := range problems {
-				r.Issues = append(r.Issues, Issue{
+	for vi := range r.Variants {
+		v := &r.Variants[vi]
+
+		// Index the variant's resources by (kind, name). A duplicate identity
+		// is an error — the platform's dependency graph could not tell the
+		// two resources apart.
+		index := map[refTarget]int{}
+		for i, doc := range v.Docs {
+			if doc.Name == "" {
+				continue
+			}
+			key := refTarget{kind: crkreflect.KindFromString(doc.Kind), name: doc.Name}
+			if prev, dup := index[key]; dup {
+				v.Issues = append(v.Issues, Issue{
 					Severity: SeverityError, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
-					Message: p,
+					Message: fmt.Sprintf("duplicate resource identity: %s %q is also defined in %s", doc.Kind, doc.Name, v.Docs[prev].File),
 				})
-			}
-			if target.kind == cloudresourcekind.CloudResourceKind_unspecified || target.name == "" {
 				continue
 			}
-			// A reference that names an env explicitly points outside this
-			// chart's deployment by design — never an in-chart edge.
-			if use.ref.GetEnv() != "" {
-				continue
-			}
-			if targetIdx, ok := index[target]; ok {
-				edges[i] = append(edges[i], targetIdx)
-			} else {
-				r.Issues = append(r.Issues, Issue{
-					Severity: SeverityWarning, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
-					Message: fmt.Sprintf("%s: references %s %q, which this chart does not define — it must already exist in the target environment at deploy time", use.fieldPath, target.kind, target.name),
-				})
-			}
+			index[key] = i
 		}
-	}
 
-	if cycle := findCycle(edges); cycle != nil {
-		var parts []string
-		for _, idx := range cycle {
-			parts = append(parts, fmt.Sprintf("%s %q", r.Docs[idx].Kind, r.Docs[idx].Name))
+		edges := make([][]int, len(v.Docs))
+		for i, doc := range v.Docs {
+			for _, use := range doc.refUses {
+				target, problems := checkRef(use)
+				for _, p := range problems {
+					v.Issues = append(v.Issues, Issue{
+						Severity: SeverityError, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
+						Message: p,
+					})
+				}
+				if target.kind == cloudresourcekind.CloudResourceKind_unspecified || target.name == "" {
+					continue
+				}
+				if use.ref.GetEnv() != "" {
+					continue
+				}
+				if targetIdx, ok := index[target]; ok {
+					edges[i] = append(edges[i], targetIdx)
+				} else if anyVariant[target] {
+					v.Issues = append(v.Issues, Issue{
+						Severity: SeverityWarning, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
+						Message: fmt.Sprintf("%s: references %s %q, which this chart defines in another variant but not in this one — verify this is a bring-your-own arm resolving to an existing resource, not a toggle that removed the target while the reference still stands", use.fieldPath, target.kind, target.name),
+					})
+				} else {
+					v.Issues = append(v.Issues, Issue{
+						Severity: SeverityWarning, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
+						Message: fmt.Sprintf("%s: references %s %q, which this chart does not define — it must already exist in the target environment at deploy time", use.fieldPath, target.kind, target.name),
+					})
+				}
+			}
 		}
-		r.Issues = append(r.Issues, Issue{
-			Severity: SeverityError, File: r.Docs[cycle[0]].File,
-			ResourceKind: r.Docs[cycle[0]].Kind, ResourceName: r.Docs[cycle[0]].Name,
-			Message: "dependency cycle: " + strings.Join(parts, " -> "),
-		})
+
+		if cycle := findCycle(edges); cycle != nil {
+			var parts []string
+			for _, idx := range cycle {
+				parts = append(parts, fmt.Sprintf("%s %q", v.Docs[idx].Kind, v.Docs[idx].Name))
+			}
+			v.Issues = append(v.Issues, Issue{
+				Severity: SeverityError, File: v.Docs[cycle[0]].File,
+				ResourceKind: v.Docs[cycle[0]].Kind, ResourceName: v.Docs[cycle[0]].Name,
+				Message: "dependency cycle: " + strings.Join(parts, " -> "),
+			})
+		}
 	}
 }
 

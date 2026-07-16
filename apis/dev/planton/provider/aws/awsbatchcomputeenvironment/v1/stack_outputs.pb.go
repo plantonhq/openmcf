@@ -21,28 +21,28 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsBatchComputeEnvironmentStackOutputs captures observable identifiers and
-// endpoints from the AWS Batch compute environment deployment.
+// AwsBatchComputeEnvironmentStackOutputs captures the observable identifiers
+// of the AWS Batch compute environment.
+//
+// The primary join key is `compute_environment_arn`: an AwsBatchJobQueue's
+// compute_environment_order entries reference it to map the queue onto this
+// environment.
 type AwsBatchComputeEnvironmentStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Amazon Resource Name (ARN) of the compute environment.
+	// The Amazon Resource Name (ARN) of the compute environment -- what job
+	// queues reference in their compute_environment_order.
 	ComputeEnvironmentArn string `protobuf:"bytes,1,opt,name=compute_environment_arn,json=computeEnvironmentArn,proto3" json:"compute_environment_arn,omitempty"`
-	// The name of the compute environment.
+	// The compute environment's name (derived from metadata.name).
 	ComputeEnvironmentName string `protobuf:"bytes,2,opt,name=compute_environment_name,json=computeEnvironmentName,proto3" json:"compute_environment_name,omitempty"`
-	// The ARN of the underlying ECS cluster managed by AWS Batch.
-	// AWS Batch automatically provisions an ECS cluster for MANAGED compute
-	// environments. This ARN is useful for monitoring and debugging.
+	// The ARN of the ECS cluster AWS Batch provisions behind a MANAGED
+	// compute environment -- useful for monitoring and debugging the tasks
+	// Batch actually runs.
 	EcsClusterArn string `protobuf:"bytes,3,opt,name=ecs_cluster_arn,json=ecsClusterArn,proto3" json:"ecs_cluster_arn,omitempty"`
-	// The current status of the compute environment (e.g., "VALID", "INVALID").
-	Status string `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	// job_queue_arns maps each queue name to its ARN. Use these ARNs when
-	// submitting jobs via the AWS Batch SubmitJob API or referencing queues
-	// from other resources.
-	JobQueueArns map[string]string `protobuf:"bytes,5,rep,name=job_queue_arns,json=jobQueueArns,proto3" json:"job_queue_arns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// The ARN of the scheduling policy, if one was created.
-	SchedulingPolicyArn string `protobuf:"bytes,6,opt,name=scheduling_policy_arn,json=schedulingPolicyArn,proto3" json:"scheduling_policy_arn,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// The environment's current status (e.g. "VALID", "INVALID"). A queue can
+	// only associate environments whose status is VALID.
+	Status        string `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsBatchComputeEnvironmentStackOutputs) Reset() {
@@ -103,35 +103,16 @@ func (x *AwsBatchComputeEnvironmentStackOutputs) GetStatus() string {
 	return ""
 }
 
-func (x *AwsBatchComputeEnvironmentStackOutputs) GetJobQueueArns() map[string]string {
-	if x != nil {
-		return x.JobQueueArns
-	}
-	return nil
-}
-
-func (x *AwsBatchComputeEnvironmentStackOutputs) GetSchedulingPolicyArn() string {
-	if x != nil {
-		return x.SchedulingPolicyArn
-	}
-	return ""
-}
-
 var File_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Jdev/planton/provider/aws/awsbatchcomputeenvironment/v1/stack_outputs.proto\x126dev.planton.provider.aws.awsbatchcomputeenvironment.v1\"\xe8\x03\n" +
+	"Jdev/planton/provider/aws/awsbatchcomputeenvironment/v1/stack_outputs.proto\x126dev.planton.provider.aws.awsbatchcomputeenvironment.v1\"\xda\x01\n" +
 	"&AwsBatchComputeEnvironmentStackOutputs\x126\n" +
 	"\x17compute_environment_arn\x18\x01 \x01(\tR\x15computeEnvironmentArn\x128\n" +
 	"\x18compute_environment_name\x18\x02 \x01(\tR\x16computeEnvironmentName\x12&\n" +
 	"\x0fecs_cluster_arn\x18\x03 \x01(\tR\recsClusterArn\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\tR\x06status\x12\x96\x01\n" +
-	"\x0ejob_queue_arns\x18\x05 \x03(\v2p.dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchComputeEnvironmentStackOutputs.JobQueueArnsEntryR\fjobQueueArns\x122\n" +
-	"\x15scheduling_policy_arn\x18\x06 \x01(\tR\x13schedulingPolicyArn\x1a?\n" +
-	"\x11JobQueueArnsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xc5\x03\n" +
+	"\x06status\x18\x04 \x01(\tR\x06statusB\xc5\x03\n" +
 	":com.dev.planton.provider.aws.awsbatchcomputeenvironment.v1B\x11StackOutputsProtoP\x01Zugithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsbatchcomputeenvironment/v1;awsbatchcomputeenvironmentv1\xa2\x02\x05DPPAA\xaa\x026Dev.Planton.Provider.Aws.Awsbatchcomputeenvironment.V1\xca\x026Dev\\Planton\\Provider\\Aws\\Awsbatchcomputeenvironment\\V1\xe2\x02BDev\\Planton\\Provider\\Aws\\Awsbatchcomputeenvironment\\V1\\GPBMetadata\xea\x02;Dev::Planton::Provider::Aws::Awsbatchcomputeenvironment::V1b\x06proto3"
 
 var (
@@ -146,18 +127,16 @@ func file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_stack_outputs_p
 	return file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_stack_outputs_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_stack_outputs_proto_goTypes = []any{
 	(*AwsBatchComputeEnvironmentStackOutputs)(nil), // 0: dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchComputeEnvironmentStackOutputs
-	nil, // 1: dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchComputeEnvironmentStackOutputs.JobQueueArnsEntry
 }
 var file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchComputeEnvironmentStackOutputs.job_queue_arns:type_name -> dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchComputeEnvironmentStackOutputs.JobQueueArnsEntry
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_stack_outputs_proto_init() }
@@ -171,7 +150,7 @@ func file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_stack_outputs_p
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_stack_outputs_proto_rawDesc), len(file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_stack_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

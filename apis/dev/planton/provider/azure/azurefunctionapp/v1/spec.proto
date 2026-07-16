@@ -10,12 +10,11 @@ import "dev/planton/shared/options/options.proto";
 // Linux Function App (Microsoft.Web/sites kind=functionapp,linux), a
 // serverless compute platform for event-driven workloads.
 //
-// A Function App is the Azure equivalent of AWS Lambda or GCP Cloud Functions --
-// it hosts functions triggered by HTTP requests, queue messages, timer schedules,
-// blob storage events, and other Azure service events. Unlike Lambda, Azure
-// Functions run on an App Service Plan, giving users control over the compute
-// tier (Consumption for pay-per-execution, Elastic Premium for pre-warmed
-// instances, or Dedicated for reserved capacity).
+// A Function App hosts functions triggered by HTTP requests, queue
+// messages, timer schedules, blob storage events, and other Azure service
+// events. Azure Functions run on an App Service Plan, giving users control
+// over the compute tier (Consumption for pay-per-execution, Elastic
+// Premium for pre-warmed instances, or Dedicated for reserved capacity).
 //
 // **Relationship to AzureServicePlan**:
 //
@@ -34,17 +33,22 @@ import "dev/planton/shared/options/options.proto";
 //   - VNet integration and private endpoints supported
 //   - Unlimited execution duration
 //
-// Dedicated (B1-P3v3):
+// Dedicated (B*/S*/P*):
 //   - Fixed instance count (manual or auto-scale)
 //   - `always_on` should be true to prevent idle shutdown
 //   - Full App Service features (custom domains, SSL, etc.)
 //
+// Azure also offers Flex Consumption (FC1 plans) as a SEPARATE resource
+// type with its own storage and scaling model -- it is not this kind.
+//
 // **Storage requirement**:
 //
 // Every Function App requires an Azure Storage Account for runtime state
-// (function triggers, logs, queue management). The storage_account_name and
-// storage_account_access_key fields (or storage_uses_managed_identity) provide
-// this binding. The storage account must exist before the Function App is created.
+// (function triggers, logs, queue management). Exactly one binding form
+// applies: `storage_account_name` (with an access key or managed
+// identity), or `storage_key_vault_secret_id` (a Key Vault secret holding
+// the connection string). The storage account must exist before the
+// Function App is created.
 //
 // **Application stack**:
 //
@@ -53,13 +57,20 @@ import "dev/planton/shared/options/options.proto";
 // container, or custom handler. Docker enables running custom container images
 // as Azure Functions.
 //
-// **Design decision**: DD04 -- Linux-only. Windows Function Apps
-// (`azurerm_windows_function_app`) are excluded from this expansion. The
-// `AzureServicePlan` resource supports both OS types, so the compute tier
-// is ready if Windows app-level resources are added later.
+// **Authentication (Easy Auth)**: the `auth_settings_v2` block turns on
+// App Service's built-in authentication layer -- Azure validates identity
+// tokens at the front door (Entra ID, Apple, Facebook, GitHub, Google,
+// Microsoft account, Twitter, or any OpenID Connect provider) before
+// requests reach function code. Provider secrets are referenced by APP
+// SETTING NAME (never inline).
 //
-// **ForceNew fields** (changing these destroys and recreates the function app):
-// `name`, `region`, `resource_group`.
+// **Windows Function Apps** (`azurerm_windows_function_app`) are
+// deliberately not modeled: the platform targets Linux-first runtimes and
+// containers. The `AzureServicePlan` kind supports Windows plans, so the
+// compute tier is ready if a Windows app kind is ever added.
+//
+// **ForceNew fields** (changing these destroys and recreates the function
+// app): `function_app_name`, `region`, `resource_group`.
 message AzureFunctionAppSpec {
   // The Azure region where the Function App will be created.
   // Examples: "eastus", "westus2", "westeurope", "southeastasia".
@@ -82,20 +93,20 @@ message AzureFunctionAppSpec {
 
   // The name of the Function App.
   // Must be globally unique across Azure (it forms the default hostname:
-  // `{name}.azurewebsites.net`).
+  // `{function_app_name}.azurewebsites.net`).
   //
   // Allowed characters: alphanumeric and hyphens.
   // Must start and end with an alphanumeric character.
   // Length: 2 to 60 characters.
   //
   // **ForceNew**: Changing this destroys and recreates the function app.
-  string name = 3 [
+  string function_app_name = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 2,
     (buf.validate.field).string.max_len = 60,
     (buf.validate.field).cel = {
       id: "function_app_name_format"
-      message: "name must contain only alphanumeric characters and hyphens, and must start and end with an alphanumeric character"
+      message: "function_app_name must contain only alphanumeric characters and hyphens, and must start and end with an alphanumeric character"
       expression: "this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,58}[a-zA-Z0-9]$')"
     }
   ];
@@ -107,35 +118,38 @@ message AzureFunctionAppSpec {
   // Elastic Premium (EP*): pre-warmed instances, up to 100
   // Dedicated (B*/S*/P*): fixed or auto-scaled instances
   //
-  // **Conditional ForceNew**: Changing between Dynamic tiers (Consumption to/from
-  // any other tier) forces recreation.
+  // **Conditional ForceNew**: Changing between Dynamic tiers (Consumption
+  // to/from any other tier) forces recreation.
   dev.planton.shared.foreignkey.v1.StringValueOrRef service_plan_id = 4 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureServicePlan,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.plan_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.service_plan_id"
   ];
 
   // The name of the Azure Storage Account used for Function App runtime state.
   // Azure Functions use storage for trigger management, execution logs, and
   // internal coordination. The storage account must already exist.
   //
-  // Mutually exclusive with storage_key_vault_secret_id (not exposed in v1).
+  // Exactly one storage binding applies: this field OR
+  // storage_key_vault_secret_id (enforced here, exactly as the provider
+  // enforces it).
   dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_name = 5 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_name"
   ];
 
-  // The access key for the storage account.
-  // This is a sensitive credential. Provide it directly as a literal value
-  // or reference it from a secrets manager via StringValueOrRef.
+  // The access key for the storage account. Defaults to referencing an
+  // AzureStorageAccount's primary_access_key output, so the binding
+  // composes in one manifest set; a literal value or a managed-secret
+  // reference works too. Prefer storage_uses_managed_identity where the
+  // workload supports it -- keys are static credential material.
   //
-  // Note: AzureStorageAccount does not export access keys in its status outputs
-  // (by design -- exporting secrets through status is an anti-pattern). Provide
-  // the key directly or use storage_uses_managed_identity instead.
-  //
-  // Conflicts with storage_uses_managed_identity.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_access_key = 6 [(dev.planton.shared.options.sensitive) = true];
+  // Conflicts with storage_uses_managed_identity (enforced here).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_access_key = 6 [
+    (dev.planton.shared.options.sensitive) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_access_key"
+  ];
 
   // Use the Function App's managed identity to access the storage account
   // instead of an access key. This is the modern, credential-free approach.
@@ -144,10 +158,26 @@ message AzureFunctionAppSpec {
   // must have Storage Blob Data Owner and Storage Queue Data Contributor
   // roles on the storage account.
   //
-  // Conflicts with storage_account_access_key.
+  // Conflicts with storage_account_access_key (enforced here).
   //
   // Default: false
   optional bool storage_uses_managed_identity = 7 [(dev.planton.shared.options.default) = "false"];
+
+  // The Key Vault secret ID holding the storage account's CONNECTION
+  // STRING -- the alternative storage binding for vault-managed
+  // credentials. Format:
+  // https://{vault}.vault.azure.net/secrets/{secret}[/{version}]
+  // (an unversioned ID tracks the latest secret version; pair with
+  // key_vault_reference_identity_id or the system-assigned identity for
+  // vault access).
+  //
+  // Exactly one storage binding applies: this field OR
+  // storage_account_name (enforced here).
+  string storage_key_vault_secret_id = 8 [(buf.validate.field).cel = {
+    id: "storage_key_vault_secret_id_format"
+    message: "storage_key_vault_secret_id must be a Key Vault secret URL (https://{vault}.vault.azure.net/secrets/{name} with an optional /{version})"
+    expression: "this == '' || this.matches('^https://[^/]+/secrets/[^/]+(/[^/]+)?$')"
+  }];
 
   // The Azure Functions runtime version.
   // Controls which version of the Azure Functions host runs the app.
@@ -156,12 +186,21 @@ message AzureFunctionAppSpec {
   // The "~" prefix enables automatic minor version updates.
   //
   // Default: "~4"
-  optional string functions_extension_version = 8 [(dev.planton.shared.options.default) = "~4"];
+  optional string functions_extension_version = 9 [(dev.planton.shared.options.default) = "~4"];
+
+  // Daily compute quota in GB-seconds -- the Consumption-plan cost
+  // circuit breaker. When the app's aggregate compute crosses the quota,
+  // Azure stops it until the next day. 0 (the default) means unlimited.
+  // Only meaningful on Consumption (Y1) plans.
+  optional int32 daily_memory_time_quota = 10 [
+    (dev.planton.shared.options.default) = "0",
+    (buf.validate.field).int32 = {gte: 0}
+  ];
 
   // Site configuration for the Function App.
   // Contains the application stack (runtime), scaling settings, security
   // settings, and operational configuration.
-  AzureFunctionAppSiteConfig site_config = 9 [(buf.validate.field).required = true];
+  AzureFunctionAppSiteConfig site_config = 11 [(buf.validate.field).required = true];
 
   // Application settings (environment variables) for the Function App.
   // Key-value pairs that are available to functions at runtime via
@@ -169,11 +208,9 @@ message AzureFunctionAppSpec {
   //
   // Azure automatically manages several settings (AzureWebJobsStorage,
   // FUNCTIONS_WORKER_RUNTIME, etc.). User-provided settings are merged
-  // with these system settings.
-  //
-  // Common use cases: database connection strings, API keys, feature flags,
-  // third-party service configuration.
-  map<string, string> app_settings = 10;
+  // with these system settings. Auth provider secrets referenced by
+  // auth_settings_v2 setting names also live here.
+  map<string, string> app_settings = 12;
 
   // Named connection strings for database and service connections.
   // Each connection string has a name, type, and value. The type determines
@@ -182,7 +219,12 @@ message AzureFunctionAppSpec {
   // For most use cases, app_settings is simpler. Use connection_strings when
   // you need Azure's native connection string management (e.g., for Entity
   // Framework, Azure Service Bus SDK auto-discovery).
-  repeated AzureFunctionAppConnectionString connection_strings = 11;
+  repeated AzureFunctionAppConnectionString connection_strings = 13;
+
+  // Settings pinned to the production slot during slot swaps.
+  // Named app settings and connection strings listed here do NOT move
+  // with the app content when a staging slot is swapped into production.
+  AzureFunctionAppStickySettings sticky_settings = 14;
 
   // Application Insights connection string for APM telemetry.
   // When provided, Azure automatically configures the Function App to send
@@ -190,7 +232,7 @@ message AzureFunctionAppSpec {
   // Insights. This is the recommended way to monitor Function Apps.
   //
   // Uses the connection_string format (not the legacy instrumentation_key).
-  dev.planton.shared.foreignkey.v1.StringValueOrRef application_insights_connection_string = 12 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef application_insights_connection_string = 15 [
     (dev.planton.shared.options.sensitive_exempt_reason) = "Foreign-key reference to an AzureApplicationInsights output (the connection string is sourced from the referenced resource, not a user-supplied secret literal).",
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationInsights,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.connection_string"
@@ -200,14 +242,22 @@ message AzureFunctionAppSpec {
   // When true, all HTTP requests are redirected to HTTPS.
   //
   // Default: true (secure by default, unlike the Azure API default of false)
-  optional bool https_only = 13 [(dev.planton.shared.options.default) = "true"];
+  optional bool https_only = 16 [(dev.planton.shared.options.default) = "true"];
 
   // Enable or disable public network access to the Function App.
   // When false, the Function App is only accessible via VNet integration
   // or Private Endpoints.
   //
   // Default: true
-  optional bool public_network_access_enabled = 14 [(dev.planton.shared.options.default) = "true"];
+  optional bool public_network_access_enabled = 17 [(dev.planton.shared.options.default) = "true"];
+
+  // Enable or disable the Function App.
+  // When false, the app is stopped and does not run functions, but the
+  // resource still exists and incurs plan-level costs. Useful for
+  // temporarily disabling an app without deleting it.
+  //
+  // Default: true
+  optional bool enabled = 18 [(dev.planton.shared.options.default) = "true"];
 
   // Enable built-in logging via AzureWebJobsDashboard.
   // When true, Azure configures the AzureWebJobsDashboard storage connection
@@ -215,7 +265,31 @@ message AzureFunctionAppSpec {
   // you may want to disable this to avoid duplicate logging and storage costs.
   //
   // Default: true
-  optional bool builtin_logging_enabled = 15 [(dev.planton.shared.options.default) = "true"];
+  optional bool builtin_logging_enabled = 19 [(dev.planton.shared.options.default) = "true"];
+
+  // Force disable the Azure Files content share that Azure Functions
+  // automatically creates. Set to true when using a custom deployment
+  // method and the content share is not needed.
+  //
+  // Default: false
+  optional bool content_share_force_disabled = 20 [(dev.planton.shared.options.default) = "false"];
+
+  // Enable client certificate authentication (mutual TLS).
+  // When true, clients must present a valid certificate to access the app
+  // (subject to client_certificate_mode).
+  //
+  // Default: false
+  optional bool client_certificate_enabled = 21 [(dev.planton.shared.options.default) = "false"];
+
+  // Client certificate mode -- how strictly client certificates are
+  // enforced when client_certificate_enabled is true. Unset deploys
+  // OPTIONAL (certificate requested but not required).
+  AzureFunctionAppClientCertificateMode client_certificate_mode = 22 [(buf.validate.field).enum.defined_only = true];
+
+  // Paths excluded from client certificate validation.
+  // Semicolon-separated list of paths where client certificates are not required.
+  // Example: "/api/health;/api/status"
+  string client_certificate_exclusion_paths = 23;
 
   // The subnet ID for VNet integration. When provided, the Function App's
   // outbound traffic routes through this subnet, enabling access to
@@ -223,19 +297,36 @@ message AzureFunctionAppSpec {
   //
   // The subnet must be delegated to Microsoft.Web/serverFarms.
   // Not supported on Consumption plans (Y1).
-  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_subnet_id = 16 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_subnet_id = 24 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
+
+  // Pull container images over the VNet integration (instead of over the
+  // public internet). Required for images in registries that are only
+  // reachable privately (e.g. an ACR locked to a private endpoint).
+  // Requires virtual_network_subnet_id. Azure additionally requires this
+  // to stay enabled for apps hosted in an App Service Environment, and
+  // rejects it on Consumption plans (apply-time contracts).
+  //
+  // Default: false
+  optional bool vnet_image_pull_enabled = 25 [(dev.planton.shared.options.default) = "false"];
+
+  // Route the backup/restore traffic of the `backup` block over the VNet
+  // integration -- needed when the backup storage account is firewalled
+  // to the VNet. Requires virtual_network_subnet_id.
+  //
+  // Default: false
+  optional bool virtual_network_backup_restore_enabled = 26 [(dev.planton.shared.options.default) = "false"];
 
   // Managed identity configuration for the Function App.
   // Enables the app to authenticate with Azure services (Key Vault, Storage,
   // ACR, etc.) without managing credentials.
   //
-  // When identity is configured with SystemAssigned, the function app gets
+  // When identity is configured with SYSTEM_ASSIGNED, the function app gets
   // a system-assigned identity whose principal_id and tenant_id are exported
   // as stack outputs.
-  AzureFunctionAppIdentity identity = 17;
+  AzureFunctionAppIdentity identity = 27;
 
   // User Assigned Identity ID for accessing Key Vault references.
   // When the Function App uses Key Vault references in app_settings
@@ -243,50 +334,85 @@ message AzureFunctionAppSpec {
   // to authenticate with Key Vault.
   //
   // If not specified, the system-assigned identity is used.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_reference_identity_id = 18 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_reference_identity_id = 28 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
   ];
 
-  // Enable client certificate authentication (mutual TLS).
-  // When true, clients must present a valid certificate to access the app.
+  // Allow basic-auth (username/password) publishing over Web Deploy
+  // (msdeploy). Disabling both basic-auth toggles closes the classic
+  // credential-based deployment paths and forces identity-based
+  // deployment (recommended posture for locked-down environments).
   //
-  // Default: false
-  optional bool client_certificate_enabled = 19 [(dev.planton.shared.options.default) = "false"];
+  // Default: true (Azure's own default; flip to false to harden)
+  optional bool webdeploy_publish_basic_authentication_enabled = 29 [(dev.planton.shared.options.default) = "true"];
 
-  // Client certificate mode when client_certificate_enabled is true.
+  // Allow basic-auth (username/password) publishing over FTP/FTPS.
+  // Independent of site_config.ftps_state (which controls the FTP
+  // endpoint's TLS posture); this toggle controls whether the publishing
+  // CREDENTIAL is accepted at all.
   //
-  // Valid values:
-  // - "Required": All requests must have a valid client certificate
-  // - "Optional": Certificate is requested but not required
-  // - "OptionalInteractiveUser": Certificate is optional for browser users
-  //
-  // Default: "Optional"
-  optional string client_certificate_mode = 20 [
-    (dev.planton.shared.options.default) = "Optional",
-    (buf.validate.field).cel = {
-      id: "client_certificate_mode_valid"
-      message: "client_certificate_mode must be one of: Required, Optional, OptionalInteractiveUser"
-      expression: "this in ['Required', 'Optional', 'OptionalInteractiveUser']"
-    }
-  ];
+  // Default: true (Azure's own default; flip to false to harden)
+  optional bool ftp_publish_basic_authentication_enabled = 30 [(dev.planton.shared.options.default) = "true"];
 
-  // Paths excluded from client certificate validation.
-  // Semicolon-separated list of paths where client certificates are not required.
-  // Example: "/api/health;/api/status"
-  string client_certificate_exclusion_paths = 21;
-
-  // Force disable the Azure Files content share that Azure Functions
-  // automatically creates. Set to true when using a custom deployment
-  // method and the content share is not needed.
-  //
-  // Default: false
-  optional bool content_share_force_disabled = 22 [(dev.planton.shared.options.default) = "false"];
+  // Path to a local ZIP package to deploy on create/update (one-shot
+  // "run-from-package" style zip deploy). Primarily useful for simple
+  // pipelines that produce a build artifact next to the manifest; most
+  // production deployments push code through CI/CD instead.
+  string zip_deploy_file = 31;
 
   // Azure Storage Account mounts for the Function App.
   // Mounts Azure File Shares or Blob containers as directories accessible
   // to the function code at runtime.
-  repeated AzureFunctionAppStorageMount storage_mounts = 23;
+  repeated AzureFunctionAppStorageMount storage_mounts = 32;
+
+  // Scheduled backups of the app's content and configuration to an Azure
+  // Storage container (referenced by SAS URL). Requires Standard tier or
+  // above -- Azure rejects backup on Consumption and Basic plans at
+  // apply time. Restore is an operational action in the portal/CLI, not
+  // a manifest field.
+  AzureFunctionAppBackup backup = 33;
+
+  // App Service built-in authentication (Easy Auth v2). When enabled,
+  // Azure authenticates requests at the platform layer -- before they
+  // reach function code -- against any of the configured identity
+  // providers. Provider client secrets are referenced by APP SETTING NAME
+  // (set the actual secret value in app_settings or via a Key Vault
+  // reference), never inline in this block.
+  AzureFunctionAppAuthSettingsV2 auth_settings_v2 = 34;
+
+  // Free-form Azure resource tags applied to the Function App, merged
+  // over the platform's metadata-derived tags (user tags win on key
+  // collision) -- the hooks for cost allocation, chargeback reports, and
+  // Azure Policy governance rules that filter or group by them.
+  // Updatable in place.
+  map<string, string> tags = 35;
+
+  option (buf.validate.message).cel = {
+    id: "function_app_storage_binding_exactly_one"
+    message: "exactly one storage binding applies: storage_account_name OR storage_key_vault_secret_id"
+    expression: "has(this.storage_account_name) != (this.storage_key_vault_secret_id != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "function_app_storage_key_xor_identity"
+    message: "storage_account_access_key conflicts with storage_uses_managed_identity -- pick one storage authentication method"
+    expression: "!(has(this.storage_account_access_key) && has(this.storage_uses_managed_identity) && this.storage_uses_managed_identity)"
+  };
+  option (buf.validate.message).cel = {
+    id: "function_app_vnet_image_pull_requires_subnet"
+    message: "vnet_image_pull_enabled requires virtual_network_subnet_id (the image pull rides the VNet integration)"
+    expression: "!(has(this.vnet_image_pull_enabled) && this.vnet_image_pull_enabled) || has(this.virtual_network_subnet_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "function_app_vnet_backup_restore_requires_subnet"
+    message: "virtual_network_backup_restore_enabled requires virtual_network_subnet_id (backup traffic rides the VNet integration)"
+    expression: "!(has(this.virtual_network_backup_restore_enabled) && this.virtual_network_backup_restore_enabled) || has(this.virtual_network_subnet_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "function_app_vnet_route_all_requires_subnet"
+    message: "site_config.vnet_route_all_enabled requires virtual_network_subnet_id (there is no VNet to route through otherwise)"
+    expression: "!(has(this.site_config) && has(this.site_config.vnet_route_all_enabled) && this.site_config.vnet_route_all_enabled) || has(this.virtual_network_subnet_id)"
+  };
 }
 
 // AzureFunctionAppSiteConfig defines the site-level configuration for a
@@ -309,13 +435,27 @@ message AzureFunctionAppSiteConfig {
   // may be unloaded after idle periods, causing cold start latency.
   //
   // Automatically managed on Consumption and Elastic Premium plans.
-  // Not supported on Free (F1) tier.
+  // Not supported on Free (F1) tier -- Azure rejects it at apply time.
   optional bool always_on = 2;
 
   // Custom startup command for the Function App.
   // Overrides the default startup behavior. Useful for custom Docker
   // containers or runtimes that need specific initialization.
   string app_command_line = 3;
+
+  // The ARM ID of the API Management API this app backs. Wires the app
+  // into an API Management gateway so the API surface is managed there.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/
+  //         Microsoft.ApiManagement/service/{apim}/apis/{api}
+  string api_management_api_id = 4;
+
+  // URL of the OpenAPI/Swagger definition describing this app's API.
+  // Surfaces in the portal's API Definition blade and to API consumers.
+  string api_definition_url = 5;
+
+  // Default documents served when a request maps to a directory.
+  // Evaluated in order (e.g. ["index.html", "default.html"]).
+  repeated string default_documents = 6;
 
   // Health check endpoint path.
   // Azure periodically sends requests to this path and marks the instance
@@ -324,33 +464,34 @@ message AzureFunctionAppSiteConfig {
   //
   // Recommended for production deployments. Common paths: "/api/health",
   // "/healthz".
-  string health_check_path = 4;
+  string health_check_path = 7;
 
-  // Minimum TLS version for incoming HTTPS requests.
+  // Time in minutes after which an unhealthy instance is evicted.
+  // Azure monitors the health check path and removes instances that
+  // have been continuously unhealthy for this duration.
   //
-  // Valid values: "1.0", "1.1", "1.2", "1.3"
-  //
-  // Default: "1.2" (industry standard; "1.3" for maximum security)
-  optional string minimum_tls_version = 5 [
-    (dev.planton.shared.options.default) = "1.2",
-    (buf.validate.field).cel = {
-      id: "minimum_tls_version_valid"
-      message: "minimum_tls_version must be one of: 1.0, 1.1, 1.2, 1.3"
-      expression: "this in ['1.0', '1.1', '1.2', '1.3']"
-    }
-  ];
+  // Range: 2 to 10 minutes. Requires health_check_path.
+  optional int32 health_check_eviction_time_in_min = 8 [(buf.validate.field).int32 = {
+    gte: 2
+    lte: 10
+  }];
 
-  // Minimum TLS version for SCM (Kudu) site.
-  //
-  // Default: "1.2"
-  optional string scm_minimum_tls_version = 6 [
-    (dev.planton.shared.options.default) = "1.2",
-    (buf.validate.field).cel = {
-      id: "scm_minimum_tls_version_valid"
-      message: "scm_minimum_tls_version must be one of: 1.0, 1.1, 1.2, 1.3"
-      expression: "this in ['1.0', '1.1', '1.2', '1.3']"
-    }
-  ];
+  // Minimum TLS version for incoming HTTPS requests. Unset deploys
+  // TLS_1_2 (the industry floor; TLS_1_3 for maximum security).
+  AzureFunctionAppTlsVersion minimum_tls_version = 9 [(buf.validate.field).enum.defined_only = true];
+
+  // Minimum TLS version for the SCM (Kudu) site. Unset deploys TLS_1_2.
+  AzureFunctionAppTlsVersion scm_minimum_tls_version = 10 [(buf.validate.field).enum.defined_only = true];
+
+  // The minimum TLS cipher suite the app accepts. Suites WEAKER than the
+  // chosen one are rejected. Azure's identifiers, strongest first:
+  // TLS_AES_256_GCM_SHA384 ... TLS_RSA_WITH_AES_128_CBC_SHA. Leave empty
+  // to accept Azure's platform default set.
+  string minimum_tls_cipher_suite = 11 [(buf.validate.field).cel = {
+    id: "minimum_tls_cipher_suite_valid"
+    message: "minimum_tls_cipher_suite must be one of Azure's TLS cipher suite identifiers (e.g. TLS_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)"
+    expression: "this == '' || this in ['TLS_AES_128_GCM_SHA256', 'TLS_AES_256_GCM_SHA384', 'TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256', 'TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256', 'TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384', 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA', 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256', 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256', 'TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA', 'TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384', 'TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384', 'TLS_RSA_WITH_AES_128_CBC_SHA', 'TLS_RSA_WITH_AES_128_CBC_SHA256', 'TLS_RSA_WITH_AES_128_GCM_SHA256', 'TLS_RSA_WITH_AES_256_CBC_SHA', 'TLS_RSA_WITH_AES_256_CBC_SHA256', 'TLS_RSA_WITH_AES_256_GCM_SHA384']"
+  }];
 
   // Maximum number of workers for scale-out.
   // Only applicable to Consumption and Elastic Premium plans.
@@ -360,27 +501,27 @@ message AzureFunctionAppSiteConfig {
   // Elastic Premium (EP*): Caps the elastic scale-out range.
   //
   // Ignored on Dedicated plans (use worker_count on the Service Plan instead).
-  optional int32 app_scale_limit = 7;
+  optional int32 app_scale_limit = 12 [(buf.validate.field).int32 = {gte: 0}];
 
   // Minimum number of pre-warmed instances for Elastic Premium plans.
   // These instances are always running and ready to handle requests,
   // eliminating cold start latency.
   //
   // Only applicable to Elastic Premium (EP*) plans. Ignored on other tiers.
-  optional int32 elastic_instance_minimum = 8;
+  optional int32 elastic_instance_minimum = 13 [(buf.validate.field).int32 = {gte: 0}];
 
   // Number of pre-warmed instances beyond the minimum.
   // Pre-warmed instances sit in a "warm" state and can handle requests
   // faster than cold-starting new instances.
   //
   // Only applicable to Elastic Premium (EP*) plans.
-  optional int32 pre_warmed_instance_count = 9;
+  optional int32 pre_warmed_instance_count = 14 [(buf.validate.field).int32 = {gte: 0}];
 
   // Number of worker instances for the Function App.
   // Controls how many instances are allocated on Dedicated plans.
   //
   // Range: 1-100.
-  optional int32 worker_count = 10 [(buf.validate.field).int32 = {
+  optional int32 worker_count = 15 [(buf.validate.field).int32 = {
     gte: 1
     lte: 100
   }];
@@ -390,21 +531,21 @@ message AzureFunctionAppSiteConfig {
   // for improved performance.
   //
   // Default: false
-  optional bool http2_enabled = 11 [(dev.planton.shared.options.default) = "false"];
+  optional bool http2_enabled = 16 [(dev.planton.shared.options.default) = "false"];
 
   // Enable WebSocket connections for the Function App.
   //
   // Default: false
-  optional bool websockets_enabled = 12 [(dev.planton.shared.options.default) = "false"];
+  optional bool websockets_enabled = 17 [(dev.planton.shared.options.default) = "false"];
 
   // Use a 32-bit worker process instead of 64-bit.
   // Reduces memory footprint but limits addressable memory to ~2 GB.
   //
   // Default: false
-  optional bool use_32_bit_worker = 13 [(dev.planton.shared.options.default) = "false"];
+  optional bool use_32_bit_worker = 18 [(dev.planton.shared.options.default) = "false"];
 
   // Route all outbound traffic from the Function App through the VNet.
-  // Requires virtual_network_subnet_id to be set on the spec.
+  // Requires virtual_network_subnet_id to be set on the spec (spec-enforced).
   //
   // When false (default), only RFC1918 traffic routes through the VNet.
   // When true, all outbound traffic (including public internet) routes
@@ -413,117 +554,92 @@ message AzureFunctionAppSiteConfig {
   // Not supported on Consumption plans (Y1).
   //
   // Default: false
-  optional bool vnet_route_all_enabled = 14 [(dev.planton.shared.options.default) = "false"];
+  optional bool vnet_route_all_enabled = 19 [(dev.planton.shared.options.default) = "false"];
 
-  // FTPS state for the Function App.
-  // Controls whether FTP/FTPS file deployment is allowed.
-  //
-  // Valid values:
-  // - "AllAllowed": Both FTP and FTPS are enabled
-  // - "FtpsOnly": Only FTPS (encrypted) is enabled
-  // - "Disabled": FTP/FTPS is completely disabled (recommended)
-  //
-  // Default: "Disabled" (secure by default)
-  optional string ftps_state = 15 [
-    (dev.planton.shared.options.default) = "Disabled",
-    (buf.validate.field).cel = {
-      id: "ftps_state_valid"
-      message: "ftps_state must be one of: AllAllowed, FtpsOnly, Disabled"
-      expression: "this in ['AllAllowed', 'FtpsOnly', 'Disabled']"
-    }
-  ];
+  // FTPS state for the Function App -- the FTP deployment endpoint's TLS
+  // posture. Unset deploys DISABLED (secure by default). Independent of
+  // ftp_publish_basic_authentication_enabled, which controls whether the
+  // publishing credential works at all.
+  AzureFunctionAppFtpsState ftps_state = 20 [(buf.validate.field).enum.defined_only = true];
 
   // Load balancing mode for distributing requests across instances.
+  // Unset deploys LEAST_REQUESTS.
+  AzureFunctionAppLoadBalancingMode load_balancing_mode = 21 [(buf.validate.field).enum.defined_only = true];
+
+  // IIS-lineage request pipeline mode. INTEGRATED (the default) is
+  // correct for everything modern; CLASSIC exists for legacy
+  // compatibility only.
+  AzureFunctionAppManagedPipelineMode managed_pipeline_mode = 22 [(buf.validate.field).enum.defined_only = true];
+
+  // Enable remote debugging (Visual Studio attach). Azure supports the
+  // current Visual Studio generation only; the platform lets Azure pick
+  // the debugger version. Turn off outside active debugging sessions.
   //
-  // Valid values: LeastRequests, WeightedRoundRobin, LeastResponseTime,
-  // WeightedTotalTraffic, RequestHash, PerSiteRoundRobin
-  //
-  // Default: "LeastRequests"
-  optional string load_balancing_mode = 16 [
-    (dev.planton.shared.options.default) = "LeastRequests",
-    (buf.validate.field).cel = {
-      id: "load_balancing_mode_valid"
-      message: "load_balancing_mode must be one of: LeastRequests, WeightedRoundRobin, LeastResponseTime, WeightedTotalTraffic, RequestHash, PerSiteRoundRobin"
-      expression: "this in ['LeastRequests', 'WeightedRoundRobin', 'LeastResponseTime', 'WeightedTotalTraffic', 'RequestHash', 'PerSiteRoundRobin']"
-    }
-  ];
+  // Default: false
+  optional bool remote_debugging_enabled = 23 [(dev.planton.shared.options.default) = "false"];
 
   // Enable runtime scale monitoring for KEDA-based triggers.
   // When enabled, the Functions runtime can directly monitor event sources
   // to make more accurate scaling decisions.
   //
   // Supported on Elastic Premium and Dedicated plans with Functions v4+.
-  optional bool runtime_scale_monitoring_enabled = 17;
+  optional bool runtime_scale_monitoring_enabled = 24;
 
   // CORS (Cross-Origin Resource Sharing) configuration.
   // Controls which origins are allowed to make cross-origin requests to
   // the Function App's HTTP endpoints.
-  AzureFunctionAppCorsSettings cors = 18;
+  AzureFunctionAppCorsSettings cors = 25;
 
   // IP restriction rules for the main site.
   // Controls which IP addresses, service tags, or subnets can access
   // the Function App.
-  repeated AzureFunctionAppIpRestriction ip_restrictions = 19;
+  repeated AzureFunctionAppIpRestriction ip_restrictions = 26;
 
-  // Default action for IP restrictions on the main site.
-  // When "Allow", unlisted IPs are allowed (rules are deny-list).
-  // When "Deny", unlisted IPs are denied (rules are allow-list).
-  //
-  // Default: "Allow"
-  optional string ip_restriction_default_action = 20 [
-    (dev.planton.shared.options.default) = "Allow",
-    (buf.validate.field).cel = {
-      id: "ip_restriction_default_action_valid"
-      message: "ip_restriction_default_action must be one of: Allow, Deny"
-      expression: "this in ['Allow', 'Deny']"
-    }
-  ];
+  // Default action for traffic that matches no ip_restrictions rule.
+  // Unset deploys ALLOW (rules act as a deny-list); DENY flips the rules
+  // into an allow-list.
+  AzureFunctionAppIpRestrictionAction ip_restriction_default_action = 27 [(buf.validate.field).enum.defined_only = true];
 
   // Use the main site's IP restrictions for the SCM (Kudu) site.
   // When true, scm_ip_restrictions are ignored.
   //
   // Default: false
-  optional bool scm_use_main_ip_restriction = 21 [(dev.planton.shared.options.default) = "false"];
+  optional bool scm_use_main_ip_restriction = 28 [(dev.planton.shared.options.default) = "false"];
 
   // IP restriction rules for the SCM (Kudu) site.
   // Only used when scm_use_main_ip_restriction is false.
-  repeated AzureFunctionAppIpRestriction scm_ip_restrictions = 22;
+  repeated AzureFunctionAppIpRestriction scm_ip_restrictions = 29;
 
-  // Default action for IP restrictions on the SCM site.
-  //
-  // Default: "Allow"
-  optional string scm_ip_restriction_default_action = 23 [
-    (dev.planton.shared.options.default) = "Allow",
-    (buf.validate.field).cel = {
-      id: "scm_ip_restriction_default_action_valid"
-      message: "scm_ip_restriction_default_action must be one of: Allow, Deny"
-      expression: "this in ['Allow', 'Deny']"
-    }
-  ];
+  // Default action for traffic that matches no scm_ip_restrictions rule.
+  // Unset deploys ALLOW.
+  AzureFunctionAppIpRestrictionAction scm_ip_restriction_default_action = 30 [(buf.validate.field).enum.defined_only = true];
 
-  // App Service logging configuration.
-  AzureFunctionAppAppServiceLogs app_service_logs = 24;
-
-  // Default documents list for the web server.
-  // Defines which files are served when a request hits the root path.
-  repeated string default_documents = 25;
+  // App Service logging configuration (disk quota + retention for the
+  // file-system logs).
+  AzureFunctionAppAppServiceLogs app_service_logs = 31;
 
   // Use managed identity for pulling container images from Azure Container Registry.
   // Requires the Function App's identity to have AcrPull role on the registry.
   //
   // Default: false
-  optional bool container_registry_use_managed_identity = 26 [(dev.planton.shared.options.default) = "false"];
+  optional bool container_registry_use_managed_identity = 32 [(dev.planton.shared.options.default) = "false"];
 
   // Client ID of the managed identity used for ACR image pulls.
   // Only used when container_registry_use_managed_identity is true and
   // a user-assigned identity (not system-assigned) should be used.
-  string container_registry_managed_identity_client_id = 27;
+  string container_registry_managed_identity_client_id = 33;
 
   // Application Insights instrumentation key (classic).
   // Prefer application_insights_connection_string on the parent spec
   // for new deployments. This field is for backward compatibility with
   // apps already using the instrumentation key.
-  string application_insights_key = 28;
+  string application_insights_key = 34 [(dev.planton.shared.options.sensitive) = true];
+
+  option (buf.validate.message).cel = {
+    id: "function_app_health_eviction_requires_path"
+    message: "health_check_eviction_time_in_min requires health_check_path (there is no probe to evict on otherwise)"
+    expression: "!has(this.health_check_eviction_time_in_min) || this.health_check_path != ''"
+  };
 }
 
 // AzureFunctionAppApplicationStack defines the runtime for the Function App.
@@ -655,30 +771,44 @@ message AzureFunctionAppDockerConfig {
 // Managed identities eliminate the need to manage credentials for
 // authenticating with Azure services. The identity is automatically managed
 // by Azure AD and can be assigned RBAC roles on Azure resources.
-//
-// Follows the same pattern as AzureContainerAppIdentity.
 message AzureFunctionAppIdentity {
-  // Identity type.
-  // "SystemAssigned": Azure-managed identity tied to the Function App lifecycle.
-  // "UserAssigned": Pre-created identity with independent lifecycle.
-  // "SystemAssigned,UserAssigned": Both identity types.
-  string type = 1 [
+  // The identity model: Azure-managed (tied to the app's lifecycle),
+  // bring-your-own (independent lifecycle), or both.
+  AzureFunctionAppIdentityType type = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "identity_type_valid"
-      message: "type must be 'SystemAssigned', 'UserAssigned', or 'SystemAssigned,UserAssigned'"
-      expression: "this in ['SystemAssigned', 'UserAssigned', 'SystemAssigned,UserAssigned']"
-    }
+    (buf.validate.field).enum.defined_only = true
   ];
 
   // User Assigned Identity Azure resource IDs.
-  // Required when type includes "UserAssigned".
+  // Required when type includes USER_ASSIGNED.
   //
   // Can be literal ARM resource IDs or references to AzureUserAssignedIdentity outputs.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
   ];
+
+  option (buf.validate.message).cel = {
+    id: "function_app_identity_ids_pairing"
+    message: "identity_ids is required when type includes USER_ASSIGNED, and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 1 && this.identity_ids.size() == 0) || (this.type != 1 && this.identity_ids.size() > 0)"
+  };
+}
+
+// The managed-identity model for the Function App.
+enum AzureFunctionAppIdentityType {
+  // Not specified -- invalid; pick an explicit identity model.
+  azure_function_app_identity_type_unspecified = 0;
+
+  // Azure creates and rotates an identity tied to the app's lifecycle.
+  SYSTEM_ASSIGNED = 1;
+
+  // Attach pre-created AzureUserAssignedIdentity resources (independent
+  // lifecycle; shareable across apps).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned identity and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
 }
 
 // AzureFunctionAppConnectionString defines a named connection string
@@ -691,17 +821,12 @@ message AzureFunctionAppConnectionString {
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The type of connection string. Determines the environment variable prefix.
-  //
-  // Valid values: MySQL, SQLServer, SQLAzure, Custom, NotificationHub,
-  // ServiceBus, EventHub, APIHub, DocDb, RedisCache, PostgreSQL
-  string type = 2 [
+  // The service type. Determines the environment variable prefix Azure
+  // exposes the value under (e.g. SQLAZURECONNSTR_, MYSQLCONNSTR_,
+  // CUSTOMCONNSTR_).
+  AzureFunctionAppConnectionStringType type = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "connection_string_type_valid"
-      message: "type must be one of: MySQL, SQLServer, SQLAzure, Custom, NotificationHub, ServiceBus, EventHub, APIHub, DocDb, RedisCache, PostgreSQL"
-      expression: "this in ['MySQL', 'SQLServer', 'SQLAzure', 'Custom', 'NotificationHub', 'ServiceBus', 'EventHub', 'APIHub', 'DocDb', 'RedisCache', 'PostgreSQL']"
-    }
+    (buf.validate.field).enum.defined_only = true
   ];
 
   // The connection string value. This is a sensitive credential.
@@ -709,11 +834,53 @@ message AzureFunctionAppConnectionString {
   dev.planton.shared.foreignkey.v1.StringValueOrRef value = 3 [(buf.validate.field).required = true];
 }
 
+// The connection-string service type vocabulary, mirroring Azure's own.
+enum AzureFunctionAppConnectionStringType {
+  // Not specified -- invalid; pick the service type (CUSTOM for anything
+  // without a dedicated type).
+  azure_function_app_connection_string_type_unspecified = 0;
+
+  MYSQL = 1;
+  SQL_SERVER = 2;
+  SQL_AZURE = 3;
+  CUSTOM = 4;
+  NOTIFICATION_HUB = 5;
+  SERVICE_BUS = 6;
+  EVENT_HUB = 7;
+  API_HUB = 8;
+  DOC_DB = 9;
+  REDIS_CACHE = 10;
+  POSTGRESQL = 11;
+}
+
+// Settings pinned to the production slot during slot swaps. At least one
+// of the two lists must be non-empty.
+message AzureFunctionAppStickySettings {
+  // Names of app_settings entries that stay with the production slot
+  // during a swap.
+  repeated string app_setting_names = 1 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Names of connection_strings entries that stay with the production
+  // slot during a swap.
+  repeated string connection_string_names = 2 [
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Carries the NAMES of connection strings pinned during slot swaps, never their values.",
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "function_app_sticky_settings_not_empty"
+    message: "sticky_settings requires at least one app_setting_names or connection_string_names entry"
+    expression: "this.app_setting_names.size() > 0 || this.connection_string_names.size() > 0"
+  };
+}
+
 // AzureFunctionAppIpRestriction defines an IP-based access restriction rule.
 // Rules are evaluated in priority order (lower number = higher priority).
 //
 // Exactly one of ip_address, service_tag, or virtual_network_subnet_id
-// must be specified per rule.
+// must be specified per rule. (Documented, not spec-enforced:
+// virtual_network_subnet_id is a reference whose sub-fields manifest
+// validation cannot inspect.)
 message AzureFunctionAppIpRestriction {
   // Rule name for identification.
   string name = 1;
@@ -725,19 +892,8 @@ message AzureFunctionAppIpRestriction {
     lte: 65000
   }];
 
-  // Action to take when the rule matches.
-  //
-  // Valid values: "Allow", "Deny"
-  //
-  // Default: "Allow"
-  optional string action = 3 [
-    (dev.planton.shared.options.default) = "Allow",
-    (buf.validate.field).cel = {
-      id: "ip_restriction_action_valid"
-      message: "action must be one of: Allow, Deny"
-      expression: "this in ['Allow', 'Deny']"
-    }
-  ];
+  // Whether matching traffic is allowed or denied. Unset deploys ALLOW.
+  AzureFunctionAppIpRestrictionAction action = 3 [(buf.validate.field).enum.defined_only = true];
 
   // IP address or CIDR range.
   // Example: "10.0.0.0/24", "203.0.113.50/32"
@@ -763,26 +919,45 @@ message AzureFunctionAppIpRestriction {
   AzureFunctionAppIpRestrictionHeaders headers = 8;
 }
 
+// Whether traffic matching an IP-restriction rule (or no rule, for the
+// default action) is allowed or denied.
+enum AzureFunctionAppIpRestrictionAction {
+  // Not specified -- deploys ALLOW.
+  azure_function_app_ip_restriction_action_unspecified = 0;
+
+  ALLOW = 1;
+  DENY = 2;
+}
+
 // AzureFunctionAppIpRestrictionHeaders defines header-based filters for
 // IP restriction rules. Used primarily with Azure Front Door to ensure
 // traffic comes through the CDN rather than directly to the Function App.
 message AzureFunctionAppIpRestrictionHeaders {
   // X-Forwarded-For header values to match.
   // Up to 8 entries. CIDR ranges are supported.
-  repeated string x_forwarded_for = 1;
+  repeated string x_forwarded_for = 1 [(buf.validate.field).repeated.max_items = 8];
 
   // X-Forwarded-Host header values to match.
   // Up to 8 entries.
-  repeated string x_forwarded_host = 2;
+  repeated string x_forwarded_host = 2 [(buf.validate.field).repeated.max_items = 8];
 
-  // X-Azure-FDID (Front Door ID) header values to match.
-  // Up to 8 entries. Used to ensure traffic comes from your specific
-  // Front Door instance.
-  repeated string x_azure_fdid = 3;
+  // X-Azure-FDID (Front Door ID) header values to match, up to 8
+  // entries. Locks the app to specific Front Door instances: pair an
+  // ALLOW rule on the AzureFrontDoor.Backend service tag with this
+  // filter so only YOUR profile's traffic reaches the origin -- without
+  // it, anyone who discovers the app's default hostname bypasses the
+  // edge (and its WAF) entirely. Each entry references an
+  // AzureFrontDoorProfile's resource_guid output or carries the GUID as
+  // a literal.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef x_azure_fdid = 3 [
+    (buf.validate.field).repeated.max_items = 8,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorProfile,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_guid"
+  ];
 
   // X-FD-HealthProbe header values to match.
-  // Used to allow Front Door health probe traffic.
-  repeated string x_fd_health_probe = 4;
+  // The only supported value is "1" (allow Front Door health probes).
+  repeated string x_fd_health_probe = 4 [(buf.validate.field).repeated.max_items = 1];
 }
 
 // AzureFunctionAppCorsSettings configures Cross-Origin Resource Sharing
@@ -794,10 +969,17 @@ message AzureFunctionAppCorsSettings {
   repeated string allowed_origins = 1 [(buf.validate.field).repeated.min_items = 1];
 
   // Allow credentials (cookies, authorization headers) in cross-origin requests.
-  // Cannot be used with allowed_origins = ["*"].
+  // Cannot be combined with a wildcard origin (enforced here -- browsers
+  // reject the pairing).
   //
   // Default: false
   optional bool support_credentials = 2 [(dev.planton.shared.options.default) = "false"];
+
+  option (buf.validate.message).cel = {
+    id: "function_app_cors_credentials_wildcard"
+    message: "support_credentials cannot be used with a wildcard '*' origin"
+    expression: "!(has(this.support_credentials) && this.support_credentials) || !('*' in this.allowed_origins)"
+  };
 }
 
 // AzureFunctionAppAppServiceLogs configures the App Service logging
@@ -829,18 +1011,11 @@ message AzureFunctionAppStorageMount {
     (buf.validate.field).string.min_len = 1
   ];
 
-  // Storage type.
-  //
-  // Valid values:
-  // - "AzureBlob": Mount an Azure Blob container (read-only)
-  // - "AzureFiles": Mount an Azure File Share (read-write)
-  string type = 2 [
+  // What is being mounted: an Azure File Share (read-write) or a Blob
+  // container (read-only).
+  AzureFunctionAppStorageMountType type = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "storage_mount_type_valid"
-      message: "type must be one of: AzureBlob, AzureFiles"
-      expression: "this in ['AzureBlob', 'AzureFiles']"
-    }
+    (buf.validate.field).enum.defined_only = true
   ];
 
   // Name of the Azure Storage Account that contains the share or container.
@@ -855,11 +1030,619 @@ message AzureFunctionAppStorageMount {
     (buf.validate.field).string.min_len = 1
   ];
 
-  // Access key for the storage account.
-  // This is a sensitive credential.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef access_key = 5 [(buf.validate.field).required = true];
+  // Access key for the storage account. Defaults to referencing an
+  // AzureStorageAccount's primary_access_key output, so the mount
+  // composes in one manifest set; a literal value or a managed-secret
+  // reference works too.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef access_key = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_access_key"
+  ];
 
   // Path inside the container where the share is mounted.
   // Example: "/mnt/data"
   string mount_path = 6;
+}
+
+// The storage service backing a mount.
+enum AzureFunctionAppStorageMountType {
+  // Not specified -- invalid; pick the storage service.
+  azure_function_app_storage_mount_type_unspecified = 0;
+
+  // Azure File Share (SMB) -- read-write.
+  AZURE_FILES = 1;
+
+  // Azure Blob container -- read-only.
+  AZURE_BLOB = 2;
+}
+
+// Scheduled backups of the app's content and configuration to an Azure
+// Storage container. Requires Standard tier or above (Azure rejects
+// backup on Consumption and Basic plans at apply time).
+message AzureFunctionAppBackup {
+  // A name for this backup job (appears in the portal's backup list).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // SAS URL of the storage container receiving the backups. Carries a
+  // signed write credential -- treat like a password.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_url = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Whether the backup job runs. Disable to pause the schedule without
+  // losing its configuration.
+  //
+  // Default: true
+  optional bool enabled = 3 [(dev.planton.shared.options.default) = "true"];
+
+  // When and how often backups run, and how long they are kept.
+  AzureFunctionAppBackupSchedule schedule = 4 [(buf.validate.field).required = true];
+}
+
+// The backup cadence and retention policy.
+message AzureFunctionAppBackupSchedule {
+  // How many frequency_units pass between backups (e.g. 1 DAY = daily,
+  // 12 HOUR = twice a day). Range: 1-1000.
+  int32 frequency_interval = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 1000
+    }
+  ];
+
+  // The unit frequency_interval counts in.
+  AzureFunctionAppBackupFrequencyUnit frequency_unit = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  // Never delete the last remaining backup, even when retention would
+  // expire it.
+  //
+  // Default: false
+  optional bool keep_at_least_one_backup = 3 [(dev.planton.shared.options.default) = "false"];
+
+  // Days each backup is retained before deletion. 0 keeps backups
+  // indefinitely.
+  //
+  // Default: 30
+  optional int32 retention_period_days = 4 [
+    (dev.planton.shared.options.default) = "30",
+    (buf.validate.field).int32 = {gte: 0}
+  ];
+
+  // When the schedule starts, RFC3339 format (e.g.
+  // "2026-01-01T00:00:00Z"). Unset starts immediately.
+  string start_time = 5;
+}
+
+// The backup cadence unit.
+enum AzureFunctionAppBackupFrequencyUnit {
+  // Not specified -- invalid; pick DAY or HOUR.
+  azure_function_app_backup_frequency_unit_unspecified = 0;
+
+  DAY = 1;
+  HOUR = 2;
+}
+
+// Client certificate (mutual TLS) enforcement mode.
+enum AzureFunctionAppClientCertificateMode {
+  // Not specified -- deploys OPTIONAL.
+  azure_function_app_client_certificate_mode_unspecified = 0;
+
+  // All requests must present a valid client certificate.
+  REQUIRED = 1;
+
+  // Certificate is requested but not required.
+  OPTIONAL = 2;
+
+  // Certificate is optional for interactive (browser) users, required
+  // for non-interactive clients.
+  OPTIONAL_INTERACTIVE_USER = 3;
+}
+
+// TLS protocol versions accepted for incoming connections.
+enum AzureFunctionAppTlsVersion {
+  // Not specified -- deploys TLS_1_2.
+  azure_function_app_tls_version_unspecified = 0;
+
+  // TLS 1.0 -- legacy clients only; fails modern compliance baselines.
+  TLS_1_0 = 1;
+
+  // TLS 1.1 -- legacy clients only; fails modern compliance baselines.
+  TLS_1_1 = 2;
+
+  // TLS 1.2 -- the industry floor (the default).
+  TLS_1_2 = 3;
+
+  // TLS 1.3 -- the strongest option; requires modern clients.
+  TLS_1_3 = 4;
+}
+
+// The FTP deployment endpoint's TLS posture.
+enum AzureFunctionAppFtpsState {
+  // Not specified -- deploys DISABLED (secure by default).
+  azure_function_app_ftps_state_unspecified = 0;
+
+  // Both plain FTP and FTPS accepted.
+  ALL_ALLOWED = 1;
+
+  // Only FTPS (encrypted) accepted.
+  FTPS_ONLY = 2;
+
+  // The FTP endpoint is off entirely (recommended).
+  DISABLED = 3;
+}
+
+// How requests are distributed across the app's instances.
+enum AzureFunctionAppLoadBalancingMode {
+  // Not specified -- deploys LEAST_REQUESTS.
+  azure_function_app_load_balancing_mode_unspecified = 0;
+
+  // Route to the instance with the fewest active requests (the default).
+  LEAST_REQUESTS = 1;
+
+  WEIGHTED_ROUND_ROBIN = 2;
+  LEAST_RESPONSE_TIME = 3;
+  WEIGHTED_TOTAL_TRAFFIC = 4;
+  REQUEST_HASH = 5;
+  PER_SITE_ROUND_ROBIN = 6;
+}
+
+// IIS-lineage request pipeline mode.
+enum AzureFunctionAppManagedPipelineMode {
+  // Not specified -- deploys INTEGRATED.
+  azure_function_app_managed_pipeline_mode_unspecified = 0;
+
+  // The modern pipeline (the default; correct for everything current).
+  INTEGRATED = 1;
+
+  // Legacy-compatibility pipeline.
+  CLASSIC = 2;
+}
+
+// App Service built-in authentication (Easy Auth v2): the platform
+// authenticates requests before they reach function code. Provider
+// client secrets are referenced by APP SETTING NAME -- the secret value
+// itself lives in app_settings (or a Key Vault reference), never in this
+// block.
+message AzureFunctionAppAuthSettingsV2 {
+  // Master switch: whether the authentication/authorization layer
+  // intercepts requests.
+  //
+  // Default: false
+  optional bool auth_enabled = 1 [(dev.planton.shared.options.default) = "false"];
+
+  // The Easy Auth middleware runtime version.
+  //
+  // Default: "~1"
+  optional string runtime_version = 2 [(dev.planton.shared.options.default) = "~1"];
+
+  // Path to a config file carrying the auth settings when they are
+  // file-managed instead of ARM-managed. Rarely used.
+  string config_file_path = 3;
+
+  // Require every request to be authenticated (subject to
+  // excluded_paths).
+  //
+  // Default: false
+  optional bool require_authentication = 4 [(dev.planton.shared.options.default) = "false"];
+
+  // What happens to unauthenticated requests. Unset deploys
+  // REDIRECT_TO_LOGIN_PAGE.
+  AzureFunctionAppUnauthenticatedAction unauthenticated_action = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // The provider unauthenticated requests are redirected to when
+  // unauthenticated_action is REDIRECT_TO_LOGIN_PAGE and more than one
+  // provider is configured: "apple", "azureactivedirectory", "facebook",
+  // "github", "google", "twitter", or the name of a custom_oidc_v2
+  // provider.
+  string default_provider = 6;
+
+  // Paths that skip authentication entirely (e.g. ["/api/health"]).
+  repeated string excluded_paths = 7;
+
+  // Require HTTPS for authentication requests.
+  //
+  // Default: true
+  optional bool require_https = 8 [(dev.planton.shared.options.default) = "true"];
+
+  // The prefix that the Easy Auth HTTP endpoints (login, logout, token
+  // refresh) are served under.
+  //
+  // Default: "/.auth"
+  optional string http_route_api_prefix = 9 [(dev.planton.shared.options.default) = "/.auth"];
+
+  // How the original request URL is derived when the app sits behind a
+  // forward proxy. Unset deploys FORWARD_PROXY_NO_PROXY.
+  AzureFunctionAppForwardProxyConvention forward_proxy_convention = 10 [(buf.validate.field).enum.defined_only = true];
+
+  // The header carrying the original host, when forward_proxy_convention
+  // is FORWARD_PROXY_CUSTOM.
+  string forward_proxy_custom_host_header_name = 11;
+
+  // The header carrying the original scheme, when
+  // forward_proxy_convention is FORWARD_PROXY_CUSTOM.
+  string forward_proxy_custom_scheme_header_name = 12;
+
+  // Login/session behavior (token store, cookie expiration, nonce).
+  // Required by Azure whenever auth_settings_v2 is configured.
+  AzureFunctionAppAuthV2Login login = 13 [(buf.validate.field).required = true];
+
+  // Sign in with Apple.
+  AzureFunctionAppAuthV2Apple apple_v2 = 14;
+
+  // Microsoft Entra ID (Azure Active Directory).
+  AzureFunctionAppAuthV2ActiveDirectory active_directory_v2 = 15;
+
+  // Azure Static Web Apps authentication (when fronted by one).
+  AzureFunctionAppAuthV2StaticWebApp azure_static_web_app_v2 = 16;
+
+  // Any OpenID Connect provider(s), by name.
+  repeated AzureFunctionAppAuthV2CustomOidc custom_oidc_v2 = 17;
+
+  // Facebook login.
+  AzureFunctionAppAuthV2Facebook facebook_v2 = 18;
+
+  // GitHub login.
+  AzureFunctionAppAuthV2Github github_v2 = 19;
+
+  // Google login.
+  AzureFunctionAppAuthV2Google google_v2 = 20;
+
+  // Microsoft account (consumer) login.
+  AzureFunctionAppAuthV2Microsoft microsoft_v2 = 21;
+
+  // Twitter login.
+  AzureFunctionAppAuthV2Twitter twitter_v2 = 22;
+
+  option (buf.validate.message).cel = {
+    id: "auth_v2_custom_proxy_headers"
+    message: "forward_proxy_custom_host_header_name and forward_proxy_custom_scheme_header_name require forward_proxy_convention FORWARD_PROXY_CUSTOM"
+    expression: "(this.forward_proxy_custom_host_header_name == '' && this.forward_proxy_custom_scheme_header_name == '') || this.forward_proxy_convention == 3"
+  };
+}
+
+// What happens to requests that arrive unauthenticated.
+enum AzureFunctionAppUnauthenticatedAction {
+  // Not specified -- deploys REDIRECT_TO_LOGIN_PAGE.
+  azure_function_app_unauthenticated_action_unspecified = 0;
+
+  // Redirect to the login page of the default provider.
+  REDIRECT_TO_LOGIN_PAGE = 1;
+
+  // Let the request through; the app decides (identity headers are
+  // populated when present).
+  ALLOW_ANONYMOUS = 2;
+
+  // Reject with HTTP 401.
+  RETURN_401 = 3;
+
+  // Reject with HTTP 403.
+  RETURN_403 = 4;
+}
+
+// How the original request URL is derived behind a forward proxy.
+enum AzureFunctionAppForwardProxyConvention {
+  // Not specified -- deploys FORWARD_PROXY_NO_PROXY.
+  azure_function_app_forward_proxy_convention_unspecified = 0;
+
+  // No proxy: use the request as received (the default).
+  FORWARD_PROXY_NO_PROXY = 1;
+
+  // Standard X-Forwarded-Host/X-Forwarded-Proto headers.
+  FORWARD_PROXY_STANDARD = 2;
+
+  // Custom header names (set the two custom header name fields).
+  FORWARD_PROXY_CUSTOM = 3;
+}
+
+// Login/session behavior for Easy Auth.
+message AzureFunctionAppAuthV2Login {
+  // The endpoint the browser is sent to on logout (clears the session).
+  string logout_endpoint = 1;
+
+  // Durably store identity tokens so the app (and the /.auth/me
+  // endpoint) can retrieve them later. Required for token refresh.
+  //
+  // Default: false
+  optional bool token_store_enabled = 2 [(dev.planton.shared.options.default) = "false"];
+
+  // Hours after session expiry that a token refresh may still succeed.
+  //
+  // Default: 72
+  optional double token_refresh_extension_time = 3 [
+    (dev.planton.shared.options.default) = "72",
+    (buf.validate.field).double = {gte: 0}
+  ];
+
+  // File-system path backing the token store (mutually exclusive with
+  // the SAS-setting form).
+  string token_store_path = 4;
+
+  // Name of the app setting holding the SAS URL of the blob container
+  // backing the token store (mutually exclusive with the path form).
+  string token_store_sas_setting_name = 5;
+
+  // Preserve URL fragments (#...) across the login redirect dance.
+  //
+  // Default: false
+  optional bool preserve_url_fragments_for_logins = 6 [(dev.planton.shared.options.default) = "false"];
+
+  // External URLs that post-login/logout redirects may target (in
+  // addition to same-host URLs, which are always allowed).
+  repeated string allowed_external_redirect_urls = 7;
+
+  // How session cookies expire. Unset deploys FIXED_TIME.
+  AzureFunctionAppCookieExpirationConvention cookie_expiration_convention = 8 [(buf.validate.field).enum.defined_only = true];
+
+  // Session cookie lifetime (hh:mm:ss) when the convention is
+  // FIXED_TIME.
+  //
+  // Default: "08:00:00"
+  optional string cookie_expiration_time = 9 [
+    (dev.planton.shared.options.default) = "08:00:00",
+    (buf.validate.field).cel = {
+      id: "auth_v2_cookie_expiration_format"
+      message: "cookie_expiration_time must be hh:mm:ss (e.g. 08:00:00)"
+      expression: "this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')"
+    }
+  ];
+
+  // Validate the anti-forgery nonce during the login flow. Leave on.
+  //
+  // Default: true
+  optional bool validate_nonce = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // Nonce lifetime (hh:mm:ss).
+  //
+  // Default: "00:05:00"
+  optional string nonce_expiration_time = 11 [
+    (dev.planton.shared.options.default) = "00:05:00",
+    (buf.validate.field).cel = {
+      id: "auth_v2_nonce_expiration_format"
+      message: "nonce_expiration_time must be hh:mm:ss (e.g. 00:05:00)"
+      expression: "this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')"
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "auth_v2_token_store_one_backing"
+    message: "token_store_path and token_store_sas_setting_name are mutually exclusive"
+    expression: "this.token_store_path == '' || this.token_store_sas_setting_name == ''"
+  };
+}
+
+// How Easy Auth session cookies expire.
+enum AzureFunctionAppCookieExpirationConvention {
+  // Not specified -- deploys FIXED_TIME.
+  azure_function_app_cookie_expiration_convention_unspecified = 0;
+
+  // Cookies expire after cookie_expiration_time (the default).
+  FIXED_TIME = 1;
+
+  // Cookie lifetime follows the identity provider's token lifetime.
+  IDENTITY_PROVIDER_DERIVED = 2;
+}
+
+// Sign in with Apple.
+message AzureFunctionAppAuthV2Apple {
+  // The Apple Services ID (client ID).
+  string client_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the client secret (never the secret
+  // itself).
+  string client_secret_setting_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// Microsoft Entra ID (Azure Active Directory) authentication.
+message AzureFunctionAppAuthV2ActiveDirectory {
+  // The Entra app registration's client ID.
+  string client_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The OpenID issuer endpoint for the tenant, e.g.
+  // https://login.microsoftonline.com/v2.0/{tenant-guid}/
+  string tenant_auth_endpoint = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the client secret (mutually
+  // exclusive with the certificate thumbprint).
+  string client_secret_setting_name = 3;
+
+  // Thumbprint of the certificate used as the client credential
+  // (mutually exclusive with the secret setting name).
+  string client_secret_certificate_thumbprint = 4 [(dev.planton.shared.options.sensitive_exempt_reason) = "A certificate thumbprint is the certificate's public fingerprint used to SELECT the credential, not the private key or secret itself."];
+
+  // Extra parameters sent to the authorization endpoint on login
+  // (key=value form).
+  map<string, string> login_parameters = 5;
+
+  // Suppress the WWW-Authenticate challenge header on 401 responses.
+  //
+  // Default: false
+  optional bool www_authentication_disabled = 6 [(dev.planton.shared.options.default) = "false"];
+
+  // Group claim values the JWT must carry to be accepted.
+  repeated string jwt_allowed_groups = 7;
+
+  // Client-application claim values the JWT must carry to be accepted.
+  repeated string jwt_allowed_client_applications = 8;
+
+  // Entra group object IDs allowed access.
+  repeated string allowed_groups = 9;
+
+  // Identity object IDs allowed access.
+  repeated string allowed_identities = 10;
+
+  // Client (application) IDs allowed access.
+  repeated string allowed_applications = 11;
+
+  // Token audiences accepted in addition to the client ID.
+  repeated string allowed_audiences = 12;
+
+  option (buf.validate.message).cel = {
+    id: "auth_v2_aad_one_credential"
+    message: "client_secret_setting_name and client_secret_certificate_thumbprint are mutually exclusive"
+    expression: "this.client_secret_setting_name == '' || this.client_secret_certificate_thumbprint == ''"
+  };
+}
+
+// Azure Static Web Apps authentication (when the app is fronted by one).
+message AzureFunctionAppAuthV2StaticWebApp {
+  // The Static Web App's client ID.
+  string client_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// A custom OpenID Connect provider. Azure derives the client secret's
+// app setting name from the provider name
+// ({NAME}_PROVIDER_AUTHENTICATION_SECRET) -- set that app setting with
+// the secret value.
+message AzureFunctionAppAuthV2CustomOidc {
+  // The provider's name (also the login route segment and the
+  // default_provider value that selects it).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The provider's client ID.
+  string client_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The provider's OpenID configuration (discovery) endpoint, e.g.
+  // https://idp.example.com/.well-known/openid-configuration
+  string openid_configuration_endpoint = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The claim carrying the user's display name.
+  string name_claim_type = 4;
+
+  // OAuth scopes requested at login.
+  repeated string scopes = 5;
+}
+
+// Facebook login.
+message AzureFunctionAppAuthV2Facebook {
+  // The Facebook app's App ID.
+  string app_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the app secret (never the secret
+  // itself).
+  string app_secret_setting_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Facebook Graph API version used for login (e.g. "v17.0").
+  string graph_api_version = 3;
+
+  // OAuth scopes requested at login.
+  repeated string login_scopes = 4;
+}
+
+// GitHub login.
+message AzureFunctionAppAuthV2Github {
+  // The GitHub OAuth app's client ID.
+  string client_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the client secret (never the secret
+  // itself).
+  string client_secret_setting_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // OAuth scopes requested at login.
+  repeated string login_scopes = 3;
+}
+
+// Google login.
+message AzureFunctionAppAuthV2Google {
+  // The Google OAuth client ID.
+  string client_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the client secret (never the secret
+  // itself).
+  string client_secret_setting_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Token audiences accepted in addition to the client ID.
+  repeated string allowed_audiences = 3;
+
+  // OAuth scopes requested at login.
+  repeated string login_scopes = 4;
+}
+
+// Microsoft account (consumer) login.
+message AzureFunctionAppAuthV2Microsoft {
+  // The Microsoft app registration's client ID.
+  string client_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the client secret (never the secret
+  // itself).
+  string client_secret_setting_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Token audiences accepted in addition to the client ID.
+  repeated string allowed_audiences = 3;
+
+  // OAuth scopes requested at login.
+  repeated string login_scopes = 4;
+}
+
+// Twitter login.
+message AzureFunctionAppAuthV2Twitter {
+  // The Twitter app's consumer (API) key.
+  string consumer_key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the consumer secret (never the
+  // secret itself).
+  string consumer_secret_setting_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
 }

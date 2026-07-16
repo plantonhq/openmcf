@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package dev.planton.iac.environmentpartitionrule.v1;
+
+import "dev/planton/iac/environmentpartitionrule/v1/spec.proto";
+import "dev/planton/shared/metadata.proto";
+
+// EnvironmentPartitionRule declares how discovered cloud account resources
+// are assigned to environments -- the vocabulary a deterministic partition
+// engine applies before any grouping or mapping happens. Follows the KRM
+// pattern (apiVersion + kind + metadata + spec).
+//
+// The rule is the persistable, replayable form of "how this account tells
+// its environments apart". An untaught engine runs a built-in default rule
+// (the common real-world vocabulary); when a human corrects the proposed
+// split at a review gate, the confirmed rule -- including per-resource
+// overrides -- is persisted and re-applied deterministically on every
+// re-scan, so the user teaches the rule once, never per resource.
+//
+// Example:
+//   apiVersion: iac.planton.dev/v1
+//   kind: EnvironmentPartitionRule
+//   metadata:
+//     name: default
+//   spec:
+//     authoritative_tag_keys:
+//       - planton.ai/environment
+//       - env
+//       - environment
+//       - stage
+//     environments:
+//       - name: prod
+//         tokens: [prod, prd, production]
+//       - name: staging
+//         tokens: [staging, stage, stg]
+//     overrides:
+//       - type_name: AWS::S3::Bucket
+//         identifier: orders-archive
+//         environment: prod
+message EnvironmentPartitionRule {
+  string api_version = 1;
+  string kind = 2;
+  dev.planton.shared.CloudResourceMetadata metadata = 3;
+  EnvironmentPartitionRuleSpec spec = 4;
+}

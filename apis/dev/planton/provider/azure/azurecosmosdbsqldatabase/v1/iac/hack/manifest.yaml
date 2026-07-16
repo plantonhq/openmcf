@@ -1,0 +1,11 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbSqlDatabase
+metadata:
+  name: test-cosmos-sql-database
+spec:
+  cosmosdbAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/planton-hack-cosmos
+  databaseName: app-data
+  # Exercises the autoscale seam (mutually exclusive with fixed
+  # throughput -- the spec rejects both together).
+  autoscaleMaxThroughput: 2000

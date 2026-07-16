@@ -1,0 +1,50 @@
+# The classic compute shape: a managed node group, rendered only while
+# Auto Mode is off (Auto Mode and node groups are alternatives — running
+# both would double-provision compute for the same pods).
+{% if not (values.auto_mode_enabled | bool) %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsEksNodeGroup
+metadata:
+  name: "{{ values.cluster_name }}-nodes"
+spec:
+  region: "{{ values.aws_region }}"
+  # Cluster refs join on the cluster's NAME output — the argument every
+  # EKS satellite API takes.
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: "{{ values.cluster_name }}"
+      fieldPath: status.outputs.name
+  nodeRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: "{{ values.cluster_name }}-node-role"
+      fieldPath: status.outputs.role_arn
+  # Same private subnets as the cluster: nodes never need public
+  # addresses — ingress reaches pods through load balancers, egress
+  # leaves through NAT.
+  subnetIds:
+{% for subnet_id in values.subnet_ids %}
+    - value: "{{ subnet_id }}"
+{% endfor %}
+  instanceTypes:
+{% for instance_type in values.node_instance_types %}
+    - "{{ instance_type }}"
+{% endfor %}
+  # AL2023 is AWS's current-generation node OS (AL2 AMIs stop receiving
+  # Kubernetes versions); on-demand capacity keeps the baseline fleet
+  # stable — spot belongs in a second, interruption-tolerant group.
+  amiType: AL2023_x86_64_STANDARD
+  capacityType: on_demand
+  diskSizeGb: {{ values.node_disk_size_gb }}
+  scaling:
+    minSize: {{ values.node_min_size }}
+    maxSize: {{ values.node_max_size }}
+    desiredSize: {{ values.node_desired_size }}
+  updateConfig:
+    # Roll at most a quarter of the fleet at once during node updates —
+    # enough parallelism to finish upgrades in hours, small enough that
+    # replicated workloads keep quorum throughout.
+    maxUnavailablePercentage: 25
+{% endif %}

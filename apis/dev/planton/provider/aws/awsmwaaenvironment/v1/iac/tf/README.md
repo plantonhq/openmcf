@@ -6,7 +6,8 @@ Terraform module for provisioning AWS MWAA (Managed Workflows for Apache Airflow
 
 This module creates:
 - An MWAA Environment (`aws_mwaa_environment`) with configurable Airflow version, S3 source, IAM execution role, VPC networking, encryption, sizing, logging, maintenance, and worker replacement strategy.
-- A managed Security Group (`aws_security_group`) with a self-referencing inbound rule and HTTPS (443) ingress from source security groups and/or CIDR blocks — conditional on `security_group_ids` or `allowed_cidr_blocks` being provided.
+
+Network ingress is composed, never embedded: the environment attaches the referenced `security_group_ids` directly, and the rules MWAA needs (self-referencing all-traffic, HTTPS 443 ingress, egress) live on those first-class security group nodes.
 
 ## Usage
 
@@ -32,9 +33,8 @@ module "mwaa" {
     execution_role_arn = "arn:aws:iam::111122223333:role/mwaa-prod-role"
 
     subnet_ids = ["subnet-aaa111", "subnet-bbb222"]
-    vpc_id     = "vpc-0prod123456"
 
-    security_group_ids = ["sg-0datateam001"]
+    security_group_ids = ["sg-0mwaa001"]
     environment_class  = "mw1.medium"
     min_workers        = 2
     max_workers        = 10
@@ -79,10 +79,7 @@ See `variables.tf` for the complete type definition of `spec`, including all opt
 | `startup_script_s3_object_version` | string | `""` | S3 object version for startup script |
 | `execution_role_arn` | string | **required** | IAM execution role ARN |
 | `subnet_ids` | list(string) | **required** | 2 private subnet IDs in different AZs |
-| `security_group_ids` | list(string) | `[]` | Source SGs for managed SG creation |
-| `allowed_cidr_blocks` | list(string) | `[]` | CIDRs for managed SG HTTPS ingress |
-| `associate_security_group_ids` | list(string) | `[]` | Existing SGs attached directly |
-| `vpc_id` | string | `""` | VPC ID for managed SG (required when source SGs/CIDRs provided) |
+| `security_group_ids` | list(string) | **required** (≥1) | Security groups attached to the MWAA VPC endpoints; the MWAA ingress pattern lives on these groups |
 | `kms_key_arn` | string | `""` | KMS key ARN for at-rest encryption |
 | `environment_class` | string | `""` | Environment class (mw1.micro through mw1.2xlarge) |
 | `min_workers` | number | `0` | Min Celery workers |
@@ -107,47 +104,21 @@ See `variables.tf` for the complete type definition of `spec`, including all opt
 | `service_role_arn` | AWS service role ARN |
 | `environment_class` | Effective environment class |
 | `status` | Current environment status |
-| `security_group_id` | Managed SG ID (empty if not created) |
+| `created_at` | Environment creation timestamp |
+| `database_vpc_endpoint_service` | Endpoint service name for the metadata database (CUSTOMER endpoint management) |
+| `webserver_vpc_endpoint_service` | Endpoint service name for the webserver (CUSTOMER endpoint management) |
 
 ## File Structure
 
 | File | Purpose |
 |------|---------|
-| `provider.tf` | AWS provider configuration (hashicorp/aws ~> 5.0) |
-| `variables.tf` | Input variable definitions with full type constraints |
-| `locals.tf` | Tags, `has_ingress_refs` condition, effective SG list |
-| `main.tf` | All resource definitions (security group, SG rules, MWAA environment) |
-| `outputs.tf` | 8 output definitions |
+| `provider.tf` | AWS provider configuration (hashicorp/aws >= 6.11.0) |
+| `variables.tf` | Input variable definitions (generator-owned contract) |
+| `locals.tf` | Environment name basis and resource-identity tags |
+| `main.tf` | The MWAA environment resource |
+| `outputs.tf` | Output definitions |
 
 ## How It Works
-
-### Security Group Logic
-
-The `has_ingress_refs` local determines whether a managed security group is created:
-
-```hcl
-locals {
-  has_ingress_refs = length(var.spec.security_group_ids) > 0 || length(var.spec.allowed_cidr_blocks) > 0
-}
-```
-
-When `true`, the module creates:
-1. An `aws_security_group` in the specified VPC.
-2. A self-referencing ingress rule (all traffic from itself).
-3. HTTPS (443) ingress from each source security group (`for_each`).
-4. HTTPS (443) ingress from CIDR blocks (single rule with the list).
-5. An egress rule allowing all outbound traffic.
-
-The `effective_security_group_ids` local combines the managed SG with `associate_security_group_ids`:
-
-```hcl
-locals {
-  effective_security_group_ids = concat(
-    var.spec.associate_security_group_ids,
-    local.has_ingress_refs ? [aws_security_group.environment[0].id] : []
-  )
-}
-```
 
 ### Logging Configuration
 
@@ -173,8 +144,8 @@ This ensures Terraform does not send zero-value fields to the AWS API, allowing 
 
 ## Prerequisites
 
-- Terraform 1.5+
-- AWS provider ~> 5.0
+- Terraform 1.5+ / OpenTofu
+- AWS provider >= 6.11.0
 - AWS credentials (via provider config or ambient)
 
 ## Running

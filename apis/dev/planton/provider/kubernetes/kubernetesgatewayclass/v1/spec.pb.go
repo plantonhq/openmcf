@@ -33,14 +33,9 @@ const (
 // after the Planton cluster-scoped envelope.
 //
 // GatewayClass is a cluster-scoped resource (+kubebuilder:resource:scope=Cluster
-// upstream), so this spec carries target_cluster but intentionally has NO
-// namespace field.
+// upstream), so this spec intentionally has NO namespace field.
 type KubernetesGatewayClassSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where this GatewayClass is created. The Gateway
-	// API CRDs (KubernetesGatewayApiCrds) must already be installed on the
-	// cluster.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Name of the controller that manages Gateways of this class, expressed as a
 	// domain-prefixed path (for example, "istio.io/gateway-controller" or
 	// "gateway.envoyproxy.io/gatewayclass-controller").
@@ -97,13 +92,6 @@ func (*KubernetesGatewayClassSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesgatewayclass_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *KubernetesGatewayClassSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
-}
-
 func (x *KubernetesGatewayClassSpec) GetControllerName() string {
 	if x != nil {
 		return x.ControllerName
@@ -129,9 +117,8 @@ var File_dev_planton_provider_kubernetes_kubernetesgatewayclass_v1_spec_proto pr
 
 const file_dev_planton_provider_kubernetes_kubernetesgatewayclass_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/kubernetes/kubernetesgatewayclass/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesgatewayclass.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\"\xce\x03\n" +
-	"\x1aKubernetesGatewayClassSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12\x9b\x01\n" +
+	"Ddev/planton/provider/kubernetes/kubernetesgatewayclass/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesgatewayclass.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\"\xeb\x02\n" +
+	"\x1aKubernetesGatewayClassSpec\x12\x9b\x01\n" +
 	"\x0fcontroller_name\x18\x02 \x01(\tBr\xbaHo\xc8\x01\x01rj\x10\x01\x18\xfd\x012c^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\\/[A-Za-z0-9\\/\\-._~%!$&'()*+,;=:]+$R\x0econtrollerName\x12o\n" +
 	"\x0eparameters_ref\x18\x03 \x01(\v2H.dev.planton.provider.kubernetes.KubernetesGatewayApiParametersReferenceR\rparametersRef\x12.\n" +
 	"\vdescription\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18@H\x00R\vdescription\x88\x01\x01B\x0e\n" +
@@ -153,17 +140,15 @@ func file_dev_planton_provider_kubernetes_kubernetesgatewayclass_v1_spec_proto_r
 var file_dev_planton_provider_kubernetes_kubernetesgatewayclass_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_kubernetes_kubernetesgatewayclass_v1_spec_proto_goTypes = []any{
 	(*KubernetesGatewayClassSpec)(nil),                         // 0: dev.planton.provider.kubernetes.kubernetesgatewayclass.v1.KubernetesGatewayClassSpec
-	(*kubernetes.KubernetesClusterSelector)(nil),               // 1: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*kubernetes.KubernetesGatewayApiParametersReference)(nil), // 2: dev.planton.provider.kubernetes.KubernetesGatewayApiParametersReference
+	(*kubernetes.KubernetesGatewayApiParametersReference)(nil), // 1: dev.planton.provider.kubernetes.KubernetesGatewayApiParametersReference
 }
 var file_dev_planton_provider_kubernetes_kubernetesgatewayclass_v1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.kubernetes.kubernetesgatewayclass.v1.KubernetesGatewayClassSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	2, // 1: dev.planton.provider.kubernetes.kubernetesgatewayclass.v1.KubernetesGatewayClassSpec.parameters_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiParametersReference
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1, // 0: dev.planton.provider.kubernetes.kubernetesgatewayclass.v1.KubernetesGatewayClassSpec.parameters_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiParametersReference
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesgatewayclass_v1_spec_proto_init() }

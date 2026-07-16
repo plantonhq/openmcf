@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurerediscache
+spec:
+  # The harness deploys the fixture resource group (registry
+  # prerequisite), creates a STANDARD C0 cache -- the production-default
+  # tier at the smallest size -- with a firewall rule, an engine
+  # configuration block, a patch window, and user tags, verifies it via
+  # the ARM API, destroys it, and verifies it is gone.
+  #
+  # Redis is the slowest-provisioning service in the Azure catalog:
+  # 15-40 minutes per cache is normal (azurerm's own timeouts are 3
+  # hours), which sizes this profile's timeout.
+  #
+  # Premium-only surfaces (VNet injection, clustering, persistence) are
+  # excluded from the smoke: each multiplies the slowest provisioning
+  # time in the catalog to prove dials the spec tests, tofu plan, and
+  # parity audit fully prove offline. The Premium tier itself is proven
+  # live by the AzureRedisLinkedServer chain, which requires two Premium
+  # caches.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 90

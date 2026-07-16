@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azuremonitoractiongroup.v1;
+
+// **AzureMonitorActionGroupStackOutputs** captures the outputs of provisioning
+// an Azure Monitor action group.
+//
+// The `action_group_id` output is the composition seam: metric alerts,
+// scheduled query alerts, and every other Azure Monitor alert type reference
+// the action group by its ARM ID.
+message AzureMonitorActionGroupStackOutputs {
+  // The Azure Resource Manager ID of the action group.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/actionGroups/{name}
+  // Referenced by: AzureMonitorMetricAlert and AzureMonitorScheduledQueryAlert
+  // actions.
+  string action_group_id = 1;
+
+  // The name of the action group.
+  string action_group_name = 2;
+}

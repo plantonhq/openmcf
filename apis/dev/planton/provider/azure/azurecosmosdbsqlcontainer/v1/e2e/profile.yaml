@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurecosmosdbsqlcontainer
+spec:
+  # The harness deploys the fixture resource group, a scenario-local
+  # account and database (declared via e2e-prerequisites in deploy
+  # order), creates the SQL container with a partition key, verifies it
+  # via the ARM API, destroys it, and verifies it is gone -- on both
+  # provisioners. The scenario-local account pins westus3 (eastus
+  # rejects new Cosmos accounts under zonal-capacity pressure -- see
+  # e2e/README.md); the full chain runs ~15-17 min per engine.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 90

@@ -3,6 +3,7 @@ package root
 import (
 	"github.com/plantonhq/planton/internal/cli/flag"
 	"github.com/plantonhq/planton/internal/cli/version"
+	"github.com/plantonhq/planton/pkg/kubernetes/execcredential"
 	"github.com/spf13/cobra"
 )
 
@@ -56,6 +57,10 @@ func RegisterCommands(parent *cobra.Command, opts Options) {
 		ValidateManifest,
 		ValidateOutputs,
 		ValidateRefs,
+		// Hidden ExecCredential protocol endpoint: kubeconfigs rendered by the deploy
+		// paths name this binary as their credential command, so every binary that
+		// mounts the engine set can serve its own kubeconfig exec entries.
+		execcredential.Command,
 	)
 }
 

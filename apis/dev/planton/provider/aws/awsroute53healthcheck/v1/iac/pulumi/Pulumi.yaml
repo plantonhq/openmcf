@@ -1,0 +1,3 @@
+name: aws-route53-health-check
+runtime: go
+description: Deploy an Amazon Route 53 health check using Planton

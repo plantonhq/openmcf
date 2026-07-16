@@ -38,7 +38,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
   name: my-clickhouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -71,8 +71,6 @@ This creates a single-replica ClickHouse instance with version 24.8, persistence
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `clusterName` | `string` | `metadata.name` | Identifier for the ClickHouseInstallation custom resource. Must be a valid DNS subdomain name (lowercase alphanumeric with hyphens). |
 | `container.replicas` | `int32` | `1` | Number of ClickHouse replica pods. Ignored when clustering is enabled (use `cluster.shardCount` and `cluster.replicaCount` instead). Must be at least 1. |
@@ -108,7 +106,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
   name: dev-clickhouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -141,7 +139,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
   name: prod-clickhouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -181,7 +179,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
   name: shared-clickhouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -215,7 +213,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
   name: analytics-clickhouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -257,7 +255,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
   name: events-clickhouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

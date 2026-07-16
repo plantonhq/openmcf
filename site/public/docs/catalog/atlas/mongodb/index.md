@@ -32,7 +32,7 @@ apiVersion: atlas.planton.dev/v1
 kind: AtlasMongodb
 metadata:
   name: my-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -89,7 +89,7 @@ apiVersion: atlas.planton.dev/v1
 kind: AtlasMongodb
 metadata:
   name: dev-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -114,7 +114,7 @@ apiVersion: atlas.planton.dev/v1
 kind: AtlasMongodb
 metadata:
   name: prod-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -142,7 +142,7 @@ apiVersion: atlas.planton.dev/v1
 kind: AtlasMongodb
 metadata:
   name: analytics-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

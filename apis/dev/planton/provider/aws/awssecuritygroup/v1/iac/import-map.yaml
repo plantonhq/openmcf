@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awssecuritygroup
+spec:
+  # The module names the group after the Planton resource, but a security
+  # group imports by its AWS-assigned "sg-..." id -- discoverable from a
+  # prior deploy's outputs or one pasted ARN.
+  values:
+    - name: security_group_id
+      derivations:
+        - from_stack_output: security_group_id
+        - from_arn_part: resource_id
+      where_to_find: >-
+        VPC console -> Security groups (the Security group ID column), or
+        `aws ec2 describe-security-groups
+        --filters Name=group-name,Values=<name>` (GroupId).

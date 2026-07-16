@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Persistent Capacity Data Lake FSx Lustre"
     excerpt: "PERSISTENT_1 HDD file system with 6000 GiB and 12 MB/s/TiB throughput. Optimized for large-capacity, cost-effective storage where sequential throughput matters more than latency."
+  - slug: "04-intelligent-tiering-elastic"
+    rank: "04"
+    title: "Intelligent-Tiering Elastic FSx Lustre"
+    excerpt: "PERSISTENT_2 file system on the INTELLIGENT_TIERING storage class — elastic, pay-for-what-you-store capacity with 4000 MB/s of provisioned throughput and an AWS-sized SSD read cache. No storage..."
 ---
 
 # FSx Lustre File System Presets

@@ -1,0 +1,55 @@
+# Full-surface MULTI_AZ_2 AwsFsxOntapFileSystem scenario: two subnets in
+# different AZs with an explicit preferred (active) subnet, the floating
+# endpoint IP range outside the VPC CIDR, user-provisioned disk IOPS, the
+# fsxadmin password (proves the sensitive arm end to end), automatic
+# backups with a pinned window, and a maintenance window. Excluded arms are
+# recorded in profile.yaml (route_table_ids, customer-managed KMS,
+# scale-out ha_pairs).
+apiVersion: aws.planton.dev/v1
+kind: AwsFsxOntapFileSystem
+metadata:
+  name: planton-oss-e2e-awsfxo-multiaz
+  id: planton-oss-e2e-awsfxo-multiaz
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsfsxontapfilesystem
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  deploymentType: MULTI_AZ_2
+  storageCapacityGib: 1024
+  storageType: SSD
+  throughputCapacityPerHaPair: 384
+  haPairs: 1
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-b
+        fieldPath: status.outputs.subnet_id
+  preferredSubnetId:
+    valueFrom:
+      kind: AwsSubnet
+      name: planton-oss-e2e-awssubnet-prereq-a
+      fieldPath: status.outputs.subnet_id
+  endpointIpAddressRange: 198.19.255.0/24
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: planton-oss-e2e-awssg-prereq
+        fieldPath: status.outputs.security_group_id
+  fsxAdminPassword: PlantonE2eOntap1!
+  diskIopsConfiguration:
+    mode: USER_PROVISIONED
+    iops: 4000
+  automaticBackupRetentionDays: 1
+  dailyAutomaticBackupStartTime: "04:00"
+  weeklyMaintenanceStartTime: "7:03:00"

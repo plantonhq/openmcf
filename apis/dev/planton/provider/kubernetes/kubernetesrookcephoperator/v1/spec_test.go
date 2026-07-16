@@ -8,7 +8,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -28,10 +27,6 @@ var _ = ginkgo.Describe("KubernetesRookCephOperator Validation Tests", func() {
 				Name: "test-rook-ceph-operator",
 			},
 			Spec: &KubernetesRookCephOperatorSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: &foreignkeyv1.StringValueOrRef{
 					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 						Value: "rook-ceph",
@@ -155,31 +150,6 @@ var _ = ginkgo.Describe("KubernetesRookCephOperator Validation Tests", func() {
 			})
 		})
 
-		ginkgo.Context("with kubernetes cluster selector", func() {
-			ginkgo.It("should not return a validation error", func() {
-				selectorInput := &KubernetesRookCephOperator{
-					ApiVersion: "kubernetes.planton.dev/v1",
-					Kind:       "KubernetesRookCephOperator",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "selector-operator",
-					},
-					Spec: &KubernetesRookCephOperatorSpec{
-						TargetCluster: &kubernetes.KubernetesClusterSelector{
-							ClusterKind: cloudresourcekind.CloudResourceKind_AwsEksCluster,
-							ClusterName: "prod-eks-cluster",
-						},
-						Namespace: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "rook-ceph",
-							},
-						},
-						Container: &KubernetesRookCephOperatorSpecContainer{},
-					},
-				}
-				err := protovalidate.Validate(selectorInput)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {

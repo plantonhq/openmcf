@@ -81,24 +81,25 @@ spec:
 |-------|------|-------------|
 | `storage_virtual_machine_id` | StringValueOrRef | Parent SVM ID. ForceNew. |
 | `name` | string | ONTAP volume name (1-203 chars, alphanumeric + underscore). ForceNew. |
-| `size_in_megabytes` | int32 | Volume size in MB. Minimum 20. |
+| `size_in_megabytes` XOR `size_in_bytes` | int32 / int64 | Exactly one size arm: megabytes (min 20) for everyday volumes, or bytes for byte-precise sizing and volumes past 2 PiB (FlexGroup scales to ~20 PiB). |
 
 ### Optional
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `junction_path` | string | (none) | Mount point in SVM namespace. Must start with `/`. |
+| `junction_path` | string | (none) | Mount point in SVM namespace. Must start with `/`. 1-255 chars. |
 | `ontap_volume_type` | string | `RW` | `RW` (read-write) or `DP` (data protection). ForceNew. |
 | `volume_style` | string | `FLEXVOL` | `FLEXVOL` or `FLEXGROUP`. ForceNew. |
 | `security_style` | string | (inherited) | `UNIX`, `NTFS`, or `MIXED`. |
-| `snapshot_policy` | string | (default) | ONTAP snapshot policy name. |
-| `storage_efficiency_enabled` | bool | false | Enable dedup/compression/compaction. |
+| `snapshot_policy` | string | (default) | ONTAP snapshot policy name. 1-255 chars. |
+| `storage_efficiency_enabled` | bool | (ONTAP default) | Tri-state: true enables dedup/compression/compaction, false disables, unset keeps ONTAP's per-volume-type default. |
 | `copy_tags_to_backups` | bool | false | Copy tags to automatic backups. |
-| `skip_final_backup` | bool | false | Skip backup on deletion. |
-| `bypass_snaplock_enterprise_retention` | bool | false | Allow deleting SnapLock Enterprise volumes with unexpired WORM files. |
+| `skip_final_backup` | bool | false | Skip backup on deletion. Delete-time control — apply before deleting. |
+| `final_backup_tags` | map | (none) | Tags applied to the final backup. Only meaningful when `skip_final_backup` is false. |
+| `bypass_snaplock_enterprise_retention` | bool | false | Allow deleting SnapLock Enterprise volumes with unexpired WORM files. Delete-time control. |
 | `tiering_policy` | object | (default) | Data tiering to capacity pool storage. |
 | `snaplock_configuration` | object | (none) | SnapLock WORM compliance storage. |
-| `aggregate_configuration` | object | (none) | FlexGroup aggregate distribution. |
+| `aggregate_configuration` | object | (none) | FlexGroup aggregate distribution (`aggr[0-9]{1,2}` names). |
 
 ### Tiering Policy
 

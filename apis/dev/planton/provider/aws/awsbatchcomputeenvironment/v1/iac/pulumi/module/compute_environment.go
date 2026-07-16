@@ -7,6 +7,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// computeEnvironment creates the MANAGED Batch compute environment.
+//
+// The spec's CEL rules guarantee the EC2/SPOT-only fields are absent for
+// Fargate types, so the type switches below exist to build the right
+// provider payload (AWS rejects EC2 knobs on Fargate requests), not to
+// silently discard user intent.
 func computeEnvironment(
 	ctx *pulumi.Context,
 	locals *Locals,
@@ -15,13 +21,13 @@ func computeEnvironment(
 	spec := locals.AwsBatchComputeEnvironment.Spec
 	cr := spec.ComputeResources
 
-	// Build compute_resources block
 	computeResources := &batch.ComputeEnvironmentComputeResourcesArgs{
 		Type:     pulumi.String(cr.Type),
 		MaxVcpus: pulumi.Int(cr.MaxVcpus),
 	}
 
-	// Subnets (required)
+	// Subnets are required for every type: even "serverless" Fargate tasks
+	// get ENIs placed into these subnets.
 	var subnetIds pulumi.StringArray
 	for _, s := range cr.SubnetIds {
 		if s.GetValue() != "" {
@@ -30,7 +36,6 @@ func computeEnvironment(
 	}
 	computeResources.Subnets = subnetIds
 
-	// Security groups
 	var sgIds pulumi.StringArray
 	for _, sg := range cr.SecurityGroupIds {
 		if sg.GetValue() != "" {
@@ -41,11 +46,12 @@ func computeEnvironment(
 		computeResources.SecurityGroupIds = sgIds
 	}
 
-	// EC2/SPOT-specific fields
-	if cr.Type == "EC2" || cr.Type == "SPOT" {
-		if cr.GetMinVcpus() > 0 || cr.MinVcpus != nil {
-			computeResources.MinVcpus = pulumi.IntPtr(int(cr.GetMinVcpus()))
-		}
+	isEc2Family := cr.Type == "EC2" || cr.Type == "SPOT"
+
+	if isEc2Family {
+		// min_vcpus is platform-defaulted to 0, so the getter is always
+		// meaningful here; Fargate environments must not send it at all.
+		computeResources.MinVcpus = pulumi.IntPtr(int(cr.GetMinVcpus()))
 		if cr.DesiredVcpus > 0 {
 			computeResources.DesiredVcpus = pulumi.IntPtr(int(cr.DesiredVcpus))
 		}
@@ -55,24 +61,25 @@ func computeEnvironment(
 		if cr.AllocationStrategy != "" {
 			computeResources.AllocationStrategy = pulumi.StringPtr(cr.AllocationStrategy)
 		}
-		if cr.InstanceRole != nil && cr.InstanceRole.GetValue() != "" {
+		if cr.InstanceRole.GetValue() != "" {
 			computeResources.InstanceRole = pulumi.StringPtr(cr.InstanceRole.GetValue())
 		}
 		if cr.Ec2KeyPair != "" {
 			computeResources.Ec2KeyPair = pulumi.StringPtr(cr.Ec2KeyPair)
 		}
-		if cr.ResourceTags != nil && len(cr.ResourceTags) > 0 {
+		if cr.PlacementGroup != "" {
+			computeResources.PlacementGroup = pulumi.StringPtr(cr.PlacementGroup)
+		}
+		// These tags land on the EC2 instances / Spot requests Batch
+		// launches -- deliberately NOT merged with the environment's own
+		// identity tags (locals.AwsTags), which tag the CE resource itself.
+		if len(cr.ResourceTags) > 0 {
 			computeResources.Tags = pulumi.ToStringMap(cr.ResourceTags)
 		}
 
-		// Launch template
 		if cr.LaunchTemplate != nil {
-			lt := &batch.ComputeEnvironmentComputeResourcesLaunchTemplateArgs{}
-			if cr.LaunchTemplate.LaunchTemplateId != "" {
-				lt.LaunchTemplateId = pulumi.StringPtr(cr.LaunchTemplate.LaunchTemplateId)
-			}
-			if cr.LaunchTemplate.LaunchTemplateName != "" {
-				lt.LaunchTemplateName = pulumi.StringPtr(cr.LaunchTemplate.LaunchTemplateName)
+			lt := &batch.ComputeEnvironmentComputeResourcesLaunchTemplateArgs{
+				LaunchTemplateId: pulumi.StringPtr(cr.LaunchTemplate.LaunchTemplateId.GetValue()),
 			}
 			if cr.LaunchTemplate.Version != "" {
 				lt.Version = pulumi.StringPtr(cr.LaunchTemplate.Version)
@@ -80,7 +87,6 @@ func computeEnvironment(
 			computeResources.LaunchTemplate = lt
 		}
 
-		// EC2 configurations
 		if len(cr.Ec2Configurations) > 0 {
 			var ec2Configs batch.ComputeEnvironmentComputeResourcesEc2ConfigurationArray
 			for _, ec2Cfg := range cr.Ec2Configurations {
@@ -91,37 +97,54 @@ func computeEnvironment(
 				if ec2Cfg.ImageIdOverride != "" {
 					cfg.ImageIdOverride = pulumi.StringPtr(ec2Cfg.ImageIdOverride)
 				}
+				if ec2Cfg.ImageKubernetesVersion != "" {
+					cfg.ImageKubernetesVersion = pulumi.StringPtr(ec2Cfg.ImageKubernetesVersion)
+				}
 				ec2Configs = append(ec2Configs, cfg)
 			}
 			computeResources.Ec2Configurations = ec2Configs
 		}
 	}
 
-	// SPOT-specific fields
 	if cr.Type == "SPOT" {
 		if cr.BidPercentage != nil {
 			computeResources.BidPercentage = pulumi.IntPtr(int(cr.GetBidPercentage()))
 		}
-		if cr.SpotIamFleetRole != nil && cr.SpotIamFleetRole.GetValue() != "" {
+		if cr.SpotIamFleetRole.GetValue() != "" {
 			computeResources.SpotIamFleetRole = pulumi.StringPtr(cr.SpotIamFleetRole.GetValue())
 		}
 	}
 
-	// Build compute environment args
 	args := &batch.ComputeEnvironmentArgs{
-		Name:             pulumi.StringPtr(locals.AwsBatchComputeEnvironment.Metadata.Id),
+		// The cloud name comes from metadata.name (the catalog naming
+		// basis) -- set explicitly so both engines create the same
+		// environment name and Pulumi never auto-names.
+		Name: pulumi.StringPtr(locals.AwsBatchComputeEnvironment.Metadata.Name),
+		// Only MANAGED environments are modeled: Batch owns the instance
+		// lifecycle. (UNMANAGED means bring-your-own ECS container
+		// instances -- a different operating model.)
 		Type:             pulumi.String("MANAGED"),
 		State:            pulumi.StringPtr(spec.GetState()),
 		ComputeResources: computeResources,
-		Tags:             pulumi.ToStringMap(locals.Labels),
+		Tags:             pulumi.ToStringMap(locals.AwsTags),
 	}
 
-	// Service role (optional -- omit to use service-linked role)
-	if spec.ServiceRole != nil && spec.ServiceRole.GetValue() != "" {
+	// Leaving service_role unset lets AWS use (and auto-create) the Batch
+	// service-linked role -- which is also what keeps the environment
+	// eligible for in-place infrastructure updates.
+	if spec.ServiceRole.GetValue() != "" {
 		args.ServiceRole = pulumi.StringPtr(spec.ServiceRole.GetValue())
 	}
 
-	// Update policy
+	// Batch-on-EKS attachment: create-time only (the provider replaces the
+	// environment on any change here).
+	if spec.EksConfiguration != nil {
+		args.EksConfiguration = &batch.ComputeEnvironmentEksConfigurationArgs{
+			EksClusterArn:       pulumi.String(spec.EksConfiguration.EksClusterArn.GetValue()),
+			KubernetesNamespace: pulumi.String(spec.EksConfiguration.KubernetesNamespace),
+		}
+	}
+
 	if spec.UpdatePolicy != nil {
 		up := &batch.ComputeEnvironmentUpdatePolicyArgs{
 			TerminateJobsOnUpdate: pulumi.Bool(spec.UpdatePolicy.TerminateJobsOnUpdate),
@@ -132,7 +155,7 @@ func computeEnvironment(
 		args.UpdatePolicy = up
 	}
 
-	ce, err := batch.NewComputeEnvironment(ctx, "batch-compute-environment", args, pulumi.Provider(provider))
+	ce, err := batch.NewComputeEnvironment(ctx, "compute-environment", args, pulumi.Provider(provider))
 	if err != nil {
 		return nil, errors.Wrap(err, "create batch compute environment")
 	}

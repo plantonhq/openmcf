@@ -23,7 +23,7 @@ This preset creates a general-purpose Azure Subnet with a /24 CIDR block (254 us
 
 ## Key Configuration Choices
 
-- **Address prefix** (`addressPrefix: 10.0.1.0/24`) -- 254 usable IPs; standard sizing for most workloads. Adjust for larger deployments
+- **Address prefixes** (`addressPrefixes: ["10.0.1.0/24"]`) -- 251 usable IPs (Azure reserves 5); standard sizing for most workloads. Adjust for larger deployments
 - **Service endpoints** -- `Microsoft.Storage`, `Microsoft.KeyVault`, `Microsoft.Sql` provide optimized, private-network-only access to these Azure services
 - **No delegation** -- Keeps the subnet flexible for multiple resource types
 - **Default network policies** -- Private endpoint policies disabled (Azure default), allowing private endpoints to receive traffic without NSG interference
@@ -33,7 +33,7 @@ This preset creates a general-purpose Azure Subnet with a /24 CIDR block (254 us
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<your-resource-group-name>` | Resource group containing the VNet | Azure portal or `AzureResourceGroup` status outputs |
-| `<vnet-resource-id>` | Full ARM resource ID of the parent VNet | Azure portal or `AzureVpc` status outputs |
+| `<vnet-resource-id>` | Full ARM resource ID of the parent VNet | Azure portal or `AzureVirtualNetwork` status outputs |
 
 ## Related Presets
 

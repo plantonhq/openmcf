@@ -8,25 +8,26 @@ componentName: "azurepostgresqlflexibleserver"
 
 # Azure PostgreSQL Flexible Server
 
-Deploys an Azure Database for PostgreSQL Flexible Server with configurable compute tier, storage, high availability, backup retention, and network access mode. The component optionally creates named databases and firewall rules on the server as part of a single composite deployment.
+Creates an Azure Database for PostgreSQL Flexible Server -- Azure's managed PostgreSQL with per-server compute and storage sizing, zone-redundant high availability, Microsoft Entra authentication, customer-managed-key encryption, read replicas, and point-in-time restore. Databases, firewall rules, server parameters, and Entra administrators are declared on the server and managed with it.
 
 ## What Gets Created
 
 When you deploy an AzurePostgresqlFlexibleServer resource, Planton provisions:
 
-- **PostgreSQL Flexible Server** -- a `postgresql.FlexibleServer` resource in the specified region and resource group, configured with the chosen SKU, PostgreSQL version, storage size, backup retention, and authentication settings (password authentication enabled by default)
-- **Network Access** -- either private VNet access (when `delegatedSubnetId` is set, public access is automatically disabled) or public access with firewall rules controlling connectivity
-- **Databases** -- a `postgresql.FlexibleServerDatabase` for each entry in `databases`, each with independent lifecycle, charset, and collation settings
-- **Firewall Rules** -- a `postgresql.FlexibleServerFirewallRule` for each entry in `firewallRules`, allowing connections from specified IP address ranges in public access mode
-- **High Availability** -- optional zone-redundant or same-zone standby when the `highAvailability` block is present (General Purpose and Memory Optimized SKUs only)
-- **Azure Tags** -- resource metadata tags applied to the server for tracking and governance
+- **PostgreSQL Flexible Server** -- an `azurerm_postgresql_flexible_server` in the specified region and resource group, with your chosen compute SKU, storage size and performance tier, version, availability posture, networking, authentication, and encryption
+- **Databases** -- an `azurerm_postgresql_flexible_server_database` for each entry in `databases`, each with its own charset and collation
+- **Firewall Rules** -- an `azurerm_postgresql_flexible_server_firewall_rule` for each entry in `firewallRules`, allowlisting IPv4 ranges on the public endpoint
+- **Server Parameters** -- an `azurerm_postgresql_flexible_server_configuration` for each `serverParameters` entry, applied as user overrides on Azure's per-SKU defaults
+- **Entra Administrators** -- an `azurerm_postgresql_flexible_server_active_directory_administrator` for each `aadAdministrators` entry, granting the principal the server's Entra admin role
+
+A read replica or a restored server is simply another AzurePostgresqlFlexibleServer whose `createMode` and `sourceServerId` reference the source.
 
 ## Prerequisites
 
 - **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure Resource Group** where the server will be created (can reference an AzureResourceGroup resource)
-- **A globally unique server name** -- the name becomes the hostname `{name}.postgres.database.azure.com`
-- **Network planning** -- decide between public access with firewall rules or private VNet access with a delegated subnet before deployment, as changing `delegatedSubnetId` after creation destroys and recreates the server
+- **A resource group** to create the server in (an `AzureResourceGroup` in composed environments)
+- **For VNet injection**: a subnet delegated to `Microsoft.DBforPostgreSQL/flexibleServers` with no other resources, plus a private DNS zone for the server's name
+- **For CMK encryption**: a user-assigned identity with wrap/unwrap access on the Key Vault key, granted before the server is created
 
 ## Quick Start
 
@@ -36,20 +37,21 @@ Create a file `postgresql.yaml`:
 apiVersion: azure.planton.dev/v1
 kind: AzurePostgresqlFlexibleServer
 metadata:
-  name: my-pg-server
-  labels:
+  name: my-pg
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzurePostgresqlFlexibleServer.my-pg-server
+    pulumi.planton.dev/stack.name: dev.AzurePostgresqlFlexibleServer.my-pg
 spec:
   region: eastus
-  resourceGroup: my-rg
-  name: my-pg-server
+  resourceGroup:
+    value: my-rg
+  serverName: myorg-dev-pg
   administratorLogin: pgadmin
-  administratorPassword: "Ch@ngeMe1234!"
+  administratorPassword:
+    value: "Ch@ngeMe1234!"
   skuName: B_Standard_B1ms
-  storageMb: 32768
   databases:
     - name: myapp
 ```
@@ -60,7 +62,7 @@ Deploy:
 planton apply -f postgresql.yaml
 ```
 
-This creates a Burstable-tier PostgreSQL 16 Flexible Server with 32 GB storage, public network access, and a single application database named `myapp`.
+This creates a Burstable PostgreSQL 16 server with Azure's default 32 GiB storage and 7-day backups, public access, and one application database. Read `status.outputs.fqdn` to build the connection string.
 
 ## Configuration Reference
 
@@ -68,221 +70,140 @@ This creates a Burstable-tier PostgreSQL 16 Flexible Server with 32 GB storage, 
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `region` | `string` | Azure region for the server (e.g., `eastus`, `westeurope`). Must match the VNet/subnet region if VNet integration is used. | Required, minimum length 1 |
-| `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `name` | `string` | Globally unique server name. Becomes the hostname `{name}.postgres.database.azure.com`. Lowercase letters, numbers, and hyphens only; must start with a letter. **ForceNew**: changing this destroys and recreates the server. | Required, 3--63 characters, pattern `^[a-z][a-z0-9-]*$` |
-| `administratorLogin` | `string` | Administrator login name. Cannot be `azure_superuser`, `admin`, `administrator`, `root`, `guest`, or `public`. Must start with a letter. **ForceNew**: changing this destroys and recreates the server. | Required, minimum length 1 |
-| `administratorPassword` | `StringValueOrRef` | Administrator password. 8--128 characters with characters from at least three of: uppercase, lowercase, digits, special characters. Can reference another resource's output via `valueFrom`. | Required |
-| `skuName` | `string` | Compute tier and size. Format: `{TIER}_Standard_{SIZE}`. See SKU naming below. | Required, minimum length 1 |
-| `storageMb` | `int32` | Storage size in megabytes. Allowed values: 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33553408. Cannot be downgraded after creation. | Required, minimum 32768 |
+| `region` | `string` | Azure region. Changing it replaces the server. | Required |
+| `resourceGroup` | `StringValueOrRef` | Resource group name. Defaults to referencing an `AzureResourceGroup`'s name output. | Required |
+| `serverName` | `string` | GLOBALLY unique -- becomes `{name}.postgres.database.azure.com`. Changing it replaces the server. | Required, 3-63 lowercase letters/digits/hyphens |
+| `skuName` | `string` | Compute SKU, `{TIER}_Standard_{SIZE}` (`B_`/`GP_`/`MO_`). Required for a fresh server; a replica left unset inherits the source's. | Pattern-validated |
 
-**SKU naming convention** -- `{TIER}_Standard_{SIZE}` where TIER is:
-
-- `B` (Burstable) -- dev/test workloads. Examples: `B_Standard_B1ms`, `B_Standard_B2s`, `B_Standard_B4ms`
-- `GP` (General Purpose) -- production workloads. Examples: `GP_Standard_D2s_v3`, `GP_Standard_D4s_v3`, `GP_Standard_D8s_v3`
-- `MO` (Memory Optimized) -- analytics and caching. Examples: `MO_Standard_E2s_v3`, `MO_Standard_E4s_v3`
+`administratorLogin` + `administratorPassword` are required for a fresh server with password auth enabled, and must be OMITTED when password auth is disabled (Entra-only).
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `version` | `string` | `"16"` | PostgreSQL major version. Valid values: `"12"`, `"13"`, `"14"`, `"15"`, `"16"`, `"17"`. |
-| `autoGrowEnabled` | `bool` | `false` | Automatically increase storage when free storage falls below a threshold. |
-| `backupRetentionDays` | `int32` | `7` | Number of days to retain automatic daily backups for point-in-time restore. Range: 7--35. |
-| `geoRedundantBackupEnabled` | `bool` | `false` | Replicate backup data to a paired Azure region for cross-region disaster recovery. **ForceNew**: changing this destroys and recreates the server. |
-| `delegatedSubnetId` | `StringValueOrRef` | -- | Subnet ID delegated to `Microsoft.DBforPostgreSQL/flexibleServers`. When set, the server uses private VNet access and public access is disabled. Can reference an AzureSubnet resource via `valueFrom`. **ForceNew**: changing this destroys and recreates the server. |
-| `privateDnsZoneId` | `StringValueOrRef` | -- | Private DNS zone ID for server name resolution within the VNet. Typically used with `delegatedSubnetId`. Can reference an AzurePrivateDnsZone resource via `valueFrom`. |
-| `zone` | `string` | -- | Availability zone for the primary server. Valid values: `"1"`, `"2"`, `"3"`. If omitted, Azure selects automatically. |
-| `highAvailability.mode` | `string` | -- | High availability mode. `"ZoneRedundant"` places the standby in a different zone; `"SameZone"` places it in the same zone. Burstable SKUs do not support HA. |
-| `highAvailability.standbyAvailabilityZone` | `string` | -- | Availability zone for the standby server. Valid values: `"1"`, `"2"`, `"3"`. Must differ from `zone` in ZoneRedundant mode. |
-| `databases` | `list` | `[]` | Databases to create on the server. Each entry has `name` (required), `charset` (default `"UTF8"`), and `collation` (default `"en_US.utf8"`). |
-| `firewallRules` | `list` | `[]` | Firewall rules for public access mode. Each entry has `name`, `startIpAddress`, and `endIpAddress` (all required). Use `0.0.0.0`/`0.0.0.0` to allow all Azure services. |
+| `createMode` | `enum` | `DEFAULT` | `DEFAULT`, `REPLICA`, `POINT_IN_TIME_RESTORE`, `GEO_RESTORE`, `REVIVE_DROPPED`. Fixed at creation. |
+| `sourceServerId` | `StringValueOrRef` | -- | The source server for replica/restore modes; references another server's `server_id` output. |
+| `pointInTimeRestoreTimeInUtc` | `string` | -- | RFC-3339 restore instant (restore modes only). |
+| `replicationRole` | `enum` | -- | `NONE` promotes a replica to a standalone primary (irreversible, day-2 only). |
+| `version` | `string` | `"16"` | PostgreSQL major version, `"11"`-`"18"`. Upgrades go up only; elastic clusters need 17+. |
+| `storageMb` | `int32` | `32768` | Fixed ladder from 32768 (32 GiB) to 33553408 (32 TiB). Grows only. |
+| `storageTier` | `enum` | size default | `P4`-`P80` IOPS class, validated against the size's supported range. |
+| `autoGrowEnabled` | `bool` | `false` | Automatic storage growth when free space runs low. |
+| `zone` | `string` | Azure picks | Primary availability zone (`"1"`/`"2"`/`"3"`). |
+| `highAvailability` | `object` | -- | `mode` (`ZONE_REDUNDANT`/`SAME_ZONE`) + optional `standbyAvailabilityZone`. Not supported on Burstable SKUs. |
+| `maintenanceWindow` | `object` | system-managed | Weekly patching window (`dayOfWeek`/`startHour`/`startMinute`). |
+| `backupRetentionDays` | `int32` | `7` | 7-35 days -- the point-in-time restore horizon. |
+| `geoRedundantBackupEnabled` | `bool` | `false` | Replicates backups to the paired region (enables `GEO_RESTORE`). Fixed at creation. |
+| `publicNetworkAccessEnabled` | `bool` | `true` | The public endpoint. Must be explicitly `false` when VNet-injected. |
+| `delegatedSubnetId` | `StringValueOrRef` | -- | VNet injection: a delegated subnet (references `AzureSubnet`). Requires `privateDnsZoneId`. Fixed at creation. |
+| `privateDnsZoneId` | `StringValueOrRef` | -- | The private DNS zone the injected server registers in (references `AzurePrivateDnsZone`). |
+| `authentication` | `object` | password on | `activeDirectoryAuthEnabled`, `passwordAuthEnabled`, optional `tenantId` (defaults to the deploying credential's tenant). |
+| `aadAdministrators` | `list` | `[]` | Entra admin grants: `objectId` (references a user-assigned identity's `principal_id`), `principalName`, `principalType` (`USER`/`GROUP`/`SERVICE_PRINCIPAL`). |
+| `identity` | `object` | -- | `SYSTEM_ASSIGNED`, `USER_ASSIGNED`, or `SYSTEM_AND_USER_ASSIGNED` + identity references. |
+| `customerManagedKey` | `object` | -- | CMK encryption: `keyVaultKeyId` (references `AzureKeyVaultKey.versionless_id`), the unwrap identity, and an optional geo-backup key pair. Fixed at creation. |
+| `cluster` | `object` | -- | Elastic cluster (PG 17+): `size` 1-20 nodes + optional `defaultDatabaseName`. |
+| `databases` | `list` | `[]` | Databases (`name`, `charset` default `UTF8`, `collation` default `en_US.utf8`). |
+| `firewallRules` | `list` | `[]` | Public-endpoint IPv4 allowlist (`0.0.0.0`-`0.0.0.0` admits Azure-internal services only). |
+| `serverParameters` | `map(string)` | `{}` | PostgreSQL parameter overrides by name (e.g. `azure.extensions`, `max_connections`). Static parameters need a restart. |
+| `tags` | `map(string)` | `{}` | User tags, merged over Planton-derived tags (user wins on collision). |
 
 ## Examples
 
-### Development Server with Public Access
-
-A minimal Burstable-tier server for development with a single database and a firewall rule allowing the developer machine:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzurePostgresqlFlexibleServer
-metadata:
-  name: dev-pg
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzurePostgresqlFlexibleServer.dev-pg
-spec:
-  region: eastus
-  resourceGroup: dev-rg
-  name: dev-pg
-  administratorLogin: devadmin
-  administratorPassword: "DevP@ss2024!"
-  skuName: B_Standard_B1ms
-  storageMb: 32768
-  version: "16"
-  databases:
-    - name: myapp
-  firewallRules:
-    - name: allow-dev-machine
-      startIpAddress: "203.0.113.42"
-      endIpAddress: "203.0.113.42"
-    - name: allow-azure-services
-      startIpAddress: "0.0.0.0"
-      endIpAddress: "0.0.0.0"
-```
-
-### Production Server with High Availability
-
-A General Purpose server with zone-redundant HA, geo-redundant backups, 35-day retention, storage auto-grow, and multiple databases:
+### Production: VNet-Injected with Zone-Redundant HA
 
 ```yaml
 apiVersion: azure.planton.dev/v1
 kind: AzurePostgresqlFlexibleServer
 metadata:
   name: prod-pg
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePostgresqlFlexibleServer.prod-pg
-spec:
-  region: westeurope
-  resourceGroup: prod-rg
-  name: prod-pg
-  administratorLogin: pgadmin
-  administratorPassword: "Pr0dStr0ng!P@ss"
-  skuName: GP_Standard_D4s_v3
-  storageMb: 262144
-  version: "16"
-  autoGrowEnabled: true
-  backupRetentionDays: 35
-  geoRedundantBackupEnabled: true
-  zone: "1"
-  highAvailability:
-    mode: ZoneRedundant
-    standbyAvailabilityZone: "2"
-  databases:
-    - name: orders
-    - name: inventory
-    - name: analytics
-      charset: UTF8
-      collation: en_US.utf8
-  firewallRules:
-    - name: allow-office
-      startIpAddress: "203.0.113.0"
-      endIpAddress: "203.0.113.255"
-    - name: allow-cicd
-      startIpAddress: "198.51.100.10"
-      endIpAddress: "198.51.100.10"
-```
-
-### Private VNet Access with Delegated Subnet
-
-A server deployed into a VNet with private access, a private DNS zone for name resolution, and no public connectivity:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzurePostgresqlFlexibleServer
-metadata:
-  name: private-pg
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePostgresqlFlexibleServer.private-pg
-spec:
-  region: eastus
-  resourceGroup: prod-rg
-  name: private-pg
-  administratorLogin: pgadmin
-  administratorPassword: "Pr1v@teAccess!99"
-  skuName: GP_Standard_D2s_v3
-  storageMb: 131072
-  delegatedSubnetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet/subnets/pg-subnet
-  privateDnsZoneId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.Network/privateDnsZones/privatelink.postgres.database.azure.com
-  zone: "1"
-  highAvailability:
-    mode: SameZone
-  databases:
-    - name: appdb
-```
-
-### Using Foreign Key References
-
-Reference Planton-managed resources instead of hardcoding IDs. The resource group, subnet, and private DNS zone are resolved from their respective stack outputs:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzurePostgresqlFlexibleServer
-metadata:
-  name: ref-pg
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePostgresqlFlexibleServer.ref-pg
 spec:
   region: eastus
   resourceGroup:
     valueFrom:
-      kind: AzureResourceGroup
-      name: my-rg
-      field: status.outputs.resource_group_name
-  name: ref-pg
+      name: data-rg
+  serverName: myorg-prod-pg
   administratorLogin: pgadmin
-  administratorPassword: "R3f@Str0ng!Pass"
-  skuName: GP_Standard_D2s_v3
-  storageMb: 65536
+  administratorPassword:
+    value: "Ch@ngeMe1234!"
+  skuName: GP_Standard_D4ds_v5
+  storageMb: 262144
+  autoGrowEnabled: true
+  zone: "1"
+  highAvailability:
+    mode: ZONE_REDUNDANT
+    standbyAvailabilityZone: "2"
+  backupRetentionDays: 35
+  geoRedundantBackupEnabled: true
+  publicNetworkAccessEnabled: false
   delegatedSubnetId:
     valueFrom:
-      kind: AzureSubnet
-      name: pg-subnet
-      field: status.outputs.subnet_id
+      name: database-subnet
   privateDnsZoneId:
     valueFrom:
-      kind: AzurePrivateDnsZone
-      name: pg-dns
-      field: status.outputs.zone_id
+      name: postgres-dns-zone
   databases:
-    - name: appdb
+    - name: orders
 ```
 
-### Memory Optimized for Analytics
-
-A Memory Optimized server with PostgreSQL 17 for analytics workloads, large storage, and extended backup retention:
+### Read Replica of a Primary
 
 ```yaml
 apiVersion: azure.planton.dev/v1
 kind: AzurePostgresqlFlexibleServer
 metadata:
-  name: analytics-pg
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePostgresqlFlexibleServer.analytics-pg
+  name: prod-pg-replica
 spec:
-  region: southeastasia
-  resourceGroup: analytics-rg
-  name: analytics-pg
-  administratorLogin: analyticsadmin
-  administratorPassword: "An@lyt1cs!Str0ng"
-  skuName: MO_Standard_E4s_v3
-  storageMb: 4194304
-  version: "17"
-  autoGrowEnabled: true
-  backupRetentionDays: 35
-  geoRedundantBackupEnabled: true
-  zone: "2"
-  highAvailability:
-    mode: ZoneRedundant
-    standbyAvailabilityZone: "3"
-  databases:
-    - name: warehouse
-    - name: reporting
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: data-rg
+  serverName: myorg-prod-pg-replica
+  createMode: REPLICA
+  sourceServerId:
+    valueFrom:
+      kind: AzurePostgresqlFlexibleServer
+      name: prod-pg
+      fieldPath: status.outputs.server_id
+```
+
+The replica inherits the source's SKU, storage, and version. Promote it later by setting `replicationRole: NONE`.
+
+### Entra-Only with Customer-Managed Key
+
+```yaml
+apiVersion: azure.planton.dev/v1
+kind: AzurePostgresqlFlexibleServer
+metadata:
+  name: hardened-pg
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: data-rg
+  serverName: myorg-hardened-pg
+  skuName: GP_Standard_D4ds_v5
+  authentication:
+    activeDirectoryAuthEnabled: true
+    passwordAuthEnabled: false
+  aadAdministrators:
+    - objectId:
+        value: "11111111-2222-3333-4444-555555555555"
+      principalName: dba-team
+      principalType: GROUP
+  identity:
+    type: USER_ASSIGNED
+    identityIds:
+      - valueFrom:
+          name: pg-cmk-identity
+  customerManagedKey:
+    keyVaultKeyId:
+      valueFrom:
+        kind: AzureKeyVaultKey
+        name: pg-cmk
+        fieldPath: status.outputs.versionless_id
+    primaryUserAssignedIdentityId:
+      valueFrom:
+        name: pg-cmk-identity
 ```
 
 ## Stack Outputs
@@ -291,16 +212,18 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `server_id` | `string` | Azure Resource Manager ID of the PostgreSQL Flexible Server. Referenced by AzurePrivateEndpoint for establishing private connectivity. |
-| `server_name` | `string` | Name of the PostgreSQL Flexible Server |
-| `fqdn` | `string` | Fully qualified domain name (e.g., `{name}.postgres.database.azure.com`). Used to construct connection strings: `postgresql://{admin}:{password}@{fqdn}:5432/{database}?sslmode=require` |
-| `administrator_login` | `string` | Administrator login name, exported so downstream resources can construct connection strings without duplicating this value |
-| `database_ids` | `map<string, string>` | Map of database names to their Azure Resource Manager IDs. Only populated for databases defined in `databases`. |
+| `server_id` | `string` | The server's ARM ID -- referenced by `AzurePrivateEndpoint` and by replica/restore servers' `sourceServerId` |
+| `server_name` | `string` | The server's name |
+| `fqdn` | `string` | `{name}.postgres.database.azure.com` -- the connection-string host; resolves privately when VNet-injected |
+| `administrator_login` | `string` | The admin login (empty on Entra-only servers) |
+| `database_ids` | `map(string)` | Each declared database's ARM ID, keyed by name |
+| `identity_principal_id` | `string` | The system-assigned identity's principal ID -- the `AzureRoleAssignment` seam |
 
 ## Related Components
 
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group for server placement
-- [AzureSubnet](/docs/catalog/azure/subnet) -- provides a delegated subnet for private VNet access
-- [AzurePrivateDnsZone](/docs/catalog/azure/private-dns-zone) -- provides DNS resolution for VNet-connected clients
-- [AzureKeyVault](/docs/catalog/azure/key-vault) -- stores the administrator password or connection strings as secrets
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) -- provides the virtual network containing the delegated subnet
+- [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group for server placement
+- [AzureSubnet](/docs/catalog/azure/subnet) — the delegated subnet for VNet injection
+- [AzurePrivateDnsZone](/docs/catalog/azure/private-dns-zone) — private name resolution for the injected server
+- [AzurePrivateEndpoint](/docs/catalog/azure/private-endpoint) — Private Link connectivity as an alternative to VNet injection
+- [AzureUserAssignedIdentity](/docs/catalog/azure/user-assigned-identity) — the CMK unwrap identity and Entra administrator principals
+- [AzureKeyVaultKey](/docs/catalog/azure/key-vault-key) — the customer-managed encryption key

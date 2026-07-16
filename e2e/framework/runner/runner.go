@@ -8,7 +8,6 @@ import (
 
 	tt "github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 )
@@ -22,6 +21,7 @@ const (
 	PhaseDeploy    Phase = "DEPLOY"
 	PhaseVerifyOut Phase = "VERIFY-OUT"
 	PhaseVerifyRes Phase = "VERIFY-RES"
+	PhaseImportRT  Phase = "IMPORT-RT"
 	PhaseDestroy   Phase = "DESTROY"
 	PhaseVerifyCln Phase = "VERIFY-CLN"
 	PhaseDepsDn    Phase = "DEPENDENCIES-DOWN"
@@ -74,7 +74,8 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 
 	verifyCtx := context.WithValue(ctx, provider.ManifestPathKey{}, tc.ManifestPath)
 
-	// Phase 0: deploy dependencies (registry prerequisites)
+	// Phase 0: deploy dependencies (registry prerequisites merged with any the
+	// scenario manifest declares via its e2e-prerequisites annotation)
 	var dependencyStates []DependencyState
 	if tc.RepoRoot != "" {
 		depStart := time.Now()
@@ -82,7 +83,7 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		// The engine-scoped id is passed down so prerequisite manifests expand to
 		// the same values as the scenario under test (their tokens must line up),
 		// and so each engine's prerequisite deploys get distinct identifiers.
-		dependencyStates, err = DeployDependencies(ctx, tc.RepoRoot, tc.Provider, tc.Component, tc.BackendURL, expandRunID, harness)
+		dependencyStates, err = DeployDependencies(ctx, tc.RepoRoot, tc.Provider, tc.Component, tc.ManifestPath, tc.BackendURL, expandRunID, harness)
 		pr := PhaseResult{
 			Phase:    PhaseDepsUp,
 			Duration: time.Since(depStart),
@@ -94,7 +95,15 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		}
 		if err != nil {
 			result.Passed = false
-			TeardownDependencies(dependencyStates)
+			// The run already failed, but a teardown failure still gets its own
+			// phase entry: it means prerequisite resources may be leaking.
+			if tdErr := TeardownDependencies(dependencyStates); tdErr != nil {
+				result.Phases = append(result.Phases, PhaseResult{
+					Phase:  PhaseDepsDn,
+					Passed: false,
+					Error:  tdErr,
+				})
+			}
 			result.Duration = time.Since(start)
 			return result
 		}
@@ -103,9 +112,13 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		// prerequisites' outputs -- the orchestrator's resolution step, performed
 		// here so a composed topology (e.g. subnet -> vpc) can be tested standalone.
 		if len(dependencyStates) > 0 {
-			depOutputs := make(map[cloudresourcekind.CloudResourceKind]map[string]interface{}, len(dependencyStates))
+			depOutputs := make(DependencyOutputs, len(dependencyStates))
 			for _, depState := range dependencyStates {
-				depOutputs[crkreflect.KindFromString(depState.Dependency.KindSlug)] = depState.Outputs
+				kind := crkreflect.KindFromString(depState.Dependency.KindSlug)
+				if depOutputs[kind] == nil {
+					depOutputs[kind] = make(map[string]map[string]interface{})
+				}
+				depOutputs[kind][depState.ManifestName] = depState.Outputs
 			}
 			resolvedPath, resolveErr := ResolveManifestRefs(tc.ManifestPath, depOutputs)
 			if resolveErr != nil {
@@ -116,7 +129,13 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 					Passed:   false,
 					Error:    errors.Wrap(resolveErr, "failed to resolve manifest references from dependency outputs"),
 				})
-				TeardownDependencies(dependencyStates)
+				if tdErr := TeardownDependencies(dependencyStates); tdErr != nil {
+					result.Phases = append(result.Phases, PhaseResult{
+						Phase:  PhaseDepsDn,
+						Passed: false,
+						Error:  tdErr,
+					})
+				}
 				result.Duration = time.Since(start)
 				return result
 			}
@@ -125,18 +144,28 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		}
 	}
 
-	// Phases 1-6: standard lifecycle
-	phases := []struct {
+	// Phases 1-6 (7 with the opt-in import round-trip): standard lifecycle.
+	type lifecyclePhase struct {
 		phase Phase
 		fn    func() error
-	}{
+	}
+	phases := []lifecyclePhase{
 		{PhaseValidate, func() error { return runValidate(tc) }},
 		{PhaseDeploy, func() error { return runDeploy(tc) }},
 		{PhaseVerifyOut, func() error { return runVerifyOutputs(tc) }},
 		{PhaseVerifyRes, func() error { return runVerifyResources(verifyCtx, tc, harness) }},
-		{PhaseDestroy, func() error { return runDestroy(tc) }},
-		{PhaseVerifyCln, func() error { return runVerifyCleanup(verifyCtx, tc, harness) }},
 	}
+	// The import round-trip slots between VERIFY-RES and DESTROY: it needs the
+	// deployed fixture live (imports read the real cloud) and the destroy that
+	// follows tears down through the re-imported state -- itself part of the
+	// proof that the blind import fully owns the resources.
+	if importRoundTripEnabled(tc) {
+		phases = append(phases, lifecyclePhase{PhaseImportRT, func() error { return runImportRoundTrip(tc) }})
+	}
+	phases = append(phases,
+		lifecyclePhase{PhaseDestroy, func() error { return runDestroy(tc) }},
+		lifecyclePhase{PhaseVerifyCln, func() error { return runVerifyCleanup(verifyCtx, tc, harness) }},
+	)
 
 	for _, p := range phases {
 		phaseStart := time.Now()
@@ -151,7 +180,7 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 
 		if err != nil {
 			result.Passed = false
-			if p.phase == PhaseDeploy || p.phase == PhaseVerifyOut || p.phase == PhaseVerifyRes {
+			if p.phase == PhaseDeploy || p.phase == PhaseVerifyOut || p.phase == PhaseVerifyRes || p.phase == PhaseImportRT {
 				cleanupErr := runDestroy(tc)
 				if cleanupErr != nil {
 					fmt.Printf("  [WARN] cleanup destroy also failed: %v\n", cleanupErr)
@@ -161,15 +190,22 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		}
 	}
 
-	// Phase 7: teardown dependencies in reverse order
+	// Phase 7: teardown dependencies in reverse order. A teardown failure
+	// FAILS the run even when every lifecycle phase passed: it means
+	// prerequisite cloud resources may still exist, and a green result would
+	// hide that leak until someone audits the account.
 	if len(dependencyStates) > 0 {
 		depStart := time.Now()
-		TeardownDependencies(dependencyStates)
+		tdErr := TeardownDependencies(dependencyStates)
 		result.Phases = append(result.Phases, PhaseResult{
 			Phase:    PhaseDepsDn,
 			Duration: time.Since(depStart),
-			Passed:   true,
+			Passed:   tdErr == nil,
+			Error:    tdErr,
 		})
+		if tdErr != nil {
+			result.Passed = false
+		}
 	}
 
 	// Clean up Terraform working directory if one was created

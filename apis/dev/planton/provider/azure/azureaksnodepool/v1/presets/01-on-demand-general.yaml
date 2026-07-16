@@ -3,18 +3,15 @@ kind: AzureAksNodePool
 metadata:
   name: my-node-pool
 spec:
-  clusterName:
-    value: "<aks-cluster-name>"
-  resourceGroup:
-    value: "<your-resource-group-name>"
+  kubernetesClusterId:
+    value: "<aks-cluster-arm-id>"
+  name: general
   vmSize: Standard_D4s_v5
-  initialNodeCount: 3
-  autoscaling:
-    minNodes: 2
-    maxNodes: 10
-  availabilityZones:
+  autoScalingEnabled: true
+  minCount: 2
+  maxCount: 10
+  zones:
     - "1"
     - "2"
     - "3"
-  osType: LINUX
   mode: USER

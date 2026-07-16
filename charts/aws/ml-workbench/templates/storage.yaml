@@ -1,24 +1,50 @@
+# The artifacts bucket: datasets in, trained models and evaluation outputs
+# out. Versioned, because a model artifact silently overwritten by a rerun
+# is an incident you cannot debug after the fact — versions make every
+# training output recoverable.
 ---
 apiVersion: aws.planton.dev/v1
 kind: AwsS3Bucket
 metadata:
-  name: "{{ values.s3_bucket_name }}"
-  group: storage
+  # The bucket's name IS the resource name. S3 names are global across all
+  # AWS accounts, which is why the default value carries an org prefix.
+  name: "{{ values.artifacts_bucket_name }}"
 spec:
   region: "{{ values.aws_region }}"
-  isPublic: false
-  versioningEnabled: true
-{% if values.customImagesEnabled | bool %}
----
-apiVersion: aws.planton.dev/v1
-kind: AwsEcrRepo
-metadata:
-  name: "{{ values.sagemaker_domain_name }}-ecr"
-  group: storage
-spec:
-  region: "{{ values.aws_region }}"
-  repositoryName: "{{ values.ecr_repo_name }}"
-  encryptionType: AES256
-  imageImmutable: false
-  forceDelete: true
-{% endif %}
+  versioningStatus: Enabled
+
+  # SSE-S3 (AES256) encrypts every artifact at rest with zero key
+  # management. Compliance postures that require a customer-managed key
+  # deploy an AwsKmsKey and switch sseAlgorithm to aws:kms — pair it with
+  # the domain's kmsKeyId so notebooks' EFS and the artifacts share a key
+  # policy.
+  encryption:
+    sseAlgorithm: AES256
+
+  # All four public-access guards on: training data is never publicly
+  # readable, and these account-independent guards make a future
+  # misconfigured bucket policy or ACL inert instead of an incident.
+  publicAccessBlock:
+    blockPublicAcls: true
+    blockPublicPolicy: true
+    ignorePublicAcls: true
+    restrictPublicBuckets: true
+
+  lifecycleRules:
+    # Versioning without cleanup grows storage forever — and ML artifacts
+    # are big. Keep the 5 newest superseded versions of every object
+    # indefinitely (the rollback window) and expire older ones after 90
+    # days; current versions are never touched.
+    - id: bound-noncurrent-versions
+      status: Enabled
+      noncurrentVersionExpiration:
+        noncurrentDays: 90
+        newerNoncurrentVersions: 5
+    # Interrupted multipart uploads (a killed training job mid-checkpoint)
+    # leave invisible billable parts behind; a week is long enough to
+    # resume any legitimate upload.
+    - id: abort-stale-multipart-uploads
+      status: Enabled
+      abortIncompleteMultipartUploadDays: 7
+
+  forceDestroy: {{ values.force_destroy }}

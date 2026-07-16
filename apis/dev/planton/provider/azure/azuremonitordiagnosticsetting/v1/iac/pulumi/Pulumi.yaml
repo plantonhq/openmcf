@@ -1,0 +1,3 @@
+name: azure-monitor-diagnostic-setting
+runtime: go
+description: Pulumi program for Azure Monitor diagnostic settings

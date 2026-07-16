@@ -42,6 +42,11 @@ const (
 //   - The `definition` field accepts ASL as native YAML. The IaC modules serialize
 //     it to JSON before passing it to the AWS API. ASL key casing (StartAt, States,
 //     Type, etc.) is preserved through serialization.
+//   - The state machine name is taken from metadata.name. AWS restricts names to
+//     1-80 characters matching [0-9A-Za-z_-] (no spaces or dots).
+//   - There is deliberately no description field: the CreateStateMachine API has
+//     no description input (the AWS console derives one from the definition's
+//     Comment field), so a spec field would be silently dropped.
 //   - Credentials, region, and deployment workflow live outside this spec in stack inputs.
 type AwsStepFunctionSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -68,9 +73,15 @@ type AwsStepFunctionSpec struct {
 	// states.amazonaws.com and policies granting access to all services
 	// invoked by the workflow (Lambda:InvokeFunction, SQS:SendMessage, etc.).
 	RoleArn *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
-	// Free-form description visible in the AWS Console. Useful for documenting
-	// the workflow's purpose and behavior.
-	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	// Publish a version of the state machine on every create and on every
+	// configuration update. Published versions are immutable snapshots
+	// (definition + role + logging/tracing/encryption at publish time) addressed
+	// by the version ARN exported in stack outputs. Versions are the foundation
+	// for alias-based traffic shifting and safe rollbacks: point consumers at a
+	// version ARN (or an alias routing between two versions) instead of the
+	// mutable state machine ARN. When false (the default), executions always run
+	// the latest saved revision.
+	Publish bool `protobuf:"varint,5,opt,name=publish,proto3" json:"publish,omitempty"`
 	// Logging configuration for execution history events. When omitted, logging
 	// is disabled (level OFF). Logging is supported for both STANDARD and EXPRESS
 	// state machines.
@@ -147,11 +158,11 @@ func (x *AwsStepFunctionSpec) GetRoleArn() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AwsStepFunctionSpec) GetDescription() string {
+func (x *AwsStepFunctionSpec) GetPublish() bool {
 	if x != nil {
-		return x.Description
+		return x.Publish
 	}
-	return ""
+	return false
 }
 
 func (x *AwsStepFunctionSpec) GetLogging() *AwsStepFunctionLoggingConfig {
@@ -321,15 +332,15 @@ var File_dev_planton_provider_aws_awsstepfunction_v1_spec_proto protoreflect.Fil
 
 const file_dev_planton_provider_aws_awsstepfunction_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"6dev/planton/provider/aws/awsstepfunction/v1/spec.proto\x12+dev.planton.provider.aws.awsstepfunction.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x8b\a\n" +
+	"6dev/planton/provider/aws/awsstepfunction/v1/spec.proto\x12+dev.planton.provider.aws.awsstepfunction.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x83\a\n" +
 	"\x13AwsStepFunctionSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12?\n" +
 	"\n" +
 	"definition\x18\x03 \x01(\v2\x17.google.protobuf.StructB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"definition\x12u\n" +
-	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12 \n" +
-	"\vdescription\x18\x05 \x01(\tR\vdescription\x12c\n" +
+	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x18\n" +
+	"\apublish\x18\x05 \x01(\bR\apublish\x12c\n" +
 	"\alogging\x18\x06 \x01(\v2I.dev.planton.provider.aws.awsstepfunction.v1.AwsStepFunctionLoggingConfigR\alogging\x12'\n" +
 	"\x0ftracing_enabled\x18\a \x01(\bR\x0etracingEnabled\x12l\n" +
 	"\n" +

@@ -8,18 +8,18 @@ provider: "azure"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-standard-web-acceleration"
+  - slug: "01-standard-delivery"
     rank: "01"
-    title: "Standard Web Acceleration"
-    excerpt: "A Standard-tier Front Door profile optimized for accelerating a web application with edge caching and compression."
-  - slug: "02-multi-region-api-gateway"
+    title: "Standard Delivery"
+    excerpt: "This preset creates a Standard-tier Front Door profile -- the container for a global CDN deployment. Endpoints, origin groups, origins, and routes compose against it as their own resources, so the..."
+  - slug: "02-premium-private-origins"
     rank: "02"
-    title: "Multi-Region API Gateway"
-    excerpt: "A Standard-tier Front Door profile configured as an API gateway with multi-origin health-based failover and path-based routing to separate API and static asset backends."
-  - slug: "03-premium-enterprise-cdn"
+    title: "Premium with Private Origins"
+    excerpt: "This preset creates a Premium-tier profile with a system-assigned managed identity -- the shape for locked-down architectures where backends disable public access entirely and Front Door reaches them..."
+  - slug: "03-compliance-log-scrubbing"
     rank: "03"
-    title: "Premium Enterprise CDN"
-    excerpt: "A Premium-tier Front Door profile with Private Link connectivity to an Azure App Service backend. The origin is reached exclusively through Azure's backbone network without any public internet..."
+    title: "Compliance Log Scrubbing"
+    excerpt: "This preset creates a Standard profile with access-log scrubbing turned all the way up -- client IP addresses, request URIs, and query-string arguments are masked before Front Door writes its logs."
 ---
 
 # Front Door Profile Presets

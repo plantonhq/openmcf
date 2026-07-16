@@ -4,26 +4,27 @@ metadata:
   name: my-python-api
 spec:
   region: eastus
-  resource_group:
+  resourceGroup:
     value: "<your-resource-group-name>"
-  name: my-python-api
-  service_plan_id:
+  functionAppName: my-python-api
+  servicePlanId:
     value: "<your-service-plan-id>"
-  storage_account_name:
+  storageAccountName:
     value: "<your-storage-account-name>"
-  storage_account_access_key:
+  storageAccountAccessKey:
     value: "<your-storage-access-key>"
-  application_insights_connection_string:
+  applicationInsightsConnectionString:
     value: "<your-app-insights-connection-string>"
-  https_only: true
-  app_settings:
+  httpsOnly: true
+  appSettings:
     PYTHON_ENABLE_WORKER_EXTENSIONS: "1"
-  site_config:
-    application_stack:
-      python_version: "3.12"
-    health_check_path: /api/health
-    minimum_tls_version: "1.2"
-    ftps_state: Disabled
+  siteConfig:
+    applicationStack:
+      pythonVersion: "3.12"
+    healthCheckPath: /api/health
+    # TLS_1_2 is the spec default -- stated here for clarity.
+    minimumTlsVersion: TLS_1_2
+    ftpsState: DISABLED
     cors:
-      allowed_origins:
+      allowedOrigins:
         - https://myapp.example.com

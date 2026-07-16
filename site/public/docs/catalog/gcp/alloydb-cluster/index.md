@@ -37,7 +37,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpAlloydbCluster
 metadata:
   name: my-alloydb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -127,7 +127,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpAlloydbCluster
 metadata:
   name: prod-alloydb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: infra
@@ -159,7 +159,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpAlloydbCluster
 metadata:
   name: enterprise-alloydb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: infra
@@ -214,7 +214,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpAlloydbCluster
 metadata:
   name: backup-alloydb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: infra

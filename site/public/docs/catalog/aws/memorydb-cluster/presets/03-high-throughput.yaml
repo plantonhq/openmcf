@@ -7,13 +7,18 @@ spec:
   engine: redis
   engineVersion: "7.1"
   description: High-throughput MemoryDB with data tiering
+  # Data tiering requires the r6gd (NVMe SSD) node family.
   nodeType: db.r6gd.xlarge
   numShards: 4
   numReplicasPerShard: 2
-  aclName: <acl-name>
+  aclName:
+    valueFrom:
+      kind: AwsMemorydbAcl
+      name: <acl-resource-name>
+      fieldPath: status.outputs.acl_name
   dataTiering: true
   tlsEnabled: true
-  kmsKeyId:
+  kmsKeyArn:
     value: <kms-key-arn>
   subnetIds:
     - value: <private-subnet-id-az1>

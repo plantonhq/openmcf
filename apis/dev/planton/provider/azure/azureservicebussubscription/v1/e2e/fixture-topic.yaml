@@ -1,0 +1,21 @@
+# The topic the subscription scenario attaches to, on the scenario-local
+# namespace.
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusTopic
+metadata:
+  name: planton-oss-e2e-sbsub-fixture-topic
+  id: planton-oss-e2e-sbsub-fixture-topic
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureservicebustopic
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  namespaceId:
+    valueFrom:
+      name: planton-oss-e2e-sbsub-fixture-namespace
+  topicName: e2e-sub-events

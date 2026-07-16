@@ -58,9 +58,6 @@ kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api-crds
 spec:
-  target_cluster:
-    cluster_kind: GcpGkeCluster
-    cluster_name: prod-gke-cluster
   version: v1.2.1
   install_channel:
     channel: standard
@@ -109,7 +106,6 @@ Includes all standard CRDs plus experimental resources:
 
 | Field | Description | Default |
 |-------|-------------|---------|
-| `target_cluster` | Target Kubernetes cluster | Required |
 | `version` | Gateway API version to install | `v1.2.1` |
 | `install_channel.channel` | CRD channel (standard/experimental) | `standard` |
 

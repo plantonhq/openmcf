@@ -1,0 +1,34 @@
+# Minimal AzureDnsRecord scenario: an apex MX record set on the fixture
+# zone with two differently-preferenced mail servers -- the typed-pair
+# shape a flat value list cannot express (each entry carries its own
+# preference), plus the ergonomic TTL default and record-set tags.
+apiVersion: azure.planton.dev/v1
+kind: AzureDnsRecord
+metadata:
+  name: planton-oss-e2e-azurednsrecord-smoke
+  id: planton-oss-e2e-azurednsrecord-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurednsrecord
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  zoneName:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-dnszone
+  name: "@"
+  ttlSeconds: 300
+  mx:
+    - preference: 10
+      exchange: mail1.planton-e2e-fixture.example.com
+    - preference: 20
+      exchange: mail2.planton-e2e-fixture.example.com
+  tags:
+    e2e-suite: web-domain

@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestAwsEventBridgeBusSpec(t *testing.T) {
@@ -184,5 +185,26 @@ var _ = ginkgo.Describe("AwsEventBridgeBusSpec validations", func() {
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil(), "expected include_detail %q to be valid", detail)
 		}
+	})
+
+	// -------------------------------------------------------------------------
+	// Resource policy
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a resource policy document", func() {
+		policy, err := structpb.NewStruct(map[string]interface{}{
+			"Version": "2012-10-17",
+			"Statement": []interface{}{
+				map[string]interface{}{
+					"Sid":       "AllowPartnerAccount",
+					"Effect":    "Allow",
+					"Principal": map[string]interface{}{"AWS": "111122223333"},
+					"Action":    "events:PutEvents",
+				},
+			},
+		})
+		gomega.Expect(err).To(gomega.BeNil())
+		spec.ResourcePolicy = policy
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 })

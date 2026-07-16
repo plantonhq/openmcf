@@ -1,15 +1,13 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureKeyVault
 metadata:
-  name: my-key-vault
+  name: platform-vault
 spec:
-  region: <azure-region>
+  region: eastus
   resourceGroup:
-    value: "<your-resource-group-name>"
-  sku: STANDARD  # default from spec
-  enableRbacAuthorization: true  # default from spec; recommended over access policies
-  enablePurgeProtection: true  # default from spec; prevents permanent deletion
-  softDeleteRetentionDays: 90  # default from spec; maximum retention
-  secretNames:
-    - <your-secret-name-1>
-    - <your-secret-name-2>
+    value: <resource-group-name>
+  # Replace: 3-24 chars, letters/digits/hyphens, globally unique -- it
+  # becomes {name}.vault.azure.net.
+  vaultName: myorg-platform-vault
+  tags:
+    cost-center: <cost-center>

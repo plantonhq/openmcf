@@ -5,7 +5,7 @@ metadata:
 spec:
   resourceGroup:
     value: "<your-resource-group-name>"
-  name: my-web-service
+  containerAppName: my-web-service
   containerAppEnvironmentId:
     value: "<container-app-environment-id>"
   containers:
@@ -14,11 +14,11 @@ spec:
       cpu: 0.5
       memory: "1Gi"
       livenessProbe:
-        transport: HTTP
+        transport: HTTP_GET
         port: 8080
         path: /healthz
       readinessProbe:
-        transport: HTTP
+        transport: HTTP_GET
         port: 8080
         path: /ready
   minReplicas: 1

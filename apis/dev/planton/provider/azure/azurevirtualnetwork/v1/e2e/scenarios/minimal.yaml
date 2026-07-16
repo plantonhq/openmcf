@@ -1,0 +1,44 @@
+# Minimal AzureVirtualNetwork scenario: a two-CIDR network with a raised
+# flow timeout and user tags in the fixture resource group.
+#
+# The resource-group reference resolves against the registry prerequisite's
+# captured outputs through the field's default kind (AzureResourceGroup ->
+# the fixture RG's name), keeping the scenario fully registry-driven. Two
+# address-space blocks exercise the multi-CIDR list on both engines;
+# flow_timeout_in_minutes exercises an optional scalar (only sent when set);
+# user tags exercise the merge-over-metadata-tags path (user tags win on key
+# collision). DNS servers, BGP community, DDoS, encryption, IPAM pools, and
+# edge zone are left unset -- each either requires an external resource (a
+# DDoS plan, a Network Manager pool) or is a plain in-place property the
+# offline parity audit covers.
+#
+# This scenario is distinct from the network's prerequisite fixture profile
+# (e2e/prerequisite.yaml): the fixture is what OTHER kinds' composed
+# scenarios deploy; this scenario is the network's own first-class proof.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: planton-oss-e2e-azurevirtualnetwork-smoke
+  id: planton-oss-e2e-azurevirtualnetwork-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevirtualnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-vnet-smoke
+  addressSpaces:
+    - "10.230.0.0/16"
+    - "10.231.0.0/16"
+  flowTimeoutInMinutes: 10
+  tags:
+    e2e-suite: azure
+    purpose: smoke

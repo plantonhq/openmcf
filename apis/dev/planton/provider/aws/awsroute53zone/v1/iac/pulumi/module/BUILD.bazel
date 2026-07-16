@@ -11,11 +11,10 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//apis/dev/planton/provider/aws/awsroute53zone/v1:awsroute53zone",
-        "//pkg/iac/pulumi/pulumimodule/provider/aws/pulumiawsnativeprovider",
+        "//apis/dev/planton/shared/cloudresourcekind",
+        "//pkg/iac/pulumi/pulumimodule/provider/aws/awstagkeys",
         "//pkg/iac/pulumi/pulumimodule/provider/aws/pulumiawsprovider",
         "@com_github_pkg_errors//:errors",
-        "@com_github_pulumi_pulumi_aws_native_sdk//go/aws/route53",
-        "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws",
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/route53",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
     ],

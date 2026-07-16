@@ -6,22 +6,24 @@ spec:
   region: <azure-region>
   resourceGroup:
     value: "<your-resource-group-name>"
-  vmSize: Standard_D2s_v3  # recommended_default from spec
-  subnetId:
-    value: "<subnet-id>"
-  image:
-    publisher: Canonical
-    offer: 0001-com-ubuntu-server-jammy
-    sku: 22_04-lts-gen2
-    version: latest  # default from spec
+  name: app-vm
+  size: Standard_D2s_v3
+  networkInterfaceIds:
+    - valueFrom:
+        name: <your-network-interface-resource-name>
+  osProfile:
+    linux:
+      adminUsername: azureuser
+      sshPublicKeys:
+        - publicKey: <your-ssh-public-key>
   osDisk:
-    sizeGb: 30
-    storageType: premium_lrs  # default from spec
-    caching: read_write  # default from spec
-  adminUsername: azureuser  # default from spec
-  sshPublicKey: <your-ssh-public-key>
-  network:
-    enablePublicIp: false
-    enableAcceleratedNetworking: true  # default from spec
-  availabilityZone: "1"
-  enableBootDiagnostics: true  # default from spec
+    caching: READ_WRITE
+    storageAccountType: PREMIUM_LRS
+  sourceImageReference:
+    publisher: Canonical
+    offer: ubuntu-24_04-lts
+    sku: server
+    version: latest
+  availability:
+    zone: "1"
+  bootDiagnostics: {}  # managed-storage boot diagnostics -- the debugging lifeline

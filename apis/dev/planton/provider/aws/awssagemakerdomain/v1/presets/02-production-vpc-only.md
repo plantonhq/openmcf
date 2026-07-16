@@ -16,8 +16,11 @@ VPC-only networking, KMS encryption, and cost management via idle shutdown.
 - **Network**: VpcOnly (all traffic stays within VPC, requires NAT for internet)
 - **Encryption**: Customer-managed KMS key for EFS home directories
 - **Security**: Domain-level and user-level security groups for layered isolation
+- **Auditability**: `executionRoleIdentityConfig: USER_PROFILE_NAME` attributes CloudTrail events to the acting user, not just the shared role
+- **Identity propagation**: Identity Center user identity forwarded into Athena/Redshift/Lake Formation (`trustedIdentityPropagationStatus: ENABLED`)
+- **Cost allocation**: domain tags propagate to apps/spaces/profiles (`tagPropagation: ENABLED`)
 - **IDE**: JupyterLab with `ml.t3.medium` default instance
-- **Cost control**: 2-hour idle timeout (saves ~70% on compute vs always-on)
+- **Cost control**: 2-hour idle timeout (saves ~70% on compute vs always-on) plus the priciest GPU tiers hidden from the instance picker
 - **Storage**: 20 GB default / 200 GB max EBS per space
 - **Landing page**: JupyterLab opens by default
 

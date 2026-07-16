@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurefederatedidentitycredential
+spec:
+  # Composed live proof: the harness deploys the fixture identity (registry
+  # prerequisite; its own prerequisite chain brings the fixture resource
+  # group), writes a GitHub-shaped federated credential on it, verifies the
+  # credential via the ARM API (GetByID on the credential's full ARM id),
+  # destroys it, and verifies it is gone -- on both provisioners. Credentials
+  # are free metadata; create and delete are fast (no eventual-consistency
+  # polling like the authorization plane).
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15

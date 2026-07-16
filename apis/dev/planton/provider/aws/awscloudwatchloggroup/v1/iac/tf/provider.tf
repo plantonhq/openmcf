@@ -1,8 +1,11 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      source = "hashicorp/aws"
+      # Floor, not a ceiling: deletion_protection_enabled landed on
+      # aws_cloudwatch_log_group in v6.25.0. Sibling AWS modules share the v6
+      # line so behavior never varies per kind.
+      version = ">= 6.25.0"
     }
   }
 }

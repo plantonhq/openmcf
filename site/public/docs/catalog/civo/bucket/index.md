@@ -35,7 +35,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoBucket
 metadata:
   name: my-bucket
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -80,7 +80,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoBucket
 metadata:
   name: dev-assets
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -99,7 +99,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoBucket
 metadata:
   name: prod-uploads
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoBucket
 metadata:
   name: backup-us
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -147,7 +147,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoBucket
 metadata:
   name: backup-eu
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

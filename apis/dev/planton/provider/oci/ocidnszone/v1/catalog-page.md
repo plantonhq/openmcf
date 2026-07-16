@@ -25,7 +25,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDnsZone
 metadata:
   name: example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -89,7 +89,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDnsZone
 metadata:
   name: example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +112,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDnsZone
 metadata:
   name: secure.example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -133,7 +133,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDnsZone
 metadata:
   name: internal.example.local
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -156,7 +156,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDnsZone
 metadata:
   name: corp.example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -181,7 +181,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDnsZone
 metadata:
   name: distributed.example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

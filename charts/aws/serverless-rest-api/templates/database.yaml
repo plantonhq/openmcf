@@ -1,0 +1,43 @@
+# The API's data store: an on-demand DynamoDB table. On-demand
+# (PAY_PER_REQUEST) is the serverless-native capacity mode — it scales to
+# zero cost with the API's traffic and needs no capacity planning, which
+# is exactly the operational posture the rest of this chart has.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsDynamodb
+metadata:
+  name: "{{ values.api_name }}-table"
+spec:
+  region: "{{ values.aws_region }}"
+  billingMode: PAY_PER_REQUEST
+  # Only KEY attributes are declared — DynamoDB is schemaless for
+  # everything else, so the handler can evolve item shapes freely without
+  # touching infrastructure. String ("S") keys are the deliberate choice:
+  # they carry the entity-prefix convention (USER#123) that single-table
+  # design is built on.
+  attributeDefinitions:
+    - name: "{{ values.table_partition_key }}"
+      type: S
+{% if values.sort_key_enabled | bool %}
+    - name: "{{ values.table_sort_key }}"
+      type: S
+{% endif %}
+  # The primary key is create-time immutable — changing it replaces the
+  # table and its data. Chosen once, here.
+  keySchema:
+    - attributeName: "{{ values.table_partition_key }}"
+      keyType: HASH
+{% if values.sort_key_enabled | bool %}
+    - attributeName: "{{ values.table_sort_key }}"
+      keyType: RANGE
+{% endif %}
+  # Continuous backups with per-second restore over the last 35 days —
+  # the insurance policy against fat-finger deletes and bad deploys. It
+  # bills on stored bytes, which for a fresh API rounds to nothing; the
+  # day it matters it is priceless.
+  pointInTimeRecovery:
+    enabled: true
+  # Refuses table deletion while true (see the values.yaml description
+  # for the teardown procedure). The stateless resources around the
+  # table are freely replaceable; the data is not.
+  deletionProtectionEnabled: {{ values.table_deletion_protection }}

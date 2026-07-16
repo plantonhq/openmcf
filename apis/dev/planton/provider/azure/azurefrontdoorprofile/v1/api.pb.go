@@ -23,10 +23,13 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AzureFrontDoorProfile is the top-level API resource for an Azure Front Door
-// profile. Azure Front Door is a global, scalable CDN and application delivery
-// network that combines HTTP load balancing, SSL offloading, caching, and
-// application acceleration across Microsoft's worldwide edge network.
+// AzureFrontDoorProfile is the top-level API resource for an Azure Front
+// Door (Standard/Premium) profile -- the container for a global CDN and
+// application-delivery deployment on Microsoft's edge network. The
+// delivery surface composes against it: AzureFrontDoorEndpoint (entry
+// hostname), AzureFrontDoorOriginGroup (backend pool), AzureFrontDoorOrigin
+// (backend), and AzureFrontDoorRoute (URL-pattern rule) all reference the
+// profile's outputs.
 type AzureFrontDoorProfile struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version

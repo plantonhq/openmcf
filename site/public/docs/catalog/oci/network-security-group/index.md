@@ -32,7 +32,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciSecurityGroup
 metadata:
   name: my-nsg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciSecurityGroup
 metadata:
   name: web-tier-nsg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -188,7 +188,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciSecurityGroup
 metadata:
   name: backend-nsg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -220,7 +220,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciSecurityGroup
 metadata:
   name: app-tier-nsg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -263,7 +263,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciSecurityGroup
 metadata:
   name: ref-nsg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

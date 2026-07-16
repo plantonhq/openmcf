@@ -14,6 +14,7 @@ import (
 	kubernetescronjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescronjob/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
 
 func TestProtoToVariablesTF_FreeFormJsonMapIsAnyNotMapAny(t *testing.T) {
@@ -50,21 +51,6 @@ func TestTFFreeFormMap_RendersAnyWithEmptyMapDefault(t *testing.T) {
 	obj := TFObject{Fields: []TFField{{Name: "inline_policies", Type: TFFreeFormMap{}, Optional: true}}}
 	if got := obj.Format(0); !strings.Contains(got, "inline_policies = optional(any, {})") {
 		t.Errorf("optional free-form map should render optional(any, {}), got:\n%s", got)
-	}
-}
-
-func TestProtoToVariablesTF_CronJob_TargetClusterSkipped(t *testing.T) {
-	msg := &kubernetescronjobv1.KubernetesCronJob{}
-
-	got, err := ProtoToVariablesTF(msg)
-	if err != nil {
-		t.Fatalf("ProtoToVariablesTF: %v", err)
-	}
-
-	// target_cluster is inside the spec object. It should NOT appear as a
-	// field in the spec's object type.
-	if strings.Contains(got, "target_cluster") {
-		t.Errorf("target_cluster should be skipped by KubernetesClusterSelector rule, got:\n%s", got)
 	}
 }
 
@@ -276,13 +262,40 @@ func TestProtoToVariablesTF_RequiredVsOptional(t *testing.T) {
 // pruned tfvars validates instead of erroring "attribute X is required".
 func TestProtoToVariablesTF_OptionalScalarsAndMaps(t *testing.T) {
 	r53spec := extractBlock(generateVariables(t, &awsroute53zonev1.AwsRoute53Zone{}), `variable "spec"`)
-	if !strings.Contains(r53spec, "records = optional(list(object({") {
-		t.Errorf("route53 spec.records must be optional list-of-object:\n%s", r53spec)
+	if !strings.Contains(r53spec, "vpc_associations = optional(list(object({") {
+		t.Errorf("route53 spec.vpc_associations must be optional list-of-object:\n%s", r53spec)
 	}
 
 	ecrspec := extractBlock(generateVariables(t, &awsecrrepov1.AwsEcrRepo{}), `variable "spec"`)
 	if !strings.Contains(ecrspec, "force_delete = optional(bool, false)") {
 		t.Errorf("ecr spec.force_delete must be optional(bool, false):\n%s", ecrspec)
+	}
+}
+
+// TestProtoToVariablesTF_RecursiveMessageCollapsesToAny asserts the descriptor
+// walk terminates on a self-recursive message and collapses the recursive
+// subtree to `any` (the google.protobuf.Struct treatment). Terraform's type
+// language cannot express a recursive object constraint, and naturally
+// recursive protos (boolean statement trees, nested expression grammars) are a
+// legitimate spec shape -- before cycle detection this walk never returned.
+// descriptorpb.DescriptorProto is used as the fixture because it is recursive
+// by definition (nested_type is a repeated DescriptorProto).
+func TestProtoToVariablesTF_RecursiveMessageCollapsesToAny(t *testing.T) {
+	got := generateVariables(t, &descriptorpb.DescriptorProto{})
+
+	// The direct self-recursion (nested_type, a repeated DescriptorProto at
+	// the root) must collapse to bare `any` instead of recursing forever.
+	// Not list(any): Terraform requires all list(any) elements to converge
+	// to one type, which recursive elements cannot guarantee.
+	nested := extractBlock(got, `variable "nested_type"`)
+	if !strings.Contains(nested, "type = any") {
+		t.Errorf("recursive repeated field must render bare any, got:\n%s", got)
+	}
+	// Non-recursive siblings keep their full typed shape (the cycle guard is
+	// path-scoped, not a blanket flattening).
+	field := extractBlock(got, `variable "field"`)
+	if !strings.Contains(field, "type_name = optional(string)") {
+		t.Errorf("non-recursive sibling fields must stay fully typed, got:\n%s", got)
 	}
 }
 

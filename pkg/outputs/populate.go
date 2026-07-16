@@ -59,10 +59,30 @@ func setFieldRecursively(
 
 	fd := msg.Descriptor().Fields().ByName(protoreflect.Name(fieldName))
 	if fd == nil {
+		// IaC outputs may use hyphenated names for snake_case proto fields.
+		// Normalize per segment at lookup time (never on the whole key --
+		// map keys legitimately contain hyphens, e.g. subnet IDs, and a
+		// whole-key rewrite would corrupt them).
+		normalized := strings.ReplaceAll(fieldName, "-", "_")
+		fd = msg.Descriptor().Fields().ByName(protoreflect.Name(normalized))
+	}
+	if fd == nil {
 		return fmt.Errorf("field %q not found on message %s", fieldName, msg.Descriptor().FullName())
 	}
 
 	if fd.IsMap() {
+		// Two shapes reach a map field:
+		//   - Dot-flattened entries ("mount_target_ids.subnet-0abc" = "fsmt-...")
+		//     -- the shape Flatten produces from both engines' nested map
+		//     outputs. The REMAINING segments are the map key (rejoined on
+		//     "." because map keys may themselves contain dots, e.g. S3
+		//     object paths).
+		//   - A whole JSON object in one value ("{\"k\":\"v\"}") when the map
+		//     field is the leaf segment.
+		if pathIndex < len(fieldPath)-1 {
+			mapKey := strings.Join(fieldPath[pathIndex+1:], ".")
+			return setMapEntry(msg, fd, mapKey, value)
+		}
 		return handleMapField(msg, fd, value)
 	}
 
@@ -156,13 +176,56 @@ func handleRepeatedField(
 	return setFieldRecursively(nested, fieldPath, value, indexSegmentPos+1)
 }
 
+// setMapEntry sets a single entry on a proto map field from a dot-flattened
+// output ("map_field.some-key" = "value"). The map key is used VERBATIM --
+// map keys are data (subnet IDs, object paths) and must never be normalized
+// the way field-name segments are.
+func setMapEntry(
+	msg protoreflect.Message,
+	fd protoreflect.FieldDescriptor,
+	key string,
+	value string,
+) error {
+	mapField := msg.Mutable(fd).Map()
+
+	mapKey, err := convertScalar(key, fd.MapKey())
+	if err != nil {
+		return fmt.Errorf("map field %q key %q: %w", fd.Name(), key, err)
+	}
+
+	valueFd := fd.MapValue()
+	if valueFd.Kind() == protoreflect.MessageKind {
+		newMsg := mapField.NewValue().Message()
+		umOpts := protojson.UnmarshalOptions{DiscardUnknown: true}
+		if umErr := umOpts.Unmarshal([]byte(value), newMsg.Interface()); umErr != nil {
+			return fmt.Errorf("map field %q: failed to unmarshal message value for key %q: %w",
+				fd.Name(), key, umErr)
+		}
+		mapField.Set(mapKey.MapKey(), protoreflect.ValueOfMessage(newMsg))
+		return nil
+	}
+
+	mapValue, err := convertScalar(value, valueFd)
+	if err != nil {
+		return fmt.Errorf("map field %q value for key %q: %w", fd.Name(), key, err)
+	}
+	mapField.Set(mapKey.MapKey(), mapValue)
+	return nil
+}
+
 // handleMapField parses a JSON string into a proto map field.
 // The JSON value is expected to be a JSON object like {"key": "value"}.
+// An empty value represents an empty map (the flattener emits
+// "field_name: \"\"" for empty maps, mirroring empty repeated fields).
 func handleMapField(
 	msg protoreflect.Message,
 	fd protoreflect.FieldDescriptor,
 	jsonValue string,
 ) error {
+	if jsonValue == "" {
+		return nil
+	}
+
 	var parsed map[string]interface{}
 	if err := json.Unmarshal([]byte(jsonValue), &parsed); err != nil {
 		return fmt.Errorf("map field %q: failed to parse JSON: %w", fd.Name(), err)

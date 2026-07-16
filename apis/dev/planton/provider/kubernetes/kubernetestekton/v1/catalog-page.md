@@ -29,7 +29,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTekton
 metadata:
   name: my-tekton
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -56,8 +56,6 @@ All spec fields have sensible defaults. There are no strictly required fields be
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `pipelineVersion` | `string` | `latest` | Version of Tekton Pipelines to deploy. Maps to releases at https://github.com/tektoncd/pipeline/releases (e.g., `v0.65.2`, `v0.64.0`). |
 | `dashboard.enabled` | `bool` | `false` | Enables deployment of the Tekton Dashboard web UI. |
 | `dashboard.version` | `string` | `latest` | Version of Tekton Dashboard to deploy. Maps to releases at https://github.com/tektoncd/dashboard/releases (e.g., `v0.53.0`, `v0.52.0`). |
@@ -76,7 +74,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTekton
 metadata:
   name: ci-tekton
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -94,7 +92,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTekton
 metadata:
   name: team-tekton
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +119,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTekton
 metadata:
   name: prod-tekton
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

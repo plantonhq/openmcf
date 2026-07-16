@@ -1,0 +1,115 @@
+params:
+  # ─── Placement ───────────────────────────────────────────────────────────────
+  - name: region
+    description: Azure region for every resource in the platform (the cluster, its network, registry, vault, and telemetry share one region)
+    value: eastus
+
+  # ─── Network ─────────────────────────────────────────────────────────────────
+  - name: vnet_cidr
+    description: Address space of the platform's virtual network; must not overlap networks it will peer with later (a hub, on-premises ranges)
+    value: 10.10.0.0/16
+
+  - name: nodes_subnet_cidr
+    description: CIDR of the node subnet, inside vnet_cidr. Sized /22 (1019 usable) because with Azure CNI overlay only NODES consume subnet addresses -- pods draw from the cluster's private overlay range
+    value: 10.10.0.0/22
+
+  # ─── API server exposure ─────────────────────────────────────────────────────
+  - name: private_api_enabled
+    description: Deploy the cluster with a PRIVATE API server -- reachable only from inside the network (peering, VPN, ExpressRoute), the hardened-enterprise posture. Disable for a public API endpoint, then restrict it with api_authorized_ip_ranges. Flipping this later replaces the cluster
+    value: true
+    type: bool
+
+  - name: api_authorized_ip_ranges
+    description: Comma-separated CIDR blocks allowed to reach a PUBLIC API server (office egress, VPN, CI runners). Only applies when private_api_enabled is false; empty admits all source IPs -- set it for any real public cluster
+    value: ""
+
+  # ─── Cluster ─────────────────────────────────────────────────────────────────
+  - name: cluster_sku_tier
+    description: "Control-plane tier: STANDARD carries the financially-backed 99.95% API-server SLA and 5000-node scale (the production baseline); FREE has no SLA and suits evaluation only"
+    value: STANDARD
+
+  - name: kubernetes_version
+    description: Kubernetes control-plane version, e.g. "1.33" (minor aliases track the latest GA patch) or an exact "1.33.2". Empty provisions the latest AKS-recommended GA version -- pin one for production so upgrades happen when you choose, not when you redeploy
+    value: ""
+
+  - name: local_account_disabled
+    description: Disable the certificate-based local admin account, forcing ALL cluster access through Microsoft Entra ID -- the strictest posture. Enable only after entra_admin_group_object_ids (or equivalent Azure RBAC grants) are in place, or nobody can administer the cluster
+    value: false
+    type: bool
+
+  - name: entra_admin_group_object_ids
+    description: Comma-separated Microsoft Entra group object IDs granted cluster-admin -- the platform team's break-glass entry point. Empty grants no group; cluster access then flows through Azure RBAC role assignments alone
+    value: ""
+
+  # ─── Node pools ──────────────────────────────────────────────────────────────
+  - name: system_pool_vm_size
+    description: VM size for the system node pool (cluster-critical pods -- CoreDNS, metrics-server). Needs at least 2 vCPUs and 4 GiB
+    value: Standard_D4s_v5
+
+  - name: system_pool_min_nodes
+    description: Autoscaler floor for the system pool (at least 1 -- the system pool can never scale to zero)
+    value: 1
+    type: number
+
+  - name: system_pool_max_nodes
+    description: Autoscaler ceiling for the system pool
+    value: 3
+    type: number
+
+  - name: workload_pool_vm_size
+    description: VM size for the workload node pool -- pick for the applications' shape (Standard_E-series for memory-heavy, N-series for GPU)
+    value: Standard_D4s_v5
+
+  - name: workload_pool_min_nodes
+    description: Autoscaler floor for the workload pool (0 parks the pool when nothing is scheduled)
+    value: 1
+    type: number
+
+  - name: workload_pool_max_nodes
+    description: Autoscaler ceiling for the workload pool
+    value: 5
+    type: number
+
+  - name: workload_pool_spot_enabled
+    description: Run the workload pool on SPOT capacity -- 30-90% cheaper but evictable at any time, for fault-tolerant or batch workloads only. Spot nodes carry the scalesetpriority taint automatically, so workloads must tolerate it to schedule there
+    value: false
+    type: bool
+
+  - name: zones_enabled
+    description: Spread cluster nodes across availability zones 1-3 -- the production posture, and what the STANDARD tier's SLA assumes. Disable only in regions without zones
+    value: true
+    type: bool
+
+  # ─── Container registry ──────────────────────────────────────────────────────
+  - name: registry_name
+    description: Name of the container registry -- 5-50 lowercase letters and digits, GLOBALLY unique across Azure (it becomes {name}.azurecr.io). Change this before deploying; the default will collide with any other deployment of this chart
+    value: platformacr
+
+  - name: registry_sku
+    description: "Registry tier: STANDARD is the production baseline (100 GiB, webhooks); PREMIUM adds geo-replication, network isolation, and customer-managed keys; BASIC suits dev/test"
+    value: STANDARD
+
+  # ─── Key Vault ───────────────────────────────────────────────────────────────
+  - name: key_vault_name
+    description: Name of the Key Vault -- 3-24 characters, GLOBALLY unique across Azure (it becomes {name}.vault.azure.net). Change this before deploying; the default will collide with any other deployment of this chart
+    value: platform-kv
+
+  - name: key_vault_purge_protection
+    description: Purge-protect the vault -- deleted objects can only be recovered, never permanently purged, until the retention window passes. The production posture (and required before the vault's keys can encrypt other services), but IRREVERSIBLE and it locks the vault name for the retention window after deletion
+    value: false
+    type: bool
+
+  # ─── Workload identity ───────────────────────────────────────────────────────
+  - name: workload_namespace
+    description: Kubernetes namespace of the service account trusted to act as the workload identity (the pods that read Key Vault secrets keylessly)
+    value: default
+
+  - name: workload_service_account
+    description: Kubernetes service account name trusted to act as the workload identity. Annotate it with the identity's client_id output and label its pods azure.workload.identity/use "true" -- the README walks through it
+    value: workload
+
+  # ─── Observability ───────────────────────────────────────────────────────────
+  - name: log_retention_days
+    description: Days of control-plane logs and application telemetry retained in the Log Analytics workspace (30-730). Raise for compliance regimes that audit cluster operations
+    value: 30
+    type: number

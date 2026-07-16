@@ -263,7 +263,7 @@ Set CloudWatch alarms on `JVMMemoryPressure` (>80%), `FreeStorageSpace` (<20%), 
 
 ## Auto-Tune Optimization
 
-When `autoTuneEnabled` is true, OpenSearch Service automatically adjusts:
+When `autoTuneOptions.desiredState` is `ENABLED`, OpenSearch Service automatically adjusts:
 - **JVM heap size** — optimizes based on memory pressure patterns
 - **Queue sizes** — adjusts search and indexing thread pool queues
 - **Cache sizes** — tunes filesystem cache allocation
@@ -306,25 +306,16 @@ AwsVpc -> AwsSecurityGroup -> AwsKmsKey -> AwsOpenSearchDomain -> Application Co
 
 ## Deliberately Omitted Features
 
-The following OpenSearch Service features are **not** included in the current spec. This is intentional — they add complexity without benefiting the majority of users, or they are better managed outside the infrastructure layer:
+The spec covers the full provider surface for a single domain — cluster topology (including per-node-type `nodeOptions`), storage, encryption, networking, FGAC (internal database, IAM, JWT, and anonymous auth), Cognito Dashboards auth, IAM Identity Center, AI/ML options, Auto-Tune, off-peak windows, snapshot hour, software updates, and log publishing. What remains outside it:
 
-### Amazon Cognito Authentication
-Cognito integration for OpenSearch Dashboards authentication is complex to configure (requires Cognito User Pool, Identity Pool, and IAM roles) and is less common than FGAC with the internal user database or IAM-based authentication. Users who need Cognito can use `advancedOptions` or manage it outside the Planton spec.
+### SAML for Dashboards (separate resource)
+SAML authentication for OpenSearch Dashboards is its own provider resource (`aws_opensearch_domain_saml_options`) keyed by domain name — a follow-up satellite rather than a domain field, and an organization-level identity concern.
 
-### AWS IAM Identity Center (SSO)
-SAML-based SSO integration is an organization-level concern typically managed at the identity provider level, not per-domain. The FGAC internal user database or IAM master user patterns cover most authentication needs.
+### Outbound/Inbound Connections and Packages
+Cross-cluster search connections and custom packages (dictionaries, plugins) are separate provider resources with their own lifecycles, better modeled as their own kinds if demand appears.
 
-### AI/ML Features
-OpenSearch's ML Commons plugin (anomaly detection, k-NN search, semantic search) are index-level features configured within OpenSearch itself, not at the infrastructure provisioning layer. They don't affect domain creation.
-
-### Node Options (node_options)
-The `node_options` field for per-node-type configuration is a newer, rarely-used feature. The standard `clusterConfig` fields cover all common topologies.
-
-### Snapshot Options (snapshot_options)
-Automated snapshot hour configuration is a legacy setting. Modern OpenSearch Service handles automated snapshots without user intervention.
-
-### Off-Peak Window
-The off-peak window configuration is managed automatically by AWS and rarely needs explicit configuration.
+### Index-Level Configuration
+Index templates, ISM policies, and ML models are data-plane concerns configured through the OpenSearch API after the domain exists, not at the infrastructure provisioning layer.
 
 ## Conclusion
 

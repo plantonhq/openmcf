@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurerediscacheaccesspolicy.v1;
+
+// **AzureRedisCacheAccessPolicyStackOutputs** captures the outputs of
+// creating a custom Redis data-plane access policy.
+message AzureRedisCacheAccessPolicyStackOutputs {
+  // The Azure Resource Manager ID of the access policy.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Cache/redis/{cache}/accessPolicies/{name}
+  string access_policy_id = 1;
+
+  // The policy's name -- the value
+  // AzureRedisCacheAccessPolicyAssignment.access_policy_name references
+  // to grant this policy to an identity.
+  string access_policy_name = 2;
+}

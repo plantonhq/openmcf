@@ -3,7 +3,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackKeypair
 metadata:
   name: "{{ values.env }}-keypair"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   publicKey: "{{ values.ssh_public_key }}"
@@ -12,7 +12,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackNetworkPort
 metadata:
   name: "{{ values.env }}-port"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   networkId:
@@ -37,7 +37,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackFloatingIp
 metadata:
   name: "{{ values.env }}-fip"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   floatingNetworkId:
@@ -49,7 +49,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackInstance
 metadata:
   name: "{{ values.env }}-instance"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   flavorName: "{{ values.instance_flavor }}"
@@ -71,7 +71,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackFloatingIpAssociate
 metadata:
   name: "{{ values.env }}-fip-assoc"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   floatingIp:
@@ -91,7 +91,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolume
 metadata:
   name: "{{ values.env }}-volume"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   size: {{ values.volume_size_gb }}
@@ -101,7 +101,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolumeAttach
 metadata:
   name: "{{ values.env }}-volume-attach"
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
 spec:
   instanceId:

@@ -32,8 +32,6 @@ kind: KubernetesZalandoPostgresOperator
 metadata:
   name: postgres-operator
 spec:
-  target_cluster:
-    cluster_name: my-gke-cluster
   namespace:
     value: postgres-operator
   create_namespace: true

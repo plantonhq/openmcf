@@ -19,7 +19,7 @@ import (
 // RunCommand executes an HCL-based IaC operation (init + operation) using the specified binary.
 // The binaryName parameter specifies which CLI binary to use ("tofu" or "terraform").
 // The backendConfig parameter is optional - if provided, it will be used directly instead of
-// extracting from manifest labels. Pass nil to fall back to manifest label extraction.
+// extracting from manifest annotations. Pass nil to fall back to manifest annotation extraction.
 func RunCommand(
 	binaryName string,
 	inputModuleDir string,
@@ -42,12 +42,12 @@ func RunCommand(
 
 	// Determine backend configuration:
 	// 1. If backendConfig is provided (from CLI flags), use it directly
-	// 2. Otherwise, extract from manifest labels (legacy path)
+	// 2. Otherwise, extract from manifest annotations (legacy path)
 	var backendType terraform.TerraformBackendType = terraform.TerraformBackendType_local
 	var backendConfigArgs []string
 
 	if backendConfig != nil {
-		// Use the provided backend config (from CLI flags merged with manifest labels)
+		// Use the provided backend config (from CLI flags merged with manifest annotations)
 		if backendConfig.BackendType != "" {
 			backendType = tfbackend.BackendTypeFromString(backendConfig.BackendType)
 			if backendType == terraform.TerraformBackendType_terraform_backend_type_unspecified {
@@ -57,24 +57,24 @@ func RunCommand(
 		}
 		// If BackendType is empty but config is provided, use local backend (the default)
 	} else {
-		// Fall back to extracting from manifest labels (legacy path for direct command usage)
+		// Fall back to extracting from manifest annotations (legacy path for direct command usage)
 		tofuBackendConfig, err := backendconfig.ExtractFromManifest(manifestObject, binaryName)
 		if err != nil {
 			// Log but don't fail - backend config is optional
-			log.Debugf("Could not extract %s backend config from manifest labels: %v", binaryName, err)
+			log.Debugf("Could not extract %s backend config from manifest annotations: %v", binaryName, err)
 		}
 
 		if tofuBackendConfig != nil {
 			// Convert backend type string to enum
 			backendType = tfbackend.BackendTypeFromString(tofuBackendConfig.BackendType)
 			if backendType == terraform.TerraformBackendType_terraform_backend_type_unspecified {
-				return errors.Errorf("unsupported backend type from manifest labels: %s", tofuBackendConfig.BackendType)
+				return errors.Errorf("unsupported backend type from manifest annotations: %s", tofuBackendConfig.BackendType)
 			}
 
 			// Build backend config arguments based on backend type
 			backendConfigArgs = buildBackendConfigArgs(tofuBackendConfig)
 		} else {
-			log.Debugf("No %s backend config in manifest labels, using default local backend", binaryName)
+			log.Debugf("No %s backend config in manifest annotations, using default local backend", binaryName)
 		}
 	}
 

@@ -41,8 +41,9 @@ type Harness struct {
 // deployedResource records what VerifyDeployed observed so VerifyDestroyed can
 // re-probe the same resource in the same region.
 type deployedResource struct {
-	id     string
-	region string
+	id      string
+	region  string
+	outputs map[string]interface{}
 }
 
 // NewHarness creates an AWS test harness. Credentials come from the ambient chain
@@ -105,8 +106,12 @@ func (h *Harness) VerifyDeployed(ctx context.Context, component string, outputs 
 	}
 
 	h.mu.Lock()
-	h.deployed[componentKey(ctx, component)] = deployedResource{id: id, region: region}
+	h.deployed[componentKey(ctx, component)] = deployedResource{id: id, region: region, outputs: outputs}
 	h.mu.Unlock()
+
+	if ov, ok := v.(verify.OutputsVerifier); ok {
+		return ov.VerifyExistsFromOutputs(ctx, h.cfg, outputs, region)
+	}
 
 	return v.VerifyExists(ctx, h.cfg, id, region)
 }
@@ -122,8 +127,11 @@ func (h *Harness) VerifyDestroyed(ctx context.Context, component string) error {
 	res := h.deployed[componentKey(ctx, component)]
 	h.mu.Unlock()
 
-	if res.id == "" {
+	if res.id == "" && res.outputs == nil {
 		return errors.Errorf("no stored resource id for %s -- VerifyDeployed may not have run", component)
+	}
+	if ov, ok := v.(verify.OutputsVerifier); ok {
+		return ov.VerifyAbsentFromOutputs(ctx, h.cfg, res.outputs, res.region)
 	}
 	return v.VerifyAbsent(ctx, h.cfg, res.id, res.region)
 }

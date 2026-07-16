@@ -1,266 +1,74 @@
-# Azure DNS Record - Technical Research Documentation
-
-## Introduction
-
-Azure DNS is Microsoft's authoritative DNS hosting service, providing name resolution using Microsoft Azure infrastructure. Azure DNS Records are individual entries within a DNS zone that map domain names to various resources like IP addresses, mail servers, or other domains.
-
-This document provides comprehensive research on deploying and managing Azure DNS Records, comparing different approaches and explaining the design decisions behind Planton's implementation.
-
-## DNS Record Fundamentals
-
-### What is a DNS Record?
-
-A DNS record is a database entry that provides information about a domain, including its associated IP addresses, mail servers, and other configuration data. When users query a domain name, DNS resolvers use these records to route traffic appropriately.
-
-### Common Record Types
-
-| Type | Purpose | Example Use Case |
-|------|---------|------------------|
-| **A** | Maps hostname to IPv4 address | `www.example.com → 192.0.2.1` |
-| **AAAA** | Maps hostname to IPv6 address | `www.example.com → 2001:db8::1` |
-| **CNAME** | Creates alias to another domain | `blog.example.com → example.ghost.io` |
-| **MX** | Specifies mail servers | Email routing for domain |
-| **TXT** | Stores text data | SPF, DKIM, domain verification |
-| **NS** | Delegates subdomain | Subdomain to different nameservers |
-| **SRV** | Service location | SIP, LDAP service discovery |
-| **CAA** | Certificate authority authorization | SSL/TLS issuance control |
-| **PTR** | Reverse DNS lookup | IP to hostname mapping |
-
-## Deployment Methods Landscape
-
-### 1. Azure Portal (Manual)
-
-**Pros:**
-- Visual interface
-- No coding required
-- Good for learning
-
-**Cons:**
-- Not repeatable
-- No version control
-- Error-prone for bulk operations
-- No audit trail
-
-### 2. Azure CLI
-
-```bash
-az network dns record-set a add-record \
-  --resource-group MyResourceGroup \
-  --zone-name example.com \
-  --record-set-name www \
-  --ipv4-address 192.0.2.1
-```
-
-**Pros:**
-- Scriptable
-- Can be version controlled
-
-**Cons:**
-- Imperative (describes actions, not state)
-- Difficult to manage dependencies
-- No drift detection
-
-### 3. ARM Templates
-
-```json
-{
-  "type": "Microsoft.Network/dnsZones/A",
-  "apiVersion": "2018-05-01",
-  "name": "example.com/www",
-  "properties": {
-    "TTL": 300,
-    "ARecords": [
-      { "ipv4Address": "192.0.2.1" }
-    ]
-  }
-}
-```
-
-**Pros:**
-- Declarative
-- Native Azure support
-- Version controllable
-
-**Cons:**
-- Verbose JSON syntax
-- Limited reusability
-- Azure-specific
-
-### 4. Terraform
-
-```hcl
-resource "azurerm_dns_a_record" "www" {
-  name                = "www"
-  zone_name           = "example.com"
-  resource_group_name = "my-rg"
-  ttl                 = 300
-  records             = ["192.0.2.1"]
-}
-```
-
-**Pros:**
-- Declarative
-- State management
-- Drift detection
-- Multi-cloud support
-
-**Cons:**
-- HCL learning curve
-- State file management
-- Manual wiring between resources
-
-### 5. Pulumi
-
-```go
-record, err := dns.NewARecord(ctx, "www", &dns.ARecordArgs{
-    Name:              pulumi.String("www"),
-    ZoneName:          pulumi.String("example.com"),
-    ResourceGroupName: pulumi.String("my-rg"),
-    Ttl:               pulumi.Int(300),
-    Records:           pulumi.StringArray{pulumi.String("192.0.2.1")},
-})
-```
-
-**Pros:**
-- Real programming languages
-- Type safety
-- IDE support
-- Reusable components
-
-**Cons:**
-- Requires programming knowledge
-- More complex setup
-
-## Planton's Approach
-
-### Design Philosophy
-
-Planton's AzureDnsRecord component follows the 80/20 principle:
-- **80%** of DNS record use cases are covered
-- **20%** of configuration options exposed
-
-### Key Design Decisions
-
-#### 1. Zone Reference via `value_from`
-
-The `zone_name` field supports both literal values and references to `AzureDnsZone` resources:
-
-```yaml
-# Literal value
-zone_name:
-  value: example.com
-
-# Reference to zone resource
-zone_name:
-  value_from:
-    name: my-azure-zone
-```
-
-This enables:
-- **Loose coupling**: Records can be deployed independently
-- **Dependency resolution**: CLI resolves zone name at deploy time
-- **Flexibility**: Mix literal and referenced values
-
-#### 2. Single Record Per Resource
-
-Unlike the `AzureDnsZone` component which can create multiple records, `AzureDnsRecord` creates exactly one record. This provides:
-- **Atomic operations**: Each record has its own lifecycle
-- **Fine-grained control**: Update individual records without affecting others
-- **Clear ownership**: One manifest = one DNS record
-
-#### 3. Unified Record Type Handling
-
-All record types use the same `values` field, with type-specific interpretation:
-- A/AAAA: IP addresses
-- CNAME: Target hostname (first value only)
-- MX: Mail server hostnames (priority via `mx_priority`)
-- TXT: Text values
-- etc.
-
-### What's NOT Included (By Design)
-
-1. **Traffic Manager integration**: Complex routing scenarios have dedicated components
-2. **Private DNS zones**: Separate component for VNet-scoped DNS
-3. **Alias records**: Azure-specific alias records not yet supported
-4. **Record set grouping**: Each record type at a name gets its own resource
-
-## Azure DNS Record Specifics
-
-### Record Naming
-
-- `@` - Zone apex (root domain)
-- `*` - Wildcard
-- Subdomain names without trailing dot
-
-### TTL Guidelines
-
-| Scenario | Recommended TTL |
-|----------|-----------------|
-| Frequently changing | 60-300 seconds |
-| Standard records | 300-3600 seconds |
-| Stable records | 3600-86400 seconds |
-| NS delegations | 86400 seconds |
-
-### Limits and Quotas
-
-- Max 10,000 record sets per zone
-- Max 20 records per record set
-- Max 500 DNS zones per subscription (soft limit)
-
-## Production Best Practices
-
-### 1. Use Appropriate TTLs
-
-Lower TTLs = faster propagation but more DNS queries (cost)
-Higher TTLs = better caching but slower changes
-
-### 2. CAA Records
-
-Always configure CAA records to control certificate issuance:
-
-```yaml
-record_type: CAA
-name: "@"
-values:
-  - "letsencrypt.org"
-```
-
-### 3. SPF/DKIM/DMARC
-
-For email deliverability, always configure:
-- SPF (TXT record)
-- DKIM (TXT record)  
-- DMARC (TXT record at `_dmarc`)
-
-### 4. Monitoring
-
-- Enable Azure DNS Analytics
-- Monitor query volume
-- Alert on failed queries
-
-## Implementation Details
-
-### Pulumi Module
-
-The Pulumi module:
-1. Creates Azure provider with credentials from `ProviderConfig`
-2. Switches on `record_type` to call appropriate DNS record constructor
-3. Exports `record_id` and `fqdn` as stack outputs
-
-### Terraform Module
-
-The Terraform module:
-1. Uses conditional resources (`count`) based on record type
-2. Creates exactly one record resource per deployment
-3. Outputs record ID and FQDN using `coalesce` for type-agnostic output
-
-## References
-
-- [Azure DNS Documentation](https://docs.microsoft.com/en-us/azure/dns/)
-- [Azure DNS REST API](https://docs.microsoft.com/en-us/rest/api/dns/)
-- [Terraform azurerm_dns_* resources](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs)
-- [Pulumi Azure DNS resources](https://www.pulumi.com/registry/packages/azure/api-docs/dns/)
-
-## Conclusion
-
-The AzureDnsRecord component provides a streamlined, declarative interface for managing DNS records in Azure. By supporting zone references through `value_from`, it integrates seamlessly with the broader Planton ecosystem while maintaining the flexibility needed for diverse DNS configurations.
+# AzureDnsRecord -- Design Research
+
+## The Resource
+
+One record set in an Azure public DNS zone
+(`Microsoft.Network/dnsZones/{A|AAAA|CNAME|MX|SRV|CAA|TXT|NS|PTR}`).
+ARM models each record TYPE as its own child recordset of the zone;
+azurerm splits that into nine per-type resources
+(`internal/services/dns/dns_*_record_resource.go`, DNS API 2018-05-01)
+as Terraform ergonomics. The component stays ONE polymorphic kind whose
+typed payload selects the recordset type, dispatching to the matching
+provider resource on both engines -- parity-verified against
+pulumi-azure v6 (`dns.ARecord` ... `dns.PtrRecord`).
+
+## Shape Decision: Typed Payloads, No Discriminator Enum
+
+The record type IS whichever payload message/list is present (an
+exactly-one-of message CEL), so a type field that could disagree with
+the payload never exists. Each payload carries DNS's real value shape:
+
+| Payload | Shape | azurerm resource |
+|---|---|---|
+| `a` / `aaaa` | address list XOR alias `target_resource_id` | `dns_a_record` / `dns_aaaa_record` |
+| `cname` | single value XOR alias | `dns_cname_record` |
+| `mx` | (preference 0-65535, exchange) entries | `dns_mx_record` (string-typed preference, converted) |
+| `srv` | (priority, weight, port, target) entries | `dns_srv_record` |
+| `caa` | (flags 0-255, tag enum, value) entries | `dns_caa_record` (lowercase wire tags) |
+| `txt` | strings 1-4096 chars | `dns_txt_record` (provider chunks to 254-char DNS strings) |
+| `ns` | name-server hostnames | `dns_ns_record` |
+| `ptr` | pointer hostnames | `dns_ptr_record` |
+
+The flat value-list shape this replaces could not express per-entry MX
+preferences or SRV endpoints at all -- any such shape forces the module
+to synthesize the missing fields, which is a misdeploy by construction.
+
+## Field Mapping (azurerm -> spec, common surface)
+
+| azurerm | spec | Notes |
+|---|---|---|
+| `zone_name` + `resource_group_name` | `zone_name` + `resource_group` | Azure's only record-set addressing mode on both engines (no ARM-id input exists). Both FK-defaulted; ForceNew |
+| `name` | `name` | `@`/wildcard/underscore-label contract as CEL. ForceNew (MX's azurerm-side `@` default not adopted -- the name is required uniformly) |
+| `ttl` | `ttl_seconds` | azurerm requires TTL with no default; the platform default (300) keeps the field ergonomic |
+| `tags` | `tags` | Recordset metadata on every type |
+| `target_resource_id` | `a`/`aaaa`/`cname` `target_resource_id` | Alias records -- A/AAAA/CNAME only, XOR the literal values (azurerm's contract, front-loaded as CELs). Bare polymorphic ref: no kind dominates alias targets |
+
+## Front-Loaded Contracts
+
+- Exactly one typed payload (message CEL) -- ARM stores each type as its
+  own record set.
+- A/AAAA: literal addresses XOR alias; addresses are format-validated
+  (IPv4/IPv6 -- azurerm validates only AAAA's, the asymmetry is not
+  copied).
+- CNAME: single value XOR alias (the provider's ExactlyOneOf).
+- CAA: the tag vocabulary azurerm accepts (issue/issuewild/iodef/
+  contactemail) as a closed enum; flags 0-255.
+- MX/SRV/CAA integers are `optional` + required so meaningful zeros
+  (null-MX preference 0, SRV priority 0, CAA flags 0) validate.
+
+## Deliberately Not Modeled (with reasons)
+
+- **A standalone SOA record** -- azurerm exposes SOA only as a zone
+  block (folded on `AzureDnsZone`) and a data source.
+- **DS/TLSA/NAPTR/DNSSEC records** -- absent from azurerm v4 entirely.
+- **azurerm's per-type resource split** -- TF ergonomics, not ARM's
+  model (the orchestration-mode dispatch precedent).
+
+## Operational Behavior Worth Knowing
+
+- Alias A/AAAA records are the way to point a zone APEX at an Azure
+  resource (Public IP, Traffic Manager, CDN/Front Door endpoints) --
+  DNS itself forbids CNAME at the apex.
+- The zone's own apex NS record set is Azure-managed; the `ns` payload
+  is for delegating CHILD subdomains.
+- `fqdn` output carries DNS's trailing dot (`www.example.com.`).

@@ -1,0 +1,47 @@
+# One resource group holds the whole estate so a single delete reclaims
+# everything the chart created. (With CMK enabled, note the vault's
+# purge-protection caveat in the values -- the vault NAME survives
+# deletion until the soft-delete window passes.)
+apiVersion: azure.planton.dev/v1
+kind: AzureResourceGroup
+metadata:
+  name: "{{ values.env }}-ha-postgres"
+spec:
+  name: "{{ values.env }}-ha-postgres"
+  region: "{{ values.region }}"
+---
+# Destination for the server's PostgreSQL logs -- slow queries, failed
+# logins, autovacuum activity. The metric alerts ride Azure Monitor;
+# this workspace answers the "why" after they fire.
+apiVersion: azure.planton.dev/v1
+kind: AzureLogAnalyticsWorkspace
+metadata:
+  name: "{{ values.env }}-postgres-logs"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-ha-postgres"
+      fieldPath: status.outputs.resource_group_name
+  workspaceName: "{{ values.env }}-postgres-logs"
+  retentionInDays: {{ values.log_retention_days }}
+---
+# The administrative identity: the Entra principal granted PostgreSQL
+# administrator rights (token-based admin access alongside -- or
+# eventually instead of -- the password), and, with CMK enabled, the
+# identity the server uses to unwrap its encryption key. Applications
+# authenticate through their own identities granted per-database roles;
+# this one is for administration and infrastructure.
+apiVersion: azure.planton.dev/v1
+kind: AzureUserAssignedIdentity
+metadata:
+  name: "{{ values.env }}-postgres-admin-identity"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-ha-postgres"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-postgres-admin-identity"

@@ -254,15 +254,21 @@ type Auth0DatabaseOptions struct {
 	// password_history_size is the number of previous passwords to check against.
 	// Users cannot reuse passwords from their history. Set to 0 to disable.
 	// Valid range: 0-24
-	// Default: 5
+	// Requires Auth0's paid "password-advanced-options" entitlement; leaving it
+	// unset avoids a 403 on free/lower-tier tenants.
+	// Default: 0 (disabled)
 	PasswordHistorySize int32 `protobuf:"varint,5,opt,name=password_history_size,json=passwordHistorySize,proto3" json:"password_history_size,omitempty"`
 	// password_no_personal_info prevents passwords containing user's personal information
 	// (name, username, email). Recommended for security.
-	// Default: true
+	// Requires Auth0's paid "password-advanced-options" entitlement; leaving it
+	// unset avoids a 403 on free/lower-tier tenants.
+	// Default: false (disabled)
 	PasswordNoPersonalInfo bool `protobuf:"varint,6,opt,name=password_no_personal_info,json=passwordNoPersonalInfo,proto3" json:"password_no_personal_info,omitempty"`
 	// password_dictionary enables checking passwords against a dictionary of common passwords.
 	// When true, users cannot use common/weak passwords.
-	// Default: true
+	// Requires Auth0's paid "password-advanced-options" entitlement; leaving it
+	// unset avoids a 403 on free/lower-tier tenants.
+	// Default: false (disabled)
 	PasswordDictionary bool `protobuf:"varint,7,opt,name=password_dictionary,json=passwordDictionary,proto3" json:"password_dictionary,omitempty"`
 	// mfa_enabled enables Multi-Factor Authentication for this connection.
 	// When true, users will be prompted for a second factor during login.

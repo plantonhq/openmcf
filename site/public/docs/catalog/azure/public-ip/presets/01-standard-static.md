@@ -1,6 +1,6 @@
 ---
 title: "Standard Static Public IP"
-description: "This preset creates a zone-redundant Azure Public IP with Standard SKU and static allocation. Standard SKU with static allocation is the only supported configuration (Azure retired Basic SKU in..."
+description: "This preset creates a zone-redundant Azure Public IP with the Standard SKU and static allocation. Standard with static allocation is the only supported configuration (Azure retired the Basic SKU in..."
 type: "preset"
 rank: "01"
 presetSlug: "01-standard-static"
@@ -13,7 +13,7 @@ order: 1
 
 # Standard Static Public IP
 
-This preset creates a zone-redundant Azure Public IP with Standard SKU and static allocation. Standard SKU with static allocation is the only supported configuration (Azure retired Basic SKU in September 2025). Zone redundancy across all three availability zones provides the highest availability for production load balancers, application gateways, and NAT gateways.
+This preset creates a zone-redundant Azure Public IP with the Standard SKU and static allocation. Standard with static allocation is the only supported configuration (Azure retired the Basic SKU in September 2025). Zone redundancy across all three availability zones provides the highest availability for production load balancers, application gateways, and NAT gateways.
 
 ## When to Use
 
@@ -25,7 +25,7 @@ This preset creates a zone-redundant Azure Public IP with Standard SKU and stati
 
 - **Zone-redundant** (`zones: ["1", "2", "3"]`) -- Survives the failure of any single availability zone. Use fewer zones only if the region does not support all three
 - **Idle timeout** (`idleTimeoutInMinutes: 4`) -- Azure default. Increase for long-lived connections (WebSocket, gRPC streaming); maximum is 30 minutes
-- **Standard SKU and static allocation** -- Hardcoded in the IaC module (not exposed in spec). This is the only production-grade option
+- **SKU left unspecified** -- Azure's default (Standard) applies; set `sku: STANDARD_V2` only when the address will attach to a StandardV2 NAT gateway. Allocation is always static
 
 ## Placeholders to Replace
 
@@ -33,4 +33,3 @@ This preset creates a zone-redundant Azure Public IP with Standard SKU and stati
 | --- | --- | --- |
 | `<azure-region>` | Azure region (must match the resource this IP attaches to) | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-public-ip-name>` | Name for the public IP resource | Your naming convention |

@@ -20,6 +20,7 @@ func initializeLocals(ctx *pulumi.Context, stackInput *awscloudwatchalarmv1.AwsC
 	locals.AwsCloudwatchAlarm = stackInput.Target
 
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsCloudwatchAlarm.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.AwsCloudwatchAlarm.Metadata.Org,
 		awstagkeys.Environment:  locals.AwsCloudwatchAlarm.Metadata.Env,

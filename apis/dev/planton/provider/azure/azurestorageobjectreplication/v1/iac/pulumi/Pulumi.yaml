@@ -1,0 +1,3 @@
+name: azure-storage-object-replication
+runtime: go
+description: Pulumi program for Azure Storage object replication

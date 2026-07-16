@@ -3,8 +3,11 @@ terraform {
 
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0"
+      source = "hashicorp/aws"
+      # Floor, not a cap: ip_discovery and network_type land in v6.34.0 --
+      # an older floor would silently reject the dual-stack surface. (The
+      # valkey engine and multi_region_cluster_name predate it.)
+      version = ">= 6.34.0"
     }
   }
 }

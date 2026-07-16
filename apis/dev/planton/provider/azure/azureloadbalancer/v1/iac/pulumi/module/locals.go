@@ -9,10 +9,9 @@ import (
 )
 
 type Locals struct {
-	AzureLoadBalancer  *azureloadbalancerv1.AzureLoadBalancer
-	ResourceGroupName  string
-	FrontendConfigName string
-	AzureTags          map[string]string
+	AzureLoadBalancer *azureloadbalancerv1.AzureLoadBalancer
+	ResourceGroupName string
+	AzureTags         map[string]string
 }
 
 func initializeLocals(ctx *pulumi.Context, stackInput *azureloadbalancerv1.AzureLoadBalancerStackInput) *Locals {
@@ -23,11 +22,12 @@ func initializeLocals(ctx *pulumi.Context, stackInput *azureloadbalancerv1.Azure
 
 	locals.ResourceGroupName = target.Spec.ResourceGroup.GetValue()
 
-	// Auto-derive the frontend IP configuration name from the LB name.
-	// This is the internal Azure name used by rules to reference the frontend.
-	locals.FrontendConfigName = target.Spec.Name + "-frontend"
-
-	// Create Azure tags for resource tagging
+	// PARITY-EXCEPTION: resource_kind here is the lowered CloudResourceKind
+	// enum string and resource_id is omitted when metadata.id is empty,
+	// while the Terraform module hardcodes the family-wide snake-case
+	// literal and falls back to metadata.name. Output-neutral (tags never
+	// feed stack outputs); aligning the two shapes is a family-wide
+	// convention change, not a per-kind fix.
 	locals.AzureTags = map[string]string{
 		"resource":      "true",
 		"resource_name": target.Metadata.Name,
@@ -44,6 +44,14 @@ func initializeLocals(ctx *pulumi.Context, stackInput *azureloadbalancerv1.Azure
 
 	if target.Metadata.Env != "" {
 		locals.AzureTags["environment"] = target.Metadata.Env
+	}
+
+	// Metadata-derived tags first, then the user's spec tags merged over
+	// them: user tags deliberately win so an org's governance conventions
+	// (cost center, owner) can override the derived values where they
+	// collide.
+	for key, value := range target.Spec.Tags {
+		locals.AzureTags[key] = value
 	}
 
 	return locals

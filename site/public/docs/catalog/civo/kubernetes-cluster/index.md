@@ -32,7 +32,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoKubernetesCluster
 metadata:
   name: my-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -89,7 +89,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoKubernetesCluster
 metadata:
   name: dev-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -114,7 +114,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoKubernetesCluster
 metadata:
   name: prod-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -144,7 +144,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoKubernetesCluster
 metadata:
   name: ref-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -1,12 +1,27 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsCloudFront
 metadata:
-  name: my-s3-static-website
+  name: my-static-website-cdn
 spec:
-  region: <aws-region>
-  enabled: true
-  priceClass: PRICE_CLASS_100  # US, Canada, Europe; lowest cost
+  region: us-east-1
   origins:
-    - domainName: <s3-bucket-domain-name>
-      isDefault: true
+    - originId: s3-site
+      domainName: <bucket-name>.s3.<bucket-region>.amazonaws.com
+      s3Origin:
+        # Creates an Origin Access Control so the bucket stays fully
+        # private -- allow this distribution's ARN in the bucket policy.
+        createOriginAccessControl: true
+  defaultCacheBehavior:
+    targetOriginId: s3-site
+    viewerProtocolPolicy: redirect-to-https
+    compress: true
+    # Managed-CachingOptimized: the AWS managed cache policy for static
+    # content.
+    cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
   defaultRootObject: index.html
+  # Map S3's 403-for-missing-object to a single-page-app friendly response.
+  customErrorResponses:
+    - errorCode: 403
+      responseCode: 200
+      responsePagePath: /index.html
+      errorCachingMinTtlSeconds: 60

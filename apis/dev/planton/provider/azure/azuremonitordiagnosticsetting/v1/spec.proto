@@ -1,0 +1,176 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azuremonitordiagnosticsetting.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureMonitorDiagnosticSettingSpec** defines the configuration for creating
+// an Azure Monitor diagnostic setting.
+//
+// A diagnostic setting is how a resource's platform telemetry leaves the
+// resource: it selects which log categories and metrics the target resource
+// emits and routes them to one or more destinations -- a Log Analytics
+// Workspace (queryable, alertable), a Storage Account (cheap archival), an
+// Event Hub (streaming to SIEMs and external systems), or a partner
+// monitoring solution. Without a diagnostic setting, most Azure resources
+// emit nothing beyond basic platform metrics.
+//
+// The setting is an extension resource: it lives ON the target resource
+// (any ARM resource -- a Key Vault, an AKS cluster, an Application Gateway, a
+// subscription itself), and a target can carry up to five settings, each
+// routing a different selection to different destinations.
+//
+// Which log categories exist is defined per resource type by Azure (for
+// example Key Vault exposes AuditEvent; Application Gateway exposes access
+// and firewall logs). Category names are discoverable in the portal's
+// "Diagnostic settings" blade or via
+// `az monitor diagnostic-settings categories list --resource <id>`.
+message AzureMonitorDiagnosticSettingSpec {
+  // The name of the diagnostic setting, unique among the target resource's
+  // settings. Length: 1 to 260 characters; may not contain
+  // `<`, `>`, `*`, `%`, `&`, `:`, `\`, `?`, `+`, or `/`.
+  //
+  // **ForceNew**: Changing this destroys and recreates the setting.
+  string setting_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 260,
+    (buf.validate.field).cel = {
+      id: "diagnostic_setting_name_charset"
+      message: "diagnostic setting name may not contain any of < > * % & : \\ ? + /"
+      expression: "!this.matches('[<>*%&:\\\\?+/]')"
+    }
+  ];
+
+  // The ARM ID of the resource whose telemetry this setting routes -- any
+  // Azure resource that emits diagnostics (a vault, a cluster, a gateway, a
+  // database, a subscription). There is no default kind because no single
+  // kind dominates as a target: reference the resource's `*_id` output
+  // explicitly with valueFrom (kind + fieldPath), or pass a literal ARM ID.
+  //
+  // **ForceNew**: Changing this destroys and recreates the setting.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_resource_id = 2 [(buf.validate.field).required = true];
+
+  // The log categories to enable on the target. Each entry names either a
+  // single category or a category group. At least one log or metric entry
+  // must be enabled -- Azure has no concept of an empty diagnostic setting
+  // (the API accepts one, then the setting is unreadable).
+  repeated AzureMonitorDiagnosticSettingLog enabled_logs = 3;
+
+  // The metric categories to enable on the target. Most resource types
+  // expose a single "AllMetrics" category; some expose finer categories.
+  repeated AzureMonitorDiagnosticSettingMetric enabled_metrics = 4;
+
+  // The Log Analytics Workspace to send the selected telemetry to -- the
+  // destination that makes logs queryable with KQL and alertable with
+  // scheduled query rules. Can be a literal workspace ARM ID or a reference
+  // to an AzureLogAnalyticsWorkspace output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef log_analytics_workspace_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLogAnalyticsWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workspace_id"
+  ];
+
+  // How logs land in the Log Analytics Workspace: DEDICATED writes to
+  // resource-specific tables (the modern layout -- typed columns, better
+  // query performance); AZURE_DIAGNOSTICS writes everything to the legacy
+  // shared AzureDiagnostics table. Only meaningful when
+  // log_analytics_workspace_id is set; some resource types support only one
+  // layout and Azure decides for them when unspecified.
+  AzureMonitorDiagnosticSettingLogAnalyticsDestinationType log_analytics_destination_type = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // The Storage Account to archive the selected telemetry to -- the cheap
+  // long-term retention destination. Can be a literal storage account ARM ID
+  // or a reference to an AzureStorageAccount output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The Event Hub namespace authorization rule that authorizes streaming the
+  // selected telemetry to Event Hubs -- the destination for SIEMs and
+  // external analytics systems. A NAMESPACE-scoped rule with send rights.
+  // Can be a literal ARM ID or a reference to an
+  // AzureEventHubAuthorizationRule output; pair with eventhub_name to pick
+  // a specific hub.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef eventhub_authorization_rule_id = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHubAuthorizationRule,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.authorization_rule_id"
+  ];
+
+  // The Event Hub (within the authorized namespace) to stream to. When
+  // empty, Azure routes to a default hub per category. Only meaningful with
+  // eventhub_authorization_rule_id. Can be a literal name or a reference to
+  // an AzureEventHub output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef eventhub_name = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.event_hub_name"
+  ];
+
+  // The ARM ID of an Azure Native ISV partner solution (for example Elastic
+  // or Datadog resources created through Azure Marketplace) to send the
+  // selected telemetry to. Pass the literal ARM ID of the partner resource.
+  string partner_solution_id = 10;
+
+  option (buf.validate.message).cel = {
+    id: "diagnostic_setting_at_least_one_category"
+    message: "enable at least one log or metric category -- a diagnostic setting that routes nothing is rejected by Azure"
+    expression: "this.enabled_logs.size() > 0 || this.enabled_metrics.size() > 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "diagnostic_setting_at_least_one_destination"
+    message: "route the telemetry somewhere: set at least one of log_analytics_workspace_id, storage_account_id, eventhub_authorization_rule_id, or partner_solution_id"
+    expression: "has(this.log_analytics_workspace_id) || has(this.storage_account_id) || has(this.eventhub_authorization_rule_id) || this.partner_solution_id != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "diagnostic_setting_eventhub_name_requires_rule"
+    message: "eventhub_name picks a hub within the namespace that eventhub_authorization_rule_id authorizes -- set the authorization rule too"
+    expression: "!has(this.eventhub_name) || has(this.eventhub_authorization_rule_id)"
+  };
+}
+
+// One log selection: a single category or a whole category group.
+message AzureMonitorDiagnosticSettingLog {
+  // A single log category to enable (for example "AuditEvent" on a Key
+  // Vault, "kube-audit" on an AKS cluster). Category names are defined per
+  // resource type by Azure. Exactly one of category or category_group.
+  string category = 1;
+
+  // A category group to enable -- Azure's curated bundles, "allLogs" or
+  // "audit", which track new categories automatically as Azure adds them.
+  // Exactly one of category or category_group.
+  string category_group = 2;
+
+  option (buf.validate.message).cel = {
+    id: "diagnostic_setting_log_category_xor_group"
+    message: "each log entry names exactly one of category (a single log category) or category_group (an Azure-curated bundle like allLogs)"
+    expression: "(this.category != '') != (this.category_group != '')"
+  };
+}
+
+// One metric selection.
+message AzureMonitorDiagnosticSettingMetric {
+  // The metric category to enable. Most resource types expose "AllMetrics";
+  // some expose finer categories -- discover them per resource type the same
+  // way as log categories.
+  string category = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// How logs land in a Log Analytics Workspace.
+enum AzureMonitorDiagnosticSettingLogAnalyticsDestinationType {
+  // Not specified -- Azure picks the layout the target resource type
+  // supports (resource-specific tables where available).
+  azure_monitor_diagnostic_setting_log_analytics_destination_type_unspecified = 0;
+
+  // Resource-specific tables -- the modern layout with typed columns and
+  // better query performance. Prefer this where the resource type supports it.
+  DEDICATED = 1;
+
+  // The legacy shared AzureDiagnostics table.
+  AZURE_DIAGNOSTICS = 2;
+}

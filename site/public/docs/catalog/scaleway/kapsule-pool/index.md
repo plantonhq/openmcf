@@ -31,7 +31,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayKapsulePool
 metadata:
   name: my-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -97,7 +97,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayKapsulePool
 metadata:
   name: dev-workers
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -124,7 +124,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayKapsulePool
 metadata:
   name: app-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -162,7 +162,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayKapsulePool
 metadata:
   name: gpu-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

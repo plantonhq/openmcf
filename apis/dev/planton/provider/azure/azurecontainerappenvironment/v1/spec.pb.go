@@ -24,15 +24,284 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Where the environment persists application logs.
+type AzureContainerAppEnvironmentLogsDestination int32
+
+const (
+	// Not specified -- with a log_analytics_workspace_id the modules deploy
+	// LOG_ANALYTICS; without one, logs are streaming-only (never stored).
+	AzureContainerAppEnvironmentLogsDestination_azure_container_app_environment_logs_destination_unspecified AzureContainerAppEnvironmentLogsDestination = 0
+	// Persist logs in the Log Analytics workspace named by
+	// log_analytics_workspace_id (KQL queries, alerting, dashboards).
+	AzureContainerAppEnvironmentLogsDestination_LOG_ANALYTICS AzureContainerAppEnvironmentLogsDestination = 1
+	// Route logs through Azure Monitor diagnostic settings (configured
+	// separately on the environment).
+	AzureContainerAppEnvironmentLogsDestination_AZURE_MONITOR AzureContainerAppEnvironmentLogsDestination = 2
+)
+
+// Enum value maps for AzureContainerAppEnvironmentLogsDestination.
+var (
+	AzureContainerAppEnvironmentLogsDestination_name = map[int32]string{
+		0: "azure_container_app_environment_logs_destination_unspecified",
+		1: "LOG_ANALYTICS",
+		2: "AZURE_MONITOR",
+	}
+	AzureContainerAppEnvironmentLogsDestination_value = map[string]int32{
+		"azure_container_app_environment_logs_destination_unspecified": 0,
+		"LOG_ANALYTICS": 1,
+		"AZURE_MONITOR": 2,
+	}
+)
+
+func (x AzureContainerAppEnvironmentLogsDestination) Enum() *AzureContainerAppEnvironmentLogsDestination {
+	p := new(AzureContainerAppEnvironmentLogsDestination)
+	*p = x
+	return p
+}
+
+func (x AzureContainerAppEnvironmentLogsDestination) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureContainerAppEnvironmentLogsDestination) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (AzureContainerAppEnvironmentLogsDestination) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_enumTypes[0]
+}
+
+func (x AzureContainerAppEnvironmentLogsDestination) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureContainerAppEnvironmentLogsDestination.Descriptor instead.
+func (AzureContainerAppEnvironmentLogsDestination) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+// Platform-level public network access for the environment.
+type AzureContainerAppEnvironmentPublicNetworkAccess int32
+
+const (
+	// Not specified -- Azure derives the value from the network
+	// configuration (Enabled for external environments, Disabled behind an
+	// internal load balancer).
+	AzureContainerAppEnvironmentPublicNetworkAccess_azure_container_app_environment_public_network_access_unspecified AzureContainerAppEnvironmentPublicNetworkAccess = 0
+	// The environment accepts traffic from the public internet.
+	AzureContainerAppEnvironmentPublicNetworkAccess_ENABLED AzureContainerAppEnvironmentPublicNetworkAccess = 1
+	// The environment only accepts traffic through private connectivity
+	// (VNet / private endpoints).
+	AzureContainerAppEnvironmentPublicNetworkAccess_DISABLED AzureContainerAppEnvironmentPublicNetworkAccess = 2
+)
+
+// Enum value maps for AzureContainerAppEnvironmentPublicNetworkAccess.
+var (
+	AzureContainerAppEnvironmentPublicNetworkAccess_name = map[int32]string{
+		0: "azure_container_app_environment_public_network_access_unspecified",
+		1: "ENABLED",
+		2: "DISABLED",
+	}
+	AzureContainerAppEnvironmentPublicNetworkAccess_value = map[string]int32{
+		"azure_container_app_environment_public_network_access_unspecified": 0,
+		"ENABLED":  1,
+		"DISABLED": 2,
+	}
+)
+
+func (x AzureContainerAppEnvironmentPublicNetworkAccess) Enum() *AzureContainerAppEnvironmentPublicNetworkAccess {
+	p := new(AzureContainerAppEnvironmentPublicNetworkAccess)
+	*p = x
+	return p
+}
+
+func (x AzureContainerAppEnvironmentPublicNetworkAccess) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureContainerAppEnvironmentPublicNetworkAccess) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_enumTypes[1].Descriptor()
+}
+
+func (AzureContainerAppEnvironmentPublicNetworkAccess) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_enumTypes[1]
+}
+
+func (x AzureContainerAppEnvironmentPublicNetworkAccess) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureContainerAppEnvironmentPublicNetworkAccess.Descriptor instead.
+func (AzureContainerAppEnvironmentPublicNetworkAccess) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+// The workload profile SKU vocabulary, mirroring Azure's own profile names.
+// Values are grouped by family; enum numbers are contiguous within each
+// family (the counts rule keys on the Consumption range 1-3).
+type AzureContainerAppEnvironmentWorkloadProfileType int32
+
+const (
+	// Not specified -- invalid; pick an explicit profile type.
+	AzureContainerAppEnvironmentWorkloadProfileType_azure_container_app_environment_workload_profile_type_unspecified AzureContainerAppEnvironmentWorkloadProfileType = 0
+	// Serverless consumption (pay-per-use, scale to zero). Azure includes
+	// this profile automatically -- declare it only when pinning a named
+	// profile to it.
+	AzureContainerAppEnvironmentWorkloadProfileType_CONSUMPTION AzureContainerAppEnvironmentWorkloadProfileType = 1
+	// Serverless GPU: NVIDIA T4 (8 vCPU class) on consumption billing --
+	// scale-to-zero inference workloads.
+	AzureContainerAppEnvironmentWorkloadProfileType_CONSUMPTION_GPU_NC8AS_T4 AzureContainerAppEnvironmentWorkloadProfileType = 2
+	// Serverless GPU: NVIDIA A100 (24 vCPU class) on consumption billing.
+	AzureContainerAppEnvironmentWorkloadProfileType_CONSUMPTION_GPU_NC24_A100 AzureContainerAppEnvironmentWorkloadProfileType = 3
+	// General-purpose dedicated compute (4/8/16/32 vCPU).
+	AzureContainerAppEnvironmentWorkloadProfileType_D4  AzureContainerAppEnvironmentWorkloadProfileType = 4
+	AzureContainerAppEnvironmentWorkloadProfileType_D8  AzureContainerAppEnvironmentWorkloadProfileType = 5
+	AzureContainerAppEnvironmentWorkloadProfileType_D16 AzureContainerAppEnvironmentWorkloadProfileType = 6
+	AzureContainerAppEnvironmentWorkloadProfileType_D32 AzureContainerAppEnvironmentWorkloadProfileType = 7
+	// Memory-optimized dedicated compute (4/8/16/32 vCPU, double the
+	// memory-per-core of the D family).
+	AzureContainerAppEnvironmentWorkloadProfileType_E4  AzureContainerAppEnvironmentWorkloadProfileType = 8
+	AzureContainerAppEnvironmentWorkloadProfileType_E8  AzureContainerAppEnvironmentWorkloadProfileType = 9
+	AzureContainerAppEnvironmentWorkloadProfileType_E16 AzureContainerAppEnvironmentWorkloadProfileType = 10
+	AzureContainerAppEnvironmentWorkloadProfileType_E32 AzureContainerAppEnvironmentWorkloadProfileType = 11
+	// Dedicated GPU compute: NVIDIA A100 (24/48/96 vCPU classes).
+	AzureContainerAppEnvironmentWorkloadProfileType_NC24_A100 AzureContainerAppEnvironmentWorkloadProfileType = 12
+	AzureContainerAppEnvironmentWorkloadProfileType_NC48_A100 AzureContainerAppEnvironmentWorkloadProfileType = 13
+	AzureContainerAppEnvironmentWorkloadProfileType_NC96_A100 AzureContainerAppEnvironmentWorkloadProfileType = 14
+)
+
+// Enum value maps for AzureContainerAppEnvironmentWorkloadProfileType.
+var (
+	AzureContainerAppEnvironmentWorkloadProfileType_name = map[int32]string{
+		0:  "azure_container_app_environment_workload_profile_type_unspecified",
+		1:  "CONSUMPTION",
+		2:  "CONSUMPTION_GPU_NC8AS_T4",
+		3:  "CONSUMPTION_GPU_NC24_A100",
+		4:  "D4",
+		5:  "D8",
+		6:  "D16",
+		7:  "D32",
+		8:  "E4",
+		9:  "E8",
+		10: "E16",
+		11: "E32",
+		12: "NC24_A100",
+		13: "NC48_A100",
+		14: "NC96_A100",
+	}
+	AzureContainerAppEnvironmentWorkloadProfileType_value = map[string]int32{
+		"azure_container_app_environment_workload_profile_type_unspecified": 0,
+		"CONSUMPTION":               1,
+		"CONSUMPTION_GPU_NC8AS_T4":  2,
+		"CONSUMPTION_GPU_NC24_A100": 3,
+		"D4":                        4,
+		"D8":                        5,
+		"D16":                       6,
+		"D32":                       7,
+		"E4":                        8,
+		"E8":                        9,
+		"E16":                       10,
+		"E32":                       11,
+		"NC24_A100":                 12,
+		"NC48_A100":                 13,
+		"NC96_A100":                 14,
+	}
+)
+
+func (x AzureContainerAppEnvironmentWorkloadProfileType) Enum() *AzureContainerAppEnvironmentWorkloadProfileType {
+	p := new(AzureContainerAppEnvironmentWorkloadProfileType)
+	*p = x
+	return p
+}
+
+func (x AzureContainerAppEnvironmentWorkloadProfileType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureContainerAppEnvironmentWorkloadProfileType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_enumTypes[2].Descriptor()
+}
+
+func (AzureContainerAppEnvironmentWorkloadProfileType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_enumTypes[2]
+}
+
+func (x AzureContainerAppEnvironmentWorkloadProfileType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureContainerAppEnvironmentWorkloadProfileType.Descriptor instead.
+func (AzureContainerAppEnvironmentWorkloadProfileType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+// The managed-identity model for the environment.
+type AzureContainerAppEnvironmentIdentityType int32
+
+const (
+	// Not specified -- invalid; choose an explicit identity model.
+	AzureContainerAppEnvironmentIdentityType_azure_container_app_environment_identity_type_unspecified AzureContainerAppEnvironmentIdentityType = 0
+	// Azure creates a service principal bound to the environment's lifecycle.
+	AzureContainerAppEnvironmentIdentityType_SYSTEM_ASSIGNED AzureContainerAppEnvironmentIdentityType = 1
+	// Bring your own AzureUserAssignedIdentity entries -- shareable across
+	// resources and grantable before the environment exists.
+	AzureContainerAppEnvironmentIdentityType_USER_ASSIGNED AzureContainerAppEnvironmentIdentityType = 2
+	// Both a system-assigned principal and user-assigned identities.
+	AzureContainerAppEnvironmentIdentityType_SYSTEM_AND_USER_ASSIGNED AzureContainerAppEnvironmentIdentityType = 3
+)
+
+// Enum value maps for AzureContainerAppEnvironmentIdentityType.
+var (
+	AzureContainerAppEnvironmentIdentityType_name = map[int32]string{
+		0: "azure_container_app_environment_identity_type_unspecified",
+		1: "SYSTEM_ASSIGNED",
+		2: "USER_ASSIGNED",
+		3: "SYSTEM_AND_USER_ASSIGNED",
+	}
+	AzureContainerAppEnvironmentIdentityType_value = map[string]int32{
+		"azure_container_app_environment_identity_type_unspecified": 0,
+		"SYSTEM_ASSIGNED":          1,
+		"USER_ASSIGNED":            2,
+		"SYSTEM_AND_USER_ASSIGNED": 3,
+	}
+)
+
+func (x AzureContainerAppEnvironmentIdentityType) Enum() *AzureContainerAppEnvironmentIdentityType {
+	p := new(AzureContainerAppEnvironmentIdentityType)
+	*p = x
+	return p
+}
+
+func (x AzureContainerAppEnvironmentIdentityType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureContainerAppEnvironmentIdentityType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_enumTypes[3].Descriptor()
+}
+
+func (AzureContainerAppEnvironmentIdentityType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_enumTypes[3]
+}
+
+func (x AzureContainerAppEnvironmentIdentityType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureContainerAppEnvironmentIdentityType.Descriptor instead.
+func (AzureContainerAppEnvironmentIdentityType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
 // **AzureContainerAppEnvironmentSpec** defines the configuration for creating
 // an Azure Container Apps Managed Environment (Microsoft.App/managedEnvironments),
 // the hosting platform for Azure Container Apps.
 //
 // A Container App Environment is a secure boundary around one or more container
-// apps. All apps within an environment share the same virtual network, logging
-// configuration, and Dapr infrastructure. It is the Azure equivalent of an
-// ECS Cluster or Kubernetes namespace -- the execution boundary for containerized
-// workloads.
+// apps and jobs. All workloads within an environment share the same virtual
+// network, logging configuration, Dapr infrastructure, and compute capacity.
+// It is the execution boundary for containerized workloads -- the environment
+// hosts, the apps run.
 //
 // **Networking modes**:
 //
@@ -45,41 +314,49 @@ const (
 //   - Apps run inside a customer-managed VNet
 //   - Enables private connectivity to databases, storage, and other VNet resources
 //   - Subnet must be /21 or larger (minimum 2048 IPs for Container Apps infrastructure)
-//   - Enables internal_load_balancer_enabled and zone_redundancy_enabled
+//   - Unlocks internal_load_balancer_enabled and zone_redundancy_enabled
 //
 // Internal (internal_load_balancer_enabled = true):
 //   - Apps are only accessible from within the VNet
 //   - Requires infrastructure_subnet_id
-//   - Static IP is private, default domain resolves to private IP
+//   - Static IP is private, default domain resolves to the private IP
 //   - Used for backend services, microservice meshes, internal APIs
 //
 // **Workload profiles**:
 //
-// By default, environments use the Consumption plan (serverless, pay-per-use).
-// For workloads requiring dedicated compute, GPU access, or guaranteed resources,
-// add workload profiles:
-//
-// Dedicated compute:
-//   - D4, D8, D16, D32 (general purpose)
-//   - E4, E8, E16, E32 (memory optimized)
-//
-// GPU compute:
-//   - NC24-A100, NC48-A100, NC96-A100 (NVIDIA A100)
-//
-// The "Consumption" profile is always available and auto-added by Azure.
-// The workload_profiles field is for defining additional dedicated profiles only.
+// By default, environments run on the Consumption plan (serverless,
+// pay-per-use, scale to zero). For workloads requiring dedicated compute,
+// GPU access, or guaranteed resources, add workload profiles. Apps and jobs
+// select a profile by name; anything that names no profile runs on
+// Consumption.
 //
 // **Logging**:
 //
-// When log_analytics_workspace_id is provided, the IaC modules automatically
-// configure log-analytics as the logging destination. When omitted, container
-// app logs are streaming-only (no persistent storage).
+// `logs_destination` selects where application logs are persisted:
+// LOG_ANALYTICS pairs with `log_analytics_workspace_id` (query via KQL,
+// alerting, dashboards); AZURE_MONITOR routes through Azure Monitor
+// diagnostic settings configured separately on the environment; leaving it
+// unspecified without a workspace means logs are streaming-only (visible in
+// `az containerapp logs show`, never stored).
 //
-// **ForceNew fields** (changing these destroys and recreates the environment):
-// `name`, `region`, `resource_group`, `infrastructure_subnet_id`,
-// `internal_load_balancer_enabled`, `zone_redundancy_enabled`.
+// **Custom DNS suffix**:
 //
-// **Referenced by**: AzureContainerApp (container_app_environment_id)
+// The optional `custom_domain` block replaces the environment's generated
+// `*.{region}.azurecontainerapps.io` default domain with your own DNS suffix
+// (e.g. apps.example.com) backed by a wildcard certificate. This is the
+// environment-wide suffix; per-app custom domains bind on the app itself.
+//
+// **ForceNew fields** (changing these destroys and recreates the environment
+// -- and every app in it): `environment_name`, `region`, `resource_group`,
+// `dapr_application_insights_connection_string`,
+// `infrastructure_resource_group_name`, `infrastructure_subnet_id`,
+// `internal_load_balancer_enabled`, `zone_redundancy_enabled`. Going from
+// zero workload profiles to some (or some to zero) also forces replacement;
+// changing the profiles within a non-empty set updates in place.
+//
+// **Referenced by**: AzureContainerApp, AzureContainerAppJob,
+// AzureContainerAppEnvironmentStorage, AzureContainerAppEnvironmentDaprComponent
+// (container_app_environment_id).
 type AzureContainerAppEnvironmentSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Azure region where the Container App Environment will be created.
@@ -93,15 +370,44 @@ type AzureContainerAppEnvironmentSpec struct {
 	// **ForceNew**: Changing this destroys and recreates the environment.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
 	// The name of the Container App Environment.
-	// Must be lowercase alphanumeric or hyphens, start with a letter, end with
-	// an alphanumeric character, and be between 2 and 60 characters.
+	// Alphanumeric characters and hyphens; may not start or end with a
+	// hyphen; 2 to 60 characters (Azure accepts upper- and lowercase).
 	//
-	// This name appears in the Azure portal, CLI, and is part of the default
-	// domain for apps in this environment ({app-name}.{env-default-domain}).
+	// This name appears in the Azure portal and CLI, and is embedded in the
+	// environment's default domain ({app-name}.{env-default-domain}).
 	//
 	// **ForceNew**: Changing this destroys and recreates the environment.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// The existing Subnet to use for the Container Apps Control Plane.
+	EnvironmentName string `protobuf:"bytes,3,opt,name=environment_name,json=environmentName,proto3" json:"environment_name,omitempty"`
+	// Where application logs are persisted for this environment.
+	//
+	// LOG_ANALYTICS: logs land in the Log Analytics workspace named by
+	// `log_analytics_workspace_id` (required with this choice) -- enables KQL
+	// queries, alert rules, and Azure Monitor dashboards.
+	//
+	// AZURE_MONITOR: logs route through Azure Monitor diagnostic settings,
+	// which are configured separately on the environment; do not set
+	// `log_analytics_workspace_id` with this choice.
+	//
+	// Unspecified: when `log_analytics_workspace_id` is provided the modules
+	// deploy LOG_ANALYTICS (the destination the workspace implies); without a
+	// workspace, logs are streaming-only (no persistent storage).
+	LogsDestination AzureContainerAppEnvironmentLogsDestination `protobuf:"varint,4,opt,name=logs_destination,json=logsDestination,proto3,enum=dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentLogsDestination" json:"logs_destination,omitempty"`
+	// The Log Analytics Workspace to link for centralized log collection.
+	// Required when `logs_destination` is LOG_ANALYTICS; must be omitted when
+	// it is AZURE_MONITOR. Providing a workspace with `logs_destination`
+	// unspecified also deploys log-analytics.
+	LogAnalyticsWorkspaceId *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=log_analytics_workspace_id,json=logAnalyticsWorkspaceId,proto3" json:"log_analytics_workspace_id,omitempty"`
+	// Application Insights connection string used by Dapr to export
+	// service-to-service communication telemetry. Only meaningful for
+	// Dapr-enabled apps; leave empty otherwise.
+	//
+	// The connection string embeds the instrumentation key -- a write
+	// credential for your telemetry stream -- so it is handled as a secret.
+	//
+	// **ForceNew**: Changing this destroys and recreates the environment
+	// (Azure never returns it on read, so it cannot be updated in place).
+	DaprApplicationInsightsConnectionString string `protobuf:"bytes,6,opt,name=dapr_application_insights_connection_string,json=daprApplicationInsightsConnectionString,proto3" json:"dapr_application_insights_connection_string,omitempty"`
+	// The existing Subnet to use for the Container Apps infrastructure.
 	// When provided, the environment is VNet-injected, enabling private
 	// connectivity to other VNet resources (databases, storage, etc.).
 	//
@@ -109,18 +415,19 @@ type AzureContainerAppEnvironmentSpec struct {
 	// (minimum 2048 IPs). Container Apps infrastructure reserves a significant
 	// portion of the address space for platform services.
 	//
-	// When set, enables `internal_load_balancer_enabled` and
-	// `zone_redundancy_enabled` options.
+	// When set, unlocks `internal_load_balancer_enabled` and
+	// `zone_redundancy_enabled`.
 	//
 	// **ForceNew**: Changing this destroys and recreates the environment.
-	InfrastructureSubnetId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=infrastructure_subnet_id,json=infrastructureSubnetId,proto3" json:"infrastructure_subnet_id,omitempty"`
-	// The Log Analytics Workspace to link for centralized log collection.
-	// When provided, the IaC modules automatically configure the logging
-	// destination to "log-analytics". When omitted, logs are streaming-only.
+	InfrastructureSubnetId *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=infrastructure_subnet_id,json=infrastructureSubnetId,proto3" json:"infrastructure_subnet_id,omitempty"`
+	// Name of the platform-managed resource group Azure creates to host the
+	// environment's infrastructure resources (load balancers, IPs). Only
+	// valid when `workload_profiles` is non-empty; when omitted, Azure
+	// generates a name (ME_{environment}_{rg}_{region}). Setting it gives
+	// governance-conscious orgs a predictable name to scope policies on.
 	//
-	// Log Analytics enables querying container app logs via KQL, setting up
-	// alerts, and integrating with Azure Monitor dashboards.
-	LogAnalyticsWorkspaceId *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=log_analytics_workspace_id,json=logAnalyticsWorkspaceId,proto3" json:"log_analytics_workspace_id,omitempty"`
+	// **ForceNew**: Changing this destroys and recreates the environment.
+	InfrastructureResourceGroupName string `protobuf:"bytes,8,opt,name=infrastructure_resource_group_name,json=infrastructureResourceGroupName,proto3" json:"infrastructure_resource_group_name,omitempty"`
 	// Enable Internal Load Balancing mode. When true, apps in this environment
 	// are only accessible from within the VNet (no public internet access).
 	//
@@ -132,7 +439,7 @@ type AzureContainerAppEnvironmentSpec struct {
 	// Default: false (external mode -- apps are publicly accessible)
 	//
 	// **ForceNew**: Changing this destroys and recreates the environment.
-	InternalLoadBalancerEnabled *bool `protobuf:"varint,6,opt,name=internal_load_balancer_enabled,json=internalLoadBalancerEnabled,proto3,oneof" json:"internal_load_balancer_enabled,omitempty"`
+	InternalLoadBalancerEnabled *bool `protobuf:"varint,9,opt,name=internal_load_balancer_enabled,json=internalLoadBalancerEnabled,proto3,oneof" json:"internal_load_balancer_enabled,omitempty"`
 	// Enable zone redundancy. Distributes the environment's infrastructure
 	// across multiple availability zones for higher resilience.
 	//
@@ -145,25 +452,54 @@ type AzureContainerAppEnvironmentSpec struct {
 	// Default: false
 	//
 	// **ForceNew**: Changing this destroys and recreates the environment.
-	ZoneRedundancyEnabled *bool `protobuf:"varint,7,opt,name=zone_redundancy_enabled,json=zoneRedundancyEnabled,proto3,oneof" json:"zone_redundancy_enabled,omitempty"`
-	// Workload profiles for dedicated compute resources.
+	ZoneRedundancyEnabled *bool `protobuf:"varint,10,opt,name=zone_redundancy_enabled,json=zoneRedundancyEnabled,proto3,oneof" json:"zone_redundancy_enabled,omitempty"`
+	// Whether the environment accepts traffic from the public internet at
+	// the platform level. Unspecified lets Azure derive it from the network
+	// configuration (Enabled for external environments, Disabled behind an
+	// internal load balancer). Set DISABLED to pair the environment with
+	// private endpoints; ENABLED cannot be combined with
+	// `internal_load_balancer_enabled`.
+	PublicNetworkAccess AzureContainerAppEnvironmentPublicNetworkAccess `protobuf:"varint,11,opt,name=public_network_access,json=publicNetworkAccess,proto3,enum=dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentPublicNetworkAccess" json:"public_network_access,omitempty"`
+	// Enable mutual TLS (mTLS) between apps in the environment: Azure
+	// issues per-app certificates and encrypts + authenticates all
+	// app-to-app traffic. Adds response latency and reduces maximum
+	// throughput in high-load scenarios -- enable when the compliance
+	// posture requires encrypted east-west traffic.
 	//
-	// By default, all environments include the "Consumption" profile (serverless,
-	// pay-per-use, scales to zero). This field is for adding **dedicated compute
-	// profiles** alongside Consumption. Azure automatically includes the
-	// Consumption profile -- do not add it here.
+	// Default: false
+	MutualTlsEnabled *bool `protobuf:"varint,12,opt,name=mutual_tls_enabled,json=mutualTlsEnabled,proto3,oneof" json:"mutual_tls_enabled,omitempty"`
+	// Workload profiles for dedicated or GPU compute.
 	//
-	// Use dedicated profiles when workloads need:
-	// - Guaranteed CPU/memory resources
-	// - GPU access (NC* profiles)
-	// - Predictable performance (no cold starts)
-	// - Compliance requirements for dedicated infrastructure
+	// By default, environments include the serverless "Consumption" profile.
+	// Declare additional profiles here for dedicated compute (D/E families),
+	// GPU compute (NC*-A100), or serverless GPU (Consumption-GPU-*); apps
+	// and jobs select a profile by name via `workload_profile_name`.
 	//
-	// **Note**: Adding or removing workload profiles forces environment
-	// replacement (ForceNew).
-	WorkloadProfiles []*AzureContainerAppWorkloadProfile `protobuf:"bytes,8,rep,name=workload_profiles,json=workloadProfiles,proto3" json:"workload_profiles,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Azure always includes the standard Consumption profile -- do not
+	// declare it here.
+	//
+	// **Note**: Going from zero profiles to some (or some to zero) forces
+	// environment replacement; changing profiles within a non-empty set
+	// updates in place.
+	WorkloadProfiles []*AzureContainerAppEnvironmentWorkloadProfile `protobuf:"bytes,13,rep,name=workload_profiles,json=workloadProfiles,proto3" json:"workload_profiles,omitempty"`
+	// Replace the environment's generated default domain
+	// (*.{region}.azurecontainerapps.io) with your own DNS suffix backed by
+	// a wildcard certificate. Azure models this as part of the environment
+	// itself (one custom DNS suffix per environment), so it is configured
+	// here rather than as a separate resource. Per-app custom domains are a
+	// different mechanism and bind on the individual app.
+	CustomDomain *AzureContainerAppEnvironmentCustomDomain `protobuf:"bytes,14,opt,name=custom_domain,json=customDomain,proto3" json:"custom_domain,omitempty"`
+	// Managed identity for the environment. Used by environment-level
+	// integrations -- for example pulling images for jobs, or Key Vault
+	// certificate references in the custom-domain configuration.
+	Identity *AzureContainerAppEnvironmentIdentity `protobuf:"bytes,15,opt,name=identity,proto3" json:"identity,omitempty"`
+	// Free-form Azure resource tags applied to the environment, merged over
+	// the platform's metadata-derived tags (user tags win on key collision)
+	// -- the hooks for cost allocation, chargeback reports, and Azure Policy
+	// governance rules that filter or group by them. Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,16,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AzureContainerAppEnvironmentSpec) Reset() {
@@ -210,9 +546,30 @@ func (x *AzureContainerAppEnvironmentSpec) GetResourceGroup() *v1.StringValueOrR
 	return nil
 }
 
-func (x *AzureContainerAppEnvironmentSpec) GetName() string {
+func (x *AzureContainerAppEnvironmentSpec) GetEnvironmentName() string {
 	if x != nil {
-		return x.Name
+		return x.EnvironmentName
+	}
+	return ""
+}
+
+func (x *AzureContainerAppEnvironmentSpec) GetLogsDestination() AzureContainerAppEnvironmentLogsDestination {
+	if x != nil {
+		return x.LogsDestination
+	}
+	return AzureContainerAppEnvironmentLogsDestination_azure_container_app_environment_logs_destination_unspecified
+}
+
+func (x *AzureContainerAppEnvironmentSpec) GetLogAnalyticsWorkspaceId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.LogAnalyticsWorkspaceId
+	}
+	return nil
+}
+
+func (x *AzureContainerAppEnvironmentSpec) GetDaprApplicationInsightsConnectionString() string {
+	if x != nil {
+		return x.DaprApplicationInsightsConnectionString
 	}
 	return ""
 }
@@ -224,11 +581,11 @@ func (x *AzureContainerAppEnvironmentSpec) GetInfrastructureSubnetId() *v1.Strin
 	return nil
 }
 
-func (x *AzureContainerAppEnvironmentSpec) GetLogAnalyticsWorkspaceId() *v1.StringValueOrRef {
+func (x *AzureContainerAppEnvironmentSpec) GetInfrastructureResourceGroupName() string {
 	if x != nil {
-		return x.LogAnalyticsWorkspaceId
+		return x.InfrastructureResourceGroupName
 	}
-	return nil
+	return ""
 }
 
 func (x *AzureContainerAppEnvironmentSpec) GetInternalLoadBalancerEnabled() bool {
@@ -245,59 +602,97 @@ func (x *AzureContainerAppEnvironmentSpec) GetZoneRedundancyEnabled() bool {
 	return false
 }
 
-func (x *AzureContainerAppEnvironmentSpec) GetWorkloadProfiles() []*AzureContainerAppWorkloadProfile {
+func (x *AzureContainerAppEnvironmentSpec) GetPublicNetworkAccess() AzureContainerAppEnvironmentPublicNetworkAccess {
+	if x != nil {
+		return x.PublicNetworkAccess
+	}
+	return AzureContainerAppEnvironmentPublicNetworkAccess_azure_container_app_environment_public_network_access_unspecified
+}
+
+func (x *AzureContainerAppEnvironmentSpec) GetMutualTlsEnabled() bool {
+	if x != nil && x.MutualTlsEnabled != nil {
+		return *x.MutualTlsEnabled
+	}
+	return false
+}
+
+func (x *AzureContainerAppEnvironmentSpec) GetWorkloadProfiles() []*AzureContainerAppEnvironmentWorkloadProfile {
 	if x != nil {
 		return x.WorkloadProfiles
 	}
 	return nil
 }
 
-// AzureContainerAppWorkloadProfile defines a dedicated compute profile
+func (x *AzureContainerAppEnvironmentSpec) GetCustomDomain() *AzureContainerAppEnvironmentCustomDomain {
+	if x != nil {
+		return x.CustomDomain
+	}
+	return nil
+}
+
+func (x *AzureContainerAppEnvironmentSpec) GetIdentity() *AzureContainerAppEnvironmentIdentity {
+	if x != nil {
+		return x.Identity
+	}
+	return nil
+}
+
+func (x *AzureContainerAppEnvironmentSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+// AzureContainerAppEnvironmentWorkloadProfile defines a compute profile
 // within a Container App Environment.
 //
-// Each profile represents a pool of dedicated VMs that container apps can
-// target. Apps select a workload profile by name in their configuration.
-type AzureContainerAppWorkloadProfile struct {
+// Each dedicated profile represents a pool of VMs that container apps and
+// jobs can target by name. Consumption-family profiles are serverless
+// (no instance counts).
+type AzureContainerAppEnvironmentWorkloadProfile struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The name of the workload profile.
-	// This name is referenced by Container Apps when selecting which
-	// profile to run on (e.g., "gpu-pool", "high-memory").
+	// Apps and jobs reference this name in `workload_profile_name` to select
+	// which profile to run on (e.g., "gpu-pool", "high-memory").
 	//
 	// Must be unique within the environment.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The workload profile type (SKU) that determines the VM size.
-	//
-	// General purpose: "D4", "D8", "D16", "D32"
-	// Memory optimized: "E4", "E8", "E16", "E32"
-	// GPU (NVIDIA A100): "NC24-A100", "NC48-A100", "NC96-A100"
-	//
-	// Do not use "Consumption" here -- it is always available by default.
-	WorkloadProfileType string `protobuf:"bytes,2,opt,name=workload_profile_type,json=workloadProfileType,proto3" json:"workload_profile_type,omitempty"`
+	// The profile type (SKU) that determines the VM size -- see the
+	// AzureContainerAppEnvironmentWorkloadProfileType enum for the family
+	// guide (dedicated D/E, GPU NC*-A100, serverless GPU Consumption-GPU-*).
+	WorkloadProfileType AzureContainerAppEnvironmentWorkloadProfileType `protobuf:"varint,2,opt,name=workload_profile_type,json=workloadProfileType,proto3,enum=dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentWorkloadProfileType" json:"workload_profile_type,omitempty"`
 	// Minimum number of instances for this profile.
 	// Set to 0 to allow scale-to-zero (instances are deallocated when idle).
 	// Set to 1+ to keep pre-warmed instances for reduced cold-start latency.
+	//
+	// Only meaningful for dedicated profiles (D/E/NC families) -- the
+	// Consumption-family profiles are serverless and manage capacity
+	// themselves.
 	MinimumCount *int32 `protobuf:"varint,3,opt,name=minimum_count,json=minimumCount,proto3,oneof" json:"minimum_count,omitempty"`
 	// Maximum number of instances this profile can scale to.
 	// Controls the upper bound on cost and capacity.
+	//
+	// Only meaningful for dedicated profiles (D/E/NC families).
 	MaximumCount  *int32 `protobuf:"varint,4,opt,name=maximum_count,json=maximumCount,proto3,oneof" json:"maximum_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AzureContainerAppWorkloadProfile) Reset() {
-	*x = AzureContainerAppWorkloadProfile{}
+func (x *AzureContainerAppEnvironmentWorkloadProfile) Reset() {
+	*x = AzureContainerAppEnvironmentWorkloadProfile{}
 	mi := &file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureContainerAppWorkloadProfile) String() string {
+func (x *AzureContainerAppEnvironmentWorkloadProfile) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureContainerAppWorkloadProfile) ProtoMessage() {}
+func (*AzureContainerAppEnvironmentWorkloadProfile) ProtoMessage() {}
 
-func (x *AzureContainerAppWorkloadProfile) ProtoReflect() protoreflect.Message {
+func (x *AzureContainerAppEnvironmentWorkloadProfile) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -309,66 +704,264 @@ func (x *AzureContainerAppWorkloadProfile) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureContainerAppWorkloadProfile.ProtoReflect.Descriptor instead.
-func (*AzureContainerAppWorkloadProfile) Descriptor() ([]byte, []int) {
+// Deprecated: Use AzureContainerAppEnvironmentWorkloadProfile.ProtoReflect.Descriptor instead.
+func (*AzureContainerAppEnvironmentWorkloadProfile) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AzureContainerAppWorkloadProfile) GetName() string {
+func (x *AzureContainerAppEnvironmentWorkloadProfile) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *AzureContainerAppWorkloadProfile) GetWorkloadProfileType() string {
+func (x *AzureContainerAppEnvironmentWorkloadProfile) GetWorkloadProfileType() AzureContainerAppEnvironmentWorkloadProfileType {
 	if x != nil {
 		return x.WorkloadProfileType
 	}
-	return ""
+	return AzureContainerAppEnvironmentWorkloadProfileType_azure_container_app_environment_workload_profile_type_unspecified
 }
 
-func (x *AzureContainerAppWorkloadProfile) GetMinimumCount() int32 {
+func (x *AzureContainerAppEnvironmentWorkloadProfile) GetMinimumCount() int32 {
 	if x != nil && x.MinimumCount != nil {
 		return *x.MinimumCount
 	}
 	return 0
 }
 
-func (x *AzureContainerAppWorkloadProfile) GetMaximumCount() int32 {
+func (x *AzureContainerAppEnvironmentWorkloadProfile) GetMaximumCount() int32 {
 	if x != nil && x.MaximumCount != nil {
 		return *x.MaximumCount
 	}
 	return 0
 }
 
+// AzureContainerAppEnvironmentCustomDomain replaces the environment's
+// generated default domain with your own DNS suffix, backed by a wildcard
+// certificate covering *.{dns_suffix}.
+//
+// Azure models the custom DNS suffix as a property of the environment
+// itself (exactly one per environment), so it lives here rather than as a
+// standalone resource. After deployment, publish the DNS records Azure
+// requires (the TXT verification record carrying the environment's
+// custom_domain_verification_id output, and A/CNAME records to the
+// environment's static IP or default domain).
+type AzureContainerAppEnvironmentCustomDomain struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The DNS suffix that replaces the environment's default domain --
+	// apps become {app-name}.{dns_suffix}. Example: "apps.example.com".
+	DnsSuffix string `protobuf:"bytes,1,opt,name=dns_suffix,json=dnsSuffix,proto3" json:"dns_suffix,omitempty"`
+	// The wildcard certificate for *.{dns_suffix}, as a base64-encoded
+	// PFX/PKCS12 blob. The blob bundles the private key, so it is handled
+	// as a secret.
+	CertificateBlobBase64 string `protobuf:"bytes,2,opt,name=certificate_blob_base64,json=certificateBlobBase64,proto3" json:"certificate_blob_base64,omitempty"`
+	// The password protecting the certificate blob.
+	CertificatePassword string `protobuf:"bytes,3,opt,name=certificate_password,json=certificatePassword,proto3" json:"certificate_password,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AzureContainerAppEnvironmentCustomDomain) Reset() {
+	*x = AzureContainerAppEnvironmentCustomDomain{}
+	mi := &file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureContainerAppEnvironmentCustomDomain) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureContainerAppEnvironmentCustomDomain) ProtoMessage() {}
+
+func (x *AzureContainerAppEnvironmentCustomDomain) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureContainerAppEnvironmentCustomDomain.ProtoReflect.Descriptor instead.
+func (*AzureContainerAppEnvironmentCustomDomain) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AzureContainerAppEnvironmentCustomDomain) GetDnsSuffix() string {
+	if x != nil {
+		return x.DnsSuffix
+	}
+	return ""
+}
+
+func (x *AzureContainerAppEnvironmentCustomDomain) GetCertificateBlobBase64() string {
+	if x != nil {
+		return x.CertificateBlobBase64
+	}
+	return ""
+}
+
+func (x *AzureContainerAppEnvironmentCustomDomain) GetCertificatePassword() string {
+	if x != nil {
+		return x.CertificatePassword
+	}
+	return ""
+}
+
+// AzureContainerAppEnvironmentIdentity configures managed identity for the
+// environment.
+type AzureContainerAppEnvironmentIdentity struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The identity model: SYSTEM_ASSIGNED (Azure creates and rotates a
+	// service principal bound to the environment's lifecycle), USER_ASSIGNED
+	// (bring identities from user_assigned_identity_ids, shareable across
+	// resources), or SYSTEM_AND_USER_ASSIGNED (both).
+	Type AzureContainerAppEnvironmentIdentityType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentIdentityType" json:"type,omitempty"`
+	// The user-assigned identities to attach -- required when (and only
+	// meaningful when) type includes USER_ASSIGNED. Each entry references
+	// an AzureUserAssignedIdentity's ARM id.
+	UserAssignedIdentityIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=user_assigned_identity_ids,json=userAssignedIdentityIds,proto3" json:"user_assigned_identity_ids,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *AzureContainerAppEnvironmentIdentity) Reset() {
+	*x = AzureContainerAppEnvironmentIdentity{}
+	mi := &file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureContainerAppEnvironmentIdentity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureContainerAppEnvironmentIdentity) ProtoMessage() {}
+
+func (x *AzureContainerAppEnvironmentIdentity) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureContainerAppEnvironmentIdentity.ProtoReflect.Descriptor instead.
+func (*AzureContainerAppEnvironmentIdentity) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AzureContainerAppEnvironmentIdentity) GetType() AzureContainerAppEnvironmentIdentityType {
+	if x != nil {
+		return x.Type
+	}
+	return AzureContainerAppEnvironmentIdentityType_azure_container_app_environment_identity_type_unspecified
+}
+
+func (x *AzureContainerAppEnvironmentIdentity) GetUserAssignedIdentityIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.UserAssignedIdentityIds
+	}
+	return nil
+}
+
 var File_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/azure/azurecontainerappenvironment/v1/spec.proto\x12:dev.planton.provider.azure.azurecontainerappenvironment.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xad\b\n" +
+	"Edev/planton/provider/azure/azurecontainerappenvironment/v1/spec.proto\x12:dev.planton.provider.azure.azurecontainerappenvironment.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd6\x1e\n" +
 	" AzureContainerAppEnvironmentSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xc3\x01\n" +
-	"\x04name\x18\x03 \x01(\tB\xae\x01\xbaH\xaa\x01\xba\x01\x9d\x01\n" +
-	"\x0fenv_name_format\x12Zname must be lowercase alphanumeric or hyphens, start with a letter, end with alphanumeric\x1a.this.matches('^[a-z][a-z0-9-]{0,58}[a-z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18<R\x04name\x12\x8f\x01\n" +
-	"\x18infrastructure_subnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x16infrastructureSubnetId\x12\x95\x01\n" +
-	"\x1alog_analytics_workspace_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\x17logAnalyticsWorkspaceId\x12S\n" +
-	"\x1einternal_load_balancer_enabled\x18\x06 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x1binternalLoadBalancerEnabled\x88\x01\x01\x12F\n" +
-	"\x17zone_redundancy_enabled\x18\a \x01(\bB\t\x8a\xa6\x1d\x05falseH\x01R\x15zoneRedundancyEnabled\x88\x01\x01\x12\x89\x01\n" +
-	"\x11workload_profiles\x18\b \x03(\v2\\.dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppWorkloadProfileR\x10workloadProfilesB!\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x9a\x02\n" +
+	"\x10environment_name\x18\x03 \x01(\tB\xee\x01\xbaH\xea\x01\xba\x01\xdd\x01\n" +
+	"\x17environment_name_format\x12nEnvironment name must contain only alphanumeric characters and hyphens, and may not start or end with a hyphen\x1aRthis.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{1,58}[a-zA-Z0-9]?$') && !this.endsWith('-')\xc8\x01\x01r\x04\x10\x02\x18<R\x0fenvironmentName\x12\x9c\x01\n" +
+	"\x10logs_destination\x18\x04 \x01(\x0e2g.dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentLogsDestinationB\b\xbaH\x05\x82\x01\x02\x10\x01R\x0flogsDestination\x12\x95\x01\n" +
+	"\x1alog_analytics_workspace_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\x17logAnalyticsWorkspaceId\x12b\n" +
+	"+dapr_application_insights_connection_string\x18\x06 \x01(\tB\x04\xa0\xa6\x1d\x01R'daprApplicationInsightsConnectionString\x12\x8f\x01\n" +
+	"\x18infrastructure_subnet_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x16infrastructureSubnetId\x12K\n" +
+	"\"infrastructure_resource_group_name\x18\b \x01(\tR\x1finfrastructureResourceGroupName\x12S\n" +
+	"\x1einternal_load_balancer_enabled\x18\t \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x1binternalLoadBalancerEnabled\x88\x01\x01\x12F\n" +
+	"\x17zone_redundancy_enabled\x18\n" +
+	" \x01(\bB\t\x8a\xa6\x1d\x05falseH\x01R\x15zoneRedundancyEnabled\x88\x01\x01\x12\xa9\x01\n" +
+	"\x15public_network_access\x18\v \x01(\x0e2k.dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentPublicNetworkAccessB\b\xbaH\x05\x82\x01\x02\x10\x01R\x13publicNetworkAccess\x12<\n" +
+	"\x12mutual_tls_enabled\x18\f \x01(\bB\t\x8a\xa6\x1d\x05falseH\x02R\x10mutualTlsEnabled\x88\x01\x01\x12\x94\x01\n" +
+	"\x11workload_profiles\x18\r \x03(\v2g.dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentWorkloadProfileR\x10workloadProfiles\x12\x89\x01\n" +
+	"\rcustom_domain\x18\x0e \x01(\v2d.dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentCustomDomainR\fcustomDomain\x12|\n" +
+	"\bidentity\x18\x0f \x01(\v2`.dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentIdentityR\bidentity\x12z\n" +
+	"\x04tags\x18\x10 \x03(\v2f.dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb4\r\xbaH\xb0\r\x1a\xa4\x02\n" +
+	"\x1fenvironment_ilb_requires_subnet\x12\x86\x01internal_load_balancer_enabled requires infrastructure_subnet_id -- internal load balancing only exists for VNet-injected environments\x1ax!(has(this.internal_load_balancer_enabled) && this.internal_load_balancer_enabled) || has(this.infrastructure_subnet_id)\x1a\x92\x02\n" +
+	"+environment_zone_redundancy_requires_subnet\x12wzone_redundancy_enabled requires infrastructure_subnet_id -- zone redundancy only exists for VNet-injected environments\x1aj!(has(this.zone_redundancy_enabled) && this.zone_redundancy_enabled) || has(this.infrastructure_subnet_id)\x1a\xe4\x01\n" +
+	",environment_log_analytics_requires_workspace\x12plogs_destination LOG_ANALYTICS requires log_analytics_workspace_id -- name the workspace the logs should land in\x1aBthis.logs_destination != 1 || has(this.log_analytics_workspace_id)\x1a\xa1\x02\n" +
+	"+environment_azure_monitor_forbids_workspace\x12\xac\x01logs_destination AZURE_MONITOR cannot be combined with log_analytics_workspace_id -- Azure Monitor routing is configured through diagnostic settings, not a linked workspace\x1aCthis.logs_destination != 2 || !has(this.log_analytics_workspace_id)\x1a\xb2\x02\n" +
+	"/environment_infra_rg_requires_workload_profiles\x12\xaa\x01infrastructure_resource_group_name is only valid when workload_profiles is non-empty (consumption-only environments do not support a custom infrastructure resource group)\x1aRthis.infrastructure_resource_group_name == '' || this.workload_profiles.size() > 0\x1a\xb1\x02\n" +
+	",environment_public_access_conflicts_with_ilb\x12\x89\x01public_network_access ENABLED cannot be combined with internal_load_balancer_enabled -- an internal environment has no public entry point\x1authis.public_network_access != 1 || !(has(this.internal_load_balancer_enabled) && this.internal_load_balancer_enabled)B!\n" +
 	"\x1f_internal_load_balancer_enabledB\x1a\n" +
-	"\x18_zone_redundancy_enabled\"\x8c\x02\n" +
-	" AzureContainerAppWorkloadProfile\x12\x1e\n" +
+	"\x18_zone_redundancy_enabledB\x15\n" +
+	"\x13_mutual_tls_enabled\"\xc8\x05\n" +
+	"+AzureContainerAppEnvironmentWorkloadProfile\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12>\n" +
-	"\x15workload_profile_type\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x13workloadProfileType\x121\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\xae\x01\n" +
+	"\x15workload_profile_type\x18\x02 \x01(\x0e2k.dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentWorkloadProfileTypeB\r\xbaH\n" +
+	"\xc8\x01\x01\x82\x01\x04\x10\x01 \x00R\x13workloadProfileType\x121\n" +
 	"\rminimum_count\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\fminimumCount\x88\x01\x01\x121\n" +
-	"\rmaximum_count\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x01R\fmaximumCount\x88\x01\x01B\x10\n" +
+	"\rmaximum_count\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x01R\fmaximumCount\x88\x01\x01:\xbd\x02\xbaH\xb9\x02\x1a\xb6\x02\n" +
+	"&workload_profile_counts_dedicated_only\x12\xa5\x01minimum_count and maximum_count only apply to dedicated profiles (D, E, and NC families) -- Consumption-family profiles are serverless and manage capacity themselves\x1ad!(this.workload_profile_type in [1, 2, 3]) || (!has(this.minimum_count) && !has(this.maximum_count))B\x10\n" +
 	"\x0e_minimum_countB\x10\n" +
-	"\x0e_maximum_countB\xd7\x03\n" +
+	"\x0e_maximum_count\"\xe0\x01\n" +
+	"(AzureContainerAppEnvironmentCustomDomain\x12)\n" +
+	"\n" +
+	"dns_suffix\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tdnsSuffix\x12F\n" +
+	"\x17certificate_blob_base64\x18\x02 \x01(\tB\x0e\xbaH\a\xc8\x01\x01r\x02\x10\x01\xa0\xa6\x1d\x01R\x15certificateBlobBase64\x12A\n" +
+	"\x14certificate_password\x18\x03 \x01(\tB\x0e\xbaH\a\xc8\x01\x01r\x02\x10\x01\xa0\xa6\x1d\x01R\x13certificatePassword\"\xfb\x04\n" +
+	"$AzureContainerAppEnvironmentIdentity\x12\x84\x01\n" +
+	"\x04type\x18\x01 \x01(\x0e2d.dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentIdentityTypeB\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb4\x02\xbaH\xb0\x02\x1a\xad\x02\n" +
+	"#environment_identity_ids_match_type\x12}user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED\x1a\x86\x01(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)*\x95\x01\n" +
+	"+AzureContainerAppEnvironmentLogsDestination\x12@\n" +
+	"<azure_container_app_environment_logs_destination_unspecified\x10\x00\x12\x11\n" +
+	"\rLOG_ANALYTICS\x10\x01\x12\x11\n" +
+	"\rAZURE_MONITOR\x10\x02*\x93\x01\n" +
+	"/AzureContainerAppEnvironmentPublicNetworkAccess\x12E\n" +
+	"Aazure_container_app_environment_public_network_access_unspecified\x10\x00\x12\v\n" +
+	"\aENABLED\x10\x01\x12\f\n" +
+	"\bDISABLED\x10\x02*\xb7\x02\n" +
+	"/AzureContainerAppEnvironmentWorkloadProfileType\x12E\n" +
+	"Aazure_container_app_environment_workload_profile_type_unspecified\x10\x00\x12\x0f\n" +
+	"\vCONSUMPTION\x10\x01\x12\x1c\n" +
+	"\x18CONSUMPTION_GPU_NC8AS_T4\x10\x02\x12\x1d\n" +
+	"\x19CONSUMPTION_GPU_NC24_A100\x10\x03\x12\x06\n" +
+	"\x02D4\x10\x04\x12\x06\n" +
+	"\x02D8\x10\x05\x12\a\n" +
+	"\x03D16\x10\x06\x12\a\n" +
+	"\x03D32\x10\a\x12\x06\n" +
+	"\x02E4\x10\b\x12\x06\n" +
+	"\x02E8\x10\t\x12\a\n" +
+	"\x03E16\x10\n" +
+	"\x12\a\n" +
+	"\x03E32\x10\v\x12\r\n" +
+	"\tNC24_A100\x10\f\x12\r\n" +
+	"\tNC48_A100\x10\r\x12\r\n" +
+	"\tNC96_A100\x10\x0e*\xaf\x01\n" +
+	"(AzureContainerAppEnvironmentIdentityType\x12=\n" +
+	"9azure_container_app_environment_identity_type_unspecified\x10\x00\x12\x13\n" +
+	"\x0fSYSTEM_ASSIGNED\x10\x01\x12\x11\n" +
+	"\rUSER_ASSIGNED\x10\x02\x12\x1c\n" +
+	"\x18SYSTEM_AND_USER_ASSIGNED\x10\x03B\xd7\x03\n" +
 	">com.dev.planton.provider.azure.azurecontainerappenvironment.v1B\tSpecProtoP\x01Z{github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecontainerappenvironment/v1;azurecontainerappenvironmentv1\xa2\x02\x05DPPAA\xaa\x02:Dev.Planton.Provider.Azure.Azurecontainerappenvironment.V1\xca\x02:Dev\\Planton\\Provider\\Azure\\Azurecontainerappenvironment\\V1\xe2\x02FDev\\Planton\\Provider\\Azure\\Azurecontainerappenvironment\\V1\\GPBMetadata\xea\x02?Dev::Planton::Provider::Azure::Azurecontainerappenvironment::V1b\x06proto3"
 
 var (
@@ -383,22 +976,38 @@ func file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_
 	return file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_goTypes = []any{
-	(*AzureContainerAppEnvironmentSpec)(nil), // 0: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec
-	(*AzureContainerAppWorkloadProfile)(nil), // 1: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppWorkloadProfile
-	(*v1.StringValueOrRef)(nil),              // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureContainerAppEnvironmentLogsDestination)(0),     // 0: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentLogsDestination
+	(AzureContainerAppEnvironmentPublicNetworkAccess)(0), // 1: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentPublicNetworkAccess
+	(AzureContainerAppEnvironmentWorkloadProfileType)(0), // 2: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentWorkloadProfileType
+	(AzureContainerAppEnvironmentIdentityType)(0),        // 3: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentIdentityType
+	(*AzureContainerAppEnvironmentSpec)(nil),             // 4: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec
+	(*AzureContainerAppEnvironmentWorkloadProfile)(nil),  // 5: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentWorkloadProfile
+	(*AzureContainerAppEnvironmentCustomDomain)(nil),     // 6: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentCustomDomain
+	(*AzureContainerAppEnvironmentIdentity)(nil),         // 7: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentIdentity
+	nil,                         // 8: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 1: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.infrastructure_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 2: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.log_analytics_workspace_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 3: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.workload_profiles:type_name -> dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppWorkloadProfile
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	9,  // 0: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 1: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.logs_destination:type_name -> dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentLogsDestination
+	9,  // 2: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.log_analytics_workspace_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 3: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.infrastructure_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 4: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.public_network_access:type_name -> dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentPublicNetworkAccess
+	5,  // 5: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.workload_profiles:type_name -> dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentWorkloadProfile
+	6,  // 6: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.custom_domain:type_name -> dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentCustomDomain
+	7,  // 7: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.identity:type_name -> dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentIdentity
+	8,  // 8: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.tags:type_name -> dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentSpec.TagsEntry
+	2,  // 9: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentWorkloadProfile.workload_profile_type:type_name -> dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentWorkloadProfileType
+	3,  // 10: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentIdentity.type:type_name -> dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentIdentityType
+	9,  // 11: dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentIdentity.user_assigned_identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_init() }
@@ -413,13 +1022,14 @@ func file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   2,
+			NumEnums:      4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_depIdxs,
+		EnumInfos:         file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto = out.File

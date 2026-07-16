@@ -7,42 +7,42 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
 // **AzureRedisCacheSpec** defines the configuration for creating an Azure
-// Cache for Redis instance with optional firewall rules and patch schedules.
+// Cache for Redis instance -- a fully managed, in-memory data store built on
+// the open-source Redis engine, used for caching, session state, real-time
+// leaderboards, and pub/sub messaging with sub-millisecond latency.
 //
-// Azure Cache for Redis provides a fully managed, in-memory data store based
-// on the open-source Redis engine. It supports caching, session management,
-// real-time analytics, and message brokering with sub-millisecond latency.
+// **Tiers.** The `sku_name` tier decides the capability envelope:
+// - BASIC: a single node with no replica and no SLA -- dev/test only.
+// - STANDARD (the default): a replicated primary/replica pair with a 99.9%
+//   SLA -- the right answer for most production caches.
+// - PREMIUM: everything in Standard plus VNet injection, clustering
+//   (sharding), data persistence (RDB/AOF), extra replicas, and
+//   geo-replication via AzureRedisLinkedServer.
+// The tier can be upgraded in place; a DOWNGRADE replaces the cache.
 //
-// The component bundles the cache (`azurerm_redis_cache`) with its firewall
-// rules (`azurerm_redis_firewall_rule`) because firewall rules are security
-// configuration intrinsic to the cache instance. This follows DD03 (Composite
-// Bundling Rules).
+// **Sizing.** `capacity` picks the size within the tier's family:
+// C0-C6 (250 MB to 53 GB) for Basic/Standard, P1-P5 (6 GB to 120 GB per
+// shard) for Premium. The family letter ("C" or "P") is derived from the
+// tier by the IaC modules -- it is never spelled twice.
 //
-// **SKU tiers**: Azure Cache for Redis offers three tiers:
-// - **Basic**: Single node, no SLA. Suitable for development and testing.
-// - **Standard** (default): Two-node replicated (primary + replica), 99.9% SLA.
-//   Recommended for most production workloads.
-// - **Premium**: Advanced features including VNet injection, clustering (sharding),
-//   zone redundancy, and data persistence. Required for enterprise networking.
+// **Authentication.** Two independent switches shape the auth posture:
+// `redis_configuration.active_directory_authentication_enabled` turns on
+// Microsoft Entra token authentication, and
+// `access_keys_authentication_enabled` controls the shared access keys.
+// Keys can only be turned OFF once Entra auth is ON (enforced here, exactly
+// as ARM enforces it) -- the fully keyless posture pairs this cache with
+// AzureRedisCacheAccessPolicyAssignment grants instead of secrets.
 //
-// **Cache sizing**: The `capacity` field selects the cache size within a tier.
-// For Basic and Standard tiers, valid values are 0-6 (C0 through C6, from
-// 250 MB to 53 GB). For Premium tier, valid values are 1-5 (P1 through P5,
-// from 6 GB to 120 GB per shard).
+// **Networking.** Public access is on by default; harden with
+// `firewall_rules` (IP allow-list), disable `public_network_access_enabled`
+// and reach the cache through an AzurePrivateEndpoint, or (Premium) inject
+// the cache into a dedicated subnet via `subnet_id` for private-IP-only
+// deployment. VNet injection is the legacy isolation mechanism -- Azure
+// recommends Private Link for new deployments; both are modeled.
 //
-// **Eviction policy**: The `maxmemory_policy` field controls what happens when
-// the cache reaches its memory limit. The default `volatile-lru` evicts keys
-// with an expiration set, using least-recently-used ordering. For cache-only
-// workloads (no TTL on keys), use `allkeys-lru`. For workloads that must never
-// lose data, use `noeviction` (writes fail when full).
-//
-// **VNet injection** (Premium only): Set `subnet_id` to deploy the cache inside
-// a virtual network. This provides network isolation and private IP addressing.
-// When VNet-injected, the cache is not accessible from the public internet
-// regardless of the `public_network_access_enabled` setting.
-//
-// **ForceNew fields** (changing these destroys and recreates the cache):
-// `name`, `subnet_id`.
+// **ForceNew fields** (changing these replaces the cache): `cache_name`,
+// `subnet_id`, `private_static_ip_address`, `zones`, and any `sku_name`
+// downgrade.
 message AzureRedisCacheSpec {
   // The Azure region where the Redis cache will be created.
   // Examples: "eastus", "westus2", "westeurope", "southeastasia".
@@ -59,68 +59,45 @@ message AzureRedisCacheSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
   ];
 
-  // The name of the Redis cache.
-  // Must be globally unique across Azure. Used as the cache endpoint:
-  // `{name}.redis.cache.windows.net`
-  // Allowed characters: lowercase letters, numbers, and hyphens.
-  // Must start with a letter, must not end with a hyphen.
-  // Length: 1 to 63 characters.
-  //
-  // **ForceNew**: Changing this destroys and recreates the cache.
-  string name = 3 [
+  // The cache's name -- GLOBALLY unique across all of Azure, because it
+  // becomes the public DNS endpoint `{cache_name}.redis.cache.windows.net`.
+  // 1-63 letters, digits, and hyphens; must start and end with a letter or
+  // digit; no consecutive hyphens. Deletion runs several minutes but frees
+  // the name as soon as it completes -- there is no soft-delete hold.
+  // Changing the name replaces the cache.
+  string cache_name = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 63,
     (buf.validate.field).cel = {
-      id: "cache_name_format"
-      message: "Cache name must contain only lowercase letters, numbers, and hyphens, and start with a letter"
-      expression: "this.matches('^[a-z][a-z0-9-]{0,62}$')"
+      id: "redis_cache_name_format"
+      message: "cache_name must be 1-63 letters, digits, and hyphens, start and end with a letter or digit, and never repeat a hyphen"
+      expression: "this.matches('^[a-zA-Z0-9]([a-zA-Z0-9]|-[a-zA-Z0-9])*$')"
     }
   ];
 
-  // The SKU tier for the Redis cache.
-  // Uses Azure's exact API values for provider authenticity.
-  //
-  // Valid values:
-  // - "Basic": Single node, no SLA, no replication. Dev/test only.
-  // - "Standard" (default): Primary + replica, 99.9% SLA. Production recommended.
-  // - "Premium": Advanced features -- VNet injection, clustering, persistence,
-  //   zone redundancy. Required for `subnet_id` and `shard_count`.
-  //
-  // SKU downgrades force resource recreation. Basic does not support
-  // `maxmemory_reserved`, `maxmemory_delta`, or `maxfragmentationmemory_reserved`.
-  optional string sku_name = 4 [
-    (dev.planton.shared.options.default) = "Standard",
-    (buf.validate.field).cel = {
-      id: "sku_name_valid"
-      message: "sku_name must be one of: Basic, Standard, Premium"
-      expression: "this in ['Basic', 'Standard', 'Premium']"
-    }
-  ];
+  // The pricing/capability tier. Unspecified deploys STANDARD -- the
+  // replicated 99.9%-SLA tier that fits most production workloads. BASIC is
+  // a single unreplicated node for dev/test. PREMIUM unlocks VNet injection,
+  // clustering, persistence, extra replicas, and geo-replication. Upgrades
+  // apply in place; a downgrade REPLACES the cache (Azure does not support
+  // SKU downgrades on a live instance).
+  AzureRedisCacheSku sku_name = 4 [(buf.validate.field).enum.defined_only = true];
 
-  // Cache capacity (size) within the chosen SKU tier.
-  // The actual memory size depends on the SKU family:
-  //
-  // Basic/Standard (C-family):
-  //   0=250MB, 1=1GB, 2=2.5GB, 3=6GB, 4=13GB, 5=26GB, 6=53GB
-  //
-  // Premium (P-family):
-  //   1=6GB, 2=13GB, 3=26GB, 4=53GB, 5=120GB (per shard)
-  //
-  // The `family` field ("C" or "P") is auto-derived from `sku_name` in the
-  // IaC modules -- users do not need to specify it.
+  // Cache size within the tier's family. Basic/Standard (C-family):
+  // 0=250MB, 1=1GB, 2=2.5GB, 3=6GB, 4=13GB, 5=26GB, 6=53GB. Premium
+  // (P-family): 1=6GB, 2=13GB, 3=26GB, 4=53GB, 5=120GB -- per shard when
+  // clustering, so total memory = size x (shard_count + 1) primaries plus
+  // replicas. Unset on Basic/Standard means C0, the smallest size. The
+  // family letter is derived from the tier by the modules.
   int32 capacity = 5 [(buf.validate.field).int32 = {
     gte: 0
     lte: 6
   }];
 
-  // Redis engine version.
-  //
-  // Valid values: "4", "6"
-  // Default: "6" (recommended -- Redis 4 is end-of-life).
-  //
-  // Note: Azure represents versions as major version only. Version "6" maps
-  // to the latest Redis 6.x release available in the region.
+  // Redis engine major version: "4" or "6". Azure tracks the latest 6.x
+  // patch release automatically -- only the major version is chosen here.
+  // Default "6"; Redis 4 is end-of-life and exists only for legacy clients.
+  // Upgrading 4 -> 6 applies in place.
   optional string redis_version = 6 [
     (dev.planton.shared.options.default) = "6",
     (buf.validate.field).cel = {
@@ -130,82 +107,215 @@ message AzureRedisCacheSpec {
     }
   ];
 
-  // Subnet ID for VNet injection (Premium SKU only).
-  // When set, the cache is deployed inside the specified subnet with private
-  // IP addressing. The subnet must be dedicated to Azure Cache for Redis
-  // (no other resources in the subnet).
-  //
-  // **ForceNew**: Changing this destroys and recreates the cache.
-  //
+  // Availability zones to pin the cache's nodes to, e.g. ["1", "2"].
+  // Zone-redundant deployment spreads the primary and replicas across
+  // zones for datacenter-failure resilience. Fixed at creation.
+  repeated string zones = 7 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "1",
+        "2",
+        "3"
+      ]
+    }
+  }];
+
+  // PREMIUM ONLY -- the dedicated subnet to inject the cache into for
+  // private-IP-only deployment (the subnet must contain nothing but Redis
+  // caches). VNet injection is the legacy isolation mechanism; prefer
+  // disabling public network access and attaching an AzurePrivateEndpoint
+  // for new designs. Fixed at creation.
   // Can be a literal ARM resource ID or a reference to an AzureSubnet output.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 7 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 8 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
-  // Availability zones for the Redis cache.
-  // Distributes cache nodes across specified zones for higher availability.
-  // Requires Standard or Premium SKU.
-  //
-  // Examples: ["1"], ["1", "2", "3"]
-  repeated string zones = 8;
+  // The static private IP to assign the cache inside its injected subnet.
+  // Only meaningful with subnet_id; Azure picks an address when unset.
+  // Fixed at creation.
+  optional string private_static_ip_address = 9 [(buf.validate.field).string.ipv4 = true];
 
-  // Number of shards for Redis Cluster (Premium SKU only).
-  // Enables data partitioning across multiple Redis nodes for higher
-  // throughput and larger data sets.
-  //
-  // Each shard is a primary/replica pair. Total cache memory = capacity * (1 + shard_count).
-  // Range: 1-10 shards.
-  optional int32 shard_count = 9 [(buf.validate.field).int32 = {
+  // PREMIUM ONLY -- the number of shards in a clustered (OSS cluster mode)
+  // cache, 1-10. Each shard is its own primary/replica pair, so clustering
+  // multiplies both throughput and memory: total memory = capacity x
+  // shard_count. Clients must speak the Redis Cluster protocol. Cannot be
+  // combined with extra replicas_per_primary.
+  optional int32 shard_count = 10 [(buf.validate.field).int32 = {
     gte: 1
     lte: 10
   }];
 
-  // Enable the non-SSL port (6379).
-  // When false (default), only the SSL port (6380) is available.
-  // It is strongly recommended to keep this disabled for production workloads.
-  //
-  // Default: false
-  optional bool non_ssl_port_enabled = 10 [(dev.planton.shared.options.default) = "false"];
+  // PREMIUM ONLY -- extra read replicas per primary, 1-3 (the tier's
+  // built-in replica counts as one). More replicas raise read throughput
+  // and shrink failover windows; they cannot be combined with clustering.
+  // ARM exposes the same setting under a legacy alias (replicasPerMaster)
+  // that mirrors this value -- only the modern name is modeled.
+  optional int32 replicas_per_primary = 11 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 3
+  }];
 
-  // Minimum TLS version for client connections.
-  // Azure enforces this on all connections to the SSL port.
-  //
-  // Default: "1.2" (only valid value in Azure provider v5.0+)
-  optional string minimum_tls_version = 11 [
-    (dev.planton.shared.options.default) = "1.2",
-    (buf.validate.field).cel = {
-      id: "tls_version_valid"
-      message: "minimum_tls_version must be one of: 1.0, 1.1, 1.2"
-      expression: "this in ['1.0', '1.1', '1.2']"
-    }
-  ];
+  // Enable the plaintext non-SSL port (6379). Off by default and best left
+  // off: the non-SSL port sends commands AND access keys unencrypted.
+  // Exists for legacy clients that cannot speak TLS.
+  bool non_ssl_port_enabled = 12;
 
-  // Whether the Redis cache is accessible over the public internet.
-  // When false, the cache can only be accessed via VNet injection or
-  // AzurePrivateEndpoint.
-  //
-  // Default: true
-  optional bool public_network_access_enabled = 12 [(dev.planton.shared.options.default) = "true"];
+  // Whether the cache answers on its public endpoint. Default true. Set
+  // false to force all traffic through an AzurePrivateEndpoint (the
+  // recommended isolation for new designs) -- firewall_rules become
+  // irrelevant once public access is off.
+  optional bool public_network_access_enabled = 13 [(dev.planton.shared.options.default) = "true"];
 
-  // Memory eviction policy when the cache reaches its memory limit.
-  // Uses Redis's exact configuration value names for provider authenticity.
-  //
-  // Valid values:
-  // - "volatile-lru" (default): Evict keys with TTL, least-recently-used first
-  // - "allkeys-lru": Evict any key, least-recently-used first (cache-only workloads)
-  // - "volatile-lfu": Evict keys with TTL, least-frequently-used first
-  // - "allkeys-lfu": Evict any key, least-frequently-used first
-  // - "volatile-random": Evict random keys with TTL
-  // - "allkeys-random": Evict random keys
-  // - "volatile-ttl": Evict keys with shortest TTL first
-  // - "noeviction": Return errors on writes when memory is full (data integrity)
-  //
-  // **Guidance:**
-  // - Cache-only workload (all keys expendable): use `allkeys-lru`
-  // - Mixed workload (some keys must persist): use `volatile-lru` (default)
-  // - Data must never be evicted: use `noeviction` (monitor memory carefully)
-  optional string maxmemory_policy = 13 [
+  // Whether the shared access keys authenticate clients. Default true.
+  // Turning keys OFF -- allowed only once Entra authentication is ON
+  // (redis_configuration.active_directory_authentication_enabled) -- makes
+  // the cache fully keyless: clients present Entra tokens under
+  // AzureRedisCacheAccessPolicyAssignment grants, and there is no secret
+  // to leak or rotate.
+  optional bool access_keys_authentication_enabled = 14 [(dev.planton.shared.options.default) = "true"];
+
+  // Redis engine and platform behavior: eviction policy, memory
+  // reservations, Entra auth, keyspace notifications, and (Premium) RDB/AOF
+  // persistence. Every field has a safe Azure default -- omit the whole
+  // block for a standard cache.
+  AzureRedisCacheConfiguration redis_configuration = 15;
+
+  // The cache's managed identity. Required (with a SystemAssigned or
+  // UserAssigned entry) when redis_configuration selects MANAGED_IDENTITY
+  // as the persistence auth method -- the identity is what writes RDB/AOF
+  // snapshots to the storage account without a connection-string secret.
+  AzureRedisCacheIdentity identity = 16;
+
+  // Weekly maintenance windows during which Azure may apply Redis engine
+  // patches and platform updates. Azure picks the window automatically when
+  // unset; production caches should pin at least one low-traffic window.
+  repeated AzureRedisCachePatchSchedule patch_schedules = 17;
+
+  // IP allow-list for the public endpoint. Only meaningful while
+  // public_network_access_enabled is true and the cache is not
+  // VNet-injected. Without rules, the public endpoint accepts any source
+  // address that presents valid credentials.
+  repeated AzureRedisCacheFirewallRule firewall_rules = 18;
+
+  // Tenant-level Azure platform settings passed through to the cache as
+  // raw key/value pairs (distinct from redis_configuration, which is the
+  // Redis engine's own configuration). Rarely needed; used by Microsoft
+  // support scenarios and preview features.
+  map<string, string> tenant_settings = 19;
+
+  // Free-form tags applied to the cache, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag with
+  // the same key wins. Tags are Azure's governance surface -- Azure Policy
+  // enforces them and Microsoft Cost Management groups by them -- so carry
+  // your org's ownership/cost-center conventions here. Updatable in place.
+  map<string, string> tags = 20;
+
+  option (buf.validate.message).cel = {
+    id: "redis_cache_premium_capacity"
+    message: "capacity must be 1-5 (P1-P5) on the PREMIUM tier"
+    expression: "this.sku_name != 3 || (this.capacity >= 1 && this.capacity <= 5)"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_cache_subnet_requires_premium"
+    message: "subnet_id (VNet injection) requires the PREMIUM tier"
+    expression: "!has(this.subnet_id) || this.sku_name == 3"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_cache_static_ip_requires_subnet"
+    message: "private_static_ip_address is only meaningful with subnet_id (VNet injection)"
+    expression: "!has(this.private_static_ip_address) || has(this.subnet_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_cache_shard_count_requires_premium"
+    message: "shard_count (clustering) requires the PREMIUM tier"
+    expression: "!has(this.shard_count) || this.sku_name == 3"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_cache_replicas_require_premium"
+    message: "replicas_per_primary requires the PREMIUM tier"
+    expression: "!has(this.replicas_per_primary) || this.sku_name == 3"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_cache_shards_and_replicas_exclusive"
+    message: "shard_count and replicas_per_primary cannot be combined"
+    expression: "!(has(this.shard_count) && has(this.replicas_per_primary))"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_cache_keys_off_requires_entra"
+    message: "access_keys_authentication_enabled can only be false when redis_configuration.active_directory_authentication_enabled is true"
+    expression: "!has(this.access_keys_authentication_enabled) || this.access_keys_authentication_enabled || (has(this.redis_configuration) && this.redis_configuration.active_directory_authentication_enabled)"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_cache_auth_off_requires_subnet"
+    message: "redis_configuration.authentication_enabled can only be false when the cache is VNet-injected (subnet_id set)"
+    expression: "!has(this.redis_configuration) || !has(this.redis_configuration.authentication_enabled) || this.redis_configuration.authentication_enabled || has(this.subnet_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_cache_memory_dials_not_basic"
+    message: "maxmemory_reserved, maxmemory_delta, and maxfragmentationmemory_reserved are not supported on the BASIC tier"
+    expression: "!has(this.redis_configuration) || this.sku_name != 1 || (!has(this.redis_configuration.maxmemory_reserved) && !has(this.redis_configuration.maxmemory_delta) && !has(this.redis_configuration.maxfragmentationmemory_reserved))"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_cache_rdb_requires_premium"
+    message: "RDB persistence (rdb_backup_enabled) requires the PREMIUM tier"
+    expression: "!has(this.redis_configuration) || !this.redis_configuration.rdb_backup_enabled || this.sku_name == 3"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_cache_aof_requires_premium"
+    message: "AOF persistence (aof_backup_enabled) requires the PREMIUM tier"
+    expression: "!has(this.redis_configuration) || !this.redis_configuration.aof_backup_enabled || this.sku_name == 3"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_cache_rdb_requires_connection_string"
+    message: "rdb_backup_enabled requires rdb_storage_connection_string (or data_persistence_authentication_method MANAGED_IDENTITY with an identity)"
+    expression: "!has(this.redis_configuration) || !this.redis_configuration.rdb_backup_enabled || this.redis_configuration.rdb_storage_connection_string != '' || this.redis_configuration.data_persistence_authentication_method == 2"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_cache_managed_identity_persistence_requires_identity"
+    message: "data_persistence_authentication_method MANAGED_IDENTITY requires an identity block"
+    expression: "!has(this.redis_configuration) || this.redis_configuration.data_persistence_authentication_method != 2 || has(this.identity)"
+  };
+}
+
+// The pricing/capability tier of the cache.
+enum AzureRedisCacheSku {
+  // Not specified -- deploys STANDARD, the production default.
+  azure_redis_cache_sku_unspecified = 0;
+
+  // A single cache node with no replica and NO SLA -- development and
+  // testing only. Memory dials (maxmemory_reserved and friends) are not
+  // configurable on this tier.
+  BASIC = 1;
+
+  // A replicated primary/replica pair with a 99.9% SLA -- the right
+  // answer for most production caches.
+  STANDARD = 2;
+
+  // Everything in STANDARD plus VNet injection, clustering (sharding),
+  // RDB/AOF data persistence, extra replicas, and geo-replication via
+  // AzureRedisLinkedServer.
+  PREMIUM = 3;
+}
+
+// AzureRedisCacheConfiguration groups the Redis engine and platform
+// behavior settings ARM carries in the cache's redisConfiguration bag.
+// Everything is optional with a safe Azure default.
+message AzureRedisCacheConfiguration {
+  // Enable Microsoft Entra (Azure AD) token authentication. Off by
+  // default. Turning this on lets identities authenticate with Entra
+  // tokens under access policies (see AzureRedisCacheAccessPolicyAssignment)
+  // instead of shared keys -- and is the prerequisite for disabling the
+  // access keys entirely (spec.access_keys_authentication_enabled).
+  bool active_directory_authentication_enabled = 1;
+
+  // Eviction policy when the cache reaches its memory limit, in Redis's
+  // own configuration vocabulary. Default volatile-lru (evict TTL-bearing
+  // keys, least-recently-used first). Guidance: allkeys-lru for pure
+  // caches where every key is expendable; volatile-lru for mixed
+  // workloads; noeviction when data must never silently disappear (writes
+  // fail when full -- watch memory).
+  optional string maxmemory_policy = 2 [
     (dev.planton.shared.options.default) = "volatile-lru",
     (buf.validate.field).cel = {
       id: "maxmemory_policy_valid"
@@ -214,95 +324,208 @@ message AzureRedisCacheSpec {
     }
   ];
 
-  // Patch (maintenance) schedules for the Redis cache.
-  // Defines when Azure can apply Redis engine patches and updates.
-  // If not specified, Azure chooses the maintenance window automatically.
-  //
-  // For production workloads, specify at least one patch schedule during
-  // a low-traffic window.
-  repeated AzureRedisPatchSchedule patch_schedules = 14;
+  // Megabytes reserved for non-cache operations (failover, replication).
+  // Azure sizes a default from the cache's total memory; raise it for
+  // write-heavy workloads to keep failovers smooth. Not configurable on
+  // the BASIC tier.
+  optional int32 maxmemory_reserved = 3 [(buf.validate.field).int32.gte = 0];
 
-  // Firewall rules for IP-based access control.
-  // Only effective when `public_network_access_enabled` is true and the cache
-  // is NOT VNet-injected.
-  //
-  // Each rule allows a range of IPv4 addresses to access the cache.
-  // Without firewall rules, all public IP addresses are blocked by default.
-  repeated AzureRedisFirewallRule firewall_rules = 15;
+  // Megabytes reserved per shard for the memory overhead of writes during
+  // high-load periods. Azure sizes a default from total memory. Not
+  // configurable on the BASIC tier.
+  optional int32 maxmemory_delta = 4 [(buf.validate.field).int32.gte = 0];
+
+  // Megabytes reserved to accommodate memory fragmentation. Azure sizes a
+  // default from total memory; raise it for workloads with many small
+  // keys. Not configurable on the BASIC tier.
+  optional int32 maxfragmentationmemory_reserved = 5 [(buf.validate.field).int32.gte = 0];
+
+  // Keyspace event notification classes, in Redis's compact flag syntax
+  // (e.g. "KEA" for everything, "Ex" for expiry events). Empty (default)
+  // disables notifications. Clients subscribe over pub/sub to react to
+  // key changes -- cache-invalidation fan-out, session-expiry hooks.
+  string notify_keyspace_events = 6;
+
+  // Whether Redis requires clients to authenticate at all. Default true;
+  // can only be disabled on a VNet-injected cache (subnet_id set), where
+  // the subnet boundary is the access control. Never disable on a
+  // publicly reachable cache.
+  optional bool authentication_enabled = 7 [(dev.planton.shared.options.default) = "true"];
+
+  // How the cache authenticates to the storage account that holds RDB/AOF
+  // persistence data. SAS (default) embeds a signed token in the
+  // connection strings; MANAGED_IDENTITY uses the cache's identity block
+  // instead -- no storage secret in the spec at all (pair with
+  // spec.identity and grant the identity Storage Blob Data Contributor on
+  // the account).
+  AzureRedisCachePersistenceAuthMethod data_persistence_authentication_method = 8 [(buf.validate.field).enum.defined_only = true];
+
+  // PREMIUM ONLY -- enable RDB snapshot persistence: periodic full
+  // snapshots written to a storage account, used to rebuild the cache
+  // after a full outage. Requires rdb_storage_connection_string (or
+  // MANAGED_IDENTITY persistence auth).
+  bool rdb_backup_enabled = 9;
+
+  // Minutes between RDB snapshots: 15, 30, 60, 360, 720, or 1440.
+  optional int32 rdb_backup_frequency = 10 [(buf.validate.field).cel = {
+    id: "rdb_backup_frequency_valid"
+    message: "rdb_backup_frequency must be one of: 15, 30, 60, 360, 720, 1440 (minutes)"
+    expression: "this in [15, 30, 60, 360, 720, 1440]"
+  }];
+
+  // Maximum number of RDB snapshots retained before the oldest is
+  // overwritten.
+  optional int32 rdb_backup_max_snapshot_count = 11 [(buf.validate.field).int32.gte = 1];
+
+  // Connection string of the storage account receiving RDB snapshots
+  // (a secret -- it embeds the account key or SAS token). Not needed when
+  // data_persistence_authentication_method is MANAGED_IDENTITY. Note:
+  // Azure's API never echoes this value back.
+  string rdb_storage_connection_string = 12 [(dev.planton.shared.options.sensitive) = true];
+
+  // PREMIUM ONLY -- enable AOF (append-only file) persistence: every
+  // write is logged to storage near-synchronously, giving much tighter
+  // recovery points than RDB snapshots at the cost of write throughput.
+  bool aof_backup_enabled = 13;
+
+  // Connection string of the FIRST storage account receiving the AOF log
+  // (a secret -- it embeds the account key or SAS token).
+  string aof_storage_connection_string_0 = 14 [(dev.planton.shared.options.sensitive) = true];
+
+  // Connection string of the SECOND storage account for AOF -- Azure
+  // alternates between two accounts to keep log writes flowing during
+  // storage maintenance (a secret).
+  string aof_storage_connection_string_1 = 15 [(dev.planton.shared.options.sensitive) = true];
+
+  // The subscription holding the persistence storage account, when it is
+  // NOT the cache's own subscription (cross-subscription persistence).
+  optional string storage_account_subscription_id = 16 [(buf.validate.field).string.uuid = true];
 }
 
-// AzureRedisPatchSchedule defines a maintenance window for Redis engine
-// patches and updates. Azure uses these windows to apply updates with
-// minimal disruption.
-//
-// It is recommended to schedule patches during low-traffic periods.
-// Multiple schedules can be specified (e.g., one per week).
-message AzureRedisPatchSchedule {
-  // Day of the week for the maintenance window.
-  // Uses English day names (case-insensitive in the provider, but we
-  // validate for capitalized form for consistency).
-  //
-  // Valid values: "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
-  // "Saturday", "Sunday", "Everyday", "Weekend"
-  string day_of_week = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "day_of_week_valid"
-      message: "day_of_week must be one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday, Everyday, Weekend"
-      expression: "this in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'Everyday', 'Weekend']"
-    }
+// How the cache authenticates to the persistence storage account.
+enum AzureRedisCachePersistenceAuthMethod {
+  // Not specified -- Azure's default (SAS).
+  azure_redis_cache_persistence_auth_method_unspecified = 0;
+
+  // Signed SAS tokens embedded in the storage connection strings.
+  SAS = 1;
+
+  // The cache's managed identity (spec.identity) authenticates to
+  // storage -- no storage secret in the spec at all. Grant the identity
+  // "Storage Blob Data Contributor" on the persistence account.
+  MANAGED_IDENTITY = 2;
+}
+
+// AzureRedisCacheIdentity assigns a managed identity to the cache, used
+// for keyless persistence-storage access (MANAGED_IDENTITY persistence
+// auth).
+message AzureRedisCacheIdentity {
+  // The identity model: SYSTEM_ASSIGNED (Azure creates and rotates a
+  // service principal bound to the cache's lifecycle), USER_ASSIGNED
+  // (bring identities from user_assigned_identity_ids, shareable across
+  // resources), or SYSTEM_AND_USER_ASSIGNED (both).
+  AzureRedisCacheIdentityType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The user-assigned identities to attach -- required when (and only
+  // meaningful when) type includes USER_ASSIGNED. Each entry references an
+  // AzureUserAssignedIdentity's ARM id.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
   ];
 
-  // UTC hour at which the maintenance window starts (0-23).
-  // Default: 0
+  option (buf.validate.message).cel = {
+    id: "redis_cache_identity_ids_match_type"
+    message: "user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED"
+    expression: "(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)"
+  };
+}
+
+// The managed-identity model for the cache.
+enum AzureRedisCacheIdentityType {
+  // Not specified -- invalid; choose an explicit identity model.
+  azure_redis_cache_identity_type_unspecified = 0;
+
+  // Azure creates a service principal bound to the cache's lifecycle.
+  SYSTEM_ASSIGNED = 1;
+
+  // Bring your own AzureUserAssignedIdentity entries -- shareable across
+  // resources and grantable before the cache exists.
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned principal and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// AzureRedisCachePatchSchedule pins a weekly window during which Azure may
+// apply Redis engine patches and platform updates. Multiple windows are
+// allowed (e.g. one per weekend night).
+message AzureRedisCachePatchSchedule {
+  // Day of the week for the maintenance window.
+  AzureRedisCachePatchScheduleDay day_of_week = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // UTC hour at which the window opens (0-23). Default 0 (midnight UTC).
   optional int32 start_hour_utc = 2 [(buf.validate.field).int32 = {
     gte: 0
     lte: 23
   }];
 
-  // Duration of the maintenance window as an ISO 8601 duration string.
-  // Default: "PT5H" (5 hours)
-  //
-  // Examples: "PT5H" (5 hours), "PT3H" (3 hours)
-  optional string maintenance_window = 3 [(dev.planton.shared.options.default) = "PT5H"];
+  // How long the window stays open, as an ISO 8601 duration. Default
+  // "PT5H" (five hours -- Azure's minimum recommended window).
+  optional string maintenance_window = 3 [
+    (dev.planton.shared.options.default) = "PT5H",
+    (buf.validate.field).cel = {
+      id: "maintenance_window_iso8601"
+      message: "maintenance_window must be an ISO 8601 duration, e.g. PT5H or PT6H30M"
+      expression: "this.matches('^PT([0-9]+H)?([0-9]+M)?([0-9]+S)?$') && this != 'PT'"
+    }
+  ];
 }
 
-// AzureRedisFirewallRule defines an IP-based access rule for the Redis cache.
-// Each rule allows a contiguous range of IPv4 addresses to connect.
-//
-// Firewall rules are only effective when:
-// - `public_network_access_enabled` is true
-// - The cache is NOT deployed with VNet injection (`subnet_id` is not set)
-//
-// **Note:** Azure requires firewall rule names to contain only alphanumeric
-// characters and underscores (no hyphens).
-message AzureRedisFirewallRule {
-  // Rule name.
-  // Must contain only alphanumeric characters and underscores.
-  // Azure rejects names with hyphens or special characters.
+// Day of the week for a patch window.
+enum AzureRedisCachePatchScheduleDay {
+  // Not specified -- invalid; pick an explicit day.
+  azure_redis_cache_patch_schedule_day_unspecified = 0;
+  MONDAY = 1;
+  TUESDAY = 2;
+  WEDNESDAY = 3;
+  THURSDAY = 4;
+  FRIDAY = 5;
+  SATURDAY = 6;
+  SUNDAY = 7;
+}
+
+// AzureRedisCacheFirewallRule allows a contiguous IPv4 range to reach the
+// cache's public endpoint. Rules only apply while public network access is
+// enabled and the cache is not VNet-injected.
+message AzureRedisCacheFirewallRule {
+  // Rule name -- letters, digits, and underscores only (ARM rejects
+  // hyphens in Redis firewall rule names).
   string name = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
     (buf.validate.field).cel = {
       id: "firewall_rule_name_format"
-      message: "Firewall rule name must contain only alphanumeric characters and underscores (no hyphens)"
+      message: "firewall rule name must contain only letters, digits, and underscores (no hyphens)"
       expression: "this.matches('^\\\\w+$')"
     }
   ];
 
-  // Start of the IP address range (inclusive).
-  // Must be a valid IPv4 address.
-  // Use "0.0.0.0" for both start and end to allow Azure services.
+  // First IPv4 address of the allowed range (inclusive).
   string start_ip = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
+    (buf.validate.field).string.ipv4 = true
   ];
 
-  // End of the IP address range (inclusive).
-  // Must be a valid IPv4 address.
-  // Set equal to `start_ip` for a single IP address.
+  // Last IPv4 address of the allowed range (inclusive). Equal to start_ip
+  // for a single-address rule.
   string end_ip = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
+    (buf.validate.field).string.ipv4 = true
   ];
 }

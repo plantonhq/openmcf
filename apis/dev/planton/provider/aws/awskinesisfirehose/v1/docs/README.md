@@ -4,21 +4,21 @@
 
 Amazon Kinesis Data Firehose is a fully managed service for loading streaming data into storage and analytics destinations. Unlike Kinesis Data Streams (which requires you to write and operate consumers), Firehose handles the entire delivery pipeline: buffering, transformation, format conversion, compression, and retry — with zero consumer code.
 
-Firehose is the simplest path from streaming data to S3, OpenSearch, HTTP endpoints, and Redshift.
+Firehose is the simplest path from streaming data to S3, OpenSearch (domains and serverless collections), HTTP endpoints, Redshift, Splunk, Snowflake, and Apache Iceberg tables.
 
 ## How Firehose Works
 
 ### Data Flow
 
 ```
-Source → Buffer → [Transform] → [Convert] → [Compress] → Destination
-                                                    ↓ (failures)
-                                               S3 Backup
+Source → Buffer → [Process] → [Convert] → [Compress] → Destination
+                                                  ↓ (failures)
+                                             S3 Backup
 ```
 
-1. **Ingest** — Data enters the delivery stream from a source (Direct PUT or Kinesis Data Stream)
+1. **Ingest** — Data enters the delivery stream from a source (Direct PUT, Kinesis Data Stream, or MSK topic)
 2. **Buffer** — Records accumulate in an in-memory buffer until either the size or time threshold is reached
-3. **Transform** (optional) — A Lambda function processes each batch, returning transformed records
+3. **Process** (optional) — An ordered processor pipeline runs: decompression, de-aggregation, CloudWatch-Logs unwrapping, Lambda transformation, JQ metadata extraction, delimiter appending
 4. **Convert** (optional) — JSON records are converted to columnar format (Parquet/ORC) using a Glue schema
 5. **Compress** (optional) — Data is compressed before writing (GZIP, Snappy, etc.)
 6. **Deliver** — The batch is written to the destination
@@ -67,34 +67,50 @@ Firehose reads from an existing Kinesis Data Stream, acting as a managed consume
 - High throughput (>1 MB/s) with auto-scaling (ON_DEMAND stream)
 - Already have a Kinesis stream in your architecture
 
+### Amazon MSK Source
+
+Firehose reads a Kafka topic on an Amazon MSK cluster (provisioned or serverless), acting as a managed Kafka consumer — no consumer application, no consumer group management.
+
+**Characteristics:**
+
+- The cluster must have IAM access control enabled; Firehose authenticates with the configured IAM role
+- Connectivity is `PRIVATE` (through the cluster's in-VPC brokers — the common case) or `PUBLIC`
+- `read_from_timestamp` rewinds the topic to a point in time at creation; otherwise Firehose starts from the latest offset
+- No SSE on the delivery stream — the cluster handles encryption
+- Source configuration is entirely ForceNew
+
+**When to use:**
+
+- Kafka topics that need to land in S3/OpenSearch/Snowflake/Iceberg without operating a consumer
+- Offloading topic data for analytics while Kafka remains the system of record
+
 ### Source Comparison
 
-| Feature | Direct PUT | Kinesis Stream Source |
-|---------|------------|---------------------|
-| Setup complexity | Lowest | Requires existing stream |
-| Throughput | 1,000 rec/s or 1 MB/s (soft limit) | Stream capacity (unlimited with ON_DEMAND) |
-| Ordering | None | Per-shard (partition key) |
-| Replay | No | Yes (stream retention) |
-| Multiple consumers | No | Yes (stream supports many readers) |
-| SSE | On delivery stream buffer | On source stream |
-| Cost | Firehose per-GB only | Stream cost + Firehose per-GB |
+| Feature | Direct PUT | Kinesis Stream Source | MSK Source |
+|---------|------------|---------------------|------------|
+| Setup complexity | Lowest | Requires existing stream | Requires existing cluster + topic |
+| Throughput | 1,000 rec/s or 1 MB/s (soft limit) | Stream capacity (unlimited with ON_DEMAND) | Topic/cluster capacity |
+| Ordering | None | Per-shard (partition key) | Per-partition |
+| Replay | No | Yes (stream retention) | Point-in-time start (`read_from_timestamp`) |
+| Multiple consumers | No | Yes (stream supports many readers) | Yes (Kafka consumer groups) |
+| SSE | On delivery stream buffer | On source stream | On source cluster |
+| Cost | Firehose per-GB only | Stream cost + Firehose per-GB | Cluster cost + Firehose per-GB |
 
 ## Destination Types
 
 ### Destination Comparison
 
-| Feature | Extended S3 | OpenSearch | HTTP Endpoint | Redshift |
-|---------|-------------|-----------|---------------|----------|
-| **Use case** | Data lake, archive, analytics | Log analytics, search | Third-party SaaS, custom APIs | Data warehouse |
-| **Delivery path** | Direct to S3 | Direct to OpenSearch index | HTTPS POST | S3 staging → COPY |
-| **Format conversion** | Parquet/ORC via Glue | No | No | No |
-| **Dynamic partitioning** | Yes | No | No | No |
-| **Lambda transformation** | Yes | Yes | Yes | Yes |
-| **S3 backup** | Optional (source records) | Required (failed or all docs) | Required (failed or all data) | Required (staging) + optional (source) |
-| **VPC delivery** | N/A (S3 is a regional service) | Yes | No | No (public JDBC) |
-| **Max buffer size** | 128 MiB | 100 MiB | 64 MiB | N/A (S3 staging) |
-| **Index/table rotation** | Via prefix expressions | Built-in rotation periods | N/A | N/A |
-| **Usage share** | ~60% | ~15% | ~15% | ~10% |
+| Feature | Extended S3 | OpenSearch | OpenSearch Serverless | HTTP Endpoint | Redshift | Splunk | Snowflake | Iceberg |
+|---------|-------------|-----------|----------------------|---------------|----------|--------|-----------|---------|
+| **Use case** | Data lake, archive | Log analytics, search | Serverless log analytics | Third-party SaaS, custom APIs | Data warehouse | Splunk observability | Warehouse streaming | Streaming lakehouse |
+| **Delivery path** | Direct to S3 | Direct to index | Direct to collection index | HTTPS POST | S3 staging → COPY | HEC POST + ack | Snowpipe Streaming insert | Iceberg snapshot commit |
+| **Format conversion** | Parquet/ORC via Glue | No | No | No | No | No | No | Iceberg-native |
+| **Dynamic partitioning** | Yes | No | No | No | No | No | No | Table routing via processors |
+| **Processor pipeline** | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| **Secrets Manager credentials** | N/A (IAM) | N/A (IAM) | N/A (IAM) | Yes (`api_key`) | Yes (username/password) | Yes (HEC token) | Yes (key pair) | N/A (IAM) |
+| **S3 backup** | Optional (source records) | Required | Required | Required | Required (staging) + optional | Required | Required | Required |
+| **VPC delivery** | N/A | Yes | Yes | No | No (public JDBC) | No | PrivateLink VPCE | No |
+| **Buffer caps** | 0–900s / 1–128 MiB | 0–900s / 1–100 MiB | 0–900s / 1–100 MiB | 0–900s / 1–100 MiB | S3 staging | 0–60s / 1–5 MiB | 0–900s / 1–128 MiB (default 0s/1 MiB) | 0–900s / 1–128 MiB |
 
 ### Extended S3
 
@@ -104,21 +120,45 @@ The most feature-rich destination and the most common. Data lands in S3 as objec
 
 ### OpenSearch
 
-Indexes records directly into an Amazon OpenSearch Service domain. Supports index rotation (hourly, daily, weekly, monthly) and VPC delivery for private clusters. Failed documents are always backed up to S3.
+Indexes records directly into an Amazon OpenSearch Service domain. Supports index rotation (hourly, daily, weekly, monthly), document-ID control, and VPC delivery for private clusters. Failed documents are always backed up to S3.
 
 **Best for:** Log analytics, full-text search, real-time dashboards (OpenSearch Dashboards/Kibana).
 
+### OpenSearch Serverless
+
+Indexes records into an OpenSearch Serverless collection endpoint. No domains, no rotation — the collection scales automatically and the index is a fixed name admitted by the collection's data access policy.
+
+**Best for:** Log analytics without capacity management; teams already standardized on OpenSearch Serverless.
+
 ### HTTP Endpoint
 
-Delivers to any HTTPS endpoint that accepts POST requests and returns HTTP 200 on success. The endpoint receives JSON arrays of records. Authentication is via a configurable access key in the `X-Amz-Firehose-Access-Key` header.
+Delivers to any HTTPS endpoint that accepts POST requests and returns HTTP 200 on success. The endpoint receives JSON arrays of records. Authentication is via an access key in the `X-Amz-Firehose-Access-Key` header — inline or sourced from Secrets Manager.
 
-**Best for:** Third-party integrations (Datadog, New Relic, Sumo Logic, Splunk via HEC, Honeycomb), custom APIs, webhook-based pipelines.
+**Best for:** Third-party integrations (Datadog, New Relic, Sumo Logic, Honeycomb), custom APIs, webhook-based pipelines.
 
 ### Redshift
 
-A two-stage destination: Firehose writes data to an S3 staging bucket, then issues a Redshift `COPY` command to bulk-load the data. This is the standard Redshift ingestion pattern for streaming data.
+A two-stage destination: Firehose writes data to an S3 staging bucket, then issues a Redshift `COPY` command to bulk-load the data. This is the standard Redshift ingestion pattern for streaming data. Credentials are inline username/password or a Secrets Manager secret.
 
 **Best for:** Data warehouse loading, business intelligence, reporting pipelines.
+
+### Splunk
+
+Posts events to a Splunk HTTP Event Collector (HEC) endpoint — Splunk Cloud, Splunk Enterprise, or Splunk-managed AWS — and waits for indexer acknowledgment before considering delivery complete. Enforces the tightest buffering of any destination (max 60 seconds / 5 MiB) to keep event latency low. The HEC token is inline or a Secrets Manager secret.
+
+**Best for:** Organizations standardized on Splunk for observability and SIEM.
+
+### Snowflake
+
+Streams records directly into a Snowflake table via Snowpipe Streaming — no intermediate S3 staging and no external Snowpipe configuration. Authenticates with key-pair credentials (inline or Secrets Manager); supports PrivateLink, a dedicated ingestion role, and JSON-to-column or VARIANT loading modes. Defaults to the fastest buffering of any destination (0 seconds / 1 MiB).
+
+**Best for:** Near-real-time Snowflake ingestion replacing batch COPY pipelines.
+
+### Iceberg
+
+Commits records directly into Apache Iceberg tables managed by the AWS Glue Data Catalog — Firehose writes Iceberg snapshots itself, with optional per-record routing across multiple tables and update/delete semantics via unique keys.
+
+**Best for:** Streaming lakehouse ingestion and change-data-capture into Iceberg without a Spark job or custom writer.
 
 ## Buffering Model
 
@@ -151,12 +191,34 @@ Records arrive → Buffer fills
 
 **Destination-specific limits:**
 
-- Extended S3: 1–128 MiB
-- OpenSearch: 1–100 MiB
-- HTTP Endpoint: 1–64 MiB
+- Extended S3, Snowflake, Iceberg: 1–128 MiB
+- OpenSearch, OpenSearch Serverless, HTTP Endpoint: 1–100 MiB
+- Splunk: 0–60 seconds / 1–5 MiB
 - Redshift: Uses S3 staging buffering
 
-## Lambda Transformation Pipeline
+## Record-Transformation Pipeline
+
+The processing pipeline is an **ordered list of processors** — each processor's output feeds the next. Six processor types are available:
+
+| Processor | Purpose | Typical position |
+|-----------|---------|------------------|
+| **Decompression** | Decompress GZIP payloads (CloudWatch Logs subscriptions arrive compressed) | First |
+| **CloudWatch log processing** | Unwrap CloudWatch Logs subscription envelopes into individual log events | After decompression |
+| **Record de-aggregation** | Split KPL-aggregated or delimited payloads into individual records (Extended S3 only) | Before per-record processing |
+| **Lambda** | Arbitrary per-batch transformation (enrich/filter/reshape) | Middle |
+| **Metadata extraction** | Extract partition keys from JSON with a JQ expression (drives dynamic partitioning) | After transformation |
+| **Append delimiter** | Newline-delimit records (JSON lines) for query engines (Extended S3 only) | Last |
+
+AWS restricts de-aggregation and delimiter appending to S3 delivery — creation fails with them on any other destination.
+
+**Common pipelines:**
+
+- `lambda` — classic transformation
+- `metadata_extraction` — dynamic partitioning by record fields
+- `decompression → cloudwatch_log_processing → append_delimiter` — CloudWatch Logs to clean JSON-lines in S3
+- `record_deaggregation → metadata_extraction` — KPL producers + partitioning
+
+## Lambda Transformation
 
 ### How It Works
 
@@ -281,8 +343,8 @@ Dynamic partitioning extracts key-value pairs from each record and uses them to 
 
 **Two extraction methods:**
 
-1. **From JQ expressions** — Inline JQ expressions applied to JSON records (configured via S3 prefix expressions)
-2. **From Lambda metadata** — Partition keys returned by a Lambda transformation function
+1. **From JQ expressions** — a `metadata_extraction` processor applies a JQ query to each JSON record; the resulting keys are referenced as `!{partitionKeyFromQuery:key}` in the prefix
+2. **From Lambda metadata** — Partition keys returned by a Lambda transformation function, referenced as `!{partitionKeyFromLambda:key}`
 
 ### Prefix Expressions
 
@@ -330,12 +392,12 @@ When using Direct PUT as the source, Firehose can encrypt data at rest in its in
 | `sseEnabled: true`, no KMS key | AWS-owned CMK (Firehose manages the key) | No additional cost |
 | `sseEnabled: true`, with `sseKmsKeyArn` | Customer-managed CMK | KMS API charges per encryption/decryption |
 
-### Encryption with Kinesis Stream Source
+### Encryption with a Stream Source
 
-When using a Kinesis Data Stream as the source, **do not enable SSE on the delivery stream**. The source stream handles encryption:
+When using a Kinesis Data Stream or MSK cluster as the source, **do not enable SSE on the delivery stream**. The source handles encryption:
 
-- The Kinesis stream has its own KMS encryption configuration
-- Firehose reads already-encrypted records and the stream's KMS key handles decryption
+- The source stream/cluster has its own KMS encryption configuration
+- Firehose reads already-encrypted records and the source's KMS key handles decryption
 - Enabling SSE on the delivery stream would be redundant and is rejected by the API
 
 ### Encryption at S3 Destination
@@ -353,9 +415,13 @@ Every non-S3 destination requires S3 backup for error handling. The behavior var
 | Destination | S3 Role | Backup Modes | Default |
 |-------------|---------|-------------|---------|
 | **Extended S3** | Primary destination | `Disabled` / `Enabled` (source record backup) | `Disabled` |
-| **OpenSearch** | Backup for failed/all documents | `FailedDocumentsOnly` / `AllDocuments` | `FailedDocumentsOnly` |
+| **OpenSearch** | Backup for failed/all documents | `FailedDocumentsOnly` / `AllDocuments` (ForceNew) | `FailedDocumentsOnly` |
+| **OpenSearch Serverless** | Backup for failed/all documents | `FailedDocumentsOnly` / `AllDocuments` (ForceNew) | `FailedDocumentsOnly` |
 | **HTTP Endpoint** | Backup for failed/all records | `FailedDataOnly` / `AllData` | `FailedDataOnly` |
 | **Redshift** | Staging for COPY + optional source backup | `Disabled` / `Enabled` (source record backup) | `Disabled` |
+| **Splunk** | Backup for failed/all events | `FailedEventsOnly` / `AllEvents` | `FailedEventsOnly` |
+| **Snowflake** | Backup for failed/all records | `FailedDataOnly` / `AllData` | `FailedDataOnly` |
+| **Iceberg** | Backup for failed/all records | `FailedDataOnly` / `AllData` | `FailedDataOnly` |
 
 ### Extended S3 Backup
 
@@ -415,12 +481,24 @@ Firehose requires IAM roles for every interaction with other AWS services. A sin
 |------------|---------|---------|
 | S3 write | `s3:PutObject`, `s3:AbortMultipartUpload`, `s3:GetBucketLocation`, `s3:ListBucket` | All destinations |
 | Kinesis read | `kinesis:GetRecords`, `kinesis:GetShardIterator`, `kinesis:DescribeStream`, `kinesis:ListShards` | Kinesis source |
-| Lambda invoke | `lambda:InvokeFunction`, `lambda:GetFunctionConfiguration` | Processing |
+| MSK read | `kafka:GetBootstrapBrokers`, `kafka:DescribeCluster(V2)`, `kafka-cluster:Connect`, `kafka-cluster:DescribeTopic`, `kafka-cluster:ReadData`, `kafka-cluster:DescribeGroup` | MSK source |
+| Lambda invoke | `lambda:InvokeFunction`, `lambda:GetFunctionConfiguration` | Lambda processing |
 | OpenSearch write | `es:ESHttpPut`, `es:ESHttpGet` | OpenSearch destination |
+| OpenSearch Serverless write | `aoss:APIAccessAll` + a data-access-policy grant | OpenSearch Serverless destination |
 | KMS encrypt/decrypt | `kms:Encrypt`, `kms:Decrypt`, `kms:GenerateDataKey` | SSE, S3 SSE-KMS |
-| Glue catalog | `glue:GetTable`, `glue:GetTableVersions` | Format conversion |
+| Glue catalog | `glue:GetTable`, `glue:GetTableVersions` (+ `glue:UpdateTable` for Iceberg) | Format conversion, Iceberg |
+| Secrets Manager read | `secretsmanager:GetSecretValue` | Secrets Manager credentials |
 | VPC ENI management | `ec2:CreateNetworkInterface`, `ec2:DescribeNetworkInterfaces`, `ec2:DeleteNetworkInterface` | VPC delivery |
 | CloudWatch Logs | `logs:PutLogEvents` | Error logging |
+
+### Destination Credentials via Secrets Manager
+
+The Redshift, Splunk, HTTP endpoint, and Snowflake destinations authenticate with a credential (password, HEC token, API key, or key pair). Each supports sourcing that credential from an AWS Secrets Manager secret instead of embedding it in the resource configuration — the recommended production mode:
+
+- The credential never appears in manifests or IaC state
+- Rotating the secret in Secrets Manager takes effect without a delivery-stream update
+- Enabling/disabling Secrets Manager authentication replaces the delivery stream (create-time decision)
+- The expected secret shape is destination-specific: `{"username","password"}` (Redshift), `{"hec_token"}` (Splunk), `{"api_key"}` (HTTP), `{"user","private_key","key_passphrase"}` (Snowflake)
 
 ### VPC Delivery
 
@@ -465,9 +543,12 @@ All three are independent and can use different KMS keys.
 | Destination | Max Buffer Size | Notes |
 |-------------|----------------|-------|
 | Extended S3 | 128 MiB | — |
-| OpenSearch | 100 MiB | — |
-| HTTP Endpoint | 64 MiB | Endpoint must respond within 3 minutes |
+| OpenSearch / OpenSearch Serverless | 100 MiB | — |
+| HTTP Endpoint | 100 MiB | Endpoint must respond within 3 minutes |
 | Redshift | N/A | Uses S3 staging; COPY command has separate limits |
+| Splunk | 5 MiB (60s max interval) | Tightest buffering — HEC latency budget |
+| Snowflake | 128 MiB (default 1 MiB / 0s) | Snowpipe Streaming is designed for near-real-time |
+| Iceberg | 128 MiB | Larger buffers produce healthier Iceberg snapshots |
 
 ## Firehose vs Kinesis Data Streams vs SQS/SNS
 
@@ -475,7 +556,7 @@ All three are independent and can use different KMS keys.
 
 | Service | Model | Best For |
 |---------|-------|----------|
-| **Firehose** | Managed ETL pipeline | Zero-code delivery to S3/OpenSearch/HTTP/Redshift |
+| **Firehose** | Managed ETL pipeline | Zero-code delivery to the eight supported destinations |
 | **Kinesis Data Streams** | Streaming log (pull) | Real-time processing, multiple consumers, replay |
 | **SQS** | Message queue (pull) | Task distribution, decoupling, exactly-once processing |
 | **SNS** | Pub/sub (push) | Fan-out notifications, multi-subscriber broadcasting |
@@ -485,7 +566,7 @@ All three are independent and can use different KMS keys.
 | Feature | Firehose | Kinesis Streams | SQS | SNS |
 |---------|----------|----------------|-----|-----|
 | Consumer code | None | You write it | You write it | You configure subscribers |
-| Destinations | S3, OpenSearch, HTTP, Redshift | Anything (custom code) | Anything (custom code) | Lambda, SQS, HTTP, email, SMS |
+| Destinations | S3, OpenSearch (+Serverless), HTTP, Redshift, Splunk, Snowflake, Iceberg | Anything (custom code) | Anything (custom code) | Lambda, SQS, HTTP, email, SMS |
 | Ordering | None (or per-shard via Kinesis source) | Per-shard | FIFO or best-effort | None |
 | Replay | No | Yes (retention-based) | No (once consumed) | No |
 | Throughput | Auto-scaling | Per-shard or ON_DEMAND | Auto-scaling | Auto-scaling |

@@ -1,0 +1,94 @@
+# The workload's identity: the Azure principal pods act as when they
+# leave the cluster. One dedicated identity per application is the
+# auditable shape -- its grants say exactly what that workload may touch,
+# nothing rides a shared node identity.
+apiVersion: azure.planton.dev/v1
+kind: AzureUserAssignedIdentity
+metadata:
+  name: "{{ values.env }}-workload-identity"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-aks-platform"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-workload-identity"
+---
+# The platform vault, in RBAC mode (the spec's default): data-plane
+# access is ordinary Azure role assignments -- reviewable, PIM-eligible,
+# and composable -- never the legacy per-vault access-policy list.
+# Secret VALUES are deliberately not managed here: provision the vault
+# in code, put secrets in it through a secrets workflow, so plaintext
+# never enters a manifest.
+apiVersion: azure.planton.dev/v1
+kind: AzureKeyVault
+metadata:
+  name: "{{ values.env }}-platform-vault"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-aks-platform"
+      fieldPath: status.outputs.resource_group_name
+  vaultName: "{{ values.key_vault_name }}"
+  {% if values.key_vault_purge_protection | bool %}
+  # Irreversible once on: deleted objects can only be recovered until
+  # the retention window passes -- the posture production vaults (and
+  # any future customer-managed keys) require.
+  purgeProtectionEnabled: true
+  {% endif %}
+---
+# The workload's read grant: Key Vault Secrets User on the vault --
+# read secret values, nothing else. Scoped to the whole vault because
+# this is the platform's application vault; per-secret scoping is an
+# RBAC-mode refinement teams add as the vault fills.
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: "{{ values.env }}-workload-vault-read"
+spec:
+  scope:
+    valueFrom:
+      kind: AzureKeyVault
+      name: "{{ values.env }}-platform-vault"
+      fieldPath: status.outputs.key_vault_id
+  roleDefinitionName: Key Vault Secrets User
+  principalId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: "{{ values.env }}-workload-identity"
+      fieldPath: status.outputs.principal_id
+  principalType: SERVICE_PRINCIPAL
+  # The identity is created moments before this grant; skipping the
+  # directory existence check avoids losing the race against Entra's
+  # asynchronous replication (PrincipalNotFound).
+  skipServicePrincipalAadCheck: true
+  description: The workload identity reads application secrets from the platform vault -- pods authenticate keylessly through workload identity federation
+---
+# The trust rule that closes the keyless chain: tokens signed by THIS
+# cluster's OIDC issuer, for THIS service account, may act as the
+# workload identity. The issuer is referenced from the cluster's own
+# output, so the trust always matches the cluster it is deployed beside
+# -- no hand-copied URL, and no way for them to disagree.
+apiVersion: azure.planton.dev/v1
+kind: AzureFederatedIdentityCredential
+metadata:
+  name: "{{ values.env }}-workload-trust"
+spec:
+  name: "aks-{{ values.workload_namespace }}-{{ values.workload_service_account }}"
+  userAssignedIdentity:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: "{{ values.env }}-workload-identity"
+      fieldPath: status.outputs.identity_id
+  issuer:
+    valueFrom:
+      kind: AzureAksCluster
+      name: "{{ values.env }}-aks"
+      fieldPath: status.outputs.oidc_issuer_url
+  # The subject is fixed by Kubernetes: one credential trusts exactly
+  # one namespace/service-account pair. Additional workloads get their
+  # own identity + credential, keeping every trust auditable.
+  subject: "system:serviceaccount:{{ values.workload_namespace }}:{{ values.workload_service_account }}"

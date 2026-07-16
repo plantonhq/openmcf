@@ -1,0 +1,89 @@
+# The Aurora PostgreSQL cluster. Two capacity shapes behind one toggle:
+# Serverless v2 (the default — instances of class db.serverless whose
+# capacity floats between the ACU bounds) and provisioned (fixed instance
+# classes for steady, predictable load). Both are "provisioned mode" to
+# Aurora; Serverless v2 is a property of the instances, not an engine mode.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsRdsCluster
+metadata:
+  name: "{{ values.cluster_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+  engine: aurora-postgresql
+  # Pinned for deterministic rebuilds; empty string delegates the choice to
+  # AWS's current default.
+  engineVersion: "{{ values.engine_version }}"
+  databaseName: "{{ values.database_name }}"
+
+  # The password never exists in this chart, in state, or in your repo: AWS
+  # generates it, stores it in Secrets Manager, and owns rotation. The
+  # cluster exports the secret's ARN (status.outputs.master_user_secret_arn)
+  # — applications and humans read it from there.
+  masterUsername: "{{ values.master_username }}"
+  manageMasterUserPassword: true
+
+  # Placement: the DB subnet group is built from these subnets (two-plus AZs
+  # is an Aurora requirement); the security group is the chart's own, so the
+  # network contract deploys with the database.
+  subnetIds:
+{% for subnet_id in values.db_subnet_ids %}
+    - value: "{{ subnet_id }}"
+{% endfor %}
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: "{{ values.cluster_name }}-sg"
+        fieldPath: status.outputs.security_group_id
+
+  # Encryption at rest is create-time-only — it cannot be added later, which
+  # is why it is hardcoded on rather than parameterized. Uses the AWS-managed
+  # RDS key; reference an AwsKmsKey via kmsKeyId when compliance requires a
+  # customer-managed key.
+  storageEncrypted: true
+
+  # A week of point-in-time recovery, and the final-snapshot pair: skipping
+  # the final snapshot is how teardowns silently destroy the last copy of a
+  # database, so this chart takes one, always.
+  backupRetentionPeriod: 7
+  copyTagsToSnapshot: true
+  skipFinalSnapshot: false
+  finalSnapshotIdentifier: "{{ values.cluster_name }}-final"
+  deletionProtection: {{ values.deletion_protection }}
+
+  # Performance Insights (free 7-day tier) answers "what is the database
+  # doing right now" — there is no reason a production database runs without
+  # it. Postgres engine logs flow to CloudWatch for the same reason.
+  performanceInsightsEnabled: true
+  enabledCloudwatchLogsExports:
+    - postgresql
+{% if values.serverless_enabled | bool %}
+
+  # Serverless v2: capacity floats between the bounds, billed per ACU-hour.
+  # min_capacity 0 additionally allows auto-pause (scale-to-zero) — see the
+  # parameter descriptions for the wake-latency trade.
+  serverlessV2Scaling:
+    minCapacity: {{ values.min_capacity }}
+    maxCapacity: {{ values.max_capacity }}
+  instances:
+    - name: writer
+      instanceClass: db.serverless
+{% if values.reader_enabled | bool %}
+    # The reader scales independently of the writer under the same ACU
+    # bounds and serves the cluster's reader endpoint; promotion tier 1
+    # makes it the failover target.
+    - name: reader
+      instanceClass: db.serverless
+      promotionTier: 1
+{% endif %}
+{% else %}
+
+  instances:
+    - name: writer
+      instanceClass: "{{ values.provisioned_instance_class }}"
+{% if values.reader_enabled | bool %}
+    - name: reader
+      instanceClass: "{{ values.provisioned_instance_class }}"
+      promotionTier: 1
+{% endif %}
+{% endif %}

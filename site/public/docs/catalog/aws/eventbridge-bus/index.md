@@ -17,6 +17,7 @@ When you deploy an AwsEventBridgeBus resource, Planton provisions:
 - **EventBridge Custom Event Bus** — an `aws_cloudwatch_event_bus` resource named after `metadata.name`, with optional description, KMS encryption, and AWS resource tags for organization, environment, and resource tracking
 - **Dead Letter Config** — configured only when `deadLetterConfig` is provided, routes events that fail delivery to any rule target on this bus to the specified SQS queue
 - **Log Config** — configured only when `logConfig` is provided, sends event delivery logs to CloudWatch Logs at the specified verbosity level
+- **Bus Policy** — created only when `resourcePolicy` is provided, granting other accounts or organizations permission to put events onto this bus
 
 ## Prerequisites
 
@@ -34,7 +35,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeBus
 metadata:
   name: my-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -70,6 +71,7 @@ This creates a custom EventBridge bus with AWS-managed encryption and no dead le
 | `deadLetterConfig.arn` | `StringValueOrRef` | — | ARN of the SQS queue to use as the dead letter queue. Required when `deadLetterConfig` is set. The queue must exist in the same account and region. Can reference `AwsSqsQueue` via `valueFrom`. |
 | `logConfig.level` | `string` | — | Logging verbosity. One of `OFF`, `ERROR`, `INFO`, `TRACE`. Required when `logConfig` is set. |
 | `logConfig.includeDetail` | `string` | `NONE` | Whether to include full event detail in log entries. One of `NONE`, `FULL`. |
+| `resourcePolicy` | `Struct` | same-account only | Resource-based policy for the bus — cross-account / cross-organization `events:PutEvents` grants, expressed as an IAM policy document. |
 
 ## Examples
 
@@ -82,7 +84,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeBus
 metadata:
   name: payment-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -106,7 +108,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeBus
 metadata:
   name: dev-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -128,7 +130,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeBus
 metadata:
   name: order-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -140,13 +142,13 @@ spec:
     valueFrom:
       kind: AwsKmsKey
       name: order-key
-      field: status.outputs.key_arn
+      fieldPath: status.outputs.key_arn
   deadLetterConfig:
     arn:
       valueFrom:
         kind: AwsSqsQueue
         name: order-bus-dlq
-        field: status.outputs.queue_arn
+        fieldPath: status.outputs.queue_arn
   logConfig:
     level: INFO
 ```

@@ -14,10 +14,12 @@
 #   make publish        Publish all charts to the Planton platform
 #
 # Two `planton` binaries are in play:
-#   - `make validate` uses the OPEN-SOURCE CLI's `chart validate` command and
-#     builds it from this working tree (so validation always matches the protos
-#     you are editing). Override with VALIDATE_BIN=/path/to/planton to skip the
-#     build.
+#   - `make validate` uses the `chart validate` command — the offline
+#     render/protovalidate/ref-integrity gate, defined once in this repo,
+#     mounted by BOTH binaries (the open-source CLI and the Platform CLI),
+#     and also enforced in CI via lint.charts. This target builds the CLI
+#     from the working tree so validation always matches the protos you are
+#     editing. Override with VALIDATE_BIN=/path/to/planton to skip the build.
 #   - `make build` / `make publish` use the Planton *Platform* CLI: the
 #     `InfraChart` kind is a platform API, and server-side chart build renders
 #     and validates through the live control plane — the authoritative gate

@@ -1,0 +1,29 @@
+# Scenario-local custom role definition on the fixture account -- the
+# grant under test binds THIS definition through its role_definition_id
+# output, proving the zero-translation composition seam live.
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbSqlRoleDefinition
+metadata:
+  name: planton-oss-e2e-cosrasgn-fixture-role
+  id: planton-oss-e2e-cosrasgn-fixture-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecosmosdbsqlroledefinition
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cosmosdbAccountId:
+    valueFrom:
+      name: planton-oss-e2e-cosrasgn-fixture-account
+  roleName: planton-e2e-grant-fixture-role
+  assignableScopes:
+    - valueFrom:
+        name: planton-oss-e2e-cosrasgn-fixture-account
+  permissions:
+    - dataActions:
+        - Microsoft.DocumentDB/databaseAccounts/readMetadata
+        - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/read

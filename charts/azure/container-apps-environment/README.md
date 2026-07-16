@@ -1,86 +1,83 @@
 # Azure Container Apps Environment
 
-Serverless container platform on Azure with VNet integration and centralized monitoring.
+Serverless microservices without cluster operations: a VNet-injected, zone-redundant Container App Environment running the three workload shapes every product team ends up needing — a public API, a queue-driven worker that scales to zero, and a scheduled batch job — with the messaging, storage, and identity seams between them wired keylessly.
 
-## What This Chart Deploys
+## Who this is for
 
-| Resource | Kind | Condition |
-|----------|------|-----------|
-| Resource Group | `AzureResourceGroup` | Always |
-| Virtual Network | `AzureVpc` | Always |
-| Container Apps Subnet | `AzureSubnet` | Always |
-| Log Analytics Workspace | `AzureLogAnalyticsWorkspace` | Always |
-| Application Insights | `AzureApplicationInsights` | `create_app_insights` |
-| Container App Environment | `AzureContainerAppEnvironment` | Always |
-| Container App | `AzureContainerApp` | `create_container_app` |
+A product team shipping containers that wants Kubernetes-grade capabilities (Dapr sidecars, KEDA autoscaling, shared volumes, VNet privacy) with none of the cluster to run. Deploying this chart yields a working event-driven skeleton: the API publishes to a topic, the worker wakes from zero to consume it, the job runs on a schedule — replace the three quickstart images with your services and the architecture is already right.
 
 ## Architecture
 
-The chart creates a VNet-injected Container App Environment. This means all
-container apps run inside a customer-managed VNet, enabling private connectivity
-to databases, storage, and other VNet resources.
+```
+                        internet (or VNet-only with internal_only_enabled)
+                                        │
+                                   ┌────▼────┐  Dapr publish   ┌──────────────────┐
+              VNet /16             │   api   │ ───────────────▶│ Service Bus queue │
+  ┌────────────────────────────┐   └─────────┘   (keyless)     │  ("orders", DLQ   │
+  │  infrastructure subnet /21 │                               │   posture)        │
+  │  Microsoft.App delegation  │   ┌─────────┐  Dapr subscribe └────────┬─────────┘
+  │  Container App Environment │   │ worker  │ ◀───────────────────────┘
+  │  (zone-redundant)          │   └────┬────┘  KEDA scales 0→N on queue depth
+  └────────────────────────────┘        │ /data                 (keyless)
+                                   ┌────▼────────────┐
+                                   │ Azure Files SMB  │   ┌───────────────┐
+                                   │ shared volume    │   │  batch job    │
+                                   └──────────────────┘   │  (cron, UTC)  │
+                                                          └───────────────┘
+```
 
-The Container Apps subnet requires a minimum /21 CIDR (2048 IPs) for the
-Container Apps infrastructure. The default is `10.2.8.0/21`.
+Everything authenticates as one user-assigned identity: the Dapr sidecars publish/consume Service Bus with Entra tokens (Data Sender + Data Receiver grants — never a connection string), and KEDA reads queue depth with the same identity. The Dapr component disables entity management, so the messaging topology stays owned by infrastructure-as-code: the topic's backing queue is a first-class resource with dead-letter posture, TTL, and lock duration you control.
 
-Log Analytics Workspace is always created for centralized log collection.
-Application Insights is optional (default on) for application-level telemetry.
+## Resources
+
+| Kind | Name | Purpose |
+| --- | --- | --- |
+| AzureResourceGroup | `{env}-container-apps` | One container for the whole estate |
+| AzureLogAnalyticsWorkspace | `{env}-capps-logs` | Environment console/system logs + broker diagnostics |
+| AzureVirtualNetwork | `{env}-capps-vnet` | The environment's own network |
+| AzureSubnet | `{env}-capps-infra-subnet` | /21 infrastructure subnet, `Microsoft.App/environments`-delegated |
+| AzureUserAssignedIdentity | `{env}-capps-identity` | The shared workload identity everything runs as |
+| AzureRoleAssignment | `{env}-capps-bus-send` / `-receive` | Data Sender + Data Receiver on the namespace — the keyless grants |
+| AzureServiceBusNamespace | `{env}-capps-bus` | The pub/sub broker (STANDARD) |
+| AzureServiceBusQueue | `{env}-{topic}-queue` | The topic's backing queue, DLQ-postured |
+| AzureMonitorDiagnosticSetting | `{env}-capps-bus-diag` | Broker telemetry into the workspace |
+| AzureContainerAppEnvironment | `{env}-capps` | The VNet-injected, zone-redundant environment |
+| AzureContainerAppEnvironmentDaprComponent | `{env}-capps-pubsub` | Keyless Service Bus pub/sub, scoped to api + worker |
+| AzureStorageAccount | `{env}-capps-storage` | Backs the shared Azure Files volume |
+| AzureStorageShare | `{env}-capps-share` | The SMB share (quota-capped) |
+| AzureContainerAppEnvironmentStorage | `{env}-capps-shared-volume` | Registers the share for app volumes (key by reference) |
+| AzureContainerApp | `{env}-api` | Public API, external ingress, Dapr publisher |
+| AzureContainerApp | `{env}-worker` | Ingress-less consumer, scales 0→N on queue depth, mounts the volume |
+| AzureContainerAppJob | `{env}-batch-job` | Cron-triggered run-to-completion work |
 
 ## Parameters
 
-### Foundation
+| Parameter | Description | Default | Must change |
+| --- | --- | --- | --- |
+| `region` | Azure region for the estate | `centralus` | |
+| `vnet_cidr` | VNet address space | `10.20.0.0/16` | |
+| `infra_subnet_cidr` | Infrastructure subnet (/21 or larger) | `10.20.0.0/21` | |
+| `servicebus_namespace_name` | Globally unique namespace name | `my-capps-bus` | yes |
+| `storage_account_name` | Globally unique storage account name | `mycappsshared` | yes |
+| `zone_redundancy_enabled` | Zone-spread the environment (fixed at creation) | `true` | |
+| `internal_only_enabled` | VNet-only exposure via internal load balancer | `false` | |
+| `api_image` / `worker_image` / `job_image` | The three workload images | quickstart images | eventually |
+| `worker_max_replicas` | Worker scale ceiling | `10` | |
+| `job_cron_expression` | UTC schedule for the batch job | `0 3 * * *` | |
+| `orders_topic_name` | The Dapr topic (= backing queue name) | `orders` | |
+| `shared_volume_quota_gb` | Azure Files volume cap (GiB) | `64` | |
+| `log_retention_days` | Workspace retention | `30` | |
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `region` | Azure region | `eastus` |
-| `resource_group_name` | Resource group name suffix | `cae-rg` |
-| `vnet_cidr` | VNet address space | `10.2.0.0/16` |
-| `default_subnet_cidr` | Default subnet CIDR | `10.2.0.0/24` |
-| `container_apps_subnet_cidr` | Container Apps subnet (min /21) | `10.2.8.0/21` |
+## After deploying
 
-### Container App Environment
+1. **Point the API at your image** — set `api_image` (and the others) to your registry's images. For a private registry, add a `registries` block to the apps and grant the shared identity `AcrPull`.
+2. **Publish and consume through Dapr** — the API publishes with `POST http://localhost:3500/v1.0/publish/pubsub/{orders_topic_name}`; the worker subscribes to the same topic through the Dapr subscription contract. Application code never sees a Service Bus SDK or connection string.
+3. **Watch it scale** — enqueue a burst and watch the worker climb from zero (`az containerapp replica list`); the KEDA rule adds a replica per 10 pending messages.
+4. **Inspect dead letters** — messages that exhaust 10 delivery attempts or expire past 14 days land in the queue's DLQ; drain it with Service Bus Explorer in the portal.
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `environment_name` | Environment name | `my-cae` |
-| `internal_load_balancer` | Internal-only access | `false` |
-| `zone_redundancy` | Enable zone redundancy | `false` |
+## Day 2
 
-### Container App (optional)
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `create_container_app` | Deploy a sample app | `true` |
-| `container_app_name` | App name | `my-app` |
-| `container_image` | Container image | `mcr.microsoft.com/k8se/quickstart:latest` |
-| `container_cpu` | CPU cores | `0.25` |
-| `container_memory` | Memory | `0.5Gi` |
-| `target_port` | Container port | `80` |
-| `ingress_external` | Public ingress | `true` |
-| `min_replicas` | Min replicas | `0` |
-| `max_replicas` | Max replicas | `3` |
-
-### Monitoring
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `create_app_insights` | Enable Application Insights | `true` |
-
-## Example
-
-Deploy a production Container Apps environment with zone redundancy:
-
-```yaml
-params:
-  region: westus2
-  resource_group_name: myapp-cae-rg
-  environment_name: myapp-env
-  zone_redundancy: true
-  container_app_name: api
-  container_image: myregistry.azurecr.io/api:latest
-  container_cpu: "0.5"
-  container_memory: 1Gi
-  target_port: "8080"
-  min_replicas: "1"
-  max_replicas: "10"
-```
+- **More services**: each new app gets its own Dapr `appId`; add it to the component's `scopes` to grant broker access deliberately.
+- **Split identities**: when app permissions diverge, mint an identity per app and narrow each grant (queue-scoped instead of namespace-scoped).
+- **Dedicated compute**: declare `workload_profiles` on the environment (D/E families, GPU) and pin heavy apps to them with `workload_profile_name` — note that going from zero profiles to some replaces the environment.
+- **Premium messaging**: raise the namespace SKU to PREMIUM for dedicated capacity, CMK, and VNet network rules — an in-place change.

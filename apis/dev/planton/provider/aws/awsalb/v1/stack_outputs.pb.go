@@ -32,8 +32,12 @@ type AwsAlbStackOutputs struct {
 	LoadBalancerDnsName string `protobuf:"bytes,3,opt,name=load_balancer_dns_name,json=loadBalancerDnsName,proto3" json:"load_balancer_dns_name,omitempty"`
 	// load_balancer_hosted_zone_id is the Route53 hosted zone ID for the ALB's DNS entry.
 	LoadBalancerHostedZoneId string `protobuf:"bytes,4,opt,name=load_balancer_hosted_zone_id,json=loadBalancerHostedZoneId,proto3" json:"load_balancer_hosted_zone_id,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// arn_suffix is the ARN suffix (e.g. "app/my-alb/50dc6c495c0c9188") used
+	// as the LoadBalancer dimension in CloudWatch metrics -- the handle
+	// alarms, dashboards, and request-count autoscaling policies need.
+	ArnSuffix     string `protobuf:"bytes,5,opt,name=arn_suffix,json=arnSuffix,proto3" json:"arn_suffix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsAlbStackOutputs) Reset() {
@@ -94,16 +98,25 @@ func (x *AwsAlbStackOutputs) GetLoadBalancerHostedZoneId() string {
 	return ""
 }
 
+func (x *AwsAlbStackOutputs) GetArnSuffix() string {
+	if x != nil {
+		return x.ArnSuffix
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awsalb_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsalb_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"6dev/planton/provider/aws/awsalb/v1/stack_outputs.proto\x12\"dev.planton.provider.aws.awsalb.v1\"\xe3\x01\n" +
+	"6dev/planton/provider/aws/awsalb/v1/stack_outputs.proto\x12\"dev.planton.provider.aws.awsalb.v1\"\x82\x02\n" +
 	"\x12AwsAlbStackOutputs\x12*\n" +
 	"\x11load_balancer_arn\x18\x01 \x01(\tR\x0floadBalancerArn\x12,\n" +
 	"\x12load_balancer_name\x18\x02 \x01(\tR\x10loadBalancerName\x123\n" +
 	"\x16load_balancer_dns_name\x18\x03 \x01(\tR\x13loadBalancerDnsName\x12>\n" +
-	"\x1cload_balancer_hosted_zone_id\x18\x04 \x01(\tR\x18loadBalancerHostedZoneIdB\xb9\x02\n" +
+	"\x1cload_balancer_hosted_zone_id\x18\x04 \x01(\tR\x18loadBalancerHostedZoneId\x12\x1d\n" +
+	"\n" +
+	"arn_suffix\x18\x05 \x01(\tR\tarnSuffixB\xb9\x02\n" +
 	"&com.dev.planton.provider.aws.awsalb.v1B\x11StackOutputsProtoP\x01ZMgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsalb/v1;awsalbv1\xa2\x02\x05DPPAA\xaa\x02\"Dev.Planton.Provider.Aws.Awsalb.V1\xca\x02\"Dev\\Planton\\Provider\\Aws\\Awsalb\\V1\xe2\x02.Dev\\Planton\\Provider\\Aws\\Awsalb\\V1\\GPBMetadata\xea\x02'Dev::Planton::Provider::Aws::Awsalb::V1b\x06proto3"
 
 var (

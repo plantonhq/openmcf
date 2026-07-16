@@ -1,0 +1,43 @@
+params:
+  # ─── Placement ───────────────────────────────────────────────────────────────
+  - name: region
+    description: Azure region for the resource group and storage account (Front Door is global; the storage account must live in a region you choose)
+    value: centralus
+
+  # ─── Storage identity ─────────────────────────────────────────────────────────
+  - name: storage_account_name
+    description: Globally unique storage account name (3-24 lowercase letters and digits, no hyphens). Change before deploying -- it becomes the static-website origin hostname
+    value: mystaticsiteacct
+
+  # ─── Site content ────────────────────────────────────────────────────────────
+  - name: index_document
+    description: Default document served for directory requests (the SPA entry point or index.html)
+    value: index.html
+
+  - name: error_document
+    description: Document served for 404 responses (use index.html for client-routed SPAs)
+    value: index.html
+
+  # ─── Custom domain (on by default -- this chart's point) ───────────────────────
+  - name: dns_zone_name
+    description: The public DNS zone name (e.g. example.com). MUST match a zone you can delegate at your registrar -- the chart creates the zone in Azure DNS
+    value: example.com
+
+  - name: custom_domain_label
+    description: The subdomain label Front Door should serve (e.g. www serves www.<dns_zone_name>). Managed TLS is issued once the _dnsauth TXT record validates
+    value: www
+
+  - name: apex_alias_enabled
+    description: Also point the zone apex (@) at the Front Door endpoint through an alias A record -- for naked-domain traffic (example.com without www). Requires registrar NS delegation to this zone
+    value: false
+    type: bool
+
+  # ─── Edge security (optional) ────────────────────────────────────────────────
+  - name: front_door_waf_enabled
+    description: Attach a Front Door WAF policy to the endpoint. Off keeps cost low for marketing/docs sites; enable for public APIs or forms behind the same origin
+    value: false
+    type: bool
+
+  - name: front_door_waf_mode
+    description: "WAF enforcement mode when front_door_waf_enabled is true: PREVENTION blocks malicious traffic; DETECTION logs only while tuning"
+    value: PREVENTION

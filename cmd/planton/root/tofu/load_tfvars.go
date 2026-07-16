@@ -29,8 +29,7 @@ func loadTfVarsHandler(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal("failed to generate Terraform variables: ", err)
 	}
-	// fmt (stdout), not the println builtin (stderr): the command's whole
-	// purpose is producing a var-file, so `load-tfvars m.yaml > f.tfvars`
-	// must capture the rendered content.
+	// stdout, not the builtin println (which writes to stderr) -- the whole
+	// point of this command is piping the tfvars into a file or another tool.
 	fmt.Println(tfvarsString)
 }

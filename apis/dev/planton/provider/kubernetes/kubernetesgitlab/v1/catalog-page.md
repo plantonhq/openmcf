@@ -26,7 +26,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGitlab
 metadata:
   name: my-gitlab
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -65,8 +65,6 @@ This creates a GitLab instance in the `gitlab` namespace with a ClusterIP Servic
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for the GitLab container. |
 | `container.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for the GitLab container. |
@@ -86,7 +84,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGitlab
 metadata:
   name: dev-gitlab
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +111,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGitlab
 metadata:
   name: prod-gitlab
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -142,7 +140,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGitlab
 metadata:
   name: team-gitlab
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

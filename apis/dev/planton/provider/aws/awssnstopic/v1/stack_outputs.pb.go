@@ -22,24 +22,27 @@ const (
 )
 
 // AwsSnsTopicStackOutputs captures observable identifiers from a provisioned SNS topic.
-// These outputs are used by downstream resources (e.g., EventBridge targets, SQS
-// subscription endpoints, Lambda triggers) to wire dependencies via StringValueOrRef.
+// These outputs are used by downstream resources (e.g., AwsSnsSubscription topic
+// references, EventBridge targets, CloudWatch alarm actions) to wire dependencies
+// via StringValueOrRef.
 type AwsSnsTopicStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Amazon Resource Name (ARN) of the SNS topic. This is the primary
-	// identifier used for IAM policies, cross-service permissions, and as a
-	// target reference in other resources (e.g., EventBridge rule targets,
-	// CloudWatch alarm actions).
+	// identifier used for IAM policies, cross-service permissions, subscription
+	// wiring (AwsSnsSubscription.topic_arn), and as a target reference in other
+	// resources (e.g., EventBridge rule targets, CloudWatch alarm actions).
 	TopicArn string `protobuf:"bytes,1,opt,name=topic_arn,json=topicArn,proto3" json:"topic_arn,omitempty"`
 	// The name of the SNS topic. For FIFO topics this includes the `.fifo` suffix.
 	TopicName string `protobuf:"bytes,2,opt,name=topic_name,json=topicName,proto3" json:"topic_name,omitempty"`
-	// Map of subscription name to subscription ARN. The keys correspond to the
-	// `name` field of each entry in `spec.subscriptions`. Downstream resources
-	// can reference specific subscription ARNs via `valueFrom` using
-	// `status.outputs.subscription_arns.{name}`.
-	SubscriptionArns map[string]string `protobuf:"bytes,3,rep,name=subscription_arns,json=subscriptionArns,proto3" json:"subscription_arns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The AWS account ID that owns the topic. Useful for composing cross-account
+	// policies without hardcoding the account number.
+	Owner string `protobuf:"bytes,3,opt,name=owner,proto3" json:"owner,omitempty"`
+	// When `archive_policy` is active on a FIFO topic, the timestamp from which
+	// archived messages are available for replay (ISO 8601). Empty when message
+	// archiving is not enabled.
+	BeginningArchiveTime string `protobuf:"bytes,4,opt,name=beginning_archive_time,json=beginningArchiveTime,proto3" json:"beginning_archive_time,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *AwsSnsTopicStackOutputs) Reset() {
@@ -86,26 +89,31 @@ func (x *AwsSnsTopicStackOutputs) GetTopicName() string {
 	return ""
 }
 
-func (x *AwsSnsTopicStackOutputs) GetSubscriptionArns() map[string]string {
+func (x *AwsSnsTopicStackOutputs) GetOwner() string {
 	if x != nil {
-		return x.SubscriptionArns
+		return x.Owner
 	}
-	return nil
+	return ""
+}
+
+func (x *AwsSnsTopicStackOutputs) GetBeginningArchiveTime() string {
+	if x != nil {
+		return x.BeginningArchiveTime
+	}
+	return ""
 }
 
 var File_dev_planton_provider_aws_awssnstopic_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awssnstopic_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	";dev/planton/provider/aws/awssnstopic/v1/stack_outputs.proto\x12'dev.planton.provider.aws.awssnstopic.v1\"\xa0\x02\n" +
+	";dev/planton/provider/aws/awssnstopic/v1/stack_outputs.proto\x12'dev.planton.provider.aws.awssnstopic.v1\"\xa1\x01\n" +
 	"\x17AwsSnsTopicStackOutputs\x12\x1b\n" +
 	"\ttopic_arn\x18\x01 \x01(\tR\btopicArn\x12\x1d\n" +
 	"\n" +
-	"topic_name\x18\x02 \x01(\tR\ttopicName\x12\x83\x01\n" +
-	"\x11subscription_arns\x18\x03 \x03(\v2V.dev.planton.provider.aws.awssnstopic.v1.AwsSnsTopicStackOutputs.SubscriptionArnsEntryR\x10subscriptionArns\x1aC\n" +
-	"\x15SubscriptionArnsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xdc\x02\n" +
+	"topic_name\x18\x02 \x01(\tR\ttopicName\x12\x14\n" +
+	"\x05owner\x18\x03 \x01(\tR\x05owner\x124\n" +
+	"\x16beginning_archive_time\x18\x04 \x01(\tR\x14beginningArchiveTimeB\xdc\x02\n" +
 	"+com.dev.planton.provider.aws.awssnstopic.v1B\x11StackOutputsProtoP\x01ZWgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awssnstopic/v1;awssnstopicv1\xa2\x02\x05DPPAA\xaa\x02'Dev.Planton.Provider.Aws.Awssnstopic.V1\xca\x02'Dev\\Planton\\Provider\\Aws\\Awssnstopic\\V1\xe2\x023Dev\\Planton\\Provider\\Aws\\Awssnstopic\\V1\\GPBMetadata\xea\x02,Dev::Planton::Provider::Aws::Awssnstopic::V1b\x06proto3"
 
 var (
@@ -120,18 +128,16 @@ func file_dev_planton_provider_aws_awssnstopic_v1_stack_outputs_proto_rawDescGZI
 	return file_dev_planton_provider_aws_awssnstopic_v1_stack_outputs_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awssnstopic_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_aws_awssnstopic_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_aws_awssnstopic_v1_stack_outputs_proto_goTypes = []any{
 	(*AwsSnsTopicStackOutputs)(nil), // 0: dev.planton.provider.aws.awssnstopic.v1.AwsSnsTopicStackOutputs
-	nil,                             // 1: dev.planton.provider.aws.awssnstopic.v1.AwsSnsTopicStackOutputs.SubscriptionArnsEntry
 }
 var file_dev_planton_provider_aws_awssnstopic_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.aws.awssnstopic.v1.AwsSnsTopicStackOutputs.subscription_arns:type_name -> dev.planton.provider.aws.awssnstopic.v1.AwsSnsTopicStackOutputs.SubscriptionArnsEntry
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awssnstopic_v1_stack_outputs_proto_init() }
@@ -145,7 +151,7 @@ func file_dev_planton_provider_aws_awssnstopic_v1_stack_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awssnstopic_v1_stack_outputs_proto_rawDesc), len(file_dev_planton_provider_aws_awssnstopic_v1_stack_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

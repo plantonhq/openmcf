@@ -7,111 +7,163 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// replicationGroup creates the ElastiCache replication group and exports outputs.
+// replicationGroup provisions the aws_elasticache_replication_group
+// itself -- the in-memory data plane: endpoints, topology, encryption,
+// authentication, and engine lifecycle. The group composes onto its
+// neighbors instead of embedding them: subnets, security groups, KMS
+// keys, and RBAC user groups attach by reference, and network ingress
+// rules live on the referenced AwsSecurityGroup nodes -- this module
+// never creates or mutates a resource that deserves to be its own node.
+//
+// Create-only in AWS: the replication_group_id, port, network_type,
+// at-rest encryption + KMS key, restore sources (snapshot_arns/
+// snapshot_name), global datastore membership, durability, and explicit
+// shard placement (node_group_configurations). Everything else updates
+// in place (immediately or at the next maintenance window, per
+// apply_immediately).
 func replicationGroup(
 	ctx *pulumi.Context,
 	locals *Locals,
 	provider *aws.Provider,
 	createdSubnetGroup *elasticache.SubnetGroup,
-	createdParamGroup *elasticache.ParameterGroup,
-) error {
-	spec := locals.Spec
+	createdParameterGroup *elasticache.ParameterGroup,
+) (*elasticache.ReplicationGroup, error) {
+	spec := locals.AwsRedisElasticache.Spec
 
 	args := &elasticache.ReplicationGroupArgs{
-		ReplicationGroupId: pulumi.String(locals.Target.Metadata.Id),
+		ReplicationGroupId: pulumi.String(locals.ReplicationGroupId),
 		Description:        pulumi.String(spec.Description),
-		Engine:             pulumi.String(spec.Engine),
-		NodeType:           pulumi.String(spec.NodeType),
 		Tags:               pulumi.ToStringMap(locals.AwsTags),
 		ApplyImmediately:   pulumi.Bool(spec.ApplyImmediately),
 	}
 
-	// Engine version
+	// Engine settings are inherited from the global primary when joining
+	// a global datastore -- forward only when the spec carries them.
+	if spec.Engine != "" {
+		args.Engine = pulumi.String(spec.Engine)
+	}
 	if spec.EngineVersion != "" {
 		args.EngineVersion = pulumi.String(spec.EngineVersion)
 	}
-
-	// Port
+	if spec.NodeType != "" {
+		args.NodeType = pulumi.String(spec.NodeType)
+	}
 	if spec.Port != nil {
-		args.Port = pulumi.Int(*spec.Port)
+		args.Port = pulumi.Int(int(*spec.Port))
 	}
 
-	// -------------------------------------------------------------------
-	// Topology
-	// -------------------------------------------------------------------
-
+	// Topology: exactly one of num_cache_clusters (non-clustered) or
+	// num_node_groups (clustered), CEL-enforced. A global-datastore
+	// secondary may set only num_cache_clusters.
 	if spec.NumCacheClusters > 0 {
-		// Non-clustered mode
-		args.NumCacheClusters = pulumi.Int(spec.NumCacheClusters)
+		args.NumCacheClusters = pulumi.Int(int(spec.NumCacheClusters))
 	} else if spec.NumNodeGroups > 0 {
-		// Clustered mode
-		args.NumNodeGroups = pulumi.Int(spec.NumNodeGroups)
+		args.NumNodeGroups = pulumi.Int(int(spec.NumNodeGroups))
 		if spec.ReplicasPerNodeGroup > 0 {
-			args.ReplicasPerNodeGroup = pulumi.Int(spec.ReplicasPerNodeGroup)
+			args.ReplicasPerNodeGroup = pulumi.Int(int(spec.ReplicasPerNodeGroup))
 		}
 	}
 
-	// -------------------------------------------------------------------
-	// High availability
-	// -------------------------------------------------------------------
+	if len(spec.PreferredCacheClusterAzs) > 0 {
+		args.PreferredCacheClusterAzs = pulumi.ToStringArray(spec.PreferredCacheClusterAzs)
+	}
+
+	if len(spec.NodeGroupConfigurations) > 0 {
+		nodeGroupConfigs := elasticache.ReplicationGroupNodeGroupConfigurationArray{}
+		for _, nodeGroupConfig := range spec.NodeGroupConfigurations {
+			configArgs := &elasticache.ReplicationGroupNodeGroupConfigurationArgs{}
+			if nodeGroupConfig.NodeGroupId != "" {
+				configArgs.NodeGroupId = pulumi.String(nodeGroupConfig.NodeGroupId)
+			}
+			if nodeGroupConfig.PrimaryAvailabilityZone != "" {
+				configArgs.PrimaryAvailabilityZone = pulumi.String(nodeGroupConfig.PrimaryAvailabilityZone)
+			}
+			if len(nodeGroupConfig.ReplicaAvailabilityZones) > 0 {
+				configArgs.ReplicaAvailabilityZones = pulumi.ToStringArray(nodeGroupConfig.ReplicaAvailabilityZones)
+			}
+			if nodeGroupConfig.ReplicaCount > 0 {
+				configArgs.ReplicaCount = pulumi.Int(int(nodeGroupConfig.ReplicaCount))
+			}
+			if nodeGroupConfig.Slots != "" {
+				configArgs.Slots = pulumi.String(nodeGroupConfig.Slots)
+			}
+			nodeGroupConfigs = append(nodeGroupConfigs, configArgs)
+		}
+		args.NodeGroupConfigurations = nodeGroupConfigs
+	}
 
 	args.AutomaticFailoverEnabled = pulumi.Bool(spec.AutomaticFailoverEnabled)
 	args.MultiAzEnabled = pulumi.Bool(spec.MultiAzEnabled)
 
-	// -------------------------------------------------------------------
-	// Networking
-	// -------------------------------------------------------------------
+	if spec.Durability != "" {
+		args.Durability = pulumi.String(spec.Durability)
+	}
 
+	if spec.GlobalReplicationGroupId != "" {
+		args.GlobalReplicationGroupId = pulumi.String(spec.GlobalReplicationGroupId)
+	}
+
+	// Networking: the subnet group managed here (or referenced), security
+	// groups for node-level access, and optional dual-stack settings.
 	if createdSubnetGroup != nil {
 		args.SubnetGroupName = createdSubnetGroup.Name
+	} else if spec.SubnetGroupName != "" {
+		args.SubnetGroupName = pulumi.String(spec.SubnetGroupName)
 	}
-
-	var sgIds pulumi.StringArray
-	for _, sg := range spec.SecurityGroupIds {
-		if sg.GetValue() != "" {
-			sgIds = append(sgIds, pulumi.String(sg.GetValue()))
+	if len(spec.SecurityGroupIds) > 0 {
+		securityGroupIds := pulumi.StringArray{}
+		for _, securityGroupId := range spec.SecurityGroupIds {
+			securityGroupIds = append(securityGroupIds, pulumi.String(securityGroupId.GetValue()))
 		}
+		args.SecurityGroupIds = securityGroupIds
 	}
-	if len(sgIds) > 0 {
-		args.SecurityGroupIds = sgIds
+	if spec.NetworkType != "" {
+		args.NetworkType = pulumi.String(spec.NetworkType)
 	}
-
-	// -------------------------------------------------------------------
-	// Encryption
-	// -------------------------------------------------------------------
+	if spec.IpDiscovery != "" {
+		args.IpDiscovery = pulumi.String(spec.IpDiscovery)
+	}
 
 	args.AtRestEncryptionEnabled = pulumi.Bool(spec.AtRestEncryptionEnabled)
 	args.TransitEncryptionEnabled = pulumi.Bool(spec.TransitEncryptionEnabled)
-
 	if spec.TransitEncryptionMode != "" {
 		args.TransitEncryptionMode = pulumi.String(spec.TransitEncryptionMode)
 	}
-
-	if spec.KmsKeyId.GetValue() != "" {
+	if spec.KmsKeyId != nil && spec.KmsKeyId.GetValue() != "" {
 		args.KmsKeyId = pulumi.String(spec.KmsKeyId.GetValue())
 	}
 
-	// -------------------------------------------------------------------
-	// Authentication
-	// -------------------------------------------------------------------
-
-	if spec.AuthToken.GetValue() != "" {
+	// Authentication: legacy AUTH token or RBAC user groups (mutually
+	// exclusive, CEL-enforced). auth_token is a presence field -- forward
+	// only when the manifest explicitly sets it.
+	if spec.AuthToken != nil {
 		args.AuthToken = pulumi.String(spec.AuthToken.GetValue())
 	}
-
+	if spec.AuthTokenUpdateStrategy != "" {
+		args.AuthTokenUpdateStrategy = pulumi.String(spec.AuthTokenUpdateStrategy)
+	}
 	if len(spec.UserGroupIds) > 0 {
-		args.UserGroupIds = pulumi.ToStringArray(spec.UserGroupIds)
+		userGroupIds := pulumi.StringArray{}
+		for _, userGroupId := range spec.UserGroupIds {
+			userGroupIds = append(userGroupIds, pulumi.String(userGroupId.GetValue()))
+		}
+		args.UserGroupIds = userGroupIds
 	}
 
-	// -------------------------------------------------------------------
-	// Maintenance and snapshots
-	// -------------------------------------------------------------------
+	// Create-time restore sources (mutually exclusive, CEL-enforced):
+	// from S3 RDB files or from an ElastiCache snapshot.
+	if len(spec.SnapshotArns) > 0 {
+		args.SnapshotArns = pulumi.ToStringArray(spec.SnapshotArns)
+	}
+	if spec.SnapshotName != "" {
+		args.SnapshotName = pulumi.String(spec.SnapshotName)
+	}
 
 	if spec.MaintenanceWindow != "" {
 		args.MaintenanceWindow = pulumi.String(spec.MaintenanceWindow)
 	}
 	if spec.SnapshotRetentionLimit > 0 {
-		args.SnapshotRetentionLimit = pulumi.Int(spec.SnapshotRetentionLimit)
+		args.SnapshotRetentionLimit = pulumi.Int(int(spec.SnapshotRetentionLimit))
 	}
 	if spec.SnapshotWindow != "" {
 		args.SnapshotWindow = pulumi.String(spec.SnapshotWindow)
@@ -120,36 +172,28 @@ func replicationGroup(
 		args.FinalSnapshotIdentifier = pulumi.String(spec.FinalSnapshotIdentifier)
 	}
 
-	// -------------------------------------------------------------------
-	// Parameter group
-	// -------------------------------------------------------------------
-
-	if createdParamGroup != nil {
-		args.ParameterGroupName = createdParamGroup.Name
+	// Parameter groups: the managed inline group, an existing referenced
+	// group, or the engine default.
+	if createdParameterGroup != nil {
+		args.ParameterGroupName = createdParameterGroup.Name
+	} else if spec.ParameterGroupName != "" {
+		args.ParameterGroupName = pulumi.String(spec.ParameterGroupName)
 	}
 
-	// -------------------------------------------------------------------
-	// Logging
-	// -------------------------------------------------------------------
-
 	if len(spec.LogDeliveryConfigurations) > 0 {
-		var logConfigs elasticache.ReplicationGroupLogDeliveryConfigurationArray
-		for _, lc := range spec.LogDeliveryConfigurations {
+		logConfigs := elasticache.ReplicationGroupLogDeliveryConfigurationArray{}
+		for _, logConfig := range spec.LogDeliveryConfigurations {
 			logConfigs = append(logConfigs, &elasticache.ReplicationGroupLogDeliveryConfigurationArgs{
-				DestinationType: pulumi.String(lc.DestinationType),
-				Destination:     pulumi.String(lc.Destination.GetValue()),
-				LogFormat:       pulumi.String(lc.LogFormat),
-				LogType:         pulumi.String(lc.LogType),
+				DestinationType: pulumi.String(logConfig.DestinationType),
+				Destination:     pulumi.String(logConfig.Destination.GetValue()),
+				LogFormat:       pulumi.String(logConfig.LogFormat),
+				LogType:         pulumi.String(logConfig.LogType),
 			})
 		}
 		args.LogDeliveryConfigurations = logConfigs
 	}
 
-	// -------------------------------------------------------------------
-	// Advanced
-	// -------------------------------------------------------------------
-
-	if spec.NotificationTopicArn.GetValue() != "" {
+	if spec.NotificationTopicArn != nil && spec.NotificationTopicArn.GetValue() != "" {
 		args.NotificationTopicArn = pulumi.String(spec.NotificationTopicArn.GetValue())
 	}
 	if spec.AutoMinorVersionUpgrade {
@@ -158,26 +202,13 @@ func replicationGroup(
 	if spec.DataTieringEnabled {
 		args.DataTieringEnabled = pulumi.Bool(true)
 	}
-
-	// -------------------------------------------------------------------
-	// Create replication group
-	// -------------------------------------------------------------------
-
-	rg, err := elasticache.NewReplicationGroup(ctx, "replication-group", args, pulumi.Provider(provider))
-	if err != nil {
-		return errors.Wrap(err, "create replication group")
+	if spec.ClusterMode != "" {
+		args.ClusterMode = pulumi.String(spec.ClusterMode)
 	}
 
-	// -------------------------------------------------------------------
-	// Export outputs
-	// -------------------------------------------------------------------
-
-	ctx.Export(OpReplicationGroupId, rg.ID())
-	ctx.Export(OpPrimaryEndpointAddress, rg.PrimaryEndpointAddress)
-	ctx.Export(OpReaderEndpointAddress, rg.ReaderEndpointAddress)
-	ctx.Export(OpConfigurationEndpointAddress, rg.ConfigurationEndpointAddress)
-	ctx.Export(OpArn, rg.Arn)
-	ctx.Export(OpPort, rg.Port)
-
-	return nil
+	createdReplicationGroup, err := elasticache.NewReplicationGroup(ctx, "replication-group", args, pulumi.Provider(provider))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create ElastiCache replication group")
+	}
+	return createdReplicationGroup, nil
 }

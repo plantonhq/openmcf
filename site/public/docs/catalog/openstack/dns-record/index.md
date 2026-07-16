@@ -31,10 +31,18 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackDnsRecord
 metadata:
   name: my-a-record
-  labels:
-    planton.dev/provisioner: pulumi
+  annotations:
+    planton.dev/stack.jobId: prod.OpenstackDnsRecord.api-record
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackDnsRecord.mail-mx
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackDnsRecord.docs-cname
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
+    planton.dev/stack.jobId: dev.OpenstackDnsRecord.web-a-record
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackDnsRecord.my-a-record
     planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
+    planton.dev/provisioner: pulumi
 spec:
   zoneId: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
   recordName: "www.example.com."
@@ -81,10 +89,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackDnsRecord
 metadata:
   name: web-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: dev.OpenstackDnsRecord.web-a-record
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
 spec:
   zoneId: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
   recordName: "web.example.com."
@@ -105,10 +111,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackDnsRecord
 metadata:
   name: docs-cname
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackDnsRecord.docs-cname
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
 spec:
   zoneId: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
   recordName: "docs.example.com."
@@ -127,10 +131,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackDnsRecord
 metadata:
   name: mail-mx
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackDnsRecord.mail-mx
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
 spec:
   zoneId: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
   recordName: "example.com."
@@ -151,10 +153,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackDnsRecord
 metadata:
   name: api-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackDnsRecord.api-record
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
 spec:
   zoneId:
     valueFrom:

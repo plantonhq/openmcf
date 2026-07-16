@@ -32,10 +32,20 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolumeAttach
 metadata:
   name: my-attach
-  labels:
-    planton.dev/provisioner: pulumi
+  annotations:
+    planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-wal-disk
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-data-disk
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackVolumeAttach.app-data-attach
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-data-attach
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
+    planton.dev/stack.jobId: dev.OpenstackVolumeAttach.data-attach
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackVolumeAttach.my-attach
     planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
+    planton.dev/provisioner: pulumi
 spec:
   instanceId: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
   volumeId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
@@ -78,10 +88,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolumeAttach
 metadata:
   name: data-attach
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: dev.OpenstackVolumeAttach.data-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
 spec:
   instanceId: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
   volumeId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
@@ -96,10 +104,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolumeAttach
 metadata:
   name: db-data-attach
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-data-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
 spec:
   instanceId: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
   volumeId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
@@ -115,10 +121,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolumeAttach
 metadata:
   name: app-data-attach
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackVolumeAttach.app-data-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
 spec:
   instanceId:
     valueFrom:
@@ -142,10 +146,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolumeAttach
 metadata:
   name: db-data-disk
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-data-disk
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
 spec:
   instanceId:
     valueFrom:
@@ -163,10 +165,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolumeAttach
 metadata:
   name: db-wal-disk
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-wal-disk
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
 spec:
   instanceId:
     valueFrom:

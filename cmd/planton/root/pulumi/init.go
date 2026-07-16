@@ -18,7 +18,7 @@ var Init = &cobra.Command{
 	Use:   "init",
 	Short: "initialize a new pulumi stack",
 	Long: `Initialize a new Pulumi stack for the resource defined in the manifest.
-This command extracts the stack FQDN from the manifest labels and creates
+This command extracts the stack FQDN from the manifest annotations and creates
 the stack in your configured Pulumi backend.`,
 	Run: initHandler,
 }

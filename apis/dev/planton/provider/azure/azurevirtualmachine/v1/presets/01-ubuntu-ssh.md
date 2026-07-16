@@ -1,32 +1,27 @@
-# Ubuntu 22.04 LTS with SSH Key Authentication
+# Ubuntu Server with SSH Keys
 
-This preset deploys an Ubuntu 22.04 LTS Gen2 VM with SSH key authentication, no public IP, boot diagnostics enabled, and a 30 GB Premium SSD OS disk. This is the standard configuration for secure Linux workloads accessed via private network (VPN, Bastion, or peered VNet).
+This preset creates a zonal Ubuntu 24.04 LTS VM authenticated by SSH keys only, attached to a referenced `AzureNetworkInterface`, with managed boot diagnostics. It is the canonical Linux production shape: password authentication stays disabled (the default), and every composable piece -- the NIC, and through it the subnet, public IP, and NSG -- is a first-class referenced resource.
 
 ## When to Use
 
-- Linux application servers, jump boxes, or development VMs
-- Workloads accessed via Azure Bastion, VPN, or VNet peering (no public internet exposure)
-- Teams that follow security best practices with SSH key-only authentication
-- Standard compute needs (2 vCPUs, 8 GiB RAM) that don't require GPU or high memory
+- General-purpose Linux application and web servers
+- Bastion-less fleets managed over SSH from inside the network
+- The starting point for any Linux workload before layering data disks, identity, or spot
 
 ## Key Configuration Choices
 
-- **Ubuntu 22.04 LTS Gen2** (`image.sku: 22_04-lts-gen2`) -- Long-term support release with Gen2 VM performance improvements
-- **SSH key authentication** (`sshPublicKey`) -- No password; key-based auth is more secure and recommended for production
-- **No public IP** (`network.enablePublicIp: false`) -- VM is accessible only via private network; use Azure Bastion or VPN for SSH access
-- **Standard_D2s_v3** (`vmSize`) -- 2 vCPUs, 8 GiB RAM; good starting point for general-purpose Linux workloads
-- **Premium SSD** (`osDisk.storageType: premium_lrs`) -- Low-latency, high-throughput storage for the OS disk
-- **Boot diagnostics enabled** -- Captures serial console output to help diagnose boot issues
+- **`networkInterfaceIds` reference** -- resolves to the NIC's `network_interface_id` output. The VM's entire network posture (subnet, public exposure, NSG filtering) lives on the NIC, so changing it never touches the VM
+- **SSH keys, no password** -- `disablePasswordAuthentication` defaults to true; the key is public material and safe in a manifest
+- **`osDisk` Premium** -- the production default; the OS disk is the one disk born and dying with the VM. Data belongs on referenced `AzureManagedDisk` resources (`dataDiskAttachments`) that outlive it
+- **`version: latest` resolves at creation only** -- the VM does not follow new image releases; pin a version for reproducible fleets
+- **Zonal placement** -- zone "1" here; NICs' public IPs and zonal disks must match the zone
+- **`bootDiagnostics: {}`** -- managed storage, no account to operate; the serial console is the first tool when a VM will not boot
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<azure-region>` | Azure region (e.g., `eastus`, `westeurope`) | Your regional deployment strategy |
+| `<azure-region>` | Azure region (must match the NIC's region) | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<subnet-id>` | ARM resource ID of the subnet for the VM's NIC | Azure portal or `AzureVpc` / `AzureSubnet` status outputs |
-| `<your-ssh-public-key>` | SSH public key (e.g., `ssh-rsa AAAAB3...`) | `~/.ssh/id_rsa.pub` or `ssh-keygen` output |
-
-## Related Presets
-
-- **02-windows-rdp** -- Use instead for Windows Server workloads with RDP access
+| `<your-network-interface-resource-name>` | Planton metadata name of the `AzureNetworkInterface` | Your NIC resource |
+| `<your-ssh-public-key>` | An OpenSSH public key, e.g. `ssh-ed25519 AAAA...` | `~/.ssh/id_ed25519.pub` or your key management |

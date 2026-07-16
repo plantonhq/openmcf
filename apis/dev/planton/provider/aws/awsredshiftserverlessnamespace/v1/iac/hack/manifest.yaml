@@ -1,0 +1,9 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsRedshiftServerlessNamespace
+metadata:
+  name: awsredshiftserverlessnamespace-demo
+spec:
+  region: us-west-2
+  dbName: analytics
+  adminUsername: hackadmin
+  manageAdminPassword: true

@@ -66,6 +66,7 @@ const iconMap: Record<string, string> = {
   performance: '⚡',
   lightbulb: '💡',
   package: '📦',
+  server: '🖥️',
 };
 
 // Category-based icon mapping

@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: my-role-assignment
+spec:
+  scope:
+    value: <resource-group-arm-id>
+  roleDefinitionName: <built-in-role-name>
+  principalId:
+    value: <identity-principal-object-id>
+  # Pre-set for the composed case where the identity is created in the same
+  # deployment: freshly created principals replicate through Azure AD
+  # asynchronously, and this flag avoids minutes of PrincipalNotFound retries.
+  skipServicePrincipalAadCheck: true
+  description: <why-this-grant-exists>

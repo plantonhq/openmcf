@@ -1,0 +1,26 @@
+# Minimal AzureAksNodePool scenario: a zero-node user pool on the cluster
+# prerequisite. node_count: 0 parks the pool -- AKS validates the full
+# cluster/subnet wiring and creates the agent pool resource without
+# launching any VMs. Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: azure.planton.dev/v1
+kind: AzureAksNodePool
+metadata:
+  name: planton-oss-e2e-aksnp-smoke
+  id: planton-oss-e2e-aksnp-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureaksnodepool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  kubernetesClusterId:
+    valueFrom:
+      name: planton-oss-e2e-aks-cluster-prereq
+  name: e2ework
+  vmSize: Standard_B2s
+  nodeCount: 0
+  mode: USER

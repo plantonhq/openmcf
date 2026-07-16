@@ -1,0 +1,40 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "importmap",
+    srcs = [
+        "discover.go",
+        "doc.go",
+        "format.go",
+        "loader.go",
+        "paths.go",
+        "resolve.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/iac/importmap",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//apis/dev/planton/iac/componentimportmap/v1:componentimportmap",
+        "//apis/dev/planton/iac/providerimportcatalog/v1:providerimportcatalog",
+        "//pkg/protobufyaml",
+        "@com_github_pkg_errors//:errors",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)
+
+go_test(
+    name = "importmap_test",
+    srcs = [
+        "conformance_test.go",
+        "resolve_test.go",
+    ],
+    embed = [":importmap"],
+    deps = [
+        "//apis/dev/planton/iac/componentimportmap/v1:componentimportmap",
+        "//apis/dev/planton/provider/aws/awsecrrepo/v1:awsecrrepo",
+        "//pkg/crkreflect",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//reflect/protoregistry",
+    ],
+)

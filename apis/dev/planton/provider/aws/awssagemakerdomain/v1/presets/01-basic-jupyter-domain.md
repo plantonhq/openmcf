@@ -10,6 +10,10 @@ A minimal SageMaker Domain for getting started with JupyterLab in your VPC.
 
 ## Configuration Highlights
 
+- **Clean teardown**: `homeEfsRetentionPolicy: Delete` removes the domain's
+  auto-created EFS home file system with the domain (AWS's default Retain
+  leaves it behind, still billing)
+
 - **Auth mode**: IAM (simplest setup, no SSO required)
 - **Network**: PublicInternetOnly (default, notebooks can access internet)
 - **Encryption**: AWS-managed default keys for EFS

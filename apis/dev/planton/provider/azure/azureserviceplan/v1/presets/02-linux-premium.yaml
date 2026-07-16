@@ -6,8 +6,14 @@ spec:
   region: <azure-region>
   resourceGroup:
     value: "<your-resource-group-name>"
-  name: <plan-name>
-  osType: Linux  # default from spec
-  skuName: P1v3
+  servicePlanName: my-premium-plan
+  # LINUX is the spec default -- stated here for clarity.
+  osType: LINUX
+  # Premium v3: the current price-performance sweet spot -- faster
+  # hardware, zone redundancy, up to 30 instances.
+  skuName: PREMIUM_P1V3
+  # A multiple of the region's availability-zone count (typically 3)
+  # keeps zone-balanced instances evenly spread -- and never below 2, or
+  # enabling zone balancing later recreates the plan.
   workerCount: 3
   zoneBalancingEnabled: true

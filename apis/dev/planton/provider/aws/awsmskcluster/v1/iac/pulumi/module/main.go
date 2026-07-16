@@ -18,41 +18,40 @@ func Resources(ctx *pulumi.Context, stackInput *awsmskclusterv1.AwsMskClusterSta
 		return errors.Wrap(err, "failed to create AWS provider")
 	}
 
-	// Managed security group (ingress from SGs and/or CIDRs on Kafka + ZooKeeper ports)
-	createdSg, err := securityGroup(ctx, locals, provider)
-	if err != nil {
-		return errors.Wrap(err, "security group")
-	}
-
-	// Inline MSK Configuration (when server_properties provided)
+	// Module-managed MSK Configuration (when server_properties provided)
 	createdConfig, err := configuration(ctx, locals, provider)
 	if err != nil {
 		return errors.Wrap(err, "msk configuration")
 	}
 
 	// MSK Cluster
-	mskCluster, err := cluster(ctx, locals, provider, createdSg, createdConfig)
+	createdCluster, err := cluster(ctx, locals, provider, createdConfig)
 	if err != nil {
 		return errors.Wrap(err, "msk cluster")
 	}
 
-	// Export outputs
-	ctx.Export(OpClusterArn, mskCluster.Arn)
-	ctx.Export(OpClusterName, mskCluster.ClusterName)
-	ctx.Export(OpClusterUuid, mskCluster.ClusterUuid)
-	ctx.Export(OpCurrentVersion, mskCluster.CurrentVersion)
-	ctx.Export(OpBootstrapBrokers, mskCluster.BootstrapBrokers)
-	ctx.Export(OpBootstrapBrokersTls, mskCluster.BootstrapBrokersTls)
-	ctx.Export(OpBootstrapBrokersSaslIam, mskCluster.BootstrapBrokersSaslIam)
-	ctx.Export(OpBootstrapBrokersSaslScram, mskCluster.BootstrapBrokersSaslScram)
-	ctx.Export(OpBootstrapBrokersPublicTls, mskCluster.BootstrapBrokersPublicTls)
-	ctx.Export(OpBootstrapBrokersPublicSaslIam, mskCluster.BootstrapBrokersPublicSaslIam)
-	ctx.Export(OpBootstrapBrokersPublicSaslScram, mskCluster.BootstrapBrokersPublicSaslScram)
-	ctx.Export(OpZookeeperConnectString, mskCluster.ZookeeperConnectString)
-	ctx.Export(OpZookeeperConnectStringTls, mskCluster.ZookeeperConnectStringTls)
-	if createdSg != nil {
-		ctx.Export(OpSecurityGroupId, createdSg.ID())
+	// Cluster-scoped satellites (SCRAM secret associations, resource policy)
+	if err := satellites(ctx, locals, provider, createdCluster); err != nil {
+		return errors.Wrap(err, "msk cluster satellites")
 	}
+
+	// Export outputs
+	ctx.Export(OpClusterArn, createdCluster.Arn)
+	ctx.Export(OpClusterName, createdCluster.ClusterName)
+	ctx.Export(OpClusterUuid, createdCluster.ClusterUuid)
+	ctx.Export(OpCurrentVersion, createdCluster.CurrentVersion)
+	ctx.Export(OpBootstrapBrokers, createdCluster.BootstrapBrokers)
+	ctx.Export(OpBootstrapBrokersTls, createdCluster.BootstrapBrokersTls)
+	ctx.Export(OpBootstrapBrokersSaslIam, createdCluster.BootstrapBrokersSaslIam)
+	ctx.Export(OpBootstrapBrokersSaslScram, createdCluster.BootstrapBrokersSaslScram)
+	ctx.Export(OpBootstrapBrokersPublicTls, createdCluster.BootstrapBrokersPublicTls)
+	ctx.Export(OpBootstrapBrokersPublicSaslIam, createdCluster.BootstrapBrokersPublicSaslIam)
+	ctx.Export(OpBootstrapBrokersPublicSaslScram, createdCluster.BootstrapBrokersPublicSaslScram)
+	ctx.Export(OpBootstrapBrokersVpcConnectivityTls, createdCluster.BootstrapBrokersVpcConnectivityTls)
+	ctx.Export(OpBootstrapBrokersVpcConnectivitySaslIam, createdCluster.BootstrapBrokersVpcConnectivitySaslIam)
+	ctx.Export(OpBootstrapBrokersVpcConnectivitySaslScram, createdCluster.BootstrapBrokersVpcConnectivitySaslScram)
+	ctx.Export(OpZookeeperConnectString, createdCluster.ZookeeperConnectString)
+	ctx.Export(OpZookeeperConnectStringTls, createdCluster.ZookeeperConnectStringTls)
 	if createdConfig != nil {
 		ctx.Export(OpConfigurationArn, createdConfig.Arn)
 	}

@@ -1,22 +1,21 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureKeyVault
 metadata:
-  name: my-restricted-key-vault
+  name: prod-cmk-vault
 spec:
-  region: <azure-region>
+  region: eastus
   resourceGroup:
-    value: "<your-resource-group-name>"
+    value: <resource-group-name>
+  # Replace: 3-24 chars, letters/digits/hyphens, globally unique -- it
+  # becomes {name}.vault.azure.net.
+  vaultName: myorg-prod-cmk-vault
   sku: PREMIUM
-  enableRbacAuthorization: true
-  enablePurgeProtection: true
-  softDeleteRetentionDays: 90
+  purgeProtectionEnabled: true
   networkAcls:
-    defaultAction: DENY  # default from spec; deny all unless explicitly allowed
-    bypassAzureServices: true  # default from spec; allow Azure Backup, Monitor, etc.
+    defaultAction: DENY
     ipRules:
-      - <your-office-cidr>
+      - <office-or-ci-cidr>
     virtualNetworkSubnetIds:
-      - <your-subnet-resource-id>
-  secretNames:
-    - <your-secret-name-1>
-    - <your-secret-name-2>
+      - value: <app-subnet-arm-id>
+  tags:
+    cost-center: <cost-center>

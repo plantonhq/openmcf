@@ -6,15 +6,21 @@ spec:
   region: <azure-region>
   resourceGroup:
     value: "<your-resource-group-name>"
-  name: <environment-name>
+  environmentName: my-production-env
   infrastructureSubnetId:
     value: "<infrastructure-subnet-id>"
+  logsDestination: LOG_ANALYTICS
   logAnalyticsWorkspaceId:
     value: "<log-analytics-workspace-id>"
   internalLoadBalancerEnabled: true
   zoneRedundancyEnabled: true
+  mutualTlsEnabled: true
   workloadProfiles:
     - name: dedicated
       workloadProfileType: D4
       minimumCount: 1
       maximumCount: 5
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    environment: production

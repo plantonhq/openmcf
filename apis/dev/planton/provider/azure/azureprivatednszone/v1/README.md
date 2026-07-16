@@ -2,78 +2,94 @@
 
 ## Overview
 
-**AzurePrivateDnsZone** creates an Azure Private DNS Zone with a Virtual Network link, enabling private name resolution within Azure Virtual Networks.
+`AzurePrivateDnsZone` provisions an Azure Private DNS zone: name
+resolution inside virtual networks without running a DNS server. Private
+DNS zones power two scenarios -- automatic resolution for Azure Private
+Endpoints (the `privatelink.*` zones) and custom internal DNS
+(`corp.internal`).
 
-Azure Private DNS zones serve two primary purposes:
+## The Zone Is Just the Zone
 
-1. **Private Link DNS resolution** -- When using Azure Private Endpoints to access PaaS services (PostgreSQL, MySQL, Key Vault, Storage, etc.) over a private IP, the corresponding privatelink DNS zone ensures that the service's FQDN resolves to its private IP address instead of the public one. Without a properly configured private DNS zone, clients in the VNet would resolve the public IP and bypass the private endpoint entirely.
+The zone is a global record container with no reach of its own. Which
+networks can resolve it is declared through
+`AzurePrivateDnsZoneVirtualNetworkLink` resources referencing this zone's
+`zone_id` output -- one link per network, added and removed without
+touching the zone. A zone with no links answers nobody, so every
+deployment pairs the zone with at least one link.
 
-2. **Custom internal DNS** -- For internal name resolution (e.g., `contoso.internal`), private DNS zones provide hostname resolution for VMs and other resources without requiring external DNS infrastructure. With `registration_enabled` set to `true`, Azure automatically registers and deregisters VM A-records as VMs are created and deleted.
+This separation is what makes hub-and-spoke DNS work: one
+`privatelink.postgres.database.azure.com` zone, linked to the hub and
+every spoke, each link an independently reviewable and removable node.
 
-## When to Use
+## Key Features
 
-- You need private connectivity to Azure PaaS services (PostgreSQL Flexible Server, MySQL Flexible Server, Redis, Key Vault, etc.) via Private Endpoints
-- You want internal DNS resolution for VMs or containers within a VNet
-- You're building the **database-stack** infra chart and need privatelink zones for each database type
-- You're setting up the networking foundation for a Private Link-based architecture
+- **Private Link ready** -- create the Azure-defined `privatelink.*` zone
+  names for automatic private endpoint resolution
+- **Custom internal DNS** -- any valid domain for internal name resolution
+- **SOA customization** -- pin the zone's contact email and
+  negative-caching TTL when operational tooling requires it
+- **Governance tags** -- user tags merged over the Planton-derived ones
+- **Composable** -- the resource group is referenced by name, defaulting
+  to an `AzureResourceGroup`'s output; the zone's outputs feed links,
+  private endpoints, and VNet-integrated databases
 
-## Key Configuration
+## Spec Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `resource_group` | StringValueOrRef | Yes | Azure Resource Group for the zone |
-| `name` | string | Yes | DNS zone name (e.g., `privatelink.postgres.database.azure.com`) |
-| `vnet_id` | StringValueOrRef | Yes | VNet to link for DNS resolution |
-| `registration_enabled` | bool | No | Auto-register VM A-records (default: `false`) |
+| `resource_group` | StringValueOrRef | Yes | Resource group name (defaults to an AzureResourceGroup reference) |
+| `name` | string | Yes | The zone's DNS domain name (privatelink zone name or custom domain) |
+| `soa_record` | object | No | SOA customization (email + timers); written at creation, ForceNew |
+| `tags` | map | No | User tags, merged over Planton-derived tags (user wins) |
+
+Private DNS zones are **global** resources -- there is no `region` field.
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `zone_id` | Azure Resource Manager ID of the zone |
-| `zone_name` | Name of the private DNS zone |
+| `zone_id` | Full ARM ID of the zone -- the join key for links, private endpoints, and databases |
+| `zone_name` | The zone's DNS name as deployed |
+| `resource_group_name` | The zone's resource group (for record/link tooling that joins on name+RG) |
 
-## Azure Resources Created
+## Quick Example
 
-- `azurerm_private_dns_zone` -- The private DNS zone itself
-- `azurerm_private_dns_zone_virtual_network_link` -- Links the zone to a VNet for name resolution
+```yaml
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZone
+metadata:
+  name: postgres-privatelink-zone
+  org: mycompany
+  env: production
+spec:
+  resourceGroup:
+    valueFrom:
+      name: network-rg
+  name: privatelink.postgres.database.azure.com
+```
 
-## Key Behaviors
-
-- **Global resource** -- Private DNS zones have no region; they are globally available within the subscription
-- **Bundled VNet link** -- A zone without a VNet link is unreachable; this component always creates one link per DD03 (Composite Bundling Rules)
-- **Private Link naming** -- For Private Endpoint scenarios, the zone name must match Azure's defined privatelink zone name for the target service (see examples below)
-- **Registration** -- When `registration_enabled` is `true`, A-records are auto-managed for VMs in the linked VNet; use this only for custom internal zones, not privatelink zones
+The complete private-DNS story composes three kinds: the network
+(`AzureVirtualNetwork`), this zone, and an
+`AzurePrivateDnsZoneVirtualNetworkLink` per network that should resolve
+it.
 
 ## Common Private Link Zone Names
 
-| Azure Service | Private DNS Zone Name |
-|--------------|----------------------|
+| Service | Zone name |
+|---------|-----------|
 | PostgreSQL Flexible Server | `privatelink.postgres.database.azure.com` |
 | MySQL Flexible Server | `privatelink.mysql.database.azure.com` |
 | Azure SQL Database | `privatelink.database.windows.net` |
-| Cosmos DB | `privatelink.documents.azure.com` |
+| Cosmos DB (SQL) | `privatelink.documents.azure.com` |
 | Azure Cache for Redis | `privatelink.redis.cache.windows.net` |
-| Azure Blob Storage | `privatelink.blob.core.windows.net` |
-| Azure Key Vault | `privatelink.vaultcore.azure.net` |
-| Azure Container Registry | `privatelink.azurecr.io` |
+| Blob Storage | `privatelink.blob.core.windows.net` |
+| Key Vault | `privatelink.vaultcore.azure.net` |
 
-## Dependencies
+## Lifecycle Notes
 
-- **AzureResourceGroup** -- The resource group where the zone is created
-- **AzureVpc** -- The VNet linked to this zone for DNS resolution
-
-## Referenced By
-
-- **AzurePrivateEndpoint** -- `private_dns_zone_id` for DNS zone group registration
-- **AzurePostgresqlFlexibleServer** -- `private_dns_zone_id` for VNet-integrated deployment
-- **AzureMysqlFlexibleServer** -- `private_dns_zone_id` for VNet-integrated deployment
-
-## Infra Chart Usage
-
-- **database-stack** -- Creates privatelink zones for each database type (PostgreSQL, MySQL, MSSQL, Redis) and wires them to private endpoints
-- **enterprise-network-foundation** -- Optional component for private DNS infrastructure
-
-## Known Limitations
-
-- **Single VNet link per instance** -- Each deployment creates one zone with one VNet link. For hub-spoke topologies requiring links to multiple VNets, deploy separate instances or manage additional links outside this component.
+- Tags update **in place**; the zone's name is its ARM identity, so
+  renaming **replaces the zone and every record in it**
+- The SOA record is written at creation and cannot be customized
+  afterwards
+- Deleting a zone requires its links to be gone first -- composed destroy
+  ordering handles this through the dependency graph

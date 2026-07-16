@@ -22,9 +22,12 @@ func strRef(val string) *foreignkeyv1.StringValueOrRef {
 	}
 }
 
-// helper to create a google.protobuf.Struct from a map.
-func newStruct(m map[string]interface{}) *structpb.Struct {
-	s, _ := structpb.NewStruct(m)
+// helper to build a Struct from a map, failing the spec on error.
+func mustStruct(m map[string]interface{}) *structpb.Struct {
+	s, err := structpb.NewStruct(m)
+	if err != nil {
+		panic(err)
+	}
 	return s
 }
 
@@ -39,7 +42,7 @@ var _ = ginkgo.Describe("AwsSnsTopicSpec validations", func() {
 	})
 
 	// -------------------------------------------------------------------------
-	// Happy path — Spec level
+	// Happy path
 	// -------------------------------------------------------------------------
 
 	ginkgo.It("accepts a minimal standard topic (all defaults)", func() {
@@ -47,7 +50,7 @@ var _ = ginkgo.Describe("AwsSnsTopicSpec validations", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts a FIFO topic with content-based deduplication", func() {
+	ginkgo.It("accepts a FIFO topic with content-based deduplication and throughput scope", func() {
 		spec.FifoTopic = true
 		spec.ContentBasedDeduplication = true
 		spec.FifoThroughputScope = "MessageGroup"
@@ -55,61 +58,51 @@ var _ = ginkgo.Describe("AwsSnsTopicSpec validations", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts a FIFO topic with Topic-level throughput scope", func() {
+	ginkgo.It("accepts a FIFO topic with an archive policy", func() {
 		spec.FifoTopic = true
-		spec.FifoThroughputScope = "Topic"
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a topic with KMS encryption", func() {
-		spec.KmsKeyId = strRef("arn:aws:kms:us-east-1:123456789012:key/mrk-abc123")
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a topic with display name", func() {
-		spec.DisplayName = "Order Notifications"
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a topic with tracing_config Active", func() {
-		spec.TracingConfig = "Active"
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a topic with tracing_config PassThrough", func() {
-		spec.TracingConfig = "PassThrough"
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a topic with signature_version 1", func() {
-		spec.SignatureVersion = 1
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a topic with signature_version 2", func() {
-		spec.SignatureVersion = 2
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a topic with an IAM access policy", func() {
-		spec.Policy = newStruct(map[string]interface{}{
-			"Version": "2012-10-17",
-			"Statement": []interface{}{
-				map[string]interface{}{
-					"Effect":    "Allow",
-					"Principal": "*",
-					"Action":    "SNS:Publish",
-					"Resource":  "*",
-				},
-			},
+		spec.ArchivePolicy = mustStruct(map[string]interface{}{
+			"MessageRetentionPeriod": 30,
 		})
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a standard topic with KMS encryption and access policy", func() {
+		spec.KmsKeyId = strRef("arn:aws:kms:us-east-1:123456789012:key/mrk-abc123")
+		spec.Policy = mustStruct(map[string]interface{}{
+			"Version": "2012-10-17",
+		})
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a standard topic with a data protection policy", func() {
+		spec.DataProtectionPolicy = mustStruct(map[string]interface{}{
+			"Name":    "pii-guard",
+			"Version": "2021-06-01",
+		})
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts delivery feedback with roles and sample rate", func() {
+		spec.DeliveryFeedback = &AwsSnsTopicDeliveryFeedback{
+			Sqs: &AwsSnsTopicProtocolFeedback{
+				SuccessFeedbackRole:       strRef("arn:aws:iam::123456789012:role/sns-feedback"),
+				FailureFeedbackRole:       strRef("arn:aws:iam::123456789012:role/sns-feedback"),
+				SuccessFeedbackSampleRate: 50,
+			},
+			Lambda: &AwsSnsTopicProtocolFeedback{
+				FailureFeedbackRole: strRef("arn:aws:iam::123456789012:role/sns-feedback"),
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts observability settings", func() {
+		spec.TracingConfig = "Active"
+		spec.SignatureVersion = 2
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
@@ -139,273 +132,76 @@ var _ = ginkgo.Describe("AwsSnsTopicSpec validations", func() {
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
+	ginkgo.It("fails when archive_policy is set on a standard topic", func() {
+		spec.FifoTopic = false
+		spec.ArchivePolicy = mustStruct(map[string]interface{}{
+			"MessageRetentionPeriod": 30,
+		})
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
 	// -------------------------------------------------------------------------
-	// CEL: signature_version validation
+	// CEL: data protection policy is standard-only
 	// -------------------------------------------------------------------------
 
-	ginkgo.It("fails when signature_version is not 1 or 2", func() {
+	ginkgo.It("fails when data_protection_policy is set on a FIFO topic", func() {
+		spec.FifoTopic = true
+		spec.DataProtectionPolicy = mustStruct(map[string]interface{}{
+			"Name": "pii-guard",
+		})
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: observability values
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when signature_version is invalid", func() {
 		spec.SignatureVersion = 3
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("fails when signature_version is negative", func() {
-		spec.SignatureVersion = -1
+	ginkgo.It("fails when tracing_config is invalid", func() {
+		spec.TracingConfig = "Sampled"
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
 	// -------------------------------------------------------------------------
-	// CEL: tracing_config validation
+	// Delivery feedback validations
 	// -------------------------------------------------------------------------
 
-	ginkgo.It("fails when tracing_config has an invalid value", func() {
-		spec.TracingConfig = "Disabled"
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	// -------------------------------------------------------------------------
-	// Happy path — Subscription level
-	// -------------------------------------------------------------------------
-
-	ginkgo.It("accepts a topic with a valid SQS subscription", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:     "order-queue",
-				Protocol: "sqs",
-				Endpoint: strRef("arn:aws:sqs:us-east-1:123456789012:order-queue"),
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a topic with a Lambda subscription", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:     "processor",
-				Protocol: "lambda",
-				Endpoint: strRef("arn:aws:lambda:us-east-1:123456789012:function:process-order"),
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a subscription with filter policy on MessageAttributes", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:              "filtered-queue",
-				Protocol:          "sqs",
-				Endpoint:          strRef("arn:aws:sqs:us-east-1:123456789012:filtered-queue"),
-				FilterPolicy:      newStruct(map[string]interface{}{"store": []interface{}{"example_corp"}}),
-				FilterPolicyScope: "MessageAttributes",
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a subscription with filter policy on MessageBody", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:              "body-filtered",
-				Protocol:          "sqs",
-				Endpoint:          strRef("arn:aws:sqs:us-east-1:123456789012:body-filtered"),
-				FilterPolicy:      newStruct(map[string]interface{}{"source": []interface{}{"order-service"}}),
-				FilterPolicyScope: "MessageBody",
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a subscription with raw message delivery", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:               "raw-queue",
-				Protocol:           "sqs",
-				Endpoint:           strRef("arn:aws:sqs:us-east-1:123456789012:raw-queue"),
-				RawMessageDelivery: true,
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a subscription with redrive config (DLQ)", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:     "with-dlq",
-				Protocol: "sqs",
-				Endpoint: strRef("arn:aws:sqs:us-east-1:123456789012:my-queue"),
-				RedriveConfig: &AwsSnsSubscriptionRedriveConfig{
-					DeadLetterTargetArn: strRef("arn:aws:sqs:us-east-1:123456789012:my-dlq"),
-				},
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a Firehose subscription with subscription_role_arn", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:                "firehose-delivery",
-				Protocol:            "firehose",
-				Endpoint:            strRef("arn:aws:firehose:us-east-1:123456789012:deliverystream/my-stream"),
-				SubscriptionRoleArn: strRef("arn:aws:iam::123456789012:role/sns-firehose-role"),
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts an email subscription", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:     "alert-email",
-				Protocol: "email",
-				Endpoint: strRef("ops-team@example.com"),
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts an HTTPS subscription", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:     "webhook",
-				Protocol: "https",
-				Endpoint: strRef("https://api.example.com/sns-webhook"),
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts multiple subscriptions", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:     "order-queue",
-				Protocol: "sqs",
-				Endpoint: strRef("arn:aws:sqs:us-east-1:123456789012:order-queue"),
-			},
-			{
-				Name:     "audit-lambda",
-				Protocol: "lambda",
-				Endpoint: strRef("arn:aws:lambda:us-east-1:123456789012:function:audit"),
-			},
-			{
-				Name:     "ops-email",
-				Protocol: "email",
-				Endpoint: strRef("ops@example.com"),
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// -------------------------------------------------------------------------
-	// Subscription-level validation failures
-	// -------------------------------------------------------------------------
-
-	ginkgo.It("fails when subscription name is missing", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Protocol: "sqs",
-				Endpoint: strRef("arn:aws:sqs:us-east-1:123456789012:my-queue"),
+	ginkgo.It("fails when success_feedback_sample_rate exceeds 100", func() {
+		spec.DeliveryFeedback = &AwsSnsTopicDeliveryFeedback{
+			Http: &AwsSnsTopicProtocolFeedback{
+				SuccessFeedbackRole:       strRef("arn:aws:iam::123456789012:role/sns-feedback"),
+				SuccessFeedbackSampleRate: 101,
 			},
 		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("fails when subscription protocol is missing", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:     "my-sub",
-				Endpoint: strRef("arn:aws:sqs:us-east-1:123456789012:my-queue"),
+	ginkgo.It("fails when a sample rate is set without a success role", func() {
+		spec.DeliveryFeedback = &AwsSnsTopicDeliveryFeedback{
+			Firehose: &AwsSnsTopicProtocolFeedback{
+				SuccessFeedbackSampleRate: 25,
 			},
 		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("fails when subscription endpoint is missing", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:     "my-sub",
-				Protocol: "sqs",
+	ginkgo.It("accepts a failure-only feedback block", func() {
+		spec.DeliveryFeedback = &AwsSnsTopicDeliveryFeedback{
+			Application: &AwsSnsTopicProtocolFeedback{
+				FailureFeedbackRole: strRef("arn:aws:iam::123456789012:role/sns-feedback"),
 			},
 		}
 		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails when subscription protocol is invalid", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:     "my-sub",
-				Protocol: "kafka",
-				Endpoint: strRef("some-endpoint"),
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails when filter_policy_scope is invalid", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:              "my-sub",
-				Protocol:          "sqs",
-				Endpoint:          strRef("arn:aws:sqs:us-east-1:123456789012:my-queue"),
-				FilterPolicy:      newStruct(map[string]interface{}{"key": "value"}),
-				FilterPolicyScope: "InvalidScope",
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails when filter_policy_scope is set without filter_policy", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:              "my-sub",
-				Protocol:          "sqs",
-				Endpoint:          strRef("arn:aws:sqs:us-east-1:123456789012:my-queue"),
-				FilterPolicyScope: "MessageBody",
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails when firehose subscription is missing subscription_role_arn", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:     "my-firehose",
-				Protocol: "firehose",
-				Endpoint: strRef("arn:aws:firehose:us-east-1:123456789012:deliverystream/my-stream"),
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails when redrive_config.dead_letter_target_arn is missing", func() {
-		spec.Subscriptions = []*AwsSnsTopicSubscription{
-			{
-				Name:          "my-sub",
-				Protocol:      "sqs",
-				Endpoint:      strRef("arn:aws:sqs:us-east-1:123456789012:my-queue"),
-				RedriveConfig: &AwsSnsSubscriptionRedriveConfig{},
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err).To(gomega.BeNil())
 	})
 })

@@ -23,7 +23,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanVolume
 metadata:
   name: my-volume
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -73,7 +73,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanVolume
 metadata:
   name: dev-scratch
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -96,7 +96,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanVolume
 metadata:
   name: staging-db-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanVolume
 metadata:
   name: prod-app-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

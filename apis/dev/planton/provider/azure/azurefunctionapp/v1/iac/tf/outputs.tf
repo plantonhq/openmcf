@@ -26,9 +26,37 @@ output "identity_tenant_id" {
 output "custom_domain_verification_id" {
   description = "The custom domain verification ID for DNS TXT record verification"
   value       = azurerm_linux_function_app.main.custom_domain_verification_id
+  # azurerm marks this attribute sensitive (it proves domain ownership), so
+  # the output must be sensitive too or OpenTofu rejects the configuration.
+  sensitive = true
 }
 
 output "kind" {
   description = "The resource kind string as reported by Azure (e.g., functionapp,linux)"
   value       = azurerm_linux_function_app.main.kind
+}
+
+output "possible_outbound_ip_addresses" {
+  description = "Every outbound IP the platform could ever route this app through -- use for durable firewall allowlists"
+  value       = azurerm_linux_function_app.main.possible_outbound_ip_address_list
+}
+
+output "hosting_environment_id" {
+  description = "ARM ID of the App Service Environment hosting the app (empty outside ASE)"
+  value       = azurerm_linux_function_app.main.hosting_environment_id
+}
+
+output "site_credential_name" {
+  description = "The site-level publishing credential's username (Kudu/SCM basic auth)"
+  value       = try(azurerm_linux_function_app.main.site_credential[0].name, "")
+  # azurerm marks the whole site_credential block sensitive (the name is
+  # half of a working credential), so this output must be sensitive too or
+  # OpenTofu rejects the configuration outright.
+  sensitive = true
+}
+
+output "site_credential_password" {
+  description = "The site-level publishing credential's password -- grants deploy access while basic-auth publishing is enabled"
+  value       = try(azurerm_linux_function_app.main.site_credential[0].password, "")
+  sensitive   = true
 }

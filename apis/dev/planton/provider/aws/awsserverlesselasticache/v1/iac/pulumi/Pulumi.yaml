@@ -1,0 +1,3 @@
+name: aws-serverless-elasticache
+runtime: go
+description: Deploy an AWS ElastiCache Serverless cache using Planton

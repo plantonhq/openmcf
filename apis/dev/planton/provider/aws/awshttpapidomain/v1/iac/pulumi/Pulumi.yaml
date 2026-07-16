@@ -1,0 +1,3 @@
+name: aws-http-api-domain
+runtime: go
+description: Deploy an API Gateway v2 custom domain using Planton

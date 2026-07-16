@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurecontainerappenvironmentcertificate.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// **AzureContainerAppEnvironmentCertificateSpec** defines a
+// bring-your-own TLS certificate stored on a Container App Environment.
+// Certificates live on the ENVIRONMENT and are shared by every app in it:
+// upload the certificate once, then bind it to any app's custom domain
+// through AzureContainerAppCustomDomain's certificate reference.
+//
+// The certificate arrives one of two ways -- set exactly one:
+//
+// 1. **Inline PFX** -- `certificate_blob_base64` + `certificate_password`:
+//    a base64-encoded PKCS#12 bundle carrying the certificate chain and
+//    its private key. Rotation is manual (upload the renewed PFX).
+// 2. **Key Vault reference** -- `certificate_key_vault`: the environment
+//    pulls the certificate from Azure Key Vault and FOLLOWS renewals
+//    automatically when the reference is versionless. The environment
+//    authenticates to the vault with a managed identity that needs read
+//    access to the vault's secrets (Key Vault Secrets User under RBAC).
+//
+// For certificates Azure should provision and renew end to end (free,
+// domain-validated), use AzureContainerAppEnvironmentManagedCertificate
+// instead -- this kind is for certificates you bring: EV/OV chains,
+// org-mandated CAs, or wildcard certificates.
+//
+// **ForceNew fields**: everything except `tags` replaces the certificate
+// (Azure only allows tag updates in place). Replacing a certificate that
+// a custom domain is bound to briefly re-binds the domain.
+message AzureContainerAppEnvironmentCertificateSpec {
+  // The certificate's name on the environment -- how custom-domain
+  // bindings and the portal refer to it. Lowercase letters, digits,
+  // hyphens, and dots (commonly the domain name, e.g. "app.example.com"
+  // or "wildcard-example-com"). Changing it replaces the certificate.
+  string certificate_name = 1 [
+    (buf.validate.field).required = true,
+    // Regex mirror of the provider's certificate-name validator: starts
+    // with a lowercase letter or digit, ends with a letter or digit, no
+    // consecutive hyphens.
+    (buf.validate.field).cel = {
+      id: "azure_container_app_environment_certificate_name_format"
+      message: "Certificate name must use lowercase letters, digits, hyphens, and dots, start and end with a letter or digit, and avoid consecutive hyphens -- e.g. app.example.com or wildcard-example-com"
+      expression: "this.matches('^[a-z0-9][a-z0-9-.]*[a-z0-9]$') && !this.contains('--')"
+    }
+  ];
+
+  // The Container App Environment this certificate is stored on, by ARM
+  // ID. References an AzureContainerAppEnvironment's environment_id
+  // output. Changing it replaces the certificate.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef container_app_environment_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureContainerAppEnvironment,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.environment_id"
+  ];
+
+  // The certificate as a base64-encoded PKCS#12 (PFX) bundle -- the
+  // certificate chain plus its private key. The blob bundles the private
+  // key, so it is handled as a secret. Set together with
+  // certificate_password; mutually exclusive with certificate_key_vault.
+  //
+  // Note: Azure never returns the blob on reads, so drift in this field
+  // is invisible to the platform -- rotating the certificate means
+  // updating this value (which replaces the certificate resource).
+  string certificate_blob_base64 = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // The password protecting the PFX blob. Leave empty for a
+  // passwordless PFX -- both engines still send the (empty) password
+  // argument Azure expects alongside the blob. Only meaningful with
+  // certificate_blob_base64.
+  string certificate_password = 4 [(dev.planton.shared.options.sensitive) = true];
+
+  // Pull the certificate from Azure Key Vault instead of uploading a
+  // blob. The environment reads the certificate's SECRET face from the
+  // vault and keeps it current -- pair with a versionless reference so
+  // renewals propagate automatically. Mutually exclusive with
+  // certificate_blob_base64.
+  AzureContainerAppEnvironmentCertificateKeyVault certificate_key_vault = 5;
+
+  // Free-form Azure resource tags applied to the certificate, merged over
+  // the platform's metadata-derived tags (user tags win on key collision).
+  // The only field Azure updates in place.
+  map<string, string> tags = 6;
+
+  // The provider's exactly-one-of contract: the certificate content comes
+  // from an inline PFX or from Key Vault, never both, never neither.
+  option (buf.validate.message).cel = {
+    id: "azure_container_app_environment_certificate_source"
+    message: "Provide the certificate exactly one way: either certificate_blob_base64 (with certificate_password) for an inline PFX upload, or certificate_key_vault to pull it from Azure Key Vault"
+    expression: "(this.certificate_blob_base64 != '' ? 1 : 0) + (has(this.certificate_key_vault) ? 1 : 0) == 1"
+  };
+
+  // A password without a blob is configuration that cannot mean
+  // anything (the Key Vault source carries no password) -- rejecting it
+  // catches a half-switched source early. A blob with an empty password
+  // stays legal: passwordless PFX bundles exist, and both engines send
+  // the empty password argument Azure expects alongside the blob.
+  option (buf.validate.message).cel = {
+    id: "azure_container_app_environment_certificate_password_requires_blob"
+    message: "certificate_password only applies to an inline PFX -- set it together with certificate_blob_base64, or remove it when sourcing the certificate from Key Vault"
+    expression: "this.certificate_password == '' || this.certificate_blob_base64 != ''"
+  };
+}
+
+// A Key-Vault-sourced certificate: which vault secret to pull and which
+// identity the environment authenticates with.
+message AzureContainerAppEnvironmentCertificateKeyVault {
+  // The Key Vault SECRET URL of the certificate -- a certificate's secret
+  // face is what carries its full PFX material. Reference an
+  // AzureKeyVaultCertificate's versionless_secret_id output
+  // (https://{vault}.vault.azure.net/secrets/{name}) so the environment
+  // follows renewals; a versioned URL pins that version forever.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_secret_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_secret_id"
+  ];
+
+  // The managed identity the environment uses to read the vault secret:
+  // the literal "System" for the environment's system-assigned identity,
+  // or a user-assigned identity's ARM ID -- reference an
+  // AzureUserAssignedIdentity's identity_id output. Unset deploys
+  // "System" on both engines (Azure's own default). Whichever identity is
+  // named here must already be ON the environment's identity block and
+  // hold read access to the vault's secrets (Key Vault Secrets User under
+  // RBAC) -- Azure checks that at deploy time, across two resources, so
+  // it cannot be validated here.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef identity = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+}

@@ -1,0 +1,29 @@
+# AzurePublicIp fixture with a DNS label, used by the DNS-record
+# reference scenarios (declared via the path form of the
+# planton.dev/e2e-prerequisites annotation). The label makes Azure
+# mint the fqdn output ({label}.{region}.cloudapp.azure.com) -- a real
+# deploy-time hostname the scenarios' TXT and CNAME references resolve
+# against. Distinct from the shared fixture address: that one is
+# deliberately label-less (the NAT-association shape) and its outputs
+# carry no fqdn.
+apiVersion: azure.planton.dev/v1
+kind: AzurePublicIp
+metadata:
+  name: planton-oss-e2e-dnsrecord-labeled-pip
+  id: planton-oss-e2e-dnsrecord-labeled-pip
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurednsrecord
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-dnsrecord-labeled-pip
+  domainNameLabel: pltn-oss-e2e-dnsrec-lbl

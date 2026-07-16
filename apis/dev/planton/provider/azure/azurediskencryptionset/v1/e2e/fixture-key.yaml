@@ -1,0 +1,27 @@
+# The customer-managed key on the purge-protected vault that the disk
+# encryption set wraps disk data with. Referenced versionless by the set
+# (auto_key_rotation_enabled = true).
+apiVersion: azure.planton.dev/v1
+kind: AzureKeyVaultKey
+metadata:
+  name: planton-oss-e2e-des-key
+  id: planton-oss-e2e-des-key
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurekeyvaultkey
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  name: des-cmk
+  keyVaultId:
+    valueFrom:
+      name: planton-oss-e2e-des-vault
+  keyType: RSA
+  keySize: 2048
+  keyOpts:
+    - WRAP_KEY
+    - UNWRAP_KEY

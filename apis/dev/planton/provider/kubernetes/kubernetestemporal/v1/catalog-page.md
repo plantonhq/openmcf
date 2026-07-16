@@ -36,7 +36,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTemporal
 metadata:
   name: my-temporal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -69,8 +69,6 @@ This creates a single-replica Temporal cluster backed by an in-cluster Cassandra
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `disableWebUi` | `bool` | `false` | Disables the Temporal Web UI. |
 | `enableEmbeddedElasticsearch` | `bool` | `false` | Enables embedded Elasticsearch for advanced visibility. Ignored if external Elasticsearch is configured. |
@@ -132,7 +130,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTemporal
 metadata:
   name: dev-temporal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -154,7 +152,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTemporal
 metadata:
   name: prod-temporal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -221,7 +219,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTemporal
 metadata:
   name: platform-temporal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -289,7 +287,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTemporal
 metadata:
   name: my-temporal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -1,129 +1,33 @@
 # AwsEc2Instance
 
-The **AwsEc2Instance** resource provides a standardized way to provision and manage single AWS EC2 virtual machine instances through Planton. It focuses on the most common production scenarios, covering networking, security, IAM, and access configuration with a simplified 80/20 approach.
+A single Amazon EC2 virtual machine: the launch source (an AMI + instance type, a launch template, or a template with inline overrides), network placement, IAM identity, storage, instance posture (IMDSv2, monitoring, CPU topology), purchase options (On-Demand or Spot), and lifecycle protections.
 
-## Spec Fields (80/20)
+A standalone instance is the pet of EC2 compute -- a bastion, a license server, a singleton stateful workload -- as opposed to the cattle an auto-scaling group manages. The spec deliberately shares `AwsLaunchTemplate`'s vocabulary (metadata options, CPU options, spot options, block devices), so a pet can graduate into a templated fleet without relearning field names.
 
-### Essential Fields (80% Use Case)
+Everything the instance composes with attaches by reference and none of it is created here: the subnet (`AwsSubnet`), security groups (`AwsSecurityGroup`), the IAM instance profile (`AwsIamInstanceProfile` -- referenced by NAME, which is what the EC2 API takes), the launch template (`AwsLaunchTemplate`), and the KMS keys that encrypt volumes (`AwsKmsKey`). The instance's display identity is the `Name` tag, carried from `metadata.name`.
 
-- **instance_name**: Name tag for the EC2 instance. Used for identification in the AWS console and automation. Required.
-- **ami_id**: Amazon Machine Image (AMI) ID to use for launching the instance (e.g., "ami-0123456789abcdef0"). Determines the operating system and pre-installed software. Must start with "ami-". Required.
-- **instance_type**: EC2 instance type determining vCPU count and memory allocation (e.g., "t3.small" for 2 vCPUs and 2 GiB RAM, "m5.large" for 2 vCPUs and 8 GiB RAM). Required.
-- **subnet_id**: Target subnet where the instance will reside. Typically a private subnet within an existing VPC for security. Required.
-- **security_group_ids**: List of security group IDs to control inbound and outbound traffic for the instance. At least one security group is required.
-- **connection_method**: Method for accessing the instance. Options:
-  - `SSM` (default): Use AWS Systems Manager Session Manager (no SSH key required, needs IAM instance profile)
-  - `BASTION`: Use SSH with a key pair for bastion/jump host access
-  - `INSTANCE_CONNECT`: Use AWS EC2 Instance Connect for temporary SSH access
+## Spec highlights
 
-### Advanced Fields (20% Use Case)
+- **Launch sources, three-shaped**: inline `ami` + `instanceType`; a referenced `launchTemplate` (by ID or name, pinned to a version or tracking `$Default`); or both -- inline fields override the template per instance. Validation enforces AWS's own rule that an image and a type must come from somewhere.
+- **Networking**: subnet and security-group references, a pre-provisioned primary ENI (`primaryNetworkInterfaceId` -- static IP/MAC identity), static private IPs, secondary private IPs, public-IP tri-state, IPv6 (count or explicit addresses, stable primary IPv6), private DNS hostname options, and secondary network interfaces on multi-card instance types.
+- **Storage**: full root-volume reshaping (size, gp3 tuning, encryption with a KMS reference), additional EBS data volumes keyed by device name, instance-store mappings, and EBS optimization.
+- **Posture**: IMDSv2 enforcement (`metadataOptions.httpTokens: required` -- the recommended default), detailed monitoring, CPU topology (core count, SMT, AMD SEV-SNP, nested virtualization), burstable credit mode, Nitro Enclaves XOR hibernation, auto-recovery, shutdown behavior, and stop/termination API protection.
+- **Purchasing**: Spot with persistent/stop-resume semantics, and Capacity Reservation targeting (open/none/specific reservation or group).
+- **Placement**: AZ pinning, placement groups (by name or ID, with partition numbers), tenancy, Dedicated Hosts, and host resource groups.
+- **User data**: plain-text or base64 (mutually exclusive), with an explicit replace-on-change switch; `${...}` content passes through literally on both engines.
 
-- **iam_instance_profile_arn**: ARN of an IAM instance profile to attach to the instance. Provides the instance with AWS API permissions (e.g., for SSM, S3 access, CloudWatch logs). Required when connection_method is SSM.
-- **key_name**: Name of an EC2 Key Pair for SSH access. Required when connection_method is BASTION or INSTANCE_CONNECT.
-- **root_volume_size_gb**: Size of the root EBS volume in GiB. Defaults to 30 GiB if not specified.
-- **tags**: Map of key-value pairs for resource tagging (e.g., {"env": "production", "app": "web", "team": "platform"}).
-- **user_data**: Cloud-init or shell script to run on instance boot for initial configuration. Maximum 32 KiB. Useful for installing packages, configuring software, or joining domains.
-- **ebs_optimized**: Enable EBS optimization for dedicated EBS I/O throughput. Recommended for I/O-intensive workloads if supported by the instance type.
-- **disable_api_termination**: Enable termination protection to prevent accidental instance deletion via AWS API.
+## Stack outputs
 
-## Stack Outputs
+`instance_id` (the join key -- `AwsLbTargetGroup` instance targets reference it), `arn`, `instance_state`, `availability_zone`, `private_ip`, `private_dns`, `public_ip`, `public_dns`, `primary_network_interface_id`.
 
-After provisioning, the AwsEc2Instance resource provides the following outputs:
+## How it works
 
-- **instance_id**: The EC2 instance ID (e.g., "i-0123456789abcdef0").
-- **private_ip**: Primary private IPv4 address assigned to the instance.
-- **private_dns_name**: Private DNS name within the VPC for internal communication.
-- **availability_zone**: Availability Zone where the instance is running.
-- **instance_profile_arn**: ARN of the attached IAM instance profile (if configured).
-- **ssh_private_key**: Base64-encoded PEM private key (when a key pair is auto-generated by the module).
-- **ssh_public_key**: OpenSSH-formatted public key corresponding to the generated private key.
-
-## How It Works
-
-When you define an AwsEc2Instance resource, Planton:
-
-1. **Launches Instance**: Creates an EC2 virtual machine with the specified AMI and instance type.
-2. **Configures Networking**: Places the instance in the specified subnet and attaches security groups for traffic control.
-3. **Sets Up Access**: Configures access method (SSM, Bastion, or Instance Connect) with required IAM roles or SSH keys.
-4. **Applies IAM Profile**: Attaches IAM instance profile for AWS API permissions if specified.
-5. **Configures Storage**: Creates root EBS volume with specified size and optional EBS optimization.
-6. **Runs User Data**: Executes user data script on first boot for initial configuration.
-7. **Applies Protection**: Enables termination protection if specified.
-
-The resource uses Pulumi or Terraform under the hood (depending on your stack configuration) to provision all necessary AWS resources.
-
-## Use Cases
-
-### Private Application Server
-Launch instances in private subnets with SSM access for secure server administration without exposing SSH to the internet.
-
-### Bastion Host
-Deploy a bastion/jump host in a public subnet with SSH key access for connecting to private instances.
-
-### Database Server
-Run self-managed databases (PostgreSQL, MySQL, MongoDB) on EC2 with appropriate instance types and EBS optimization.
-
-### Development/Testing Environment
-Spin up temporary instances for development or testing with user data scripts for automatic environment setup.
-
-### Custom Application Workloads
-Host applications that require specific OS configurations, kernel versions, or software not available in managed services.
-
-## Important Notes
-
-### Connection Methods
-- **SSM (Recommended)**: Most secure, no SSH key management, session logging, no public IP needed. Requires IAM instance profile with `AmazonSSMManagedInstanceCore` policy.
-- **BASTION**: Traditional SSH access, requires key pair management and bastion host setup.
-- **INSTANCE_CONNECT**: Temporary SSH keys injected on-demand, good for occasional access.
-
-### AMI Selection
-- Use official AWS AMIs or validated community AMIs.
-- Keep AMIs up to date with security patches.
-- Document AMI IDs per region (AMIs are region-specific).
-- Consider using AMI lookup by name/tag for multi-region deployments.
-
-### Instance Type Selection
-- **t3/t3a**: Burstable, cost-effective for variable workloads.
-- **m5/m5a**: General purpose, balanced compute/memory.
-- **c5/c5a**: Compute optimized for CPU-intensive workloads.
-- **r5/r5a**: Memory optimized for databases and caches.
-- **i3/i3en**: Storage optimized with high IOPS NVMe SSD.
-
-### Security Best Practices
-- **Never Place in Public Subnets**: Use private subnets and SSM or bastion for access.
-- **Minimal Security Groups**: Only open required ports to specific source CIDRs.
-- **IAM Instance Profiles**: Use least-privilege IAM roles for AWS API access.
-- **Termination Protection**: Enable for production instances.
-- **Encrypt Root Volume**: AWS encrypts EBS volumes by default in most regions.
-- **Regular Patching**: Use user data or Systems Manager for automated patching.
-
-### Networking Considerations
-- Place instances in private subnets for security.
-- Use NAT Gateway or NAT Instance for outbound internet access from private subnets.
-- Ensure subnet has enough available IP addresses.
-- Consider multi-AZ deployment for high availability.
-
-### Storage
-- Root volume size is fixed after launch (requires snapshot/restore to increase for some AMIs).
-- EBS optimization is automatic for most modern instance types.
-- Consider additional EBS volumes for data storage separate from root volume.
-
-## Validation Rules
-
-The API enforces several validations:
-
-1. **AMI Format**: `ami_id` must start with "ami-".
-2. **Required Fields**: instance_name, ami_id, instance_type, subnet_id, and security_group_ids are all required.
-3. **SSM Requires IAM Profile**: When connection_method is SSM, iam_instance_profile_arn must be set.
-4. **SSH Requires Key**: When connection_method is BASTION or INSTANCE_CONNECT, key_name must be set.
-5. **Root Volume Size**: Must be greater than 0 if specified.
-6. **User Data Size**: Maximum 32 KiB (32,768 bytes).
+Both the Terraform/OpenTofu and Pulumi modules implement the same contract: exactly one `aws_instance` whose `Name` tag carries `metadata.name`. Launch identity (AMI, type, subnet, key pair, placement, CPU topology, purchase option) is create-time; the operational posture (security groups, IAM profile, metadata options, protections) edits in place. Optional fields pass through only when set, so an omitted field keeps the AWS or launch-template default.
 
 ## References
 
-- [AWS EC2 Documentation](https://docs.aws.amazon.com/ec2/)
-- [EC2 Instance Types](https://aws.amazon.com/ec2/instance-types/)
-- [EC2 Instance Connect](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect-using-ec2-instance-connect.html)
-- [Systems Manager Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html)
-- [EC2 User Data](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html)
-- [EC2 Security Groups](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security-groups.html)
+- [Amazon EC2 User Guide](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html)
+- [Instance metadata service (IMDSv2)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html)
+- [Spot Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html)
+- [Capacity Reservations](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/capacity-reservations-using.html)
+- [Launch an instance from a launch template](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-launch-templates.html)

@@ -26,7 +26,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesService
 metadata:
   name: my-service
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -65,8 +65,6 @@ This creates a ClusterIP Service named `my-service` in the `my-namespace` namesp
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `spec.targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `spec.targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `spec.labels` | `map<string, string>` | `{}` | Additional labels merged with standard Planton labels for governance and discoverability. |
 | `spec.annotations` | `map<string, string>` | `{}` | Annotations applied to the Service resource. Used for cloud-provider-specific load balancer configuration. |
 | `spec.type` | `enum` | `cluster_ip` | Service type. Valid values: `cluster_ip`, `node_port`, `load_balancer`, `external_name`. |
@@ -92,7 +90,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesService
 metadata:
   name: backend-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +119,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesService
 metadata:
   name: public-gateway
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -158,15 +156,12 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesService
 metadata:
   name: media-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.KubernetesService.media-server
 spec:
-  targetCluster:
-    clusterKind: AwsEksCluster
-    clusterName: prod-cluster
   namespace: media
   name: media-server
   type: node_port
@@ -206,7 +201,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesService
 metadata:
   name: external-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -227,7 +222,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesService
 metadata:
   name: cassandra
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

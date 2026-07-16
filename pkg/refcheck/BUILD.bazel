@@ -19,6 +19,10 @@ go_library(
 
 go_test(
     name = "refcheck_test",
-    srcs = ["analyze_test.go"],
+    srcs = [
+        "analyze_test.go",
+        "resolve_test.go",
+    ],
     embed = [":refcheck"],
+    deps = ["//apis/dev/planton/shared/cloudresourcekind"],
 )

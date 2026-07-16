@@ -5,143 +5,100 @@ import (
 
 	"github.com/pkg/errors"
 	azurenatgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurenatgateway/v1"
-	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider"
 	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/network"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func Resources(ctx *pulumi.Context, stackInput *azurenatgatewayv1.AzureNatGatewayStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
-	azureProviderConfig := stackInput.ProviderConfig
 
-	// Create azure provider using the credentials from the input
-	azureProvider, err := azure.NewProvider(ctx,
-		"azure",
-		&azure.ProviderArgs{
-			ClientId:       pulumi.String(azureProviderConfig.ClientId),
-			ClientSecret:   pulumi.String(azureProviderConfig.ClientSecret),
-			SubscriptionId: pulumi.String(azureProviderConfig.SubscriptionId),
-			TenantId:       pulumi.String(azureProviderConfig.TenantId),
-		})
+	// Build the Azure provider from the stack input via the shared builder, which resolves
+	// the right credential mechanism (static client secret, keyless web identity, or ambient chain).
+	azureProvider, err := pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to create azure provider")
 	}
 
 	spec := locals.AzureNatGateway.Spec
 
-	var publicIpIds pulumi.StringArrayInput
-	var publicIpAddresses pulumi.StringArrayOutput
-	var publicIpPrefixId pulumi.StringOutput
-
-	// Create either Public IP Prefix or individual Public IP based on spec
-	if spec.PublicIpPrefixLength != nil && *spec.PublicIpPrefixLength > 0 {
-		// Create Public IP Prefix for scale
-		publicIpPrefix, err := network.NewPublicIpPrefix(ctx,
-			fmt.Sprintf("%s-prefix", locals.NatGatewayName),
-			&network.PublicIpPrefixArgs{
-				Name:              pulumi.String(fmt.Sprintf("%s-prefix", locals.NatGatewayName)),
-				ResourceGroupName: pulumi.String(locals.ResourceGroup),
-				Location:          pulumi.String(locals.Location),
-				PrefixLength:      pulumi.Int(int(*spec.PublicIpPrefixLength)),
-				Sku:               pulumi.String("Standard"),
-				Tags:              pulumi.ToStringMap(locals.AzureTags),
-			},
-			pulumi.Provider(azureProvider))
-		if err != nil {
-			return errors.Wrap(err, "failed to create public IP prefix")
-		}
-
-		publicIpPrefixId = publicIpPrefix.ID().ToStringOutput()
-		// NAT Gateway uses the prefix, no individual IPs needed
-		publicIpIds = pulumi.StringArray{}
-	} else {
-		// Create a single Standard Public IP
-		publicIp, err := network.NewPublicIp(ctx,
-			fmt.Sprintf("%s-ip", locals.NatGatewayName),
-			&network.PublicIpArgs{
-				Name:              pulumi.String(fmt.Sprintf("%s-ip", locals.NatGatewayName)),
-				ResourceGroupName: pulumi.String(locals.ResourceGroup),
-				Location:          pulumi.String(locals.Location),
-				AllocationMethod:  pulumi.String("Static"),
-				Sku:               pulumi.String("Standard"),
-				Tags:              pulumi.ToStringMap(locals.AzureTags),
-			},
-			pulumi.Provider(azureProvider))
-		if err != nil {
-			return errors.Wrap(err, "failed to create public IP")
-		}
-
-		publicIpIds = pulumi.StringArray{publicIp.ID()}
-		publicIpAddresses = pulumi.StringArray{publicIp.IpAddress}.ToStringArrayOutput()
+	// Lifecycle notes worth knowing before operating this resource:
+	// - Idle timeout, tags, and the IP/prefix associations update IN
+	//   PLACE. Name, SKU, and zone are the gateway's identity -- changing
+	//   any of them replaces it, briefly interrupting egress for every
+	//   attached subnet.
+	// - The gateway is just the gateway: its addresses are referenced
+	//   first-class resources, and the subnets it serves attach themselves
+	//   (AzureSubnet's nat_gateway_id). A gateway with no associated
+	//   addresses deploys but cannot translate anything.
+	natGatewayArgs := &network.NatGatewayArgs{
+		Name:              pulumi.String(spec.Name),
+		Location:          pulumi.String(spec.Region),
+		ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+		Tags:              pulumi.ToStringMap(locals.AzureTags),
 	}
 
-	// Create NAT Gateway
-	natGateway, err := network.NewNatGateway(ctx,
-		locals.NatGatewayName,
-		&network.NatGatewayArgs{
-			Name:                 pulumi.String(locals.NatGatewayName),
-			ResourceGroupName:    pulumi.String(locals.ResourceGroup),
-			Location:             pulumi.String(locals.Location),
-			IdleTimeoutInMinutes: pulumi.Int(getIdleTimeoutMinutes(spec)),
-			SkuName:              pulumi.String("Standard"),
-			Tags:                 pulumi.ToStringMap(locals.AzureTags),
-		},
+	// Presence-guarded: the getter returns 0 when the optional field is
+	// unset, which azurerm's 4-120 validation rejects. An absent spec value
+	// falls back to Azure's default (4) -- the same value the Terraform
+	// module's optional(number, 4) encodes.
+	if spec.IdleTimeoutInMinutes != nil {
+		natGatewayArgs.IdleTimeoutInMinutes = pulumi.Int(int(spec.GetIdleTimeoutInMinutes()))
+	} else {
+		natGatewayArgs.IdleTimeoutInMinutes = pulumi.Int(4)
+	}
+
+	// Only an explicit SKU choice is sent, so an unspecified spec and
+	// Azure's default (Standard) deploy identically on both engines.
+	if locals.SkuName != "" {
+		natGatewayArgs.SkuName = pulumi.String(locals.SkuName)
+	}
+
+	// A STANDARD gateway is zonal; STANDARD_V2 is zone-redundant and
+	// forbids zones (spec-level validation enforces the pairing).
+	if len(spec.Zones) > 0 {
+		natGatewayArgs.Zones = pulumi.ToStringArray(spec.Zones)
+	}
+
+	createdNatGateway, err := network.NewNatGateway(ctx,
+		spec.Name,
+		natGatewayArgs,
 		pulumi.Provider(azureProvider))
 	if err != nil {
-		return errors.Wrap(err, "failed to create NAT gateway")
+		return errors.Wrapf(err, "failed to create nat gateway %s", spec.Name)
 	}
 
-	// Associate Public IP(s) or Prefix with NAT Gateway
-	if spec.PublicIpPrefixLength != nil && *spec.PublicIpPrefixLength > 0 {
-		_, err = network.NewNatGatewayPublicIpPrefixAssociation(ctx,
-			fmt.Sprintf("%s-prefix-assoc", locals.NatGatewayName),
-			&network.NatGatewayPublicIpPrefixAssociationArgs{
-				NatGatewayId:     natGateway.ID(),
-				PublicIpPrefixId: publicIpPrefixId,
-			},
-			pulumi.Provider(azureProvider),
-			pulumi.Parent(natGateway))
-		if err != nil {
-			return errors.Wrap(err, "failed to associate public IP prefix with NAT gateway")
-		}
-	} else {
-		// Associate individual public IP
-		_, err = network.NewNatGatewayPublicIpAssociation(ctx,
-			fmt.Sprintf("%s-ip-assoc", locals.NatGatewayName),
+	// Associate the referenced addresses and ranges. Each association is
+	// its own ARM operation; creating them here (rather than inside the
+	// public IP modules) keeps the addresses reusable and makes the gateway
+	// the owner of which addresses it SNATs through.
+	for i, publicIpId := range locals.PublicIpIds {
+		if _, err := network.NewNatGatewayPublicIpAssociation(ctx,
+			fmt.Sprintf("%s-public-ip-%d", spec.Name, i),
 			&network.NatGatewayPublicIpAssociationArgs{
-				NatGatewayId:      natGateway.ID(),
-				PublicIpAddressId: publicIpIds.ToStringArrayOutput().Index(pulumi.Int(0)),
+				NatGatewayId:      createdNatGateway.ID(),
+				PublicIpAddressId: pulumi.String(publicIpId),
 			},
-			pulumi.Provider(azureProvider),
-			pulumi.Parent(natGateway))
-		if err != nil {
-			return errors.Wrap(err, "failed to associate public IP with NAT gateway")
+			pulumi.Provider(azureProvider)); err != nil {
+			return errors.Wrapf(err, "failed to associate public ip %d with nat gateway %s", i, spec.Name)
+		}
+	}
+	for i, prefixId := range locals.PublicIpPrefixIds {
+		if _, err := network.NewNatGatewayPublicIpPrefixAssociation(ctx,
+			fmt.Sprintf("%s-public-ip-prefix-%d", spec.Name, i),
+			&network.NatGatewayPublicIpPrefixAssociationArgs{
+				NatGatewayId:     createdNatGateway.ID(),
+				PublicIpPrefixId: pulumi.String(prefixId),
+			},
+			pulumi.Provider(azureProvider)); err != nil {
+			return errors.Wrapf(err, "failed to associate public ip prefix %d with nat gateway %s", i, spec.Name)
 		}
 	}
 
-	// Associate NAT Gateway with Subnet
-	_, err = network.NewSubnetNatGatewayAssociation(ctx,
-		fmt.Sprintf("%s-subnet-assoc", locals.NatGatewayName),
-		&network.SubnetNatGatewayAssociationArgs{
-			SubnetId:     pulumi.String(locals.SubnetId),
-			NatGatewayId: natGateway.ID(),
-		},
-		pulumi.Provider(azureProvider),
-		pulumi.Parent(natGateway))
-	if err != nil {
-		return errors.Wrap(err, "failed to associate NAT gateway with subnet")
-	}
-
-	// Export outputs
-	ctx.Export(OpNatGatewayId, natGateway.ID())
-
-	if spec.PublicIpPrefixLength != nil && *spec.PublicIpPrefixLength > 0 {
-		ctx.Export(OpPublicIpPrefixId, publicIpPrefixId)
-		ctx.Export(OpPublicIpAddresses, pulumi.StringArray{})
-	} else {
-		ctx.Export(OpPublicIpAddresses, publicIpAddresses)
-		ctx.Export(OpPublicIpPrefixId, pulumi.String(""))
-	}
+	// Export stack outputs from the created resource.
+	ctx.Export(OpNatGatewayId, createdNatGateway.ID())
+	ctx.Export(OpNatGatewayName, createdNatGateway.Name)
+	ctx.Export(OpResourceGuid, createdNatGateway.ResourceGuid)
 
 	return nil
 }

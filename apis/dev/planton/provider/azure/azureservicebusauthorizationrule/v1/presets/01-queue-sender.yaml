@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusAuthorizationRule
+metadata:
+  name: my-queue-sender
+spec:
+  ruleName: orders-api-sender
+  # Queue scope: the least-privilege choice -- this credential can send
+  # to exactly one queue and nothing else.
+  queueId:
+    valueFrom:
+      kind: AzureServiceBusQueue
+      name: my-work-queue
+      fieldPath: status.outputs.queue_id
+  send: true

@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurecosmosdbmongodatabase
+spec:
+  # The harness deploys the fixture resource group and a scenario-local
+  # Mongo API account (with ENABLE_MONGO), creates the database with 400
+  # RU/s shared throughput, verifies it via the ARM API, destroys it,
+  # and verifies it is gone -- on both provisioners. The scenario-local
+  # account pins westus3 (eastus rejects new Cosmos accounts under
+  # zonal-capacity pressure -- see e2e/README.md); the full scenario
+  # runs ~14 min per engine.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 75

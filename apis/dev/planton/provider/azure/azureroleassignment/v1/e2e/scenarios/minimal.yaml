@@ -1,0 +1,35 @@
+# Minimal AzureRoleAssignment scenario: grant the fixture user-assigned
+# identity the built-in Reader role at the fixture resource-group scope.
+#
+# Both references resolve against the registry prerequisites' captured outputs
+# through the fields' default kinds: scope -> the AzureResourceGroup fixture's
+# ARM id, principalId -> the AzureUserAssignedIdentity fixture's principal id.
+# Reader is deliberately the lowest-privilege built-in role, referenced by NAME
+# so the live run exercises the name -> role-definition-id resolution path.
+# skipServicePrincipalAadCheck is set because the identity is created moments
+# before the grant -- the fresh-principal replication-lag case the flag exists
+# for (without it, azurerm retries PrincipalNotFound for minutes).
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: planton-oss-e2e-azureroleassignment-smoke
+  id: planton-oss-e2e-azureroleassignment-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureroleassignment
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  scope:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  roleDefinitionName: Reader
+  principalId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-identity
+  skipServicePrincipalAadCheck: true
+  description: Planton E2E smoke grant (Reader at the fixture resource-group scope)

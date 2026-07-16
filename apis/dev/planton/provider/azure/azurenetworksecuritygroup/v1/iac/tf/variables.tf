@@ -14,52 +14,46 @@ variable "metadata" {
 variable "spec" {
   description = "Azure Network Security Group specification"
   type = object({
-    # The Azure region where the NSG will be created
+    # The Azure region the NSG is created in; must match the region of the
+    # subnets and NICs it guards.
     region = string
 
-    # The Azure Resource Group name
+    # The resource group the NSG lives in. References are resolved to a
+    # literal name by the platform before the module runs.
     resource_group = string
 
-    # The name of the Network Security Group
+    # The NSG's name, unique within the resource group. Renaming replaces
+    # the group and detaches it from every subnet and NIC.
     name = string
 
-    # Security rules
+    # The security rules. direction/access/protocol carry the spec enums'
+    # name strings (INBOUND/OUTBOUND, ALLOW/DENY, ANY/TCP/UDP/ICMP/AH/ESP).
+    # Ports and addressing each take exactly one form (spec-level
+    # validation enforces the pairings); unset source ports and unset
+    # addressing mean any ("*").
     security_rules = optional(list(object({
-      # Rule name (unique within NSG)
-      name = string
-
-      # Optional description (max 140 chars)
+      name        = string
       description = optional(string)
+      priority    = number
+      direction   = string
+      access      = string
+      protocol    = string
 
-      # Priority (100-4096, lower = evaluated first)
-      priority = number
+      source_port_range       = optional(string)
+      source_port_ranges      = optional(list(string), [])
+      destination_port_range  = optional(string)
+      destination_port_ranges = optional(list(string), [])
 
-      # Direction: "Inbound" or "Outbound"
-      direction = string
-
-      # Access decision: "Allow" or "Deny"
-      access = string
-
-      # Protocol: "Tcp", "Udp", "Icmp", or "*"
-      protocol = string
-
-      # Source port range (default "*")
-      source_port_range = optional(string, "*")
-
-      # Destination port range (required)
-      destination_port_range = string
-
-      # Source address prefix (default "*")
-      source_address_prefix = optional(string, "*")
-
-      # Destination address prefix (default "*")
-      destination_address_prefix = optional(string, "*")
-
-      # Source address prefixes (overrides singular if non-empty)
-      source_address_prefixes = optional(list(string))
-
-      # Destination address prefixes (overrides singular if non-empty)
-      destination_address_prefixes = optional(list(string))
+      source_address_prefix                  = optional(string)
+      source_address_prefixes                = optional(list(string), [])
+      source_application_security_group_ids  = optional(list(string), [])
+      destination_address_prefix             = optional(string)
+      destination_address_prefixes           = optional(list(string), [])
+      destination_application_security_group_ids = optional(list(string), [])
     })), [])
+
+    # Free-form user tags, merged over the metadata-derived tags (user tags
+    # win on key collision).
+    tags = optional(map(string), {})
   })
 }

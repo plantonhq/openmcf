@@ -13,10 +13,10 @@ This preset creates an App Runner service from a public ECR image with all defau
 
 - **ECR Public image** (`imageRepositoryType: ECR_PUBLIC`) -- No authentication or IAM access role required. Anyone can pull public images.
 - **Default instance size** (`cpu: 1024`, `memory: 2048`) -- 1 vCPU and 2 GB RAM. Suitable for most lightweight web applications.
-- **Default auto scaling** -- 1 minimum instance (always warm), up to 25 maximum, scaling out when any instance exceeds 100 concurrent requests.
+- **Default auto scaling** -- the account's default auto scaling configuration applies (1 minimum instance, up to 25 maximum, scaling out when any instance exceeds 100 concurrent requests, unless the account default was changed). Reference an `AwsAppRunnerAutoScalingConfiguration` to tune it.
 - **Default TCP health check** -- Checks that the port is open. Sufficient for simple services; switch to HTTP health checks for production.
-- **Auto-deploy enabled** -- New pushes to the same image tag trigger automatic redeployment.
-- **No VPC egress** -- Instances have outbound internet access but cannot reach resources in a private VPC.
+- **No auto-deploy** -- ECR Public images cannot enable automatic deployments (AWS rejects the combination); deploy a new tag by applying the resource.
+- **No VPC egress** -- Instances have outbound internet access but cannot reach resources in a private VPC. Reference an `AwsAppRunnerVpcConnector` to change that.
 
 ## Placeholders to Replace
 

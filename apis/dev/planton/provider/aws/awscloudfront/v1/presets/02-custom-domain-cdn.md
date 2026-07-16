@@ -1,28 +1,27 @@
-# Custom Domain CDN
+# Custom Domain CDN with ACM Certificate
 
-This preset creates a CloudFront distribution with a custom domain name and HTTPS via an ACM certificate. It uses Price Class 200 for broader geographic coverage (US, Canada, Europe, Asia, Middle East, Africa) and supports any origin (S3 bucket, ALB, API Gateway, or custom server).
+This preset serves a private S3 bucket through CloudFront on your own domain: an alias (CNAME) backed by an ACM certificate, with an Origin Access Control keeping the bucket private.
 
 ## When to Use
 
-- Production websites or APIs that need a custom domain (e.g., `cdn.example.com`) with HTTPS
-- Global applications requiring edge caching across multiple continents
-- Any CloudFront distribution that needs a branded domain instead of `*.cloudfront.net`
+- Production websites and CDNs on a branded domain (`cdn.example.com`, `www.example.com`)
+- Any distribution that must present your own TLS certificate instead of `*.cloudfront.net`
 
 ## Key Configuration Choices
 
-- **Custom domain** (`aliases`) -- Associates a CNAME with the distribution; requires a matching DNS record pointing to the CloudFront domain
-- **ACM certificate** (`certificateArn`) -- Must be in **us-east-1** regardless of where your origin is located (CloudFront requirement)
-- **Price Class 200** (`priceClass: PRICE_CLASS_200`) -- Edge locations in US, Canada, Europe, Asia, Middle East, and Africa; good balance of coverage and cost
-- **Single origin** -- One default origin; add more for multi-origin architectures (API + static assets)
+- **Alias + ACM certificate** -- the certificate is referenced from an `AwsCertManagerCert` resource and **must live in us-east-1** (CloudFront's global requirement) and cover every alias; SNI-only serving and the `TLSv1.2_2021` floor are applied automatically
+- **DNS not included** -- point the domain at the distribution with an `AwsRoute53DnsRecord` alias record targeting the `domain_name` and `hosted_zone_id` outputs
+- **Origin Access Control** (`s3Origin.createOriginAccessControl: true`) -- the bucket stays private; allow the distribution's ARN in the bucket policy
+- **IPv6 enabled** -- free dual-stack serving; create AAAA alias records alongside the A records
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<your-cdn-domain.com>` | Custom domain for the distribution (e.g., `cdn.example.com`) | Your domain registrar |
-| `<acm-certificate-arn-us-east-1>` | ACM certificate ARN in us-east-1 covering the custom domain | AWS ACM console (us-east-1) or `AwsCertManagerCert` status outputs |
-| `<origin-domain-name>` | Origin server DNS name (e.g., `my-bucket.s3.amazonaws.com` or `my-alb.us-east-1.elb.amazonaws.com`) | Your origin resource |
+| `<cdn.example.com>` | The custom domain the distribution answers for | Your DNS plan |
+| `<certificate-resource-name>` | The `AwsCertManagerCert` resource covering the domain (in us-east-1) | Your certificate manifest |
+| `<bucket-name>` / `<bucket-region>` | The S3 bucket holding the content | `AwsS3Bucket` outputs |
 
 ## Related Presets
 
-- **01-s3-static-website** -- Use instead for quick S3 website hosting without a custom domain
+- **01-s3-static-website** -- Use when the default `*.cloudfront.net` domain is enough (no certificate needed)

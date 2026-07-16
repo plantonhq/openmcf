@@ -1,0 +1,60 @@
+# The platform's shared plumbing: one resource group holding the whole
+# platform, and the telemetry pair everything reports into.
+#
+# One resource group is deliberate: the cluster, its network, registry,
+# vault, and telemetry form one lifecycle unit -- they only make sense
+# together, and tearing down the platform should tear down all of it.
+# Workloads that outgrow the shared platform belong in their own
+# compositions, not carved out of this one.
+apiVersion: azure.planton.dev/v1
+kind: AzureResourceGroup
+metadata:
+  name: "{{ values.env }}-aks-platform"
+spec:
+  name: "{{ values.env }}-aks-platform"
+  region: "{{ values.region }}"
+---
+# The workspace receiving the cluster's control-plane logs, Container
+# Insights telemetry, and application traces. It exists in this chart
+# (rather than assuming one) because a Kubernetes platform without
+# queryable control-plane history cannot answer the first incident
+# question: what changed?
+apiVersion: azure.planton.dev/v1
+kind: AzureLogAnalyticsWorkspace
+metadata:
+  name: "{{ values.env }}-aks-logs"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-aks-platform"
+      fieldPath: status.outputs.resource_group_name
+  workspaceName: "{{ values.env }}-aks-logs"
+  # Pay-as-you-go ingestion (the workspace's default SKU) is right at day
+  # 0: cluster log volume is workload-dependent and unpredictable until
+  # real traffic arrives. Retention is the compliance dial.
+  retentionInDays: {{ values.log_retention_days }}
+---
+# The APM face of the same workspace: applications on the cluster send
+# traces, dependencies, and exceptions here (workspace-based Application
+# Insights -- the only mode Azure still supports for new resources), and
+# the data lands in the workspace above alongside the platform logs, so
+# one KQL query joins application symptoms to cluster events.
+apiVersion: azure.planton.dev/v1
+kind: AzureApplicationInsights
+metadata:
+  name: "{{ values.env }}-aks-insights"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-aks-platform"
+      fieldPath: status.outputs.resource_group_name
+  applicationInsightsName: "{{ values.env }}-aks-insights"
+  workspaceId:
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: "{{ values.env }}-aks-logs"
+      fieldPath: status.outputs.workspace_id

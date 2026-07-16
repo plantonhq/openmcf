@@ -1,0 +1,33 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageLocalUser
+metadata:
+  name: my-partner-sftp-user
+spec:
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: <storage-account-resource-name>
+      fieldPath: status.outputs.storage_account_id
+  # Replace: 3-64 lowercase letters and digits only.
+  userName: partneracme
+  # Key auth only -- no shared secret to distribute or rotate
+  # out-of-band; the partner holds the private key, Azure holds only
+  # this public half.
+  sshKeyEnabled: true
+  sshAuthorizedKeys:
+    # Replace with the partner's real OpenSSH public key.
+    - key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPLACEHOLDERPLACEHOLDERPLACEHOLDERPLACEHOLD partner@example.com
+      description: partner pipeline key
+  # Sessions land in the partner's own container.
+  homeDirectory: <containerName>
+  permissionScopes:
+    - service: BLOB
+      resourceName:
+        valueFrom:
+          kind: AzureStorageContainer
+          name: <container-resource-name>
+          fieldPath: status.outputs.container_name
+      read: true
+      write: true
+      list: true
+      create: true

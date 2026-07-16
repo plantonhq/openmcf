@@ -32,7 +32,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayDnsZone
 metadata:
   name: my-dns-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -85,7 +85,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayDnsZone
 metadata:
   name: example-root
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -103,7 +103,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayDnsZone
 metadata:
   name: staging-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -142,7 +142,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayDnsZone
 metadata:
   name: prod-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

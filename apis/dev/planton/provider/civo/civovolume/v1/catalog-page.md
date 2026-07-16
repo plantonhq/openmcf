@@ -22,7 +22,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoVolume
 metadata:
   name: my-volume
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -70,7 +70,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoVolume
 metadata:
   name: dev-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,7 +90,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoVolume
 metadata:
   name: app-storage
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -114,7 +114,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoVolume
 metadata:
   name: prod-db-vol
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

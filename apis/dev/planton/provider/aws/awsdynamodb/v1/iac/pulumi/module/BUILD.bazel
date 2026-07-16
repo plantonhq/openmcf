@@ -6,6 +6,7 @@ go_library(
         "locals.go",
         "main.go",
         "outputs.go",
+        "satellites.go",
         "table.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsdynamodb/v1/iac/pulumi/module",

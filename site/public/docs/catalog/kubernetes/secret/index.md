@@ -33,7 +33,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
   name: my-secret
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -75,8 +75,6 @@ This creates an Opaque Kubernetes Secret named `my-secret` in the `default` name
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `spec.targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `spec.targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `spec.namespace` | `string` | `default` | Namespace where the secret will be created. Max 63 characters, valid DNS label. |
 | `spec.labels` | `map<string, string>` | `{}` | Additional labels merged with standard Planton labels. |
 | `spec.annotations` | `map<string, string>` | `{}` | Additional annotations applied to the secret. |
@@ -94,7 +92,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
   name: app-credentials
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -117,7 +115,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
   name: api-tls
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -146,7 +144,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
   name: ghcr-pull-secret
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -178,7 +176,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
   name: monitoring-auth
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -200,7 +198,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
   name: deploy-key
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

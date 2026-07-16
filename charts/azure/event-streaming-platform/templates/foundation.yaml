@@ -1,0 +1,48 @@
+# One resource group holds the whole estate so a single delete reclaims
+# everything the chart created.
+apiVersion: azure.planton.dev/v1
+kind: AzureResourceGroup
+metadata:
+  name: "{{ values.env }}-streaming"
+spec:
+  name: "{{ values.env }}-streaming"
+  region: "{{ values.region }}"
+---
+# Operational logs for the broker -- connection auditing, throttle
+# forensics, capture errors. The metric alerts ride Azure Monitor
+# directly; this workspace answers the "why" after they fire.
+apiVersion: azure.planton.dev/v1
+kind: AzureLogAnalyticsWorkspace
+metadata:
+  name: "{{ values.env }}-streaming-logs"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-streaming"
+      fieldPath: status.outputs.resource_group_name
+  workspaceName: "{{ values.env }}-streaming-logs"
+  retentionInDays: {{ values.log_retention_days }}
+---
+# Route the namespace's operational logs and metrics into the workspace.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorDiagnosticSetting
+metadata:
+  name: "{{ values.env }}-streaming-ns-diag"
+spec:
+  settingName: eventhubs-logs
+  targetResourceId:
+    valueFrom:
+      kind: AzureEventHubNamespace
+      name: "{{ values.env }}-streams"
+      fieldPath: status.outputs.namespace_id
+  logAnalyticsWorkspaceId:
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: "{{ values.env }}-streaming-logs"
+      fieldPath: status.outputs.workspace_id
+  enabledLogs:
+    - categoryGroup: allLogs
+  enabledMetrics:
+    - category: AllMetrics

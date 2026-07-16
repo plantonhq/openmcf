@@ -20,7 +20,7 @@ variable "spec" {
     ipv4_ipam_pool_id = optional(string, "")
     ipv4_netmask_length = optional(number, 0)
     instance_tenancy = optional(string, "")
-    enable_dns_support = optional(bool, false)
+    enable_dns_support = optional(bool)
     enable_dns_hostnames = optional(bool, false)
     enable_network_address_usage_metrics = optional(bool, false)
     assign_generated_ipv6_cidr_block = optional(bool, false)

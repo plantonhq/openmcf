@@ -1,0 +1,11 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureManagedRedisAccessPolicyAssignment
+metadata:
+  name: test-managed-redis-grant
+spec:
+  managedRedisId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cache/redisEnterprise/planton-hack-managed-redis
+  # The PRINCIPAL id of the granted identity (never the client id).
+  # Azure also names the assignment after this value.
+  objectId:
+    value: 11111111-2222-3333-4444-555555555555

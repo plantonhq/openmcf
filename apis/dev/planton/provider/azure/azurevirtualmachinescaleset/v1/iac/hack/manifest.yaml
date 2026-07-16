@@ -1,0 +1,104 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualMachineScaleSet
+metadata:
+  name: test-vmss
+spec:
+  region: eastus
+
+  resourceGroup:
+    value: test-rg
+
+  name: web-fleet
+
+  # FLEXIBLE applies by default; this manifest exercises the UNIFORM
+  # branch and its mode-gated capabilities (overprovision, scale-in,
+  # health probe, automatic OS upgrades, rolling policy) so the plan
+  # proves the conditionally-mapped enum seams.
+  orchestrationMode: UNIFORM
+
+  skuName: Standard_B2s
+  instances: 2
+
+  osProfile:
+    computerNamePrefix: web
+    linux:
+      adminUsername: azureuser
+      sshPublicKeys:
+        # A throwaway key that exists only so offline plans carry valid
+        # key material -- it grants access to nothing.
+        - publicKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBvUEIH5UU/EzaIyRcGhmQNt63nyi+zWgfzYFElbfxVd
+
+  osDisk:
+    caching: READ_WRITE
+    storageAccountType: STANDARD_LRS
+    diskSizeGb: 64
+
+  dataDisks:
+    - lun: 0
+      caching: NONE
+      diskSizeGb: 128
+      storageAccountType: DATA_STANDARD_SSD_LRS
+      createOption: EMPTY
+
+  sourceImageReference:
+    publisher: Canonical
+    offer: ubuntu-24_04-lts
+    sku: server
+    version: latest
+
+  networkInterfaces:
+    - name: primary
+      primary: true
+      acceleratedNetworkingEnabled: false
+      ipConfigurations:
+        - name: internal
+          primary: true
+          subnetId:
+            value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/app
+          loadBalancerBackendAddressPoolIds:
+            - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/loadBalancers/test-lb/backendAddressPools/web
+
+  upgradePolicy:
+    mode: ROLLING
+    rolling:
+      maxBatchInstancePercent: 20
+      maxUnhealthyInstancePercent: 20
+      maxUnhealthyUpgradedInstancePercent: 20
+      pauseTimeBetweenBatches: PT30S
+      prioritizeUnhealthyInstancesEnabled: true
+    automaticOsUpgrade:
+      enabled: true
+    healthProbeId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/loadBalancers/test-lb/probes/http-health
+
+  automaticInstanceRepair:
+    enabled: true
+    gracePeriod: PT30M
+    action: REPLACE
+
+  terminationNotification:
+    timeout: PT10M
+
+  extensions:
+    - name: health
+      publisher: Microsoft.ManagedServices
+      type: ApplicationHealthLinux
+      typeHandlerVersion: "1.0"
+      settings: '{"protocol":"http","port":80,"requestPath":"/healthz"}'
+
+  scaleIn:
+    rule: OLDEST_VM
+
+  overprovision: false
+
+  bootDiagnostics: {}
+
+  zones: ["1"]
+
+  identity:
+    type: USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/fleet-identity
+
+  tags:
+    cost-center: compute

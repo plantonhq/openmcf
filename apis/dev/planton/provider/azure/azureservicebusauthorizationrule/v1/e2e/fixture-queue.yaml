@@ -1,0 +1,20 @@
+# The queue the QUEUE-scope rule covers, on that scenario's namespace.
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusQueue
+metadata:
+  name: planton-oss-e2e-sbauth-fixture-queue
+  id: planton-oss-e2e-sbauth-fixture-queue
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureservicebusqueue
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  namespaceId:
+    valueFrom:
+      name: planton-oss-e2e-sbauth-que-fixture-namespace
+  queueName: e2e-auth-orders

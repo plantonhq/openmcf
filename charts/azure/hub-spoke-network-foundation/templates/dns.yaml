@@ -1,0 +1,76 @@
+# The estate's internal DNS zone. Private DNS zones are global resources
+# with no reach of their own -- each virtual network link below adds one
+# network to the zone's audience. Service-specific Private Link zones
+# (privatelink.*) are added per service after deployment, following this
+# same zone + per-network-link pattern with registration off.
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZone
+metadata:
+  name: "{{ values.env }}-internal-dns"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-network-foundation"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.private_dns_zone_name }}"
+---
+# Registration is on for every link: each network's VMs get an A record at
+# boot, so the estate is discoverable by hostname from day one. (Azure
+# allows one registration-enabled link per network; these are each
+# network's one.)
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZoneVirtualNetworkLink
+metadata:
+  name: "{{ values.env }}-dns-link-hub"
+spec:
+  name: hub
+  privateDnsZoneId:
+    valueFrom:
+      kind: AzurePrivateDnsZone
+      name: "{{ values.env }}-internal-dns"
+      fieldPath: status.outputs.zone_id
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-hub-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  registrationEnabled: true
+---
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZoneVirtualNetworkLink
+metadata:
+  name: "{{ values.env }}-dns-link-{{ values.spoke_1_name }}"
+spec:
+  name: "spoke-{{ values.spoke_1_name }}"
+  privateDnsZoneId:
+    valueFrom:
+      kind: AzurePrivateDnsZone
+      name: "{{ values.env }}-internal-dns"
+      fieldPath: status.outputs.zone_id
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-spoke-{{ values.spoke_1_name }}-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  registrationEnabled: true
+{% if values.spoke_2_enabled | bool %}
+---
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZoneVirtualNetworkLink
+metadata:
+  name: "{{ values.env }}-dns-link-{{ values.spoke_2_name }}"
+spec:
+  name: "spoke-{{ values.spoke_2_name }}"
+  privateDnsZoneId:
+    valueFrom:
+      kind: AzurePrivateDnsZone
+      name: "{{ values.env }}-internal-dns"
+      fieldPath: status.outputs.zone_id
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-spoke-{{ values.spoke_2_name }}-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  registrationEnabled: true
+{% endif %}

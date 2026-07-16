@@ -212,6 +212,66 @@ either a backend service or a backend bucket). Top-level refs with a
 field-level `default_kind` behave exactly as before; existing manifests are
 unchanged.
 
+### Scenario-declared extra fixtures (optional composition seams)
+
+Registry `prerequisites` carry a strict meaning -- the parents a resource cannot
+exist without -- and they double as deploy-ordering metadata, so **optional**
+composition seams must never be encoded there: adding an optional kind to a
+registry prerequisite list would force every downstream kind's fixture chain to
+deploy it forever. When a scenario needs to live-prove an optional edge (a
+subnet attaching a route table, a NAT gateway associating a public IP, a
+network peering to a second network), it declares the extra fixtures itself via
+the `planton.dev/e2e-prerequisites` annotation on the scenario manifest:
+
+```yaml
+metadata:
+  annotations:
+    # Kind names install through the kind's standard install profile;
+    # repo-relative manifest paths deploy an EXTRA INSTANCE of their declared
+    # kind (for scenarios needing more instances than the profiles provide).
+    planton.dev/e2e-prerequisites: "AzureRouteTable, AzureNetworkSecurityGroup"
+```
+
+Kind-name entries join the registry prerequisite graph and deploy in
+topological order, expanded through their own prerequisite edges and
+deduplicated against the chain (one resource group serves everything);
+entries the chain already deploys are skipped. Manifest-path entries deploy
+in listed order after the kind-driven chain, each preceded by any of its own
+transitive prerequisites not already deployed -- and always deploy, because
+they exist precisely to add another instance; a path entry never substitutes
+for the kind's install profile. The resolver also honors the same annotation
+(kind names only) on each prerequisite's OWN install manifest, ordering the
+fixtures an install profile's `value_from` references compose BEFORE the
+declaring kind -- recursively and cycle-checked. All fixtures join the same
+transitive `value_from` reference resolution the registry chain uses, and
+teardown runs in reverse across the merged chain. Every kind that appears in
+the annotation needs a verifier and an install profile, exactly like a
+registry prerequisite.
+
+A dependency whose `pulumi up` FAILS is still tracked for teardown: a failed
+update may have created any number of resources before erroring, and skipping
+its destroy would orphan them -- and, because Azure-style parents refuse to
+delete while children exist, a single orphaned fixture (say, a load balancer
+holding a frontend in the fixture subnet) blocks the entire reverse teardown
+chain behind it. Destroying a stack whose update failed is safe; it removes
+whatever was actually created.
+
+### Bare polymorphic references need an explicit `kind:` in scenario valueFrom
+
+Reference resolution determines the referenced kind from the `valueFrom.kind`
+field, falling back to the spec field's `default_kind` annotation. A **bare
+polymorphic reference** (a `StringValueOrRef` deliberately carrying NO
+`default_kind` because no kind dominates -- alias-record targets, diagnostic
+setting targets, metric-alert scopes) has no fallback, and the resolver leaves
+a kind-less reference on such a field UNTOUCHED rather than erroring. The
+module then receives an unresolved ref, sends nothing (or an empty string),
+and the failure surfaces at DEPLOY as a provider validation error that reads
+like a module defect ("one of either X or Y must be specified"). In scenario
+manifests, every reference on a bare polymorphic field must therefore carry
+the explicit `kind:` alongside `name:` and `fieldPath:` -- no offline gate
+catches the omission, because the manifest validates and the plan renders
+without it.
+
 ## E2E Profiles
 
 Profiles are KRM-style YAML files (`apiVersion: qa.planton.dev/v1`) that
@@ -258,6 +318,12 @@ Status values:
 - **deferred** -- known failure with documented reason, skipped in CI
 - **skip** -- intentionally excluded (needs cloud credentials, etc.)
 - **stub** -- module is a stub with no real deployment logic
+
+The status is enforced at two layers: CI matrices are built from `planton
+e2e discover` filters, and the provider test runners load the component's
+profile and `t.Skip` any non-green component (with the profile's
+`deferred_reason` in the skip message) -- so a full-provider suite run
+never fails on a documented deferral.
 
 ## Discovering Components
 
@@ -306,6 +372,261 @@ To use HashiCorp Terraform instead:
 ```bash
 PLANTON_E2E_TF_BINARY=terraform make e2e-test-kubernetes-terraform-tier1
 ```
+
+### Background suite lanes: smoke-check the launch, never trust nohup blindly
+
+Long real-cloud suites are best launched as background processes writing to a
+log file (a crashed observer then loses only observation, never the run). One
+failure mode recurs: a `nohup`-spawned child of a short-lived shell can be
+reaped with its parent BEFORE the suite starts, leaving a zero-byte log and no
+error -- the launch "succeeds" and nothing runs. After launching any background
+lane, smoke-check it within a minute: the PID must still be alive AND the log
+must be non-empty (the harness prints its authentication line first). If the
+process is gone with an empty log, relaunch under a supervised/managed shell
+rather than retrying `nohup` from another transient shell.
+
+### Long-running Azure components (AKS)
+
+AKS clusters take roughly 5–10 minutes to create and a similar time to delete.
+Component E2E profiles for `azureakscluster` and `azureaksnodepool` set
+`timeout_minutes: 60–75`. When invoking tests directly, size `-timeout` beyond
+the default 30m:
+
+```bash
+go test -tags=e2e -timeout=90m -v -count=1 \
+  -run 'TestAzureAksCluster_Pulumi/minimal' ./e2e/azure/...
+```
+
+Burstable VM sizes in `eastus` may support only availability zone `1` — multi-zone
+lists fail with `AvailabilityZoneNotSupported`. AKS E2E scenarios in this repo
+use `zones: ["1"]` for the test subscription.
+
+### Offer-restricted services on free/PAYG subscriptions (probe, don't roulette)
+
+Some Azure database services restrict provisioning PER REGION on free-tier
+and new pay-as-you-go subscriptions: the ARM API returns
+`LocationIsOfferRestricted` (PostgreSQL/MySQL Flexible Server) or
+`ProvisioningDisabled` (Microsoft.Sql logical servers) in the restricted
+regions. Verified on the test subscription: `eastus`, `eastus2`, and
+`westus2` are blocked for PostgreSQL while `westus3`, `centralus`,
+`canadacentral`, `northeurope`, and `uksouth` are clean — the restriction
+is REGIONAL, not subscription-wide, so do not record a deferral after two
+failures; find a clean region instead.
+
+For PostgreSQL the per-region flag is queryable UP FRONT — probe before
+picking (or moving) a scenario region:
+
+```bash
+az rest --method get \
+  --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.DBforPostgreSQL/locations/{region}/capabilities?api-version=2024-08-01" \
+  --query "value[0].restricted"   # "Disabled" == provisioning allowed
+```
+
+Each RDBMS carries its OWN restriction footprint — do not assume they
+match. Verified live on the test subscription: `westus3` is clean for
+PostgreSQL but blocked for MySQL (`ProvisionNotSupportedForRegion`),
+while `westus2` is blocked for PostgreSQL but clean for MySQL. MySQL's
+capabilities endpoint is itself the probe, just with a different signal:
+a restricted region answers 500 `InternalServerError`, a usable region
+returns its edition ladder:
+
+```bash
+az rest --method get \
+  --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.DBforMySQL/locations/{region}/capabilities?api-version=2023-12-30" \
+  --query "value[0].supportedFlexibleServerEditions[].name"
+```
+
+Microsoft.Sql has no public equivalent — fall back to one live attempt.
+Verified on the test subscription: `eastus` is blocked for Microsoft.Sql
+logical servers (`ProvisioningDisabled`) while `westus3` and `centralus`
+are clean.
+
+Microsoft.Sql adds its own TRANSIENT failure shape on top of the
+restriction class: a logical-server create in a CLEAN region can return
+`OperationTimedOut` ("The operation timed out and automatically rolled
+back. Please retry the operation."). The rollback is asynchronous — for
+several minutes afterward the half-created server is invisible to
+`az sql server show`/`az resource list` yet still blocks its resource
+group's deletion (`ResourceDeletionFailed`), and an explicit
+`az sql server delete` answers `DropLogicalServerAlreadyInProgress`. A
+`pulumi destroy` of the resource-group stack issued during that window
+can hang far past the RG-delete norm. Treat it as transient: kill the
+hung destroy if needed, wait for the in-progress drop to finish (the RG
+delete then succeeds), and retry the lane — do not debug the module.
+A server may live in a different region than its resource group, so the
+shared fixture RG serves unchanged when a scenario pins a different
+region. True subscription-wide gates do exist (the quota-increase link
+in the ARM error is the fix) — but conclude that only after a
+probe-verified clean region also fails.
+
+App Service adds its own shape: new PAYG subscriptions carry ZERO
+Basic-tier VM quota in some regions, and the rejection is a misleading
+`401 Unauthorized` whose body says "Operation cannot be completed
+without additional quota ... Current Limit (B1 VMs): 0" — a quota
+signal wearing an auth status code, not a credential problem. The
+restriction is per-region (verified on the test subscription: `eastus`
+blocked, `westus3` clean) and the cheap probe is a one-off
+`az appservice plan create --sku B1` in a throwaway resource group. An
+App Service PLAN pins the region for every app on it — apps must live
+in their plan's region — so re-regioning an app scenario means
+re-regioning its plan fixture (the fixture resource group serves
+unchanged; a plan may live in a different region than its group).
+
+Cosmos DB adds a THIRD failure shape to this class: transient CAPACITY
+rejection rather than offer restriction. `eastus` answered
+`ServiceUnavailable` ("high demand in East US region for the zonal
+redundant (Availability Zones) accounts") for a plain single-region
+account that never asked for zones — Azure routes new accounts through
+zonal placement internally, so the error hits non-zonal manifests too.
+There is no up-front probe (the provider `locations` list still
+advertises the region); treat `ServiceUnavailable` on Cosmos account
+creation as a region-capacity signal and move the scenario-local
+accounts to a quieter region (`westus3` verified clean) instead of
+recording a deferral or filing quota requests.
+
+Cosmos DB SQL data-plane RBAC (`cosmosdb_sql_role_assignment`) adds a
+Pulumi-module constraint azurerm does not surface: pulumi-azure enforces
+a 24-character logical resource name on `SqlRoleAssignment`, and when
+the Azure `name` (a GUID) is unset it autogenerates from that logical
+name — producing invalid non-UUID values like `mainaa5aa87`. Forge the
+Pulumi module to (1) use a short logical name (`"main"`, mirroring the
+Terraform module's single resource) and (2) generate an explicit UUID
+for the Azure `name` when the spec does not pin one, matching azurerm's
+create-time UUID generation. The sibling `SqlRoleDefinition` needs the
+same explicit-GUID treatment for `role_definition_id` when unset; its
+logical name can stay on `metadata.name`.
+
+### Front Door: fast creates, ~18-minute profile deletes
+
+Azure Front Door (Standard/Premium) inverts the usual timing profile:
+every resource in the family CREATES in seconds-to-minutes (profile
+~1-2 min; endpoints, origin groups, origins, and routes each well under
+a minute), but PROFILE DELETION runs ~18 minutes wall time (verified
+live on both engines; the service tears the global edge deployment down
+before ARM confirms). Consequences for scenario budgeting:
+
+- Any scenario whose chain includes a Front Door profile fixture costs
+  ~20-27 minutes per engine, dominated entirely by the fixture teardown.
+  Child-resource deletes inside a live profile are fast; it is only the
+  profile itself that is slow.
+- Deleting the fixture RESOURCE GROUP does not dodge this: the RG delete
+  waits on the profile delete inside it.
+- Estimate a full family suite accordingly (10 dual-engine runs measured
+  ~3.7 h total) rather than assuming CDN-family resources are cheap
+  because they create quickly.
+
+### Vendor-catalog IDs in fixtures: look them up, never infer them
+
+When a scenario (or preset, or hack manifest) carries an ID from a
+provider-curated catalog -- a managed WAF rule ID, a curated rule-set
+name/version, any value whose legal vocabulary lives server-side -- look
+the real IDs up before writing the fixture; a plausible-looking ID
+passes every offline gate (the schema types it as a free string) and
+fails only at live apply. The lookup sources, in order: the service's
+own catalog API (e.g. Azure's
+`GET .../providers/Microsoft.Network/frontDoorWebApplicationFirewallManagedRuleSets`
+lists every rule group and rule ID per set version) and the provider
+clone's acceptance-test fixtures. The trap that motivated this: Azure
+bot-manager rule IDs carry a `Bot` prefix (`Bot300700`) while the
+default-rule-set IDs are bare numerics (`942100`) -- an inferred bare
+`300700` was rejected by ARM on both engines with "managed rule IDs are
+not supported".
+
+### Placeholder domains in receiver/endpoint URLs are server-validated
+
+When a fixture (or preset, or hack manifest) carries a URL the SERVICE
+will call back to -- a notification webhook, an alert receiver, an
+integration endpoint -- do not use documentation placeholder domains.
+Some services validate the URI server-side at create and reject blocked
+domains outright: Azure Monitor action groups return 400
+`WebhookServiceUriBlocked` for webhook receivers on `example.com`, on
+both engines, while every offline gate passes (the schema only checks
+the http/https scheme). Use a real domain the fixture plausibly owns
+(the project's own domain works; the service does not probe the URL at
+create, it only screens the domain). Presets and hack manifests should
+carry a domain-you-own shape (e.g. `hooks.yourcompany.com`) so users
+never copy a blocked placeholder.
+
+### Vendor-constant casing: an SDK constant's Go identifier is not its wire value
+
+When a module maps a spec enum to a provider's string vocabulary, read
+the SDK constant's STRING VALUE, never its Go identifier -- the two can
+differ in casing, and provider schemas validate case-sensitively (e.g.
+azurerm's `StringInSlice(..., false)`). The trap that motivated this:
+the frontdoor SDK declares `TransformTypeURLDecode TransformType =
+"UrlDecode"` -- an identifier-derived `"URLDecode"` passes every offline
+gate that does not render a plan and fails at plan time on both
+engines. Two defenses: (1) verify every enum map row against the SDK
+constants file (or the provider schema's validator list), and (2) make
+sure at least one scenario or hack manifest exercises every mapping row
+whose casing is irregular, so the offline plan gate and the live suite
+keep it covered -- a mapping row no fixture uses is dead code that
+validation cannot see.
+
+### Service-created default sub-resources cannot be adopted declaratively
+
+Some Azure services auto-create a well-known child resource the moment a
+parent exists -- Service Bus subscriptions get a catch-all filter rule
+named `$Default`, and similar service-created defaults exist elsewhere.
+It is tempting to model "replace the default" as declaring a resource
+with the same name, expecting ARM's CreateOrUpdate to upsert it. That
+never reaches ARM: both engines' azurerm create paths run an
+import-existence check first and fail with "a resource with the ID ...
+already exists -- needs to be imported" (live-confirmed on both engines;
+the check exists precisely so Terraform-model tools never silently adopt
+state they did not create). The honest modeling: reserve the
+service-created name in the spec (a CEL rejecting it with a message that
+teaches the alternative), document declared siblings as ADDITIVE
+alongside the default, and teach the one-time out-of-band removal (an
+`az` CLI delete) where restrictive behavior is wanted. No offline gate
+catches this class -- the plan renders fine and only the live create
+collides -- so treat every "declare over a service-created default"
+design as suspect until a live run proves it.
+
+### Some ARM contracts exist ONLY server-side: budget one live probe for the flagship combination
+
+The azurerm provider is the completeness floor, but it is NOT a complete
+map of ARM's rejection surface: some cross-field contracts appear in no
+schema validator, no CustomizeDiff, and no create-path check -- they live
+only in ARM's regional service. Example (live-confirmed): a firewall
+attached to a firewall policy must not carry firewall-level DNS
+parameters -- ARM rejects the create with
+`AzureFirewallDNSConfigNotAllowedForVhubOrVnetWithPolicy` ("DNS
+configuration should be managed by policy"), yet the provider happily
+plans and sends the combination. The consequence for scenario design:
+make the FIRST live scenario for a kind exercise the flagship FIELD
+COMBINATION users will actually deploy (here: policy-attached firewall
+plus every side-channel knob the policy also owns), because a
+source-diff of the provider cannot prove combinations the provider never
+validates. When such a rejection surfaces, front-load it as a spec CEL
+(with the ARM error code in the message trail), fix the scenario, and
+record the contract in the component docs -- the next component in the
+same service family should check for sibling "managed by the parent"
+exclusions up front.
+
+### "no stack named ..." for a fixture that just deployed: backend state loss, not a module defect
+
+When a scenario fails at DEPENDENCIES-UP with `failed to read outputs for
+dependency ...: no stack named '<stack>' found` -- for a fixture whose
+`pulumi up` just returned success (or one that "deployed and verified"
+moments earlier, then fails teardown the same way) -- the suite's LOCAL
+PULUMI FILE BACKEND has lost its stack state mid-run. Nothing is wrong
+with the module, the manifest, or the cloud: the resources were created,
+but the state tracking them vanished. The backend lives in a per-run temp
+directory (`TestMain` creates it with `os.MkdirTemp`), so it is exposed to
+anything that disturbs temp storage on the host. Diagnose by the
+signature: SEVERAL stacks of the same scenario reporting "no stack named"
+at once -- including ones that already deployed and verified cleanly (a
+real per-stack failure never spreads to unrelated stacks) -- and an
+identical re-run passing end to end.
+
+Recovery: the stackless fixtures' destroys were skipped, so sweep the
+cloud for the failed run's fixtures before re-running. A same-named
+fixture RESOURCE GROUP in a later scenario can mask the orphans -- ARM's
+resource-group PUT is an upsert, so the later run's fixture "creates" the
+existing group and its teardown then deletes it, orphans included -- but
+never rely on that; sweep explicitly (`az group list`, plus the service's
+own list for account-level orphans).
 
 ### How the Terraform path works
 
@@ -548,6 +869,150 @@ scenario is as simple as dropping a YAML file into the component's
 4. Add Makefile targets
 5. Create `.github/workflows/e2e-{provider}.yaml` with the appropriate trigger
    schedule and credential configuration
+
+### Real-cloud harness Setup: validate credentials and export preconditions
+
+For a real-cloud provider (`test_substrate: real_cloud`), the framework builds
+every stack input with a **nil provider config**, so the IaC modules resolve
+credentials from the SDK's ambient chain (a keyless CLI/SSO login locally, OIDC
+federation in CI) rather than from a stored secret. The harness `Setup` therefore
+owns two responsibilities beyond wiring verifiers:
+
+- **Fail fast on credentials.** Probe the ambient chain with a zero-permission,
+  side-effect-free identity call (e.g. AWS `sts:GetCallerIdentity`; Azure: acquire
+  a management token) so a missing/expired login is reported before any deploy.
+- **Export the environment preconditions both engines need.** The Terraform path's
+  provider block is empty and the Pulumi builders leave unset args to env-var
+  fallbacks, so any value the provider cannot infer must be exported into the
+  process environment (the Pulumi runner inherits `os.Environ()`; the Terraform
+  path layers extracted vars on top of it). Two categories recur:
+  - *Identity/scope the provider cannot infer* — e.g. Azure `azurerm` v4 no longer
+    infers the subscription, so the harness must export `ARM_SUBSCRIPTION_ID`.
+  - *Test-environment behavior that differs from production defaults* — e.g. the
+    Azure providers auto-register a broad set of resource providers at init and
+    fire the registrations concurrently, which returns HTTP 409 on a subscription
+    whose providers are not yet registered. Resource-provider registration is a
+    one-time subscription bootstrap, orthogonal to whether a module creates its
+    resource correctly (the contract E2E validates), so the harness opts out for
+    the ephemeral run via `ARM_SKIP_PROVIDER_REGISTRATION=true`. Keep such opt-outs
+    scoped to the harness and documented, so the test stays honest about what it
+    proves.
+  - *Because of that opt-out, a kind whose ARM namespace has never been used on
+    the subscription fails its FIRST live run with a 409
+    `MissingSubscriptionRegistration`* (e.g. `Microsoft.App` before the first
+    Container Apps run). The fix is the same one-time subscription bootstrap the
+    opt-out defers: `az provider register --namespace <ns>` (registration takes
+    a minute or two; poll `az provider show -n <ns>` until `Registered`), then
+    re-run. Expect this once per new resource-provider family, never per kind.
+
+### Authoring verifiers and prerequisite fixtures
+
+- **Never name a verifier (or any production `.go` file) with a `_test.go`
+  suffix.** Go treats every file ending in `_test.go` as a test file and
+  excludes it from the normal package build, so a verifier in, say,
+  `foo_web_test.go` compiles fine under `go test` but is INVISIBLE to
+  `go build` — the registration in `verifier.go` then fails with a
+  bewildering "undefined: fooVerifier" even though the type is plainly
+  defined. Name such files to avoid the suffix (e.g.
+  `application_insights_standard_webtest.go`, not `..._web_test.go`).
+- **Every kind that appears in another kind's `kind_meta.prerequisites` needs its
+  own verifier registered in the provider harness** — the dependency deployer
+  verifies each fixture right after installing it, so a missing verifier fails the
+  composed scenario at DEPENDENCIES-UP with "no verifier registered", not at the
+  component under test. Wiring a new composed component therefore means wiring
+  verifiers for its whole prerequisite chain (plus a `prerequisite.yaml` or minimal
+  scenario for each prerequisite).
+- **Prefer a GET-by-ID existence probe over a HEAD unless the service is known to
+  support HEAD.** ARM's generic `CheckExistenceByID` (HEAD) is not implemented by
+  every resource provider — e.g. `Microsoft.ManagedIdentity` answers HEAD with
+  405 Method Not Allowed while GET works fine. A GET with the typed 404 as the
+  absence signal works everywhere; treat every non-404 failure as a real error so
+  auth/network problems never masquerade as "absent".
+- **Data-plane resources need a data-plane grant AND sometimes a data-plane
+  verifier.** Some resources live behind a service's own endpoint rather than the
+  control plane (e.g. Azure Key Vault keys/certificates behind
+  `{vault}.vault.azure.net`): the deploying credential needs an explicit
+  data-plane authorization even when it owns the subscription. Grant it once at
+  the subscription scope as an idempotent harness-Setup bootstrap rather than
+  per-ephemeral-resource — data-plane RBAC takes minutes to propagate, so a
+  per-run grant makes every scenario race its own authorization. For
+  verification, check whether the control plane exposes a read proxy first
+  (Azure vault KEYS have one; CERTIFICATES do not) and fall back to the service's
+  data-plane SDK only when it does not.
+- **Some services access customer resources with the PROVIDER'S OWN service
+  principal, which needs its own bootstrap.** E.g. Azure Front Door reads
+  customer Key Vaults for bring-your-own TLS certificates as the
+  `Microsoft.AzureFrontDoor-Cdn` enterprise application (a well-known,
+  tenant-invariant app id) — NOT as the deploying credential. Two one-time
+  steps, both idempotent harness-Setup bootstraps in the same class as the
+  test-principal grant above: (1) the principal may not exist in a fresh
+  tenant until instantiated (`az ad sp create --id <well-known-app-id>`;
+  resolve with `az ad sp show` first — create fails when it already exists),
+  and (2) it needs the read role granted at the subscription scope
+  (`--assignee-principal-type ServicePrincipal`). Without both, the dependent
+  resource's create fails with an access-denied error naming the vault, which
+  looks like a module defect but is tenant bootstrap.
+- **Soft-delete/retention services add an orphan class the resource list does not
+  show.** A destroyed Azure Key Vault lingers soft-deleted (its globally unique
+  name stays reserved) unless purged; both IaC engines purge on destroy by
+  default, but an interrupted run can strand one. The zero-orphan sweep for such
+  services must check the recycle bin too (`az keyvault list-deleted`), and
+  scenarios should keep purge protection OFF so teardown can actually purge.
+  Expect destroys to be slow (a vault purge runs ~10 minutes) and size test
+  timeouts accordingly.
+- **Some ARM resources have no true delete — destroy flips a state field and the
+  object stays GETtable, so verify-absent must be STATE-AWARE, not 404-based.**
+  An Azure Storage encryption scope is the canonical case: "delete" PATCHes
+  `properties.state` to `Disabled`, a GET keeps answering 200, and the name stays
+  reserved inside its parent (recreating the same name re-enables it). A plain
+  GET-with-typed-404 probe reports such a resource as still-existing after a
+  clean destroy and fails the run spuriously. Check the provider's own Read/Delete
+  source for state-flip semantics when writing a verifier: if delete is a
+  soft-disable, the verifier must read the state field and treat the disabled
+  value as absent (mirroring the provider's own removed-from-state behavior),
+  and verify-exists should require the ENABLED state, not mere presence. No
+  recycle-bin sweep exists for this class — the object intentionally persists;
+  parent teardown is what actually removes it.
+- **A sibling of the state-flip class: some association resources have NO ARM
+  object at all — their state lives in a property of the resources they
+  associate.** An Azure Managed Redis geo-replication group is the canonical
+  case: creating it links existing databases (no new ARM object; the resource ID
+  is just the managing cluster's ID) and destroying it unlinks them (nothing is
+  deleted, so a 404 probe can NEVER pass verify-absent — and verify-exists
+  against the resource ID would pass even when the association never took
+  effect). The verifier must GET the carrying resource and read the association
+  property (here `properties.geoReplication.linkedDatabases` on the managing
+  default database): verify-exists requires the association to be genuinely
+  established, verify-absent requires it collapsed. Read the provider's Read
+  source to find which resource carries the property.
+- **Never let sequential scenarios destroy and recreate the same globally unique
+  parent name.** When a kind's registry prerequisite chain deploys a fixture
+  whose name is globally unique (an Azure SQL logical server, a Key Vault),
+  every scenario of a multi-scenario component tears the fixture down and the
+  next scenario recreates it — and Azure can hold the just-deleted name long
+  enough that the recreate hangs indefinitely (a `Microsoft.Sql/servers` create
+  stuck 20+ minutes with no write in the activity log). Give each scenario its
+  own uniquely named parent instead: declare the parent through the
+  `e2e-prerequisites` annotation with a scenario-local manifest (kept
+  OUTSIDE `e2e/scenarios/`, which the discoverer treats as test cases), and
+  drop the registry prerequisite if it would force the shared fixture chain in
+  anyway. Registry prerequisites are for parents a kind cannot exist without
+  AND that are safe to recreate per scenario. The post-delete name hold is
+  SERVICE-SPECIFIC: SQL logical servers hold the name after the delete
+  returns, while Azure Cache for Redis frees the name the moment its (slow,
+  several-minute) delete completes — same-name recreates across sequential
+  engine runs verified live. Scenario-local parents are still the right shape
+  for very expensive fixtures regardless of name-hold behavior: a Redis cache
+  runs 15-40 minutes per creation, and a scenario that owns its parent never
+  serializes against another scenario recreating a shared one.
+- **The tfvars wire format drops zero-valued proto fields — TF object attributes
+  where zero is meaningful must be `optional()` with the zero default.**
+  `ProtoToTFVars()` serializes from protojson, which omits scalar zeros
+  (proto3 implicit presence). A required attribute like
+  `per_database_settings.min_capacity = number` then fails
+  `terraform apply` with "attribute is required" whenever the manifest
+  legitimately sets `0`. Declare such attributes
+  `optional(number, 0)` so the dropped zero round-trips.
 
 ## Architecture
 

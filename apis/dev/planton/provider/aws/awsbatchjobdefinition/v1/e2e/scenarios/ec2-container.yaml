@@ -1,0 +1,53 @@
+# EC2-type container job definition at rich surface with NO role
+# dependencies (registration needs neither compute nor IAM): parameterized
+# command, environment, EC2-only ulimits + Linux parameters, retry
+# discrimination (RETRY on Spot-reclaim status reasons, EXIT on real
+# failures), timeout, and fair-share scheduling priority. The Fargate arm's
+# extra fields are proven by the spec tests and the serializer unit tests.
+apiVersion: aws.planton.dev/v1
+kind: AwsBatchJobDefinition
+metadata:
+  name: planton-oss-e2e-awsbatjd
+  id: planton-oss-e2e-awsbatjd
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbatchjobdefinition
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  platformCapabilities:
+    - EC2
+  container:
+    image: public.ecr.aws/amazonlinux/amazonlinux:2023
+    command:
+      - echo
+      - Ref::message
+    vcpus: 1
+    memoryMib: 2048
+    environment:
+      STAGE: e2e
+    ulimits:
+      - name: nofile
+        softLimit: 8192
+        hardLimit: 65535
+    linuxParameters:
+      initProcessEnabled: true
+      sharedMemorySizeMib: 128
+  parameters:
+    message: hello-from-e2e
+  retryStrategy:
+    attempts: 3
+    evaluateOnExit:
+      - action: RETRY
+        onStatusReason: Host EC2*
+      - action: EXIT
+        onExitCode: "1*"
+  timeout:
+    attemptDurationSeconds: 600
+  schedulingPriority: 500
+  propagateTags: true

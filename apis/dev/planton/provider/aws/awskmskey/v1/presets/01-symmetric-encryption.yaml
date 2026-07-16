@@ -4,8 +4,10 @@ metadata:
   name: my-symmetric-key
 spec:
   region: <aws-region>
-  keySpec: symmetric
+  key_spec: SYMMETRIC_DEFAULT
   description: <key-description>
-  disableKeyRotation: false  # Annual rotation enabled (recommended)
-  deletionWindowDays: 30  # recommended_default from spec
-  aliasName: alias/<key-alias>
+  enable_key_rotation: true
+  rotation_period_in_days: 365
+  deletion_window_days: 30
+  aliases:
+    - alias/<key-alias>

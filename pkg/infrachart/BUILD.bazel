@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "chart.go",
         "dag.go",
+        "discover.go",
         "refs.go",
         "render.go",
         "validate.go",
@@ -36,9 +37,11 @@ go_library(
 go_test(
     name = "infrachart_test",
     srcs = [
+        "discover_test.go",
         "render_test.go",
         "validate_test.go",
         "values_test.go",
     ],
+    data = glob(["testdata/**"]),
     embed = [":infrachart"],
 )

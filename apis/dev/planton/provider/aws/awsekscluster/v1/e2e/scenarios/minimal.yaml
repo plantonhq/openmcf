@@ -1,0 +1,40 @@
+# Minimal AwsEksCluster scenario: a two-AZ control plane on the subnet-pair
+# prerequisite, assuming the EKS cluster role from the IAM prerequisite
+# profile (which carries AmazonEKSClusterPolicy itself -- the module never
+# attaches policies to a referenced role). The Kubernetes version is left
+# unset on purpose so AWS picks its current default and this manifest never
+# goes stale. access-entries-only authentication exercises the modern
+# access model. Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsEksCluster
+metadata:
+  name: planton-oss-e2e-eks-smoke
+  id: planton-oss-e2e-eks-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsekscluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-b
+        fieldPath: status.outputs.subnet_id
+  clusterRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-eks-cluster-role
+      fieldPath: status.outputs.role_arn
+  accessConfig:
+    authenticationMode: API
+  upgradeSupportType: STANDARD

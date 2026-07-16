@@ -33,7 +33,17 @@ message AwsMwaaEnvironmentStackOutputs {
   // (e.g., "AVAILABLE", "CREATING", "UPDATING", "DELETING").
   string status = 7;
 
-  // security_group_id is the ID of the managed security group, if one was created
-  // from security_group_ids or allowed_cidr_blocks in the spec.
-  string security_group_id = 8;
+  // created_at is the timestamp when the environment was created.
+  string created_at = 8;
+
+  // database_vpc_endpoint_service is the VPC endpoint service name for the
+  // environment's Airflow metadata database. When endpoint_management is
+  // "CUSTOMER", create an AwsVpcEndpoint against this service name.
+  string database_vpc_endpoint_service = 9;
+
+  // webserver_vpc_endpoint_service is the VPC endpoint service name for the
+  // environment's Airflow webserver. When endpoint_management is "CUSTOMER",
+  // create an AwsVpcEndpoint against this service name. Empty when the
+  // webserver is PUBLIC_ONLY.
+  string webserver_vpc_endpoint_service = 10;
 }

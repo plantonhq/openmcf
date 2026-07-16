@@ -11,7 +11,8 @@ import (
 // kind (TestCloudResourceGeneric), whose annotated_ref field carries the full
 // FK annotation pair (default_kind = TestCloudResourceGeneric,
 // default_kind_field_path = "status.outputs.id") — a hermetic fixture that
-// never moves with production resource shapes.
+// never moves with production resource shapes. The two testdata fixture
+// charts additionally exercise the pipeline against real provider kinds.
 
 const testChartYaml = `apiVersion: infra-hub.planton.ai/v1
 kind: InfraChart
@@ -64,14 +65,30 @@ func mustValidate(t *testing.T, dir string, opts Options) *Report {
 	return report
 }
 
+// issueMessages returns every issue message of the given severity across all
+// variants.
 func issueMessages(report *Report, severity Severity) []string {
 	var out []string
-	for _, issue := range report.Issues {
-		if issue.Severity == severity {
-			out = append(out, issue.Message)
+	for _, v := range report.Variants {
+		for _, issue := range v.Issues {
+			if issue.Severity == severity {
+				out = append(out, "["+v.Name+"] "+issue.Message)
+			}
 		}
 	}
 	return out
+}
+
+// defaultsVariant returns the "defaults" variant result.
+func defaultsVariant(t *testing.T, report *Report) *VariantResult {
+	t.Helper()
+	for i := range report.Variants {
+		if report.Variants[i].Name == "defaults" {
+			return &report.Variants[i]
+		}
+	}
+	t.Fatal("report has no defaults variant")
+	return nil
 }
 
 func requireError(t *testing.T, report *Report, substring string) {
@@ -114,16 +131,17 @@ spec:
 	if report.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", issueMessages(report, SeverityError))
 	}
-	if len(report.Docs) != 2 {
-		t.Fatalf("expected 2 docs, got %d", len(report.Docs))
+	docs := defaultsVariant(t, report).Docs
+	if len(docs) != 2 {
+		t.Fatalf("expected 2 docs, got %d", len(docs))
 	}
 	if warnings := issueMessages(report, SeverityWarning); len(warnings) != 0 {
 		t.Fatalf("expected no warnings (reference resolves in-chart), got: %v", warnings)
 	}
 	// The annotated default fieldPath was applied — the reference resolved
 	// without an explicit fieldPath in the template.
-	if report.Docs[0].Name != "dev-node-a" && report.Docs[1].Name != "dev-node-a" {
-		t.Fatalf("rendered names unexpected: %v / %v", report.Docs[0].Name, report.Docs[1].Name)
+	if docs[0].Name != "dev-node-a" && docs[1].Name != "dev-node-a" {
+		t.Fatalf("rendered names unexpected: %v / %v", docs[0].Name, docs[1].Name)
 	}
 }
 
@@ -148,7 +166,11 @@ spec:
 	requireError(t, report, "overrides the annotated composition key")
 }
 
-func TestValidateDanglingReferenceIsAWarning(t *testing.T) {
+// A reference to a resource NO variant defines is a warning, not an error:
+// charts compose onto resources owned elsewhere by design (a landing zone's
+// network, a pre-existing DNS zone), resolved in the target environment at
+// deploy time.
+func TestValidateCrossChartReferenceIsAWarning(t *testing.T) {
 	dir := writeChart(t, map[string]string{
 		"a.yaml": `---
 apiVersion: _test.planton.dev/v1
@@ -165,11 +187,62 @@ spec:
 	})
 	report := mustValidate(t, dir, Options{})
 	if report.HasErrors() {
-		t.Fatalf("dangling reference must not be an error: %v", issueMessages(report, SeverityError))
+		t.Fatalf("cross-chart reference must not be an error: %v", issueMessages(report, SeverityError))
 	}
 	warnings := issueMessages(report, SeverityWarning)
 	if len(warnings) != 1 || !strings.Contains(warnings[0], "does not define") {
-		t.Fatalf("expected one dangling-reference warning, got: %v", warnings)
+		t.Fatalf("expected one cross-chart-reference warning, got: %v", warnings)
+	}
+}
+
+// A reference whose target another variant DOES define gets a sharper
+// warning in the variant that lost it: either the toggle removed the
+// resource while the reference still stands (a defect), or this is a
+// bring-your-own arm redirecting the same reference to a resource owned
+// outside the chart (a designed pattern). The two are offline-
+// indistinguishable, so the diagnosis names both.
+func TestValidateToggleRemovedTargetWarnsWithDiagnosis(t *testing.T) {
+	values := testValuesYaml + `  - name: nodeBEnabled
+    description: deploy node b
+    type: bool
+    value: true
+`
+	dir := writeChartWithValues(t, values, map[string]string{
+		"b.yaml": `{% if values.nodeBEnabled | bool %}
+` + validNode + `{% endif %}
+`,
+		"a.yaml": `---
+apiVersion: _test.planton.dev/v1
+kind: TestCloudResourceGeneric
+metadata:
+  name: "a"
+spec:
+  requiredRef:
+    value: literal
+  annotatedRef:
+    valueFrom:
+      name: "dev-node-b"
+`,
+	})
+	report := mustValidate(t, dir, Options{})
+	if report.HasErrors() {
+		t.Fatalf("variant-lost target must not be an error (bring-your-own arms are designed): %v", issueMessages(report, SeverityError))
+	}
+	// The defaults variant (toggle on) is clean; the flipped variant must
+	// carry the sharper defined-in-another-variant diagnosis.
+	found := false
+	for _, v := range report.Variants {
+		for _, issue := range v.Issues {
+			if issue.Severity == SeverityWarning && strings.Contains(issue.Message, "defines in another variant") {
+				if v.Name != "nodeBEnabled=false" {
+					t.Fatalf("variant-lost-target warning attributed to variant %q", v.Name)
+				}
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("expected a variant-lost-target warning, got: %+v", report.Variants)
 	}
 }
 
@@ -214,7 +287,7 @@ spec:
 `,
 	})
 	report := mustValidate(t, dir, Options{})
-	requireError(t, report, "does not resolve")
+	requireError(t, report, "no field named")
 }
 
 func TestValidateReferenceWithoutKindIsAnError(t *testing.T) {
@@ -286,7 +359,9 @@ spec:
 	}
 }
 
-func TestValidateToggleRendersBothArms(t *testing.T) {
+// Bool params are flipped automatically — one variant per toggle — so both
+// arms of every conditional manifest validate without hand-written --set runs.
+func TestValidateAutoFlipsBoolToggles(t *testing.T) {
 	values := testValuesYaml + `  - name: extraEnabled
     description: deploy the extra node
     type: bool
@@ -308,16 +383,30 @@ spec:
 	}
 	dir := writeChartWithValues(t, values, templates)
 
-	// Default arm: toggle off — the conditional file renders to nothing.
 	report := mustValidate(t, dir, Options{})
-	if report.HasErrors() || len(report.Docs) != 1 {
-		t.Fatalf("toggle-off: errors=%v docs=%d", issueMessages(report, SeverityError), len(report.Docs))
+	if report.HasErrors() {
+		t.Fatalf("errors: %v", issueMessages(report, SeverityError))
+	}
+	if len(report.Variants) != 2 {
+		t.Fatalf("expected 2 variants (defaults + auto-flip), got %d", len(report.Variants))
+	}
+	if got := len(report.Variants[0].Docs); got != 1 {
+		t.Fatalf("defaults (toggle off): expected 1 doc, got %d", got)
+	}
+	if report.Variants[1].Name != "extraEnabled=true" {
+		t.Fatalf("unexpected variant name %q", report.Variants[1].Name)
+	}
+	if got := len(report.Variants[1].Docs); got != 2 {
+		t.Fatalf("flipped (toggle on): expected 2 docs, got %d", got)
 	}
 
-	// Non-default arm via --set.
+	// An explicit --set pins the toggle: it is not auto-flipped again.
 	report = mustValidate(t, dir, Options{Set: map[string]string{"extraEnabled": "true"}})
-	if report.HasErrors() || len(report.Docs) != 2 {
-		t.Fatalf("toggle-on: errors=%v docs=%d", issueMessages(report, SeverityError), len(report.Docs))
+	if report.HasErrors() || len(report.Variants) != 1 {
+		t.Fatalf("explicit set: errors=%v variants=%d", issueMessages(report, SeverityError), len(report.Variants))
+	}
+	if got := len(report.Variants[0].Docs); got != 2 {
+		t.Fatalf("explicit toggle-on: expected 2 docs, got %d", got)
 	}
 }
 
@@ -362,6 +451,67 @@ spec:
 		}
 	}
 	if !found {
-		t.Fatalf("expected a no-default warning, got: %+v", report.Issues)
+		t.Fatalf("expected a no-default warning, got: %+v", report.Variants)
+	}
+}
+
+// The fixture charts exercise the pipeline against real provider kinds.
+
+func TestValidateValidFixture(t *testing.T) {
+	report := mustValidate(t, "testdata/valid-chart", Options{})
+	if report.HasErrors() {
+		t.Fatalf("expected the valid fixture chart to pass, got: %v", issueMessages(report, SeverityError))
+	}
+	// defaults + the subnetEnabled toggle flipped.
+	if len(report.Variants) != 2 {
+		t.Fatalf("expected 2 variants, got %d", len(report.Variants))
+	}
+	if got := len(report.Variants[0].Docs); got != 2 {
+		t.Fatalf("defaults variant: expected 2 docs (vpc + subnet), got %d", got)
+	}
+	if report.Variants[1].Name != "subnetEnabled=false" {
+		t.Fatalf("unexpected variant name %q", report.Variants[1].Name)
+	}
+	if got := len(report.Variants[1].Docs); got != 1 {
+		t.Fatalf("flipped variant: expected 1 doc (vpc only), got %d", got)
+	}
+}
+
+func TestValidateBrokenFixture(t *testing.T) {
+	report := mustValidate(t, "testdata/broken-chart", Options{})
+	if !report.HasErrors() {
+		t.Fatal("expected the broken fixture chart to fail")
+	}
+	if len(report.Variants) != 1 {
+		t.Fatalf("expected 1 variant (no bool params), got %d", len(report.Variants))
+	}
+
+	// One error per defect class — the deliberately wrong fieldPath trips two
+	// checks at once (it overrides the field's annotated composition key AND
+	// does not resolve on the target kind), both correct...
+	errs := issueMessages(report, SeverityError)
+	if len(errs) != 4 {
+		t.Fatalf("expected 4 errors, got %d: %v", len(errs), errs)
+	}
+	assertContains(t, errs[0], "cidrBlok")                            // unknown spec field fails strict load
+	assertContains(t, errs[1], "region")                              // required field missing fails protovalidate
+	assertContains(t, errs[2], "overrides the annotated composition") // explicit path fights the FK annotation
+	assertContains(t, errs[3], "does_not_exist")                      // fieldPath does not resolve on the target kind
+
+	// ...and the undefined targets surface as cross-chart warnings: the
+	// phantom-vpc reference is well-formed but targets a resource no variant
+	// defines, and the dangling-ref doc's target failed to load so it is not
+	// a defined identity either.
+	warnings := issueMessages(report, SeverityWarning)
+	if len(warnings) != 2 {
+		t.Fatalf("expected 2 warnings, got %d: %v", len(warnings), warnings)
+	}
+	assertContains(t, warnings[0]+warnings[1], "phantom-vpc")
+}
+
+func assertContains(t *testing.T, got, want string) {
+	t.Helper()
+	if !strings.Contains(got, want) {
+		t.Errorf("%q does not mention %q", got, want)
 	}
 }

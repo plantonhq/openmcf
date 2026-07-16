@@ -26,7 +26,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiDeployedIndex
 metadata:
   name: products-v1
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -93,7 +93,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiDeployedIndex
 metadata:
   name: prod-products
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -119,7 +119,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiDeployedIndex
 metadata:
   name: private-products
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform

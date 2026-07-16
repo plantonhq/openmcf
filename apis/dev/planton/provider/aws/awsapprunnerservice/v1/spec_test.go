@@ -83,6 +83,20 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
+		ginkgo.It("should accept auto deployments for private ECR", func() {
+			input := validEnvelope(&AwsAppRunnerServiceSpec{
+				Region: "us-west-2",
+				ImageSource: &AwsAppRunnerServiceImageSource{
+					ImageIdentifier:     "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app:latest",
+					ImageRepositoryType: "ECR",
+					AccessRoleArn:       stringValueOrRefLiteral("arn:aws:iam::123456789012:role/apprunner-ecr-access"),
+				},
+				AutoDeploymentsEnabled: true,
+			})
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
 		ginkgo.It("should accept image source with custom port, start_command, and env vars", func() {
 			input := validEnvelope(&AwsAppRunnerServiceSpec{
 				Region: "us-west-2",
@@ -125,7 +139,7 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 					Branch:              "main",
 					ConnectionArn:       stringValueOrRefLiteral("arn:aws:apprunner:us-east-1:123456789012:connection/my-conn/abc123"),
 					ConfigurationSource: "API",
-					Runtime:             "NODEJS_18",
+					Runtime:             "NODEJS_22",
 					BuildCommand:        "npm ci && npm run build",
 				},
 				StartCommand: "npm start",
@@ -149,7 +163,30 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept full production spec with image source + VPC + KMS + auto scaling + health check", func() {
+		ginkgo.It("should accept every managed runtime App Runner supports", func() {
+			runtimes := []string{
+				"PYTHON_3", "PYTHON_311",
+				"NODEJS_12", "NODEJS_14", "NODEJS_16", "NODEJS_18", "NODEJS_22",
+				"CORRETTO_8", "CORRETTO_11",
+				"GO_1", "DOTNET_6", "PHP_81", "RUBY_31",
+			}
+			for _, rt := range runtimes {
+				input := validEnvelope(&AwsAppRunnerServiceSpec{
+					Region: "us-west-2",
+					CodeSource: &AwsAppRunnerServiceCodeSource{
+						RepositoryUrl:       "https://github.com/my-org/my-app",
+						Branch:              "main",
+						ConnectionArn:       stringValueOrRefLiteral("arn:aws:apprunner:us-east-1:123456789012:connection/conn/1"),
+						ConfigurationSource: "API",
+						Runtime:             rt,
+					},
+				})
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil(), "expected runtime=%s to be valid", rt)
+			}
+		})
+
+		ginkgo.It("should accept full production spec with companion refs + KMS + health check + WAF", func() {
 			input := validEnvelope(&AwsAppRunnerServiceSpec{
 				Region: "us-west-2",
 				ImageSource: &AwsAppRunnerServiceImageSource{
@@ -165,84 +202,43 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 				HealthCheck: &AwsAppRunnerServiceHealthCheck{
 					Protocol:           strPtr("HTTP"),
 					Path:               strPtr("/health"),
-					IntervalSeconds:    int32Ptr(10),
-					TimeoutSeconds:     int32Ptr(5),
+					Interval:           int32Ptr(10),
+					Timeout:            int32Ptr(5),
 					HealthyThreshold:   int32Ptr(3),
 					UnhealthyThreshold: int32Ptr(5),
 				},
-				AutoScaling: &AwsAppRunnerServiceAutoScaling{
-					MinSize:        int32Ptr(2),
-					MaxSize:        int32Ptr(10),
-					MaxConcurrency: int32Ptr(50),
-				},
-				SubnetIds: []*foreignkeyv1.StringValueOrRef{
-					stringValueOrRefLiteral("subnet-0abc1234"),
-					stringValueOrRefLiteral("subnet-0def5678"),
-				},
-				SecurityGroupIds: []*foreignkeyv1.StringValueOrRef{
-					stringValueOrRefLiteral("sg-0abc1234"),
-				},
-				KmsKeyArn:                     stringValueOrRefLiteral("arn:aws:kms:us-east-1:123456789012:key/my-key"),
-				ObservabilityEnabled:          true,
-				ObservabilityConfigurationArn: stringValueOrRefLiteral("arn:aws:apprunner:us-east-1:123456789012:observabilityconfiguration/my-config/1"),
+				AutoScalingConfigurationArn:   stringValueOrRefLiteral("arn:aws:apprunner:us-west-2:123456789012:autoscalingconfiguration/prod-asc/2/abc"),
+				VpcConnectorArn:               stringValueOrRefLiteral("arn:aws:apprunner:us-west-2:123456789012:vpcconnector/prod-vc/1/abc"),
+				ObservabilityConfigurationArn: stringValueOrRefLiteral("arn:aws:apprunner:us-west-2:123456789012:observabilityconfiguration/prod-oc/1/abc"),
+				KmsKeyArn:                     stringValueOrRefLiteral("arn:aws:kms:us-west-2:123456789012:key/my-key"),
 				IsPubliclyAccessible:          boolPtr(true),
 				IpAddressType:                 strPtr("IPV4"),
-				AutoDeploymentsEnabled:        boolPtr(true),
+				AutoDeploymentsEnabled:        true,
+				WebAclArn:                     stringValueOrRefLiteral("arn:aws:wafv2:us-west-2:123456789012:regional/webacl/prod-acl/abc"),
+				CustomDomains: []*AwsAppRunnerServiceCustomDomain{
+					{DomainName: "api.example.com"},
+				},
 				EnvironmentVariables: map[string]string{
 					"APP_ENV": "production",
 				},
 				EnvironmentSecrets: map[string]string{
-					"DB_URL": "arn:aws:secretsmanager:us-east-1:123456789012:secret:db-url",
+					"DB_URL": "arn:aws:secretsmanager:us-west-2:123456789012:secret:db-url",
 				},
 			})
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept VPC egress with inline subnet_ids and security_group_ids", func() {
+		ginkgo.It("should accept custom domains with www subdomain disabled", func() {
 			input := validEnvelope(&AwsAppRunnerServiceSpec{
 				Region: "us-west-2",
 				ImageSource: &AwsAppRunnerServiceImageSource{
 					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
 					ImageRepositoryType: "ECR_PUBLIC",
 				},
-				SubnetIds: []*foreignkeyv1.StringValueOrRef{
-					stringValueOrRefLiteral("subnet-0abc1234"),
-					stringValueOrRefLiteral("subnet-0def5678"),
-				},
-				SecurityGroupIds: []*foreignkeyv1.StringValueOrRef{
-					stringValueOrRefLiteral("sg-0abc1234"),
-					stringValueOrRefLiteral("sg-0def5678"),
-				},
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept VPC egress with vpc_connector_arn only", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				VpcConnectorArn: stringValueOrRefLiteral("arn:aws:apprunner:us-east-1:123456789012:vpcconnector/my-vpc-connector/1/abc123"),
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept auto scaling with custom values", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				AutoScaling: &AwsAppRunnerServiceAutoScaling{
-					MinSize:        int32Ptr(3),
-					MaxSize:        int32Ptr(20),
-					MaxConcurrency: int32Ptr(150),
+				CustomDomains: []*AwsAppRunnerServiceCustomDomain{
+					{DomainName: "app.example.com", EnableWwwSubdomain: boolPtr(false)},
+					{DomainName: "example.com"},
 				},
 			})
 			err := protovalidate.Validate(input)
@@ -257,42 +253,11 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 					ImageRepositoryType: "ECR_PUBLIC",
 				},
 				HealthCheck: &AwsAppRunnerServiceHealthCheck{
-					Protocol:        strPtr("HTTP"),
-					Path:            strPtr("/readyz"),
-					IntervalSeconds: int32Ptr(10),
-					TimeoutSeconds:  int32Ptr(3),
+					Protocol: strPtr("HTTP"),
+					Path:     strPtr("/readyz"),
+					Interval: int32Ptr(10),
+					Timeout:  int32Ptr(3),
 				},
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept health check with TCP protocol (default)", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				HealthCheck: &AwsAppRunnerServiceHealthCheck{
-					Protocol:        strPtr("TCP"),
-					IntervalSeconds: int32Ptr(5),
-					TimeoutSeconds:  int32Ptr(2),
-				},
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept observability enabled with configuration ARN", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				ObservabilityEnabled:          true,
-				ObservabilityConfigurationArn: stringValueOrRefLiteral("arn:aws:apprunner:us-east-1:123456789012:observabilityconfiguration/my-config/1"),
 			})
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
@@ -311,40 +276,14 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept auto_deployments_enabled set to false", func() {
+		ginkgo.It("should accept a private service (is_publicly_accessible false)", func() {
 			input := validEnvelope(&AwsAppRunnerServiceSpec{
 				Region: "us-west-2",
 				ImageSource: &AwsAppRunnerServiceImageSource{
 					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
 					ImageRepositoryType: "ECR_PUBLIC",
 				},
-				AutoDeploymentsEnabled: boolPtr(false),
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept human-readable CPU format '1 vCPU'", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				Cpu: strPtr("1 vCPU"),
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept human-readable memory format '2 GB'", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				Memory: strPtr("2 GB"),
+				IsPubliclyAccessible: boolPtr(false),
 			})
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
@@ -366,6 +305,16 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 					cloudresourcekind.CloudResourceKind_AwsIamRole,
 					"production",
 					"instance-role",
+				),
+				AutoScalingConfigurationArn: stringValueOrRefFrom(
+					cloudresourcekind.CloudResourceKind_AwsAppRunnerAutoScalingConfiguration,
+					"production",
+					"prod-scaling",
+				),
+				VpcConnectorArn: stringValueOrRefFrom(
+					cloudresourcekind.CloudResourceKind_AwsAppRunnerVpcConnector,
+					"production",
+					"prod-connector",
 				),
 			})
 			err := protovalidate.Validate(input)
@@ -404,19 +353,6 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil(), "expected Memory=%s to be valid", mem)
 			}
 		})
-
-		ginkgo.It("should accept is_publicly_accessible set to false", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				IsPubliclyAccessible: boolPtr(false),
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
 	})
 
 	// =====================================================================
@@ -425,7 +361,9 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 	ginkgo.Describe("Failure Cases", func() {
 
 		ginkgo.It("should fail when neither image_source nor code_source is set", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{})
+			input := validEnvelope(&AwsAppRunnerServiceSpec{
+				Region: "us-west-2",
+			})
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
@@ -443,6 +381,19 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 					ConnectionArn:       stringValueOrRefLiteral("arn:aws:apprunner:us-east-1:123456789012:connection/conn/1"),
 					ConfigurationSource: "REPOSITORY",
 				},
+			})
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when auto deployments are enabled for ECR_PUBLIC", func() {
+			input := validEnvelope(&AwsAppRunnerServiceSpec{
+				Region: "us-west-2",
+				ImageSource: &AwsAppRunnerServiceImageSource{
+					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
+					ImageRepositoryType: "ECR_PUBLIC",
+				},
+				AutoDeploymentsEnabled: true,
 			})
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).ToNot(gomega.BeNil())
@@ -514,177 +465,84 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should fail when CPU value is invalid", func() {
+		ginkgo.It("should fail when runtime is not a managed runtime", func() {
 			input := validEnvelope(&AwsAppRunnerServiceSpec{
 				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
+				CodeSource: &AwsAppRunnerServiceCodeSource{
+					RepositoryUrl:       "https://github.com/my-org/my-app",
+					Branch:              "main",
+					ConnectionArn:       stringValueOrRefLiteral("arn:aws:apprunner:us-east-1:123456789012:connection/conn/1"),
+					ConfigurationSource: "API",
+					Runtime:             "RUST_1",
 				},
-				Cpu: strPtr("999"),
 			})
 			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when CPU value is invalid", func() {
+			spec := minimalImageSpec()
+			spec.Cpu = strPtr("999")
+			err := protovalidate.Validate(validEnvelope(spec))
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("should fail when memory value is invalid", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				Memory: strPtr("777"),
-			})
-			err := protovalidate.Validate(input)
+			spec := minimalImageSpec()
+			spec.Memory = strPtr("777")
+			err := protovalidate.Validate(validEnvelope(spec))
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("should fail when health check protocol is invalid", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				HealthCheck: &AwsAppRunnerServiceHealthCheck{
-					Protocol: strPtr("GRPC"),
-				},
-			})
-			err := protovalidate.Validate(input)
+			spec := minimalImageSpec()
+			spec.HealthCheck = &AwsAppRunnerServiceHealthCheck{
+				Protocol: strPtr("GRPC"),
+			}
+			err := protovalidate.Validate(validEnvelope(spec))
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should fail when health check interval_seconds is 0 (below range)", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				HealthCheck: &AwsAppRunnerServiceHealthCheck{
-					IntervalSeconds: int32Ptr(0),
-				},
-			})
-			err := protovalidate.Validate(input)
+		ginkgo.It("should fail when health check interval is 0 (below range)", func() {
+			spec := minimalImageSpec()
+			spec.HealthCheck = &AwsAppRunnerServiceHealthCheck{
+				Interval: int32Ptr(0),
+			}
+			err := protovalidate.Validate(validEnvelope(spec))
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should fail when health check interval_seconds is 21 (above range)", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				HealthCheck: &AwsAppRunnerServiceHealthCheck{
-					IntervalSeconds: int32Ptr(21),
-				},
-			})
-			err := protovalidate.Validate(input)
+		ginkgo.It("should fail when health check interval is 21 (above range)", func() {
+			spec := minimalImageSpec()
+			spec.HealthCheck = &AwsAppRunnerServiceHealthCheck{
+				Interval: int32Ptr(21),
+			}
+			err := protovalidate.Validate(validEnvelope(spec))
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should fail when health check timeout_seconds is out of range", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				HealthCheck: &AwsAppRunnerServiceHealthCheck{
-					TimeoutSeconds: int32Ptr(25),
-				},
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should fail when auto scaling min_size > max_size", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				AutoScaling: &AwsAppRunnerServiceAutoScaling{
-					MinSize: int32Ptr(10),
-					MaxSize: int32Ptr(5),
-				},
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should fail when auto scaling max_concurrency is 0 (below range)", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				AutoScaling: &AwsAppRunnerServiceAutoScaling{
-					MaxConcurrency: int32Ptr(0),
-				},
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should fail when auto scaling max_concurrency is 201 (above range)", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				AutoScaling: &AwsAppRunnerServiceAutoScaling{
-					MaxConcurrency: int32Ptr(201),
-				},
-			})
-			err := protovalidate.Validate(input)
+		ginkgo.It("should fail when health check timeout is out of range", func() {
+			spec := minimalImageSpec()
+			spec.HealthCheck = &AwsAppRunnerServiceHealthCheck{
+				Timeout: int32Ptr(25),
+			}
+			err := protovalidate.Validate(validEnvelope(spec))
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("should fail when ip_address_type is invalid", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				IpAddressType: strPtr("IPV6"),
-			})
-			err := protovalidate.Validate(input)
+			spec := minimalImageSpec()
+			spec.IpAddressType = strPtr("IPV6")
+			err := protovalidate.Validate(validEnvelope(spec))
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should fail when both vpc_connector_arn and subnet_ids are provided", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				VpcConnectorArn: stringValueOrRefLiteral("arn:aws:apprunner:us-east-1:123456789012:vpcconnector/my-vpc/1/abc"),
-				SubnetIds: []*foreignkeyv1.StringValueOrRef{
-					stringValueOrRefLiteral("subnet-0abc1234"),
-				},
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should fail when observability_enabled is true without configuration ARN", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				ObservabilityEnabled: true,
-			})
-			err := protovalidate.Validate(input)
+		ginkgo.It("should fail when a custom domain name is empty", func() {
+			spec := minimalImageSpec()
+			spec.CustomDomains = []*AwsAppRunnerServiceCustomDomain{
+				{DomainName: ""},
+			}
+			err := protovalidate.Validate(validEnvelope(spec))
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
@@ -700,42 +558,11 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should fail when image_repository_type is empty", func() {
+		ginkgo.It("should fail when region is empty", func() {
 			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "",
-				},
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should fail when auto scaling min_size is 0 (below range)", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
 				ImageSource: &AwsAppRunnerServiceImageSource{
 					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
 					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				AutoScaling: &AwsAppRunnerServiceAutoScaling{
-					MinSize: int32Ptr(0),
-				},
-			})
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should fail when auto scaling max_size is 26 (above range)", func() {
-			input := validEnvelope(&AwsAppRunnerServiceSpec{
-				Region: "us-west-2",
-				ImageSource: &AwsAppRunnerServiceImageSource{
-					ImageIdentifier:     "public.ecr.aws/nginx/nginx:latest",
-					ImageRepositoryType: "ECR_PUBLIC",
-				},
-				AutoScaling: &AwsAppRunnerServiceAutoScaling{
-					MaxSize: int32Ptr(26),
 				},
 			})
 			err := protovalidate.Validate(input)

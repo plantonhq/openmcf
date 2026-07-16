@@ -1,17 +1,16 @@
 locals {
-  # Derive a stable resource ID
   resource_id = (
     var.metadata.id != null && var.metadata.id != ""
     ? var.metadata.id
     : var.metadata.name
   )
 
-  # Create storage account name from metadata.name
-  # Azure Storage Account names must be 3-24 characters, lowercase letters and numbers only
-  storage_account_name_raw = lower(replace(replace(replace(var.metadata.name, ".", ""), "-", ""), "_", ""))
-  storage_account_name     = substr(local.storage_account_name_raw, 0, min(24, length(local.storage_account_name_raw)))
-
-  # Base tags for Azure resources
+  # PARITY-EXCEPTION: resource_kind here is the family-wide snake-case
+  # literal and resource_id falls back to metadata.name, while the Pulumi
+  # module emits the lowered CloudResourceKind enum string and omits
+  # resource_id when metadata.id is empty. Output-neutral (tags never feed
+  # stack outputs); aligning the two shapes is a family-wide convention
+  # change, not a per-kind fix.
   base_tags = {
     "resource"      = "true"
     "resource_id"   = local.resource_id
@@ -19,40 +18,212 @@ locals {
     "resource_name" = var.metadata.name
   }
 
-  # Organization tag only if var.metadata.org is non-empty
   org_tag = (
     var.metadata.org != null && var.metadata.org != ""
   ) ? { "organization" = var.metadata.org } : {}
 
-  # Environment tag only if var.metadata.env is non-empty
   env_tag = (
     var.metadata.env != null && var.metadata.env != ""
   ) ? { "environment" = var.metadata.env } : {}
 
-  # Merge base, org, and environment tags
-  final_tags = merge(local.base_tags, local.org_tag, local.env_tag)
+  # Metadata-derived tags first, then the user's spec tags merged over
+  # them: user tags deliberately win so an org's governance conventions
+  # (cost center, owner) can override the derived values where they
+  # collide.
+  final_tags = merge(local.base_tags, local.org_tag, local.env_tag, var.spec.tags)
 
-  # Network rules with defaults
-  network_rules = var.spec.network_rules != null ? var.spec.network_rules : {
-    default_action             = "Deny"
-    bypass_azure_services      = true
-    ip_rules                   = []
-    virtual_network_subnet_ids = []
+  # The spec's enums arrive as FULL proto value names (the tfvars wire
+  # format never strips prefixes); each map below carries the complete
+  # verbatim vocabulary for its enum, mapped to ARM's values. A missing
+  # entry would silently drop the setting, so the maps are exhaustive by
+  # construction.
+  account_kind_map = {
+    "STORAGE_V2"         = "StorageV2"
+    "BLOB_STORAGE"       = "BlobStorage"
+    "BLOCK_BLOB_STORAGE" = "BlockBlobStorage"
+    "FILE_STORAGE"       = "FileStorage"
+    "STORAGE"            = "Storage"
   }
 
-  # Convert bypass_azure_services boolean to Azure bypass list
-  network_bypass = local.network_rules.bypass_azure_services ? ["AzureServices"] : []
-
-  # Blob properties with defaults
-  blob_properties = var.spec.blob_properties != null ? var.spec.blob_properties : {
-    enable_versioning                    = false
-    soft_delete_retention_days           = 7
-    container_soft_delete_retention_days = 7
+  account_tier_map = {
+    "STANDARD" = "Standard"
+    "PREMIUM"  = "Premium"
   }
 
-  # Create a map of containers for for_each
-  containers_map = {
-    for container in var.spec.containers :
-    container.name => container
+  replication_type_map = {
+    "LRS"     = "LRS"
+    "ZRS"     = "ZRS"
+    "GRS"     = "GRS"
+    "GZRS"    = "GZRS"
+    "RA_GRS"  = "RAGRS"
+    "RA_GZRS" = "RAGZRS"
   }
+
+  access_tier_map = {
+    "HOT"                 = "Hot"
+    "COOL"                = "Cool"
+    "COLD"                = "Cold"
+    "ACCESS_TIER_PREMIUM" = "Premium"
+  }
+
+  min_tls_version_map = {
+    "TLS1_0" = "TLS1_0"
+    "TLS1_1" = "TLS1_1"
+    "TLS1_2" = "TLS1_2"
+  }
+
+  allowed_copy_scope_map = {
+    "AAD"          = "AAD"
+    "PRIVATE_LINK" = "PrivateLink"
+  }
+
+  dns_endpoint_type_map = {
+    "DNS_ENDPOINT_STANDARD" = "Standard"
+    "AZURE_DNS_ZONE"        = "AzureDnsZone"
+  }
+
+  encryption_key_type_map = {
+    "SERVICE" = "Service"
+    "ACCOUNT" = "Account"
+  }
+
+  identity_type_map = {
+    "SYSTEM_ASSIGNED"          = "SystemAssigned"
+    "USER_ASSIGNED"            = "UserAssigned"
+    "SYSTEM_AND_USER_ASSIGNED" = "SystemAssigned, UserAssigned"
+  }
+
+  network_default_action_map = {
+    "ALLOW" = "Allow"
+    "DENY"  = "Deny"
+  }
+
+  network_bypass_map = {
+    "AZURE_SERVICES" = "AzureServices"
+    "LOGGING"        = "Logging"
+    "METRICS"        = "Metrics"
+    "NONE"           = "None"
+  }
+
+  routing_choice_map = {
+    "MICROSOFT_ROUTING" = "MicrosoftRouting"
+    "INTERNET_ROUTING"  = "InternetRouting"
+  }
+
+  sas_expiration_action_map = {
+    "LOG"   = "Log"
+    "BLOCK" = "Block"
+  }
+
+  immutability_state_map = {
+    "DISABLED" = "Disabled"
+    "UNLOCKED" = "Unlocked"
+    "LOCKED"   = "Locked"
+  }
+
+  directory_type_map = {
+    "AADDS"   = "AADDS"
+    "AADKERB" = "AADKERB"
+    "AD"      = "AD"
+  }
+
+  default_share_permission_map = {
+    "SHARE_PERMISSION_NONE"                 = "None"
+    "SHARE_PERMISSION_READER"               = "StorageFileDataSmbShareReader"
+    "SHARE_PERMISSION_CONTRIBUTOR"          = "StorageFileDataSmbShareContributor"
+    "SHARE_PERMISSION_ELEVATED_CONTRIBUTOR" = "StorageFileDataSmbShareElevatedContributor"
+  }
+
+  lifecycle_blob_type_map = {
+    "BLOCK_BLOB"  = "blockBlob"
+    "APPEND_BLOB" = "appendBlob"
+  }
+
+  # Unset enums materialize the spec's documented defaults here (the
+  # tfvars wire format drops unspecified enums): kind StorageV2, tier
+  # Standard, replication LRS, TLS floor 1.2. access_tier and
+  # dns_endpoint_type map unset to null instead -- Azure computes the
+  # tier only on the kinds that support it, and the DNS type is a
+  # create-only architectural choice azurerm defaults itself.
+  account_kind = (
+    var.spec.account_kind == null || var.spec.account_kind == "" ? "StorageV2" :
+    local.account_kind_map[var.spec.account_kind]
+  )
+
+  account_tier = (
+    var.spec.account_tier == null || var.spec.account_tier == "" ? "Standard" :
+    local.account_tier_map[var.spec.account_tier]
+  )
+
+  replication_type = (
+    var.spec.replication_type == null || var.spec.replication_type == "" ? "LRS" :
+    local.replication_type_map[var.spec.replication_type]
+  )
+
+  access_tier = (
+    var.spec.access_tier == null || var.spec.access_tier == "" ? null :
+    local.access_tier_map[var.spec.access_tier]
+  )
+
+  min_tls_version = (
+    var.spec.min_tls_version == null || var.spec.min_tls_version == "" ? "TLS1_2" :
+    local.min_tls_version_map[var.spec.min_tls_version]
+  )
+
+  allowed_copy_scope = (
+    var.spec.allowed_copy_scope == null || var.spec.allowed_copy_scope == "" ? null :
+    local.allowed_copy_scope_map[var.spec.allowed_copy_scope]
+  )
+
+  dns_endpoint_type = (
+    var.spec.dns_endpoint_type == null || var.spec.dns_endpoint_type == "" ? null :
+    local.dns_endpoint_type_map[var.spec.dns_endpoint_type]
+  )
+
+  queue_encryption_key_type = (
+    var.spec.queue_encryption_key_type == null || var.spec.queue_encryption_key_type == "" ? null :
+    local.encryption_key_type_map[var.spec.queue_encryption_key_type]
+  )
+
+  table_encryption_key_type = (
+    var.spec.table_encryption_key_type == null || var.spec.table_encryption_key_type == "" ? null :
+    local.encryption_key_type_map[var.spec.table_encryption_key_type]
+  )
+
+  # provisioned_billing_model_version and edge_zone are sent only when
+  # non-empty -- azurerm treats an empty string differently from an
+  # omitted argument on ForceNew fields.
+  provisioned_billing_model_version = (
+    var.spec.provisioned_billing_model_version == null || var.spec.provisioned_billing_model_version == "" ? null :
+    var.spec.provisioned_billing_model_version
+  )
+
+  edge_zone = (
+    var.spec.edge_zone == null || var.spec.edge_zone == "" ? null :
+    var.spec.edge_zone
+  )
+
+  # Unset network bypass lets azurerm compute Azure's default
+  # (AzureServices); an explicit list maps verbatim.
+  network_bypass = (
+    var.spec.network_rules == null ? null :
+    length(var.spec.network_rules.bypass) == 0 ? null :
+    [for b in var.spec.network_rules.bypass : local.network_bypass_map[b]]
+  )
+
+  # The static website is realized as the standalone
+  # azurerm_storage_account_static_website resource (the inline block is
+  # deprecated for removal in azurerm v5); empty documents are sent as
+  # null so the AtLeastOneOf contract stays visible in the plan.
+  static_website_index_document = (
+    var.spec.static_website == null ? null :
+    var.spec.static_website.index_document == null || var.spec.static_website.index_document == "" ? null :
+    var.spec.static_website.index_document
+  )
+
+  static_website_error_404_document = (
+    var.spec.static_website == null ? null :
+    var.spec.static_website.error_404_document == null || var.spec.static_website.error_404_document == "" ? null :
+    var.spec.static_website.error_404_document
+  )
 }

@@ -69,14 +69,16 @@ type AwsFsxWindowsFileSystemSpec struct {
 	//
 	// Default: SINGLE_AZ_2
 	DeploymentType *string `protobuf:"bytes,2,opt,name=deployment_type,json=deploymentType,proto3,oneof" json:"deployment_type,omitempty"`
-	// Storage capacity in GiB. Required.
+	// Storage capacity in GiB.
 	//
 	// Valid ranges depend on storage type:
 	// - SSD: 32–65536 GiB
 	// - HDD: 2000–65536 GiB
 	//
-	// Storage can be increased after creation but never decreased.
-	StorageCapacityGib int32 `protobuf:"varint,3,opt,name=storage_capacity_gib,json=storageCapacityGib,proto3" json:"storage_capacity_gib,omitempty"`
+	// Storage can be increased after creation but never decreased. Leave unset
+	// only when restoring from a backup (`backup_id` — capacity comes from the
+	// backup).
+	StorageCapacityGib *int32 `protobuf:"varint,3,opt,name=storage_capacity_gib,json=storageCapacityGib,proto3,oneof" json:"storage_capacity_gib,omitempty"`
 	// Storage media type. ForceNew — cannot be changed after creation.
 	//
 	//   - "SSD": solid-state drives. Sub-millisecond latency. Required for
@@ -119,13 +121,18 @@ type AwsFsxWindowsFileSystemSpec struct {
 	//   - TCP/UDP port 53 (DNS), TCP/UDP port 88 (Kerberos),
 	//     TCP port 389 (LDAP), TCP port 636 (LDAPS)
 	//
-	// Up to 50 security groups.
+	// Up to 50 security groups. When empty, AWS attaches the VPC's default
+	// security group.
 	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,8,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
 	// Customer-managed KMS key ARN for encryption at rest. ForceNew — the KMS key
 	// cannot be changed after creation. When omitted, the file system uses the
 	// AWS-managed FSx key. All Windows file systems are encrypted at rest by
 	// default; this field upgrades to a customer-managed key.
 	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
+	// ID of an FSx backup to restore this file system from ("backup-...").
+	// ForceNew. When set, storage capacity and most settings come from the
+	// backup; leave storage_capacity_gib unset.
+	BackupId string `protobuf:"bytes,20,opt,name=backup_id,json=backupId,proto3" json:"backup_id,omitempty"`
 	// ID of an existing AWS Managed Microsoft AD (Directory Service) to join.
 	// ForceNew. Mutually exclusive with `self_managed_active_directory`.
 	//
@@ -168,8 +175,13 @@ type AwsFsxWindowsFileSystemSpec struct {
 	CopyTagsToBackups bool `protobuf:"varint,17,opt,name=copy_tags_to_backups,json=copyTagsToBackups,proto3" json:"copy_tags_to_backups,omitempty"`
 	// Skip creating a final backup when the file system is deleted.
 	//
-	// Default: true
+	// Default: true — deletion is clean by default; set to false to keep a
+	// last-resort restore point (the final backup outlives the file system and
+	// keeps billing until deleted).
 	SkipFinalBackup *bool `protobuf:"varint,18,opt,name=skip_final_backup,json=skipFinalBackup,proto3,oneof" json:"skip_final_backup,omitempty"`
+	// Tags applied to the final backup taken on deletion. Only meaningful when
+	// skip_final_backup is false.
+	FinalBackupTags map[string]string `protobuf:"bytes,21,rep,name=final_backup_tags,json=finalBackupTags,proto3" json:"final_backup_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Weekly UTC maintenance window in the format "d:HH:MM" where d is the day of
 	// the week (1=Monday, 7=Sunday). Example: "7:02:00" for Sunday at 02:00 UTC.
 	// If not specified, AWS chooses a default window.
@@ -223,8 +235,8 @@ func (x *AwsFsxWindowsFileSystemSpec) GetDeploymentType() string {
 }
 
 func (x *AwsFsxWindowsFileSystemSpec) GetStorageCapacityGib() int32 {
-	if x != nil {
-		return x.StorageCapacityGib
+	if x != nil && x.StorageCapacityGib != nil {
+		return *x.StorageCapacityGib
 	}
 	return 0
 }
@@ -269,6 +281,13 @@ func (x *AwsFsxWindowsFileSystemSpec) GetKmsKeyId() *v1.StringValueOrRef {
 		return x.KmsKeyId
 	}
 	return nil
+}
+
+func (x *AwsFsxWindowsFileSystemSpec) GetBackupId() string {
+	if x != nil {
+		return x.BackupId
+	}
+	return ""
 }
 
 func (x *AwsFsxWindowsFileSystemSpec) GetActiveDirectoryId() *v1.StringValueOrRef {
@@ -334,6 +353,13 @@ func (x *AwsFsxWindowsFileSystemSpec) GetSkipFinalBackup() bool {
 	return false
 }
 
+func (x *AwsFsxWindowsFileSystemSpec) GetFinalBackupTags() map[string]string {
+	if x != nil {
+		return x.FinalBackupTags
+	}
+	return nil
+}
+
 func (x *AwsFsxWindowsFileSystemSpec) GetWeeklyMaintenanceStartTime() string {
 	if x != nil {
 		return x.WeeklyMaintenanceStartTime
@@ -389,7 +415,7 @@ type AwsFsxWindowsFileSystemSelfManagedActiveDirectory struct {
 	//
 	// Only the OU immediately above the computer object can be specified.
 	// If not provided, the computer object is created in the default "Computers"
-	// container in the AD domain.
+	// container in the AD domain. Length: 1-2000 characters.
 	OrganizationalUnitDistinguishedName string `protobuf:"bytes,7,opt,name=organizational_unit_distinguished_name,json=organizationalUnitDistinguishedName,proto3" json:"organizational_unit_distinguished_name,omitempty"`
 	unknownFields                       protoimpl.UnknownFields
 	sizeCache                           protoimpl.SizeCache
@@ -579,7 +605,7 @@ type AwsFsxWindowsFileSystemDiskIopsConfiguration struct {
 	// Total SSD IOPS provisioned. Only valid when mode is "USER_PROVISIONED".
 	//
 	// Valid range: 0–350000.
-	Iops          int32 `protobuf:"varint,2,opt,name=iops,proto3" json:"iops,omitempty"`
+	Iops          *int32 `protobuf:"varint,2,opt,name=iops,proto3,oneof" json:"iops,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -622,8 +648,8 @@ func (x *AwsFsxWindowsFileSystemDiskIopsConfiguration) GetMode() string {
 }
 
 func (x *AwsFsxWindowsFileSystemDiskIopsConfiguration) GetIops() int32 {
-	if x != nil {
-		return x.Iops
+	if x != nil && x.Iops != nil {
+		return *x.Iops
 	}
 	return 0
 }
@@ -632,53 +658,64 @@ var File_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto protoref
 
 const file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/aws/awsfsxwindowsfilesystem/v1/spec.proto\x123dev.planton.provider.aws.awsfsxwindowsfilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9a\x1e\n" +
+	">dev/planton/provider/aws/awsfsxwindowsfilesystem/v1/spec.proto\x123dev.planton.provider.aws.awsfsxwindowsfilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf9(\n" +
 	"\x1bAwsFsxWindowsFileSystemSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12=\n" +
-	"\x0fdeployment_type\x18\x02 \x01(\tB\x0f\x8a\xa6\x1d\vSINGLE_AZ_2H\x00R\x0edeploymentType\x88\x01\x01\x129\n" +
-	"\x14storage_capacity_gib\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02( R\x12storageCapacityGib\x12/\n" +
-	"\fstorage_type\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x03SSDH\x01R\vstorageType\x88\x01\x01\x128\n" +
+	"\x0fdeployment_type\x18\x02 \x01(\tB\x0f\x8a\xa6\x1d\vSINGLE_AZ_2H\x00R\x0edeploymentType\x88\x01\x01\x12B\n" +
+	"\x14storage_capacity_gib\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\x80\x04( H\x01R\x12storageCapacityGib\x88\x01\x01\x12/\n" +
+	"\fstorage_type\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x03SSDH\x02R\vstorageType\x88\x01\x01\x128\n" +
 	"\x13throughput_capacity\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02 \x00R\x12throughputCapacity\x12|\n" +
 	"\n" +
 	"subnet_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x85\x01\n" +
-	"\x13preferred_subnet_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12q\n" +
+	"\x13preferred_subnet_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12b\n" +
+	"kms_key_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1b\n" +
+	"\tbackup_id\x18\x14 \x01(\tR\bbackupId\x12b\n" +
 	"\x13active_directory_id\x18\n" +
 	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x11activeDirectoryId\x12\xa9\x01\n" +
-	"\x1dself_managed_active_directory\x18\v \x01(\v2f.dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSelfManagedActiveDirectoryR\x1aselfManagedActiveDirectory\x12\"\n" +
-	"\aaliases\x18\f \x03(\tB\b\xbaH\x05\x92\x01\x02\x102R\aaliases\x12\x99\x01\n" +
+	"\x1dself_managed_active_directory\x18\v \x01(\v2f.dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSelfManagedActiveDirectoryR\x1aselfManagedActiveDirectory\x12+\n" +
+	"\aaliases\x18\f \x03(\tB\x11\xbaH\x0e\x92\x01\v\x102\"\ar\x05\x10\x04\x18\xfd\x01R\aaliases\x12\x99\x01\n" +
 	"\x17audit_log_configuration\x18\r \x01(\v2a.dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemAuditLogConfigurationR\x15auditLogConfiguration\x12\x99\x01\n" +
 	"\x17disk_iops_configuration\x18\x0e \x01(\v2a.dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemDiskIopsConfigurationR\x15diskIopsConfiguration\x12Q\n" +
-	"\x1fautomatic_backup_retention_days\x18\x0f \x01(\x05B\x05\x8a\xa6\x1d\x017H\x02R\x1cautomaticBackupRetentionDays\x88\x01\x01\x12H\n" +
-	"!daily_automatic_backup_start_time\x18\x10 \x01(\tR\x1ddailyAutomaticBackupStartTime\x12/\n" +
+	"\x1fautomatic_backup_retention_days\x18\x0f \x01(\x05B\x05\x8a\xa6\x1d\x017H\x03R\x1cautomaticBackupRetentionDays\x88\x01\x01\x12\xff\x01\n" +
+	"!daily_automatic_backup_start_time\x18\x10 \x01(\tB\xb4\x01\xbaH\xb0\x01\xba\x01\xac\x01\n" +
+	"\x18daily_backup_time_format\x12Qdaily_automatic_backup_start_time must be in 24-hour HH:MM format (e.g., '01:00')\x1a=this == '' || this.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')R\x1ddailyAutomaticBackupStartTime\x12/\n" +
 	"\x14copy_tags_to_backups\x18\x11 \x01(\bR\x11copyTagsToBackups\x129\n" +
-	"\x11skip_final_backup\x18\x12 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x0fskipFinalBackup\x88\x01\x01\x12A\n" +
-	"\x1dweekly_maintenance_start_time\x18\x13 \x01(\tR\x1aweeklyMaintenanceStartTime:\xd6\x0f\xbaH\xd2\x0f\x1a\xc2\x01\n" +
+	"\x11skip_final_backup\x18\x12 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\x0fskipFinalBackup\x88\x01\x01\x12\x91\x01\n" +
+	"\x11final_backup_tags\x18\x15 \x03(\v2e.dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.FinalBackupTagsEntryR\x0ffinalBackupTags\x12\xa4\x02\n" +
+	"\x1dweekly_maintenance_start_time\x18\x13 \x01(\tB\xe0\x01\xbaH\xdc\x01\xba\x01\xd8\x01\n" +
+	"\x1eweekly_maintenance_time_format\x12qweekly_maintenance_start_time must be in d:HH:MM format where d is 1 (Monday) through 7 (Sunday), e.g., '7:02:00'\x1aCthis == '' || this.matches('^[1-7]:([01][0-9]|2[0-3]):[0-5][0-9]$')R\x1aweeklyMaintenanceStartTime\x1aB\n" +
+	"\x14FinalBackupTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xf1\x14\xbaH\xed\x14\x1a\xc2\x01\n" +
 	"\x15deployment_type_valid\x12Edeployment_type must be 'SINGLE_AZ_1', 'SINGLE_AZ_2', or 'MULTI_AZ_1'\x1abthis.deployment_type == '' || this.deployment_type in ['SINGLE_AZ_1', 'SINGLE_AZ_2', 'MULTI_AZ_1']\x1ay\n" +
 	"\x12storage_type_valid\x12#storage_type must be 'SSD' or 'HDD'\x1a>this.storage_type == '' || this.storage_type in ['SSD', 'HDD']\x1a\xd2\x01\n" +
-	"\"hdd_requires_compatible_deployment\x12Wstorage_type 'HDD' is only supported with deployment_type 'SINGLE_AZ_2' or 'MULTI_AZ_1'\x1aSthis.storage_type != 'HDD' || this.deployment_type in ['SINGLE_AZ_2', 'MULTI_AZ_1']\x1a\x90\x01\n" +
-	"\x13hdd_minimum_storage\x128storage_type 'HDD' requires storage_capacity_gib >= 2000\x1a?this.storage_type != 'HDD' || this.storage_capacity_gib >= 2000\x1a\xe3\x01\n" +
-	"\x19throughput_capacity_valid\x12ethroughput_capacity must be one of: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4608, 6144, 9216, 12288\x1a_this.throughput_capacity in [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4608, 6144, 9216, 12288]\x1a\xb0\x01\n" +
-	"\"preferred_subnet_requires_multi_az\x12Bpreferred_subnet_id can only be set for MULTI_AZ_1 deployment type\x1aF!has(this.preferred_subnet_id) || this.deployment_type == 'MULTI_AZ_1'\x1a\xba\x02\n" +
+	"\"hdd_requires_compatible_deployment\x12Wstorage_type 'HDD' is only supported with deployment_type 'SINGLE_AZ_2' or 'MULTI_AZ_1'\x1aSthis.storage_type != 'HDD' || this.deployment_type in ['SINGLE_AZ_2', 'MULTI_AZ_1']\x1a\xb3\x01\n" +
+	"\x13hdd_minimum_storage\x128storage_type 'HDD' requires storage_capacity_gib >= 2000\x1abthis.storage_type != 'HDD' || !has(this.storage_capacity_gib) || this.storage_capacity_gib >= 2000\x1a\xa9\x01\n" +
+	"\x19storage_capacity_required\x12Tstorage_capacity_gib is required (leave it unset only when restoring from backup_id)\x1a6has(this.storage_capacity_gib) || this.backup_id != ''\x1a\xbe\x01\n" +
+	" backup_restore_excludes_capacity\x12astorage_capacity_gib cannot be set when restoring from backup_id (capacity comes from the backup)\x1a7this.backup_id == '' || !has(this.storage_capacity_gib)\x1a\xe3\x01\n" +
+	"\x19throughput_capacity_valid\x12ethroughput_capacity must be one of: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4608, 6144, 9216, 12288\x1a_this.throughput_capacity in [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4608, 6144, 9216, 12288]\x1a\xde\x01\n" +
+	"\"preferred_subnet_multi_az_contract\x12Qpreferred_subnet_id is required for MULTI_AZ_1 and can only be set for MULTI_AZ_1\x1aethis.deployment_type == 'MULTI_AZ_1' ? has(this.preferred_subnet_id) : !has(this.preferred_subnet_id)\x1a\xda\x01\n" +
+	"\x1fsubnet_count_matches_deployment\x12WMULTI_AZ_1 requires exactly two subnets; SINGLE_AZ deployment types require exactly one\x1a^this.deployment_type == 'MULTI_AZ_1' ? size(this.subnet_ids) == 2 : size(this.subnet_ids) == 1\x1a\xba\x02\n" +
 	"\vad_required\x12\x8d\x01exactly one of active_directory_id or self_managed_active_directory must be specified (Active Directory is mandatory for Windows File Server)\x1a\x9a\x01(has(this.active_directory_id) && !has(this.self_managed_active_directory)) || (!has(this.active_directory_id) && has(this.self_managed_active_directory))\x1a\x84\x03\n" +
 	"(audit_destination_requires_enabled_level\x12]audit_log_configuration.audit_log_destination cannot be set when both log levels are DISABLED\x1a\xf8\x01!has(this.audit_log_configuration) || !has(this.audit_log_configuration.audit_log_destination) || this.audit_log_configuration.file_access_audit_log_level != 'DISABLED' || this.audit_log_configuration.file_share_access_audit_log_level != 'DISABLED'\x1a\xca\x01\n" +
 	"\x1ebackup_time_requires_retention\x12Ndaily_automatic_backup_start_time requires automatic_backup_retention_days > 0\x1aXthis.daily_automatic_backup_start_time == '' || this.automatic_backup_retention_days > 0B\x12\n" +
-	"\x10_deployment_typeB\x0f\n" +
+	"\x10_deployment_typeB\x17\n" +
+	"\x15_storage_capacity_gibB\x0f\n" +
 	"\r_storage_typeB\"\n" +
 	" _automatic_backup_retention_daysB\x14\n" +
-	"\x12_skip_final_backup\"\xb5\b\n" +
+	"\x12_skip_final_backup\"\xd7\b\n" +
 	"1AwsFsxWindowsFileSystemSelfManagedActiveDirectory\x12(\n" +
 	"\vdomain_name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
-	"domainName\x12#\n" +
-	"\adns_ips\x18\x02 \x03(\tB\n" +
-	"\xbaH\a\x92\x01\x04\b\x01\x10\x02R\x06dnsIps\x12\x1a\n" +
-	"\busername\x18\x03 \x01(\tR\busername\x12 \n" +
-	"\bpassword\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\bpassword\x12\x85\x01\n" +
+	"domainName\x12)\n" +
+	"\adns_ips\x18\x02 \x03(\tB\x10\xbaH\r\x92\x01\n" +
+	"\b\x01\x10\x02\"\x04r\x02p\x01R\x06dnsIps\x12$\n" +
+	"\busername\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\busername\x12(\n" +
+	"\bpassword\x18\x04 \x01(\tB\f\xbaH\x05r\x03\x18\x80\x02\xa0\xa6\x1d\x01R\bpassword\x12\x85\x01\n" +
 	"&domain_join_service_account_secret_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR!domainJoinServiceAccountSecretArn\x12_\n" +
-	" file_system_administrators_group\x18\x06 \x01(\tB\x11\x8a\xa6\x1d\rDomain AdminsH\x00R\x1dfileSystemAdministratorsGroup\x88\x01\x01\x12S\n" +
-	"&organizational_unit_distinguished_name\x18\a \x01(\tR#organizationalUnitDistinguishedName:\x8f\x04\xbaH\x8b\x04\x1a\xbe\x02\n" +
+	" file_system_administrators_group\x18\x06 \x01(\tB\x11\x8a\xa6\x1d\rDomain AdminsH\x00R\x1dfileSystemAdministratorsGroup\x88\x01\x01\x12]\n" +
+	"&organizational_unit_distinguished_name\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR#organizationalUnitDistinguishedName:\x8f\x04\xbaH\x8b\x04\x1a\xbe\x02\n" +
 	"\x1ccredentials_mutual_exclusion\x12Tspecify either username/password or domain_join_service_account_secret_arn, not both\x1a\xc7\x01(this.username == '' && this.password == '' && has(this.domain_join_service_account_secret_arn)) || ((this.username != '' || this.password != '') && !has(this.domain_join_service_account_secret_arn))\x1a\xc7\x01\n" +
 	"\x1bdirect_credentials_complete\x12Jwhen using direct credentials, both username and password must be provided\x1a\\(this.username == '' && this.password == '') || (this.username != '' && this.password != '')B#\n" +
 	"!_file_system_administrators_group\"\x84\b\n" +
@@ -689,13 +726,14 @@ const file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_rawDes
 	"\x17file_access_level_valid\x12hfile_access_audit_log_level must be 'DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', or 'SUCCESS_AND_FAILURE'\x1a\x91\x01this.file_access_audit_log_level == '' || this.file_access_audit_log_level in ['DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', 'SUCCESS_AND_FAILURE']\x1a\xaf\x02\n" +
 	"\x1dfile_share_access_level_valid\x12nfile_share_access_audit_log_level must be 'DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', or 'SUCCESS_AND_FAILURE'\x1a\x9d\x01this.file_share_access_audit_log_level == '' || this.file_share_access_audit_log_level in ['DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', 'SUCCESS_AND_FAILURE']B\x1e\n" +
 	"\x1c_file_access_audit_log_levelB$\n" +
-	"\"_file_share_access_audit_log_level\"\x8d\x03\n" +
+	"\"_file_share_access_audit_log_level\"\xa9\x03\n" +
 	",AwsFsxWindowsFileSystemDiskIopsConfiguration\x12&\n" +
-	"\x04mode\x18\x01 \x01(\tB\r\x8a\xa6\x1d\tAUTOMATICH\x00R\x04mode\x88\x01\x01\x12\x12\n" +
-	"\x04iops\x18\x02 \x01(\x05R\x04iops:\x97\x02\xbaH\x93\x02\x1a\x84\x01\n" +
-	"\x0fiops_mode_valid\x12.mode must be 'AUTOMATIC' or 'USER_PROVISIONED'\x1aAthis.mode == '' || this.mode in ['AUTOMATIC', 'USER_PROVISIONED']\x1a\x89\x01\n" +
-	"\x1eiops_requires_user_provisioned\x124iops can only be set when mode is 'USER_PROVISIONED'\x1a1this.iops == 0 || this.mode == 'USER_PROVISIONED'B\a\n" +
-	"\x05_modeB\xa8\x03\n" +
+	"\x04mode\x18\x01 \x01(\tB\r\x8a\xa6\x1d\tAUTOMATICH\x00R\x04mode\x88\x01\x01\x12$\n" +
+	"\x04iops\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xb0\xae\x15(\x00H\x01R\x04iops\x88\x01\x01:\x98\x02\xbaH\x94\x02\x1a\x84\x01\n" +
+	"\x0fiops_mode_valid\x12.mode must be 'AUTOMATIC' or 'USER_PROVISIONED'\x1aAthis.mode == '' || this.mode in ['AUTOMATIC', 'USER_PROVISIONED']\x1a\x8a\x01\n" +
+	"\x1eiops_requires_user_provisioned\x124iops can only be set when mode is 'USER_PROVISIONED'\x1a2!has(this.iops) || this.mode == 'USER_PROVISIONED'B\a\n" +
+	"\x05_modeB\a\n" +
+	"\x05_iopsB\xa8\x03\n" +
 	"7com.dev.planton.provider.aws.awsfsxwindowsfilesystem.v1B\tSpecProtoP\x01Zogithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxwindowsfilesystem/v1;awsfsxwindowsfilesystemv1\xa2\x02\x05DPPAA\xaa\x023Dev.Planton.Provider.Aws.Awsfsxwindowsfilesystem.V1\xca\x023Dev\\Planton\\Provider\\Aws\\Awsfsxwindowsfilesystem\\V1\xe2\x02?Dev\\Planton\\Provider\\Aws\\Awsfsxwindowsfilesystem\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Aws::Awsfsxwindowsfilesystem::V1b\x06proto3"
 
 var (
@@ -710,30 +748,32 @@ func file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_rawDesc
 	return file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_goTypes = []any{
 	(*AwsFsxWindowsFileSystemSpec)(nil),                       // 0: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec
 	(*AwsFsxWindowsFileSystemSelfManagedActiveDirectory)(nil), // 1: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSelfManagedActiveDirectory
 	(*AwsFsxWindowsFileSystemAuditLogConfiguration)(nil),      // 2: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemAuditLogConfiguration
 	(*AwsFsxWindowsFileSystemDiskIopsConfiguration)(nil),      // 3: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemDiskIopsConfiguration
-	(*v1.StringValueOrRef)(nil),                               // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                         // 4: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.FinalBackupTagsEntry
+	(*v1.StringValueOrRef)(nil), // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_depIdxs = []int32{
-	4,  // 0: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 1: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.preferred_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 2: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 3: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 4: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.active_directory_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 0: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 1: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.preferred_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 2: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 3: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 4: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.active_directory_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 5: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.self_managed_active_directory:type_name -> dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSelfManagedActiveDirectory
 	2,  // 6: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.audit_log_configuration:type_name -> dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemAuditLogConfiguration
 	3,  // 7: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.disk_iops_configuration:type_name -> dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemDiskIopsConfiguration
-	4,  // 8: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSelfManagedActiveDirectory.domain_join_service_account_secret_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 9: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemAuditLogConfiguration.audit_log_destination:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	4,  // 8: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.final_backup_tags:type_name -> dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSpec.FinalBackupTagsEntry
+	5,  // 9: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemSelfManagedActiveDirectory.domain_join_service_account_secret_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 10: dev.planton.provider.aws.awsfsxwindowsfilesystem.v1.AwsFsxWindowsFileSystemAuditLogConfiguration.audit_log_destination:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_init() }
@@ -751,7 +791,7 @@ func file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_init() 
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

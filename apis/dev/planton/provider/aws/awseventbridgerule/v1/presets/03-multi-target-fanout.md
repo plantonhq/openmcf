@@ -41,7 +41,7 @@ eventBusName:
 
 - Add more targets (up to 5 per rule)
 - Add `roleArn` to targets that require assumed-role invocation (Step Functions, ECS)
-- Add `sqsConfig.messageGroupId` if targeting a FIFO SQS queue
+- Add `sqsTarget.messageGroupId` if targeting a FIFO SQS queue
 - Add `state: DISABLED` to create the rule without activating it
 
 ## Related Presets

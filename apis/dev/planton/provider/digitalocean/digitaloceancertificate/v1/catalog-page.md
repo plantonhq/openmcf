@@ -25,7 +25,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanCertificate
 metadata:
   name: my-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -89,7 +89,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanCertificate
 metadata:
   name: app-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanCertificate
 metadata:
   name: multi-domain-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +143,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanCertificate
 metadata:
   name: ev-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

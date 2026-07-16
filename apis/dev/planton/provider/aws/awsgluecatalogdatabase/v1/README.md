@@ -15,8 +15,12 @@ Use a Glue Catalog Database to:
   `database.table` naming.
 - **Set default storage locations**: Define a shared S3 prefix so crawlers and
   CREATE TABLE statements inherit a consistent base path.
-- **Enable analytics workflows**: Athena workgroups, Glue crawlers, and Glue ETL
-  jobs all operate within the context of a catalog database.
+- **Govern new tables**: Set default Lake Formation permissions for tables
+  created in the database — or disable the IAM-compatibility grant entirely
+  when hardening a Lake Formation-managed lake.
+- **Consume shared data**: Create a resource link to a database another
+  account or region shared via AWS RAM, or project a Redshift datashare into
+  the catalog as a federated database.
 - **Namespace isolation**: Separate development, staging, and production table
   metadata into distinct databases within the same AWS account.
 
@@ -24,18 +28,30 @@ Use a Glue Catalog Database to:
 
 - An AWS account with Glue Data Catalog access (enabled by default in all regions)
 - An S3 bucket (if setting `location_uri` for default table storage)
+- An AWS RAM / Lake Formation share (only for `target_database` resource links)
+- A Redshift datashare and federation connection (only for `federated_database`)
 
 ## Spec Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `description` | string | "" | Human-readable description of the database (max 2048 chars) |
+| `catalog_id` | string | account ID | Catalog to create the database in; set only for cross-account catalogs (ForceNew) |
 | `location_uri` | string | "" | Default S3 URI for tables (e.g., `s3://bucket/prefix/`) |
+| `parameters` | map | — | Catalog metadata properties read by engines and governance tooling |
+| `create_table_default_permissions` | list | AWS default | Default Lake Formation grants on tables created here; an empty-permissions entry disables the `IAM_ALLOWED_PRINCIPALS` grant |
+| `target_database` | object | — | Resource link to a shared database: `catalog_id`, `database_name`, optional `region` (all ForceNew) |
+| `federated_database` | object | — | Federated projection of an external source: `identifier`, `connection_name` |
+
+A database is exactly one shape — regular, resource link, or federated;
+`target_database` and `federated_database` cannot be combined (enforced at
+manifest validation).
 
 ### ForceNew Fields
 
-- **Database name** (from `metadata.name`) — Cannot be changed after creation.
-  Must be 1-255 characters, lowercase letters, numbers, and underscores only.
+- **Database name** (from `metadata.name`) — cannot be changed after creation.
+  1-255 characters; AWS rejects uppercase letters.
+- **`catalog_id`** and **`target_database`** — fixed at creation.
 
 ## Stack Outputs
 
@@ -44,18 +60,6 @@ Use a Glue Catalog Database to:
 | `database_name` | Name of the Glue Data Catalog database |
 | `database_arn` | ARN of the database (for IAM policies, Lake Formation) |
 | `catalog_id` | ID of the Glue Data Catalog (AWS Account ID) |
-
-## Deliberately Omitted (v1)
-
-| Feature | Reason |
-|---------|--------|
-| `create_table_default_permission` | Lake Formation governance; default IAM behavior covers >80% of use cases |
-| `federated_database` | Redshift Data Share federation, ~5% adoption, requires Lake Formation |
-| `target_database` | Cross-region/cross-account references, ~5% adoption |
-| `parameters` | Generic key-value metadata, rarely set by users directly |
-| `catalog_id` | Defaults to AWS Account ID; cross-account scenarios covered by target_database |
-
-These can be added in v2 based on demand.
 
 ## Related Resources
 

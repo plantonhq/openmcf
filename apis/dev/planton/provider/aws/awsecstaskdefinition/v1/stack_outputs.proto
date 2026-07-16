@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsecstaskdefinition.v1;
+
+// AwsEcsTaskDefinitionStackOutputs captures the observable outputs of a
+// registered task definition revision, for ECS services and scheduled tasks
+// to reference.
+message AwsEcsTaskDefinitionStackOutputs {
+  // The full ARN of the registered revision, including the revision number
+  // (e.g. "arn:aws:ecs:us-west-2:123456789012:task-definition/api:7"). The
+  // primary handle an ECS service references via
+  // status.outputs.task_definition_arn -- because it carries the revision,
+  // each newly registered revision changes this output and rolls the
+  // referencing service on its next deployment.
+  string task_definition_arn = 1;
+
+  // The ARN without the revision suffix (e.g. "arn:aws:ecs:us-west-2:
+  // 123456789012:task-definition/api"), for consumers that should always
+  // track the family's latest ACTIVE revision instead of a pinned one.
+  string arn_without_revision = 2;
+
+  // The family name (metadata.name) the revisions are registered under.
+  string family = 3;
+
+  // The revision number this deployment registered (e.g. 7). Revisions are
+  // immutable; every spec change registers the next number.
+  int64 revision = 4;
+
+  // The name of the CloudWatch log group the task's containers log to --
+  // the auto-created "/ecs/<family>" group or the referenced existing one.
+  // Empty when task-level logging is disabled and no container configures
+  // its own awslogs driver.
+  string log_group_name = 5;
+
+  // The ARN of that CloudWatch log group. Empty under the same conditions
+  // as log_group_name, and when the group is referenced by name rather
+  // than created by the modules.
+  string log_group_arn = 6;
+}

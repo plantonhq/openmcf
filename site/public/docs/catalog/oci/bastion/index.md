@@ -31,7 +31,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciBastion
 metadata:
   name: my-bastion
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -80,7 +80,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciBastion
 metadata:
   name: dev-bastion
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -101,7 +101,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciBastion
 metadata:
   name: corp-bastion
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -133,7 +133,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciBastion
 metadata:
   name: dns-bastion
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

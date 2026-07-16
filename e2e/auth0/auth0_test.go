@@ -11,9 +11,11 @@ import (
 
 	"github.com/google/uuid"
 	auth0e2e "github.com/plantonhq/planton/apis/dev/planton/provider/auth0/aa_e2e"
+	componentv1 "github.com/plantonhq/planton/apis/dev/planton/qa/componente2eprofile/v1"
 	"github.com/plantonhq/planton/e2e/framework/discovery"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/e2e/framework/runner"
+	profilepkg "github.com/plantonhq/planton/pkg/e2e/profile"
 )
 
 var (
@@ -95,6 +97,19 @@ func TestAuth0Role_Terraform(t *testing.T) { runAllScenariosForComponent(t, "aut
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Auth0 component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
+
+	if cp, err := profilepkg.LoadComponentProfile(repoRoot, "auth0", component); err == nil && cp.Spec != nil {
+		switch cp.Spec.Status {
+		case componentv1.ComponentE2EProfileSpec_deferred,
+			componentv1.ComponentE2EProfileSpec_skip,
+			componentv1.ComponentE2EProfileSpec_stub:
+			reason := cp.Spec.DeferredReason
+			if reason == "" {
+				reason = cp.Spec.Status.String()
+			}
+			t.Skipf("component %s E2E profile status is %s: %s", component, cp.Spec.Status, reason)
+		}
+	}
 
 	var moduleDir string
 	switch engine {

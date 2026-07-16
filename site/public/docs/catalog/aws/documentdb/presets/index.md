@@ -8,14 +8,14 @@ provider: "aws"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-production-ha"
+  - slug: "01-production-managed-password"
     rank: "01"
-    title: "Production HA DocumentDB Cluster"
-    excerpt: "This preset creates a highly available DocumentDB cluster with 3 instances (1 primary + 2 replicas) across Availability Zones. Storage is encrypted, backups are retained for 7 days, and deletion..."
-  - slug: "02-development"
+    title: "Production DocumentDB (Managed Password)"
+    excerpt: "This preset creates a production-shaped DocumentDB cluster: one writer and one reader instance on shared cluster storage, an AWS-managed master password in Secrets Manager, encrypted storage,..."
+  - slug: "02-serverless"
     rank: "02"
-    title: "Development DocumentDB Cluster"
-    excerpt: "This preset creates a single-instance DocumentDB cluster for development and testing. It uses a smaller instance class (db.t3.medium) and skips the final snapshot on deletion to simplify teardown...."
+    title: "DocumentDB Serverless"
+    excerpt: "This preset creates a DocumentDB Serverless cluster: a single `db.serverless` instance that scales between 0.5 and 16 DCUs as demand moves, an AWS-managed master password in Secrets Manager,..."
 ---
 
 # DocumentDB Presets

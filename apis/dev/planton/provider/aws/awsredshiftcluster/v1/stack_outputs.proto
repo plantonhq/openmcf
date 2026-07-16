@@ -2,41 +2,44 @@ syntax = "proto3";
 
 package dev.planton.provider.aws.awsredshiftcluster.v1;
 
-// AwsRedshiftClusterStackOutputs captures observable identifiers and endpoints from a deployed
-// Amazon Redshift cluster. These outputs enable downstream resources to connect to the cluster,
-// reference it in IAM policies, and integrate with monitoring and data pipeline workflows.
+// AwsRedshiftClusterStackOutputs captures the observable identifiers and
+// connection endpoints of the Redshift cluster after deployment.
 message AwsRedshiftClusterStackOutputs {
-  // cluster_identifier is the unique identifier of the Redshift cluster.
+  // The cluster identifier (e.g. "analytics-warehouse").
   string cluster_identifier = 1;
 
-  // cluster_arn is the Amazon Resource Name of the cluster, used for IAM policies and cross-service references.
+  // The Amazon Resource Name of the cluster, for IAM policies and
+  // cross-service references.
   string cluster_arn = 2;
 
-  // cluster_namespace_arn is the namespace ARN, used for Redshift data sharing and Redshift Serverless integration.
+  // The namespace ARN of the cluster, used by Redshift data sharing and
+  // the Redshift Data API.
   string cluster_namespace_arn = 3;
 
-  // endpoint is the connection endpoint in "address:port" format for SQL client connections.
+  // The connection endpoint in "address:port" form, for SQL client
+  // connection strings.
   string endpoint = 4;
 
-  // dns_name is the DNS hostname of the cluster (without port), for use in connection strings.
+  // The DNS hostname of the cluster's leader node (without port), for
+  // building connection strings and DNS alias records.
   string dns_name = 5;
 
-  // database_name is the name of the default database in the cluster.
+  // The name of the first database in the cluster.
   string database_name = 6;
 
-  // port is the TCP port on which the cluster accepts connections.
+  // The port the cluster accepts connections on.
   int32 port = 7;
 
-  // subnet_group_name is the name of the Redshift subnet group, if one was created by this component.
+  // The name of the Redshift subnet group the cluster runs in
+  // (module-managed from subnet_ids or the referenced existing group).
   string subnet_group_name = 8;
 
-  // security_group_id is the ID of the managed security group, if one was created by this component.
-  string security_group_id = 9;
+  // The name of the cluster parameter group in use (module-managed from
+  // inline parameters or the referenced existing group).
+  string parameter_group_name = 9;
 
-  // parameter_group_name is the name of the parameter group, if one was created by this component.
-  string parameter_group_name = 10;
-
-  // master_password_secret_arn is the ARN of the Secrets Manager secret containing the master password.
-  // Only populated when manage_master_password is true.
-  string master_password_secret_arn = 11;
+  // The ARN of the AWS-managed admin-password secret in Secrets
+  // Manager. Populated only when manage_master_password is true -- the
+  // handle applications use to fetch credentials at runtime.
+  string master_password_secret_arn = 10;
 }

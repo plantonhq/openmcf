@@ -1,0 +1,32 @@
+# Offline-plan manifest: a hub exercising every deep seam at once -- the
+# rich retention model (Kafka-style compaction takes its own manifest;
+# this one renders the DELETE window), the SendDisabled gate, and the
+# full capture block with user-assigned-identity storage auth.
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHub
+metadata:
+  name: test-event-hub
+spec:
+  namespaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.EventHub/namespaces/hack-eventhubs-ns
+  eventHubName: telemetry
+  partitionCount: 8
+  retentionDescription:
+    cleanupPolicy: DELETE
+    retentionTimeInHours: 168
+  status: SEND_DISABLED
+  captureDescription:
+    enabled: true
+    encoding: AVRO_DEFLATE
+    intervalInSeconds: 600
+    sizeLimitInBytes: 104857600
+    skipEmptyArchives: true
+    destination:
+      archiveNameFormat: "{Namespace}/{EventHub}/{PartitionId}/{Year}/{Month}/{Day}/{Hour}/{Minute}/{Second}"
+      blobContainerName:
+        value: capture-archives
+      storageAccountId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/hackcapturesa
+      storageAuthenticationType: USER_ASSIGNED
+      storageAuthenticationId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/hack-uai

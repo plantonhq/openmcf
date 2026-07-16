@@ -5,8 +5,9 @@ Pulumi module for provisioning AWS MWAA (Managed Workflows for Apache Airflow) e
 ## Overview
 
 This module creates:
-- An MWAA Environment (`mwaa.Environment`) with configurable Airflow version, S3 source, IAM execution role, VPC networking, encryption, sizing, logging, and maintenance settings.
-- A managed EC2 Security Group (`ec2.SecurityGroup`) with a self-referencing inbound rule and HTTPS (443) ingress from source security groups and/or CIDR blocks — conditional on `securityGroupIds` or `allowedCidrBlocks` being provided.
+- An MWAA Environment (`mwaa.Environment`) with configurable Airflow version, S3 source, IAM execution role, VPC networking, encryption, sizing, logging, maintenance, and worker replacement strategy settings.
+
+Network ingress is composed, never embedded: the environment attaches the referenced `securityGroupIds` directly, and the rules MWAA needs (self-referencing all-traffic, HTTPS 443 ingress, egress) live on those first-class security group nodes.
 
 ## Usage
 
@@ -43,12 +44,11 @@ The stack input is an `AwsMwaaEnvironmentStackInput` protobuf message containing
 
 ### Outputs
 
-The module exports 8 stack outputs (see `module/outputs.go` for keys). Access them via `pulumi stack output`:
+The module exports the stack outputs declared in `AwsMwaaEnvironmentStackOutputs` (see `module/outputs.go` for keys). Access them via `pulumi stack output`:
 
 ```bash
 pulumi stack output environment_arn
 pulumi stack output webserver_url
-pulumi stack output security_group_id
 ```
 
 ## File Structure
@@ -58,10 +58,9 @@ pulumi stack output security_group_id
 | `Pulumi.yaml` | Pulumi project metadata (name: `aws-mwaa-environment`, runtime: Go) |
 | `main.go` | Entry point — loads stack input, runs Pulumi program |
 | `module/main.go` | Orchestrator — resource creation flow + output exports |
-| `module/locals.go` | Locals initialization (labels, resolved target) |
-| `module/security_group.go` | Managed security group with self-referencing + HTTPS ingress rules |
+| `module/locals.go` | Locals initialization (identity tags, naming basis, resolved target) |
 | `module/environment.go` | MWAA Environment resource with all configuration blocks |
-| `module/outputs.go` | Output key constants (8 total) |
+| `module/outputs.go` | Output key constants |
 
 ## Prerequisites
 
@@ -100,7 +99,7 @@ If the environment gets stuck in `CREATING` status:
 1. Check CloudWatch Logs for the environment (if logging was enabled).
 2. Verify the execution role has the required S3, CloudWatch Logs, and SQS permissions.
 3. Verify the VPC subnets are private (no internet gateway route) and have NAT gateway access.
-4. Verify the security group has the self-referencing inbound rule (the managed SG handles this automatically).
+4. Verify the referenced security group has the self-referencing inbound rule — without it MWAA components cannot communicate.
 5. Check that the S3 bucket has versioning enabled and contains DAG files at the specified `dagS3Path`.
 
 Common failure modes:

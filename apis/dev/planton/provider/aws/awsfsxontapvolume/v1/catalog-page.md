@@ -60,21 +60,30 @@ This creates a 100 GB read-write volume mounted at `/data` with UNIX security an
 | `storageVirtualMachineId.value` | `string` | Direct SVM ID value | — |
 | `storageVirtualMachineId.valueFrom` | `object` | Reference to an AwsFsxOntapStorageVirtualMachine resource | Default field: `status.outputs.svm_id` |
 | `name` | `string` | ONTAP volume name. ForceNew. Alphanumeric and underscores only. | 1-203 characters, `^[a-zA-Z0-9_]+$` |
-| `sizeInMegabytes` | `int32` | Volume size in megabytes. | Minimum 20 |
+
+Exactly one of the two size fields must also be set — see below.
+
+### Size (exactly one)
+
+| Field | Type | Description | Validation |
+|-------|------|-------------|------------|
+| `sizeInMegabytes` | `int32` | Volume size in megabytes — the everyday arm. | Minimum 20 |
+| `sizeInBytes` | `int64` | Byte-precise size — the only way past 2 PiB (FlexGroup volumes scale to ~20 PiB). | 20 MiB – 22,517,998,000,000,000 bytes |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `junctionPath` | `string` | (none) | Mount point in SVM namespace (e.g., `/data`). Must start with `/`. Volume is unmounted if omitted. |
+| `junctionPath` | `string` | (none) | Mount point in SVM namespace (e.g., `/data`). Must start with `/`. Volume is unmounted if omitted. 1-255 characters. |
 | `ontapVolumeType` | `string` | `RW` | `RW` (read-write) or `DP` (data protection for SnapMirror). ForceNew. |
 | `volumeStyle` | `string` | `FLEXVOL` | `FLEXVOL` (single aggregate) or `FLEXGROUP` (distributed). ForceNew. |
 | `securityStyle` | `string` | (inherited) | `UNIX`, `NTFS`, or `MIXED`. Inherits from SVM if omitted. |
-| `snapshotPolicy` | `string` | (default) | ONTAP snapshot policy name (e.g., `default`, `none`). |
-| `storageEfficiencyEnabled` | `bool` | `false` | ONTAP deduplication, compression, and compaction. |
+| `snapshotPolicy` | `string` | (default) | ONTAP snapshot policy name (e.g., `default`, `none`). 1-255 characters. |
+| `storageEfficiencyEnabled` | `bool` | (ONTAP default) | Tri-state: `true` enables deduplication/compression/compaction, `false` disables, unset keeps ONTAP's per-volume-type default. |
 | `copyTagsToBackups` | `bool` | `false` | Copy resource tags to automatic backups. |
-| `skipFinalBackup` | `bool` | `false` | Skip the backup taken when the volume is deleted. |
-| `bypassSnaplockEnterpriseRetention` | `bool` | `false` | Allow deleting SnapLock Enterprise volumes with unexpired WORM files. |
+| `skipFinalBackup` | `bool` | `false` | Skip the backup taken when the volume is deleted. Delete-time control — apply before deleting. |
+| `finalBackupTags` | `map` | (none) | Tags applied to the final backup taken on deletion. Only meaningful when `skipFinalBackup` is false. |
+| `bypassSnaplockEnterpriseRetention` | `bool` | `false` | Allow deleting SnapLock Enterprise volumes with unexpired WORM files. Delete-time control. |
 | `tieringPolicy` | `object` | (none) | Data tiering configuration. See Tiering Policy below. |
 | `snaplockConfiguration` | `object` | (none) | SnapLock WORM configuration. See SnapLock Configuration below. |
 | `aggregateConfiguration` | `object` | (none) | FlexGroup aggregate distribution. See Aggregate Configuration below. |

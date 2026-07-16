@@ -1,8 +1,13 @@
 terraform {
+  required_version = ">= 1.0"
   required_providers {
     aws = {
+      # Family floor: the App Runner family pins the v6 line so every
+      # sibling (VPC connector, auto scaling configuration, observability
+      # configuration) resolves from the same provider build; the service
+      # resource itself predates v6.
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      version = ">= 6.0.0"
     }
   }
 }

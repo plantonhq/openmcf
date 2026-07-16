@@ -1,0 +1,34 @@
+# AzureServicePlan install profile used as a prerequisite by the app
+# kinds (declared via prerequisites: [AzureServicePlan] in the kind
+# registry). The E2E harness deploys this document (via the plan's
+# Pulumi module), captures its outputs under its manifest name, and
+# resolves dependents' service-plan references against them. The
+# resource group arrives transitively through this kind's own
+# AzureResourceGroup prerequisite. A Basic B1 Linux plan is the cheapest
+# tier the app fixtures can run on (Basic supports always_on); plan
+# names are resource-group-scoped, so sequential recreate is safe.
+apiVersion: azure.planton.dev/v1
+kind: AzureServicePlan
+metadata:
+  name: planton-oss-e2e-azure-fixture-plan
+  id: planton-oss-e2e-azure-fixture-plan
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureserviceplan
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  # centralus: probe-verified Basic-tier capacity (eastus has no Basic
+  # quota on the test subscription and westus3 rejected Basic creates on capacity); a plan's region is
+  # independent of its resource group's.
+  region: centralus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  servicePlanName: planton-oss-e2e-fixture-plan
+  osType: LINUX
+  skuName: BASIC_B1

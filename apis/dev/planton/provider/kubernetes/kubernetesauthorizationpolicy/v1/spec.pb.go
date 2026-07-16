@@ -32,7 +32,7 @@ const (
 // 100% fidelity with the upstream istio.io/api AuthorizationPolicy
 // (security/v1beta1/authorization_policy.proto, served as security.istio.io/v1),
 // pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly
-// after the Planton namespaced envelope (target_cluster, namespace); there is no
+// after the Planton namespaced envelope (namespace); there is no
 // nested `authorization_policy` sub-message.
 //
 // Scope semantics (upstream): if neither `selector` nor `target_refs` is set the
@@ -42,10 +42,6 @@ const (
 // deny-by-default when the action is ALLOW.
 type KubernetesAuthorizationPolicySpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where this AuthorizationPolicy is created. The Istio
-	// CRDs (KubernetesIstioBaseCrds) must already be present on the cluster; the
-	// policy is only enforced where istiod (the Istio control plane) is running.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace in which the AuthorizationPolicy is created. The policy's scope is
 	// this namespace (or mesh-wide if this is the Istio root namespace and no
 	// selector or target_refs is set).
@@ -137,13 +133,6 @@ func (x *KubernetesAuthorizationPolicySpec) ProtoReflect() protoreflect.Message 
 // Deprecated: Use KubernetesAuthorizationPolicySpec.ProtoReflect.Descriptor instead.
 func (*KubernetesAuthorizationPolicySpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesauthorizationpolicy_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesAuthorizationPolicySpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesAuthorizationPolicySpec) GetNamespace() *v1.StringValueOrRef {
@@ -753,9 +742,8 @@ var File_dev_planton_provider_kubernetes_kubernetesauthorizationpolicy_v1_spec_p
 
 const file_dev_planton_provider_kubernetes_kubernetesauthorizationpolicy_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Kdev/planton/provider/kubernetes/kubernetesauthorizationpolicy/v1/spec.proto\x12@dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xca\a\n" +
-	"!KubernetesAuthorizationPolicySpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Kdev/planton/provider/kubernetes/kubernetesauthorizationpolicy/v1/spec.proto\x12@dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe7\x06\n" +
+	"!KubernetesAuthorizationPolicySpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12_\n" +
 	"\bselector\x18\x03 \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\bselector\x12s\n" +
 	"\vtarget_refs\x18\x04 \x03(\v2H.dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReferenceB\b\xbaH\x05\x92\x01\x02\x10\x10R\n" +
@@ -834,28 +822,26 @@ var file_dev_planton_provider_kubernetes_kubernetesauthorizationpolicy_v1_spec_p
 	(*KubernetesAuthorizationPolicyOperation)(nil),             // 5: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyOperation
 	(*KubernetesAuthorizationPolicyCondition)(nil),             // 6: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyCondition
 	(*KubernetesAuthorizationPolicyExtensionProvider)(nil),     // 7: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyExtensionProvider
-	(*kubernetes.KubernetesClusterSelector)(nil),               // 8: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                                // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesIstioApiWorkloadSelector)(nil),      // 10: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
-	(*kubernetes.KubernetesIstioApiPolicyTargetReference)(nil), // 11: dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
+	(*v1.StringValueOrRef)(nil),                                // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesIstioApiWorkloadSelector)(nil),      // 9: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
+	(*kubernetes.KubernetesIstioApiPolicyTargetReference)(nil), // 10: dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
 }
 var file_dev_planton_provider_kubernetes_kubernetesauthorizationpolicy_v1_spec_proto_depIdxs = []int32{
-	8,  // 0: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	9,  // 1: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 2: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySpec.selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
-	11, // 3: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySpec.target_refs:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
-	1,  // 4: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySpec.rules:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRule
-	7,  // 5: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySpec.provider:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyExtensionProvider
-	2,  // 6: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRule.from:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRuleFrom
-	3,  // 7: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRule.to:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRuleTo
-	6,  // 8: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRule.when:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyCondition
-	4,  // 9: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRuleFrom.source:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySource
-	5,  // 10: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRuleTo.operation:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyOperation
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	8,  // 0: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 1: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySpec.selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
+	10, // 2: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySpec.target_refs:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
+	1,  // 3: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySpec.rules:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRule
+	7,  // 4: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySpec.provider:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyExtensionProvider
+	2,  // 5: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRule.from:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRuleFrom
+	3,  // 6: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRule.to:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRuleTo
+	6,  // 7: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRule.when:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyCondition
+	4,  // 8: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRuleFrom.source:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySource
+	5,  // 9: dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyRuleTo.operation:type_name -> dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyOperation
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesauthorizationpolicy_v1_spec_proto_init() }

@@ -6,7 +6,10 @@ spec:
   region: <azure-region>
   resourceGroup:
     value: "<your-resource-group-name>"
-  name: <plan-name>
-  osType: Linux  # default from spec
-  skuName: S1
+  servicePlanName: my-service-plan
+  # LINUX is the spec default -- stated here for clarity.
+  osType: LINUX
+  # Standard S1: auto-scale to 10 instances, 5 staging slots, daily
+  # backups -- the entry-level production tier.
+  skuName: STANDARD_S1
   workerCount: 1

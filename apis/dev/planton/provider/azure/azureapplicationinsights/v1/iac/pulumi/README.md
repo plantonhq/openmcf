@@ -1,44 +1,31 @@
-# AzureApplicationInsights Pulumi Module
+# AzureApplicationInsights - Pulumi Module
 
-## Overview
-
-This Pulumi module provisions an Azure Application Insights resource using the Azure
-Classic provider (`pulumi-azure`). It creates a single `appinsights.Insights` resource
-with configurable application type, workspace integration, retention, daily cap, and
-sampling percentage.
+Pulumi (Go) implementation for the AzureApplicationInsights deployment
+component, at 100% behavioral parity with the Terraform module (one
+documented bridge-lag PARITY-EXCEPTION, below).
 
 ## Resources Created
 
-- `appinsights.Insights` -- the Application Insights resource
+- `appinsights.Insights` -- the workspace-based component, carrying the
+  application type, workspace binding, retention/sampling/cap dials,
+  privacy/auth/network posture, and merged governance tags
 
-## Inputs
+## Implementation Notes
 
-The module receives an `AzureApplicationInsightsStackInput` containing:
+- The Azure provider is built through the shared
+  `pulumiazureprovider.Get` builder -- never inline `NewProvider`.
+- The application-type wire map in `locals.go` carries Azure's
+  case-sensitive strings, mechanically identical to the Terraform
+  module's map.
+- **PARITY-EXCEPTION (bridge lag)**: pulumi-azure v6.38 bridges only the
+  provider's DEPRECATED negative-form toggles (`disableIpMasking`,
+  `localAuthenticationDisabled`, `dailyDataCapNotificationsDisabled`);
+  this module inverts the spec's positive booleans. The wire property is
+  identical for each pair -- behavior and outputs match the Terraform
+  module exactly. Re-align when the bridge ships the positive forms.
 
-- `target.spec.region` -- Azure region
-- `target.spec.resource_group` -- resource group name (resolved from StringValueOrRef)
-- `target.spec.name` -- Application Insights name
-- `target.spec.application_type` -- application type (default: web)
-- `target.spec.workspace_id` -- Log Analytics Workspace ID (resolved from StringValueOrRef)
-- `target.spec.retention_in_days` -- data retention period (default: 90)
-- `target.spec.daily_data_cap_in_gb` -- daily ingestion cap (default: 100)
-- `target.spec.sampling_percentage` -- telemetry sampling rate (default: 100)
-- `target.metadata` -- Planton metadata for tagging
-- `provider_config` -- Azure credentials
-
-## Outputs
-
-| Output | Description |
-|--------|-------------|
-| `app_insights_id` | Azure Resource Manager ID |
-| `instrumentation_key` | Instrumentation key (secret) |
-| `connection_string` | SDK connection string (secret) |
-| `app_id` | Application ID for API access |
-
-## Local Development
+## Build
 
 ```bash
-make build       # Build the module
-make deps        # Download and tidy dependencies
-make update-deps # Update to latest planton
+make build
 ```

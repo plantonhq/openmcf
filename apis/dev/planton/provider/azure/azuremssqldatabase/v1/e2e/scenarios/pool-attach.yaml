@@ -1,0 +1,37 @@
+# Pool-attach AzureMssqlDatabase scenario: a database that joins the
+# fixture elastic pool instead of carrying its own SKU -- proving the
+# elastic_pool_id seam end to end (fixture RG -> fixture server ->
+# fixture pool -> this database).
+#
+# The e2e-prerequisites annotation pulls in the AzureMssqlElasticPool
+# fixture beyond the kind's registry chain; the pool reference resolves
+# against its captured elastic_pool_id output. Per ARM's contract the
+# pooled database sets sku_name "ElasticPool" and inherits the pool's
+# maintenance window.
+apiVersion: azure.planton.dev/v1
+kind: AzureMssqlDatabase
+metadata:
+  name: planton-oss-e2e-azmssqldb-pooled
+  id: planton-oss-e2e-azmssqldb-pooled
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremssqldatabase
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureMssqlElasticPool"
+  tags:
+    - planton-e2e
+spec:
+  serverId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sql
+  databaseName: pooled-smoke
+  skuName: ElasticPool
+  elasticPoolId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-pool
+  tags:
+    e2e-suite: azure
+    purpose: smoke

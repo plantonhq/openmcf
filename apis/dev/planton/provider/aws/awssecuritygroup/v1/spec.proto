@@ -5,7 +5,13 @@ package dev.planton.provider.aws.awssecuritygroup.v1;
 import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
-// AwsSecurityGroupSpec defines the primary configuration for creating an AWS EC2 Security Group in a specified VPC.
+// AwsSecurityGroupSpec defines an AWS EC2 Security Group in a specified VPC.
+// A security group is a stateful virtual firewall attached to network
+// interfaces: return traffic for an allowed connection is automatically
+// permitted, so rules only describe the initiating direction. Rules are
+// authored inline on the group -- they live and die with it -- and other
+// resources compose onto the group by referencing its exported
+// security_group_id.
 message AwsSecurityGroupSpec {
   // The AWS region where the resource will be created.
   // Example: "us-west-2", "eu-west-1"
@@ -13,15 +19,17 @@ message AwsSecurityGroupSpec {
 
   // vpc_id is the ID of the VPC where this Security Group will be created.
   // Example: "vpc-12345abcde"
-  // This field is required because every Security Group must belong to one VPC.
+  // Required: every security group belongs to exactly one VPC.
+  // ForceNew: changing the VPC forces group replacement.
   dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
   ];
 
-  // description provides a short explanation of this Security Group’s purpose.
-  // This field is required by AWS and cannot be modified once created without a replacement.
+  // description provides a short explanation of this Security Group's purpose.
+  // Required by AWS. ForceNew: AWS does not allow editing a group description
+  // in place, so changing it forces group replacement.
   // Example: "Allows inbound HTTP and SSH for web tier"
   string description = 3 [
     (buf.validate.field).required = true,
@@ -33,32 +41,53 @@ message AwsSecurityGroupSpec {
     }
   ];
 
-  // ingress_rules define the inbound traffic rules for this Security Group.
+  // ingress defines the inbound traffic rules for this Security Group.
   // If empty, inbound traffic is fully restricted (deny all).
   repeated SecurityGroupRule ingress = 4;
 
-  // egress_rules define the outbound traffic rules for this Security Group.
-  // If empty, AWS defaults to allow all outbound traffic unless configured otherwise.
+  // egress defines the outbound traffic rules for this Security Group.
+  // If empty, ALL outbound traffic is denied: the module revokes the allow-all
+  // egress rule AWS adds to every new group, so the manifest is the complete
+  // statement of what the group permits. Add an explicit all-traffic egress
+  // rule (protocol "-1", 0.0.0.0/0) to restore the AWS default behavior.
   repeated SecurityGroupRule egress = 5;
+
+  // revoke_rules_on_delete forcibly revokes this group's rules (and rules in
+  // OTHER groups that reference this one) before deleting the group. Without
+  // it, deleting a group that is still referenced by another group's rules
+  // fails with a DependencyViolation. Enable for groups that are referenced
+  // cross-group (e.g. an app tier referenced by a database tier) so teardown
+  // never requires manual rule surgery. Safe to toggle in place.
+  bool revoke_rules_on_delete = 6;
 }
 
-// SecurityGroupRule represents a single inbound or outbound rule in the Security Group.
-// For ingress, fill in sources (cidrs or source_security_group_ids).
-// For egress, fill in destinations (cidrs or destination_security_group_ids).
+// SecurityGroupRule represents a single inbound or outbound rule in the
+// Security Group. Each rule must name at least one source (ingress) or
+// destination (egress): CIDR blocks, managed prefix lists, other security
+// groups, or the group itself (self_reference).
 message SecurityGroupRule {
   // protocol indicates the protocol for the rule.
-  // Common values: "tcp", "udp", "icmp", or "-1" (all protocols).
+  // Common values: "tcp", "udp", "icmp", "icmpv6", or "-1" (all protocols).
+  // IANA protocol numbers are also accepted.
   string protocol = 1 [(buf.validate.field).required = true];
 
-  // from_port is the starting port in the range.
-  // For single-port rules, from_port == to_port.
-  // Use 0 when specifying all ports (with protocol = -1) or for ICMP types.
-  int32 from_port = 2;
+  // from_port is the starting port in the range. For single-port rules,
+  // from_port == to_port. For ICMP/ICMPv6, from_port is the ICMP TYPE
+  // (-1 means all types). For all-protocol rules (protocol "-1"), both ports
+  // must be 0.
+  int32 from_port = 2 [
+    (buf.validate.field).int32.gte = -1,
+    (buf.validate.field).int32.lte = 65535
+  ];
 
-  // to_port is the ending port in the range.
-  // For single-port rules, to_port == from_port.
-  // Use 0 when specifying all ports (with protocol = -1) or for ICMP codes.
-  int32 to_port = 3;
+  // to_port is the ending port in the range. For single-port rules,
+  // to_port == from_port. For ICMP/ICMPv6, to_port is the ICMP CODE
+  // (-1 means all codes). For all-protocol rules (protocol "-1"), both ports
+  // must be 0.
+  int32 to_port = 3 [
+    (buf.validate.field).int32.gte = -1,
+    (buf.validate.field).int32.lte = 65535
+  ];
 
   // ipv4_cidrs is the list of IPv4 CIDR blocks allowed (ingress) or targeted (egress).
   // Examples: "10.0.0.0/16", "0.0.0.0/0"
@@ -84,15 +113,37 @@ message SecurityGroupRule {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
   ];
 
-  // self_reference indicates whether to allow traffic from/to the same Security Group.
-  // This is equivalent to referencing the group’s own ID.
-  bool self_reference = 8;
+  // prefix_list_ids is the list of managed prefix list IDs allowed (ingress)
+  // or targeted (egress). Example: "pl-63a5400a". Managed prefix lists name a
+  // set of CIDRs by a stable ID: AWS-managed lists cover services like S3 and
+  // DynamoDB gateway endpoints (so an egress rule can target "the S3 service"
+  // instead of hardcoding its CIDRs), and customer-managed lists let network
+  // teams maintain shared CIDR sets (office ranges, partner networks) that
+  // many groups reference without copying.
+  repeated string prefix_list_ids = 8 [
+    (buf.validate.field).repeated.items.string.pattern = "^pl-[0-9a-f]+$",
+    (buf.validate.field).repeated.unique = true
+  ];
 
-  // rule_description is an optional explanation of this specific rule,
-  // aiding in clarity and maintenance. Max 255 chars recommended.
-  string description = 9 [(buf.validate.field).cel = {
+  // self_reference indicates whether to allow traffic from/to the same Security Group.
+  // This is equivalent to referencing the group's own ID -- the standard pattern
+  // for intra-cluster traffic (nodes of one cluster talking to each other).
+  bool self_reference = 9;
+
+  // description is an optional explanation of this specific rule,
+  // aiding in clarity and maintenance. Max 255 chars.
+  string description = 10 [(buf.validate.field).cel = {
     id: "rule_description_length_check"
     expression: "size(this) <= 255"
     message: "Rule description must not exceed 255 characters"
   }];
+
+  // AWS rejects an all-protocol rule with a port range: when protocol is "-1"
+  // (or "all"), both ports must be 0. Enforced here so the mistake fails at
+  // validation instead of at apply.
+  option (buf.validate.message).cel = {
+    id: "all_protocol_ports_zero"
+    message: "when protocol is '-1' (all protocols), from_port and to_port must both be 0"
+    expression: "(this.protocol == '-1' || this.protocol == 'all') ? (this.from_port == 0 && this.to_port == 0) : true"
+  };
 }

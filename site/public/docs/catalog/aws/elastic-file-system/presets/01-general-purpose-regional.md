@@ -1,6 +1,6 @@
 ---
 title: "General Purpose Regional EFS"
-description: "Regional, encrypted, bursting throughput, backup enabled, no access points. Simplest production-safe starting point."
+description: "Regional, encrypted, bursting throughput, backup enabled. Simplest production-safe starting point."
 type: "preset"
 rank: "01"
 presetSlug: "01-general-purpose-regional"
@@ -13,7 +13,7 @@ order: 1
 
 # General Purpose Regional EFS
 
-Regional, encrypted, bursting throughput, backup enabled, no access points. Simplest production-safe starting point.
+Regional, encrypted, bursting throughput, backup enabled. Simplest production-safe starting point.
 
 ## When to Use
 
@@ -25,14 +25,14 @@ Regional, encrypted, bursting throughput, backup enabled, no access points. Simp
 ## What It Configures
 
 - **Regional** — No `availabilityZoneName`; file system spans multiple AZs for high availability
-- **Encrypted** — AES-256 encryption at rest using AWS-managed key
+- **Encrypted** — AES-256 encryption at rest using the AWS-managed key
 - **Bursting throughput** — Throughput scales with storage; 50 MiB/s per TiB with bursts up to 100 MiB/s
 - **Backup enabled** — Daily backups via AWS Backup
-- **No access points** — Mount the root; add access points later if you need per-application isolation
+- **Two mount targets** — One per AZ so clients mount locally and avoid cross-AZ data charges
 
 ## What to Customize
 
-- Replace placeholders: `<subnet-id-az-a>`, `<subnet-id-az-b>`, `<security-group-id>`
-- Add more subnets (one per AZ) for broader availability
+- Replace placeholders: `<aws-region>`, `<subnet-id-az-a>`, `<subnet-id-az-b>`, `<security-group-id>`
+- Add more mount targets (one per AZ) for broader availability
 - Switch to `throughputMode: elastic` for unpredictable or spiky workloads
-- Add access points if using ECS tasks or Lambda with per-app root directories
+- Create `AwsEfsAccessPoint` resources referencing this file system for per-application POSIX isolation (ECS tasks, Lambda)

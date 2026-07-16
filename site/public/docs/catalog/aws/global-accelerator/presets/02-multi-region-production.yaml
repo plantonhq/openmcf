@@ -2,7 +2,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: prod-multi-region-ga
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
 spec:
   region: <aws-region>
@@ -10,7 +10,8 @@ spec:
   ipAddressType: IPV4
   flowLogs:
     enabled: true
-    s3Bucket: "<flow-logs-s3-bucket-name>"
+    s3Bucket:
+      value: "<flow-logs-s3-bucket-name>"
     s3Prefix: ga-logs/prod/
   listeners:
     - name: tcp-443
@@ -28,7 +29,8 @@ spec:
           thresholdCount: 5
           trafficDialPercentage: 60.0
           endpoints:
-            - endpointId: "<us-east-1-alb-arn>"
+            - endpointId:
+                value: "<us-east-1-alb-arn>"
               weight: 128
               clientIpPreservationEnabled: true
         - name: eu-west-1
@@ -39,6 +41,7 @@ spec:
           thresholdCount: 5
           trafficDialPercentage: 40.0
           endpoints:
-            - endpointId: "<eu-west-1-alb-arn>"
+            - endpointId:
+                value: "<eu-west-1-alb-arn>"
               weight: 128
               clientIpPreservationEnabled: true

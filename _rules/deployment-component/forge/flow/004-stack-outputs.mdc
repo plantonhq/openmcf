@@ -60,5 +60,30 @@ message AwsCloudFrontStackOutputs {
 ```
 
 NOTES
-- Secrets belong in external secret managers, not in stack outputs.
+- Secrets belong in external secret managers, not in stack outputs. When the provider
+  offers a managed-secret indirection, export the secret's ARN/identifier instead of the
+  material (e.g. a managed master password exported as its Secrets Manager ARN).
+- Narrow exception -- provider-minted credentials with NO vault indirection: when the
+  cloud itself mints a credential at create time, offers no managed-secret handle for it,
+  and the stack output is the only wire to the consuming application (e.g. an IAM user's
+  secret access key, a Cognito app client secret), export it. Mark it clearly: a
+  "Sensitive -- treat as a credential" sentence in the proto field comment, and
+  `sensitive = true` on the Terraform output. Never apply this exception to material the
+  MODULE generates (keys/PEMs the module creates do not belong in outputs at all).
 - Keep field names stable; other modules/tests reference these outputs downstream.
+- Export the ids of IMPLICIT sub-resources that other kinds target, constructed from
+  the parent's id when the provider offers no readback -- ARM/cloud APIs often hang
+  capabilities off a sub-resource nothing materializes explicitly (e.g. a storage
+  account's `blobServices/default`, where diagnostic settings must point to capture
+  data-access logs, while the account-level id exposes only account metrics). A
+  consumer that cannot reach the real telemetry/grant scope by reference is a
+  composition gap identical to a missing output.
+- Map-typed outputs (`map<string, string>`, e.g. per-subnet mount-target IDs) are
+  first-class: both engines emit them as nested objects, the flattener dot-flattens
+  each entry (`field.some-key = value`), and the transformer routes the remaining
+  path segments back into the proto map with the key VERBATIM -- so map keys may
+  freely contain hyphens and dots (subnet IDs, object paths). Always add a
+  `pkg/outputs/conformance_test.go` case that includes the map fields in
+  `mustPopulate`; the conformance case is the only guard proving the map shape
+  round-trips (an un-cased map field can silently arrive empty in the platform's
+  typed outputs).

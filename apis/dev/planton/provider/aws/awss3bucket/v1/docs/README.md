@@ -307,43 +307,22 @@ Planton's S3 bucket API abstracts deployment complexity while providing producti
 
 ### Design Philosophy
 
-**Secure by default:** Every bucket created via Planton has Block Public Access enabled, encryption configured (SSE-S3 minimum, SSE-KMS available), and follows least-privilege IAM patterns unless explicitly overridden.
+**Secure by default:** A bucket with nothing but a `region` is fully private — all four Block Public Access guards on, ACLs disabled via `BucketOwnerEnforced` ownership, and AWS's own SSE-S3 encryption applying to every object. Public access is never a flag; it is a deliberate combination of an explicit policy statement and explicitly relaxed guards, so an accidental exposure is structurally impossible to write.
 
-**80/20 configuration:** The API exposes the 20% of S3 settings that 80% of use cases need:
-- Bucket name, region, and basic metadata
-- Public/private flag (`isPublic: false` by default)
-- Versioning toggle
-- Encryption settings (default SSE-S3, optional SSE-KMS with key ID)
-- Tags for governance and cost allocation
+**The full behavioral surface, one document:** AWS models the bucket as a small resource and every behavior — versioning, encryption, lifecycle, replication, website hosting, logging, CORS, notifications, Object Lock, acceleration, requester pays, Intelligent-Tiering — as bucket-scoped satellite configuration. The Planton spec folds all of it into one declarative document, validated up front: version-pruning lifecycle rules for cost control, replication with Replication Time Control and cross-account ownership translation, partitioned access-log keys for Athena, EventBridge or targeted Lambda/SQS/SNS notifications, and COMPLIANCE-mode WORM retention.
 
-**Optional advanced features:** For power users, the API supports:
-- Lifecycle rules (transitions and expiration)
-- Replication (CRR/SRR configuration)
-- Server access logging
-- CORS configuration
-- Bucket policies
-
-This layered approach means simple use cases (a private bucket for application data) require minimal configuration, while complex scenarios (compliance bucket with replication, object lock, and lifecycle policies) are fully supported.
-
-### Multi-Cloud Consistency
-
-Planton uses Terraform (OpenTofu) as the underlying IaC engine for AWS resources. This choice provides:
-- **Multi-cloud portability:** The same workflow and tooling that manage AWS S3 also manage GCP Cloud Storage and Azure Blob Storage, ensuring operational consistency
-- **Battle-tested reliability:** Terraform's AWS provider is mature, widely used, and rapidly updated
-- **Rich ecosystem:** Access to community modules and best practices
+**Validated composition:** Cross-resource inputs — the KMS key, the replication role and destination bucket, the logging target, notification targets — accept either literal values or references to other Planton resources, wiring buckets into the same dependency graph as the rest of the architecture. Interdependent settings (replication requires versioning, RTC requires metrics, Object Lock requires versioning, ACLs require non-enforced ownership) are enforced at validation time, before anything reaches the cloud.
 
 ### From API to Infrastructure
 
 When you define an S3 bucket via Planton's protobuf API:
 
-1. **Validation:** The API validates configuration (bucket name format, region validity, compatible settings like encryption + replication)
-2. **Defaults:** Secure defaults are applied (Block Public Access, encryption, etc.)
-3. **Terraform generation:** The API spec translates to Terraform HCL
-4. **Plan and apply:** Terraform generates a plan, showing exactly what will be created or changed
-5. **State tracking:** Terraform state captures the bucket's configuration, enabling drift detection and safe updates
-6. **Stack outputs:** After creation, relevant information (bucket ARN, region, encryption details) is exposed via stack outputs for integration with applications
+1. **Validation:** The manifest is validated against the spec's rules — value constraints and the cross-field couplings above — at authoring time.
+2. **Engine execution:** Either the Terraform/OpenTofu module or the Pulumi module deploys the bucket; both implement the same contract at full behavioral parity, so the choice of engine never changes the outcome.
+3. **Plan and apply:** The engine previews exactly what will change before applying it, and its state enables drift detection and safe updates.
+4. **Stack outputs:** After creation, the bucket's identifiers (name, ARN, regional domain, website endpoint) are exposed via `status.outputs` for other resources to reference.
 
-This abstraction means developers declare *what* they need (a private S3 bucket with versioning) without needing to understand Terraform syntax, manage state files, or navigate AWS API nuances.
+This abstraction means developers declare *what* they need (a private S3 bucket with versioning) without hand-writing IaC, managing state files, or navigating AWS API nuances.
 
 ## Conclusion
 

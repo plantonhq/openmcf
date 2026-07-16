@@ -1,0 +1,22 @@
+# AwsSnsTopic install profile used as a prerequisite by composed components
+# (declared via the scenario's e2e-prerequisites annotation or the kind's
+# registry prerequisites). A standard topic with AWS defaults -- enough for
+# subscription scenarios that wire SQS endpoints. Full metadata is supplied
+# for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsSnsTopic
+metadata:
+  name: planton-oss-e2e-awssnstopic-prereq
+  id: planton-oss-e2e-awssnstopic-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssnstopic
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  signatureVersion: 2

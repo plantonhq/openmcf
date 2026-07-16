@@ -2,53 +2,46 @@
 
 ## Overview
 
-This Pulumi module creates an Azure Private DNS Zone with a Virtual Network link. It provisions two Azure resources:
+This Pulumi module provisions an Azure Private DNS zone using the Azure
+Classic provider (`pulumi-azure`). It creates a single `privatedns.Zone`
+-- a global record container -- with optional SOA customization and
+governance tags.
 
-1. **`privatedns.Zone`** -- The private DNS zone (global, no region)
-2. **`privatedns.ZoneVirtualNetworkLink`** -- Links the zone to a VNet for DNS resolution
+Tags update in place; the zone's name is its ARM identity, so renaming
+replaces the zone and every record in it. The SOA record is written at
+creation and cannot be customized afterwards.
 
-## Architecture
+The zone is deliberately just the zone: which networks can resolve it is
+declared through `AzurePrivateDnsZoneVirtualNetworkLink` resources
+referencing this zone's `zone_id` output -- one link per network. A zone
+with no links answers nobody.
 
-```
-Stack Input
-    ├── Target (AzurePrivateDnsZone)
-    │   ├── Metadata (name, org, env)
-    │   └── Spec
-    │       ├── resource_group (StringValueOrRef)
-    │       ├── name (zone name)
-    │       ├── vnet_id (StringValueOrRef)
-    │       └── registration_enabled (bool)
-    └── ProviderConfig (Azure credentials)
+## Resources Created
 
-Resources Created
-    ├── privatedns.Zone
-    │   ├── Name: spec.name
-    │   ├── ResourceGroupName: spec.resource_group
-    │   └── Tags: standard Azure tags
-    └── privatedns.ZoneVirtualNetworkLink
-        ├── Name: "{metadata.name}-vnet-link"
-        ├── PrivateDnsZoneName: zone.Name
-        ├── VirtualNetworkId: spec.vnet_id
-        └── RegistrationEnabled: spec.registration_enabled
+- `privatedns.Zone` -- the private DNS zone
 
-Stack Outputs
-    ├── zone_id: Azure resource ID of the zone
-    └── zone_name: Name of the private DNS zone
-```
+## Inputs
 
-## Usage
+The module receives an `AzurePrivateDnsZoneStackInput` containing:
+
+- `target.spec.resource_group` -- the zone's resource group (references resolved to a literal by the platform)
+- `target.spec.name` -- the zone's DNS domain name (privatelink zone name or custom domain)
+- `target.spec.soa_record` -- optional SOA customization (email + timers; unset timers fall back to Azure's defaults)
+- `target.spec.tags` -- user tags, merged over the metadata-derived tags (user wins)
+- `provider_config` -- Azure credentials (static client secret, keyless web identity, or ambient chain)
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `zone_id` | Full ARM ID of the zone -- the join key for links, private endpoints, and databases |
+| `zone_name` | The zone's DNS name as deployed |
+| `resource_group_name` | The zone's resource group |
+
+## Local Development
 
 ```bash
-# Build
-make build
-
-# Run with Pulumi
-pulumi up --stack dev
-
-# Debug
-./debug.sh
+make build       # Build the module
+make deps        # Download and tidy dependencies
+make update-deps # Update to latest planton
 ```
-
-## Provider
-
-Uses `github.com/pulumi/pulumi-azure/sdk/v6/go/azure/privatedns` for the private DNS resources.

@@ -5,9 +5,9 @@ metadata:
   org: ${org}
   env: ${env}
   id: ${id}
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack: ${env}.AwsCognitoUserPool.${name}
+    pulumi.planton.dev/stack.name: ${env}.AwsCognitoUserPool.${name}
 spec:
   region: <aws-region>
   usernameAttributes:
@@ -17,8 +17,3 @@ spec:
   accountRecoveryMechanisms:
     - name: verified_email
       priority: 1
-  clients:
-    - name: web-app
-      explicitAuthFlows:
-        - ALLOW_USER_SRP_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH

@@ -30,7 +30,7 @@ This preset deploys a production-grade Python web application on a Premium App S
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<your-resource-group-name>` | Name of the Azure resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-premium-plan-id>` | ARM ID of a Premium (P1v3/P2v3/P3v3) App Service Plan | Azure portal or `AzureServicePlan` status outputs (`plan_id`) |
+| `<your-premium-plan-id>` | ARM ID of a Premium (P1v3/P2v3/P3v3) App Service Plan | Azure portal or `AzureServicePlan` status outputs (`service_plan_id`) |
 | `<your-app-insights-connection-string>` | Application Insights connection string | Azure portal or `AzureApplicationInsights` status outputs |
 | `<your-vnet-subnet-id>` | ARM ID of the subnet delegated to Microsoft.Web/serverFarms | Azure portal or `AzureSubnet` status outputs (`subnet_id`) |
 | `<your-keyvault>.vault.azure.net` | Key Vault hostname for secret references | Azure portal -> Key Vault -> Overview |

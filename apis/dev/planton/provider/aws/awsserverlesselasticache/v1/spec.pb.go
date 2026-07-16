@@ -82,19 +82,31 @@ type AwsServerlessElasticacheSpec struct {
 	// VPC security groups to attach to the serverless cache endpoint.
 	// Controls network-level access.
 	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,10,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
+	// IP addressing for the cache's VPC endpoints. Values: "ipv4" (default),
+	// "ipv6", "dual_stack". ForceNew — changing the network type destroys and
+	// recreates the cache. Dual-stack requires subnets with both IPv4 and
+	// IPv6 CIDRs.
+	NetworkType string `protobuf:"bytes,11,opt,name=network_type,json=networkType,proto3" json:"network_type,omitempty"`
 	// Customer-managed KMS key ARN for at-rest encryption. When set, ElastiCache
 	// Serverless uses this key instead of the AWS-managed key. ForceNew —
 	// changing this destroys and recreates the cache.
-	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,11,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
+	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,12,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
 	// Daily automatic snapshot time in UTC. Format: "HH:mm" (e.g., "05:00").
 	// Only valid for Redis/Valkey engines. Memcached has no persistence.
-	DailySnapshotTime string `protobuf:"bytes,12,opt,name=daily_snapshot_time,json=dailySnapshotTime,proto3" json:"daily_snapshot_time,omitempty"`
+	DailySnapshotTime string `protobuf:"bytes,13,opt,name=daily_snapshot_time,json=dailySnapshotTime,proto3" json:"daily_snapshot_time,omitempty"`
 	// Number of days to retain automatic snapshots. Range: 0–35. 0 disables
 	// snapshots. Only valid for Redis/Valkey engines.
-	SnapshotRetentionLimit int32 `protobuf:"varint,13,opt,name=snapshot_retention_limit,json=snapshotRetentionLimit,proto3" json:"snapshot_retention_limit,omitempty"`
-	// Redis ACL user group ID for fine-grained access control. Only valid for
-	// Redis/Valkey engines. Memcached has no authentication mechanism.
-	UserGroupId   string `protobuf:"bytes,14,opt,name=user_group_id,json=userGroupId,proto3" json:"user_group_id,omitempty"`
+	SnapshotRetentionLimit int32 `protobuf:"varint,14,opt,name=snapshot_retention_limit,json=snapshotRetentionLimit,proto3" json:"snapshot_retention_limit,omitempty"`
+	// ARNs of existing ElastiCache snapshots to seed the new cache from — the
+	// migration path from a node-based Redis/Valkey cluster to serverless
+	// (snapshot the cluster, restore here). Create-time-only; only valid for
+	// Redis/Valkey engines.
+	SnapshotArnsToRestore []string `protobuf:"bytes,15,rep,name=snapshot_arns_to_restore,json=snapshotArnsToRestore,proto3" json:"snapshot_arns_to_restore,omitempty"`
+	// RBAC user group controlling fine-grained access
+	// (AwsElasticacheUser/AwsElasticacheUserGroup). Serverless caches accept
+	// exactly one group. Only valid for Redis/Valkey engines — Memcached has
+	// no authentication mechanism.
+	UserGroupId   *v1.StringValueOrRef `protobuf:"bytes,16,opt,name=user_group_id,json=userGroupId,proto3" json:"user_group_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -199,6 +211,13 @@ func (x *AwsServerlessElasticacheSpec) GetSecurityGroupIds() []*v1.StringValueOr
 	return nil
 }
 
+func (x *AwsServerlessElasticacheSpec) GetNetworkType() string {
+	if x != nil {
+		return x.NetworkType
+	}
+	return ""
+}
+
 func (x *AwsServerlessElasticacheSpec) GetKmsKeyId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.KmsKeyId
@@ -220,18 +239,25 @@ func (x *AwsServerlessElasticacheSpec) GetSnapshotRetentionLimit() int32 {
 	return 0
 }
 
-func (x *AwsServerlessElasticacheSpec) GetUserGroupId() string {
+func (x *AwsServerlessElasticacheSpec) GetSnapshotArnsToRestore() []string {
+	if x != nil {
+		return x.SnapshotArnsToRestore
+	}
+	return nil
+}
+
+func (x *AwsServerlessElasticacheSpec) GetUserGroupId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.UserGroupId
 	}
-	return ""
+	return nil
 }
 
 var File_dev_planton_provider_aws_awsserverlesselasticache_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsserverlesselasticache_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/aws/awsserverlesselasticache/v1/spec.proto\x124dev.planton.provider.aws.awsserverlesselasticache.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xcd\x12\n" +
+	"?dev/planton/provider/aws/awsserverlesselasticache/v1/spec.proto\x124dev.planton.provider.aws.awsserverlesselasticache.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc2\x17\n" +
 	"\x1cAwsServerlessElasticacheSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x1e\n" +
 	"\x06engine\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06engine\x120\n" +
@@ -246,18 +272,22 @@ const file_dev_planton_provider_aws_awsserverlesselasticache_v1_spec_proto_rawDe
 	"\n" +
 	"subnet_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
 	"\x12security_group_ids\x18\n" +
-	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12q\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12!\n" +
+	"\fnetwork_type\x18\v \x01(\tR\vnetworkType\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12.\n" +
-	"\x13daily_snapshot_time\x18\f \x01(\tR\x11dailySnapshotTime\x12C\n" +
-	"\x18snapshot_retention_limit\x18\r \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x16snapshotRetentionLimit\x12\"\n" +
-	"\ruser_group_id\x18\x0e \x01(\tR\vuserGroupId:\xbf\v\xbaH\xbb\v\x1ax\n" +
+	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12.\n" +
+	"\x13daily_snapshot_time\x18\r \x01(\tR\x11dailySnapshotTime\x12C\n" +
+	"\x18snapshot_retention_limit\x18\x0e \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x16snapshotRetentionLimit\x127\n" +
+	"\x18snapshot_arns_to_restore\x18\x0f \x03(\tR\x15snapshotArnsToRestore\x12}\n" +
+	"\ruser_group_id\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xf4\x01\x92\xd4a\x1cstatus.outputs.user_group_idR\vuserGroupId:\xfd\x0e\xbaH\xf9\x0e\x1ax\n" +
 	"\x13engine_valid_values\x120engine must be 'redis', 'valkey', or 'memcached'\x1a/this.engine in ['redis', 'valkey', 'memcached']\x1a\xd9\x01\n" +
 	"\x14data_storage_min_max\x12Idata_storage_min_gb must not exceed data_storage_max_gb when both are set\x1avthis.data_storage_min_gb == 0 || this.data_storage_max_gb == 0 || this.data_storage_min_gb <= this.data_storage_max_gb\x1a\x8f\x01\n" +
 	"\fecpu_min_max\x123ecpu_min must not exceed ecpu_max when both are set\x1aJthis.ecpu_min == 0 || this.ecpu_max == 0 || this.ecpu_min <= this.ecpu_max\x1a\xa1\x01\n" +
 	"\x1asnapshot_time_engine_guard\x12=daily_snapshot_time is only valid for redis or valkey engines\x1aDthis.daily_snapshot_time == '' || this.engine in ['redis', 'valkey']\x1a\xaf\x01\n" +
-	"\x1fsnapshot_retention_engine_guard\x12Bsnapshot_retention_limit is only valid for redis or valkey engines\x1aHthis.snapshot_retention_limit == 0 || this.engine in ['redis', 'valkey']\x1a\x92\x01\n" +
-	"\x17user_group_engine_guard\x127user_group_id is only valid for redis or valkey engines\x1a>this.user_group_id == '' || this.engine in ['redis', 'valkey']\x1a\x89\x01\n" +
+	"\x1fsnapshot_retention_engine_guard\x12Bsnapshot_retention_limit is only valid for redis or valkey engines\x1aHthis.snapshot_retention_limit == 0 || this.engine in ['redis', 'valkey']\x1a\xc0\x01\n" +
+	"\x17user_group_engine_guard\x12euser_group_id is only valid for redis or valkey engines — Memcached has no authentication mechanism\x1a>!has(this.user_group_id) || this.engine in ['redis', 'valkey']\x1a\xe0\x01\n" +
+	"\x1dsnapshot_restore_engine_guard\x12nsnapshot_arns_to_restore is only valid for redis or valkey engines — Memcached has no persistence to restore\x1aOthis.snapshot_arns_to_restore.size() == 0 || this.engine in ['redis', 'valkey']\x1a\xaa\x01\n" +
+	"\x19network_type_valid_values\x12=network_type must be 'ipv4', 'ipv6', or 'dual_stack' when set\x1aNthis.network_type == '' || this.network_type in ['ipv4', 'ipv6', 'dual_stack']\x1a\x89\x01\n" +
 	"\x16data_storage_min_floor\x12/data_storage_min_gb must be at least 1 when set\x1a>this.data_storage_min_gb == 0 || this.data_storage_min_gb >= 1\x1a\x89\x01\n" +
 	"\x16data_storage_max_floor\x12/data_storage_max_gb must be at least 1 when set\x1a>this.data_storage_max_gb == 0 || this.data_storage_max_gb >= 1\x1af\n" +
 	"\x0eecpu_min_floor\x12'ecpu_min must be at least 1000 when set\x1a+this.ecpu_min == 0 || this.ecpu_min >= 1000\x1af\n" +
@@ -285,11 +315,12 @@ var file_dev_planton_provider_aws_awsserverlesselasticache_v1_spec_proto_depIdxs
 	1, // 0: dev.planton.provider.aws.awsserverlesselasticache.v1.AwsServerlessElasticacheSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 1: dev.planton.provider.aws.awsserverlesselasticache.v1.AwsServerlessElasticacheSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 2: dev.planton.provider.aws.awsserverlesselasticache.v1.AwsServerlessElasticacheSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	1, // 3: dev.planton.provider.aws.awsserverlesselasticache.v1.AwsServerlessElasticacheSpec.user_group_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsserverlesselasticache_v1_spec_proto_init() }

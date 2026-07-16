@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsefsaccesspoint
+spec:
+  # An access point under live E2E: the registry-declared AwsElasticFileSystem
+  # prerequisite deploys first (which itself chains the subnet +
+  # security-group fixtures), then the access point proves create (enforced
+  # POSIX identity + secondary GIDs + auto-created root directory), verify
+  # (DescribeAccessPoints, lifecycle-state-aware), destroy, and
+  # verify-destroyed on both provisioners -- the access point itself creates
+  # and deletes in seconds.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

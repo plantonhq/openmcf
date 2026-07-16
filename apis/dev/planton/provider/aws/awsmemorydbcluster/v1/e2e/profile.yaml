@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsmemorydbcluster
+spec:
+  # A MemoryDB cluster under live E2E: one composed lane -- the smallest
+  # billable cluster proving the ACL reference, the folded subnet group
+  # (registry prerequisite: AwsSubnet), and the folded parameter group
+  # live. Cluster provisioning dominates: AWS takes ~15-25 minutes to
+  # create even a t4g.small and deletes poll only after a 5-minute floor
+  # (the provider allows 120 minutes each way). Excluded arms recorded in
+  # the composed scenario: dual-stack (IPv4-only VPC fixture), data
+  # tiering (r6gd cost), restore/multi-region (need pre-existing
+  # sources), KMS/SNS pass-through refs. Verification is DescribeClusters
+  # keyed on the cluster name, state-aware (deleting counts as absent).
+  tier: 2
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision (provisioning cost: ~30-45 minutes per engine
+    lane). Artifacts complete and re-runnable; the offline gate is fully green.
+  timeout_minutes: 90

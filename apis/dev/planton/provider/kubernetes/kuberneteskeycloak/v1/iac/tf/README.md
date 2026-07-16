@@ -66,9 +66,6 @@ Specification for the Keycloak deployment.
 
 ```hcl
 spec = {
-  target_cluster = {
-    cluster_name = "prod-gke-cluster"
-  }
   namespace = {
     value = "keycloak-prod"
   }
@@ -98,9 +95,6 @@ The `spec.namespace` and `spec.create_namespace` fields control namespace behavi
 
 ```hcl
 spec = {
-  target_cluster = {
-    cluster_name = "prod-gke-cluster"
-  }
   namespace = {
     value = "keycloak-prod"
   }
@@ -142,9 +136,6 @@ module "keycloak" {
   }
 
   spec = {
-    target_cluster = {
-      cluster_name = "dev-gke-cluster"
-    }
     namespace = {
       value = "keycloak-dev"
     }
@@ -185,9 +176,6 @@ module "keycloak_public" {
   }
 
   spec = {
-    target_cluster = {
-      cluster_name = "prod-gke-cluster"
-    }
     namespace = {
       value = "keycloak-prod"
     }

@@ -1,98 +1,64 @@
-# Azure DNS Record
+# AzureDnsRecord
+
+Declare one record set in an Azure public DNS zone -- every value the zone answers for one (name, type) pair.
 
 ## Overview
 
-The **AzureDnsRecord** deployment component creates individual DNS records within an existing Azure DNS Zone. This component provides a declarative way to manage DNS records across different record types (A, AAAA, CNAME, MX, TXT, NS, SRV, CAA, PTR) without the complexity of direct Azure Resource Manager API interactions.
+The record type is declared by which typed payload is present: set exactly one of `a`, `aaaa`, `cname`, `mx`, `srv`, `caa`, `txt`, `ns`, or `ptr`. Each payload carries the value shape DNS actually defines for that type -- MX entries are preference+exchange pairs, SRV entries are priority/weight/port/target, CAA entries are flags/tag/value -- so a record can never be declared with a shape its type cannot hold.
 
-## Purpose
-
-This component simplifies DNS record management by:
-
-- **Declarative Configuration**: Define DNS records as YAML manifests with full validation
-- **Reference Resolution**: Wire records to existing DNS zones using `value_from` references
-- **Type Safety**: Enforce correct record configurations through protobuf validation
-- **Multi-Record Support**: Create any supported DNS record type with consistent patterns
+Azure stores all values for a (name, type) pair as one record set: declare all of them in one resource. A second AzureDnsRecord with the same name and type in the same zone conflicts rather than merging.
 
 ## Key Features
 
-- **All Standard Record Types**: A, AAAA, CNAME, MX, TXT, NS, SRV, CAA, PTR
-- **Zone Reference**: Link to `AzureDnsZone` resources using `value_from` for zone_name
-- **Configurable TTL**: Set custom TTL values per record (default: 300 seconds)
-- **MX Priority**: Dedicated field for mail exchange record priorities
-- **Dual IaC Support**: Both Pulumi and Terraform implementations
+- **Typed payloads**: the real DNS value shapes per type, validated up front (addresses are real IPs, MX preferences are per-entry, CAA tags are the four Azure accepts)
+- **Alias records**: A, AAAA, and CNAME can track an Azure resource (`target_resource_id`) instead of literal values -- Azure keeps the answer in sync when the resource's address changes, and aliases work at the zone apex where DNS forbids CNAME
+- **Long TXT values**: up to 4096 characters (DKIM keys); Azure transparently splits them into the 254-character strings DNS requires
+- **Composable**: the zone by `zone_name` reference; alias targets by any resource's ARM-id output
 
-## Example Usage
+## When to Use
 
-### Basic A Record
+- Application records: A/AAAA/CNAME for web apps, APIs, and CDN endpoints
+- Email infrastructure: MX, SPF/DKIM/DMARC TXT records
+- Domain-verification records: the `asuid.` TXT records Container Apps custom domains require, Front Door's `_dnsauth.` tokens
+- Certificate authority control (CAA), service discovery (SRV), subdomain delegation (NS)
+
+## Spec Highlights
+
+| Field | Notes |
+| --- | --- |
+| `zone_name` + `resource_group` | Address the zone (Azure's management plane has no ARM-id mode for record sets). Both ForceNew |
+| `name` | `@` apex, `www`, `*.app` wildcards, `_dmarc`/`_sip._tcp` underscore services. ForceNew |
+| `ttl_seconds` | Defaults to 300 |
+| one typed payload | `a`/`aaaa`/`cname`/`mx`/`srv`/`caa`/`txt`/`ns`/`ptr` -- exactly one |
+| `tags` | Record-set metadata tags. Updatable in place |
+
+## Outputs
+
+| Output | Purpose |
+| --- | --- |
+| `record_id` | The record set's ARM ID (embeds the type as a path segment) |
+| `fqdn` | The record's fully qualified name, with DNS's trailing dot |
+
+## Quick Example
 
 ```yaml
 apiVersion: azure.planton.dev/v1
 kind: AzureDnsRecord
 metadata:
-  name: www-record
+  name: www-a-record
 spec:
-  resource_group: my-dns-rg
-  zone_name:
-    value: example.com
-  record_type: A
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: my-rg
+      fieldPath: status.outputs.resource_group_name
+  zoneName:
+    valueFrom:
+      kind: AzureDnsZone
+      name: example-com
+      fieldPath: status.outputs.zone_name
   name: www
-  values:
-    - "192.0.2.1"
-  ttl_seconds: 300
+  a:
+    addresses:
+      - 203.0.113.10
 ```
-
-### A Record with Zone Reference
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureDnsRecord
-metadata:
-  name: api-record
-spec:
-  resource_group: my-dns-rg
-  zone_name:
-    value_from:
-      name: my-azure-zone
-  record_type: A
-  name: api
-  values:
-    - "192.0.2.10"
-```
-
-### MX Record
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureDnsRecord
-metadata:
-  name: mail-record
-spec:
-  resource_group: my-dns-rg
-  zone_name:
-    value: example.com
-  record_type: MX
-  name: "@"
-  values:
-    - "mail1.example.com"
-    - "mail2.example.com"
-  mx_priority: 10
-```
-
-## Deployment
-
-Deploy using the Planton CLI:
-
-```bash
-# Using Pulumi
-planton pulumi up --manifest dns-record.yaml
-
-# Using Terraform/OpenTofu
-planton tofu apply --manifest dns-record.yaml
-```
-
-## Best Practices
-
-1. **Use Zone References**: When deploying multiple records to the same zone, use `value_from` to reference the zone resource
-2. **Appropriate TTLs**: Use shorter TTLs (60-300s) for records you may need to change quickly
-3. **Zone Apex**: Use `@` for the record name when targeting the zone apex (root domain)
-4. **CNAME Restrictions**: Remember that CNAME records cannot coexist with other record types at the same name

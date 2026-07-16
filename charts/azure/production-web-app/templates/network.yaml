@@ -1,0 +1,83 @@
+# The application network: app integration and database subnets on one
+# VNet. Implicit outbound is OFF on the app subnet so egress is explicit
+# (through Front Door for user traffic; the database never needs the
+# public internet once injected).
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: "{{ values.env }}-web-vnet"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-web-vnet"
+  addressSpaces:
+    - "{{ values.vnet_cidr }}"
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureSubnet
+metadata:
+  name: "{{ values.env }}-app-subnet"
+spec:
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-web-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  name: app-integration
+  addressPrefixes:
+    - "{{ values.app_subnet_cidr }}"
+  delegations:
+    - name: appservice-delegation
+      serviceName: Microsoft.Web/serverFarms
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureSubnet
+metadata:
+  name: "{{ values.env }}-db-subnet"
+spec:
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-web-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  name: postgres
+  addressPrefixes:
+    - "{{ values.db_subnet_cidr }}"
+  delegations:
+    - name: postgres-delegation
+      serviceName: Microsoft.DBforPostgreSQL/flexibleServers
+---
+# Private DNS for the injected PostgreSQL server's internal hostname.
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZone
+metadata:
+  name: "{{ values.env }}-postgres-dns"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-web-app"
+      fieldPath: status.outputs.resource_group_name
+  name: privatelink.postgres.database.azure.com
+---
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZoneVirtualNetworkLink
+metadata:
+  name: "{{ values.env }}-postgres-dns-link"
+spec:
+  name: "{{ values.env }}-postgres-link"
+  privateDnsZoneId:
+    valueFrom:
+      kind: AzurePrivateDnsZone
+      name: "{{ values.env }}-postgres-dns"
+      fieldPath: status.outputs.zone_id
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "{{ values.env }}-web-vnet"
+      fieldPath: status.outputs.virtual_network_id
+  registrationEnabled: false

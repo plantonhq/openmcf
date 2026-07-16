@@ -6,98 +6,78 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // **AzureUserAssignedIdentitySpec** defines the configuration for creating an
-// Azure User-Assigned Managed Identity with optional RBAC role assignments.
+// Azure user-assigned managed identity: a standalone Azure AD identity that
+// workloads authenticate as, with no credential to store, rotate, or leak.
 //
-// User-Assigned Managed Identities are Azure AD identities that exist independently
-// of the resources they are assigned to. They can be shared across multiple Azure
-// resources (AKS clusters, Function Apps, Web Apps, Container Apps, VMs) and have
-// a lifecycle independent of those resources. This makes them ideal for scenarios
-// where the same identity needs to access multiple Azure services.
+// Unlike a system-assigned identity (born and destroyed with one resource), a
+// user-assigned identity exists independently and can be shared: the same
+// identity can back an AKS cluster's kubelets, a Function App, a Container
+// App, and a VM at once, and it survives all of them. That independent
+// lifecycle is what makes it the right anchor for permissions -- grants
+// outlive any single consumer.
 //
-// This component bundles the identity itself (`azurerm_user_assigned_identity`) with
-// its role assignments (`azurerm_role_assignment`) because an identity without
-// permissions has no practical value. The bundling follows DD03 (Composite Bundling
-// Rules): role assignments are the substance of the identity resource.
-//
-// This spec follows the AwsIamRole / GcpServiceAccount pattern adapted for Azure's
-// scope-based RBAC model. Unlike AWS (trust policies) or GCP (project/org-level
-// bindings), Azure role assignments are scoped to specific resource IDs, making
-// each assignment a targeted permission grant.
+// The identity is deliberately just the identity. What it may DO is granted
+// through AzureRoleAssignment resources referencing its principal_id output;
+// who may ACT AS it from outside Azure is declared through
+// AzureFederatedIdentityCredential resources referencing its identity_id
+// output. Keeping the three concerns as separate composable nodes means
+// grants and trust rules are individually reviewable and removable without
+// touching the identity itself.
 message AzureUserAssignedIdentitySpec {
-  // The Azure region where the Managed Identity will be created.
-  // Must match the region of the resource group.
-  // Examples: "eastus", "westus2", "westeurope", "southeastasia".
+  // The Azure region where the managed identity will be created, e.g.
+  // "eastus", "westeurope". The identity is a regional resource; changing
+  // the region replaces it. Note the identity's usability is NOT limited to
+  // its own region (see isolation_scope for the opt-in regional isolation
+  // behavior).
   string region = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The Azure Resource Group where the Managed Identity will be created.
-  // Can be a literal string or a reference to an AzureResourceGroup output.
+  // The Azure resource group the managed identity will be created in.
+  // Can be a literal resource-group name or a reference to an
+  // AzureResourceGroup's name output.
   dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
   ];
 
-  // The name of the User-Assigned Managed Identity.
-  // Must be unique within the resource group.
-  // Azure allows 3-128 characters: alphanumeric, hyphens, and underscores.
+  // The name of the user-assigned managed identity. Must be unique within
+  // the resource group; 3-128 characters (alphanumeric, hyphens, and
+  // underscores). Changing the name replaces the identity -- and with it the
+  // principal, invalidating existing grants -- so name it durably, after the
+  // workload or duty it represents ("ci-deployer", "payments-api").
   string name = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 3,
     (buf.validate.field).string.max_len = 128
   ];
 
-  // RBAC role assignments to grant this identity permissions on Azure resources.
-  // Each assignment binds a role definition to a specific Azure resource scope.
-  // An identity without role assignments has no permissions and cannot access
-  // any Azure resources.
-  //
-  // Common patterns:
-  // - Key Vault access: scope = Key Vault ID, role = "Key Vault Secrets User"
-  // - Storage access: scope = Storage Account ID, role = "Storage Blob Data Contributor"
-  // - Network access: scope = VNet ID, role = "Network Contributor"
-  // - Container registry: scope = ACR ID, role = "AcrPull"
-  repeated RoleAssignment role_assignments = 4;
+  // Opt-in regional isolation. By default (unspecified) an identity is
+  // usable by resources in any region. REGIONAL restricts token issuance for
+  // the identity to its own region -- a data-residency / blast-radius control
+  // some regulated environments require. Most deployments leave this unset.
+  // Updatable in place.
+  AzureUserAssignedIdentityIsolationScope isolation_scope = 4;
+
+  // Free-form tags applied to the identity, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag with
+  // the same key wins. Tags are Azure's governance surface -- Azure Policy
+  // enforces them and Microsoft Cost Management groups by them -- so carry
+  // your org's ownership/cost-center conventions here. Updatable in place.
+  map<string, string> tags = 5;
 }
 
-// RoleAssignment defines a single Azure RBAC role binding for the managed identity.
-// Each assignment grants the identity a specific role on a specific Azure resource.
-message RoleAssignment {
-  // The Azure resource ID to scope this role assignment to.
-  // Can be a subscription, resource group, or individual resource ID.
-  // Can be a literal Azure resource ID or a reference to another resource's output.
-  //
-  // Examples of literal scopes:
-  // - Subscription: "/subscriptions/00000000-0000-0000-0000-000000000000"
-  // - Resource group: "/subscriptions/.../resourceGroups/my-rg"
-  // - Resource: "/subscriptions/.../providers/Microsoft.KeyVault/vaults/my-kv"
-  //
-  // In infra charts, use valueFrom to reference dynamically created resources:
-  //   scope:
-  //     valueFrom:
-  //       kind: AzureKeyVault
-  //       name: platform-kv
-  //       fieldPath: status.outputs.key_vault_id
-  //
-  // Note: No default_kind annotation because scope is polymorphic -- it can
-  // reference any Azure resource type.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef scope = 1 [(buf.validate.field).required = true];
+// The isolation behavior of a user-assigned managed identity. Values mirror
+// ARM's IsolationScope exactly; ARM's default (None) is the unspecified
+// value, so only the opt-in regional mode is an explicit choice.
+enum AzureUserAssignedIdentityIsolationScope {
+  // Not specified: ARM's default (no isolation) -- the identity is usable by
+  // resources in any region.
+  azure_user_assigned_identity_isolation_scope_unspecified = 0;
 
-  // The name of a built-in or custom Azure RBAC role to assign.
-  // Uses Azure's exact role definition names for clarity and direct API mapping.
-  //
-  // Common built-in roles:
-  // - "Contributor" -- full resource management except RBAC
-  // - "Reader" -- read-only access
-  // - "Key Vault Secrets User" -- read Key Vault secrets
-  // - "Storage Blob Data Contributor" -- read/write/delete blob data
-  // - "AcrPull" -- pull container images from ACR
-  // - "Network Contributor" -- manage networking resources
-  // - "Monitoring Metrics Publisher" -- publish metrics
-  string role_definition_name = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
-  ];
+  // Token issuance for the identity is restricted to the identity's own
+  // region.
+  REGIONAL = 1;
 }

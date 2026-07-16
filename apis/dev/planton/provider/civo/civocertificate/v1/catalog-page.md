@@ -26,7 +26,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoCertificate
 metadata:
   name: my-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -91,7 +91,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoCertificate
 metadata:
   name: api-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -117,7 +117,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoCertificate
 metadata:
   name: wildcard-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -142,7 +142,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoCertificate
 metadata:
   name: custom-cert
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -21,12 +21,6 @@ variable "spec" {
   description = "Specification for KubernetesTektonOperator"
   type = object({
 
-    # The Kubernetes cluster to install this operator on.
-    target_cluster = optional(object({
-      cluster_name = string
-      cluster_kind = optional(number)
-    }))
-
     # The container specifications for the Tekton operator.
     container = object({
 

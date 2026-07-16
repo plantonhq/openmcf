@@ -1,0 +1,22 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureMssqlServer
+metadata:
+  name: standard-sql
+spec:
+  region: eastus
+  resourceGroup:
+    value: <resource-group-name>
+  # Replace: lowercase letters, digits, and hyphens, globally unique -- it
+  # becomes {name}.database.windows.net.
+  serverName: myorg-app-sql
+  administratorLogin: <admin-login>
+  administratorPassword:
+    value: <admin-password>
+  firewallRules:
+    # 0.0.0.0-0.0.0.0 admits Azure-internal services only (not the
+    # internet); add your workstation or CI ranges as separate rules.
+    - name: allow-azure-services
+      startIpAddress: "0.0.0.0"
+      endIpAddress: "0.0.0.0"
+  tags:
+    cost-center: <cost-center>

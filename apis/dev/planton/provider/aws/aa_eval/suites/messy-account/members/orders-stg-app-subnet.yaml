@@ -1,0 +1,29 @@
+# The staging application subnet: same availability zone and same CIDR as
+# its production twin, but inside the staging VPC and WITHOUT inline routes
+# -- so no route table exists (the subnet module creates one only when
+# routes are declared) and this member is a bare one-resource instance
+# while its twin owns three. The asymmetry is what a half-mirrored staging
+# environment genuinely looks like.
+apiVersion: aws.planton.dev/v1
+kind: AwsSubnet
+metadata:
+  name: orders-stg-app-subnet
+  id: orders-stg-app-subnet
+  org: planton-oss
+  env: staging
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssubnet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: orders-stg-vpc
+      fieldPath: status.outputs.vpc_id
+  availabilityZone: us-west-2a
+  cidrBlock: 10.20.1.0/24

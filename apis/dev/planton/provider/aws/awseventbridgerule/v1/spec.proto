@@ -39,6 +39,11 @@ message AwsEventBridgeRuleSpec {
   // AwsEventBridgeBus resource via `valueFrom`.
   //
   // Changing this field forces rule replacement (delete + recreate).
+  //
+  // Constraint (AWS, not validated here because reference values resolve at
+  // deploy time): schedule_expression is only supported on the DEFAULT bus —
+  // a scheduled rule on a custom bus is rejected by the AWS API. Custom
+  // buses take event-pattern rules only.
   dev.planton.shared.foreignkey.v1.StringValueOrRef event_bus_name = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsEventBridgeBus,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bus_name"
@@ -53,7 +58,8 @@ message AwsEventBridgeRuleSpec {
 
   // JSON event pattern that this rule matches against. Events that match the
   // pattern are routed to the rule's targets. Expressed as a structured object
-  // in YAML — the IaC module serializes it to JSON.
+  // in YAML — the IaC module serializes it to JSON. AWS caps the serialized
+  // pattern at 4096 characters.
   //
   // Mutually exclusive with `schedule_expression`.
   //
@@ -77,9 +83,34 @@ message AwsEventBridgeRuleSpec {
   string schedule_expression = 5 [(buf.validate.field).string.max_len = 256];
 
   // Rule state. Controls whether the rule is actively matching events.
-  // Valid values: "ENABLED", "DISABLED". Defaults to "ENABLED" in the IaC
-  // module when not set.
+  // Valid values:
+  // - "ENABLED"  — the rule matches events (IaC default when not set).
+  // - "DISABLED" — the rule exists but matches nothing.
+  // - "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS" — additionally matches
+  //   read-only CloudTrail management events (AWS API activity like Describe*
+  //   calls), which ENABLED rules never receive. Only meaningful for rules
+  //   whose pattern matches CloudTrail management events.
   string state = 6;
+
+  // ---------------------------------------------------------------------------
+  // Invocation identity and teardown
+  // ---------------------------------------------------------------------------
+
+  // IAM role EventBridge assumes when invoking this rule's targets. Used when
+  // a single role should govern the whole rule (targets can also carry their
+  // own per-target `role_arn`, which takes precedence for that target).
+  // Required for schedule rules whose targets need role-based invocation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Force rule deletion even when targets are still attached (AWS refuses to
+  // delete a rule that has targets unless forced). Keep the default (false)
+  // so an unexpectedly shared rule fails loudly instead of vanishing under
+  // an out-of-band consumer; the module manages its own targets' teardown
+  // ordering either way.
+  bool force_destroy = 8;
 
   // ---------------------------------------------------------------------------
   // Targets
@@ -87,11 +118,12 @@ message AwsEventBridgeRuleSpec {
 
   // Targets to invoke when the rule matches an event. At least one target is
   // required. Each target specifies a destination (Lambda, SQS, SNS, Step
-  // Functions, etc.) and optional input transformation, retry policy, and
-  // dead letter queue configuration.
+  // Functions, etc.), optional input transformation, retry policy, dead
+  // letter queue, and an optional service-typed parameter block (SQS,
+  // Kinesis, HTTP/API-destination, Batch, ECS RunTask).
   //
   // AWS limits: maximum 5 targets per rule.
-  repeated AwsEventBridgeTarget targets = 7;
+  repeated AwsEventBridgeTarget targets = 9;
 
   // ---------------------------------------------------------------------------
   // CEL validations
@@ -107,8 +139,8 @@ message AwsEventBridgeRuleSpec {
   // State must be a valid value when set.
   option (buf.validate.message).cel = {
     id: "state_valid_values"
-    message: "state must be 'ENABLED' or 'DISABLED' when set"
-    expression: "this.state == '' || this.state in ['ENABLED', 'DISABLED']"
+    message: "state must be 'ENABLED', 'DISABLED', or 'ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS' when set"
+    expression: "this.state == '' || this.state in ['ENABLED', 'DISABLED', 'ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS']"
   };
 
   // At least one target is required.
@@ -196,12 +228,26 @@ message AwsEventBridgeTarget {
   AwsEventBridgeTargetRetryPolicy retry_policy = 8;
 
   // ---------------------------------------------------------------------------
-  // Target-specific configuration
+  // Service-typed parameter blocks (set the one matching the target's arn)
   // ---------------------------------------------------------------------------
 
-  // SQS-specific configuration. Required when targeting a FIFO SQS queue
+  // SQS-specific parameters. Required when targeting a FIFO SQS queue
   // to specify the message group ID.
-  AwsEventBridgeTargetSqsConfig sqs_config = 9;
+  AwsEventBridgeTargetSqsConfig sqs_target = 9;
+
+  // Kinesis-specific parameters. Controls how events map to stream shards.
+  AwsEventBridgeTargetKinesisConfig kinesis_target = 10;
+
+  // HTTP/API-destination parameters. Path, query, and header values applied
+  // when the target arn is an EventBridge API destination.
+  AwsEventBridgeTargetHttpConfig http_target = 11;
+
+  // AWS Batch parameters. Required when the target arn is a Batch job queue.
+  AwsEventBridgeTargetBatchConfig batch_target = 12;
+
+  // ECS RunTask parameters. Required when the target arn is an ECS cluster —
+  // the event launches a task from the referenced task definition.
+  AwsEventBridgeTargetEcsConfig ecs_target = 13;
 
   // ---------------------------------------------------------------------------
   // CEL validations
@@ -212,6 +258,14 @@ message AwsEventBridgeTarget {
     id: "input_mutual_exclusion"
     message: "only one of input, input_path, or input_transformer may be set"
     expression: "(this.input == '' ? 0 : 1) + (this.input_path == '' ? 0 : 1) + (has(this.input_transformer) ? 1 : 0) <= 1"
+  };
+
+  // A target invokes exactly one AWS service; multiple typed parameter
+  // blocks would describe conflicting invocations of the same arn.
+  option (buf.validate.message).cel = {
+    id: "one_typed_target_block"
+    message: "at most one of sqs_target, kinesis_target, http_target, batch_target, or ecs_target may be set"
+    expression: "(has(this.sqs_target) ? 1 : 0) + (has(this.kinesis_target) ? 1 : 0) + (has(this.http_target) ? 1 : 0) + (has(this.batch_target) ? 1 : 0) + (has(this.ecs_target) ? 1 : 0) <= 1"
   };
 }
 
@@ -258,29 +312,25 @@ message AwsEventBridgeTargetDeadLetterConfig {
 }
 
 // AwsEventBridgeTargetRetryPolicy controls how EventBridge retries failed
-// event deliveries to a target.
+// event deliveries to a target. Both fields carry explicit presence because
+// zero is a MEANINGFUL value for retry attempts (0 = fail straight to the
+// DLQ) — an absent field keeps the AWS default instead.
 message AwsEventBridgeTargetRetryPolicy {
   // Maximum time in seconds that EventBridge keeps retrying delivery.
-  // Range: 60 to 86400 (1 minute to 24 hours). Default: 86400 (24 hours).
-  int32 maximum_event_age_in_seconds = 1;
+  // Range: 60 to 86400 (1 minute to 24 hours). Absent: AWS default of
+  // 86400 (24 hours).
+  optional int32 maximum_event_age_in_seconds = 1 [(buf.validate.field).int32 = {
+    gte: 60
+    lte: 86400
+  }];
 
-  // Maximum number of retry attempts. Range: 0 to 185. Default: 185.
-  // Set to 0 to disable retries (event goes to DLQ immediately on failure).
-  int32 maximum_retry_attempts = 2;
-
-  // maximum_event_age_in_seconds must be in the valid range when set.
-  option (buf.validate.message).cel = {
-    id: "max_event_age_range"
-    message: "maximum_event_age_in_seconds must be between 60 and 86400 when set"
-    expression: "this.maximum_event_age_in_seconds == 0 || (this.maximum_event_age_in_seconds >= 60 && this.maximum_event_age_in_seconds <= 86400)"
-  };
-
-  // maximum_retry_attempts must be in the valid range.
-  option (buf.validate.message).cel = {
-    id: "max_retry_attempts_range"
-    message: "maximum_retry_attempts must be between 0 and 185"
-    expression: "this.maximum_retry_attempts >= 0 && this.maximum_retry_attempts <= 185"
-  };
+  // Maximum number of retry attempts. Range: 0 to 185. Absent: AWS default
+  // of 185. Set to 0 to disable retries (event goes to the DLQ immediately
+  // on failure).
+  optional int32 maximum_retry_attempts = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 185
+  }];
 }
 
 // AwsEventBridgeTargetSqsConfig provides SQS-specific configuration for
@@ -290,4 +340,256 @@ message AwsEventBridgeTargetSqsConfig {
   // FIFO queue to ensure proper message ordering and deduplication.
   // Ignored for standard queues.
   string message_group_id = 1;
+}
+
+// AwsEventBridgeTargetKinesisConfig provides Kinesis-specific configuration
+// for targets pointing to Kinesis data streams.
+message AwsEventBridgeTargetKinesisConfig {
+  // JSONPath expression extracting the partition key from the event (e.g.
+  // "$.detail.customer_id"), determining which shard receives the record.
+  // When unset, EventBridge uses the event ID — an even spread that
+  // sacrifices per-entity ordering. Maximum 256 characters.
+  string partition_key_path = 1 [(buf.validate.field).string.max_len = 256];
+}
+
+// AwsEventBridgeTargetHttpConfig provides parameters for targets pointing to
+// EventBridge API destinations (authenticated outbound HTTP endpoints).
+message AwsEventBridgeTargetHttpConfig {
+  // Values substituted into the API destination's path wildcards ("*"), in
+  // order of appearance in the endpoint URL.
+  repeated string path_parameter_values = 1;
+
+  // Query string parameters appended to the invocation URL.
+  map<string, string> query_string_parameters = 2;
+
+  // HTTP headers added to the request. Keys must be valid header names;
+  // AWS reserves headers starting with "X-Amz" and "X-Amzn".
+  map<string, string> header_parameters = 3;
+}
+
+// AwsEventBridgeTargetBatchConfig provides AWS Batch parameters for targets
+// pointing to Batch job queues. The target's `arn` is the JOB QUEUE
+// (an AwsBatchJobQueue's job_queue_arn output); the job definition each
+// event submits lives here.
+message AwsEventBridgeTargetBatchConfig {
+  // The Batch job definition each matched event submits. Accepts a
+  // reference to an AwsBatchJobDefinition resource (its revision-carrying
+  // ARN output, so a new revision rolls the rule's submissions) or a
+  // literal value -- a bare name or name:revision literal tracks the
+  // name's latest ACTIVE revision on the Batch side instead of pinning
+  // one.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef job_definition = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBatchJobDefinition,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.job_definition_arn"
+  ];
+
+  // Name assigned to the submitted jobs (visible in the Batch console and
+  // APIs). Maximum 128 characters.
+  string job_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Size of an array job. Leave at 0 for a regular (non-array) job.
+  // Range when set: 2-10000.
+  int32 array_size = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 2
+      lte: 10000
+    }
+  ];
+
+  // Retry attempts for the submitted job, 1-10. Leave at 0 to use the job
+  // definition's own retry strategy.
+  int32 job_attempts = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 10
+    }
+  ];
+}
+
+// AwsEventBridgeTargetEcsConfig launches an ECS task per matched event.
+// The target's `arn` is the ECS CLUSTER; the task definition, sizing, and
+// placement live here. The target's `role_arn` is required — EventBridge
+// assumes it to call ecs:RunTask.
+message AwsEventBridgeTargetEcsConfig {
+  // The task definition to launch. Accepts a reference to an
+  // AwsEcsTaskDefinition resource (its revision-carrying ARN output, so a
+  // new revision rolls the rule's launches) or a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef task_definition_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEcsTaskDefinition,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.task_definition_arn"
+  ];
+
+  // Number of tasks launched per matched event. Leave at 0 for the AWS
+  // default of 1. Maximum 10.
+  int32 task_count = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 10
+    }
+  ];
+
+  // Launch type for the task. Valid values: "EC2", "FARGATE", "EXTERNAL".
+  // Leave empty to use the cluster's default capacity provider strategy, or
+  // set `capacity_provider_strategy` for an explicit blend — AWS rejects a
+  // launch type combined with a capacity provider strategy.
+  string launch_type = 3;
+
+  // Fargate platform version (e.g. "LATEST", "1.4.0"). Only valid with the
+  // FARGATE launch type.
+  string platform_version = 4 [(buf.validate.field).string.max_len = 1600];
+
+  // Task group name used for placement decisions (defaults to the family
+  // name of the task definition). Maximum 255 characters.
+  string group = 5 [(buf.validate.field).string.max_len = 255];
+
+  // Capacity provider strategy for the launched tasks. Mutually exclusive
+  // with `launch_type` (AWS rejects both together).
+  repeated AwsEventBridgeEcsCapacityProviderStrategy capacity_provider_strategy = 6;
+
+  // VPC networking for the task. Required for Fargate (awsvpc network mode);
+  // used with EC2 launch type only when the task definition uses awsvpc mode.
+  AwsEventBridgeEcsNetworkConfiguration network_configuration = 7;
+
+  // Placement strategies ordering candidate instances (EC2 launch type).
+  // Evaluated in order; maximum 5 entries.
+  repeated AwsEventBridgeEcsPlacementStrategy ordered_placement_strategy = 8 [(buf.validate.field).repeated.max_items = 5];
+
+  // Placement constraints filtering candidate instances (EC2 launch type).
+  // Maximum 10 entries.
+  repeated AwsEventBridgeEcsPlacementConstraint placement_constraints = 9 [(buf.validate.field).repeated.max_items = 10];
+
+  // Propagate tags from the task definition to the launched tasks.
+  // The only accepted value is "TASK_DEFINITION".
+  string propagate_tags = 10;
+
+  // Use Amazon ECS managed tags for the launched tasks (the
+  // aws:ecs:clusterName / aws:ecs:serviceName tag pair).
+  bool enable_ecs_managed_tags = 11;
+
+  // Enable ECS Exec on the launched tasks for interactive debugging.
+  bool enable_execute_command = 12;
+
+  // launch_type must be a valid value when set.
+  option (buf.validate.message).cel = {
+    id: "launch_type_valid"
+    message: "launch_type must be 'EC2', 'FARGATE', or 'EXTERNAL' when set"
+    expression: "this.launch_type == '' || this.launch_type in ['EC2', 'FARGATE', 'EXTERNAL']"
+  };
+
+  // AWS rejects an explicit launch type combined with a capacity provider
+  // strategy — they are two ways of answering the same placement question.
+  option (buf.validate.message).cel = {
+    id: "launch_type_xor_capacity_strategy"
+    message: "launch_type and capacity_provider_strategy are mutually exclusive; choose one placement mechanism"
+    expression: "this.launch_type == '' || size(this.capacity_provider_strategy) == 0"
+  };
+
+  // platform_version only applies to Fargate.
+  option (buf.validate.message).cel = {
+    id: "platform_version_fargate_only"
+    message: "platform_version is only valid with launch_type 'FARGATE'"
+    expression: "this.platform_version == '' || this.launch_type == 'FARGATE'"
+  };
+
+  // propagate_tags accepts a single value.
+  option (buf.validate.message).cel = {
+    id: "propagate_tags_valid"
+    message: "propagate_tags must be 'TASK_DEFINITION' when set"
+    expression: "this.propagate_tags == '' || this.propagate_tags == 'TASK_DEFINITION'"
+  };
+}
+
+// AwsEventBridgeEcsCapacityProviderStrategy is one entry in an ECS capacity
+// provider strategy blend for event-launched tasks.
+message AwsEventBridgeEcsCapacityProviderStrategy {
+  // Capacity provider name ("FARGATE", "FARGATE_SPOT", or a cluster-attached
+  // EC2 capacity provider name).
+  string capacity_provider = 1 [(buf.validate.field).required = true];
+
+  // Minimum number of tasks guaranteed to this provider before weights
+  // apply. Only one strategy entry may carry a non-zero base. Range 0-100000.
+  int32 base = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100000
+  }];
+
+  // Relative share of tasks placed on this provider once bases are met.
+  // Range 0-1000.
+  int32 weight = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1000
+  }];
+}
+
+// AwsEventBridgeEcsNetworkConfiguration provides awsvpc networking for
+// event-launched ECS tasks.
+message AwsEventBridgeEcsNetworkConfiguration {
+  // Subnets the task's elastic network interface is placed in. Accepts
+  // direct subnet IDs or references to AwsSubnet resources.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups attached to the task's network interface. When empty,
+  // AWS uses the VPC's default security group. Accepts direct IDs or
+  // references to AwsSecurityGroup resources.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_groups = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // Assign a public IP to the task's network interface. Only valid for
+  // Fargate tasks in public subnets.
+  bool assign_public_ip = 3;
+}
+
+// AwsEventBridgeEcsPlacementStrategy orders candidate container instances for
+// event-launched EC2 tasks.
+message AwsEventBridgeEcsPlacementStrategy {
+  // Strategy type. Valid values: "random", "spread", "binpack".
+  string type = 1 [(buf.validate.field).required = true];
+
+  // Attribute the strategy applies to — e.g. "instanceId" or
+  // "attribute:ecs.availability-zone" for spread, "cpu" or "memory" for
+  // binpack. Not used by "random".
+  string field = 2 [(buf.validate.field).string.max_len = 255];
+
+  option (buf.validate.message).cel = {
+    id: "placement_strategy_type_valid"
+    message: "type must be 'random', 'spread', or 'binpack'"
+    expression: "this.type in ['random', 'spread', 'binpack']"
+  };
+}
+
+// AwsEventBridgeEcsPlacementConstraint filters candidate container instances
+// for event-launched EC2 tasks.
+message AwsEventBridgeEcsPlacementConstraint {
+  // Constraint type. Valid values: "distinctInstance", "memberOf".
+  string type = 1 [(buf.validate.field).required = true];
+
+  // Cluster query language expression for "memberOf" constraints, e.g.
+  // "attribute:ecs.instance-type =~ t2.*". Not used by "distinctInstance".
+  string expression = 2 [(buf.validate.field).string.max_len = 2000];
+
+  option (buf.validate.message).cel = {
+    id: "placement_constraint_type_valid"
+    message: "type must be 'distinctInstance' or 'memberOf'"
+    expression: "this.type in ['distinctInstance', 'memberOf']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "member_of_requires_expression"
+    message: "expression is required for 'memberOf' constraints and must be empty for 'distinctInstance'"
+    expression: "this.type == 'memberOf' ? this.expression != '' : this.expression == ''"
+  };
 }

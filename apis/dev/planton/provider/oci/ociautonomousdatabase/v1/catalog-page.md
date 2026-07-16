@@ -26,7 +26,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciAutonomousDatabase
 metadata:
   name: my-adb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -108,7 +108,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciAutonomousDatabase
 metadata:
   name: dev-atp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -133,7 +133,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciAutonomousDatabase
 metadata:
   name: analytics-adw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -160,7 +160,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciAutonomousDatabase
 metadata:
   name: prod-atp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: prod-databases
@@ -219,7 +219,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciAutonomousDatabase
 metadata:
   name: free-atp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

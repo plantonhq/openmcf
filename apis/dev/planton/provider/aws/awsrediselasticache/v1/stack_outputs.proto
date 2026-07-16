@@ -41,4 +41,9 @@ message AwsRedisElasticacheStackOutputs {
   // Only populated when `parameters` were provided and a parameter group
   // was created by the module.
   string parameter_group_name = 8;
+
+  // The engine version actually running, as resolved by AWS. Useful for
+  // confirming the exact version deployed when `engine_version` was left
+  // empty or given as a major version only.
+  string engine_version_actual = 9;
 }

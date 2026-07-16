@@ -27,8 +27,6 @@ kind: KubernetesStrimziKafkaOperator
 metadata:
   name: kafka-operator
 spec:
-  targetCluster:
-    clusterName: "my-gke-cluster"
   namespace:
     value: "strimzi-kafka-operator"
   createNamespace: true
@@ -101,7 +99,6 @@ spec:
 
 ### Spec
 
-- **`targetCluster`** (optional): Kubernetes cluster to deploy operator
 - **`namespace`** (required): Kubernetes namespace for the operator
 - **`createNamespace`** (optional, default: `false`): Whether to create the namespace
   - `true`: Module creates the namespace with appropriate labels

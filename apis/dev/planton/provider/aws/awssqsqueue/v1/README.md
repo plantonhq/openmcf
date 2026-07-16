@@ -34,6 +34,9 @@ The **AwsSqsQueue** resource provides a standardized way to provision and manage
 ### Access Control
 
 - **policy**: IAM access policy document expressed as a JSON structure. Controls which AWS principals can perform actions on this queue (e.g., granting SNS publish permission, cross-account access).
+- **redrive_allow_policy**: The permission side of the dead-letter relationship — controls which SOURCE queues may use this queue as their DLQ.
+  - **redrive_permission**: `"allowAll"` (AWS default behavior), `"denyAll"` (this queue may never be a DLQ), or `"byQueue"` (only the listed queues).
+  - **source_queue_arns**: With `"byQueue"`, the 1–10 source queues permitted to redrive into this queue. Accepts literal ARNs or `valueFrom` references to other AwsSqsQueue resources.
 
 ## Stack Outputs
 

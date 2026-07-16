@@ -39,6 +39,14 @@ release:
   github:
     owner: plantonhq
     name: planton
+  # Only the strict-semver orchestrated release may hold GitHub's "latest"
+  # pointer: /releases/latest/download is the stable URL chart consumers (e.g.
+  # the desktop daemon's chart seeder) resolve for infra-charts.zip/version.txt,
+  # and those assets are attached only by the semver release's charts job. The
+  # CLI auto-release lane (auto-release.cli.yaml) exports
+  # GORELEASER_MAKE_LATEST=false so its per-component point releases never
+  # steal the pointer; the semver lane leaves it unset -> defaults to true.
+  make_latest: '{{ envOrDefault "GORELEASER_MAKE_LATEST" "true" }}'
   header: |
     ## Planton {{ .Tag }}
 

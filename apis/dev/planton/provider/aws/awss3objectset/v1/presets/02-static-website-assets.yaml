@@ -1,0 +1,33 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsS3ObjectSet
+metadata:
+  name: my-website-assets
+spec:
+  region: <aws-region>
+  bucket:
+    valueFrom:
+      kind: AwsS3Bucket
+      name: <s3-bucket-resource-name>
+      fieldPath: status.outputs.bucket_id
+  tags:
+    project: <project-name>
+  objects:
+    - key: index.html
+      content: |
+        <!DOCTYPE html>
+        <html>
+        <head><title><site-title></title></head>
+        <body><h1>Welcome</h1></body>
+        </html>
+      contentType: text/html
+      cacheControl: no-cache
+    - key: assets/style.css
+      content: |
+        body { font-family: sans-serif; margin: 0; }
+      contentType: text/css
+      cacheControl: public, max-age=31536000, immutable
+    - key: old/landing.html
+      content: |
+        <!DOCTYPE html><html><body>This page has moved.</body></html>
+      contentType: text/html
+      websiteRedirect: /index.html

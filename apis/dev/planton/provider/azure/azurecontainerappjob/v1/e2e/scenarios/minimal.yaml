@@ -1,0 +1,44 @@
+# Minimal AzureContainerAppJob scenario: a schedule-triggered job on the
+# fixture environment (registry prerequisite) -- proving the environment
+# FK seam, the job's own region/RG coordinates, the container template,
+# the cron trigger with parallelism defaults, the replica timeout, and
+# user tags. The schedule never fires during the run (the job is created,
+# verified, and destroyed inside the window) -- the E2E proves the
+# management surface, not an execution. Job names are
+# resource-group-scoped, so sequential engine runs recreate safely.
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppJob
+metadata:
+  name: planton-oss-e2e-azurecaj-smoke
+  id: planton-oss-e2e-azurecaj-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecontainerappjob
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  # centralus: the job must live in its environment's region, and the
+  # fixture environment runs in centralus.
+  region: centralus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  jobName: planton-oss-e2e-caj-smoke
+  containerAppEnvironmentId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-cae
+  replicaTimeoutInSeconds: 600
+  containers:
+    - name: worker
+      image: mcr.microsoft.com/k8se/quickstart-jobs:latest
+      cpu: 0.25
+      memory: "0.5Gi"
+  scheduleTrigger:
+    # 03:00 UTC daily -- deliberately outside any plausible E2E window.
+    cronExpression: "0 3 * * *"
+  tags:
+    e2e-suite: azure

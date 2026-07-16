@@ -27,8 +27,9 @@ spec:
       defaultResourceSpec:
         instanceType: ml.m5.large
       idleSettings:
-        lifecycleManagement: ENABLED
         idleTimeoutInMinutes: 180
+        minIdleTimeoutInMinutes: 60
+        maxIdleTimeoutInMinutes: 480
       codeRepositories:
         - repositoryUrl: "https://github.com/team/ml-platform.git"
         - repositoryUrl: "https://github.com/team/shared-notebooks.git"

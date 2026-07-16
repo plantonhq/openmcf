@@ -38,9 +38,7 @@ iac/pulumi/
 ├── main.go              # Pulumi entrypoint — loads stack input, delegates to module
 ├── Pulumi.yaml          # Pulumi project metadata
 ├── Makefile             # Build/tidy/lint helpers
-├── debug.sh             # Delve debugging wrapper
 ├── README.md            # This file
-├── overview.md          # Architecture deep-dive
 └── module/
     ├── main.go          # Orchestration: provider setup, resource creation, output export
     ├── locals.go        # Input transformation and AWS tag construction

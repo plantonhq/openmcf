@@ -20,7 +20,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudSnapshot
 metadata:
   name: my-snapshot
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -65,7 +65,7 @@ metadata:
   name: pre-upgrade-baseline
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: maintenance
@@ -87,7 +87,7 @@ metadata:
   name: app-server-snapshot
   org: acme-corp
   env: staging
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: app-platform
@@ -112,7 +112,7 @@ metadata:
   name: golden-image-v1
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: fleet-management

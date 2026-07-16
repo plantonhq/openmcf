@@ -1,0 +1,29 @@
+# Geo-DR pairing scenario: two scenario-local PREMIUM namespaces in two
+# regions, paired under the alias -- proving pairing creation, the alias
+# credential outputs, and the break-pairing destroy choreography.
+# Runs unchanged once a live window is approved (see the E2E profile's
+# deferral).
+apiVersion: azure.planton.dev/v1
+kind: AzureServiceBusDisasterRecoveryConfig
+metadata:
+  name: planton-oss-e2e-sbdr-smoke
+  id: planton-oss-e2e-sbdr-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureservicebusdisasterrecoveryconfig
+  annotations:
+    planton.dev/e2e: "true"
+    # Primary then partner, in deploy order.
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azureservicebusdisasterrecoveryconfig/v1/e2e/fixture-namespace-primary.yaml, apis/dev/planton/provider/azure/azureservicebusdisasterrecoveryconfig/v1/e2e/fixture-namespace-partner.yaml"
+  tags:
+    - planton-e2e
+spec:
+  aliasName: pltn-oss-e2e-sbdr-alias
+  primaryNamespaceId:
+    valueFrom:
+      name: planton-oss-e2e-sbdr-fixture-primary
+  partnerNamespaceId:
+    valueFrom:
+      name: planton-oss-e2e-sbdr-fixture-partner

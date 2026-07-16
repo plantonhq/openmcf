@@ -1,25 +1,34 @@
 package module
 
 import (
+	"strconv"
+
 	awsbatchcomputeenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsbatchcomputeenvironment/v1"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/aws/awstagkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals holds pre-computed values derived from the stack input.
 type Locals struct {
 	AwsBatchComputeEnvironment *awsbatchcomputeenvironmentv1.AwsBatchComputeEnvironment
-	Labels                     map[string]string
+	AwsTags                    map[string]string
 }
 
-func initializeLocals(ctx *pulumi.Context, in *awsbatchcomputeenvironmentv1.AwsBatchComputeEnvironmentStackInput) *Locals {
+func initializeLocals(ctx *pulumi.Context, stackInput *awsbatchcomputeenvironmentv1.AwsBatchComputeEnvironmentStackInput) *Locals {
 	locals := &Locals{}
-	locals.AwsBatchComputeEnvironment = in.Target
+	locals.AwsBatchComputeEnvironment = stackInput.Target
 
-	locals.Labels = map[string]string{
-		"planton.org/resource":      "true",
-		"planton.org/organization":  locals.AwsBatchComputeEnvironment.Metadata.Org,
-		"planton.org/environment":   locals.AwsBatchComputeEnvironment.Metadata.Env,
-		"planton.org/resource-kind": "AwsBatchComputeEnvironment",
-		"planton.org/resource-id":   locals.AwsBatchComputeEnvironment.Metadata.Id,
+	// Resource-identity tags follow the catalog convention. These land on the
+	// compute environment itself; tags for the EC2 instances Batch launches
+	// are a separate concern carried by spec.compute_resources.resource_tags.
+	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsBatchComputeEnvironment.Metadata.Name,
+		awstagkeys.Resource:     strconv.FormatBool(true),
+		awstagkeys.Organization: locals.AwsBatchComputeEnvironment.Metadata.Org,
+		awstagkeys.Environment:  locals.AwsBatchComputeEnvironment.Metadata.Env,
+		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsBatchComputeEnvironment.String(),
+		awstagkeys.ResourceId:   locals.AwsBatchComputeEnvironment.Metadata.Id,
 	}
 
 	return locals

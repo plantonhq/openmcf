@@ -392,7 +392,6 @@ spec:
       bootstrapServers: region-b-kafka-bootstrap:9092
   mirrors:
     - sourceCluster: "region-a"
-      targetCluster: "region-b"
       sourceConnector: {}
 ```
 

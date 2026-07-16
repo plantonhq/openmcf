@@ -1,0 +1,55 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureMysqlFlexibleServer
+metadata:
+  name: prod-mysql
+spec:
+  region: eastus
+  resourceGroup:
+    value: <resource-group-name>
+  # Replace: lowercase letters, digits, and hyphens, globally unique -- it
+  # becomes {name}.mysql.database.azure.com.
+  serverName: myorg-prod-mysql
+  # Replace: letters, digits, and underscores only; reserved names
+  # (admin, administrator, root, guest, public, azure_superuser) rejected.
+  administratorLogin: mysqladmin
+  administratorPassword:
+    value: <admin-password>
+  skuName: GP_Standard_D4ds_v4
+  storage:
+    sizeGb: 256
+    autoGrowEnabled: true
+    # Elastic IOPS scaling rides workload demand instead of a provisioned
+    # value -- the right default for spiky production traffic.
+    ioScalingEnabled: true
+  # Pin the primary and standby to different zones for zone-redundant
+  # failover.
+  zone: "1"
+  highAvailability:
+    mode: ZONE_REDUNDANT
+    standbyAvailabilityZone: "2"
+  backupRetentionDays: 35
+  geoRedundantBackupEnabled: true
+  # VNet injection: the server lives on a delegated subnet with no public
+  # endpoint. Leave publicNetworkAccess unset -- Azure derives DISABLED
+  # for a VNet-injected server.
+  delegatedSubnetId:
+    valueFrom:
+      kind: AzureSubnet
+      name: <database-subnet-resource-name>
+      fieldPath: status.outputs.subnet_id
+  privateDnsZoneId:
+    valueFrom:
+      kind: AzurePrivateDnsZone
+      name: <mysql-dns-zone-resource-name>
+      fieldPath: status.outputs.zone_id
+  maintenanceWindow:
+    dayOfWeek: 0
+    startHour: 3
+    startMinute: 0
+  databases:
+    - name: <application-database-name>
+  serverParameters:
+    # TLS-only connections -- the production baseline.
+    require_secure_transport: "ON"
+  tags:
+    cost-center: <cost-center>

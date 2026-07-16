@@ -1,39 +1,66 @@
 locals {
+  # Derive a stable resource ID
   resource_id = (
     var.metadata.id != null && var.metadata.id != ""
     ? var.metadata.id
     : var.metadata.name
   )
 
+  # Base tags for Azure resources
   base_tags = {
+    # PARITY-EXCEPTION: resource_kind here is the family-wide snake-case
+    # literal and resource_id falls back to metadata.name, while the
+    # Pulumi module emits the lowered CloudResourceKind enum string and
+    # omits resource_id when metadata.id is empty. Output-neutral (tags
+    # never feed stack outputs); aligning the two shapes is a family-wide
+    # convention change, not a per-kind fix.
     "resource"      = "true"
     "resource_id"   = local.resource_id
     "resource_kind" = "azure_event_hub_namespace"
     "resource_name" = var.metadata.name
   }
 
+  # Organization tag only if var.metadata.org is non-empty
   org_tag = (
     var.metadata.org != null && var.metadata.org != ""
   ) ? { "organization" = var.metadata.org } : {}
 
+  # Environment tag only if var.metadata.env is non-empty
   env_tag = (
     var.metadata.env != null && var.metadata.env != ""
   ) ? { "environment" = var.metadata.env } : {}
 
-  final_tags = merge(local.base_tags, local.org_tag, local.env_tag)
+  # Merge base, org, environment, and user tags -- user tags win on key
+  # conflicts (the governance surface belongs to the user).
+  final_tags = merge(local.base_tags, local.org_tag, local.env_tag, var.spec.tags)
 
-  # Flatten consumer groups for for_each iteration.
-  # Each consumer group is keyed as "{eventhub_name}/{consumer_group_name}".
-  consumer_groups = flatten([
-    for eh in var.spec.event_hubs : [
-      for cg in eh.consumer_groups : {
-        key           = "${eh.name}/${cg.name}"
-        eventhub_name = eh.name
-        name          = cg.name
-        user_metadata = cg.user_metadata
-      }
-    ]
-  ])
+  # SKU wire values. The tfvars wire format carries the FULL proto enum
+  # value name; an absent sku deploys STANDARD -- the full-featured
+  # multi-tenant tier that fits most workloads.
+  sku_map = {
+    "BASIC"    = "Basic"
+    "STANDARD" = "Standard"
+    "PREMIUM"  = "Premium"
+  }
+  sku = (
+    var.spec.sku != null && var.spec.sku != ""
+    ? local.sku_map[var.spec.sku]
+    : "Standard"
+  )
 
-  consumer_groups_map = { for cg in local.consumer_groups : cg.key => cg }
+  # Identity type wire values -- Event Hubs namespaces support all three
+  # managed-identity models.
+  identity_type_map = {
+    "SYSTEM_ASSIGNED"          = "SystemAssigned"
+    "USER_ASSIGNED"            = "UserAssigned"
+    "SYSTEM_AND_USER_ASSIGNED" = "SystemAssigned, UserAssigned"
+  }
+
+  # Firewall default-action wire values -- Azure requires an explicit
+  # choice when the rule set is declared (the spec enum rejects
+  # unspecified).
+  network_default_action_map = {
+    "ALLOW" = "Allow"
+    "DENY"  = "Deny"
+  }
 }

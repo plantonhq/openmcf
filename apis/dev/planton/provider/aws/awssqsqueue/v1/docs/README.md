@@ -42,9 +42,12 @@ The IAM access policy is expressed as a `google.protobuf.Struct` rather than a p
 
 Fields like `deduplication_scope` and `fifo_throughput_limit` use plain strings with CEL `in` validation rather than protobuf enums. This keeps the values provider-authentic (matching the exact AWS API strings) and avoids the prefix conventions required by proto enums (e.g., `DEDUPLICATION_SCOPE_MESSAGE_GROUP` vs the natural `messageGroup`).
 
+### Redrive Allow Policy — the permission side of dead-lettering
+
+`redrive_allow_policy` is the mirror of `dead_letter_config`: a source queue's redrive policy points AT a DLQ, while the DLQ's own redrive allow policy controls WHO may point at it. The spec models it as a typed message (`redrive_permission`: `allowAll`/`denyAll`/`byQueue`, plus `source_queue_arns` — 1–10 entries, required exactly when the mode is `byQueue`, each accepting an AwsSqsQueue reference). CEL enforces both the enum and the mode/list coupling. `byQueue` is the recommended posture for shared/central DLQs — it stops unrelated workloads from silently routing failures into a DLQ another team owns.
+
 ### Deliberately Omitted for v1
 
-- **redrive_allow_policy**: Controls which queues can use this queue as a DLQ. This is a niche use case affecting less than 20% of SQS deployments. Can be added in v2 if demand emerges.
 - **Custom queue names**: Planton derives the queue name from `metadata.name`. The FIFO `.fifo` suffix is appended automatically.
 
 ## Terraform Provider Reference

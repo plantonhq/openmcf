@@ -1,0 +1,30 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRedisCache
+metadata:
+  name: my-app-cache
+spec:
+  region: <region>
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: <resource-group-resource-name>
+      fieldPath: status.outputs.resource_group_name
+  # Replace: 1-63 letters, digits, and hyphens (no repeats), globally
+  # unique -- it becomes {name}.redis.cache.windows.net.
+  cacheName: myorg-app-cache
+  # STANDARD: a replicated primary/replica pair with a 99.9% SLA -- the
+  # right tier for most production caches (it is also the default when
+  # omitted).
+  skuName: STANDARD
+  # C1 = 1 GB. Scale 0-6 (250 MB to 53 GB) without replacing the cache.
+  capacity: 1
+  redisConfiguration:
+    # Entra token authentication alongside the access keys: identities
+    # granted an AzureRedisCacheAccessPolicyAssignment connect with
+    # tokens instead of secrets. Turn the keys OFF later
+    # (accessKeysAuthenticationEnabled: false) once every client is
+    # token-based.
+    activeDirectoryAuthenticationEnabled: true
+    # Evict any key, least-recently-used first -- the right policy for a
+    # pure cache where every key is re-derivable.
+    maxmemoryPolicy: allkeys-lru

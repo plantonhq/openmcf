@@ -11,10 +11,10 @@ import "dev/planton/shared/options/options.proto";
 // the hosting platform for Azure Container Apps.
 //
 // A Container App Environment is a secure boundary around one or more container
-// apps. All apps within an environment share the same virtual network, logging
-// configuration, and Dapr infrastructure. It is the Azure equivalent of an
-// ECS Cluster or Kubernetes namespace -- the execution boundary for containerized
-// workloads.
+// apps and jobs. All workloads within an environment share the same virtual
+// network, logging configuration, Dapr infrastructure, and compute capacity.
+// It is the execution boundary for containerized workloads -- the environment
+// hosts, the apps run.
 //
 // **Networking modes**:
 //
@@ -27,41 +27,49 @@ import "dev/planton/shared/options/options.proto";
 //   - Apps run inside a customer-managed VNet
 //   - Enables private connectivity to databases, storage, and other VNet resources
 //   - Subnet must be /21 or larger (minimum 2048 IPs for Container Apps infrastructure)
-//   - Enables internal_load_balancer_enabled and zone_redundancy_enabled
+//   - Unlocks internal_load_balancer_enabled and zone_redundancy_enabled
 //
 // Internal (internal_load_balancer_enabled = true):
 //   - Apps are only accessible from within the VNet
 //   - Requires infrastructure_subnet_id
-//   - Static IP is private, default domain resolves to private IP
+//   - Static IP is private, default domain resolves to the private IP
 //   - Used for backend services, microservice meshes, internal APIs
 //
 // **Workload profiles**:
 //
-// By default, environments use the Consumption plan (serverless, pay-per-use).
-// For workloads requiring dedicated compute, GPU access, or guaranteed resources,
-// add workload profiles:
-//
-// Dedicated compute:
-//   - D4, D8, D16, D32 (general purpose)
-//   - E4, E8, E16, E32 (memory optimized)
-//
-// GPU compute:
-//   - NC24-A100, NC48-A100, NC96-A100 (NVIDIA A100)
-//
-// The "Consumption" profile is always available and auto-added by Azure.
-// The workload_profiles field is for defining additional dedicated profiles only.
+// By default, environments run on the Consumption plan (serverless,
+// pay-per-use, scale to zero). For workloads requiring dedicated compute,
+// GPU access, or guaranteed resources, add workload profiles. Apps and jobs
+// select a profile by name; anything that names no profile runs on
+// Consumption.
 //
 // **Logging**:
 //
-// When log_analytics_workspace_id is provided, the IaC modules automatically
-// configure log-analytics as the logging destination. When omitted, container
-// app logs are streaming-only (no persistent storage).
+// `logs_destination` selects where application logs are persisted:
+// LOG_ANALYTICS pairs with `log_analytics_workspace_id` (query via KQL,
+// alerting, dashboards); AZURE_MONITOR routes through Azure Monitor
+// diagnostic settings configured separately on the environment; leaving it
+// unspecified without a workspace means logs are streaming-only (visible in
+// `az containerapp logs show`, never stored).
 //
-// **ForceNew fields** (changing these destroys and recreates the environment):
-// `name`, `region`, `resource_group`, `infrastructure_subnet_id`,
-// `internal_load_balancer_enabled`, `zone_redundancy_enabled`.
+// **Custom DNS suffix**:
 //
-// **Referenced by**: AzureContainerApp (container_app_environment_id)
+// The optional `custom_domain` block replaces the environment's generated
+// `*.{region}.azurecontainerapps.io` default domain with your own DNS suffix
+// (e.g. apps.example.com) backed by a wildcard certificate. This is the
+// environment-wide suffix; per-app custom domains bind on the app itself.
+//
+// **ForceNew fields** (changing these destroys and recreates the environment
+// -- and every app in it): `environment_name`, `region`, `resource_group`,
+// `dapr_application_insights_connection_string`,
+// `infrastructure_resource_group_name`, `infrastructure_subnet_id`,
+// `internal_load_balancer_enabled`, `zone_redundancy_enabled`. Going from
+// zero workload profiles to some (or some to zero) also forces replacement;
+// changing the profiles within a non-empty set updates in place.
+//
+// **Referenced by**: AzureContainerApp, AzureContainerAppJob,
+// AzureContainerAppEnvironmentStorage, AzureContainerAppEnvironmentDaprComponent
+// (container_app_environment_id).
 message AzureContainerAppEnvironmentSpec {
   // The Azure region where the Container App Environment will be created.
   // Examples: "eastus", "westus2", "westeurope", "southeastasia".
@@ -83,25 +91,60 @@ message AzureContainerAppEnvironmentSpec {
   ];
 
   // The name of the Container App Environment.
-  // Must be lowercase alphanumeric or hyphens, start with a letter, end with
-  // an alphanumeric character, and be between 2 and 60 characters.
+  // Alphanumeric characters and hyphens; may not start or end with a
+  // hyphen; 2 to 60 characters (Azure accepts upper- and lowercase).
   //
-  // This name appears in the Azure portal, CLI, and is part of the default
-  // domain for apps in this environment ({app-name}.{env-default-domain}).
+  // This name appears in the Azure portal and CLI, and is embedded in the
+  // environment's default domain ({app-name}.{env-default-domain}).
   //
   // **ForceNew**: Changing this destroys and recreates the environment.
-  string name = 3 [
+  string environment_name = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 2,
     (buf.validate.field).string.max_len = 60,
     (buf.validate.field).cel = {
-      id: "env_name_format"
-      message: "name must be lowercase alphanumeric or hyphens, start with a letter, end with alphanumeric"
-      expression: "this.matches('^[a-z][a-z0-9-]{0,58}[a-z0-9]$')"
+      id: "environment_name_format"
+      message: "Environment name must contain only alphanumeric characters and hyphens, and may not start or end with a hyphen"
+      expression: "this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{1,58}[a-zA-Z0-9]?$') && !this.endsWith('-')"
     }
   ];
 
-  // The existing Subnet to use for the Container Apps Control Plane.
+  // Where application logs are persisted for this environment.
+  //
+  // LOG_ANALYTICS: logs land in the Log Analytics workspace named by
+  // `log_analytics_workspace_id` (required with this choice) -- enables KQL
+  // queries, alert rules, and Azure Monitor dashboards.
+  //
+  // AZURE_MONITOR: logs route through Azure Monitor diagnostic settings,
+  // which are configured separately on the environment; do not set
+  // `log_analytics_workspace_id` with this choice.
+  //
+  // Unspecified: when `log_analytics_workspace_id` is provided the modules
+  // deploy LOG_ANALYTICS (the destination the workspace implies); without a
+  // workspace, logs are streaming-only (no persistent storage).
+  AzureContainerAppEnvironmentLogsDestination logs_destination = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // The Log Analytics Workspace to link for centralized log collection.
+  // Required when `logs_destination` is LOG_ANALYTICS; must be omitted when
+  // it is AZURE_MONITOR. Providing a workspace with `logs_destination`
+  // unspecified also deploys log-analytics.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef log_analytics_workspace_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLogAnalyticsWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workspace_id"
+  ];
+
+  // Application Insights connection string used by Dapr to export
+  // service-to-service communication telemetry. Only meaningful for
+  // Dapr-enabled apps; leave empty otherwise.
+  //
+  // The connection string embeds the instrumentation key -- a write
+  // credential for your telemetry stream -- so it is handled as a secret.
+  //
+  // **ForceNew**: Changing this destroys and recreates the environment
+  // (Azure never returns it on read, so it cannot be updated in place).
+  string dapr_application_insights_connection_string = 6 [(dev.planton.shared.options.sensitive) = true];
+
+  // The existing Subnet to use for the Container Apps infrastructure.
   // When provided, the environment is VNet-injected, enabling private
   // connectivity to other VNet resources (databases, storage, etc.).
   //
@@ -109,25 +152,23 @@ message AzureContainerAppEnvironmentSpec {
   // (minimum 2048 IPs). Container Apps infrastructure reserves a significant
   // portion of the address space for platform services.
   //
-  // When set, enables `internal_load_balancer_enabled` and
-  // `zone_redundancy_enabled` options.
+  // When set, unlocks `internal_load_balancer_enabled` and
+  // `zone_redundancy_enabled`.
   //
   // **ForceNew**: Changing this destroys and recreates the environment.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef infrastructure_subnet_id = 4 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef infrastructure_subnet_id = 7 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
-  // The Log Analytics Workspace to link for centralized log collection.
-  // When provided, the IaC modules automatically configure the logging
-  // destination to "log-analytics". When omitted, logs are streaming-only.
+  // Name of the platform-managed resource group Azure creates to host the
+  // environment's infrastructure resources (load balancers, IPs). Only
+  // valid when `workload_profiles` is non-empty; when omitted, Azure
+  // generates a name (ME_{environment}_{rg}_{region}). Setting it gives
+  // governance-conscious orgs a predictable name to scope policies on.
   //
-  // Log Analytics enables querying container app logs via KQL, setting up
-  // alerts, and integrating with Azure Monitor dashboards.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef log_analytics_workspace_id = 5 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLogAnalyticsWorkspace,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workspace_id"
-  ];
+  // **ForceNew**: Changing this destroys and recreates the environment.
+  string infrastructure_resource_group_name = 8;
 
   // Enable Internal Load Balancing mode. When true, apps in this environment
   // are only accessible from within the VNet (no public internet access).
@@ -140,7 +181,7 @@ message AzureContainerAppEnvironmentSpec {
   // Default: false (external mode -- apps are publicly accessible)
   //
   // **ForceNew**: Changing this destroys and recreates the environment.
-  optional bool internal_load_balancer_enabled = 6 [(dev.planton.shared.options.default) = "false"];
+  optional bool internal_load_balancer_enabled = 9 [(dev.planton.shared.options.default) = "false"];
 
   // Enable zone redundancy. Distributes the environment's infrastructure
   // across multiple availability zones for higher resilience.
@@ -154,35 +195,131 @@ message AzureContainerAppEnvironmentSpec {
   // Default: false
   //
   // **ForceNew**: Changing this destroys and recreates the environment.
-  optional bool zone_redundancy_enabled = 7 [(dev.planton.shared.options.default) = "false"];
+  optional bool zone_redundancy_enabled = 10 [(dev.planton.shared.options.default) = "false"];
 
-  // Workload profiles for dedicated compute resources.
+  // Whether the environment accepts traffic from the public internet at
+  // the platform level. Unspecified lets Azure derive it from the network
+  // configuration (Enabled for external environments, Disabled behind an
+  // internal load balancer). Set DISABLED to pair the environment with
+  // private endpoints; ENABLED cannot be combined with
+  // `internal_load_balancer_enabled`.
+  AzureContainerAppEnvironmentPublicNetworkAccess public_network_access = 11 [(buf.validate.field).enum.defined_only = true];
+
+  // Enable mutual TLS (mTLS) between apps in the environment: Azure
+  // issues per-app certificates and encrypts + authenticates all
+  // app-to-app traffic. Adds response latency and reduces maximum
+  // throughput in high-load scenarios -- enable when the compliance
+  // posture requires encrypted east-west traffic.
   //
-  // By default, all environments include the "Consumption" profile (serverless,
-  // pay-per-use, scales to zero). This field is for adding **dedicated compute
-  // profiles** alongside Consumption. Azure automatically includes the
-  // Consumption profile -- do not add it here.
+  // Default: false
+  optional bool mutual_tls_enabled = 12 [(dev.planton.shared.options.default) = "false"];
+
+  // Workload profiles for dedicated or GPU compute.
   //
-  // Use dedicated profiles when workloads need:
-  // - Guaranteed CPU/memory resources
-  // - GPU access (NC* profiles)
-  // - Predictable performance (no cold starts)
-  // - Compliance requirements for dedicated infrastructure
+  // By default, environments include the serverless "Consumption" profile.
+  // Declare additional profiles here for dedicated compute (D/E families),
+  // GPU compute (NC*-A100), or serverless GPU (Consumption-GPU-*); apps
+  // and jobs select a profile by name via `workload_profile_name`.
   //
-  // **Note**: Adding or removing workload profiles forces environment
-  // replacement (ForceNew).
-  repeated AzureContainerAppWorkloadProfile workload_profiles = 8;
+  // Azure always includes the standard Consumption profile -- do not
+  // declare it here.
+  //
+  // **Note**: Going from zero profiles to some (or some to zero) forces
+  // environment replacement; changing profiles within a non-empty set
+  // updates in place.
+  repeated AzureContainerAppEnvironmentWorkloadProfile workload_profiles = 13;
+
+  // Replace the environment's generated default domain
+  // (*.{region}.azurecontainerapps.io) with your own DNS suffix backed by
+  // a wildcard certificate. Azure models this as part of the environment
+  // itself (one custom DNS suffix per environment), so it is configured
+  // here rather than as a separate resource. Per-app custom domains are a
+  // different mechanism and bind on the individual app.
+  AzureContainerAppEnvironmentCustomDomain custom_domain = 14;
+
+  // Managed identity for the environment. Used by environment-level
+  // integrations -- for example pulling images for jobs, or Key Vault
+  // certificate references in the custom-domain configuration.
+  AzureContainerAppEnvironmentIdentity identity = 15;
+
+  // Free-form Azure resource tags applied to the environment, merged over
+  // the platform's metadata-derived tags (user tags win on key collision)
+  // -- the hooks for cost allocation, chargeback reports, and Azure Policy
+  // governance rules that filter or group by them. Updatable in place.
+  map<string, string> tags = 16;
+
+  option (buf.validate.message).cel = {
+    id: "environment_ilb_requires_subnet"
+    message: "internal_load_balancer_enabled requires infrastructure_subnet_id -- internal load balancing only exists for VNet-injected environments"
+    expression: "!(has(this.internal_load_balancer_enabled) && this.internal_load_balancer_enabled) || has(this.infrastructure_subnet_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "environment_zone_redundancy_requires_subnet"
+    message: "zone_redundancy_enabled requires infrastructure_subnet_id -- zone redundancy only exists for VNet-injected environments"
+    expression: "!(has(this.zone_redundancy_enabled) && this.zone_redundancy_enabled) || has(this.infrastructure_subnet_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "environment_log_analytics_requires_workspace"
+    message: "logs_destination LOG_ANALYTICS requires log_analytics_workspace_id -- name the workspace the logs should land in"
+    expression: "this.logs_destination != 1 || has(this.log_analytics_workspace_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "environment_azure_monitor_forbids_workspace"
+    message: "logs_destination AZURE_MONITOR cannot be combined with log_analytics_workspace_id -- Azure Monitor routing is configured through diagnostic settings, not a linked workspace"
+    expression: "this.logs_destination != 2 || !has(this.log_analytics_workspace_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "environment_infra_rg_requires_workload_profiles"
+    message: "infrastructure_resource_group_name is only valid when workload_profiles is non-empty (consumption-only environments do not support a custom infrastructure resource group)"
+    expression: "this.infrastructure_resource_group_name == '' || this.workload_profiles.size() > 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "environment_public_access_conflicts_with_ilb"
+    message: "public_network_access ENABLED cannot be combined with internal_load_balancer_enabled -- an internal environment has no public entry point"
+    expression: "this.public_network_access != 1 || !(has(this.internal_load_balancer_enabled) && this.internal_load_balancer_enabled)"
+  };
 }
 
-// AzureContainerAppWorkloadProfile defines a dedicated compute profile
+// Where the environment persists application logs.
+enum AzureContainerAppEnvironmentLogsDestination {
+  // Not specified -- with a log_analytics_workspace_id the modules deploy
+  // LOG_ANALYTICS; without one, logs are streaming-only (never stored).
+  azure_container_app_environment_logs_destination_unspecified = 0;
+
+  // Persist logs in the Log Analytics workspace named by
+  // log_analytics_workspace_id (KQL queries, alerting, dashboards).
+  LOG_ANALYTICS = 1;
+
+  // Route logs through Azure Monitor diagnostic settings (configured
+  // separately on the environment).
+  AZURE_MONITOR = 2;
+}
+
+// Platform-level public network access for the environment.
+enum AzureContainerAppEnvironmentPublicNetworkAccess {
+  // Not specified -- Azure derives the value from the network
+  // configuration (Enabled for external environments, Disabled behind an
+  // internal load balancer).
+  azure_container_app_environment_public_network_access_unspecified = 0;
+
+  // The environment accepts traffic from the public internet.
+  ENABLED = 1;
+
+  // The environment only accepts traffic through private connectivity
+  // (VNet / private endpoints).
+  DISABLED = 2;
+}
+
+// AzureContainerAppEnvironmentWorkloadProfile defines a compute profile
 // within a Container App Environment.
 //
-// Each profile represents a pool of dedicated VMs that container apps can
-// target. Apps select a workload profile by name in their configuration.
-message AzureContainerAppWorkloadProfile {
+// Each dedicated profile represents a pool of VMs that container apps and
+// jobs can target by name. Consumption-family profiles are serverless
+// (no instance counts).
+message AzureContainerAppEnvironmentWorkloadProfile {
   // The name of the workload profile.
-  // This name is referenced by Container Apps when selecting which
-  // profile to run on (e.g., "gpu-pool", "high-memory").
+  // Apps and jobs reference this name in `workload_profile_name` to select
+  // which profile to run on (e.g., "gpu-pool", "high-memory").
   //
   // Must be unique within the environment.
   string name = 1 [
@@ -190,24 +327,151 @@ message AzureContainerAppWorkloadProfile {
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The workload profile type (SKU) that determines the VM size.
-  //
-  // General purpose: "D4", "D8", "D16", "D32"
-  // Memory optimized: "E4", "E8", "E16", "E32"
-  // GPU (NVIDIA A100): "NC24-A100", "NC48-A100", "NC96-A100"
-  //
-  // Do not use "Consumption" here -- it is always available by default.
-  string workload_profile_type = 2 [
+  // The profile type (SKU) that determines the VM size -- see the
+  // AzureContainerAppEnvironmentWorkloadProfileType enum for the family
+  // guide (dedicated D/E, GPU NC*-A100, serverless GPU Consumption-GPU-*).
+  AzureContainerAppEnvironmentWorkloadProfileType workload_profile_type = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
+    (buf.validate.field).enum = {
+      defined_only: true
+      not_in: [0]
+    }
   ];
 
   // Minimum number of instances for this profile.
   // Set to 0 to allow scale-to-zero (instances are deallocated when idle).
   // Set to 1+ to keep pre-warmed instances for reduced cold-start latency.
+  //
+  // Only meaningful for dedicated profiles (D/E/NC families) -- the
+  // Consumption-family profiles are serverless and manage capacity
+  // themselves.
   optional int32 minimum_count = 3 [(buf.validate.field).int32 = {gte: 0}];
 
   // Maximum number of instances this profile can scale to.
   // Controls the upper bound on cost and capacity.
+  //
+  // Only meaningful for dedicated profiles (D/E/NC families).
   optional int32 maximum_count = 4 [(buf.validate.field).int32 = {gte: 0}];
+
+  option (buf.validate.message).cel = {
+    id: "workload_profile_counts_dedicated_only"
+    message: "minimum_count and maximum_count only apply to dedicated profiles (D, E, and NC families) -- Consumption-family profiles are serverless and manage capacity themselves"
+    expression: "!(this.workload_profile_type in [1, 2, 3]) || (!has(this.minimum_count) && !has(this.maximum_count))"
+  };
+}
+
+// The workload profile SKU vocabulary, mirroring Azure's own profile names.
+// Values are grouped by family; enum numbers are contiguous within each
+// family (the counts rule keys on the Consumption range 1-3).
+enum AzureContainerAppEnvironmentWorkloadProfileType {
+  // Not specified -- invalid; pick an explicit profile type.
+  azure_container_app_environment_workload_profile_type_unspecified = 0;
+
+  // Serverless consumption (pay-per-use, scale to zero). Azure includes
+  // this profile automatically -- declare it only when pinning a named
+  // profile to it.
+  CONSUMPTION = 1;
+
+  // Serverless GPU: NVIDIA T4 (8 vCPU class) on consumption billing --
+  // scale-to-zero inference workloads.
+  CONSUMPTION_GPU_NC8AS_T4 = 2;
+
+  // Serverless GPU: NVIDIA A100 (24 vCPU class) on consumption billing.
+  CONSUMPTION_GPU_NC24_A100 = 3;
+
+  // General-purpose dedicated compute (4/8/16/32 vCPU).
+  D4 = 4;
+  D8 = 5;
+  D16 = 6;
+  D32 = 7;
+
+  // Memory-optimized dedicated compute (4/8/16/32 vCPU, double the
+  // memory-per-core of the D family).
+  E4 = 8;
+  E8 = 9;
+  E16 = 10;
+  E32 = 11;
+
+  // Dedicated GPU compute: NVIDIA A100 (24/48/96 vCPU classes).
+  NC24_A100 = 12;
+  NC48_A100 = 13;
+  NC96_A100 = 14;
+}
+
+// AzureContainerAppEnvironmentCustomDomain replaces the environment's
+// generated default domain with your own DNS suffix, backed by a wildcard
+// certificate covering *.{dns_suffix}.
+//
+// Azure models the custom DNS suffix as a property of the environment
+// itself (exactly one per environment), so it lives here rather than as a
+// standalone resource. After deployment, publish the DNS records Azure
+// requires (the TXT verification record carrying the environment's
+// custom_domain_verification_id output, and A/CNAME records to the
+// environment's static IP or default domain).
+message AzureContainerAppEnvironmentCustomDomain {
+  // The DNS suffix that replaces the environment's default domain --
+  // apps become {app-name}.{dns_suffix}. Example: "apps.example.com".
+  string dns_suffix = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The wildcard certificate for *.{dns_suffix}, as a base64-encoded
+  // PFX/PKCS12 blob. The blob bundles the private key, so it is handled
+  // as a secret.
+  string certificate_blob_base64 = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The password protecting the certificate blob.
+  string certificate_password = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// AzureContainerAppEnvironmentIdentity configures managed identity for the
+// environment.
+message AzureContainerAppEnvironmentIdentity {
+  // The identity model: SYSTEM_ASSIGNED (Azure creates and rotates a
+  // service principal bound to the environment's lifecycle), USER_ASSIGNED
+  // (bring identities from user_assigned_identity_ids, shareable across
+  // resources), or SYSTEM_AND_USER_ASSIGNED (both).
+  AzureContainerAppEnvironmentIdentityType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The user-assigned identities to attach -- required when (and only
+  // meaningful when) type includes USER_ASSIGNED. Each entry references
+  // an AzureUserAssignedIdentity's ARM id.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "environment_identity_ids_match_type"
+    message: "user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED"
+    expression: "(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)"
+  };
+}
+
+// The managed-identity model for the environment.
+enum AzureContainerAppEnvironmentIdentityType {
+  // Not specified -- invalid; choose an explicit identity model.
+  azure_container_app_environment_identity_type_unspecified = 0;
+
+  // Azure creates a service principal bound to the environment's lifecycle.
+  SYSTEM_ASSIGNED = 1;
+
+  // Bring your own AzureUserAssignedIdentity entries -- shareable across
+  // resources and grantable before the environment exists.
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned principal and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
 }

@@ -1,0 +1,45 @@
+# Minimal AzureMonitorScheduledQueryAlert scenario: a row-count rule on
+# the fixture workspace (missing-heartbeat shape -- the classic
+# dead-agent alert, inverted here so the idle fixture never fires it),
+# with actions into the fixture action group. Proves the workspace scope
+# FK, the COUNT/GreaterThan wire maps, and the action-group FK. The rule
+# must be created in the workspace's own region (eastus).
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorScheduledQueryAlert
+metadata:
+  name: planton-oss-e2e-azsqalert-smoke
+  id: planton-oss-e2e-azsqalert-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremonitorscheduledqueryalert
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  alertName: planton-oss-e2e-sqalert-smoke
+  scope:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-law
+  displayName: E2E heartbeat smoke rule
+  description: E2E smoke rule -- the idle fixture workspace never has heartbeats
+  severity: 3
+  evaluationFrequency: PT5M
+  windowDuration: PT5M
+  criteria:
+    - query: Heartbeat | where TimeGenerated > ago(5m)
+      timeAggregationMethod: COUNT
+      operator: GREATER_THAN
+      threshold: 1000000
+  action:
+    actionGroupIds:
+      - valueFrom:
+          name: planton-oss-e2e-azure-fixture-ag
+  tags:
+    purpose: e2e-smoke

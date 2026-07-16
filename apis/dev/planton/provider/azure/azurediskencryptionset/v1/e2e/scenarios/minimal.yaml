@@ -1,0 +1,42 @@
+# Composed AzureDiskEncryptionSet scenario (profile-deferred -- see
+# profile.yaml; runnable only in a throwaway subscription because the
+# purge-protected vault fixture cannot be purged on teardown).
+#
+# Deploy order via extra fixtures: user-assigned identity, purge-protected
+# vault, CMK key, and the crypto grant to the identity -- then the set,
+# referencing the key versionless (auto-rotation on) and the identity. This
+# proves the identity block, the versionless key reference, the rotation
+# flag, and the identity_principal/tenant outputs on both engines.
+apiVersion: azure.planton.dev/v1
+kind: AzureDiskEncryptionSet
+metadata:
+  name: planton-oss-e2e-azurediskencryptionset-smoke
+  id: planton-oss-e2e-azurediskencryptionset-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurediskencryptionset
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azurediskencryptionset/v1/e2e/fixture-uai.yaml,apis/dev/planton/provider/azure/azurediskencryptionset/v1/e2e/fixture-vault.yaml,apis/dev/planton/provider/azure/azurediskencryptionset/v1/e2e/fixture-key.yaml,apis/dev/planton/provider/azure/azurediskencryptionset/v1/e2e/fixture-grant.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-des-smoke
+  keyVaultKeyId:
+    valueFrom:
+      name: planton-oss-e2e-des-key
+  autoKeyRotationEnabled: true
+  identity:
+    type: USER_ASSIGNED
+    identityIds:
+      - valueFrom:
+          name: planton-oss-e2e-des-uai
+  tags:
+    e2e-suite: azure
+    purpose: smoke

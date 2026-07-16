@@ -7,29 +7,32 @@ import "dev/planton/provider/azure/azureprivatednszone/v1/spec.proto";
 import "dev/planton/provider/azure/azureprivatednszone/v1/stack_outputs.proto";
 import "dev/planton/shared/metadata.proto";
 
-// AzurePrivateDnsZone is the top-level API resource for an Azure Private DNS Zone.
-// Private DNS zones provide DNS resolution within a virtual network, enabling
-// Private Link connectivity for Azure PaaS services and custom internal DNS
-// for VM hostname resolution.
+// AzurePrivateDnsZone is the top-level API resource for an Azure Private DNS
+// zone: name resolution inside virtual networks, enabling Private Link
+// connectivity for Azure PaaS services and custom internal DNS for VM
+// hostname resolution. It is modeled as a first-class composable resource so
+// the zone and its network attachments
+// (AzurePrivateDnsZoneVirtualNetworkLink) are independent nodes in an
+// environment's graph -- one zone serves many networks.
 message AzurePrivateDnsZone {
-  // api-version
+  // API version identifier. Must be "azure.planton.dev/v1".
   string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1'];
 
-  // resource-kind
+  // Resource kind. Must be "AzurePrivateDnsZone".
   string kind = 2 [(buf.validate.field).string.const = 'AzurePrivateDnsZone'];
 
-  // metadata
+  // Standard Planton metadata (name, org, env, labels, tags).
   dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
 
-  // spec
+  // Private DNS zone specification.
   AzurePrivateDnsZoneSpec spec = 4 [(buf.validate.field).required = true];
 
-  // status
+  // Deployment status containing stack outputs. Populated after deployment.
   AzurePrivateDnsZoneStatus status = 5;
 }
 
-// AzurePrivateDnsZoneStatus holds the deployment status and outputs.
+// AzurePrivateDnsZoneStatus holds the deployment outputs.
 message AzurePrivateDnsZoneStatus {
-  // stack-outputs
+  // Stack outputs from the IaC deployment.
   AzurePrivateDnsZoneStackOutputs outputs = 1;
 }

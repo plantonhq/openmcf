@@ -1,0 +1,3 @@
+name: aws-waf-ip-set
+runtime: go
+description: Deploy an AWS WAFv2 IP set using Planton

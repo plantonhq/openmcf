@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurestorageaccount
+spec:
+  # The harness deploys the fixture resource group (registry prerequisite),
+  # creates a StorageV2 account exercising the blob-service, firewall, and
+  # lifecycle-policy paths, verifies it via the ARM API (generic GetByID on
+  # the account's ARM id), destroys it, and verifies it is gone -- on both
+  # provisioners. Account names are globally unique and hyphen-forbidden
+  # (3-24 lowercase alphanumerics), so every scenario carries its own
+  # distinct, hyphen-free name and is never recreated across sequential
+  # subtests.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

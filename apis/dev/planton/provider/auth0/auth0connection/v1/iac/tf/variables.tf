@@ -57,13 +57,17 @@ variable "spec" {
       brute_force_protection = optional(bool, true)
 
       # password_history_size is the number of previous passwords to check against (0-24).
-      password_history_size = optional(number, 5)
+      # Requires Auth0's paid "password-advanced-options" entitlement, so it defaults
+      # to 0 (disabled) - a non-zero default 403s on free/lower-tier tenants.
+      password_history_size = optional(number, 0)
 
       # password_no_personal_info prevents passwords containing user's personal information.
-      password_no_personal_info = optional(bool, true)
+      # Requires Auth0's paid "password-advanced-options" entitlement, so it defaults to false.
+      password_no_personal_info = optional(bool, false)
 
       # password_dictionary enables checking passwords against a dictionary of common passwords.
-      password_dictionary = optional(bool, true)
+      # Requires Auth0's paid "password-advanced-options" entitlement, so it defaults to false.
+      password_dictionary = optional(bool, false)
 
       # mfa_enabled enables Multi-Factor Authentication for this connection.
       mfa_enabled = optional(bool, false)

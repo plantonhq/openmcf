@@ -36,7 +36,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpMemorystoreInstance
 metadata:
   name: my-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -117,7 +117,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpMemorystoreInstance
 metadata:
   name: session-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -152,7 +152,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpMemorystoreInstance
 metadata:
   name: realtime-store
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -197,7 +197,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpMemorystoreInstance
 metadata:
   name: secure-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

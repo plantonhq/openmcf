@@ -4,6 +4,8 @@ metadata:
   name: my-fargate-cluster
 spec:
   region: <aws-region>
-  enableContainerInsights: true  # recommended_default from spec
+  containerInsights: enhanced  # container-level observability with automatic dashboards
   capacityProviders:
     - FARGATE
+  executeCommandConfiguration:
+    logging: DEFAULT  # exec sessions audited via each task's own log configuration

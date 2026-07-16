@@ -62,7 +62,7 @@ SEQUENTIAL STEPS
    - Check for uniqueness against existing id_prefix values
    - Examples:
      * GcpCertManagerCert → "gcpcert"
-     * AwsSecretsManager → "awssm"
+     * AwsSecurityGroup → "awssg"
      * AzureKeyVault → "azkv"
 
 4) Insert Enum Entry:
@@ -78,11 +78,22 @@ SEQUENTIAL STEPS
    - For Kubernetes resources, add kubernetes_meta if applicable
    - Maintain consistent indentation (2 spaces)
 
-5) Validation:
+5) Regenerate the Kind Reflection Map (MANDATORY):
+   - Run from the repo root: `make generate-cloud-resource-kind-map`
+   - This regenerates `pkg/crkreflect/kind_map_gen.go`, the enum -> proto-message
+     map (`ToMessageMap`) that manifest loading, chart validation, and the E2E
+     harness all resolve kinds through. Without it, the new kind's manifests
+     fail to load ("UNSUPPORTED CLOUD RESOURCE KIND") even though the enum
+     entry and stubs exist -- and no proto build step catches the omission.
+   - `make build` runs this target, but rule 017's `make protos` does NOT --
+     so run it here, immediately after the enum edit.
+
+6) Validation:
    - Verify no duplicate enum values
    - Verify no duplicate id_prefix values
    - Verify enum value is in correct provider range
    - Verify formatting matches existing entries
+   - Verify the new kind appears in `pkg/crkreflect/kind_map_gen.go`
 
 SUCCESS
 - New enum entry added to cloud_resource_kind.proto

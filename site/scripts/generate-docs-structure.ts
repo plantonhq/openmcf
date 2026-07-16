@@ -65,6 +65,7 @@ const iconMap: Record<string, string> = {
   performance: '⚡',
   lightbulb: '💡',
   package: '📦',
+  server: '🖥️',
 };
 
 const categoryIcons: Record<string, string> = {

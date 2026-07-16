@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureprivatednszone
+spec:
+  # Composed live proof: the harness deploys the fixture resource group
+  # (registry prerequisite), creates a tagged private DNS zone in it,
+  # verifies the zone via the ARM API (generic GetByID on the zone's ARM
+  # id), destroys it, and verifies it is gone -- on both provisioners.
+  # Private DNS zones are free and fast to create/delete.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15

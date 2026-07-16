@@ -1,10 +1,13 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsRoute53Zone
 metadata:
-  name: my-private-dns-zone
+  # metadata.name IS the zone's domain name (create-time immutable).
+  name: <internal-domain-name>
 spec:
-  region: us-east-1
-  isPrivate: true
+  region: <aws-region>
+  isPrivate: true  # resolves only inside the associated VPCs (split-horizon DNS)
   vpcAssociations:
-    - vpcId: <vpc-id>
-      vpcRegion: <aws-region>
+    - vpcId:
+        value: <vpc-id>
+      # vpcRegion defaults to the zone's region; set it only for VPCs in
+      # other regions.

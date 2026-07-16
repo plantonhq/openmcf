@@ -1,6 +1,7 @@
 package awsathenaworkgroupv1
 
 import (
+	"strings"
 	"testing"
 
 	"buf.build/go/protovalidate"
@@ -199,6 +200,224 @@ var _ = ginkgo.Describe("AwsAthenaWorkgroupSpec validations", func() {
 		}
 		spec.ExecutionRole = strRef("arn:aws:iam::123456789012:role/AthenaSparkExecutionRole")
 		spec.SelectedEngineVersion = "PySpark engine version 3"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// description + state
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a spec with a description", func() {
+		spec.Description = "Interactive analytics workgroup for the data platform team"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when description exceeds 1024 characters", func() {
+		spec.Description = strings.Repeat("x", 1025)
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts state ENABLED", func() {
+		s := "ENABLED"
+		spec.State = &s
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts state DISABLED", func() {
+		s := "DISABLED"
+		spec.State = &s
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an invalid state value", func() {
+		s := "PAUSED"
+		spec.State = &s
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Managed query results + CEL: managed_results_excludes_output_location
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts an empty managed_query_results block (AWS-owned key)", func() {
+		spec.ManagedQueryResults = &AwsAthenaWorkgroupManagedQueryResults{}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts managed_query_results with a customer KMS key", func() {
+		spec.ManagedQueryResults = &AwsAthenaWorkgroupManagedQueryResults{
+			KmsKey: strRef("arn:aws:kms:us-east-1:123456789012:key/mrk-abc123"),
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when managed_query_results is combined with an S3 output_location", func() {
+		spec.ManagedQueryResults = &AwsAthenaWorkgroupManagedQueryResults{}
+		spec.ResultConfiguration = &AwsAthenaWorkgroupResultConfig{
+			OutputLocation: "s3://my-results/",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts managed_query_results alongside a result_configuration without output_location", func() {
+		spec.ManagedQueryResults = &AwsAthenaWorkgroupManagedQueryResults{}
+		spec.ResultConfiguration = &AwsAthenaWorkgroupResultConfig{
+			EncryptionOption: "SSE_S3",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Spark content encryption
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a customer content encryption KMS key", func() {
+		spec.CustomerContentEncryptionKmsKey = strRef("arn:aws:kms:us-east-1:123456789012:key/mrk-abc123")
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Identity Center + S3 Access Grants
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts an identity_center block with a valid instance ARN", func() {
+		spec.IdentityCenter = &AwsAthenaWorkgroupIdentityCenterConfig{
+			EnableIdentityCenter:      true,
+			IdentityCenterInstanceArn: "arn:aws:sso:::instance/ssoins-1234567890abcdef",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when identity_center_instance_arn is not an ARN", func() {
+		spec.IdentityCenter = &AwsAthenaWorkgroupIdentityCenterConfig{
+			EnableIdentityCenter:      true,
+			IdentityCenterInstanceArn: "ssoins-1234567890abcdef",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts an s3_access_grants block with DIRECTORY_IDENTITY", func() {
+		spec.S3AccessGrants = &AwsAthenaWorkgroupS3AccessGrantsConfig{
+			EnableS3AccessGrants:  true,
+			AuthenticationType:    "DIRECTORY_IDENTITY",
+			CreateUserLevelPrefix: true,
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when s3_access_grants omits authentication_type", func() {
+		spec.S3AccessGrants = &AwsAthenaWorkgroupS3AccessGrantsConfig{
+			EnableS3AccessGrants: true,
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when s3_access_grants authentication_type is invalid", func() {
+		spec.S3AccessGrants = &AwsAthenaWorkgroupS3AccessGrantsConfig{
+			EnableS3AccessGrants: true,
+			AuthenticationType:   "IAM_IDENTITY",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Monitoring
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts CloudWatch logging with log group, prefix, and Spark log types", func() {
+		spec.Monitoring = &AwsAthenaWorkgroupMonitoringConfig{
+			CloudWatchLogging: &AwsAthenaWorkgroupCloudWatchLoggingConfig{
+				LogGroup:            "/athena/analytics-workgroup",
+				LogStreamNamePrefix: "analytics",
+				LogTypes: []*AwsAthenaWorkgroupLogTypeEntry{
+					{Key: "SPARK_DRIVER", Values: []string{"STDOUT", "STDERR"}},
+				},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a log_types entry has an empty key", func() {
+		spec.Monitoring = &AwsAthenaWorkgroupMonitoringConfig{
+			CloudWatchLogging: &AwsAthenaWorkgroupCloudWatchLoggingConfig{
+				LogTypes: []*AwsAthenaWorkgroupLogTypeEntry{
+					{Key: "", Values: []string{"DRIVER"}},
+				},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a log_types entry has no values", func() {
+		spec.Monitoring = &AwsAthenaWorkgroupMonitoringConfig{
+			CloudWatchLogging: &AwsAthenaWorkgroupCloudWatchLoggingConfig{
+				LogTypes: []*AwsAthenaWorkgroupLogTypeEntry{
+					{Key: "SPARK_DRIVER", Values: []string{}},
+				},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts managed logging with a KMS key", func() {
+		spec.Monitoring = &AwsAthenaWorkgroupMonitoringConfig{
+			ManagedLogging: &AwsAthenaWorkgroupManagedLoggingConfig{
+				KmsKey: strRef("arn:aws:kms:us-east-1:123456789012:key/mrk-abc123"),
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts S3 logging with an s3:// location", func() {
+		spec.Monitoring = &AwsAthenaWorkgroupMonitoringConfig{
+			S3Logging: &AwsAthenaWorkgroupS3LoggingConfig{
+				LogLocation: "s3://my-log-archive/athena/",
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when s3_logging log_location is not an s3 URI", func() {
+		spec.Monitoring = &AwsAthenaWorkgroupMonitoringConfig{
+			S3Logging: &AwsAthenaWorkgroupS3LoggingConfig{
+				LogLocation: "https://my-log-archive/athena/",
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts all three monitoring arms together", func() {
+		spec.Monitoring = &AwsAthenaWorkgroupMonitoringConfig{
+			CloudWatchLogging: &AwsAthenaWorkgroupCloudWatchLoggingConfig{
+				LogGroup: "/athena/wg",
+			},
+			ManagedLogging: &AwsAthenaWorkgroupManagedLoggingConfig{},
+			S3Logging: &AwsAthenaWorkgroupS3LoggingConfig{
+				LogLocation: "s3://archive/athena/",
+			},
+		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})

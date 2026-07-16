@@ -36,7 +36,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeNodePool
 metadata:
   name: general-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -160,7 +160,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeNodePool
 metadata:
   name: spot-batch
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -198,7 +198,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeNodePool
 metadata:
   name: gpu-inference
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -235,7 +235,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeNodePool
 metadata:
   name: hardened-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

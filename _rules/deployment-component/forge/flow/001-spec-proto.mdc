@@ -84,6 +84,23 @@ DEFAULT FIELD OPTIONS
   engines will silently drop it. `optional` gives the modules a nil-vs-0 test
   (`field != nil` in Go, null-vs-0 in the tfvars), so the explicit 0 survives.
 
+VERIFY FLAG SEMANTICS IN THE PROVIDER'S CRUD FUNCTIONS, NOT THE ARGUMENT NAME
+- A provider argument's NAME can suggest a much broader behavior than its real
+  API semantic. Before writing a field comment, read what the provider's
+  create/update/delete functions actually DO with the argument (and its
+  website doc line), and state that behavior — never the name's implication.
+- Delete-time flags are the highest-risk class: nothing offline exercises the
+  destroy path (`tofu plan`/`pulumi preview` prove create-shape only), so a
+  wrong delete-flag comment ships unless a live destroy runs. Worked example:
+  `aws_s3_object.force_destroy` reads like "purge versions on delete" but is
+  ONLY the GOVERNANCE-retention bypass header — S3 rejects it with a 400 on
+  buckets without Object Lock, so the innocent-looking "safe default" broke
+  every destroy against a regular versioned bucket (deletes already remove
+  all versions without it).
+- If a flag is only VALID under some other resource's configuration (a
+  bucket-level toggle, an account posture), the field comment must state that
+  coupling explicitly so manifests do not wire it blindly.
+
 PROACTIVE DEFAULT IDENTIFICATION (MANDATORY STEP)
 - During spec authoring, you MUST review EVERY field and ask: "Does this field have a well-known sensible default from the provider's documentation?"
 - If the provider docs say "if not specified, defaults to X", add `optional` + `(dev.planton.shared.options.default)`.
@@ -101,6 +118,25 @@ PROACTIVE DEFAULT IDENTIFICATION (MANDATORY STEP)
 - The heuristic: if the large majority of users would use the same value, it deserves a default.
 - This step prevents IaC modules from needing defensive default logic and ensures
   Planton middleware handles defaults centrally.
+- **A field whose provider vocabulary has exactly ONE legal value is a constant,
+  not configuration -- do NOT model it.** Providers sometimes keep a field whose
+  other values have been retired (e.g. a minimum-TLS-version field that accepts
+  only TLS 1.2 after the 1.0/1.1 retirement). Modeling it would ship a dead knob
+  that can only be set to one thing. Instead: send the constant unconditionally
+  in BOTH IaC modules and record the skip (with the re-enable trigger -- "lands
+  as a real field if the provider adds a second value") in the component's
+  docs/README.md. The same reasoning applies to a condition/action whose operator
+  vocabulary is a single value: omit the operator field and let the provider
+  default apply.
+- **A REQUIRED bool whose `false` is meaningful must be `optional bool` +
+  `required` (presence-tracked), never a plain `bool` + `required`.** On a plain
+  proto3 bool, `false` IS the zero value, so `(buf.validate.field).required`
+  rejects an explicit false -- the one value the field exists to express (e.g. a
+  provider-Required `enabled` flag inside an optional block, where enabled=false
+  legally means "keep the configuration, pause the behavior"). `optional` makes
+  presence explicit so required accepts a stated false and still rejects absence.
+  A spec test asserting the explicit-false shape validates is the guard for this
+  class.
 
 PROACTIVE SENSITIVE-FIELD IDENTIFICATION (MANDATORY STEP)
 - While authoring the schema, review EVERY string field and the literal of EVERY
@@ -123,3 +159,25 @@ PROACTIVE SENSITIVE-FIELD IDENTIFICATION (MANDATORY STEP)
   is what makes that secure-by-default behavior automatic for every consumer.
 - Authority for the option semantics: the `sensitive` / `sensitive_exempt_reason` field
   comments in `dev/planton/shared/options/options.proto`.
+
+PROACTIVE CREATE-TIME-REQUIRED IDENTIFICATION (MANDATORY STEP)
+- The Terraform provider's schema flags are NOT the authority on what the cloud
+  API requires at create time. SDKv2 marks many attributes `Optional+Computed`
+  because the API echoes a value back after creation -- yet the underlying
+  `Create*` call rejects the request when the field is absent (a master/admin
+  username on a database is the classic case: no provider `Required` flag, no
+  default, and a hard 400 at create). Every offline gate passes without the
+  field; only a live deploy catches it.
+- While authoring the schema, review every field the provider marks
+  `Optional+Computed` and ask: "Does the cloud API's Create call actually
+  require this, with no server-side default?" Check the provider resource's
+  Create function (which request fields it always sends) and the API's own
+  required parameters -- not just the schema flags.
+- Flag such fields for a required-or-derived validation (the CEL itself is
+  added in rule 002): plainly required when the resource is always created
+  fresh, or required-unless-derived when create modes exist that inherit the
+  value from a source (restores, replicas, imports). The field comment must
+  state the requirement and name the derivation sources so the constraint is
+  explainable from the spec alone.
+- The goal: a manifest that AWS would reject at deploy time must already fail
+  `validate-manifest` in seconds, with a message naming the missing field.

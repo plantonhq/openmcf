@@ -39,7 +39,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciApplicationLoadBalancer
 metadata:
   name: web-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -313,7 +313,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciApplicationLoadBalancer
 metadata:
   name: web-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -357,7 +357,7 @@ metadata:
   name: secure-web
   org: acme
   env: staging
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform
@@ -433,7 +433,7 @@ metadata:
   name: multi-domain-lb
   org: acme
   env: prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform
@@ -502,7 +502,7 @@ metadata:
   name: prod-lb
   org: acme
   env: prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform

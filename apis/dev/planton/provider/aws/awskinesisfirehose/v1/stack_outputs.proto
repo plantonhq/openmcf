@@ -16,4 +16,15 @@ message AwsKinesisFirehoseStackOutputs {
   // (PutRecord, PutRecordBatch) and for human-readable identification.
   // The name is unique within an AWS account and region.
   string delivery_stream_name = 2;
+
+  // Identifier of the destination configuration within the delivery stream.
+  // AWS assigns it at creation (e.g., "destinationId-000000000001"); the
+  // UpdateDestination API requires it when modifying destination settings
+  // out of band.
+  string destination_id = 3;
+
+  // Version of the delivery stream configuration. AWS increments it on
+  // every configuration update; the UpdateDestination API requires the
+  // current version as an optimistic-concurrency token.
+  string version_id = 4;
 }

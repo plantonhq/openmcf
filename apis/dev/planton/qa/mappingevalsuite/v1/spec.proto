@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package dev.planton.qa.mappingevalsuite.v1;
+
+// MappingEvalSuiteSpec declares one seeded-account evaluation for import
+// mapping: the fixture manifests that are deployed as the known ground
+// truth, and the scan scope a blind proposer is given. Because the suite
+// deploys from known manifests, it holds the complete answer key -- which
+// cloud resources exist, which component instance owns each, what every
+// spec field is, and where the value_from edges run -- so a proposer's
+// output can be machine-scored instead of eyeballed.
+//
+// Members are EXPLICIT and ordered. The suite never inherits the E2E
+// harness's transitive prerequisite machinery: every deployed fixture is a
+// first-class evaluation subject (in a real account, a VPC is exactly as
+// discoverable as the subnet inside it), and one uniform deploy arm keeps
+// the ground truth in one state format. A member's value_from references
+// must resolve against members listed BEFORE it -- the loader validates
+// this, so a mis-ordered suite fails before it touches the cloud.
+message MappingEvalSuiteSpec {
+  // Ordered fixture members; deploy order is list order, teardown is the
+  // reverse.
+  repeated SuiteMember members = 1;
+
+  // The scan scope handed to the blind proposer. Kept deliberately narrow:
+  // a single region, with the resource-type allowlist derived from the
+  // provider import catalog's declared Cloud Control type names rather
+  // than authored here.
+  ScanScope scan_scope = 2;
+
+  // Grades environment assignment (each proposed manifest's metadata.env
+  // against the member manifest's) as its own scoring axis. Declared, never
+  // inferred, because it is an exam-fairness call: enable it ONLY when the
+  // members' environments were authored as answer keys recoverable from the
+  // redacted scan (e.g. name tokens like "-prod-"/"-stg-"). Fixture
+  // manifests also carry operational environments that leave no scan-visible
+  // trace once seeding fingerprints are redacted; grading those would put
+  // debt in the denominator no proposer, however good, could ever pay.
+  bool grade_environment_partition = 3;
+}
+
+// SuiteMember is one fixture deployment: a component kind plus the manifest
+// to deploy for it.
+message SuiteMember {
+  // The component directory name (e.g. "awsvpc", "awssubnet") -- the same
+  // slug the E2E framework and the import maps key on.
+  string component = 1;
+  // Repo-relative path to the KRM manifest to deploy (an existing E2E
+  // scenario or install profile -- suites compose proven fixtures rather
+  // than inventing parallel ones).
+  string manifest_path = 2;
+}
+
+// ScanScope bounds what the blind side is allowed to look at.
+message ScanScope {
+  // The single region the scan covers (e.g. "us-west-2").
+  string region = 1;
+}

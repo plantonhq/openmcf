@@ -1,0 +1,25 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureMssqlElasticPool
+metadata:
+  name: bc-pool
+spec:
+  serverId:
+    valueFrom:
+      kind: AzureMssqlServer
+      name: <server-resource-name>
+      fieldPath: status.outputs.server_id
+  region: <server-region>
+  poolName: <pool-name>
+  # Business Critical: local SSD storage and built-in replicas for the
+  # lowest latency and fastest failover; zone-redundant spreads the
+  # replicas across availability zones.
+  skuName: BC_Gen5
+  capacity: 4
+  zoneRedundant: true
+  perDatabaseSettings:
+    minCapacity: 0.5
+    maxCapacity: 4
+  maxSizeGb: 256
+  tags:
+    cost-center: <cost-center>
+    data-classification: critical

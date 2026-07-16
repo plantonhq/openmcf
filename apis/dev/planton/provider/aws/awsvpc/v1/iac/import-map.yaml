@@ -1,0 +1,20 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsvpc
+spec:
+  # A VPC's identity is the AWS-assigned "vpc-..." id -- discoverable from a
+  # prior deploy's outputs or one pasted ARN, never derivable from the spec.
+  values:
+    - name: vpc_id
+      derivations:
+        - from_stack_output: vpc_id
+        - from_arn_part: resource_id
+      where_to_find: >-
+        VPC console -> Your VPCs (the VPC ID column), or
+        `aws ec2 describe-vpcs` (VpcId).
+    - name: cidr_association_id
+      derivations: []
+      where_to_find: >-
+        `aws ec2 describe-vpcs --vpc-ids <vpc-id>` -> CidrBlockAssociationSet
+        -> AssociationId ("vpc-cidr-assoc-..."), one per secondary CIDR block.

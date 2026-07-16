@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurevirtualmachine
+spec:
+  # The harness deploys the fixture chain (resource group -> virtual
+  # network -> subnet -> network interface, via the registry
+  # prerequisites) plus a scenario-declared extra fixture (a zonal
+  # managed disk), creates a burstable Linux VM referencing the fixture
+  # NIC with the disk attached at LUN 0, verifies it via the ARM API
+  # (generic GetByID on the VM's ARM id), destroys it, and verifies it
+  # is gone -- on both provisioners. This is the composed proof of BOTH
+  # new seams: VM->NIC and VM->disk attachment. The Windows profile is
+  # proven offline (spec tests + tofu plan): a live Windows run
+  # exercises no additional module seam and roughly doubles the
+  # suite's runtime and cost.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

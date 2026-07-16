@@ -24,7 +24,7 @@ variable "spec" {
     enable_dns64 = optional(bool, false)
     enable_resource_name_dns_a_record_on_launch = optional(bool, false)
     enable_resource_name_dns_aaaa_record_on_launch = optional(bool, false)
-    private_dns_hostname_type_on_launch = optional(string, "")
+    private_dns_hostname_type_on_launch = optional(string)
     route_table_id = optional(string, "")
     routes = optional(list(object({
       destination_cidr_block = optional(string, "")

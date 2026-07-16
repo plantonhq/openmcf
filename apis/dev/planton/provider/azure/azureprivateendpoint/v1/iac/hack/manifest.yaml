@@ -6,9 +6,17 @@ metadata:
   env: test
 spec:
   region: eastus
-  resource_group: test-rg
+  resourceGroup:
+    value: test-rg
   name: pg-private-endpoint
-  subnet_id: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/pe-subnet
-  private_connection_resource_id: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/test-pg
-  subresource_names:
-    - postgresqlServer
+  subnetId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/pe-subnet
+  privateServiceConnection:
+    privateConnectionResourceId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/test-pg
+    subresourceNames:
+      - postgresqlServer
+  privateDnsZoneIds:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/privateDnsZones/privatelink.postgres.database.azure.com
+  tags:
+    purpose: hack-test

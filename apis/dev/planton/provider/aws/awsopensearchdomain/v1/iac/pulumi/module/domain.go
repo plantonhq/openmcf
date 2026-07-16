@@ -10,15 +10,18 @@ import (
 )
 
 // domain creates the OpenSearch Service domain and exports outputs.
+//
+// Create-time (ForceNew) surfaces: the domain name, the at-rest KMS key,
+// adding/removing vpc_options, and disabling either encryption toggle or FGAC
+// once enabled. Everything else -- topology, storage, endpoint policy,
+// Auto-Tune, log publishing -- updates in place, though topology changes
+// usually run as a blue/green deployment behind the endpoint
+// (deployment_strategy tunes how that migration provisions capacity).
 func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	spec := locals.Spec
 
-	// -------------------------------------------------------------------
-	// Build domain args
-	// -------------------------------------------------------------------
-
 	args := &opensearch.DomainArgs{
-		DomainName:    pulumi.String(locals.Target.Metadata.Id),
+		DomainName:    pulumi.String(locals.DomainName),
 		EngineVersion: pulumi.String(spec.EngineVersion),
 		Tags:          pulumi.ToStringMap(locals.AwsTags),
 	}
@@ -46,6 +49,28 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 			if cc.DedicatedMasterCount > 0 {
 				clusterCfg.DedicatedMasterCount = pulumi.Int(int(cc.DedicatedMasterCount))
 			}
+		}
+
+		// Coordinator node pools: request routing, query fan-out, and response
+		// aggregation offloaded from the data nodes.
+		if len(cc.NodeOptions) > 0 {
+			var nodeOptions opensearch.DomainClusterConfigNodeOptionArray
+			for _, pool := range cc.NodeOptions {
+				nodeConfig := &opensearch.DomainClusterConfigNodeOptionNodeConfigArgs{
+					Enabled: pulumi.Bool(pool.Enabled),
+				}
+				if pool.InstanceType != "" {
+					nodeConfig.Type = pulumi.String(pool.InstanceType)
+				}
+				if pool.Count > 0 {
+					nodeConfig.Count = pulumi.Int(int(pool.Count))
+				}
+				nodeOptions = append(nodeOptions, &opensearch.DomainClusterConfigNodeOptionArgs{
+					NodeType:   pulumi.String(pool.NodeType),
+					NodeConfig: nodeConfig,
+				})
+			}
+			clusterCfg.NodeOptions = nodeOptions
 		}
 
 		// Zone awareness
@@ -108,21 +133,21 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	}
 
 	// -------------------------------------------------------------------
-	// Encryption at rest
+	// Encryption at rest -- one-way, and the KMS key is fixed at creation
 	// -------------------------------------------------------------------
 
 	if spec.EncryptAtRestEnabled {
 		encryptCfg := &opensearch.DomainEncryptAtRestArgs{
 			Enabled: pulumi.Bool(true),
 		}
-		if spec.KmsKeyId != nil && spec.KmsKeyId.GetValue() != "" {
+		if spec.KmsKeyId.GetValue() != "" {
 			encryptCfg.KmsKeyId = pulumi.String(spec.KmsKeyId.GetValue())
 		}
 		args.EncryptAtRest = encryptCfg
 	}
 
 	// -------------------------------------------------------------------
-	// Node-to-node encryption
+	// Node-to-node encryption -- one-way
 	// -------------------------------------------------------------------
 
 	if spec.NodeToNodeEncryptionEnabled {
@@ -179,7 +204,7 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 			if deo.CustomEndpoint != "" {
 				endpointOpts.CustomEndpoint = pulumi.String(deo.CustomEndpoint)
 			}
-			if deo.CustomEndpointCertificateArn != nil && deo.CustomEndpointCertificateArn.GetValue() != "" {
+			if deo.CustomEndpointCertificateArn.GetValue() != "" {
 				endpointOpts.CustomEndpointCertificateArn = pulumi.String(deo.CustomEndpointCertificateArn.GetValue())
 			}
 		}
@@ -188,7 +213,8 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	}
 
 	// -------------------------------------------------------------------
-	// Advanced security options (FGAC — ForceNew if disabling)
+	// Advanced security options (FGAC). Emitted only when enabled -- FGAC is
+	// one-way in AWS. JWT bearer auth and anonymous auth ride inside it.
 	// -------------------------------------------------------------------
 
 	if aso := spec.AdvancedSecurityOptions; aso != nil && aso.Enabled {
@@ -197,10 +223,14 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 			InternalUserDatabaseEnabled: pulumi.Bool(aso.InternalUserDatabaseEnabled),
 		}
 
+		if aso.AnonymousAuthEnabled {
+			secOpts.AnonymousAuthEnabled = pulumi.Bool(true)
+		}
+
 		masterUserOpts := &opensearch.DomainAdvancedSecurityOptionsMasterUserOptionsArgs{}
 		hasMasterUser := false
 
-		if aso.MasterUserArn != nil && aso.MasterUserArn.GetValue() != "" {
+		if aso.MasterUserArn.GetValue() != "" {
 			masterUserOpts.MasterUserArn = pulumi.String(aso.MasterUserArn.GetValue())
 			hasMasterUser = true
 		}
@@ -208,7 +238,7 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 			masterUserOpts.MasterUserName = pulumi.String(aso.MasterUserName)
 			hasMasterUser = true
 		}
-		if aso.MasterUserPassword != nil && aso.MasterUserPassword.GetValue() != "" {
+		if aso.MasterUserPassword.GetValue() != "" {
 			masterUserOpts.MasterUserPassword = pulumi.String(aso.MasterUserPassword.GetValue())
 			hasMasterUser = true
 		}
@@ -217,7 +247,39 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 			secOpts.MasterUserOptions = masterUserOpts
 		}
 
+		if jwt := aso.JwtOptions; jwt != nil {
+			jwtOpts := &opensearch.DomainAdvancedSecurityOptionsJwtOptionsArgs{
+				Enabled: pulumi.Bool(jwt.Enabled),
+			}
+			if jwt.JwksUrl != "" {
+				jwtOpts.JwksUrl = pulumi.String(jwt.JwksUrl)
+			}
+			if jwt.PublicKey != "" {
+				jwtOpts.PublicKey = pulumi.String(jwt.PublicKey)
+			}
+			if jwt.RolesKey != "" {
+				jwtOpts.RolesKey = pulumi.String(jwt.RolesKey)
+			}
+			if jwt.SubjectKey != "" {
+				jwtOpts.SubjectKey = pulumi.String(jwt.SubjectKey)
+			}
+			secOpts.JwtOptions = jwtOpts
+		}
+
 		args.AdvancedSecurityOptions = secOpts
+	}
+
+	// -------------------------------------------------------------------
+	// Cognito authentication for OpenSearch Dashboards
+	// -------------------------------------------------------------------
+
+	if cog := spec.CognitoOptions; cog != nil && cog.Enabled {
+		args.CognitoOptions = &opensearch.DomainCognitoOptionsArgs{
+			Enabled:        pulumi.Bool(true),
+			UserPoolId:     pulumi.String(cog.UserPoolId.GetValue()),
+			IdentityPoolId: pulumi.String(cog.IdentityPoolId),
+			RoleArn:        pulumi.String(cog.RoleArn.GetValue()),
+		}
 	}
 
 	// -------------------------------------------------------------------
@@ -230,7 +292,7 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 			entry := &opensearch.DomainLogPublishingOptionArgs{
 				LogType: pulumi.String(lpo.LogType),
 			}
-			if lpo.CloudwatchLogGroupArn != nil && lpo.CloudwatchLogGroupArn.GetValue() != "" {
+			if lpo.CloudwatchLogGroupArn.GetValue() != "" {
 				entry.CloudwatchLogGroupArn = pulumi.String(lpo.CloudwatchLogGroupArn.GetValue())
 			}
 			if lpo.Enabled != nil {
@@ -254,18 +316,67 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	}
 
 	// -------------------------------------------------------------------
-	// Auto-Tune
+	// Auto-Tune. Non-disruptive JVM tuning applies immediately; blue/green
+	// optimizations wait for a maintenance schedule or the off-peak window.
+	// Not supported on t2/t3 (burstable) instance types.
 	// -------------------------------------------------------------------
 
-	if spec.AutoTuneEnabled {
-		args.AutoTuneOptions = &opensearch.DomainAutoTuneOptionsArgs{
-			DesiredState: pulumi.String("ENABLED"),
+	if at := spec.AutoTuneOptions; at != nil {
+		autoTune := &opensearch.DomainAutoTuneOptionsArgs{
+			DesiredState: pulumi.String(at.DesiredState),
 		}
+		if at.RollbackOnDisable != "" {
+			autoTune.RollbackOnDisable = pulumi.String(at.RollbackOnDisable)
+		}
+		if at.UseOffPeakWindow {
+			autoTune.UseOffPeakWindow = pulumi.Bool(true)
+		}
+		if len(at.MaintenanceSchedules) > 0 {
+			var schedules opensearch.DomainAutoTuneOptionsMaintenanceScheduleArray
+			for _, schedule := range at.MaintenanceSchedules {
+				schedules = append(schedules, &opensearch.DomainAutoTuneOptionsMaintenanceScheduleArgs{
+					StartAt:                     pulumi.String(schedule.StartAt),
+					CronExpressionForRecurrence: pulumi.String(schedule.CronExpressionForRecurrence),
+					Duration: &opensearch.DomainAutoTuneOptionsMaintenanceScheduleDurationArgs{
+						// HOURS is the only duration unit the AWS API supports.
+						Unit:  pulumi.String("HOURS"),
+						Value: pulumi.Int(int(schedule.DurationHours)),
+					},
+				})
+			}
+			autoTune.MaintenanceSchedules = schedules
+		}
+		args.AutoTuneOptions = autoTune
 	}
 
 	// -------------------------------------------------------------------
-	// Software update options
+	// Snapshots, off-peak window, software updates
 	// -------------------------------------------------------------------
+
+	if spec.AutomatedSnapshotStartHour != nil {
+		args.SnapshotOptions = &opensearch.DomainSnapshotOptionsArgs{
+			AutomatedSnapshotStartHour: pulumi.Int(int(*spec.AutomatedSnapshotStartHour)),
+		}
+	}
+
+	if opw := spec.OffPeakWindowOptions; opw != nil {
+		offPeak := &opensearch.DomainOffPeakWindowOptionsArgs{
+			Enabled: pulumi.Bool(opw.Enabled),
+		}
+		if opw.WindowStartHour != nil {
+			minutes := 0
+			if opw.WindowStartMinute != nil {
+				minutes = int(*opw.WindowStartMinute)
+			}
+			offPeak.OffPeakWindow = &opensearch.DomainOffPeakWindowOptionsOffPeakWindowArgs{
+				WindowStartTime: &opensearch.DomainOffPeakWindowOptionsOffPeakWindowWindowStartTimeArgs{
+					Hours:   pulumi.Int(int(*opw.WindowStartHour)),
+					Minutes: pulumi.Int(minutes),
+				},
+			}
+		}
+		args.OffPeakWindowOptions = offPeak
+	}
 
 	if spec.AutoSoftwareUpdateEnabled {
 		args.SoftwareUpdateOptions = &opensearch.DomainSoftwareUpdateOptionsArgs{
@@ -274,7 +385,17 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	}
 
 	// -------------------------------------------------------------------
-	// IP address type
+	// Blue/green deployment strategy for config changes that require one
+	// -------------------------------------------------------------------
+
+	if spec.DeploymentStrategy != "" {
+		args.DeploymentStrategyOptions = &opensearch.DomainDeploymentStrategyOptionsArgs{
+			DeploymentStrategy: pulumi.String(spec.DeploymentStrategy),
+		}
+	}
+
+	// -------------------------------------------------------------------
+	// IP address type (one-way: dualstack -> ipv4 replaces the domain)
 	// -------------------------------------------------------------------
 
 	if spec.IpAddressType != "" {
@@ -287,6 +408,50 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 
 	if len(spec.AdvancedOptions) > 0 {
 		args.AdvancedOptions = pulumi.ToStringMap(spec.AdvancedOptions)
+	}
+
+	// -------------------------------------------------------------------
+	// AI/ML capabilities
+	// -------------------------------------------------------------------
+
+	if aiml := spec.AimlOptions; aiml != nil {
+		aimlArgs := &opensearch.DomainAimlOptionsArgs{}
+		if aiml.NaturalLanguageQueryGenerationDesiredState != "" {
+			aimlArgs.NaturalLanguageQueryGenerationOptions = &opensearch.DomainAimlOptionsNaturalLanguageQueryGenerationOptionsArgs{
+				DesiredState: pulumi.String(aiml.NaturalLanguageQueryGenerationDesiredState),
+			}
+		}
+		if aiml.S3VectorsEngineEnabled {
+			aimlArgs.S3VectorsEngine = &opensearch.DomainAimlOptionsS3VectorsEngineArgs{
+				Enabled: pulumi.Bool(true),
+			}
+		}
+		if aiml.ServerlessVectorAccelerationEnabled {
+			aimlArgs.ServerlessVectorAcceleration = &opensearch.DomainAimlOptionsServerlessVectorAccelerationArgs{
+				Enabled: pulumi.Bool(true),
+			}
+		}
+		args.AimlOptions = aimlArgs
+	}
+
+	// -------------------------------------------------------------------
+	// IAM Identity Center
+	// -------------------------------------------------------------------
+
+	if idc := spec.IdentityCenterOptions; idc != nil {
+		idcArgs := &opensearch.DomainIdentityCenterOptionsArgs{
+			EnabledApiAccess: pulumi.Bool(idc.EnabledApiAccess),
+		}
+		if idc.IdentityCenterInstanceArn != "" {
+			idcArgs.IdentityCenterInstanceArn = pulumi.String(idc.IdentityCenterInstanceArn)
+		}
+		if idc.RolesKey != "" {
+			idcArgs.RolesKey = pulumi.String(idc.RolesKey)
+		}
+		if idc.SubjectKey != "" {
+			idcArgs.SubjectKey = pulumi.String(idc.SubjectKey)
+		}
+		args.IdentityCenterOptions = idcArgs
 	}
 
 	// -------------------------------------------------------------------
@@ -306,7 +471,10 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	ctx.Export(OpDomainName, osDomain.DomainName)
 	ctx.Export(OpDomainArn, osDomain.Arn)
 	ctx.Export(OpEndpoint, osDomain.Endpoint)
-	ctx.Export(OpDashboardEndpoint, pulumi.Sprintf("%s/_dashboards", osDomain.Endpoint))
+	ctx.Export(OpDashboardEndpoint, osDomain.DashboardEndpoint)
+	ctx.Export(OpEndpointV2, osDomain.EndpointV2)
+	ctx.Export(OpDashboardEndpointV2, osDomain.DashboardEndpointV2)
+	ctx.Export(OpDomainEndpointV2HostedZoneId, osDomain.DomainEndpointV2HostedZoneId)
 
 	return nil
 }

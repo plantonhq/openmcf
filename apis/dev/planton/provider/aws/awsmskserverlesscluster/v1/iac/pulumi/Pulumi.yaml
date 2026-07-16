@@ -1,0 +1,6 @@
+name: aws-msk-serverless-cluster
+runtime:
+  name: go
+  options:
+    binary: main
+description: AWS MSK Serverless Cluster deployment component

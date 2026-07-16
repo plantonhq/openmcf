@@ -1,6 +1,6 @@
 # AzureContainerApp Pulumi Module
 
-This directory contains the Pulumi IaC implementation for the `AzureContainerApp` component.
+The Pulumi (Go) implementation of the `AzureContainerApp` component.
 
 ## Structure
 
@@ -9,12 +9,9 @@ pulumi/
 ├── main.go          # Entrypoint (loads stack input, calls module)
 ├── Pulumi.yaml      # Pulumi project configuration
 ├── Makefile         # Build/test targets
-├── debug.sh         # Debug build script
-├── README.md        # This file
-├── overview.md      # Architecture overview
 └── module/
-    ├── main.go      # Resource creation (containerapp.App) + builder functions
-    ├── locals.go    # Local variable initialization
+    ├── main.go      # The container app (template, ingress, secrets, registries, dapr, identity)
+    ├── locals.go    # Tag merge + enum wire-value maps
     └── outputs.go   # Output key constants
 ```
 
@@ -24,42 +21,15 @@ pulumi/
 |----------|-------------|-----------|
 | Container App | `containerapp.App` | Always |
 
-This is a single-resource module. The complexity lives in the builder functions that translate the rich protobuf spec (21 message types) into Pulumi resource arguments: containers, init containers, probes, scale rules, ingress, secrets, registries, Dapr, identity, and volumes.
+## Behavior Notes
+
+- The Azure provider comes from the shared `pulumiazureprovider.Get` builder (static client-secret, keyless web-identity, or ambient credentials).
+- Enum wire maps are spelled out row by row in `locals.go`; the ingress mTLS vocabulary is lowercase on the wire (`accept`/`require`/`ignore`).
+- Per-probe-type initial-delay defaults (1 liveness, 0 readiness/startup) and the scaler/replica dials are presence-guarded -- unset fields deploy the spec's documented default, never the Go zero value.
+- `ingress_fqdn` and `identity_principal_id` export empty when ingress / a system identity is absent, keeping the output shape constant.
 
 ## Build
 
 ```bash
-make build    # Compile module and entrypoint
-make test     # Run module tests
-make deps     # Tidy Go modules
+make build
 ```
-
-## Debug
-
-```bash
-./debug.sh                           # Uses default manifest
-./debug.sh path/to/manifest.yaml     # Uses custom manifest
-```
-
-## Builder Functions
-
-The `module/main.go` file contains builder functions that map spec messages to Pulumi args:
-
-| Function | Spec Message | Pulumi Type |
-|----------|-------------|-------------|
-| `buildContainers` | `AzureContainerAppContainer` | `AppTemplateContainerArgs` |
-| `buildInitContainers` | `AzureContainerAppInitContainer` | `AppTemplateInitContainerArgs` |
-| `buildEnvVars` | `AzureContainerAppEnvVar` | `AppTemplateContainerEnvArgs` |
-| `buildLivenessProbe` | `AzureContainerAppProbe` | `AppTemplateContainerLivenessProbeArgs` |
-| `buildReadinessProbe` | `AzureContainerAppProbe` | `AppTemplateContainerReadinessProbeArgs` |
-| `buildStartupProbe` | `AzureContainerAppProbe` | `AppTemplateContainerStartupProbeArgs` |
-| `buildVolumes` | `AzureContainerAppVolume` | `AppTemplateVolumeArgs` |
-| `buildHttpScaleRules` | `AzureContainerAppHttpScaleRule` | `AppTemplateHttpScaleRuleArgs` |
-| `buildTcpScaleRules` | `AzureContainerAppTcpScaleRule` | `AppTemplateTcpScaleRuleArgs` |
-| `buildAzureQueueScaleRules` | `AzureContainerAppAzureQueueScaleRule` | `AppTemplateAzureQueueScaleRuleArgs` |
-| `buildCustomScaleRules` | `AzureContainerAppCustomScaleRule` | `AppTemplateCustomScaleRuleArgs` |
-| `buildSecrets` | `AzureContainerAppSecret` | `AppSecretArgs` |
-| `buildRegistries` | `AzureContainerAppRegistry` | `AppRegistryArgs` |
-| `buildIngress` | `AzureContainerAppIngress` | `AppIngressArgs` |
-| `buildDapr` | `AzureContainerAppDapr` | `AppDaprArgs` |
-| `buildIdentity` | `AzureContainerAppIdentity` | `AppIdentityArgs` |

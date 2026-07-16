@@ -1,28 +1,28 @@
-# Production Application Insights with Sampling
+# Production Application Insights (Sampled, Cost-Controlled)
 
-This preset creates an Azure Application Insights resource with 25% adaptive sampling and a 10 GB daily ingestion cap. This is the cost-optimized configuration for high-traffic production workloads where full telemetry fidelity is not needed and controlling monitoring costs is a priority.
+This preset creates a production APM resource with the cost levers engaged: 50% sampling, a 10 GB daily cap with notification, one-year retention, and Entra-only ingestion.
 
 ## When to Use
 
-- High-traffic production APIs and web applications generating large telemetry volumes
-- Cost-conscious environments where monitoring budget is constrained
-- Workloads where statistically representative sampling provides sufficient insight
+- High-traffic production services where full-fidelity telemetry costs more than it informs
+- Estates standardizing on keyless (managed-identity) SDK authentication
+- Compliance environments needing a one-year telemetry trail
 
 ## Key Configuration Choices
 
-- **25% sampling** (`samplingPercentage: 25`) -- Collects 1 in 4 telemetry items. Reduces data volume by 75% while maintaining statistically representative performance data. Increase to 50% for more granularity
-- **10 GB daily cap** (`dailyDataCapInGb: 10`) -- Hard limit that stops ingestion when reached. Prevents cost surprises from traffic spikes or logging storms
-- **90-day retention** (`retentionInDays: 90`) -- Same as standard; retention cost is per-GB regardless of sampling
+- **50% sampling** (`samplingPercentage: 50`) -- statistically representative telemetry at half the volume; APM percentiles stay accurate
+- **10 GB/day cap + notification** -- ingestion stops at the cap until the next UTC day; the email tells you telemetry is being dropped rather than letting it fail silently
+- **Entra-only** (`localAuthenticationEnabled: false`) -- a bare instrumentation key no longer authorizes ingestion; SDKs authenticate with managed identities
+- **365-day retention** -- the workspace's retention still governs workspace-based queries; this aligns the classic-experience tables
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<azure-region>` | Azure region (match the application's region) | Your regional deployment strategy |
-| `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-app-insights-name>` | Name for the Application Insights resource | Your naming convention |
-| `<log-analytics-workspace-id>` | Full ARM resource ID of the Log Analytics Workspace | Azure portal or `AzureLogAnalyticsWorkspace` status outputs |
+| `my-observability-rg` | Resource group holding the resource | `AzureResourceGroup` status outputs |
+| `my-platform-logs` | Workspace storing the telemetry | `AzureLogAnalyticsWorkspace` status outputs |
+| `my-prod-app-insights` | Resource name | Your naming convention |
 
 ## Related Presets
 
-- **01-standard** -- Use instead for development or moderate-traffic workloads where full telemetry is needed
+- **01-standard** -- Full-fidelity default for lower-traffic environments

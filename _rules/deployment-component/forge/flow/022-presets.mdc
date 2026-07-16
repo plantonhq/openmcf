@@ -54,9 +54,11 @@ SEQUENTIAL STEPS
         the defect to every preset written from it)
       - **Every preset must pass `planton validate`** — a placeholder must satisfy the
         field's OWN validation rules. Angle-bracket tokens like `<gcp-region>` fail any
-        pattern-validated field; for those, use a realistic sample value with a
-        `# replace with your ...` comment instead (e.g. `region: us-central1  # replace`).
-        Reserve angle-bracket placeholders for free-form strings and `value:` wrappers.
+        pattern/CEL-validated field (a version string, a CIDR, an ARN shape); for
+        those, use a realistic sample value with a `# replace with your ...` comment
+        (e.g. `region: us-central1  # replace`) and note it in the companion MD's
+        Placeholders table. Reserve angle-bracket placeholders for free-form strings
+        and `value:` wrappers.
       - Fields with `recommended_default` or `default` annotations use the annotated value with a comment
       - Boolean flags set explicitly based on the use case
       - No unnecessary quotes -- EXCEPT string values that YAML 1.1 parses as
@@ -78,6 +80,11 @@ SEQUENTIAL STEPS
    - Verify all `StringValueOrRef` fields use `value:` wrapper
    - Verify naming convention: `{NN}-{kebab-case}.yaml` + `.md`
    - Verify no duplicate ranks
+   - **Run `planton validate-manifest` (CLI built from the working tree) on every
+     preset YAML and confirm each passes.** This is the authoritative check for the
+     placeholder rule above — a `<placeholder>` in a format-validated field, a missing
+     `value:` wrapper, or a wrong enum spelling is invisible to review and caught only
+     by executing the validator.
 
 OUTPUT
 - Confirm number of presets created

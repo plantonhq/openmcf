@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureeventhubauthorizationrule.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azureeventhubauthorizationrule/v1/spec.proto";
+import "dev/planton/provider/azure/azureeventhubauthorizationrule/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureEventHubAuthorizationRule is the top-level API resource for a SAS
+// authorization rule on Azure Event Hubs -- a named, least-privilege
+// credential scoped to a whole namespace or a single event hub. Its keys
+// and connection strings surface as sensitive outputs.
+message AzureEventHubAuthorizationRule {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureEventHubAuthorizationRule'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureEventHubAuthorizationRuleSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureEventHubAuthorizationRuleStatus status = 5;
+}
+
+// AzureEventHubAuthorizationRuleStatus holds the deployment status and
+// outputs.
+message AzureEventHubAuthorizationRuleStatus {
+  // stack-outputs
+  AzureEventHubAuthorizationRuleStackOutputs outputs = 1;
+}

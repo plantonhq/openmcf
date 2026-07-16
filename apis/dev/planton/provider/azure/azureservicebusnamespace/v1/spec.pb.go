@@ -24,124 +24,294 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// The pricing tier of the namespace.
+type AzureServiceBusNamespaceSku int32
+
+const (
+	// Not specified -- deploys STANDARD, the full-featured multi-tenant tier.
+	AzureServiceBusNamespaceSku_azure_service_bus_namespace_sku_unspecified AzureServiceBusNamespaceSku = 0
+	// Queues only -- no topics, sessions, or duplicate detection. Simple
+	// fire-and-forget scenarios.
+	AzureServiceBusNamespaceSku_BASIC AzureServiceBusNamespaceSku = 1
+	// Full-featured multi-tenant tier: queues, topics, subscriptions,
+	// sessions, duplicate detection. The right choice for most production
+	// workloads.
+	AzureServiceBusNamespaceSku_STANDARD AzureServiceBusNamespaceSku = 2
+	// Dedicated messaging units: predictable latency, VNet integration,
+	// customer-managed keys, geo-DR, partitioning, 100 MB messages. Moving
+	// into or out of PREMIUM replaces the namespace.
+	AzureServiceBusNamespaceSku_PREMIUM AzureServiceBusNamespaceSku = 3
+)
+
+// Enum value maps for AzureServiceBusNamespaceSku.
+var (
+	AzureServiceBusNamespaceSku_name = map[int32]string{
+		0: "azure_service_bus_namespace_sku_unspecified",
+		1: "BASIC",
+		2: "STANDARD",
+		3: "PREMIUM",
+	}
+	AzureServiceBusNamespaceSku_value = map[string]int32{
+		"azure_service_bus_namespace_sku_unspecified": 0,
+		"BASIC":    1,
+		"STANDARD": 2,
+		"PREMIUM":  3,
+	}
+)
+
+func (x AzureServiceBusNamespaceSku) Enum() *AzureServiceBusNamespaceSku {
+	p := new(AzureServiceBusNamespaceSku)
+	*p = x
+	return p
+}
+
+func (x AzureServiceBusNamespaceSku) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureServiceBusNamespaceSku) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (AzureServiceBusNamespaceSku) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_enumTypes[0]
+}
+
+func (x AzureServiceBusNamespaceSku) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureServiceBusNamespaceSku.Descriptor instead.
+func (AzureServiceBusNamespaceSku) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+// The managed-identity model for the namespace.
+type AzureServiceBusNamespaceIdentityType int32
+
+const (
+	// Not specified -- invalid; choose an explicit identity model.
+	AzureServiceBusNamespaceIdentityType_azure_service_bus_namespace_identity_type_unspecified AzureServiceBusNamespaceIdentityType = 0
+	// Azure creates a service principal bound to the namespace's lifecycle.
+	AzureServiceBusNamespaceIdentityType_SYSTEM_ASSIGNED AzureServiceBusNamespaceIdentityType = 1
+	// Bring your own AzureUserAssignedIdentity entries -- shareable across
+	// resources and grantable before the namespace exists.
+	AzureServiceBusNamespaceIdentityType_USER_ASSIGNED AzureServiceBusNamespaceIdentityType = 2
+	// Both a system-assigned principal and user-assigned identities.
+	AzureServiceBusNamespaceIdentityType_SYSTEM_AND_USER_ASSIGNED AzureServiceBusNamespaceIdentityType = 3
+)
+
+// Enum value maps for AzureServiceBusNamespaceIdentityType.
+var (
+	AzureServiceBusNamespaceIdentityType_name = map[int32]string{
+		0: "azure_service_bus_namespace_identity_type_unspecified",
+		1: "SYSTEM_ASSIGNED",
+		2: "USER_ASSIGNED",
+		3: "SYSTEM_AND_USER_ASSIGNED",
+	}
+	AzureServiceBusNamespaceIdentityType_value = map[string]int32{
+		"azure_service_bus_namespace_identity_type_unspecified": 0,
+		"SYSTEM_ASSIGNED":          1,
+		"USER_ASSIGNED":            2,
+		"SYSTEM_AND_USER_ASSIGNED": 3,
+	}
+)
+
+func (x AzureServiceBusNamespaceIdentityType) Enum() *AzureServiceBusNamespaceIdentityType {
+	p := new(AzureServiceBusNamespaceIdentityType)
+	*p = x
+	return p
+}
+
+func (x AzureServiceBusNamespaceIdentityType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureServiceBusNamespaceIdentityType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_enumTypes[1].Descriptor()
+}
+
+func (AzureServiceBusNamespaceIdentityType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_enumTypes[1]
+}
+
+func (x AzureServiceBusNamespaceIdentityType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureServiceBusNamespaceIdentityType.Descriptor instead.
+func (AzureServiceBusNamespaceIdentityType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+// The firewall's default action for unmatched traffic.
+type AzureServiceBusNetworkDefaultAction int32
+
+const (
+	// Not specified -- keeps Azure's open default (ALLOW).
+	AzureServiceBusNetworkDefaultAction_azure_service_bus_network_default_action_unspecified AzureServiceBusNetworkDefaultAction = 0
+	// Admit traffic no rule matches (the firewall only annotates).
+	AzureServiceBusNetworkDefaultAction_ALLOW AzureServiceBusNetworkDefaultAction = 1
+	// Reject traffic no rule matches -- the production posture. Requires at
+	// least one admitted ip_rule or network_rule.
+	AzureServiceBusNetworkDefaultAction_DENY AzureServiceBusNetworkDefaultAction = 2
+)
+
+// Enum value maps for AzureServiceBusNetworkDefaultAction.
+var (
+	AzureServiceBusNetworkDefaultAction_name = map[int32]string{
+		0: "azure_service_bus_network_default_action_unspecified",
+		1: "ALLOW",
+		2: "DENY",
+	}
+	AzureServiceBusNetworkDefaultAction_value = map[string]int32{
+		"azure_service_bus_network_default_action_unspecified": 0,
+		"ALLOW": 1,
+		"DENY":  2,
+	}
+)
+
+func (x AzureServiceBusNetworkDefaultAction) Enum() *AzureServiceBusNetworkDefaultAction {
+	p := new(AzureServiceBusNetworkDefaultAction)
+	*p = x
+	return p
+}
+
+func (x AzureServiceBusNetworkDefaultAction) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureServiceBusNetworkDefaultAction) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_enumTypes[2].Descriptor()
+}
+
+func (AzureServiceBusNetworkDefaultAction) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_enumTypes[2]
+}
+
+func (x AzureServiceBusNetworkDefaultAction) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureServiceBusNetworkDefaultAction.Descriptor instead.
+func (AzureServiceBusNetworkDefaultAction) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
 // **AzureServiceBusNamespaceSpec** defines the configuration for creating an
-// Azure Service Bus namespace with optional queues and topics.
+// Azure Service Bus namespace: the container and billing boundary for
+// enterprise messaging entities.
 //
-// Azure Service Bus is a fully managed enterprise message broker with
-// message queues and publish-subscribe topics. It decouples applications
-// and services from each other, providing reliable asynchronous messaging
-// with ordered delivery, temporal decoupling, and load-leveling capabilities.
-//
-// The component bundles the namespace (`azurerm_servicebus_namespace`) with
-// queues (`azurerm_servicebus_queue`) and topics (`azurerm_servicebus_topic`)
-// because a messaging namespace without at least one queue or topic is
-// incomplete for most use cases. This follows DD03 (Composite Bundling Rules).
+// Azure Service Bus is a fully managed enterprise message broker providing
+// queues (point-to-point) and topics with subscriptions (publish-subscribe),
+// with ordered delivery, sessions, duplicate detection, dead-lettering, and
+// transactions. The namespace is where the pricing tier, network posture,
+// encryption, and authentication mode are set; the messaging entities are
+// first-class kinds that reference it:
+// `AzureServiceBusQueue`, `AzureServiceBusTopic` (with
+// `AzureServiceBusSubscription` under a topic), `AzureServiceBusAuthorizationRule`
+// (SAS credentials scoped to the namespace or a single entity), and
+// `AzureServiceBusDisasterRecoveryConfig` (the geo-DR alias pairing two
+// Premium namespaces).
 //
 // **SKU tiers**:
-//   - **Basic**: Single queue-only tier with no topics, sessions, or duplicate
-//     detection. Suitable for simple fire-and-forget scenarios.
-//   - **Standard** (default): Full-featured tier with topics, subscriptions,
-//     sessions, and duplicate detection. 99.95% SLA.
-//   - **Premium**: Dedicated capacity with fixed messaging units, zone
-//     redundancy, VNet integration, and large message support (up to 100 MB).
-//     Required for enterprise networking and compliance workloads.
+//   - **BASIC**: queues only -- no topics, sessions, or duplicate detection.
+//     Simple fire-and-forget scenarios.
+//   - **STANDARD** (default): full-featured multi-tenant tier with topics,
+//     subscriptions, sessions, and duplicate detection. The right choice for
+//     most production workloads.
+//   - **PREMIUM**: dedicated messaging units with predictable latency, VNet
+//     integration (network_rule_set), customer-managed-key encryption, geo-DR,
+//     namespace partitioning, and large messages (up to 100 MB). Migrating a
+//     namespace into or out of PREMIUM replaces it (Azure cannot convert in
+//     place across the dedicated/multi-tenant boundary).
 //
-// **Queues vs Topics**: Queues deliver messages to a single consumer
-// (point-to-point). Topics deliver messages to multiple independent
-// subscriptions (publish-subscribe). Basic SKU supports only queues.
+// **Authentication posture**: every namespace carries a root SAS rule
+// (`RootManageSharedAccessKey`) whose keys and connection strings surface as
+// sensitive outputs. Scoped credentials belong in
+// `AzureServiceBusAuthorizationRule`; for a keyless posture, disable
+// local_auth_enabled and grant Entra identities data-plane roles
+// (Azure Service Bus Data Owner/Sender/Receiver) via `AzureRoleAssignment`.
 //
-// **Topic subscriptions are deliberately omitted** from this component.
-// Subscriptions have a different lifecycle -- they are typically managed by
-// consuming teams, not the infrastructure team that provisions the namespace.
-// A separate `AzureServiceBusSubscription` resource kind can be added in a
-// future expansion if needed.
-//
-// **ForceNew fields** (changing these destroys and recreates the namespace):
-// `name`, `premium_messaging_partitions`.
+// **ForceNew fields** (changing these replaces the namespace -- and destroys
+// every entity in it): `namespace_name`, `premium_messaging_partitions`,
+// `sku` when moving into or out of PREMIUM, and removing
+// `customer_managed_key` once set.
 type AzureServiceBusNamespaceSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure region where the Service Bus namespace will be created.
+	// The Azure region where the Service Bus namespace is created.
 	// Examples: "eastus", "westus2", "westeurope", "southeastasia".
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// The Azure Resource Group where the Service Bus namespace will be created.
+	// The Azure Resource Group the namespace lives in.
 	// Can be a literal string or a reference to an AzureResourceGroup output.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// The name of the Service Bus namespace.
-	// Must be globally unique across Azure. Used as the endpoint:
-	// `{name}.servicebus.windows.net`
+	// The namespace name -- globally unique across Azure, because it becomes
+	// the public endpoint `{name}.servicebus.windows.net`.
 	//
-	// Naming rules (Azure API enforced):
-	// - 6 to 50 characters
-	// - Must start with a letter
-	// - Must end with a letter or number
-	// - Can contain letters, numbers, and hyphens
-	// - Cannot end with "-sb" or "-mgmt" (reserved suffixes)
+	// 6-50 characters; starts with a letter; ends with a letter or number;
+	// letters, numbers, and hyphens only. Azure additionally reserves the
+	// suffixes "-sb" and "-mgmt".
 	//
-	// **ForceNew**: Changing this destroys and recreates the namespace.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// The SKU tier for the Service Bus namespace.
-	// Uses Azure's exact API values for provider authenticity.
+	// **ForceNew**: changing the name replaces the namespace and every entity
+	// in it. Treat it as permanent.
+	NamespaceName string `protobuf:"bytes,3,opt,name=namespace_name,json=namespaceName,proto3" json:"namespace_name,omitempty"`
+	// The pricing tier. Unspecified deploys STANDARD -- the full-featured
+	// multi-tenant tier that fits most production workloads. Choose PREMIUM
+	// for dedicated capacity, VNet integration, customer-managed keys, geo-DR,
+	// or messages larger than 256 KB; choose BASIC only for simple queue-only
+	// scenarios (no topics).
 	//
-	// Valid values:
-	//   - "Basic": Queues only, no topics. Simple messaging scenarios.
-	//   - "Standard" (default): Full-featured with queues and topics. Production
-	//     recommended. 99.95% SLA.
-	//   - "Premium": Dedicated capacity, VNet integration, zone redundancy,
-	//     large messages up to 100 MB. Enterprise workloads.
-	//
-	// **Note**: Changing to/from Premium forces resource recreation.
-	Sku *string `protobuf:"bytes,4,opt,name=sku,proto3,oneof" json:"sku,omitempty"`
-	// Messaging units for Premium SKU.
-	// Defines the dedicated processing capacity of the namespace.
-	// Higher capacity means more throughput and lower latency.
-	//
-	// Valid values: 1, 2, 4, 8, 16
-	// Only applicable for Premium SKU. Must be omitted for Basic/Standard.
-	//
-	// Each messaging unit provides approximately 1 MB/s throughput for sends
-	// and 2 MB/s for receives. Scale up for high-throughput workloads.
+	// Moving a namespace into or out of PREMIUM replaces it; BASIC <->
+	// STANDARD updates in place.
+	Sku AzureServiceBusNamespaceSku `protobuf:"varint,4,opt,name=sku,proto3,enum=dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSku" json:"sku,omitempty"`
+	// Messaging units for the PREMIUM tier -- the dedicated processing
+	// capacity of the namespace. Required with (and only valid with) PREMIUM.
+	// Allowed values: 1, 2, 4, 8, 16. Each messaging unit provides roughly
+	// 1 MB/s ingress and 2 MB/s egress with predictable latency; scale up for
+	// high-throughput workloads (scaling updates in place).
 	Capacity *int32 `protobuf:"varint,5,opt,name=capacity,proto3,oneof" json:"capacity,omitempty"`
-	// Premium messaging partitions for the namespace.
-	// Partitions distribute messages across multiple message stores for
-	// higher throughput and availability within the Premium tier.
+	// Namespace partitions for the PREMIUM tier. Partitioning spreads the
+	// namespace across multiple message stores, multiplying throughput beyond
+	// what one store sustains. Allowed values: 1 (not partitioned -- the
+	// standard choice), 2, or 4. Every queue and topic in a partitioned
+	// namespace must set partitioning_enabled to true; in a non-partitioned
+	// namespace they must not.
 	//
-	// Valid values: 1, 2, 4
-	// Only applicable for Premium SKU. Must be omitted for Basic/Standard.
-	//
-	// **ForceNew**: Changing this destroys and recreates the namespace.
+	// **ForceNew**: the partition layout is fixed at creation -- changing it
+	// replaces the namespace.
 	PremiumMessagingPartitions *int32 `protobuf:"varint,6,opt,name=premium_messaging_partitions,json=premiumMessagingPartitions,proto3,oneof" json:"premium_messaging_partitions,omitempty"`
-	// Enable zone redundancy for the namespace.
-	// When enabled, the namespace metadata and data are replicated across
-	// availability zones within the region for higher availability.
-	//
-	// Only applicable for Premium SKU.
-	//
-	// Default: false
-	ZoneRedundant *bool `protobuf:"varint,7,opt,name=zone_redundant,json=zoneRedundant,proto3,oneof" json:"zone_redundant,omitempty"`
-	// Minimum TLS version for client connections.
-	// Azure enforces this on all AMQP, HTTP, and SBMP connections.
-	//
-	// Default: "1.2" (recommended for all production workloads)
-	MinimumTlsVersion *string `protobuf:"bytes,8,opt,name=minimum_tls_version,json=minimumTlsVersion,proto3,oneof" json:"minimum_tls_version,omitempty"`
-	// Whether the namespace is accessible over the public internet.
-	// When false, the namespace can only be accessed via AzurePrivateEndpoint
-	// or VNet service endpoints.
-	//
+	// Managed identity for the namespace -- required for customer-managed-key
+	// encryption (the identity unwraps the key) and usable anywhere the
+	// namespace itself must authenticate to other Azure services.
+	Identity *AzureServiceBusNamespaceIdentity `protobuf:"bytes,7,opt,name=identity,proto3" json:"identity,omitempty"`
+	// Customer-managed-key encryption for messaging data at rest (BYOK).
+	// PREMIUM only, and the unwrapping user-assigned identity must be attached
+	// via the identity block. Once enabled, CMK cannot be removed -- dropping
+	// this block replaces the namespace (Azure's own contract).
+	CustomerManagedKey *AzureServiceBusNamespaceCustomerManagedKey `protobuf:"bytes,8,opt,name=customer_managed_key,json=customerManagedKey,proto3" json:"customer_managed_key,omitempty"`
+	// Whether SAS (shared-access-signature) authentication is allowed on the
+	// namespace. Azure's default is true. Set false for a keyless posture:
+	// clients must then authenticate with Microsoft Entra ID identities, and
+	// every SAS rule's keys -- including the root rule surfaced in this kind's
+	// outputs -- stop being usable credentials.
 	// Default: true
-	PublicNetworkAccessEnabled *bool `protobuf:"varint,9,opt,name=public_network_access_enabled,json=publicNetworkAccessEnabled,proto3,oneof" json:"public_network_access_enabled,omitempty"`
-	// Queues within this namespace.
-	// Service Bus queues deliver messages to a single consumer (point-to-point).
-	// Each queue is an independent entity within the namespace.
-	//
-	// Available in all SKU tiers (Basic, Standard, Premium).
-	Queues []*AzureServiceBusQueue `protobuf:"bytes,10,rep,name=queues,proto3" json:"queues,omitempty"`
-	// Topics within this namespace.
-	// Service Bus topics deliver messages to multiple independent subscriptions
-	// (publish-subscribe). Each topic can have many subscriptions, each with
-	// its own filter rules.
-	//
-	// **Not available in Basic SKU.** Use Standard or Premium for topics.
-	Topics        []*AzureServiceBusTopic `protobuf:"bytes,11,rep,name=topics,proto3" json:"topics,omitempty"`
+	LocalAuthEnabled *bool `protobuf:"varint,9,opt,name=local_auth_enabled,json=localAuthEnabled,proto3,oneof" json:"local_auth_enabled,omitempty"`
+	// Whether the namespace accepts traffic from the public internet. When
+	// false, clients reach it only through private endpoints
+	// (AzurePrivateEndpoint) or admitted VNet service endpoints.
+	// Default: true
+	PublicNetworkAccessEnabled *bool `protobuf:"varint,10,opt,name=public_network_access_enabled,json=publicNetworkAccessEnabled,proto3,oneof" json:"public_network_access_enabled,omitempty"`
+	// The namespace firewall: which networks may reach the data plane.
+	// PREMIUM only (multi-tenant tiers do not support VNet integration or IP
+	// filtering). Declaring the block with DENY and no admitted networks is
+	// rejected -- Azure requires at least one admitted source before closing
+	// the default.
+	NetworkRuleSet *AzureServiceBusNamespaceNetworkRuleSet `protobuf:"bytes,11,opt,name=network_rule_set,json=networkRuleSet,proto3" json:"network_rule_set,omitempty"`
+	// Tags to apply to the namespace, merged over the Planton-derived
+	// metadata tags (user values win on key conflicts). ARM tags are Azure's
+	// first-class governance surface -- Azure Policy enforces them and
+	// Microsoft Cost Management groups by them.
+	Tags          map[string]string `protobuf:"bytes,12,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -190,18 +360,18 @@ func (x *AzureServiceBusNamespaceSpec) GetResourceGroup() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureServiceBusNamespaceSpec) GetName() string {
+func (x *AzureServiceBusNamespaceSpec) GetNamespaceName() string {
 	if x != nil {
-		return x.Name
+		return x.NamespaceName
 	}
 	return ""
 }
 
-func (x *AzureServiceBusNamespaceSpec) GetSku() string {
-	if x != nil && x.Sku != nil {
-		return *x.Sku
+func (x *AzureServiceBusNamespaceSpec) GetSku() AzureServiceBusNamespaceSku {
+	if x != nil {
+		return x.Sku
 	}
-	return ""
+	return AzureServiceBusNamespaceSku_azure_service_bus_namespace_sku_unspecified
 }
 
 func (x *AzureServiceBusNamespaceSpec) GetCapacity() int32 {
@@ -218,18 +388,25 @@ func (x *AzureServiceBusNamespaceSpec) GetPremiumMessagingPartitions() int32 {
 	return 0
 }
 
-func (x *AzureServiceBusNamespaceSpec) GetZoneRedundant() bool {
-	if x != nil && x.ZoneRedundant != nil {
-		return *x.ZoneRedundant
+func (x *AzureServiceBusNamespaceSpec) GetIdentity() *AzureServiceBusNamespaceIdentity {
+	if x != nil {
+		return x.Identity
 	}
-	return false
+	return nil
 }
 
-func (x *AzureServiceBusNamespaceSpec) GetMinimumTlsVersion() string {
-	if x != nil && x.MinimumTlsVersion != nil {
-		return *x.MinimumTlsVersion
+func (x *AzureServiceBusNamespaceSpec) GetCustomerManagedKey() *AzureServiceBusNamespaceCustomerManagedKey {
+	if x != nil {
+		return x.CustomerManagedKey
 	}
-	return ""
+	return nil
+}
+
+func (x *AzureServiceBusNamespaceSpec) GetLocalAuthEnabled() bool {
+	if x != nil && x.LocalAuthEnabled != nil {
+		return *x.LocalAuthEnabled
+	}
+	return false
 }
 
 func (x *AzureServiceBusNamespaceSpec) GetPublicNetworkAccessEnabled() bool {
@@ -239,159 +416,51 @@ func (x *AzureServiceBusNamespaceSpec) GetPublicNetworkAccessEnabled() bool {
 	return false
 }
 
-func (x *AzureServiceBusNamespaceSpec) GetQueues() []*AzureServiceBusQueue {
+func (x *AzureServiceBusNamespaceSpec) GetNetworkRuleSet() *AzureServiceBusNamespaceNetworkRuleSet {
 	if x != nil {
-		return x.Queues
+		return x.NetworkRuleSet
 	}
 	return nil
 }
 
-func (x *AzureServiceBusNamespaceSpec) GetTopics() []*AzureServiceBusTopic {
+func (x *AzureServiceBusNamespaceSpec) GetTags() map[string]string {
 	if x != nil {
-		return x.Topics
+		return x.Tags
 	}
 	return nil
 }
 
-// AzureServiceBusQueue defines a queue within the Service Bus namespace.
-//
-// Queues provide reliable, ordered (FIFO) message delivery to a single
-// consumer. Messages are stored durably until explicitly received and
-// completed by a consumer.
-//
-// Key capabilities:
-//   - **Lock duration**: Messages are locked during processing. If not completed
-//     within the lock duration, they become available to other consumers.
-//   - **Duplicate detection**: Prevents duplicate messages based on MessageId
-//     within a configurable time window.
-//   - **Sessions**: Groups related messages for ordered, stateful processing.
-//   - **Dead-letter queue**: Automatically stores messages that cannot be
-//     processed (expired, exceeded max delivery count, filter evaluation errors).
-//   - **Message forwarding**: Auto-forwards messages to another queue or topic
-//     within the same namespace (for routing patterns).
-//
-// **ForceNew fields**: `name`, `partitioning_enabled`, `requires_duplicate_detection`,
-// `requires_session`.
-type AzureServiceBusQueue struct {
+// AzureServiceBusNamespaceIdentity configures managed identity for the
+// namespace.
+type AzureServiceBusNamespaceIdentity struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The queue name.
-	// Must be unique within the namespace.
-	//
-	// Naming rules: 1-260 characters, starts and ends with a letter or number.
-	// Can contain letters, numbers, periods, hyphens, underscores, tildes,
-	// and forward slashes.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Maximum size of the queue in megabytes.
-	// Determines how much message data the queue can hold before it starts
-	// rejecting new messages.
-	//
-	// Valid values: 1024, 2048, 3072, 4096, 5120 (Standard/Basic).
-	// Premium supports up to 81920 MB.
-	// Default: varies by SKU (1024 for Standard, 81920 for Premium).
-	//
-	// **Note**: For partitioned queues in Basic/Standard, the actual storage
-	// is 16x this value (Azure API detail, handled transparently).
-	MaxSizeInMegabytes *int32 `protobuf:"varint,2,opt,name=max_size_in_megabytes,json=maxSizeInMegabytes,proto3,oneof" json:"max_size_in_megabytes,omitempty"`
-	// Enable queue partitioning.
-	// Partitioned queues distribute messages across multiple message stores
-	// for higher throughput.
-	//
-	// For Premium SKU: must match the namespace's `premium_messaging_partitions`
-	// setting. The IaC modules handle this automatically.
-	//
-	// **ForceNew**: Changing this destroys and recreates the queue.
-	//
-	// Default: false
-	PartitioningEnabled *bool `protobuf:"varint,3,opt,name=partitioning_enabled,json=partitioningEnabled,proto3,oneof" json:"partitioning_enabled,omitempty"`
-	// Default message time-to-live as an ISO 8601 duration.
-	// Messages older than this duration are automatically dead-lettered or
-	// discarded (depending on `dead_lettering_on_message_expiration`).
-	//
-	// Examples: "P14D" (14 days), "PT1H" (1 hour), "PT30M" (30 minutes).
-	// Default: unbounded (messages never expire).
-	DefaultMessageTtl *string `protobuf:"bytes,4,opt,name=default_message_ttl,json=defaultMessageTtl,proto3,oneof" json:"default_message_ttl,omitempty"`
-	// How long a message is locked for processing as an ISO 8601 duration.
-	// When a consumer receives a message in PeekLock mode, the message is
-	// locked for this duration. If not completed within the lock duration,
-	// the message becomes available to other consumers.
-	//
-	// Range: PT5S (5 seconds) to PT5M (5 minutes).
-	// Default: "PT1M" (1 minute).
-	//
-	// Increase for long-running processing tasks. Decrease for fast handlers.
-	LockDuration *string `protobuf:"bytes,5,opt,name=lock_duration,json=lockDuration,proto3,oneof" json:"lock_duration,omitempty"`
-	// Maximum number of delivery attempts before dead-lettering.
-	// After this many failed delivery attempts, the message is moved to
-	// the queue's dead-letter sub-queue.
-	//
-	// Minimum: 1. Default: 10.
-	//
-	// Lower values detect poison messages faster. Higher values tolerate
-	// transient consumer failures better.
-	MaxDeliveryCount *int32 `protobuf:"varint,6,opt,name=max_delivery_count,json=maxDeliveryCount,proto3,oneof" json:"max_delivery_count,omitempty"`
-	// Enable duplicate message detection.
-	// When enabled, Service Bus tracks MessageId values for a configurable
-	// time window (default 10 minutes) and silently drops duplicate messages.
-	//
-	// Useful for idempotent messaging patterns where producers may retry
-	// sends without knowing if the original message was accepted.
-	//
-	// **ForceNew**: Changing this destroys and recreates the queue.
-	//
-	// Default: false
-	RequiresDuplicateDetection *bool `protobuf:"varint,7,opt,name=requires_duplicate_detection,json=requiresDuplicateDetection,proto3,oneof" json:"requires_duplicate_detection,omitempty"`
-	// Enable message sessions for ordered processing.
-	// Sessions group related messages by a SessionId, enabling:
-	// - Strict FIFO ordering within a session
-	// - Stateful processing (session state stored on the broker)
-	// - Exclusive processing (one consumer per session at a time)
-	//
-	// All messages in a session are delivered to the same consumer in order.
-	//
-	// **ForceNew**: Changing this destroys and recreates the queue.
-	//
-	// Default: false
-	RequiresSession *bool `protobuf:"varint,8,opt,name=requires_session,json=requiresSession,proto3,oneof" json:"requires_session,omitempty"`
-	// Move expired messages to the dead-letter queue.
-	// When true, messages that exceed their TTL are moved to the dead-letter
-	// sub-queue instead of being discarded. This enables inspection and
-	// reprocessing of expired messages.
-	//
-	// Default: false
-	DeadLetteringOnMessageExpiration *bool `protobuf:"varint,9,opt,name=dead_lettering_on_message_expiration,json=deadLetteringOnMessageExpiration,proto3,oneof" json:"dead_lettering_on_message_expiration,omitempty"`
-	// Auto-forward messages to another queue or topic within the same namespace.
-	// When set, messages arriving in this queue are automatically forwarded
-	// to the specified entity. The value is the name of the target queue or
-	// topic (not the full resource ID).
-	//
-	// Useful for routing patterns and message distribution chains.
-	ForwardTo *string `protobuf:"bytes,10,opt,name=forward_to,json=forwardTo,proto3,oneof" json:"forward_to,omitempty"`
-	// Auto-forward dead-lettered messages to another queue or topic.
-	// When set, messages that are dead-lettered (expired, exceeded max
-	// delivery count) are forwarded to the specified entity instead of
-	// remaining in the dead-letter sub-queue.
-	//
-	// The value is the name of the target queue or topic within the same
-	// namespace.
-	ForwardDeadLetteredMessagesTo *string `protobuf:"bytes,11,opt,name=forward_dead_lettered_messages_to,json=forwardDeadLetteredMessagesTo,proto3,oneof" json:"forward_dead_lettered_messages_to,omitempty"`
-	unknownFields                 protoimpl.UnknownFields
-	sizeCache                     protoimpl.SizeCache
+	// The identity model: SYSTEM_ASSIGNED (Azure creates and rotates a
+	// service principal bound to the namespace's lifecycle), USER_ASSIGNED
+	// (bring identities from user_assigned_identity_ids, shareable across
+	// resources), or SYSTEM_AND_USER_ASSIGNED (both).
+	Type AzureServiceBusNamespaceIdentityType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceIdentityType" json:"type,omitempty"`
+	// The user-assigned identities to attach -- required when (and only
+	// meaningful when) type includes USER_ASSIGNED. Each entry references
+	// an AzureUserAssignedIdentity's ARM id.
+	UserAssignedIdentityIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=user_assigned_identity_ids,json=userAssignedIdentityIds,proto3" json:"user_assigned_identity_ids,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
-func (x *AzureServiceBusQueue) Reset() {
-	*x = AzureServiceBusQueue{}
+func (x *AzureServiceBusNamespaceIdentity) Reset() {
+	*x = AzureServiceBusNamespaceIdentity{}
 	mi := &file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureServiceBusQueue) String() string {
+func (x *AzureServiceBusNamespaceIdentity) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureServiceBusQueue) ProtoMessage() {}
+func (*AzureServiceBusNamespaceIdentity) ProtoMessage() {}
 
-func (x *AzureServiceBusQueue) ProtoReflect() protoreflect.Message {
+func (x *AzureServiceBusNamespaceIdentity) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -403,168 +472,62 @@ func (x *AzureServiceBusQueue) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureServiceBusQueue.ProtoReflect.Descriptor instead.
-func (*AzureServiceBusQueue) Descriptor() ([]byte, []int) {
+// Deprecated: Use AzureServiceBusNamespaceIdentity.ProtoReflect.Descriptor instead.
+func (*AzureServiceBusNamespaceIdentity) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AzureServiceBusQueue) GetName() string {
+func (x *AzureServiceBusNamespaceIdentity) GetType() AzureServiceBusNamespaceIdentityType {
 	if x != nil {
-		return x.Name
+		return x.Type
 	}
-	return ""
+	return AzureServiceBusNamespaceIdentityType_azure_service_bus_namespace_identity_type_unspecified
 }
 
-func (x *AzureServiceBusQueue) GetMaxSizeInMegabytes() int32 {
-	if x != nil && x.MaxSizeInMegabytes != nil {
-		return *x.MaxSizeInMegabytes
+func (x *AzureServiceBusNamespaceIdentity) GetUserAssignedIdentityIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.UserAssignedIdentityIds
 	}
-	return 0
+	return nil
 }
 
-func (x *AzureServiceBusQueue) GetPartitioningEnabled() bool {
-	if x != nil && x.PartitioningEnabled != nil {
-		return *x.PartitioningEnabled
-	}
-	return false
-}
-
-func (x *AzureServiceBusQueue) GetDefaultMessageTtl() string {
-	if x != nil && x.DefaultMessageTtl != nil {
-		return *x.DefaultMessageTtl
-	}
-	return ""
-}
-
-func (x *AzureServiceBusQueue) GetLockDuration() string {
-	if x != nil && x.LockDuration != nil {
-		return *x.LockDuration
-	}
-	return ""
-}
-
-func (x *AzureServiceBusQueue) GetMaxDeliveryCount() int32 {
-	if x != nil && x.MaxDeliveryCount != nil {
-		return *x.MaxDeliveryCount
-	}
-	return 0
-}
-
-func (x *AzureServiceBusQueue) GetRequiresDuplicateDetection() bool {
-	if x != nil && x.RequiresDuplicateDetection != nil {
-		return *x.RequiresDuplicateDetection
-	}
-	return false
-}
-
-func (x *AzureServiceBusQueue) GetRequiresSession() bool {
-	if x != nil && x.RequiresSession != nil {
-		return *x.RequiresSession
-	}
-	return false
-}
-
-func (x *AzureServiceBusQueue) GetDeadLetteringOnMessageExpiration() bool {
-	if x != nil && x.DeadLetteringOnMessageExpiration != nil {
-		return *x.DeadLetteringOnMessageExpiration
-	}
-	return false
-}
-
-func (x *AzureServiceBusQueue) GetForwardTo() string {
-	if x != nil && x.ForwardTo != nil {
-		return *x.ForwardTo
-	}
-	return ""
-}
-
-func (x *AzureServiceBusQueue) GetForwardDeadLetteredMessagesTo() string {
-	if x != nil && x.ForwardDeadLetteredMessagesTo != nil {
-		return *x.ForwardDeadLetteredMessagesTo
-	}
-	return ""
-}
-
-// AzureServiceBusTopic defines a topic within the Service Bus namespace.
-//
-// Topics implement the publish-subscribe messaging pattern. Publishers send
-// messages to a topic, and multiple subscriptions can independently receive
-// copies of those messages with optional filter rules.
-//
-// **Not available in Basic SKU.** Use Standard or Premium.
-//
-// Topics do NOT have lock_duration, max_delivery_count, sessions, or
-// dead-lettering -- those are subscription-level concerns. This component
-// deliberately omits subscriptions (see spec comment).
-//
-// **ForceNew fields**: `name`, `partitioning_enabled`, `requires_duplicate_detection`.
-type AzureServiceBusTopic struct {
+// Customer-managed-key (BYOK) encryption for the namespace's messaging data.
+type AzureServiceBusNamespaceCustomerManagedKey struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The topic name.
-	// Must be unique within the namespace.
-	//
-	// Naming rules: 1-260 characters, starts and ends with a letter or number.
-	// Can contain letters, numbers, periods, hyphens, underscores, tildes,
-	// and forward slashes.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Maximum size of the topic in megabytes.
-	// Determines how much message data the topic can hold across all
-	// subscriptions before it starts rejecting new messages.
-	//
-	// Valid values: 1024, 2048, 3072, 4096, 5120 (Standard).
-	// Premium supports up to 81920 MB.
-	// Default: varies by SKU.
-	MaxSizeInMegabytes *int32 `protobuf:"varint,2,opt,name=max_size_in_megabytes,json=maxSizeInMegabytes,proto3,oneof" json:"max_size_in_megabytes,omitempty"`
-	// Enable topic partitioning.
-	// Partitioned topics distribute messages across multiple message stores
-	// for higher throughput.
-	//
-	// For Premium SKU: must match the namespace's `premium_messaging_partitions`
-	// setting. The IaC modules handle this automatically.
-	//
-	// **ForceNew**: Changing this destroys and recreates the topic.
-	//
-	// Default: false
-	PartitioningEnabled *bool `protobuf:"varint,3,opt,name=partitioning_enabled,json=partitioningEnabled,proto3,oneof" json:"partitioning_enabled,omitempty"`
-	// Default message time-to-live as an ISO 8601 duration.
-	// Messages older than this duration are automatically removed.
-	//
-	// Examples: "P14D" (14 days), "PT1H" (1 hour), "P30D" (30 days).
-	// Default: unbounded (messages never expire).
-	DefaultMessageTtl *string `protobuf:"bytes,4,opt,name=default_message_ttl,json=defaultMessageTtl,proto3,oneof" json:"default_message_ttl,omitempty"`
-	// Enable duplicate message detection.
-	// When enabled, Service Bus tracks MessageId values and silently drops
-	// duplicate messages within a configurable time window (default 10 minutes).
-	//
-	// **ForceNew**: Changing this destroys and recreates the topic.
-	//
-	// Default: false
-	RequiresDuplicateDetection *bool `protobuf:"varint,5,opt,name=requires_duplicate_detection,json=requiresDuplicateDetection,proto3,oneof" json:"requires_duplicate_detection,omitempty"`
-	// Enable message ordering support.
-	// When enabled, the topic preserves the order of messages within a
-	// session. Works with session-enabled subscriptions for ordered
-	// publish-subscribe patterns.
-	//
-	// Default: false
-	SupportOrdering *bool `protobuf:"varint,6,opt,name=support_ordering,json=supportOrdering,proto3,oneof" json:"support_ordering,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The Key Vault key that encrypts messaging data, by data-plane key ID.
+	// Defaults to referencing an AzureKeyVaultKey's versionless_id output so
+	// key rotations propagate automatically; pin a versioned ID only when a
+	// compliance regime demands an immutable key version. The key's vault
+	// must have purge protection enabled.
+	KeyVaultKeyId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=key_vault_key_id,json=keyVaultKeyId,proto3" json:"key_vault_key_id,omitempty"`
+	// The user-assigned identity Azure uses to unwrap the key, by ARM ID.
+	// Must be one of the identities attached via the namespace's identity
+	// block, with wrap/unwrap access on the key's vault (a "Key Vault Crypto
+	// Service Encryption User" role assignment, or the equivalent access
+	// policy).
+	UserAssignedIdentityId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=user_assigned_identity_id,json=userAssignedIdentityId,proto3" json:"user_assigned_identity_id,omitempty"`
+	// Whether Azure applies a second layer of encryption (infrastructure
+	// encryption) beneath the customer-managed key. **ForceNew**: fixed at
+	// the moment CMK is first configured.
+	InfrastructureEncryptionEnabled *bool `protobuf:"varint,3,opt,name=infrastructure_encryption_enabled,json=infrastructureEncryptionEnabled,proto3,oneof" json:"infrastructure_encryption_enabled,omitempty"`
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
 }
 
-func (x *AzureServiceBusTopic) Reset() {
-	*x = AzureServiceBusTopic{}
+func (x *AzureServiceBusNamespaceCustomerManagedKey) Reset() {
+	*x = AzureServiceBusNamespaceCustomerManagedKey{}
 	mi := &file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureServiceBusTopic) String() string {
+func (x *AzureServiceBusNamespaceCustomerManagedKey) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureServiceBusTopic) ProtoMessage() {}
+func (*AzureServiceBusNamespaceCustomerManagedKey) ProtoMessage() {}
 
-func (x *AzureServiceBusTopic) ProtoReflect() protoreflect.Message {
+func (x *AzureServiceBusNamespaceCustomerManagedKey) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -576,49 +539,180 @@ func (x *AzureServiceBusTopic) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureServiceBusTopic.ProtoReflect.Descriptor instead.
-func (*AzureServiceBusTopic) Descriptor() ([]byte, []int) {
+// Deprecated: Use AzureServiceBusNamespaceCustomerManagedKey.ProtoReflect.Descriptor instead.
+func (*AzureServiceBusNamespaceCustomerManagedKey) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *AzureServiceBusTopic) GetName() string {
+func (x *AzureServiceBusNamespaceCustomerManagedKey) GetKeyVaultKeyId() *v1.StringValueOrRef {
 	if x != nil {
-		return x.Name
+		return x.KeyVaultKeyId
 	}
-	return ""
+	return nil
 }
 
-func (x *AzureServiceBusTopic) GetMaxSizeInMegabytes() int32 {
-	if x != nil && x.MaxSizeInMegabytes != nil {
-		return *x.MaxSizeInMegabytes
+func (x *AzureServiceBusNamespaceCustomerManagedKey) GetUserAssignedIdentityId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.UserAssignedIdentityId
 	}
-	return 0
+	return nil
 }
 
-func (x *AzureServiceBusTopic) GetPartitioningEnabled() bool {
-	if x != nil && x.PartitioningEnabled != nil {
-		return *x.PartitioningEnabled
-	}
-	return false
-}
-
-func (x *AzureServiceBusTopic) GetDefaultMessageTtl() string {
-	if x != nil && x.DefaultMessageTtl != nil {
-		return *x.DefaultMessageTtl
-	}
-	return ""
-}
-
-func (x *AzureServiceBusTopic) GetRequiresDuplicateDetection() bool {
-	if x != nil && x.RequiresDuplicateDetection != nil {
-		return *x.RequiresDuplicateDetection
+func (x *AzureServiceBusNamespaceCustomerManagedKey) GetInfrastructureEncryptionEnabled() bool {
+	if x != nil && x.InfrastructureEncryptionEnabled != nil {
+		return *x.InfrastructureEncryptionEnabled
 	}
 	return false
 }
 
-func (x *AzureServiceBusTopic) GetSupportOrdering() bool {
-	if x != nil && x.SupportOrdering != nil {
-		return *x.SupportOrdering
+// The namespace firewall (PREMIUM only): which networks may reach the
+// data plane.
+type AzureServiceBusNamespaceNetworkRuleSet struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What happens to traffic no explicit rule admits. Unspecified keeps
+	// Azure's open default (ALLOW). DENY plus the admitted lists below is
+	// the production posture -- but Azure rejects DENY with no admitted
+	// ip_rules or network_rules.
+	DefaultAction AzureServiceBusNetworkDefaultAction `protobuf:"varint,1,opt,name=default_action,json=defaultAction,proto3,enum=dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNetworkDefaultAction" json:"default_action,omitempty"`
+	// Whether the data plane remains reachable over public IP space for the
+	// sources the rules admit. Set false to force all admitted traffic
+	// through private endpoints and service endpoints only.
+	// Default: true
+	PublicNetworkAccessEnabled *bool `protobuf:"varint,2,opt,name=public_network_access_enabled,json=publicNetworkAccessEnabled,proto3,oneof" json:"public_network_access_enabled,omitempty"`
+	// Whether trusted Microsoft services (Event Grid delivery, Azure Monitor
+	// diagnostics, IoT Hub routing, ...) bypass the firewall. Azure's
+	// default is false; enable it when platform services must deliver into a
+	// locked-down namespace.
+	TrustedServicesAllowed *bool `protobuf:"varint,3,opt,name=trusted_services_allowed,json=trustedServicesAllowed,proto3,oneof" json:"trusted_services_allowed,omitempty"`
+	// Public IPv4 addresses or CIDR ranges admitted to the data plane,
+	// e.g. "203.0.113.0/24".
+	IpRules []string `protobuf:"bytes,4,rep,name=ip_rules,json=ipRules,proto3" json:"ip_rules,omitempty"`
+	// VNet subnets admitted to the data plane via service endpoints. Each
+	// subnet should carry the Microsoft.ServiceBus service endpoint.
+	NetworkRules  []*AzureServiceBusNamespaceNetworkRule `protobuf:"bytes,5,rep,name=network_rules,json=networkRules,proto3" json:"network_rules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureServiceBusNamespaceNetworkRuleSet) Reset() {
+	*x = AzureServiceBusNamespaceNetworkRuleSet{}
+	mi := &file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureServiceBusNamespaceNetworkRuleSet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureServiceBusNamespaceNetworkRuleSet) ProtoMessage() {}
+
+func (x *AzureServiceBusNamespaceNetworkRuleSet) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureServiceBusNamespaceNetworkRuleSet.ProtoReflect.Descriptor instead.
+func (*AzureServiceBusNamespaceNetworkRuleSet) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AzureServiceBusNamespaceNetworkRuleSet) GetDefaultAction() AzureServiceBusNetworkDefaultAction {
+	if x != nil {
+		return x.DefaultAction
+	}
+	return AzureServiceBusNetworkDefaultAction_azure_service_bus_network_default_action_unspecified
+}
+
+func (x *AzureServiceBusNamespaceNetworkRuleSet) GetPublicNetworkAccessEnabled() bool {
+	if x != nil && x.PublicNetworkAccessEnabled != nil {
+		return *x.PublicNetworkAccessEnabled
+	}
+	return false
+}
+
+func (x *AzureServiceBusNamespaceNetworkRuleSet) GetTrustedServicesAllowed() bool {
+	if x != nil && x.TrustedServicesAllowed != nil {
+		return *x.TrustedServicesAllowed
+	}
+	return false
+}
+
+func (x *AzureServiceBusNamespaceNetworkRuleSet) GetIpRules() []string {
+	if x != nil {
+		return x.IpRules
+	}
+	return nil
+}
+
+func (x *AzureServiceBusNamespaceNetworkRuleSet) GetNetworkRules() []*AzureServiceBusNamespaceNetworkRule {
+	if x != nil {
+		return x.NetworkRules
+	}
+	return nil
+}
+
+// A VNet subnet admitted to the namespace's data plane.
+type AzureServiceBusNamespaceNetworkRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The admitted subnet, by ARM ID. References an AzureSubnet's subnet_id
+	// output.
+	SubnetId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
+	// Whether to admit the subnet even if it does not (yet) carry the
+	// Microsoft.ServiceBus service endpoint -- useful when the endpoint is
+	// being rolled out separately. Azure's default is false.
+	IgnoreMissingVnetServiceEndpoint *bool `protobuf:"varint,2,opt,name=ignore_missing_vnet_service_endpoint,json=ignoreMissingVnetServiceEndpoint,proto3,oneof" json:"ignore_missing_vnet_service_endpoint,omitempty"`
+	unknownFields                    protoimpl.UnknownFields
+	sizeCache                        protoimpl.SizeCache
+}
+
+func (x *AzureServiceBusNamespaceNetworkRule) Reset() {
+	*x = AzureServiceBusNamespaceNetworkRule{}
+	mi := &file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureServiceBusNamespaceNetworkRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureServiceBusNamespaceNetworkRule) ProtoMessage() {}
+
+func (x *AzureServiceBusNamespaceNetworkRule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureServiceBusNamespaceNetworkRule.ProtoReflect.Descriptor instead.
+func (*AzureServiceBusNamespaceNetworkRule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AzureServiceBusNamespaceNetworkRule) GetSubnetId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SubnetId
+	}
+	return nil
+}
+
+func (x *AzureServiceBusNamespaceNetworkRule) GetIgnoreMissingVnetServiceEndpoint() bool {
+	if x != nil && x.IgnoreMissingVnetServiceEndpoint != nil {
+		return *x.IgnoreMissingVnetServiceEndpoint
 	}
 	return false
 }
@@ -627,69 +721,76 @@ var File_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto proto
 
 const file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/azure/azureservicebusnamespace/v1/spec.proto\x126dev.planton.provider.azure.azureservicebusnamespace.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcf\n" +
-	"\n" +
+	"Adev/planton/provider/azure/azureservicebusnamespace/v1/spec.proto\x126dev.planton.provider.azure.azureservicebusnamespace.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb5\x1a\n" +
 	"\x1cAzureServiceBusNamespaceSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xec\x01\n" +
-	"\x04name\x18\x03 \x01(\tB\xd7\x01\xbaH\xd3\x01\xba\x01\xc6\x01\n" +
-	"\x15namespace_name_format\x12tNamespace name must start with a letter, end with a letter or number, and contain only letters, numbers, and hyphens\x1a7this.matches('^[a-zA-Z][-a-zA-Z0-9]{4,48}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x06\x182R\x04name\x12\x8c\x01\n" +
-	"\x03sku\x18\x04 \x01(\tBu\xbaHf\xba\x01c\n" +
-	"\tsku_valid\x12,sku must be one of: Basic, Standard, Premium\x1a(this in ['Basic', 'Standard', 'Premium']\x8a\xa6\x1d\bStandardH\x00R\x03sku\x88\x01\x01\x12*\n" +
-	"\bcapacity\x18\x05 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x10(\x01H\x01R\bcapacity\x88\x01\x01\x12P\n" +
-	"\x1cpremium_messaging_partitions\x18\x06 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x04(\x01H\x02R\x1apremiumMessagingPartitions\x88\x01\x01\x125\n" +
-	"\x0ezone_redundant\x18\a \x01(\bB\t\x8a\xa6\x1d\x05falseH\x03R\rzoneRedundant\x88\x01\x01\x12\xa7\x01\n" +
-	"\x13minimum_tls_version\x18\b \x01(\tBr\xbaHh\xba\x01e\n" +
-	"\x11tls_version_valid\x121minimum_tls_version must be one of: 1.0, 1.1, 1.2\x1a\x1dthis in ['1.0', '1.1', '1.2']\x8a\xa6\x1d\x031.2H\x04R\x11minimumTlsVersion\x88\x01\x01\x12P\n" +
-	"\x1dpublic_network_access_enabled\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x05R\x1apublicNetworkAccessEnabled\x88\x01\x01\x12d\n" +
-	"\x06queues\x18\n" +
-	" \x03(\v2L.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusQueueR\x06queues\x12d\n" +
-	"\x06topics\x18\v \x03(\v2L.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusTopicR\x06topicsB\x06\n" +
-	"\x04_skuB\v\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xec\x03\n" +
+	"\x0enamespace_name\x18\x03 \x01(\tB\xc4\x03\xbaH\xc0\x03\xba\x01\xe1\x01\n" +
+	"!service_bus_namespace_name_format\x12\x82\x01namespace_name must be 6-50 characters of letters, numbers, and hyphens, starting with a letter and ending with a letter or number\x1a7this.matches('^[a-zA-Z][-a-zA-Z0-9]{4,48}[a-zA-Z0-9]$')\xba\x01\xce\x01\n" +
+	"*service_bus_namespace_name_reserved_suffix\x12nnamespace_name cannot end with '-sb' or '-mgmt' -- Azure reserves these suffixes for its own service endpoints\x1a0!this.endsWith('-sb') && !this.endsWith('-mgmt')\xc8\x01\x01r\x04\x10\x06\x182R\rnamespaceName\x12o\n" +
+	"\x03sku\x18\x04 \x01(\x0e2S.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSkuB\b\xbaH\x05\x82\x01\x02\x10\x01R\x03sku\x120\n" +
+	"\bcapacity\x18\x05 \x01(\x05B\x0f\xbaH\f\x1a\n" +
+	"0\x010\x020\x040\b0\x10H\x00R\bcapacity\x88\x01\x01\x12R\n" +
+	"\x1cpremium_messaging_partitions\x18\x06 \x01(\x05B\v\xbaH\b\x1a\x060\x010\x020\x04H\x01R\x1apremiumMessagingPartitions\x88\x01\x01\x12t\n" +
+	"\bidentity\x18\a \x01(\v2X.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceIdentityR\bidentity\x12\x94\x01\n" +
+	"\x14customer_managed_key\x18\b \x01(\v2b.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceCustomerManagedKeyR\x12customerManagedKey\x12;\n" +
+	"\x12local_auth_enabled\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x10localAuthEnabled\x88\x01\x01\x12P\n" +
+	"\x1dpublic_network_access_enabled\x18\n" +
+	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x1apublicNetworkAccessEnabled\x88\x01\x01\x12\x88\x01\n" +
+	"\x10network_rule_set\x18\v \x01(\v2^.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceNetworkRuleSetR\x0enetworkRuleSet\x12r\n" +
+	"\x04tags\x18\f \x03(\v2^.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc0\f\xbaH\xbc\f\x1a\xbd\x01\n" +
+	"!service_bus_capacity_premium_only\x12rcapacity is the PREMIUM tier's messaging-unit dial -- remove it on BASIC/STANDARD, where Azure fixes capacity at 0\x1a$!has(this.capacity) || this.sku == 3\x1a\xdf\x01\n" +
+	"%service_bus_premium_requires_capacity\x12\x90\x01the PREMIUM tier requires capacity -- pick 1, 2, 4, 8, or 16 messaging units (1 fits most workloads to start; scaling up later updates in place)\x1a#this.sku != 3 || has(this.capacity)\x1a\xb6\x01\n" +
+	"#service_bus_partitions_premium_only\x12Upremium_messaging_partitions is a PREMIUM-tier setting -- remove it on BASIC/STANDARD\x1a8!has(this.premium_messaging_partitions) || this.sku == 3\x1a\x83\x02\n" +
+	"'service_bus_premium_requires_partitions\x12\x9e\x01the PREMIUM tier requires premium_messaging_partitions -- set 1 unless you deliberately want a partitioned namespace (2 or 4); the layout is fixed at creation\x1a7this.sku != 3 || has(this.premium_messaging_partitions)\x1a\xcc\x01\n" +
+	" service_bus_cmk_requires_premium\x12vcustomer_managed_key encryption is only available on the PREMIUM tier -- Azure rejects BYOK on multi-tenant namespaces\x1a0!has(this.customer_managed_key) || this.sku == 3\x1a\xa9\x02\n" +
+	"/service_bus_cmk_requires_user_assigned_identity\x12\x9c\x01customer_managed_key requires the identity block with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED -- the unwrapping identity must be attached to the namespace\x1aW!has(this.customer_managed_key) || (has(this.identity) && this.identity.type in [2, 3])\x1a\xdd\x01\n" +
+	")service_bus_network_rules_require_premium\x12\x81\x01network_rule_set is only available on the PREMIUM tier -- multi-tenant namespaces do not support VNet integration or IP filtering\x1a,!has(this.network_rule_set) || this.sku == 3B\v\n" +
 	"\t_capacityB\x1f\n" +
-	"\x1d_premium_messaging_partitionsB\x11\n" +
-	"\x0f_zone_redundantB\x16\n" +
-	"\x14_minimum_tls_versionB \n" +
-	"\x1e_public_network_access_enabled\"\xc7\a\n" +
-	"\x14AzureServiceBusQueue\x12!\n" +
-	"\x04name\x18\x01 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\x84\x02R\x04name\x126\n" +
-	"\x15max_size_in_megabytes\x18\x02 \x01(\x05H\x00R\x12maxSizeInMegabytes\x88\x01\x01\x12A\n" +
-	"\x14partitioning_enabled\x18\x03 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x01R\x13partitioningEnabled\x88\x01\x01\x123\n" +
-	"\x13default_message_ttl\x18\x04 \x01(\tH\x02R\x11defaultMessageTtl\x88\x01\x01\x122\n" +
-	"\rlock_duration\x18\x05 \x01(\tB\b\x8a\xa6\x1d\x04PT1MH\x03R\flockDuration\x88\x01\x01\x12@\n" +
-	"\x12max_delivery_count\x18\x06 \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0210H\x04R\x10maxDeliveryCount\x88\x01\x01\x12P\n" +
-	"\x1crequires_duplicate_detection\x18\a \x01(\bB\t\x8a\xa6\x1d\x05falseH\x05R\x1arequiresDuplicateDetection\x88\x01\x01\x129\n" +
-	"\x10requires_session\x18\b \x01(\bB\t\x8a\xa6\x1d\x05falseH\x06R\x0frequiresSession\x88\x01\x01\x12^\n" +
-	"$dead_lettering_on_message_expiration\x18\t \x01(\bB\t\x8a\xa6\x1d\x05falseH\aR deadLetteringOnMessageExpiration\x88\x01\x01\x12\"\n" +
-	"\n" +
-	"forward_to\x18\n" +
-	" \x01(\tH\bR\tforwardTo\x88\x01\x01\x12M\n" +
-	"!forward_dead_lettered_messages_to\x18\v \x01(\tH\tR\x1dforwardDeadLetteredMessagesTo\x88\x01\x01B\x18\n" +
-	"\x16_max_size_in_megabytesB\x17\n" +
-	"\x15_partitioning_enabledB\x16\n" +
-	"\x14_default_message_ttlB\x10\n" +
-	"\x0e_lock_durationB\x15\n" +
-	"\x13_max_delivery_countB\x1f\n" +
-	"\x1d_requires_duplicate_detectionB\x13\n" +
-	"\x11_requires_sessionB'\n" +
-	"%_dead_lettering_on_message_expirationB\r\n" +
-	"\v_forward_toB$\n" +
-	"\"_forward_dead_lettered_messages_to\"\xf7\x03\n" +
-	"\x14AzureServiceBusTopic\x12!\n" +
-	"\x04name\x18\x01 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\x84\x02R\x04name\x126\n" +
-	"\x15max_size_in_megabytes\x18\x02 \x01(\x05H\x00R\x12maxSizeInMegabytes\x88\x01\x01\x12A\n" +
-	"\x14partitioning_enabled\x18\x03 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x01R\x13partitioningEnabled\x88\x01\x01\x123\n" +
-	"\x13default_message_ttl\x18\x04 \x01(\tH\x02R\x11defaultMessageTtl\x88\x01\x01\x12P\n" +
-	"\x1crequires_duplicate_detection\x18\x05 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x03R\x1arequiresDuplicateDetection\x88\x01\x01\x129\n" +
-	"\x10support_ordering\x18\x06 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x04R\x0fsupportOrdering\x88\x01\x01B\x18\n" +
-	"\x16_max_size_in_megabytesB\x17\n" +
-	"\x15_partitioning_enabledB\x16\n" +
-	"\x14_default_message_ttlB\x1f\n" +
-	"\x1d_requires_duplicate_detectionB\x13\n" +
-	"\x11_support_orderingB\xbb\x03\n" +
+	"\x1d_premium_messaging_partitionsB\x15\n" +
+	"\x13_local_auth_enabledB \n" +
+	"\x1e_public_network_access_enabled\"\xee\x04\n" +
+	" AzureServiceBusNamespaceIdentity\x12|\n" +
+	"\x04type\x18\x01 \x01(\x0e2\\.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceIdentityTypeB\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb4\x02\xbaH\xb0\x02\x1a\xad\x02\n" +
+	"#service_bus_identity_ids_match_type\x12}user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED\x1a\x86\x01(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)\"\xca\x03\n" +
+	"*AzureServiceBusNamespaceCustomerManagedKey\x12\x89\x01\n" +
+	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12\x98\x01\n" +
+	"\x19user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityId\x12O\n" +
+	"!infrastructure_encryption_enabled\x18\x03 \x01(\bH\x00R\x1finfrastructureEncryptionEnabled\x88\x01\x01B$\n" +
+	"\"_infrastructure_encryption_enabled\"\xe5\x06\n" +
+	"&AzureServiceBusNamespaceNetworkRuleSet\x12\x8c\x01\n" +
+	"\x0edefault_action\x18\x01 \x01(\x0e2[.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNetworkDefaultActionB\b\xbaH\x05\x82\x01\x02\x10\x01R\rdefaultAction\x12P\n" +
+	"\x1dpublic_network_access_enabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x1apublicNetworkAccessEnabled\x88\x01\x01\x12=\n" +
+	"\x18trusted_services_allowed\x18\x03 \x01(\bH\x01R\x16trustedServicesAllowed\x88\x01\x01\x12\x19\n" +
+	"\bip_rules\x18\x04 \x03(\tR\aipRules\x12\x80\x01\n" +
+	"\rnetwork_rules\x18\x05 \x03(\v2[.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceNetworkRuleR\fnetworkRules:\xbd\x02\xbaH\xb9\x02\x1a\xb6\x02\n" +
+	"*service_bus_deny_requires_admitted_sources\x12\xb0\x01default_action DENY needs at least one admitted source -- add ip_rules or network_rules, or the namespace would reject all data-plane traffic (Azure refuses this configuration)\x1aUthis.default_action != 2 || this.ip_rules.size() > 0 || this.network_rules.size() > 0B \n" +
+	"\x1e_public_network_access_enabledB\x1b\n" +
+	"\x19_trusted_services_allowed\"\x9d\x02\n" +
+	"#AzureServiceBusNamespaceNetworkRule\x12x\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12S\n" +
+	"$ignore_missing_vnet_service_endpoint\x18\x02 \x01(\bH\x00R ignoreMissingVnetServiceEndpoint\x88\x01\x01B'\n" +
+	"%_ignore_missing_vnet_service_endpoint*t\n" +
+	"\x1bAzureServiceBusNamespaceSku\x12/\n" +
+	"+azure_service_bus_namespace_sku_unspecified\x10\x00\x12\t\n" +
+	"\x05BASIC\x10\x01\x12\f\n" +
+	"\bSTANDARD\x10\x02\x12\v\n" +
+	"\aPREMIUM\x10\x03*\xa7\x01\n" +
+	"$AzureServiceBusNamespaceIdentityType\x129\n" +
+	"5azure_service_bus_namespace_identity_type_unspecified\x10\x00\x12\x13\n" +
+	"\x0fSYSTEM_ASSIGNED\x10\x01\x12\x11\n" +
+	"\rUSER_ASSIGNED\x10\x02\x12\x1c\n" +
+	"\x18SYSTEM_AND_USER_ASSIGNED\x10\x03*t\n" +
+	"#AzureServiceBusNetworkDefaultAction\x128\n" +
+	"4azure_service_bus_network_default_action_unspecified\x10\x00\x12\t\n" +
+	"\x05ALLOW\x10\x01\x12\b\n" +
+	"\x04DENY\x10\x02B\xbb\x03\n" +
 	":com.dev.planton.provider.azure.azureservicebusnamespace.v1B\tSpecProtoP\x01Zsgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureservicebusnamespace/v1;azureservicebusnamespacev1\xa2\x02\x05DPPAA\xaa\x026Dev.Planton.Provider.Azure.Azureservicebusnamespace.V1\xca\x026Dev\\Planton\\Provider\\Azure\\Azureservicebusnamespace\\V1\xe2\x02BDev\\Planton\\Provider\\Azure\\Azureservicebusnamespace\\V1\\GPBMetadata\xea\x02;Dev::Planton::Provider::Azure::Azureservicebusnamespace::V1b\x06proto3"
 
 var (
@@ -704,22 +805,39 @@ func file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_rawD
 	return file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_goTypes = []any{
-	(*AzureServiceBusNamespaceSpec)(nil), // 0: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec
-	(*AzureServiceBusQueue)(nil),         // 1: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusQueue
-	(*AzureServiceBusTopic)(nil),         // 2: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusTopic
-	(*v1.StringValueOrRef)(nil),          // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureServiceBusNamespaceSku)(0),                   // 0: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSku
+	(AzureServiceBusNamespaceIdentityType)(0),          // 1: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceIdentityType
+	(AzureServiceBusNetworkDefaultAction)(0),           // 2: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNetworkDefaultAction
+	(*AzureServiceBusNamespaceSpec)(nil),               // 3: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec
+	(*AzureServiceBusNamespaceIdentity)(nil),           // 4: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceIdentity
+	(*AzureServiceBusNamespaceCustomerManagedKey)(nil), // 5: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceCustomerManagedKey
+	(*AzureServiceBusNamespaceNetworkRuleSet)(nil),     // 6: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceNetworkRuleSet
+	(*AzureServiceBusNamespaceNetworkRule)(nil),        // 7: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceNetworkRule
+	nil,                         // 8: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec.queues:type_name -> dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusQueue
-	2, // 2: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec.topics:type_name -> dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusTopic
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	9,  // 0: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 1: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec.sku:type_name -> dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSku
+	4,  // 2: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec.identity:type_name -> dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceIdentity
+	5,  // 3: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec.customer_managed_key:type_name -> dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceCustomerManagedKey
+	6,  // 4: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec.network_rule_set:type_name -> dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceNetworkRuleSet
+	8,  // 5: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec.tags:type_name -> dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceSpec.TagsEntry
+	1,  // 6: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceIdentity.type:type_name -> dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceIdentityType
+	9,  // 7: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceIdentity.user_assigned_identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 8: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceCustomerManagedKey.key_vault_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 9: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceCustomerManagedKey.user_assigned_identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 10: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceNetworkRuleSet.default_action:type_name -> dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNetworkDefaultAction
+	7,  // 11: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceNetworkRuleSet.network_rules:type_name -> dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceNetworkRule
+	9,  // 12: dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceNetworkRule.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_init() }
@@ -728,20 +846,22 @@ func file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_init
 		return
 	}
 	file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   3,
+			NumEnums:      3,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_depIdxs,
+		EnumInfos:         file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto = out.File

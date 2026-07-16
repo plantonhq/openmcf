@@ -43,7 +43,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3Bucket
 metadata:
   name: multi-provider-demo-aws
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
 spec:
   awsRegion: us-east-1
@@ -65,7 +65,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGcsBucket
 metadata:
   name: multi-provider-demo-gcp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
 spec:
   gcpProjectId:
@@ -94,7 +94,7 @@ apiVersion: <provider>.planton.dev/v1     # Provider-specific API
 kind: <ComponentName>                      # Component type
 metadata:                                  # KRM metadata (same structure)
   name: <resource-name>
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi        # Same label, same options
 spec:                                      # Provider-specific configuration
   ...

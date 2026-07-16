@@ -28,15 +28,18 @@ const (
 // Accelerator — a networking service that routes traffic through the AWS global
 // network to optimal endpoints based on health, geography, and routing policies.
 //
-// Global Accelerator provides two static anycast IPv4 addresses (or dual-stack)
-// that serve as fixed entry points to your application. Traffic enters the AWS
-// network at the nearest edge location and is routed to healthy endpoints across
-// one or more AWS regions, providing improved availability and performance for
-// global users.
+// Global Accelerator provides two static anycast IPv4 addresses (or dual-stack
+// IPv4 + IPv6) that serve as fixed entry points to your application. Traffic
+// enters the AWS network at the nearest edge location and is routed to healthy
+// endpoints across one or more AWS regions, providing improved availability and
+// performance for global users.
 //
 // The resource hierarchy is: Accelerator → Listeners → Endpoint Groups → Endpoints.
 // All three levels are bundled because an accelerator without listeners and
-// endpoint groups is functionally useless (just static IPs doing nothing).
+// endpoint groups is functionally useless (just static IPs doing nothing), and
+// nothing else in the resource graph references a listener or endpoint group
+// independently. Each listener and endpoint group still materializes as its own
+// provider resource, keyed by its name, so in-place updates stay surgical.
 //
 // Key characteristics:
 // - Static anycast IPs: Two globally-advertised IP addresses that never change
@@ -46,34 +49,51 @@ const (
 // - Client affinity: Optional SOURCE_IP stickiness per listener
 //
 // This component covers standard accelerators. Custom routing accelerators
-// (deterministic port-based routing to specific EC2 instances) are a distinct
-// resource type with ~5% adoption and are excluded from v1.
+// (deterministic port-based routing to specific VPC subnet destinations) are a
+// distinct AWS resource family with its own listener and endpoint-group shapes
+// and are deliberately not modeled here.
 //
-// Credentials, region, and deployment workflow live outside this spec in
-// stack inputs.
+// Lifecycle notes the module handles for you: an accelerator must be disabled
+// before AWS allows deletion (the provider disables it and waits for the change
+// to deploy before deleting), and every accelerator/listener/endpoint-group
+// change is followed by a wait for the accelerator to return to the DEPLOYED
+// state — expect minutes, not seconds, per apply.
+//
+// Credentials and deployment workflow live outside this spec in stack inputs.
 type AwsGlobalAcceleratorSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The AWS region where the resource will be created.
+	// The AWS provider region used for deployment. Global Accelerator is a
+	// GLOBAL service — its control-plane API is homed in us-west-2, and the
+	// provider transparently pins API calls there regardless of this value.
+	// This region still matters in one place: it is the default
+	// endpoint_group_region for any endpoint group that does not set one, so
+	// point it at the region where your primary endpoints live.
 	// Example: "us-west-2", "eu-west-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
 	// Whether the accelerator is enabled and accepting traffic. When disabled,
 	// the accelerator's DNS name stops resolving and no traffic is routed.
 	// Useful for temporarily disabling an accelerator during maintenance without
-	// destroying it.
+	// destroying it (the static IPs are retained while disabled).
 	Enabled *bool `protobuf:"varint,2,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
 	// IP address type for the accelerator.
-	// - "IPV4": Two static IPv4 anycast addresses (default).
-	// - "DUAL_STACK": IPv4 + IPv6 anycast addresses for clients on IPv6 networks.
+	//   - "IPV4": Two static IPv4 anycast addresses (default).
+	//   - "DUAL_STACK": IPv4 + IPv6 anycast addresses for clients on IPv6 networks.
+	//     Dual-stack accelerators additionally export a dual-stack DNS name.
 	IpAddressType *string `protobuf:"bytes,3,opt,name=ip_address_type,json=ipAddressType,proto3,oneof" json:"ip_address_type,omitempty"`
 	// Bring-Your-Own-IP (BYOIP) addresses to assign to the accelerator instead
 	// of AWS-allocated anycast IPs. Provide exactly 1 or 2 IPv4 addresses from
-	// a BYOIP address pool registered with AWS.
+	// a BYOIP address pool registered with AWS (maximum 2 — AWS hard limit).
 	//
 	// ForceNew — changing this destroys and recreates the accelerator.
 	// Leave empty to use AWS-allocated IPs (the default for most deployments).
 	IpAddresses []string `protobuf:"bytes,4,rep,name=ip_addresses,json=ipAddresses,proto3" json:"ip_addresses,omitempty"`
 	// Optional flow log configuration for traffic analysis. When enabled,
 	// Global Accelerator publishes flow logs to the specified S3 bucket.
+	//
+	// Provider quirk (handled by the modules): flow-log settings ride a separate
+	// accelerator-attributes API call after create, and changing the bucket or
+	// prefix while flow logs are enabled requires AWS to briefly disable and
+	// re-enable them — expect two deployment waits for that class of update.
 	FlowLogs *AwsGlobalAcceleratorFlowLogs `protobuf:"bytes,5,opt,name=flow_logs,json=flowLogs,proto3" json:"flow_logs,omitempty"`
 	// Listeners define the ports and protocols the accelerator accepts traffic on.
 	// Each listener routes traffic to one or more regional endpoint groups.
@@ -162,9 +182,17 @@ func (x *AwsGlobalAcceleratorSpec) GetListeners() []*AwsGlobalAcceleratorListene
 // to and from network interfaces in Global Accelerator.
 type AwsGlobalAcceleratorFlowLogs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Enable flow log delivery.
+	// Enable flow log delivery. Setting this to false on an accelerator that
+	// previously had flow logs enabled turns them off (the modules always send
+	// the explicit disabled state — silence would leave AWS logging forever).
 	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	// S3 bucket name for flow log storage. Required when enabled is true.
+	// The bucket must exist and grant Global Accelerator write permission.
+	//
+	// The presence coupling below checks only that the reference is supplied;
+	// whether it carries a literal value or resolves through valueFrom is
+	// validated by the reference resolver (message-level CEL cannot dereference
+	// StringValueOrRef sub-fields — a protovalidate-java constraint).
 	S3Bucket *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=s3_bucket,json=s3Bucket,proto3" json:"s3_bucket,omitempty"`
 	// S3 key prefix for flow logs. Useful for organizing logs when multiple
 	// accelerators share a bucket. Example: "ga-logs/prod-accelerator/".
@@ -235,7 +263,8 @@ type AwsGlobalAcceleratorListener struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// User-assigned name for this listener. Used as a key in the output maps
 	// (listener_arns, endpoint_group_arns) so downstream resources can reference
-	// specific listener or endpoint group ARNs via valueFrom.
+	// specific listener or endpoint group ARNs via valueFrom. This name is a
+	// Planton-side key — AWS listeners have no name of their own.
 	//
 	// Must be unique within the accelerator's listeners. Lowercase alphanumeric
 	// and hyphens only, starting with a letter (max 63 characters).
@@ -255,7 +284,8 @@ type AwsGlobalAcceleratorListener struct {
 	// a from_port and to_port (inclusive). Use a single port range for most
 	// workloads, or multiple ranges for services on different ports.
 	//
-	// At least one port range is required. Maximum 10 ranges per listener.
+	// At least one port range is required. Maximum 10 ranges per listener
+	// (AWS hard limit).
 	PortRanges []*AwsGlobalAcceleratorPortRange `protobuf:"bytes,4,rep,name=port_ranges,json=portRanges,proto3" json:"port_ranges,omitempty"`
 	// Endpoint groups define regional destinations for this listener's traffic.
 	// Each endpoint group represents a set of endpoints in one AWS region.
@@ -337,7 +367,8 @@ type AwsGlobalAcceleratorPortRange struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// First port in the range (inclusive). Range: 1-65535.
 	FromPort int32 `protobuf:"varint,1,opt,name=from_port,json=fromPort,proto3" json:"from_port,omitempty"`
-	// Last port in the range (inclusive). Must be >= from_port. Range: 1-65535.
+	// Last port in the range (inclusive). Must be >= from_port. For a single
+	// port, set from_port and to_port to the same value. Range: 1-65535.
 	ToPort        int32 `protobuf:"varint,2,opt,name=to_port,json=toPort,proto3" json:"to_port,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -399,40 +430,47 @@ type AwsGlobalAcceleratorEndpointGroup struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// User-assigned name for this endpoint group. Used as part of the composite
 	// key in the endpoint_group_arns output map (format: "listener_name/group_name").
+	// This name is a Planton-side key — AWS endpoint groups have no name of
+	// their own.
 	//
 	// Must be unique within the parent listener's endpoint groups. Lowercase
 	// alphanumeric and hyphens only, starting with a letter (max 63 characters).
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// AWS region for this endpoint group (e.g., "us-east-1", "eu-west-1").
-	// When omitted, defaults to the AWS provider region. ForceNew — changing
+	// When omitted, defaults to the spec's region. ForceNew — changing
 	// the region requires replacing the endpoint group.
 	EndpointGroupRegion string `protobuf:"bytes,2,opt,name=endpoint_group_region,json=endpointGroupRegion,proto3" json:"endpoint_group_region,omitempty"`
-	// Port to use for health checks. When omitted, uses the listener port.
-	// Use this to check health on a dedicated health-check port separate from
-	// the traffic port.
-	HealthCheckPort int32 `protobuf:"varint,3,opt,name=health_check_port,json=healthCheckPort,proto3" json:"health_check_port,omitempty"`
+	// Port to use for health checks. When omitted, AWS uses the first port of
+	// the listener's port ranges. Set this to check health on a dedicated
+	// health-check port separate from the traffic port. Range: 1-65535.
+	HealthCheckPort *int32 `protobuf:"varint,3,opt,name=health_check_port,json=healthCheckPort,proto3,oneof" json:"health_check_port,omitempty"`
 	// Protocol for health checks.
 	// - "TCP" (default): Verifies port reachability only.
 	// - "HTTP": Sends GET request to health_check_path, expects 200 response.
 	// - "HTTPS": Same as HTTP but over TLS.
 	HealthCheckProtocol *string `protobuf:"bytes,4,opt,name=health_check_protocol,json=healthCheckProtocol,proto3,oneof" json:"health_check_protocol,omitempty"`
 	// Path for HTTP/HTTPS health checks. The accelerator sends a GET request
-	// to this path. Required when health_check_protocol is HTTP or HTTPS.
-	// Ignored for TCP health checks. Example: "/health" or "/api/status".
+	// to this path (AWS defaults to "/" when omitted). Required here when
+	// health_check_protocol is HTTP or HTTPS so intent is explicit. Ignored
+	// for TCP health checks. Max 255 characters. Example: "/health".
 	HealthCheckPath string `protobuf:"bytes,5,opt,name=health_check_path,json=healthCheckPath,proto3" json:"health_check_path,omitempty"`
-	// Seconds between health checks for each endpoint. AWS only supports
-	// two values: 10 or 30 seconds. This is NOT a continuous range — any
-	// other value will be rejected by the API.
+	// Seconds between health checks for each endpoint. AWS accepts exactly
+	// two values: 10 or 30. Default: 30. (The Terraform provider's schema
+	// validates the looser 10-30 range, but the Global Accelerator API
+	// rejects anything except 10 or 30 at create time — this rule carries
+	// the service's real contract so misconfigurations fail at validation,
+	// not at deploy.)
 	HealthCheckIntervalSeconds *int32 `protobuf:"varint,6,opt,name=health_check_interval_seconds,json=healthCheckIntervalSeconds,proto3,oneof" json:"health_check_interval_seconds,omitempty"`
 	// Number of consecutive health checks that must succeed (or fail) to
-	// change an endpoint's health status. Range: 1-10.
+	// change an endpoint's health status. Range: 1-10. Default: 3.
 	ThresholdCount *int32 `protobuf:"varint,7,opt,name=threshold_count,json=thresholdCount,proto3,oneof" json:"threshold_count,omitempty"`
 	// Percentage of traffic to route to this endpoint group. Range: 0.0-100.0.
-	// Default: 100.0 (all traffic). Use values below 100 for gradual traffic
-	// shifting between regions (blue/green, canary deployments).
+	// When omitted, AWS routes all traffic (100.0). Use values below 100 for
+	// gradual traffic shifting between regions (blue/green, canary deployments).
 	//
-	// Set to 0 to temporarily drain a region without removing its endpoints.
-	TrafficDialPercentage float64 `protobuf:"fixed64,8,opt,name=traffic_dial_percentage,json=trafficDialPercentage,proto3" json:"traffic_dial_percentage,omitempty"`
+	// Set to 0 explicitly to temporarily drain a region without removing its
+	// endpoints — 0 is a real value here, distinct from omitting the field.
+	TrafficDialPercentage *float64 `protobuf:"fixed64,8,opt,name=traffic_dial_percentage,json=trafficDialPercentage,proto3,oneof" json:"traffic_dial_percentage,omitempty"`
 	// Endpoints within this regional group. Each endpoint is a resource that
 	// receives traffic — an ALB, NLB, Elastic IP, or EC2 instance.
 	//
@@ -441,7 +479,8 @@ type AwsGlobalAcceleratorEndpointGroup struct {
 	Endpoints []*AwsGlobalAcceleratorEndpoint `protobuf:"bytes,9,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
 	// Port overrides remap listener ports to different endpoint ports. Useful
 	// when the listener accepts traffic on one port but the endpoint serves
-	// on a different port. Maximum 10 overrides per endpoint group.
+	// on a different port. Maximum 10 overrides per endpoint group (AWS hard
+	// limit).
 	//
 	// Example: listener on port 443, endpoint on port 8443.
 	PortOverrides []*AwsGlobalAcceleratorPortOverride `protobuf:"bytes,10,rep,name=port_overrides,json=portOverrides,proto3" json:"port_overrides,omitempty"`
@@ -494,8 +533,8 @@ func (x *AwsGlobalAcceleratorEndpointGroup) GetEndpointGroupRegion() string {
 }
 
 func (x *AwsGlobalAcceleratorEndpointGroup) GetHealthCheckPort() int32 {
-	if x != nil {
-		return x.HealthCheckPort
+	if x != nil && x.HealthCheckPort != nil {
+		return *x.HealthCheckPort
 	}
 	return 0
 }
@@ -529,8 +568,8 @@ func (x *AwsGlobalAcceleratorEndpointGroup) GetThresholdCount() int32 {
 }
 
 func (x *AwsGlobalAcceleratorEndpointGroup) GetTrafficDialPercentage() float64 {
-	if x != nil {
-		return x.TrafficDialPercentage
+	if x != nil && x.TrafficDialPercentage != nil {
+		return *x.TrafficDialPercentage
 	}
 	return 0
 }
@@ -569,22 +608,34 @@ type AwsGlobalAcceleratorEndpoint struct {
 	// - EC2 instance ID: "i-..."
 	//
 	// Uses StringValueOrRef for cross-resource referencing (e.g., reference an
-	// AwsAlb's load_balancer_arn output via valueFrom). No default_kind is set
-	// because the target resource type varies.
+	// AwsAlb's load_balancer_arn output or an AwsElasticIp's allocation_id
+	// output via valueFrom). No default_kind is set because the target resource
+	// type varies.
 	EndpointId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=endpoint_id,json=endpointId,proto3" json:"endpoint_id,omitempty"`
-	// Relative weight for this endpoint. Range: 0-255. Default: 128.
-	// Higher weight means more traffic. Set to 0 to temporarily stop routing
-	// traffic to this endpoint without removing it.
-	Weight int32 `protobuf:"varint,2,opt,name=weight,proto3" json:"weight,omitempty"`
-	// Preserve the client's source IP address in requests forwarded to the
-	// endpoint. When enabled, the endpoint sees the original client IP instead
-	// of the Global Accelerator IP.
+	// Relative weight for this endpoint. Range: 0-255. When omitted, AWS
+	// assigns the default weight of 128. Higher weight means more traffic.
 	//
-	// Supported for ALB and EC2 instance endpoints only. For NLB and EIP
-	// endpoints, client IP is always preserved regardless of this setting.
-	ClientIpPreservationEnabled bool `protobuf:"varint,3,opt,name=client_ip_preservation_enabled,json=clientIpPreservationEnabled,proto3" json:"client_ip_preservation_enabled,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// Set to 0 explicitly to temporarily stop routing traffic to this endpoint
+	// without removing it — 0 is a real value here, distinct from omitting the
+	// field.
+	Weight *int32 `protobuf:"varint,2,opt,name=weight,proto3,oneof" json:"weight,omitempty"`
+	// Preserve the client's source IP address in requests forwarded to the
+	// endpoint. Applies to Application Load Balancer and EC2 instance
+	// endpoints; when omitted, AWS applies its per-endpoint-type default
+	// (false for ALB endpoints).
+	//
+	// Operational note: when enabled, Global Accelerator creates a security
+	// group named "GlobalAccelerator" in the endpoint's VPC that must be
+	// deleted before that VPC can be destroyed.
+	ClientIpPreservationEnabled *bool `protobuf:"varint,3,opt,name=client_ip_preservation_enabled,json=clientIpPreservationEnabled,proto3,oneof" json:"client_ip_preservation_enabled,omitempty"`
+	// ARN of a Global Accelerator cross-account attachment that authorizes
+	// this endpoint when it lives in another AWS account. Create the
+	// attachment in the endpoint-owning account (with this accelerator's
+	// account as a principal) and supply its ARN here. Leave empty for
+	// same-account endpoints — the common case.
+	AttachmentArn string `protobuf:"bytes,4,opt,name=attachment_arn,json=attachmentArn,proto3" json:"attachment_arn,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsGlobalAcceleratorEndpoint) Reset() {
@@ -625,17 +676,24 @@ func (x *AwsGlobalAcceleratorEndpoint) GetEndpointId() *v1.StringValueOrRef {
 }
 
 func (x *AwsGlobalAcceleratorEndpoint) GetWeight() int32 {
-	if x != nil {
-		return x.Weight
+	if x != nil && x.Weight != nil {
+		return *x.Weight
 	}
 	return 0
 }
 
 func (x *AwsGlobalAcceleratorEndpoint) GetClientIpPreservationEnabled() bool {
-	if x != nil {
-		return x.ClientIpPreservationEnabled
+	if x != nil && x.ClientIpPreservationEnabled != nil {
+		return *x.ClientIpPreservationEnabled
 	}
 	return false
+}
+
+func (x *AwsGlobalAcceleratorEndpoint) GetAttachmentArn() string {
+	if x != nil {
+		return x.AttachmentArn
+	}
+	return ""
 }
 
 // AwsGlobalAcceleratorPortOverride remaps a listener port to a different
@@ -700,66 +758,73 @@ var File_dev_planton_provider_aws_awsglobalaccelerator_v1_spec_proto protoreflec
 
 const file_dev_planton_provider_aws_awsglobalaccelerator_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	";dev/planton/provider/aws/awsglobalaccelerator/v1/spec.proto\x120dev.planton.provider.aws.awsglobalaccelerator.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcf\x05\n" +
+	";dev/planton/provider/aws/awsglobalaccelerator/v1/spec.proto\x120dev.planton.provider.aws.awsglobalaccelerator.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xef\x04\n" +
 	"\x18AwsGlobalAcceleratorSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12'\n" +
 	"\aenabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x125\n" +
-	"\x0fip_address_type\x18\x03 \x01(\tB\b\x8a\xa6\x1d\x04IPV4H\x01R\ripAddressType\x88\x01\x01\x12!\n" +
-	"\fip_addresses\x18\x04 \x03(\tR\vipAddresses\x12k\n" +
+	"\x0fip_address_type\x18\x03 \x01(\tB\b\x8a\xa6\x1d\x04IPV4H\x01R\ripAddressType\x88\x01\x01\x12+\n" +
+	"\fip_addresses\x18\x04 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x02R\vipAddresses\x12k\n" +
 	"\tflow_logs\x18\x05 \x01(\v2N.dev.planton.provider.aws.awsglobalaccelerator.v1.AwsGlobalAcceleratorFlowLogsR\bflowLogs\x12y\n" +
-	"\tlisteners\x18\x06 \x03(\v2N.dev.planton.provider.aws.awsglobalaccelerator.v1.AwsGlobalAcceleratorListenerB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\tlisteners:\x86\x02\xbaH\x82\x02\x1a\x95\x01\n" +
-	"\x15ip_address_type_valid\x12.ip_address_type must be 'IPV4' or 'DUAL_STACK'\x1aL!has(this.ip_address_type) || this.ip_address_type in ['IPV4', 'DUAL_STACK']\x1ah\n" +
-	"\x12ip_addresses_max_2\x124ip_addresses supports a maximum of 2 BYOIP addresses\x1a\x1csize(this.ip_addresses) <= 2B\n" +
+	"\tlisteners\x18\x06 \x03(\v2N.dev.planton.provider.aws.awsglobalaccelerator.v1.AwsGlobalAcceleratorListenerB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\tlisteners:\x9c\x01\xbaH\x98\x01\x1a\x95\x01\n" +
+	"\x15ip_address_type_valid\x12.ip_address_type must be 'IPV4' or 'DUAL_STACK'\x1aL!has(this.ip_address_type) || this.ip_address_type in ['IPV4', 'DUAL_STACK']B\n" +
 	"\n" +
 	"\b_enabledB\x12\n" +
-	"\x10_ip_address_type\"\xc9\x01\n" +
+	"\x10_ip_address_type\"\xc6\x02\n" +
 	"\x1cAwsGlobalAcceleratorFlowLogs\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12r\n" +
 	"\ts3_bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\bs3Bucket\x12\x1b\n" +
-	"\ts3_prefix\x18\x03 \x01(\tR\bs3Prefix\"\xca\a\n" +
+	"\ts3_prefix\x18\x03 \x01(\tR\bs3Prefix:{\xbaHx\x1av\n" +
+	"\x1cflow_logs_s3_bucket_required\x120s3_bucket is required when flow logs are enabled\x1a$!this.enabled || has(this.s3_bucket)\"\xe7\x06\n" +
 	"\x1cAwsGlobalAcceleratorListener\x12\xcf\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xba\x01\xbaH\xb6\x01\xba\x01\xaf\x01\n" +
 	"\x14listener_name_format\x12oname must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens (max 63 chars)\x1a&this.matches('^[a-z][a-z0-9-]{0,62}$')\xc8\x01\x01R\x04name\x12\"\n" +
 	"\bprotocol\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bprotocol\x126\n" +
-	"\x0fclient_affinity\x18\x03 \x01(\tB\b\x8a\xa6\x1d\x04NONEH\x00R\x0eclientAffinity\x88\x01\x01\x12}\n" +
-	"\vport_ranges\x18\x04 \x03(\v2O.dev.planton.provider.aws.awsglobalaccelerator.v1.AwsGlobalAcceleratorPortRangeB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\n" +
+	"\x0fclient_affinity\x18\x03 \x01(\tB\b\x8a\xa6\x1d\x04NONEH\x00R\x0eclientAffinity\x88\x01\x01\x12\x7f\n" +
+	"\vport_ranges\x18\x04 \x03(\v2O.dev.planton.provider.aws.awsglobalaccelerator.v1.AwsGlobalAcceleratorPortRangeB\r\xbaH\n" +
+	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\n" +
+	"R\n" +
 	"portRanges\x12\x89\x01\n" +
-	"\x0fendpoint_groups\x18\x05 \x03(\v2S.dev.planton.provider.aws.awsglobalaccelerator.v1.AwsGlobalAcceleratorEndpointGroupB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x0eendpointGroups:\xdc\x02\xbaH\xd8\x02\x1a[\n" +
+	"\x0fendpoint_groups\x18\x05 \x03(\v2S.dev.planton.provider.aws.awsglobalaccelerator.v1.AwsGlobalAcceleratorEndpointGroupB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x0eendpointGroups:\xf7\x01\xbaH\xf3\x01\x1a[\n" +
 	"\x17listener_protocol_valid\x12\x1fprotocol must be 'TCP' or 'UDP'\x1a\x1fthis.protocol in ['TCP', 'UDP']\x1a\x93\x01\n" +
-	"\x15client_affinity_valid\x12-client_affinity must be 'NONE' or 'SOURCE_IP'\x1aK!has(this.client_affinity) || this.client_affinity in ['NONE', 'SOURCE_IP']\x1ac\n" +
-	"\x12port_ranges_max_10\x12/a listener supports a maximum of 10 port ranges\x1a\x1csize(this.port_ranges) <= 10B\x12\n" +
-	"\x10_client_affinity\"u\n" +
+	"\x15client_affinity_valid\x12-client_affinity must be 'NONE' or 'SOURCE_IP'\x1aK!has(this.client_affinity) || this.client_affinity in ['NONE', 'SOURCE_IP']B\x12\n" +
+	"\x10_client_affinity\"\xe2\x01\n" +
 	"\x1dAwsGlobalAcceleratorPortRange\x12+\n" +
 	"\tfrom_port\x18\x01 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x01R\bfromPort\x12'\n" +
-	"\ato_port\x18\x02 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x01R\x06toPort\"\xec\x0e\n" +
+	"\ato_port\x18\x02 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x01R\x06toPort:k\xbaHh\x1af\n" +
+	"\x10port_range_order\x122to_port must be greater than or equal to from_port\x1a\x1ethis.to_port >= this.from_port\"\xfc\v\n" +
 	"!AwsGlobalAcceleratorEndpointGroup\x12\xd5\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xc0\x01\xbaH\xbc\x01\xba\x01\xb5\x01\n" +
 	"\x1aendpoint_group_name_format\x12oname must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens (max 63 chars)\x1a&this.matches('^[a-z][a-z0-9-]{0,62}$')\xc8\x01\x01R\x04name\x122\n" +
-	"\x15endpoint_group_region\x18\x02 \x01(\tR\x13endpointGroupRegion\x127\n" +
-	"\x11health_check_port\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x0fhealthCheckPort\x12@\n" +
-	"\x15health_check_protocol\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x03TCPH\x00R\x13healthCheckProtocol\x88\x01\x01\x12*\n" +
-	"\x11health_check_path\x18\x05 \x01(\tR\x0fhealthCheckPath\x12N\n" +
-	"\x1dhealth_check_interval_seconds\x18\x06 \x01(\x05B\x06\x8a\xa6\x1d\x0230H\x01R\x1ahealthCheckIntervalSeconds\x88\x01\x01\x12<\n" +
+	"\x15endpoint_group_region\x18\x02 \x01(\tR\x13endpointGroupRegion\x12<\n" +
+	"\x11health_check_port\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x00R\x0fhealthCheckPort\x88\x01\x01\x12@\n" +
+	"\x15health_check_protocol\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x03TCPH\x01R\x13healthCheckProtocol\x88\x01\x01\x124\n" +
+	"\x11health_check_path\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\x0fhealthCheckPath\x12W\n" +
+	"\x1dhealth_check_interval_seconds\x18\x06 \x01(\x05B\x0f\xbaH\x06\x1a\x040\n" +
+	"0\x1e\x8a\xa6\x1d\x0230H\x02R\x1ahealthCheckIntervalSeconds\x88\x01\x01\x12<\n" +
 	"\x0fthreshold_count\x18\a \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\n" +
-	"(\x00\x8a\xa6\x1d\x013H\x02R\x0ethresholdCount\x88\x01\x01\x12A\n" +
-	"\x17traffic_dial_percentage\x18\b \x01(\x01B\t\x92\xa6\x1d\x05100.0R\x15trafficDialPercentage\x12l\n" +
-	"\tendpoints\x18\t \x03(\v2N.dev.planton.provider.aws.awsglobalaccelerator.v1.AwsGlobalAcceleratorEndpointR\tendpoints\x12y\n" +
+	"(\x01\x8a\xa6\x1d\x013H\x03R\x0ethresholdCount\x88\x01\x01\x12]\n" +
+	"\x17traffic_dial_percentage\x18\b \x01(\x01B \xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00Y@)\x00\x00\x00\x00\x00\x00\x00\x00\x92\xa6\x1d\x05100.0H\x04R\x15trafficDialPercentage\x88\x01\x01\x12l\n" +
+	"\tendpoints\x18\t \x03(\v2N.dev.planton.provider.aws.awsglobalaccelerator.v1.AwsGlobalAcceleratorEndpointR\tendpoints\x12\x83\x01\n" +
 	"\x0eport_overrides\x18\n" +
-	" \x03(\v2R.dev.planton.provider.aws.awsglobalaccelerator.v1.AwsGlobalAcceleratorPortOverrideR\rportOverrides:\x89\a\xbaH\x85\a\x1a\xb2\x01\n" +
-	"\x1bhealth_check_protocol_valid\x127health_check_protocol must be 'TCP', 'HTTP', or 'HTTPS'\x1aZ!has(this.health_check_protocol) || this.health_check_protocol in ['TCP', 'HTTP', 'HTTPS']\x1a\xc2\x01\n" +
-	"\x1bhealth_check_interval_valid\x12Ghealth_check_interval_seconds must be exactly 10 or 30 (AWS constraint)\x1aZ!has(this.health_check_interval_seconds) || this.health_check_interval_seconds in [10, 30]\x1a\xec\x01\n" +
-	"#health_check_path_required_for_http\x12Mhealth_check_path is required when health_check_protocol is 'HTTP' or 'HTTPS'\x1av!has(this.health_check_protocol) || !(this.health_check_protocol in ['HTTP', 'HTTPS']) || this.health_check_path != ''\x1a\xa4\x01\n" +
-	"\x1dtraffic_dial_percentage_range\x125traffic_dial_percentage must be between 0.0 and 100.0\x1aLthis.traffic_dial_percentage >= 0.0 && this.traffic_dial_percentage <= 100.0\x1as\n" +
-	"\x15port_overrides_max_10\x129an endpoint group supports a maximum of 10 port overrides\x1a\x1fsize(this.port_overrides) <= 10B\x18\n" +
+	" \x03(\v2R.dev.planton.provider.aws.awsglobalaccelerator.v1.AwsGlobalAcceleratorPortOverrideB\b\xbaH\x05\x92\x01\x02\x10\n" +
+	"R\rportOverrides:\xa8\x03\xbaH\xa4\x03\x1a\xb2\x01\n" +
+	"\x1bhealth_check_protocol_valid\x127health_check_protocol must be 'TCP', 'HTTP', or 'HTTPS'\x1aZ!has(this.health_check_protocol) || this.health_check_protocol in ['TCP', 'HTTP', 'HTTPS']\x1a\xec\x01\n" +
+	"#health_check_path_required_for_http\x12Mhealth_check_path is required when health_check_protocol is 'HTTP' or 'HTTPS'\x1av!has(this.health_check_protocol) || !(this.health_check_protocol in ['HTTP', 'HTTPS']) || this.health_check_path != ''B\x14\n" +
+	"\x12_health_check_portB\x18\n" +
 	"\x16_health_check_protocolB \n" +
 	"\x1e_health_check_interval_secondsB\x12\n" +
-	"\x10_threshold_count\"\xe4\x01\n" +
+	"\x10_threshold_countB\x1a\n" +
+	"\x18_traffic_dial_percentage\"\xd3\x03\n" +
 	"\x1cAwsGlobalAcceleratorEndpoint\x12[\n" +
 	"\vendpoint_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"endpointId\x12\"\n" +
+	"endpointId\x12'\n" +
 	"\x06weight\x18\x02 \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xff\x01(\x00R\x06weight\x12C\n" +
-	"\x1eclient_ip_preservation_enabled\x18\x03 \x01(\bR\x1bclientIpPreservationEnabled\"\x8c\x01\n" +
+	"\xbaH\a\x1a\x05\x18\xff\x01(\x00H\x00R\x06weight\x88\x01\x01\x12H\n" +
+	"\x1eclient_ip_preservation_enabled\x18\x03 \x01(\bH\x01R\x1bclientIpPreservationEnabled\x88\x01\x01\x12\xb4\x01\n" +
+	"\x0eattachment_arn\x18\x04 \x01(\tB\x8c\x01\xbaH\x88\x01\xba\x01\x84\x01\n" +
+	"\x15attachment_arn_format\x12Dattachment_arn must be a Global Accelerator attachment ARN (arn:...)\x1a%this == '' || this.startsWith('arn:')R\rattachmentArnB\t\n" +
+	"\a_weightB!\n" +
+	"\x1f_client_ip_preservation_enabled\"\x8c\x01\n" +
 	" AwsGlobalAcceleratorPortOverride\x123\n" +
 	"\rlistener_port\x18\x01 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x01R\flistenerPort\x123\n" +
 	"\rendpoint_port\x18\x02 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x01R\fendpointPortB\x93\x03\n" +
@@ -812,6 +877,7 @@ func file_dev_planton_provider_aws_awsglobalaccelerator_v1_spec_proto_init() {
 	file_dev_planton_provider_aws_awsglobalaccelerator_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_dev_planton_provider_aws_awsglobalaccelerator_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	file_dev_planton_provider_aws_awsglobalaccelerator_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_dev_planton_provider_aws_awsglobalaccelerator_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

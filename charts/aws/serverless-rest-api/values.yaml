@@ -1,0 +1,180 @@
+params:
+  # ── Placement ───────────────────────────────────────────────────────────
+  - name: aws_region
+    description: >
+      AWS region for every resource in this chart. HTTP APIs, Lambda
+      functions, and DynamoDB tables are all regional — the whole stack
+      lives together, and the function's code bucket must be in this
+      region too (Lambda only pulls zip artifacts from same-region S3).
+    value: us-east-1
+
+  - name: aws_account_id
+    description: >
+      The 12-digit AWS account id the API deploys into. Used in two
+      places that cannot take references: the invoke permission that
+      lets API Gateway call the function (scoped so only THIS account's
+      APIs can invoke it — without it any API Gateway in any account
+      that learns the function name could call your code), and the
+      execution role's DynamoDB policy (scoped so the function can only
+      touch this chart's own table).
+    value: "123456789012"
+
+  # ── Identity ────────────────────────────────────────────────────────────
+  - name: api_name
+    description: >
+      Name prefix for every resource this chart creates (API, function,
+      table, role, alarms). Lets several independent APIs share an
+      environment without name collisions. Lowercase letters, digits,
+      and hyphens.
+    value: rest-api
+
+  # ── Function code (bring your own artifact) ─────────────────────────────
+  - name: lambda_code_bucket
+    description: >
+      S3 bucket holding the function's deployment zip. Must be in
+      aws_region. Only used when container_image_enabled is false.
+      Upload a new zip, bump lambda_code_key (or republish the same
+      key), and redeploy to roll the function.
+    value: my-lambda-artifacts
+
+  - name: lambda_code_key
+    description: >
+      Object key of the deployment zip inside lambda_code_bucket. Only
+      used when container_image_enabled is false. Versioned keys
+      (api/v1.2.3.zip) make rollbacks a one-line change.
+    value: api/function.zip
+
+  - name: lambda_runtime
+    description: >
+      Lambda runtime for the zip artifact (e.g. python3.12, nodejs20.x,
+      java21). Only used when container_image_enabled is false —
+      container images carry their own runtime.
+    value: python3.12
+
+  - name: lambda_handler
+    description: >
+      The function entry point inside the zip, in the runtime's handler
+      format (Python "module.function", Node "file.export"). Only used
+      when container_image_enabled is false.
+    value: app.handler
+
+  - name: container_image_enabled
+    type: bool
+    description: >
+      Package the function as a container image instead of an S3 zip.
+      When on, container_image_uri replaces the bucket/key/runtime/
+      handler quartet entirely (Lambda forbids mixing the two shapes).
+      Images allow up to 10 GB of dependencies; zips cap at 250 MB
+      unpacked.
+    value: false
+
+  - name: container_image_uri
+    description: >
+      ECR image URI (with tag or digest) the function runs. Only used
+      when container_image_enabled is true. Must be a private ECR
+      repository in this account and region — Lambda cannot pull from
+      Docker Hub or public ECR.
+    value: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-api:latest
+
+  # ── Sizing (the cost dials) ─────────────────────────────────────────────
+  - name: lambda_memory_mb
+    type: number
+    description: >
+      Memory per invocation in MB (128–10240). CPU scales linearly with
+      memory, so this is also the performance dial — a CPU-bound handler
+      often gets CHEAPER at higher memory because it finishes faster.
+      256 MB suits typical CRUD handlers; profile before going lower.
+    value: 256
+
+  - name: lambda_timeout_seconds
+    type: number
+    description: >
+      Max seconds one invocation may run before Lambda kills it. Capped
+      at 29 here by the front door, not by Lambda: API Gateway times out
+      HTTP requests at 30 seconds no matter what the function is allowed
+      — a longer function timeout would just burn compute after the
+      caller has already received a 504.
+    value: 29
+
+  # ── Data model ──────────────────────────────────────────────────────────
+  - name: table_partition_key
+    description: >
+      The DynamoDB table's partition (HASH) key attribute name. With the
+      sort key this forms the primary key — both are create-time
+      immutable (changing them replaces the table). The generic "pk"
+      supports single-table design, where entity types share the table
+      via key prefixes (USER#123, ORDER#456).
+    value: pk
+
+  - name: sort_key_enabled
+    type: bool
+    description: >
+      Add a sort (RANGE) key so each partition holds an ordered item
+      collection — the shape behind one-to-many lookups and single-table
+      design. On is the right call for almost every API; a pure
+      key-value lookup table is the only shape that turns it off.
+      Create-time immutable.
+    value: true
+
+  - name: table_sort_key
+    description: >
+      The sort (RANGE) key attribute name. Only used when
+      sort_key_enabled is true.
+    value: sk
+
+  - name: table_deletion_protection
+    type: bool
+    description: >
+      Refuse to delete the table while enabled — the guard between a
+      mistaken teardown and losing production data. Flip to false (an
+      in-place update) before a genuine decommission; the API and
+      function tear down freely either way.
+    value: true
+
+  # ── Authentication ──────────────────────────────────────────────────────
+  - name: auth_enabled
+    type: bool
+    description: >
+      Put Cognito JWT authentication in front of every route: a user
+      pool (email sign-in, strong password policy), an app client for
+      your frontend, and a JWT authorizer that rejects requests without
+      a valid token before they ever reach (and bill) the function. Off
+      ships a public API — fine for bootstrapping and internal tools;
+      flip it on before real users arrive.
+    value: false
+
+  # ── CORS ────────────────────────────────────────────────────────────────
+  - name: cors_enabled
+    type: bool
+    description: >
+      Return CORS headers so browsers allow cross-origin calls from the
+      origins below. Needed the moment a browser app on another domain
+      calls this API; server-to-server callers never need it.
+    value: false
+
+  - name: cors_allowed_origins
+    type: list
+    description: >
+      Origins allowed to call the API from a browser (scheme + host,
+      e.g. https://app.example.com). Only used when cors_enabled is
+      true. List your real frontend origins — "*" works but forfeits
+      credentialed requests and the protection of an origin allowlist.
+    value:
+      - https://app.example.com
+
+  # ── Alerting ────────────────────────────────────────────────────────────
+  - name: alarms_enabled
+    type: bool
+    description: >
+      The pager wire: CloudWatch alarms on function errors and
+      throttles, notifying an SNS topic with an email subscription.
+      AWS emails a confirmation link on first deploy — click it or no
+      alert ever arrives.
+    value: true
+
+  - name: alert_email
+    description: >
+      Where alarm notifications go. Only used when alarms_enabled is
+      true. Prefer a team list or paging bridge over an individual
+      inbox.
+    value: ops@example.com

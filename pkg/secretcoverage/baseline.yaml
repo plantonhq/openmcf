@@ -35,8 +35,6 @@
 # ─────────────────────────────────────────────────────────────────────────────
 gaps:
   # (C) service env-var secret maps
-  - AwsAppRunnerService:spec.environment_secrets
-  - AwsEcsService:spec.container.env.secrets
   - DigitalOceanFunction:spec.secret_environment_variables
   # (D) secret-holder kinds
   - KubernetesSecret:spec.basic_auth.password

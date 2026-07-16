@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureeventhubnamespace
+spec:
+  # The scenario deploys the fixture resource group (registry
+  # prerequisite), creates a STANDARD namespace with auto-inflate, a DENY
+  # firewall admitting one IP range, and user tags, verifies it via the
+  # ARM API, destroys it, and verifies it is gone. Standard namespaces
+  # provision in ~1-2 minutes. PREMIUM-gated seams (processing units,
+  # dedicated-cluster placement) are covered by the offline gate (spec
+  # CELs + full tofu plan renders + parity audit).
+  #
+  # Namespace names are globally unique with a post-delete hold --
+  # scenarios carry distinct names, never reused across sequential runs.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

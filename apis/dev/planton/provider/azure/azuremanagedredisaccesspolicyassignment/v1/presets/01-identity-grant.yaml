@@ -1,0 +1,17 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureManagedRedisAccessPolicyAssignment
+metadata:
+  name: my-app-cache-grant
+spec:
+  managedRedisId:
+    valueFrom:
+      kind: AzureManagedRedis
+      name: <managed-redis-resource-name>
+      fieldPath: status.outputs.managed_redis_id
+  # The workload's managed identity, by its PRINCIPAL id (never the
+  # client id -- granting the client id fails at connect time).
+  objectId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: <identity-resource-name>
+      fieldPath: status.outputs.principal_id

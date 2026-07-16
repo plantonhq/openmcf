@@ -8,15 +8,15 @@ componentName: "awsrediselasticache"
 
 # AWS Redis ElastiCache
 
-Deploys an AWS ElastiCache replication group running Redis or Valkey, supporting both non-clustered mode (single primary with up to 5 read replicas) and clustered mode (data partitioned across multiple shards with optional replicas per shard). The component manages an optional subnet group, an optional custom parameter group, encryption, authentication, logging, and snapshot configuration.
+Deploys an AWS ElastiCache replication group running Redis or Valkey, supporting both non-clustered mode (single primary with up to 5 read replicas) and clustered mode (data partitioned across multiple shards with optional replicas per shard). The AWS identifier is `metadata.name`. The component manages optional or bring-your-own subnet and parameter groups, encryption, authentication, restore sources, logging, and snapshot configuration.
 
 ## What Gets Created
 
 When you deploy an AwsRedisElasticache resource, Planton provisions:
 
-- **ElastiCache Replication Group** — an `aws_elasticache_replication_group` running Redis or Valkey with the specified topology, node type, and engine version
-- **Subnet Group** — created only when `subnetIds` are provided, places cluster nodes in the specified VPC subnets
-- **Custom Parameter Group** — created only when `parameters` and `parameterGroupFamily` are provided, applies engine parameter overrides (e.g., `maxmemory-policy`, `timeout`)
+- **ElastiCache Replication Group** — an `aws_elasticache_replication_group` running Redis or Valkey with the specified topology, node type, and engine version. Named from `metadata.name`.
+- **Subnet Group** — created when `subnetIds` are provided, or attach an existing group via `subnetGroupName`
+- **Custom Parameter Group** — created when `parameters` and `parameterGroupFamily` are provided, or attach an existing group via `parameterGroupName`
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRedisElasticache
 metadata:
   name: my-redis
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -69,40 +69,51 @@ This creates a single-node Redis 7.1 cluster (non-clustered mode) in the specifi
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `region` | `string` | AWS region where the ElastiCache cluster will be created. Example: `us-west-2`, `eu-west-1`. | Required |
-| `engine` | `string` | Cache engine. Values: `redis`, `valkey`. | Must be `redis` or `valkey` |
+| `engine` | `string` | Cache engine. Values: `redis`, `valkey`. Leave empty when joining a global datastore. | Required unless `globalReplicationGroupId` is set |
 | `description` | `string` | Human-readable description for the replication group. | Required by AWS |
-| `nodeType` | `string` | ElastiCache node type determining CPU, memory, and network capacity. Examples: `cache.t3.micro`, `cache.r7g.large`, `cache.r6gd.xlarge`. | Required |
+| `nodeType` | `string` | ElastiCache node type determining CPU, memory, and network capacity. Examples: `cache.t3.micro`, `cache.r7g.large`, `cache.r6gd.xlarge`. | Required unless `globalReplicationGroupId` is set |
 | `numCacheClusters` | `int` | Total node count (primary + replicas) for non-clustered mode. Mutually exclusive with `numNodeGroups`. | 1–6 when set |
-| `numNodeGroups` | `int` | Shard count for clustered mode. Mutually exclusive with `numCacheClusters`. | Must be > 0 when set |
+| `numNodeGroups` | `int` | Shard count for clustered mode. Mutually exclusive with `numCacheClusters`. Forbidden when joining a global datastore. | Must be > 0 when set |
 
-Exactly one of `numCacheClusters` or `numNodeGroups` must be provided to select the topology mode.
+Exactly one of `numCacheClusters` or `numNodeGroups` must be provided to select the topology mode — except a global-datastore secondary, where topology is inherited.
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `engineVersion` | `string` | Provider default | Engine version. Examples: `7.1`, `7.0`, `6.2` for Redis; `7.2` for Valkey. |
+| `engineVersion` | `string` | Provider default | Engine version. Examples: `7.1`, `7.0`, `6.2` for Redis; `7.2`, `8.0` for Valkey. Leave empty when joining a global datastore. |
 | `port` | `int` | `6379` | Port for client connections. **ForceNew** — changing this destroys and recreates the cluster. Range: 1–65535. |
+| `preferredCacheClusterAzs` | `string[]` | `[]` | AZ placement per cache cluster (non-clustered). Length must match `numCacheClusters`. Mutually exclusive with `nodeGroupConfigurations`. |
 | `replicasPerNodeGroup` | `int` | `0` | Read replicas per shard. Only valid when `numNodeGroups` is set. Range: 0–5. |
+| `nodeGroupConfigurations` | `object[]` | `[]` | Per-shard AZ placement, replica count, and slot assignment. Requires clustered mode. |
+| `durability` | `string` | — | Write-acknowledgement mode: `default`, `async`, `sync`, `disabled`. Valkey 9.0+ clustered only. **ForceNew**. |
+| `globalReplicationGroupId` | `string` | — | Join an existing global replication group as secondary. **ForceNew**. |
 | `automaticFailoverEnabled` | `bool` | `false` | Promote a replica to primary on failure. Requires `numCacheClusters >= 2` or clustered mode. |
 | `multiAzEnabled` | `bool` | `false` | Spread replicas across Availability Zones. Requires `automaticFailoverEnabled` to be `true`. |
-| `subnetIds` | `StringValueOrRef[]` | `[]` | Subnet IDs for the ElastiCache subnet group. Provide subnets in ≥ 2 AZs for multi-AZ. Can reference `AwsVpc` via `valueFrom`. |
+| `subnetIds` | `StringValueOrRef[]` | `[]` | Subnet IDs for the ElastiCache subnet group. Mutually exclusive with `subnetGroupName`. |
+| `subnetGroupName` | `string` | — | Existing ElastiCache subnet group (bring-your-own). **ForceNew**. |
 | `securityGroupIds` | `StringValueOrRef[]` | `[]` | VPC security groups attached to cluster nodes. Can reference `AwsSecurityGroup` via `valueFrom`. |
+| `networkType` | `string` | `ipv4` | IP addressing: `ipv4`, `ipv6`, `dual_stack`. **ForceNew**. |
+| `ipDiscovery` | `string` | — | DNS discovery address family: `ipv4` or `ipv6`. Meaningful with dual-stack. |
 | `atRestEncryptionEnabled` | `bool` | `false` | Encrypt data on disk and in snapshots. **ForceNew** — changing this destroys and recreates the cluster. Recommended: `true`. |
 | `transitEncryptionEnabled` | `bool` | `false` | Encrypt all client and replication traffic with TLS. Recommended: `true`. |
 | `transitEncryptionMode` | `string` | — | TLS enforcement mode. Values: `preferred` (allows non-TLS), `required` (TLS only). Requires `transitEncryptionEnabled`. |
 | `kmsKeyId` | `StringValueOrRef` | — | Customer-managed KMS key ARN for at-rest encryption. **ForceNew**. Can reference `AwsKmsKey` via `valueFrom`. |
 | `authToken` | `StringValueOrRef` | — | Redis AUTH password (16–128 printable chars). Requires `transitEncryptionEnabled`. Mutually exclusive with `userGroupIds`. |
-| `userGroupIds` | `string[]` | `[]` | Redis ACL user group IDs for fine-grained access control. Mutually exclusive with `authToken`. |
+| `authTokenUpdateStrategy` | `string` | — | Token change rollout: `ROTATE`, `SET`, or `DELETE`. Requires `authToken`. |
+| `userGroupIds` | `StringValueOrRef[]` | `[]` | Redis ACL user groups via `AwsElasticacheUserGroup`. Mutually exclusive with `authToken`. |
+| `snapshotArns` | `string[]` | `[]` | S3 ARNs of RDB files to seed from. Mutually exclusive with `snapshotName`. **ForceNew**, create-time only. |
+| `snapshotName` | `string` | — | Existing ElastiCache snapshot to restore from. Mutually exclusive with `snapshotArns`. **ForceNew**, create-time only. |
 | `maintenanceWindow` | `string` | AWS default | Weekly maintenance window in UTC. Format: `ddd:hh24:mi-ddd:hh24:mi`. Example: `sun:05:00-sun:06:00`. |
 | `snapshotRetentionLimit` | `int` | `0` | Days to retain automatic snapshots. `0` disables snapshots. Range: 0–35. |
 | `snapshotWindow` | `string` | AWS default | Daily snapshot window in UTC. Format: `hh24:mi-hh24:mi`. Example: `03:00-04:00`. |
 | `finalSnapshotIdentifier` | `string` | — | Name for the final snapshot taken on deletion. If omitted, no final snapshot is created. |
 | `applyImmediately` | `bool` | `false` | Apply changes immediately instead of during the next maintenance window. May cause brief downtime. |
 | `parameterGroupFamily` | `string` | — | Parameter group family. Required when `parameters` is provided. Examples: `redis7`, `redis6.x`, `valkey7`. |
-| `parameters` | `object[]` | `[]` | Custom cache parameters applied via a managed parameter group. |
+| `parameters` | `object[]` | `[]` | Custom cache parameters applied via a managed parameter group. Mutually exclusive with `parameterGroupName`. |
 | `parameters[].name` | `string` | — | Parameter name (e.g., `maxmemory-policy`, `timeout`). Required. |
 | `parameters[].value` | `string` | — | Parameter value (e.g., `volatile-lru`, `300`). Required. |
+| `parameterGroupName` | `string` | — | Existing parameter group (bring-your-own). Cluster mode requires `.cluster.on` family. |
 | `logDeliveryConfigurations` | `object[]` | `[]` | Log delivery configs. At most 2 entries — one per log type. |
 | `logDeliveryConfigurations[].destinationType` | `string` | — | Destination type. Values: `cloudwatch-logs`, `kinesis-firehose`. Required. |
 | `logDeliveryConfigurations[].destination` | `StringValueOrRef` | — | Destination identifier (log group name or delivery stream name). Required. |
@@ -111,6 +122,7 @@ Exactly one of `numCacheClusters` or `numNodeGroups` must be provided to select 
 | `notificationTopicArn` | `StringValueOrRef` | — | SNS topic ARN for cluster event notifications. Can reference `AwsSnsTopic` via `valueFrom`. |
 | `autoMinorVersionUpgrade` | `bool` | `false` | Automatically apply minor engine version upgrades during maintenance windows. |
 | `dataTieringEnabled` | `bool` | `false` | Move less-frequently-accessed data to SSD. Only on `r6gd` node types. **ForceNew**. |
+| `clusterMode` | `string` | — | Migration setting: `enabled`, `compatible`, `disabled`. Online path from non-clustered to clustered. |
 
 ## Examples
 
@@ -123,7 +135,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRedisElasticache
 metadata:
   name: session-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -160,7 +172,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRedisElasticache
 metadata:
   name: analytics-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -206,7 +218,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRedisElasticache
 metadata:
   name: tiered-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -273,3 +285,5 @@ After deployment, the following outputs are available in `status.outputs`:
 - [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls network-level access to the Redis/Valkey endpoint
 - [AwsKmsKey](/docs/catalog/aws/kms-key) — provides a customer-managed key for at-rest encryption
 - [AwsSnsTopic](/docs/catalog/aws/sns-topic) — receives cluster event notifications
+- [AwsElasticacheUser](/docs/catalog/aws/elasticache-user) — RBAC identity referenced via user groups
+- [AwsElasticacheUserGroup](/docs/catalog/aws/elasticache-user-group) — collects users; referenced in `userGroupIds`

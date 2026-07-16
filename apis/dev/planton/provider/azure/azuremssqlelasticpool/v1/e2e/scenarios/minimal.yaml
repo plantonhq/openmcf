@@ -1,0 +1,42 @@
+# Minimal AzureMssqlElasticPool scenario: the cheapest DTU pool on the
+# fixture logical server.
+#
+# The server reference resolves against the registry prerequisite's
+# captured outputs through the field's default kind (fixture RG ->
+# fixture server -> this pool). BasicPool at 50 eDTUs is the cheapest
+# pool ARM accepts; the per-database bounds prove the required
+# per_database_settings block, and max 5 is the Basic per-database
+# ceiling. The pool name is distinct from the pool fixture's so this
+# smoke run and a pooled-database run can coexist.
+apiVersion: azure.planton.dev/v1
+kind: AzureMssqlElasticPool
+metadata:
+  name: planton-oss-e2e-azmssqlpool-smoke
+  id: planton-oss-e2e-azmssqlpool-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremssqlelasticpool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  serverId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sql
+  region: westus3
+  poolName: planton-oss-e2e-pool-smoke
+  skuName: BasicPool
+  capacity: 50
+  # BasicPool's ARM ladder requires the explicit pool cap: 50 eDTUs ->
+  # 4.8828125 GB (5000 MB). The Pulumi provider validates this client-side
+  # and treats unset as 0, so DTU pools always set it explicitly.
+  maxSizeGb: 4.8828125
+  perDatabaseSettings:
+    minCapacity: 0
+    maxCapacity: 5
+  tags:
+    e2e-suite: azure
+    purpose: smoke

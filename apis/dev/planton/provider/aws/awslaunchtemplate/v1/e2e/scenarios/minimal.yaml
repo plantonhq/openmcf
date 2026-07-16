@@ -1,0 +1,38 @@
+# Minimal AwsLaunchTemplate scenario: an AMI + instance-type blueprint with
+# the hardened IMDSv2 posture and a gp3 root volume -- the shape every
+# ASG-backed fleet starts from. The template is self-contained (no
+# prerequisites) and never launches an instance.
+#
+# The AMI is a pinned Amazon Linux 2023 image for us-west-2 (resolved from
+# the public SSM parameter al2023-ami-kernel-default-x86_64); if it ever
+# deregisters, only this pin needs a bump. Full metadata is supplied for
+# tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsLaunchTemplate
+metadata:
+  name: planton-oss-e2e-lt-smoke
+  id: planton-oss-e2e-lt-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awslaunchtemplate
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  imageId: ami-0b0b27dd5c039480f
+  instanceType: t3.micro
+  detailedMonitoring: true
+  metadataOptions:
+    httpEndpoint: enabled
+    httpTokens: required
+    httpPutResponseHopLimit: 2
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSizeGb: 30
+        volumeType: gp3
+        encrypted: true

@@ -24,31 +24,113 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsAlbSpec captures the essential fields to create an Application Load Balancer on AWS.
+// AwsAlbSpec defines an Application Load Balancer: the Layer-7 entry point
+// that terminates HTTP/HTTPS and hands requests to the routing graph.
+//
+// The load balancer itself carries no routing configuration -- that is
+// deliberate. Listeners (AwsLbListener) attach to it and own ports, TLS
+// material, and default actions; listener rules (AwsLbListenerRule) attach to
+// listeners and own per-service routing; target groups (AwsLbTargetGroup)
+// receive the traffic. This spec owns only what is truly load-balancer-wide:
+// placement (subnets, scheme), security groups, and the HTTP behavior knobs
+// AWS models as load balancer attributes.
+//
+// The ALB name comes from metadata.name. AWS limits the name to 32
+// characters; both IaC modules truncate longer names deterministically.
+// Name, scheme (internal), and subnets-vs-AZ coverage aside, most attributes
+// update in place; changing "internal" replaces the load balancer.
 type AwsAlbSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The AWS region where the ALB will be created.
-	// Example: "us-west-2", "eu-west-1"
+	// The AWS region where the ALB is created.
+	// Example: "us-west-2", "eu-west-1".
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// list of subnet IDs in which to create the ALB. AWS requires at least two subnets
-	// for ALBs, which also ensures high availability across multiple Availability Zones.
-	// Typically use private subnets for internal ALBs or public subnets for internet-facing ALBs.
+	// The subnets the ALB places its nodes in -- at least two, in different
+	// Availability Zones (an AWS requirement that also buys zonal redundancy).
+	// Public subnets for internet-facing ALBs, private for internal ones.
 	Subnets []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=subnets,proto3" json:"subnets,omitempty"`
-	// list of security group IDs to attach to the ALB.
+	// Security groups controlling traffic to and from the ALB. When omitted,
+	// AWS attaches the VPC's default security group -- fine for a first boot,
+	// wrong for production; attach explicit groups that open exactly the
+	// listener ports.
 	SecurityGroups []*v1.StringValueOrRef `protobuf:"bytes,3,rep,name=security_groups,json=securityGroups,proto3" json:"security_groups,omitempty"`
-	// indicates whether the ALB is internal or internet-facing.
-	// If true, the ALB is internal; if false (or not set), it is internet-facing.
+	// When true, the ALB is internal (reachable only inside the VPC); when
+	// false (default), it is internet-facing with public DNS. Immutable:
+	// changing the scheme replaces the load balancer.
 	Internal bool `protobuf:"varint,4,opt,name=internal,proto3" json:"internal,omitempty"`
-	// indicates whether the ALB should have deletion protection enabled.
-	// This prevents accidental deletion.
-	DeleteProtectionEnabled bool `protobuf:"varint,5,opt,name=delete_protection_enabled,json=deleteProtectionEnabled,proto3" json:"delete_protection_enabled,omitempty"`
-	// sets the idle timeout in seconds for connections to the ALB.
-	// If omitted, AWS default is 60 seconds.
-	IdleTimeoutSeconds int32 `protobuf:"varint,6,opt,name=idle_timeout_seconds,json=idleTimeoutSeconds,proto3" json:"idle_timeout_seconds,omitempty"`
-	// dns configuration allows the resource to manage Route53 DNS if enabled.
-	Dns *AwsAlbDns `protobuf:"bytes,7,opt,name=dns,proto3" json:"dns,omitempty"`
-	// ssl configuration allows a single toggle for SSL, plus a certificate ARN if enabled.
-	Ssl           *AwsAlbSsl `protobuf:"bytes,8,opt,name=ssl,proto3" json:"ssl,omitempty"`
+	// The address family of the ALB's nodes. Valid values: "ipv4" (default),
+	// "dualstack" (IPv4 + IPv6), "dualstack-without-public-ipv4" (public IPv6
+	// with private IPv4 -- avoids public-IPv4 charges for IPv6-capable
+	// clients).
+	IpAddressType string `protobuf:"bytes,5,opt,name=ip_address_type,json=ipAddressType,proto3" json:"ip_address_type,omitempty"`
+	// Prevents deletion of the ALB while enabled. Recommended for production:
+	// deleting an ALB silently orphans every listener and rule attached to it.
+	DeleteProtectionEnabled bool `protobuf:"varint,6,opt,name=delete_protection_enabled,json=deleteProtectionEnabled,proto3" json:"delete_protection_enabled,omitempty"`
+	// Seconds an idle connection stays open. Range 1-4000. AWS default: 60.
+	// Raise it above the application's slowest response time to avoid 504s on
+	// long-running requests; keep it above any upstream keep-alive interval.
+	IdleTimeoutSeconds int32 `protobuf:"varint,7,opt,name=idle_timeout_seconds,json=idleTimeoutSeconds,proto3" json:"idle_timeout_seconds,omitempty"`
+	// Seconds an HTTP client connection may stay alive across requests.
+	// Range 60-604800. AWS default: 3600.
+	ClientKeepAliveSeconds int32 `protobuf:"varint,8,opt,name=client_keep_alive_seconds,json=clientKeepAliveSeconds,proto3" json:"client_keep_alive_seconds,omitempty"`
+	// Whether HTTP/2 is offered to clients. AWS default: true. Optional rather
+	// than plain bool so that false ("disable HTTP/2") is distinguishable from
+	// unset ("keep the AWS default").
+	Http2Enabled *bool `protobuf:"varint,9,opt,name=http2_enabled,json=http2Enabled,proto3,oneof" json:"http2_enabled,omitempty"`
+	// What happens to requests when an attached WAF is unreachable: when true,
+	// requests pass through ("fail open"); when false (AWS default), they are
+	// rejected ("fail closed"). A deliberate availability-versus-security call.
+	// Only meaningful when web_acl_arn attaches a WAF to this ALB.
+	WafFailOpenEnabled bool `protobuf:"varint,10,opt,name=waf_fail_open_enabled,json=wafFailOpenEnabled,proto3" json:"waf_fail_open_enabled,omitempty"`
+	// The REGIONAL-scope WAFv2 web ACL protecting this ALB, by ARN — the
+	// modules create the web-ACL association alongside the load balancer.
+	// An ALB has at most one web ACL; leave unset for no WAF. The web ACL
+	// must live in the same region as the ALB. Can reference an
+	// AwsWafWebAcl resource.
+	WebAclArn *v1.StringValueOrRef `protobuf:"bytes,22,opt,name=web_acl_arn,json=webAclArn,proto3" json:"web_acl_arn,omitempty"`
+	// Allows Amazon Application Recovery Controller to shift this ALB's
+	// traffic away from an impaired Availability Zone.
+	ZonalShiftEnabled bool `protobuf:"varint,11,opt,name=zonal_shift_enabled,json=zonalShiftEnabled,proto3" json:"zonal_shift_enabled,omitempty"`
+	// Drop request headers with names that are not valid HTTP header fields
+	// instead of forwarding them. Hardens against header-smuggling tricks;
+	// AWS default: false.
+	DropInvalidHeaderFields bool `protobuf:"varint,12,opt,name=drop_invalid_header_fields,json=dropInvalidHeaderFields,proto3" json:"drop_invalid_header_fields,omitempty"`
+	// Forward the client's original Host header to the target unchanged
+	// instead of rewriting it to the target address. AWS default: false.
+	PreserveHostHeader bool `protobuf:"varint,13,opt,name=preserve_host_header,json=preserveHostHeader,proto3" json:"preserve_host_header,omitempty"`
+	// Append the client's source port to the X-Forwarded-For header. AWS
+	// default: false.
+	XffClientPortEnabled bool `protobuf:"varint,14,opt,name=xff_client_port_enabled,json=xffClientPortEnabled,proto3" json:"xff_client_port_enabled,omitempty"`
+	// How the ALB handles the X-Forwarded-For header. Valid values: "append"
+	// (AWS default -- add the client IP), "preserve" (pass it through
+	// untouched), "remove" (strip it). "preserve"/"remove" matter when the ALB
+	// sits behind another proxy layer whose XFF chain must win.
+	XffHeaderProcessingMode string `protobuf:"bytes,15,opt,name=xff_header_processing_mode,json=xffHeaderProcessingMode,proto3" json:"xff_header_processing_mode,omitempty"`
+	// Protection level against HTTP desync (request-smuggling) attacks.
+	// Valid values: "monitor" (classify only), "defensive" (AWS default --
+	// block ambiguous requests likely to poison caches), "strictest" (block
+	// everything not RFC 7230 compliant).
+	DesyncMitigationMode string `protobuf:"bytes,16,opt,name=desync_mitigation_mode,json=desyncMitigationMode,proto3" json:"desync_mitigation_mode,omitempty"`
+	// Inject the negotiated TLS version and cipher suite as request headers
+	// (x-amzn-tls-version, x-amzn-tls-cipher-suite) toward targets, for
+	// applications that audit their clients' TLS posture. AWS default: false.
+	TlsVersionAndCipherSuiteHeadersEnabled bool `protobuf:"varint,17,opt,name=tls_version_and_cipher_suite_headers_enabled,json=tlsVersionAndCipherSuiteHeadersEnabled,proto3" json:"tls_version_and_cipher_suite_headers_enabled,omitempty"`
+	// Access logs: one entry per request, delivered to S3. The bucket must
+	// carry the ELB log-delivery bucket policy. When omitted, access logging
+	// is off.
+	AccessLogs *AwsAlbLogDelivery `protobuf:"bytes,18,opt,name=access_logs,json=accessLogs,proto3" json:"access_logs,omitempty"`
+	// Connection logs: one entry per client connection (TLS handshake
+	// details, client address) -- the place TLS negotiation failures that
+	// never become requests show up. Delivered to S3; when omitted,
+	// connection logging is off.
+	ConnectionLogs *AwsAlbLogDelivery `protobuf:"bytes,19,opt,name=connection_logs,json=connectionLogs,proto3" json:"connection_logs,omitempty"`
+	// Health-check logs: one entry per health-check result, for debugging
+	// flapping targets without packet captures. Delivered to S3; when
+	// omitted, health-check logging is off.
+	HealthCheckLogs *AwsAlbLogDelivery `protobuf:"bytes,20,opt,name=health_check_logs,json=healthCheckLogs,proto3" json:"health_check_logs,omitempty"`
+	// Optional Route53 DNS: alias A records pointing the given hostnames at
+	// the ALB. Alias records are preferred over CNAMEs because they work at
+	// the zone apex, cost nothing per query, and inherit the ALB's health.
+	Dns           *AwsAlbDns `protobuf:"bytes,21,opt,name=dns,proto3" json:"dns,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -111,6 +193,13 @@ func (x *AwsAlbSpec) GetInternal() bool {
 	return false
 }
 
+func (x *AwsAlbSpec) GetIpAddressType() string {
+	if x != nil {
+		return x.IpAddressType
+	}
+	return ""
+}
+
 func (x *AwsAlbSpec) GetDeleteProtectionEnabled() bool {
 	if x != nil {
 		return x.DeleteProtectionEnabled
@@ -125,6 +214,104 @@ func (x *AwsAlbSpec) GetIdleTimeoutSeconds() int32 {
 	return 0
 }
 
+func (x *AwsAlbSpec) GetClientKeepAliveSeconds() int32 {
+	if x != nil {
+		return x.ClientKeepAliveSeconds
+	}
+	return 0
+}
+
+func (x *AwsAlbSpec) GetHttp2Enabled() bool {
+	if x != nil && x.Http2Enabled != nil {
+		return *x.Http2Enabled
+	}
+	return false
+}
+
+func (x *AwsAlbSpec) GetWafFailOpenEnabled() bool {
+	if x != nil {
+		return x.WafFailOpenEnabled
+	}
+	return false
+}
+
+func (x *AwsAlbSpec) GetWebAclArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.WebAclArn
+	}
+	return nil
+}
+
+func (x *AwsAlbSpec) GetZonalShiftEnabled() bool {
+	if x != nil {
+		return x.ZonalShiftEnabled
+	}
+	return false
+}
+
+func (x *AwsAlbSpec) GetDropInvalidHeaderFields() bool {
+	if x != nil {
+		return x.DropInvalidHeaderFields
+	}
+	return false
+}
+
+func (x *AwsAlbSpec) GetPreserveHostHeader() bool {
+	if x != nil {
+		return x.PreserveHostHeader
+	}
+	return false
+}
+
+func (x *AwsAlbSpec) GetXffClientPortEnabled() bool {
+	if x != nil {
+		return x.XffClientPortEnabled
+	}
+	return false
+}
+
+func (x *AwsAlbSpec) GetXffHeaderProcessingMode() string {
+	if x != nil {
+		return x.XffHeaderProcessingMode
+	}
+	return ""
+}
+
+func (x *AwsAlbSpec) GetDesyncMitigationMode() string {
+	if x != nil {
+		return x.DesyncMitigationMode
+	}
+	return ""
+}
+
+func (x *AwsAlbSpec) GetTlsVersionAndCipherSuiteHeadersEnabled() bool {
+	if x != nil {
+		return x.TlsVersionAndCipherSuiteHeadersEnabled
+	}
+	return false
+}
+
+func (x *AwsAlbSpec) GetAccessLogs() *AwsAlbLogDelivery {
+	if x != nil {
+		return x.AccessLogs
+	}
+	return nil
+}
+
+func (x *AwsAlbSpec) GetConnectionLogs() *AwsAlbLogDelivery {
+	if x != nil {
+		return x.ConnectionLogs
+	}
+	return nil
+}
+
+func (x *AwsAlbSpec) GetHealthCheckLogs() *AwsAlbLogDelivery {
+	if x != nil {
+		return x.HealthCheckLogs
+	}
+	return nil
+}
+
 func (x *AwsAlbSpec) GetDns() *AwsAlbDns {
 	if x != nil {
 		return x.Dns
@@ -132,24 +319,75 @@ func (x *AwsAlbSpec) GetDns() *AwsAlbDns {
 	return nil
 }
 
-func (x *AwsAlbSpec) GetSsl() *AwsAlbSsl {
+// AwsAlbLogDelivery points one of the ALB's log streams (access, connection,
+// or health-check logs) at an S3 bucket. The bucket must grant the regional
+// ELB log-delivery service write access via its bucket policy -- delivery
+// fails silently otherwise.
+type AwsAlbLogDelivery struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The S3 bucket receiving the logs.
+	Bucket *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	// Key prefix inside the bucket (e.g. "alb/production"), for sharing one
+	// bucket across several load balancers or log types.
+	Prefix        string `protobuf:"bytes,2,opt,name=prefix,proto3" json:"prefix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsAlbLogDelivery) Reset() {
+	*x = AwsAlbLogDelivery{}
+	mi := &file_dev_planton_provider_aws_awsalb_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsAlbLogDelivery) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsAlbLogDelivery) ProtoMessage() {}
+
+func (x *AwsAlbLogDelivery) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsalb_v1_spec_proto_msgTypes[1]
 	if x != nil {
-		return x.Ssl
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsAlbLogDelivery.ProtoReflect.Descriptor instead.
+func (*AwsAlbLogDelivery) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsalb_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsAlbLogDelivery) GetBucket() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Bucket
 	}
 	return nil
+}
+
+func (x *AwsAlbLogDelivery) GetPrefix() string {
+	if x != nil {
+		return x.Prefix
+	}
+	return ""
 }
 
 // AwsAlbDns defines the Route53 DNS configuration for the ALB.
 type AwsAlbDns struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// enabled, when set to true, indicates that the ALB resource
-	// should create DNS records in Route53 .
+	// When true, creates Route53 alias records for the ALB.
 	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// route53_zone_id is the Route53 Hosted Zone ID where DNS records
-	// will be created.
+	// Route53 hosted zone ID where alias records are created.
+	// Required when enabled is true.
 	Route53ZoneId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=route53_zone_id,json=route53ZoneId,proto3" json:"route53_zone_id,omitempty"`
-	// hostnames is a list of domain names (e.g., ["app.example.com"])
-	// that will point to this ALB.
+	// Domain names that will point to the ALB via Route53 alias records.
+	// Each hostname gets its own A record aliased to the ALB's DNS name.
 	Hostnames     []string `protobuf:"bytes,3,rep,name=hostnames,proto3" json:"hostnames,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -157,7 +395,7 @@ type AwsAlbDns struct {
 
 func (x *AwsAlbDns) Reset() {
 	*x = AwsAlbDns{}
-	mi := &file_dev_planton_provider_aws_awsalb_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_aws_awsalb_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -169,7 +407,7 @@ func (x *AwsAlbDns) String() string {
 func (*AwsAlbDns) ProtoMessage() {}
 
 func (x *AwsAlbDns) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsalb_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_aws_awsalb_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -182,7 +420,7 @@ func (x *AwsAlbDns) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsAlbDns.ProtoReflect.Descriptor instead.
 func (*AwsAlbDns) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsalb_v1_spec_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_provider_aws_awsalb_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AwsAlbDns) GetEnabled() bool {
@@ -206,97 +444,50 @@ func (x *AwsAlbDns) GetHostnames() []string {
 	return nil
 }
 
-// AwsAlbSsl defines a toggle for SSL, plus a certificate ARN required if enabled is true.
-type AwsAlbSsl struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	Enabled bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// Validation Removed: "certificate_arn must be set if ssl.enabled is true"
-	//
-	// Previously, we enforced a message-level CEL expression on AwsAlbSsl:
-	//
-	//	"!this.enabled || (has(this.certificate_arn.value) || has(this.certificate_arn.value_from))"
-	//
-	// to require a certificate ARN whenever SSL is enabled.
-	//
-	// However, this validation references an external type (`StringValueOrRef`) from
-	// "dev.planton.shared.foreignkey.v1", which causes issues in certain Java environments
-	// (see https://github.com/bufbuild/protovalidate-java/issues/118) where cross-package
-	// type resolution fails without extensive descriptor loading.
-	//
-	// Because of that open issue, we have removed the validation rule here. If this is
-	// eventually resolved upstream or we change our approach to descriptor loading, we may
-	// restore the rule at a later time.
-	CertificateArn *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=certificate_arn,json=certificateArn,proto3" json:"certificate_arn,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *AwsAlbSsl) Reset() {
-	*x = AwsAlbSsl{}
-	mi := &file_dev_planton_provider_aws_awsalb_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AwsAlbSsl) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AwsAlbSsl) ProtoMessage() {}
-
-func (x *AwsAlbSsl) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsalb_v1_spec_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AwsAlbSsl.ProtoReflect.Descriptor instead.
-func (*AwsAlbSsl) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsalb_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *AwsAlbSsl) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *AwsAlbSsl) GetCertificateArn() *v1.StringValueOrRef {
-	if x != nil {
-		return x.CertificateArn
-	}
-	return nil
-}
-
 var File_dev_planton_provider_aws_awsalb_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsalb_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-dev/planton/provider/aws/awsalb/v1/spec.proto\x12\"dev.planton.provider.aws.awsalb.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc6\x04\n" +
+	"-dev/planton/provider/aws/awsalb/v1/spec.proto\x12\"dev.planton.provider.aws.awsalb.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcc\x14\n" +
 	"\n" +
 	"AwsAlbSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12z\n" +
 	"\asubnets\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x02\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\asubnets\x12\x86\x01\n" +
 	"\x0fsecurity_groups\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12\x1a\n" +
-	"\binternal\x18\x04 \x01(\bR\binternal\x12:\n" +
-	"\x19delete_protection_enabled\x18\x05 \x01(\bR\x17deleteProtectionEnabled\x128\n" +
-	"\x14idle_timeout_seconds\x18\x06 \x01(\x05B\x06\x92\xa6\x1d\x0260R\x12idleTimeoutSeconds\x12?\n" +
-	"\x03dns\x18\a \x01(\v2-.dev.planton.provider.aws.awsalb.v1.AwsAlbDnsR\x03dns\x12?\n" +
-	"\x03ssl\x18\b \x01(\v2-.dev.planton.provider.aws.awsalb.v1.AwsAlbSslR\x03ssl\"\xca\x01\n" +
+	"\binternal\x18\x04 \x01(\bR\binternal\x12&\n" +
+	"\x0fip_address_type\x18\x05 \x01(\tR\ripAddressType\x12:\n" +
+	"\x19delete_protection_enabled\x18\x06 \x01(\bR\x17deleteProtectionEnabled\x128\n" +
+	"\x14idle_timeout_seconds\x18\a \x01(\x05B\x06\x92\xa6\x1d\x0260R\x12idleTimeoutSeconds\x129\n" +
+	"\x19client_keep_alive_seconds\x18\b \x01(\x05R\x16clientKeepAliveSeconds\x12(\n" +
+	"\rhttp2_enabled\x18\t \x01(\bH\x00R\fhttp2Enabled\x88\x01\x01\x121\n" +
+	"\x15waf_fail_open_enabled\x18\n" +
+	" \x01(\bR\x12wafFailOpenEnabled\x12w\n" +
+	"\vweb_acl_arn\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xad\x02\x92\xd4a\x1astatus.outputs.web_acl_arnR\twebAclArn\x12.\n" +
+	"\x13zonal_shift_enabled\x18\v \x01(\bR\x11zonalShiftEnabled\x12;\n" +
+	"\x1adrop_invalid_header_fields\x18\f \x01(\bR\x17dropInvalidHeaderFields\x120\n" +
+	"\x14preserve_host_header\x18\r \x01(\bR\x12preserveHostHeader\x125\n" +
+	"\x17xff_client_port_enabled\x18\x0e \x01(\bR\x14xffClientPortEnabled\x12;\n" +
+	"\x1axff_header_processing_mode\x18\x0f \x01(\tR\x17xffHeaderProcessingMode\x124\n" +
+	"\x16desync_mitigation_mode\x18\x10 \x01(\tR\x14desyncMitigationMode\x12\\\n" +
+	",tls_version_and_cipher_suite_headers_enabled\x18\x11 \x01(\bR&tlsVersionAndCipherSuiteHeadersEnabled\x12V\n" +
+	"\vaccess_logs\x18\x12 \x01(\v25.dev.planton.provider.aws.awsalb.v1.AwsAlbLogDeliveryR\n" +
+	"accessLogs\x12^\n" +
+	"\x0fconnection_logs\x18\x13 \x01(\v25.dev.planton.provider.aws.awsalb.v1.AwsAlbLogDeliveryR\x0econnectionLogs\x12a\n" +
+	"\x11health_check_logs\x18\x14 \x01(\v25.dev.planton.provider.aws.awsalb.v1.AwsAlbLogDeliveryR\x0fhealthCheckLogs\x12?\n" +
+	"\x03dns\x18\x15 \x01(\v2-.dev.planton.provider.aws.awsalb.v1.AwsAlbDnsR\x03dns:\xb7\b\xbaH\xb3\b\x1a\xdf\x01\n" +
+	"\x15ip_address_type_valid\x12Xip_address_type must be 'ipv4', 'dualstack', or 'dualstack-without-public-ipv4' when set\x1althis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack', 'dualstack-without-public-ipv4']\x1a\xb7\x01\n" +
+	"\x12idle_timeout_range\x128idle_timeout_seconds must be between 1 and 4000 when set\x1agthis.idle_timeout_seconds == 0 || (this.idle_timeout_seconds >= 1 && this.idle_timeout_seconds <= 4000)\x1a\xd6\x01\n" +
+	"\x17client_keep_alive_range\x12@client_keep_alive_seconds must be between 60 and 604800 when set\x1aythis.client_keep_alive_seconds == 0 || (this.client_keep_alive_seconds >= 60 && this.client_keep_alive_seconds <= 604800)\x1a\xdf\x01\n" +
+	" xff_header_processing_mode_valid\x12Mxff_header_processing_mode must be 'append', 'preserve', or 'remove' when set\x1althis.xff_header_processing_mode == '' || this.xff_header_processing_mode in ['append', 'preserve', 'remove']\x1a\xd9\x01\n" +
+	"\x1cdesync_mitigation_mode_valid\x12Ndesync_mitigation_mode must be 'monitor', 'defensive', or 'strictest' when set\x1aithis.desync_mitigation_mode == '' || this.desync_mitigation_mode in ['monitor', 'defensive', 'strictest']B\x10\n" +
+	"\x0e_http2_enabled\"\xa0\x01\n" +
+	"\x11AwsAlbLogDelivery\x12s\n" +
+	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x16\n" +
+	"\x06prefix\x18\x02 \x01(\tR\x06prefix\"\xca\x01\n" +
 	"\tAwsAlbDns\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12{\n" +
 	"\x0froute53_zone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\rroute53ZoneId\x12&\n" +
-	"\thostnames\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\thostnames\"\xa4\x01\n" +
-	"\tAwsAlbSsl\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12}\n" +
-	"\x0fcertificate_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x0ecertificateArnB\xb1\x02\n" +
+	"\thostnames\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\thostnamesB\xb1\x02\n" +
 	"&com.dev.planton.provider.aws.awsalb.v1B\tSpecProtoP\x01ZMgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsalb/v1;awsalbv1\xa2\x02\x05DPPAA\xaa\x02\"Dev.Planton.Provider.Aws.Awsalb.V1\xca\x02\"Dev\\Planton\\Provider\\Aws\\Awsalb\\V1\xe2\x02.Dev\\Planton\\Provider\\Aws\\Awsalb\\V1\\GPBMetadata\xea\x02'Dev::Planton::Provider::Aws::Awsalb::V1b\x06proto3"
 
 var (
@@ -314,22 +505,25 @@ func file_dev_planton_provider_aws_awsalb_v1_spec_proto_rawDescGZIP() []byte {
 var file_dev_planton_provider_aws_awsalb_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_aws_awsalb_v1_spec_proto_goTypes = []any{
 	(*AwsAlbSpec)(nil),          // 0: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec
-	(*AwsAlbDns)(nil),           // 1: dev.planton.provider.aws.awsalb.v1.AwsAlbDns
-	(*AwsAlbSsl)(nil),           // 2: dev.planton.provider.aws.awsalb.v1.AwsAlbSsl
+	(*AwsAlbLogDelivery)(nil),   // 1: dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery
+	(*AwsAlbDns)(nil),           // 2: dev.planton.provider.aws.awsalb.v1.AwsAlbDns
 	(*v1.StringValueOrRef)(nil), // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsalb_v1_spec_proto_depIdxs = []int32{
 	3, // 0: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3, // 1: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.dns:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbDns
-	2, // 3: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.ssl:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbSsl
-	3, // 4: dev.planton.provider.aws.awsalb.v1.AwsAlbDns.route53_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 5: dev.planton.provider.aws.awsalb.v1.AwsAlbSsl.certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	3, // 2: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.web_acl_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 3: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.access_logs:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery
+	1, // 4: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.connection_logs:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery
+	1, // 5: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.health_check_logs:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery
+	2, // 6: dev.planton.provider.aws.awsalb.v1.AwsAlbSpec.dns:type_name -> dev.planton.provider.aws.awsalb.v1.AwsAlbDns
+	3, // 7: dev.planton.provider.aws.awsalb.v1.AwsAlbLogDelivery.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 8: dev.planton.provider.aws.awsalb.v1.AwsAlbDns.route53_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsalb_v1_spec_proto_init() }
@@ -337,6 +531,7 @@ func file_dev_planton_provider_aws_awsalb_v1_spec_proto_init() {
 	if File_dev_planton_provider_aws_awsalb_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_aws_awsalb_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

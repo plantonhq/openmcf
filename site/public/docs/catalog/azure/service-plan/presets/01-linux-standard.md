@@ -24,8 +24,8 @@ This preset creates an Azure App Service Plan on the Standard S1 tier with a sin
 
 ## Key Configuration Choices
 
-- **S1 SKU** (`skuName: S1`) -- 1 vCPU, 1.75 GiB RAM; auto-scale to 10 instances, 5 staging slots, daily backups
-- **Linux** (`osType: Linux`) -- Runs Linux-based web apps; sets `reserved = true` in the Azure API
+- **S1 SKU** (`skuName: STANDARD_S1`) -- 1 vCPU, 1.75 GiB RAM; auto-scale to 10 instances, 5 staging slots, daily backups
+- **Linux** (`osType: LINUX`) -- Runs Linux-based web apps; sets `reserved = true` in the Azure API
 - **1 worker** (`workerCount: 1`) -- Single instance; increase for higher throughput or enable auto-scale rules on the app
 - **No zone balancing** -- Standard SKU does not support zone redundancy; upgrade to Premium for zone support
 

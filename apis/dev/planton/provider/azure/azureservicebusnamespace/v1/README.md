@@ -1,83 +1,57 @@
-# Azure Service Bus Namespace
+# AzureServiceBusNamespace
 
-## Overview
+An Azure Service Bus namespace: the container and billing boundary for
+enterprise messaging. The namespace sets the pricing tier, network
+posture, encryption, and authentication mode; the messaging entities
+compose onto it as first-class kinds -- AzureServiceBusQueue,
+AzureServiceBusTopic (with AzureServiceBusSubscription),
+AzureServiceBusAuthorizationRule, and
+AzureServiceBusDisasterRecoveryConfig.
 
-The **AzureServiceBusNamespace** component provisions an Azure Service Bus namespace with optional queues and topics, providing enterprise-grade message brokering for decoupling applications and services.
-
-Azure Service Bus is a fully managed messaging service that supports message queues (point-to-point) and publish-subscribe topics. It offers reliable delivery, temporal decoupling, load leveling, and ordered message processing -- critical capabilities for distributed microservice architectures.
-
-## When to Use This Component
+## When to Use
 
 Use AzureServiceBusNamespace when you need:
 
-- **Reliable async messaging** between microservices that cannot afford to lose messages
-- **Publish-subscribe patterns** where multiple consumers need independent copies of each message (topics + subscriptions)
-- **Ordered processing** with sessions that group related messages for FIFO delivery
-- **Dead-letter handling** for messages that fail processing, enabling inspection and retry workflows
-- **Enterprise messaging** with Premium tier features like dedicated capacity, zone redundancy, and VNet integration
-
-## SKU Tiers
-
-| Tier | Queues | Topics | Sessions | Duplicate Detection | Max Message Size | SLA |
-|------|--------|--------|----------|---------------------|------------------|-----|
-| Basic | Yes | No | No | No | 256 KB | 99.9% |
-| Standard | Yes | Yes | Yes | Yes | 256 KB | 99.95% |
-| Premium | Yes | Yes | Yes | Yes | 100 MB | 99.95% |
-
-**Recommendation**: Use **Standard** for most production workloads. Use **Premium** only when you need dedicated capacity, zone redundancy, VNet integration, or large messages.
+- **Enterprise messaging** -- ordered delivery, sessions, duplicate
+  detection, dead-lettering, transactions (Event Hubs is the streaming
+  sibling; Storage Queues the minimal one)
+- **A shared messaging boundary** -- one namespace per environment or
+  domain, with entity teams owning their queues/topics independently
+- **Premium isolation** -- dedicated messaging units, VNet integration,
+  CMK encryption, geo-DR, and 100 MB messages on the PREMIUM tier
 
 ## Key Configuration
 
-### Namespace-Level Settings
+- `namespace_name` -- globally unique; becomes the endpoint
+  `{name}.servicebus.windows.net` (ForceNew)
+- `sku` -- BASIC (queues only), STANDARD (default; full-featured
+  multi-tenant), PREMIUM (dedicated capacity; migrating in/out replaces
+  the namespace)
+- `capacity` + `premium_messaging_partitions` -- PREMIUM's messaging
+  units and partition layout (partitions are fixed at creation)
+- `identity` + `customer_managed_key` -- BYOK encryption (PREMIUM;
+  irreversible once set)
+- `local_auth_enabled` -- false for the keyless posture (Entra-only
+  data-plane auth; every SAS key stops working)
+- `network_rule_set` -- the PREMIUM firewall (DENY + admitted IPs and
+  subnets is the production posture)
 
-- **`sku`**: Tier selection (Basic, Standard, Premium). Defaults to Standard.
-- **`capacity`**: Premium messaging units (1-16) for dedicated throughput.
-- **`zone_redundant`**: Premium-only availability zone redundancy.
-- **`minimum_tls_version`**: Defaults to "1.2" for enterprise security.
-- **`public_network_access_enabled`**: Control public internet accessibility.
-
-### Queue Settings
-
-- **`lock_duration`**: How long a message is locked during processing (default: 1 minute). Increase for long-running handlers.
-- **`max_delivery_count`**: Attempts before dead-lettering (default: 10). Lower for faster poison message detection.
-- **`requires_duplicate_detection`**: Prevents duplicate messages based on MessageId.
-- **`requires_session`**: Enables ordered, stateful message processing.
-- **`forward_to`**: Auto-forward messages to another queue or topic within the namespace.
-
-### Topic Settings
-
-- **`requires_duplicate_detection`**: Prevents duplicate published messages.
-- **`support_ordering`**: Preserves message order for session-enabled subscriptions.
-
-## Topic Subscriptions
-
-Topic subscriptions are **deliberately not included** in this component. Subscriptions have a different lifecycle -- they are typically managed by consuming teams, not the infrastructure team that provisions the namespace. This design decision follows DD03 (Composite Bundling Rules).
-
-For subscription management, consumers can use Terraform or the Azure SDK directly, referencing the `topic_ids` output.
-
-## Outputs
-
-| Output | Description |
-|--------|-------------|
-| `namespace_id` | Azure Resource Manager ID |
-| `namespace_name` | Namespace name |
-| `endpoint` | Service Bus endpoint URL |
-| `primary_connection_string` | SAS connection string for SDK connectivity |
-| `primary_key` | SAS key for manual token generation |
-| `queue_ids` | Map of queue name to resource ID |
-| `topic_ids` | Map of topic name to resource ID |
-
-## Infra Chart Usage
-
-AzureServiceBusNamespace is a **leaf resource** in infra chart DAGs. It is consumed by applications via the `primary_connection_string` injected into app settings or environment variables. No downstream Planton resources reference its outputs.
+## Composition
 
 ```yaml
-# In a container-apps-environment infra chart:
-spec:
-  appSettings:
-    SERVICE_BUS_CONNECTION_STRING:
-      valueFrom:
-        kind: AzureServiceBusNamespace
-        name: "{{ values.env }}-messaging"
-        fieldPath: status.outputs.primary_connection_string
+resourceGroup:
+  valueFrom:
+    kind: AzureResourceGroup
+    name: messaging-rg
+    fieldPath: status.outputs.resource_group_name
 ```
+
+Children reference `status.outputs.namespace_id`; applications consume
+the root SAS credential outputs (quick starts) or scoped
+AzureServiceBusAuthorizationRule credentials (production).
+
+## Documentation
+
+- [Design research](docs/README.md) -- field mapping, recorded skips
+- [Presets](presets/) -- remixable starting points
+- [Terraform module](iac/tf/README.md) / [Pulumi module](iac/pulumi/README.md)

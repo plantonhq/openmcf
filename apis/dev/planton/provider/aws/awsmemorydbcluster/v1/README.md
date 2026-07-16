@@ -46,19 +46,25 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbCluster
 metadata:
   name: my-memorydb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: dev.AwsMemorydbCluster.my-memorydb
 spec:
-  engine: redis
-  engineVersion: "7.1"
+  region: us-west-2
+  engine: valkey
   nodeType: db.t4g.small
   numShards: 1
   numReplicasPerShard: 0
-  aclName: open-access
+  # The built-in allow-everything ACL -- development only. Production
+  # manifests reference an AwsMemorydbAcl instead.
+  aclName:
+    value: open-access
   tlsEnabled: true
+  subnetIds:
+    - value: subnet-aaa111
+    - value: subnet-bbb222
 ```
 
 Deploy:
@@ -97,27 +103,33 @@ MemoryDB always uses a sharded architecture. Each shard holds a portion of the k
 
 ### Authentication
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `aclName` | `string` | `"open-access"` | MemoryDB ACL name. Required. `"open-access"` disables auth. |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `aclName` | `StringValueOrRef` | Yes | The ACL the cluster authenticates against — reference an AwsMemorydbAcl (`status.outputs.acl_name`) or set the literal value `"open-access"` (development only). Updates in place. |
 
-When `tlsEnabled` is `false`, `aclName` must be `"open-access"` (AWS constraint).
+Requiring the ACL is deliberate: an invisible default that grants
+unauthenticated access has no place in a manifest. When `tlsEnabled` is
+`false`, AWS only accepts the `"open-access"` ACL (rejected at create
+otherwise).
 
 ### Networking
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `subnetIds` | `repeated StringValueOrRef` | VPC subnet IDs for subnet group creation. Can reference AwsVpc via `valueFrom`. |
-| `securityGroupIds` | `repeated StringValueOrRef` | Security groups to attach. Can reference AwsSecurityGroup via `valueFrom`. |
+| `subnetIds` | `repeated StringValueOrRef` | Subnets for a module-managed subnet group. Mutually exclusive with `subnetGroupName`. Can reference AwsSubnet via `valueFrom`. |
+| `subnetGroupName` | `string` | Bring-your-own existing subnet group. ForceNew. Mutually exclusive with `subnetIds`. |
+| `securityGroupIds` | `repeated StringValueOrRef` | Security groups to attach. Once at least one is set, the set can only be swapped, never emptied (AWS constraint). |
+| `networkType` | `string` | `"ipv4"` (default), `"ipv6"`, or `"dual_stack"`. ForceNew. |
+| `ipDiscovery` | `string` | Which stack CLUSTER SLOTS/SHARDS report to clients: `"ipv4"` (default) or `"ipv6"` (requires an IPv6-capable `networkType`). Updates in place. |
 
 ### Encryption
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `tlsEnabled` | `bool` | `true` | Enable TLS for in-transit encryption. ForceNew. |
-| `kmsKeyId` | `StringValueOrRef` | — | Customer-managed KMS key for at-rest encryption. ForceNew. Can reference AwsKmsKey. |
+| `kmsKeyArn` | `StringValueOrRef` | — | Customer-managed KMS key for at-rest encryption. ForceNew. Can reference AwsKmsKey. |
 
-MemoryDB always encrypts data at rest. The `kmsKeyId` field optionally provides a customer-managed key; without it, the AWS-managed key is used.
+MemoryDB always encrypts data at rest. The `kmsKeyArn` field optionally provides a customer-managed key; without it, the AWS-managed key is used.
 
 ### Maintenance and Snapshots
 
@@ -139,15 +151,22 @@ MemoryDB always encrypts data at rest. The `kmsKeyId` field optionally provides 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `parameterGroupFamily` | `string` | Required with `parameters` (e.g., `"memorydb_redis7"`). |
-| `parameters` | `repeated AwsMemorydbClusterParameter` | Name/value pairs for custom engine tuning. |
+| `parameterGroupFamily` | `string` | Required with `parameters` (e.g., `"memorydb_valkey7"`, `"memorydb_redis7"`). |
+| `parameters` | `repeated AwsMemorydbClusterParameter` | Name/value pairs applied via a module-managed group. Mutually exclusive with `parameterGroupName`. |
+| `parameterGroupName` | `string` | Bring-your-own existing parameter group. Mutually exclusive with `parameters`. |
+
+### Multi-Region (Active-Active)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `multiRegionClusterName` | `string` | Name of an existing multi-region cluster to join as a regional member. ForceNew. Leave empty for single-region. |
 
 ### Advanced
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `snsTopicArn` | `StringValueOrRef` | — | SNS topic for cluster events. Can reference AwsSnsTopic. |
-| `autoMinorVersionUpgrade` | `bool` | `true` | Auto-apply minor version upgrades. |
+| `autoMinorVersionUpgrade` | `bool` | `true` | Auto-apply minor version upgrades. ForceNew. |
 | `dataTiering` | `bool` | `false` | Move cold data to SSD. db.r6gd.* node types only. ForceNew. |
 
 ## Stack Outputs
@@ -161,11 +180,13 @@ After deployment, the following outputs are available in `status.outputs`:
 | `cluster_arn` | `string` | ARN of the MemoryDB cluster |
 | `cluster_name` | `string` | Name of the cluster |
 | `engine_patch_version` | `string` | Actual engine patch version running |
-| `subnet_group_name` | `string` | Created subnet group name (if applicable) |
-| `parameter_group_name` | `string` | Created parameter group name (if applicable) |
+| `subnet_group_name` | `string` | Subnet group in use — module-managed, bring-your-own, or empty when the account default applies |
+| `parameter_group_name` | `string` | Parameter group in use — module-managed, bring-your-own, or empty when the family default applies |
 
 ## Related Components
 
+- [AwsMemorydbAcl](/docs/catalog/aws/memorydb-acl) — the ACL the cluster authenticates against
+- [AwsMemorydbUser](/docs/catalog/aws/memorydb-user) — per-application identities grouped into ACLs
 - [AwsVpc](/docs/catalog/aws/vpc) — provides VPC subnets for cluster placement
 - [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls network access to MemoryDB endpoints
 - [AwsKmsKey](/docs/catalog/aws/kms-key) — provides a customer-managed encryption key

@@ -1,0 +1,149 @@
+# Where the database alerts land. Action groups are global (no region),
+# so notification delivery survives a regional outage.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorActionGroup
+metadata:
+  name: "{{ values.env }}-postgres-ops"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-ha-postgres"
+      fieldPath: status.outputs.resource_group_name
+  # The short name is the sender identity on SMS and mobile push --
+  # 12-character limit, keep it recognizable.
+  shortName: PgOps
+  emailReceivers:
+    - name: ops-email
+      emailAddress: "{{ values.ops_email }}"
+      useCommonAlertSchema: true
+---
+# Route the server's PostgreSQL logs and metrics into the workspace.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorDiagnosticSetting
+metadata:
+  name: "{{ values.env }}-postgres-diag"
+spec:
+  settingName: postgres-logs
+  targetResourceId:
+    valueFrom:
+      kind: AzurePostgresqlFlexibleServer
+      name: "{{ values.env }}-postgres"
+      fieldPath: status.outputs.server_id
+  logAnalyticsWorkspaceId:
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: "{{ values.env }}-postgres-logs"
+      fieldPath: status.outputs.workspace_id
+  enabledLogs:
+    - categoryGroup: allLogs
+  enabledMetrics:
+    - category: AllMetrics
+---
+# Sustained CPU saturation: queries are queueing. 80% average over the
+# window means the tier is undersized or a workload regressed -- catch
+# it before p99 latency becomes the pager.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorMetricAlert
+metadata:
+  name: "{{ values.env }}-postgres-cpu-alert"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-ha-postgres"
+      fieldPath: status.outputs.resource_group_name
+  alertName: "{{ values.env }}-postgres-cpu-alert"
+  scopes:
+    - valueFrom:
+        kind: AzurePostgresqlFlexibleServer
+        name: "{{ values.env }}-postgres"
+        fieldPath: status.outputs.server_id
+  severity: 2
+  # Fifteen minutes of sustained saturation, not a spike: batch jobs
+  # legitimately peg CPU for a few minutes.
+  windowSize: PT15M
+  staticCriteria:
+    - metricNamespace: Microsoft.DBforPostgreSQL/flexibleServers
+      metricName: cpu_percent
+      aggregation: AVERAGE
+      operator: GREATER_THAN
+      threshold: 80
+  actions:
+    - actionGroupId:
+        valueFrom:
+          kind: AzureMonitorActionGroup
+          name: "{{ values.env }}-postgres-ops"
+          fieldPath: status.outputs.action_group_id
+  description: PostgreSQL CPU has been above 80% for 15 minutes -- queries are queueing; scale the SKU or find the regressed workload
+---
+# Storage pressure. Auto-grow steps the disk up automatically, but a
+# runaway consumer (WAL pileup from a stuck replication slot, a bloated
+# table) can outpace it -- and a full disk puts PostgreSQL in read-only
+# damage-control mode. Severity 1: act now.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorMetricAlert
+metadata:
+  name: "{{ values.env }}-postgres-storage-alert"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-ha-postgres"
+      fieldPath: status.outputs.resource_group_name
+  alertName: "{{ values.env }}-postgres-storage-alert"
+  scopes:
+    - valueFrom:
+        kind: AzurePostgresqlFlexibleServer
+        name: "{{ values.env }}-postgres"
+        fieldPath: status.outputs.server_id
+  severity: 1
+  staticCriteria:
+    - metricNamespace: Microsoft.DBforPostgreSQL/flexibleServers
+      metricName: storage_percent
+      aggregation: AVERAGE
+      operator: GREATER_THAN
+      threshold: 85
+  actions:
+    - actionGroupId:
+        valueFrom:
+          kind: AzureMonitorActionGroup
+          name: "{{ values.env }}-postgres-ops"
+          fieldPath: status.outputs.action_group_id
+  description: PostgreSQL storage is above 85% -- check for WAL pileup or bloat before the disk fills and the server goes read-only
+---
+# Failed connections: clients being rejected right now -- exhausted
+# connection slots, auth failures, or a network path breaking. The
+# workspace's logs say which; this alert says WHEN.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorMetricAlert
+metadata:
+  name: "{{ values.env }}-postgres-connections-alert"
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-ha-postgres"
+      fieldPath: status.outputs.resource_group_name
+  alertName: "{{ values.env }}-postgres-connections-alert"
+  scopes:
+    - valueFrom:
+        kind: AzurePostgresqlFlexibleServer
+        name: "{{ values.env }}-postgres"
+        fieldPath: status.outputs.server_id
+  severity: 1
+  staticCriteria:
+    - metricNamespace: Microsoft.DBforPostgreSQL/flexibleServers
+      metricName: connections_failed
+      aggregation: TOTAL
+      operator: GREATER_THAN
+      # A handful of failures in five minutes is a client bug; a burst
+      # is the database refusing work.
+      threshold: 10
+  actions:
+    - actionGroupId:
+        valueFrom:
+          kind: AzureMonitorActionGroup
+          name: "{{ values.env }}-postgres-ops"
+          fieldPath: status.outputs.action_group_id
+  description: Clients are failing to connect to PostgreSQL -- check connection-slot exhaustion, auth failures, and the network path

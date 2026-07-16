@@ -1,62 +1,67 @@
 locals {
-  resource_name = coalesce(try(var.metadata.name, null), "awscognitoidentityprovider")
+  # The graph identity; the provider-visible name is spec.provider_name (it is
+  # the IdP's AWS identity within its pool and is ForceNew).
+  resource_name = var.metadata.name
 
-  provider_type = try(var.spec.provider_type, var.spec.providerType, "")
-
-  # Build provider_details based on which typed config is present.
-  # OAuth providers use snake_case keys, SAML uses PascalCase keys.
-  google_details = try(var.spec.google, null) != null ? {
-    client_id        = var.spec.google.clientId
-    client_secret    = var.spec.google.clientSecret
-    authorize_scopes = var.spec.google.authorizeScopes
+  # AWS takes the provider configuration as one flat string map whose keys
+  # depend on the provider type. Exactly one typed config block is present
+  # (spec CEL); each is translated to the key convention its provider type
+  # expects: snake_case for the OAuth family, PascalCase for SAML.
+  google_details = var.spec.google != null ? {
+    client_id        = var.spec.google.client_id
+    client_secret    = var.spec.google.client_secret
+    authorize_scopes = var.spec.google.authorize_scopes
   } : null
 
-  facebook_details = try(var.spec.facebook, null) != null ? merge({
-    client_id        = var.spec.facebook.clientId
-    client_secret    = var.spec.facebook.clientSecret
-    authorize_scopes = var.spec.facebook.authorizeScopes
-  }, try(var.spec.facebook.apiVersion, "") != "" ? {
-    api_version = var.spec.facebook.apiVersion
+  facebook_details = var.spec.facebook != null ? merge({
+    client_id        = var.spec.facebook.client_id
+    client_secret    = var.spec.facebook.client_secret
+    authorize_scopes = var.spec.facebook.authorize_scopes
+    }, var.spec.facebook.api_version != "" ? {
+    api_version = var.spec.facebook.api_version
   } : {}) : null
 
-  login_with_amazon_details = try(var.spec.loginWithAmazon, null) != null ? {
-    client_id        = var.spec.loginWithAmazon.clientId
-    client_secret    = var.spec.loginWithAmazon.clientSecret
-    authorize_scopes = var.spec.loginWithAmazon.authorizeScopes
+  login_with_amazon_details = var.spec.login_with_amazon != null ? {
+    client_id        = var.spec.login_with_amazon.client_id
+    client_secret    = var.spec.login_with_amazon.client_secret
+    authorize_scopes = var.spec.login_with_amazon.authorize_scopes
   } : null
 
-  sign_in_with_apple_details = try(var.spec.signInWithApple, null) != null ? {
-    client_id        = var.spec.signInWithApple.clientId
-    team_id          = var.spec.signInWithApple.teamId
-    key_id           = var.spec.signInWithApple.keyId
-    private_key      = var.spec.signInWithApple.privateKey
-    authorize_scopes = var.spec.signInWithApple.authorizeScopes
+  sign_in_with_apple_details = var.spec.sign_in_with_apple != null ? {
+    client_id        = var.spec.sign_in_with_apple.client_id
+    team_id          = var.spec.sign_in_with_apple.team_id
+    key_id           = var.spec.sign_in_with_apple.key_id
+    private_key      = var.spec.sign_in_with_apple.private_key
+    authorize_scopes = var.spec.sign_in_with_apple.authorize_scopes
   } : null
 
-  oidc_details = try(var.spec.oidc, null) != null ? merge(
+  # OIDC optionals are only sent when set -- Cognito auto-discovers endpoint
+  # URLs from the issuer's .well-known document when overrides are absent.
+  oidc_details = var.spec.oidc != null ? merge(
     {
-      client_id   = var.spec.oidc.clientId
-      oidc_issuer = var.spec.oidc.oidcIssuer
+      client_id   = var.spec.oidc.client_id
+      oidc_issuer = var.spec.oidc.oidc_issuer
     },
-    try(var.spec.oidc.authorizeScopes, "") != "" ? { authorize_scopes = var.spec.oidc.authorizeScopes } : {},
-    try(var.spec.oidc.clientSecret, "") != "" ? { client_secret = var.spec.oidc.clientSecret } : {},
-    try(var.spec.oidc.attributesRequestMethod, "") != "" ? { attributes_request_method = var.spec.oidc.attributesRequestMethod } : {},
-    try(var.spec.oidc.authorizeUrl, "") != "" ? { authorize_url = var.spec.oidc.authorizeUrl } : {},
-    try(var.spec.oidc.tokenUrl, "") != "" ? { token_url = var.spec.oidc.tokenUrl } : {},
-    try(var.spec.oidc.attributesUrl, "") != "" ? { attributes_url = var.spec.oidc.attributesUrl } : {},
-    try(var.spec.oidc.jwksUri, "") != "" ? { jwks_uri = var.spec.oidc.jwksUri } : {},
+    var.spec.oidc.authorize_scopes != "" ? { authorize_scopes = var.spec.oidc.authorize_scopes } : {},
+    var.spec.oidc.client_secret != "" ? { client_secret = var.spec.oidc.client_secret } : {},
+    var.spec.oidc.attributes_request_method != "" ? { attributes_request_method = var.spec.oidc.attributes_request_method } : {},
+    var.spec.oidc.authorize_url != "" ? { authorize_url = var.spec.oidc.authorize_url } : {},
+    var.spec.oidc.token_url != "" ? { token_url = var.spec.oidc.token_url } : {},
+    var.spec.oidc.attributes_url != "" ? { attributes_url = var.spec.oidc.attributes_url } : {},
+    var.spec.oidc.jwks_uri != "" ? { jwks_uri = var.spec.oidc.jwks_uri } : {},
+    var.spec.oidc.attributes_url_add_attributes ? { attributes_url_add_attributes = "true" } : {},
   ) : null
 
-  saml_details = try(var.spec.saml, null) != null ? merge(
-    try(var.spec.saml.metadataFile, "") != "" ? { MetadataFile = var.spec.saml.metadataFile } : {},
-    try(var.spec.saml.metadataUrl, "") != "" ? { MetadataURL = var.spec.saml.metadataUrl } : {},
-    try(var.spec.saml.idpSignOut, false) ? { IDPSignout = "true" } : {},
-    try(var.spec.saml.idpInit, false) ? { IDPInit = "true" } : {},
-    try(var.spec.saml.encryptedResponses, false) ? { EncryptedResponses = "true" } : {},
-    try(var.spec.saml.requestSigningAlgorithm, "") != "" ? { RequestSigningAlgorithm = var.spec.saml.requestSigningAlgorithm } : {},
+  saml_details = var.spec.saml != null ? merge(
+    var.spec.saml.metadata_file != "" ? { MetadataFile = var.spec.saml.metadata_file } : {},
+    var.spec.saml.metadata_url != "" ? { MetadataURL = var.spec.saml.metadata_url } : {},
+    var.spec.saml.idp_sign_out ? { IDPSignout = "true" } : {},
+    var.spec.saml.idp_init ? { IDPInit = "true" } : {},
+    var.spec.saml.encrypted_responses ? { EncryptedResponses = "true" } : {},
+    var.spec.saml.request_signing_algorithm != "" ? { RequestSigningAlgorithm = var.spec.saml.request_signing_algorithm } : {},
   ) : null
 
-  # Select the correct provider_details based on which config is non-null.
+  # Select whichever typed config is present (exactly one, per the spec CEL).
   provider_details = coalesce(
     local.google_details,
     local.facebook_details,
@@ -66,8 +71,4 @@ locals {
     local.saml_details,
     {}
   )
-
-  attribute_mapping = try(var.spec.attributeMapping, null) != null ? var.spec.attributeMapping : null
-
-  idp_identifiers = try(var.spec.idpIdentifiers, null) != null ? var.spec.idpIdentifiers : null
 }

@@ -26,7 +26,7 @@ This preset deploys a Node.js 22 LTS web API with health check monitoring, HTTP/
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<your-resource-group-name>` | Name of the Azure resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-service-plan-id>` | ARM ID of the App Service Plan | Azure portal or `AzureServicePlan` status outputs (`plan_id`) |
+| `<your-service-plan-id>` | ARM ID of the App Service Plan | Azure portal or `AzureServicePlan` status outputs (`service_plan_id`) |
 | `<your-app-insights-connection-string>` | Application Insights connection string | Azure portal or `AzureApplicationInsights` status outputs |
 | `allowed_origins: https://myapp.example.com` | Your frontend domain for CORS | Your application domain |
 

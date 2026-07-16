@@ -1,0 +1,33 @@
+package module
+
+import (
+	"strconv"
+
+	awshttpapivpclinkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapivpclink/v1"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/aws/awstagkeys"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+// Locals mirrors Terraform-style locals: the target resource and the identity
+// tag set applied to the VPC link.
+type Locals struct {
+	AwsHttpApiVpcLink *awshttpapivpclinkv1.AwsHttpApiVpcLink
+	AwsTags           map[string]string
+}
+
+func initializeLocals(ctx *pulumi.Context, stackInput *awshttpapivpclinkv1.AwsHttpApiVpcLinkStackInput) *Locals {
+	locals := &Locals{}
+	locals.AwsHttpApiVpcLink = stackInput.Target
+
+	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsHttpApiVpcLink.Metadata.Name,
+		awstagkeys.Resource:     strconv.FormatBool(true),
+		awstagkeys.Organization: locals.AwsHttpApiVpcLink.Metadata.Org,
+		awstagkeys.Environment:  locals.AwsHttpApiVpcLink.Metadata.Env,
+		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsHttpApiVpcLink.String(),
+		awstagkeys.ResourceId:   locals.AwsHttpApiVpcLink.Metadata.Id,
+	}
+
+	return locals
+}

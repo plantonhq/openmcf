@@ -10,10 +10,9 @@ import (
 )
 
 // buildTestK8sJSON creates a TestCloudResourceKubernetes proto with
-// StringValueOrRef namespace, KubernetesClusterSelector target_cluster,
-// and map<string, StringValueOrRef> ref_map, then returns its
-// JSON-unmarshaled map. This exercises all three shapes the flatten
-// logic must handle.
+// StringValueOrRef namespace and map<string, StringValueOrRef> ref_map,
+// then returns its JSON-unmarshaled map. This exercises the shapes the
+// flatten logic must handle.
 func buildTestK8sJSON(t *testing.T) map[string]interface{} {
 	t.Helper()
 
@@ -82,28 +81,27 @@ func TestFlatten_StringValueOrRef_Singular(t *testing.T) {
 	}
 }
 
-func TestFlatten_KubernetesClusterSelector_Skipped(t *testing.T) {
+func TestFlatten_SkipRule_RemovesField(t *testing.T) {
 	data := buildTestK8sJSON(t)
 	md := (&testkubernetesv1.TestCloudResourceKubernetes{}).ProtoReflect().Descriptor()
 
-	// TestCloudResourceKubernetes has target_cluster but our test message
-	// doesn't set it. Inject a fake target_cluster into spec using the
-	// JSON key (camelCase) to verify the skip rule removes it.
+	// Populate the env field (a ContainerEnv message), then flatten with a
+	// rule set that marks ContainerEnv as Skip. The field must be removed
+	// from the output regardless of key casing.
 	if spec, ok := data["spec"].(map[string]interface{}); ok {
-		spec["targetCluster"] = map[string]interface{}{
-			"clusterKind": "AzureAksCluster",
-			"clusterName": "test-cluster",
+		spec["env"] = map[string]interface{}{
+			"variables": map[string]interface{}{"LOG_LEVEL": "debug"},
 		}
 	}
 
-	Flatten(data, md, DefaultRules())
+	rules := DefaultRules()
+	rules["dev.planton.provider.kubernetes.ContainerEnv"] = TypeRule{Skip: true}
+
+	Flatten(data, md, rules)
 
 	spec := data["spec"].(map[string]interface{})
-	if _, exists := spec["targetCluster"]; exists {
-		t.Error("spec.targetCluster (camelCase) should have been skipped by flatten")
-	}
-	if _, exists := spec["target_cluster"]; exists {
-		t.Error("spec.target_cluster (snake_case) should have been skipped by flatten")
+	if _, exists := spec["env"]; exists {
+		t.Error("spec.env should have been removed by the Skip rule")
 	}
 }
 

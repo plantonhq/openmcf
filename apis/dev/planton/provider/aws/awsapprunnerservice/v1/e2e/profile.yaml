@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsapprunnerservice
+spec:
+  # Two scenarios: the dependency-free minimal service (a public sample
+  # image to an HTTPS endpoint; App Runner provisions + health-checks in
+  # roughly 3-5 minutes, waiter ceiling 20) and the composed shape (auto
+  # scaling + observability configurations by reference, WAF association)
+  # whose companions install through the e2e-prerequisites annotation.
+  # Custom domains are excluded from the live lane: association requires a
+  # domain the test tenant owns (the ACM validated-certificate class); the
+  # fold is proven by spec tests and the offline plan gate.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

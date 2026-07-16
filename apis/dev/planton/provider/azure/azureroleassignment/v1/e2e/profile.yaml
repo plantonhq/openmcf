@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureroleassignment
+spec:
+  # Composed live proof: the harness deploys the fixture resource group and the
+  # fixture user-assigned identity (registry prerequisites), grants the identity
+  # the built-in Reader role at the resource-group scope, verifies the assignment
+  # via the authorization API (GetByID on the fully-scoped ARM id), destroys it,
+  # and verifies it is gone -- on both provisioners. Role assignments are free
+  # and near-instant; the fixtures dominate the runtime.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

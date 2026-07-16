@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsredshiftserverlessnamespace.v1;
+
+import "dev/planton/provider/aws/awsredshiftserverlessnamespace/v1/api.proto";
+import "dev/planton/provider/aws/provider.proto";
+
+// aws-redshift-serverless-namespace stack-input
+message AwsRedshiftServerlessNamespaceStackInput {
+  // target cloud-resource
+  AwsRedshiftServerlessNamespace target = 1;
+  // provider-credential
+  dev.planton.provider.aws.AwsProviderConfig provider_config = 2;
+}

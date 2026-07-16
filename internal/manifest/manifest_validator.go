@@ -7,6 +7,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 func Validate(manifestPath string) error {
@@ -19,6 +20,13 @@ func Validate(manifestPath string) error {
 		return errors.Wrap(err, "failed to load manifest")
 	}
 
+	return ValidateLoaded(manifest)
+}
+
+// ValidateLoaded runs protovalidate over an already-loaded manifest's spec. Callers that
+// load manifests from memory (rendered infra-chart templates) use this directly; Validate
+// wraps it for the file-path flow.
+func ValidateLoaded(manifest proto.Message) error {
 	spec, err := ExtractSpec(manifest)
 	if err != nil {
 		return errors.Wrap(err, "failed to extract spec from manifest")

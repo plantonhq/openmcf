@@ -1,0 +1,38 @@
+# The build stage's engine: a Docker-enabled CodeBuild project driven by
+# the buildspec in YOUR repository — build changes ride the same review
+# flow as code changes. Source and artifacts are both CODEPIPELINE: the
+# pipeline hands the source zip in and carries the output forward, so the
+# project cannot be started with arbitrary inputs from outside it.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsCodeBuildProject
+metadata:
+  name: "{{ values.pipeline_name }}-build"
+spec:
+  region: "{{ values.aws_region }}"
+  source:
+    type: CODEPIPELINE
+    buildspec: "{{ values.buildspec_path }}"
+  environment:
+    type: LINUX_CONTAINER
+    computeType: "{{ values.build_compute_type }}"
+    image: "{{ values.build_image }}"
+    # Docker-in-Docker needs the daemon, and the daemon needs privileged
+    # mode — this is the standard CodeBuild arrangement for image builds,
+    # not an escape hatch.
+    privilegedMode: true
+    environmentVariables:
+      # The buildspec derives the full ECR URL from these plus the
+      # account id it looks up at runtime (aws sts get-caller-identity) —
+      # the account id is deliberately not baked into the chart.
+      - name: IMAGE_REPO_NAME
+        value: "{{ values.pipeline_name }}"
+      - name: CONTAINER_NAME
+        value: app
+  artifacts:
+    type: CODEPIPELINE
+  serviceRole:
+    valueFrom:
+      kind: AwsIamRole
+      name: "{{ values.pipeline_name }}-codebuild-role"
+      fieldPath: status.outputs.role_arn

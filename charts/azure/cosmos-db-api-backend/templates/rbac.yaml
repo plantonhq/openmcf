@@ -1,0 +1,75 @@
+# The API's data-plane role, defined instead of borrowed: Cosmos ships
+# a built-in Data Contributor, but it includes container-management and
+# delete rights an API workload rarely needs. Cosmos RBAC is allow-only
+# (no deny carve-outs), so least privilege means listing exactly the
+# verbs the workload uses -- here the full read surface plus the three
+# non-destructive writes. Add items/delete only if the API genuinely
+# deletes documents.
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbSqlRoleDefinition
+metadata:
+  name: "{{ values.env }}-cosmos-app-role"
+spec:
+  cosmosdbAccountId:
+    valueFrom:
+      kind: AzureCosmosdbAccount
+      name: "{{ values.env }}-cosmos"
+      fieldPath: status.outputs.cosmosdb_account_id
+  roleName: api-backend
+  # Assignable anywhere in the account -- the grant below narrows the
+  # actual scope; keeping the definition account-wide lets future
+  # containers reuse it.
+  assignableScopes:
+    - valueFrom:
+        kind: AzureCosmosdbAccount
+        name: "{{ values.env }}-cosmos"
+        fieldPath: status.outputs.cosmosdb_account_id
+  permissions:
+    - dataActions:
+        # SDKs read account metadata before any data operation --
+        # every role needs this.
+        - Microsoft.DocumentDB/databaseAccounts/readMetadata
+        # The full read surface: point reads, SQL queries, change feed.
+        - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/read
+        - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/executeQuery
+        - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/readChangeFeed
+        # The non-destructive writes. items/* would also grant delete --
+        # spelled out so the omission is visible.
+        - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/create
+        - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/replace
+        - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/upsert
+---
+# The grant that closes the keyless chain: the workload identity holds
+# the custom role across the account. With key auth disabled on the
+# account, this assignment IS the data-plane access list.
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbSqlRoleAssignment
+metadata:
+  name: "{{ values.env }}-cosmos-app-grant"
+spec:
+  cosmosdbAccountId:
+    valueFrom:
+      kind: AzureCosmosdbAccount
+      name: "{{ values.env }}-cosmos"
+      fieldPath: status.outputs.cosmosdb_account_id
+  roleDefinitionId:
+    valueFrom:
+      kind: AzureCosmosdbSqlRoleDefinition
+      name: "{{ values.env }}-cosmos-app-role"
+      fieldPath: status.outputs.role_definition_id
+  # The identity's PRINCIPAL (object) id -- Cosmos RBAC grants target
+  # the Entra object, not the client id applications configure.
+  principalId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: "{{ values.env }}-cosmos-app-identity"
+      fieldPath: status.outputs.principal_id
+  # Account-wide scope: the role's verbs apply to every database and
+  # container. Narrow to one database or container by replacing this
+  # with a literal /dbs/{db} or /dbs/{db}/colls/{container} path on the
+  # account id -- see the README's day-2 notes.
+  scope:
+    valueFrom:
+      kind: AzureCosmosdbAccount
+      name: "{{ values.env }}-cosmos"
+      fieldPath: status.outputs.cosmosdb_account_id

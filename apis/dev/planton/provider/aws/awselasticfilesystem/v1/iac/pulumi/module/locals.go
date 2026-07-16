@@ -9,6 +9,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals holds pre-computed values derived from the stack input.
 type Locals struct {
 	AwsElasticFileSystem *awselasticfilesystemv1.AwsElasticFileSystem
 	AwsTags              map[string]string
@@ -18,7 +19,11 @@ func initializeLocals(ctx *pulumi.Context, stackInput *awselasticfilesystemv1.Aw
 	locals := &Locals{}
 	locals.AwsElasticFileSystem = stackInput.Target
 
+	// Resource-identity tags follow the catalog convention. The Name tag is the
+	// resource's metadata.name — the same basis the Terraform module uses for
+	// its creation_token, keeping the two engines' physical identity converged.
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsElasticFileSystem.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.AwsElasticFileSystem.Metadata.Org,
 		awstagkeys.Environment:  locals.AwsElasticFileSystem.Metadata.Env,

@@ -1,0 +1,38 @@
+# The foundation's shared plumbing: one resource group holding the whole
+# network estate, and the Log Analytics workspace every security decision
+# flows into.
+#
+# One resource group is deliberate: the hub-spoke foundation is one
+# lifecycle unit -- its pieces (firewall, networks, peerings, routes) only
+# make sense together, and tearing down the foundation should tear down
+# all of it. A spoke that graduates to separate team ownership is better
+# recreated from the first-class resources in its own composition than
+# carved out of this one.
+apiVersion: azure.planton.dev/v1
+kind: AzureResourceGroup
+metadata:
+  name: "{{ values.env }}-network-foundation"
+spec:
+  name: "{{ values.env }}-network-foundation"
+  region: "{{ values.region }}"
+---
+# The workspace receiving the firewall's diagnostic logs and the policy's
+# traffic analytics. It exists in this chart (rather than assuming one)
+# because the foundation's whole value is inspectable egress -- a firewall
+# nobody can query is a black box, not a control point.
+apiVersion: azure.planton.dev/v1
+kind: AzureLogAnalyticsWorkspace
+metadata:
+  name: "{{ values.env }}-network-logs"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-network-foundation"
+      fieldPath: status.outputs.resource_group_name
+  workspaceName: "{{ values.env }}-network-logs"
+  # Pay-as-you-go ingestion (the workspace's default SKU) is right for a
+  # network foundation: firewall log volume is workload-dependent and
+  # rarely predictable at day 0. Retention is the compliance dial.
+  retentionInDays: {{ values.log_retention_days }}

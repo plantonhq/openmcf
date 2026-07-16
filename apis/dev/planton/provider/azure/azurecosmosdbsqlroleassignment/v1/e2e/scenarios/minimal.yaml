@@ -1,0 +1,38 @@
+# Minimal AzureCosmosdbSqlRoleAssignment scenario -- the composed
+# chain: fixture RG -> scenario-local SQL account -> custom role
+# definition -> this grant, binding the definition to the fixture
+# user-assigned identity's principal at the account scope. Proves all
+# three FK seams live: the definition's role_definition_id output
+# (zero-translation), the identity's principal_id, and the account
+# scope. Extra fixtures deploy in declared order (account before
+# role); the identity resolves through its registry install profile by
+# kind name. The GUID name is provider-generated (nothing pinned --
+# the recommended posture).
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbSqlRoleAssignment
+metadata:
+  name: planton-oss-e2e-azurecosmosdbsqlroleassignment-chain
+  id: planton-oss-e2e-azurecosmosdbsqlroleassignment-chain
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecosmosdbsqlroleassignment
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureUserAssignedIdentity, apis/dev/planton/provider/azure/azurecosmosdbsqlroleassignment/v1/e2e/sql-account.yaml, apis/dev/planton/provider/azure/azurecosmosdbsqlroleassignment/v1/e2e/custom-role.yaml"
+  tags:
+    - planton-e2e
+spec:
+  cosmosdbAccountId:
+    valueFrom:
+      name: planton-oss-e2e-cosrasgn-fixture-account
+  roleDefinitionId:
+    valueFrom:
+      name: planton-oss-e2e-cosrasgn-fixture-role
+  principalId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-identity
+  scope:
+    valueFrom:
+      name: planton-oss-e2e-cosrasgn-fixture-account

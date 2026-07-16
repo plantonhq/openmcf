@@ -1,15 +1,29 @@
+# Production Application Insights with cost controls -- 50% sampling,
+# a tight daily cap with notifications, one-year retention, and the
+# keyless (Entra-only) ingestion posture.
 apiVersion: azure.planton.dev/v1
 kind: AzureApplicationInsights
 metadata:
-  name: my-production-insights
+  name: my-prod-app-insights
 spec:
-  region: <azure-region>
+  region: eastus
   resourceGroup:
-    value: "<your-resource-group-name>"
-  name: <your-app-insights-name>
-  applicationType: web
+    valueFrom:
+      kind: AzureResourceGroup
+      name: my-observability-rg
+      fieldPath: status.outputs.resource_group_name
+  applicationInsightsName: my-prod-app-insights
+  applicationType: WEB
   workspaceId:
-    value: "<log-analytics-workspace-id>"
-  retentionInDays: 90
-  dailyDataCapInGb: 10  # 10 GB daily cap to control costs
-  samplingPercentage: 25  # 25% sampling; statistically representative at lower cost
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: my-platform-logs
+      fieldPath: status.outputs.workspace_id
+  retentionInDays: 365
+  dailyDataCapInGb: 10
+  dailyDataCapNotificationsEnabled: true
+  samplingPercentage: 50
+  localAuthenticationEnabled: false
+  tags:
+    cost-center: platform
+    environment: production

@@ -8,7 +8,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -45,10 +44,6 @@ var _ = ginkgo.Describe("KubernetesTcpRoute Validation Tests", func() {
 				Name: "test-tcp-route",
 			},
 			Spec: &KubernetesTcpRouteSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: literal("app-ns"),
 				ParentRefs: []*kubernetes.KubernetesGatewayApiParentReference{
 					{Name: "my-gateway"},

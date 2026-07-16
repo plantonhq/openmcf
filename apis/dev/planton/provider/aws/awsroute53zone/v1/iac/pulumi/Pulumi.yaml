@@ -1,5 +1,3 @@
-name: awsroute53zone-pulumi-project
-runtime:
-  name: go
-# options:
-#   binary: ./debug.sh
+name: aws-route53-zone
+runtime: go
+description: Deploy an Amazon Route 53 hosted zone using Planton

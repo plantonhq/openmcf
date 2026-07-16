@@ -1,41 +1,34 @@
 # -----------------------------------------------------------------------------
-# VPC Connector (created inline when subnet_ids are provided)
-# -----------------------------------------------------------------------------
-resource "aws_apprunner_vpc_connector" "this" {
-  count = local.create_inline_vpc_connector ? 1 : 0
-
-  vpc_connector_name = "${local.service_name}-vpc"
-  subnets            = var.spec.subnet_ids
-  security_groups    = var.spec.security_group_ids
-  tags               = local.tags
-}
-
-# -----------------------------------------------------------------------------
-# Auto Scaling Configuration (created when auto_scaling block is provided)
-# -----------------------------------------------------------------------------
-resource "aws_apprunner_auto_scaling_configuration_version" "this" {
-  count = var.spec.auto_scaling != null ? 1 : 0
-
-  auto_scaling_configuration_name = "${local.service_name}-asc"
-  min_size                        = var.spec.auto_scaling.min_size
-  max_size                        = var.spec.auto_scaling.max_size
-  max_concurrency                 = var.spec.auto_scaling.max_concurrency
-  tags                            = local.tags
-}
-
-# -----------------------------------------------------------------------------
-# App Runner Service
+# App Runner service
+#
+# The service is the runtime: source in (image or code), HTTPS endpoint out.
+# Its shared companions -- auto scaling configuration, VPC connector, and
+# observability configuration -- are separate first-class resources referenced
+# by ARN, never created here: each is designed by AWS to be shared across
+# services, so embedding one per service would fork what should be tuned in
+# one place.
 # -----------------------------------------------------------------------------
 resource "aws_apprunner_service" "this" {
   service_name = local.service_name
 
-  # --- Source configuration ---------------------------------------------------
+  # --- Source -----------------------------------------------------------
+  # Exactly one of image_repository / code_repository is present (spec CEL).
+  # Port, start command, and the env var/secret maps live at the spec top
+  # level and are routed into whichever arm is active -- they configure the
+  # runtime container either way.
   source_configuration {
+    # Sent explicitly (never defaulted) because the honest default is
+    # conditional on the source: AWS enables auto-deploy for code repos and
+    # private ECR only, and REJECTS it for ECR_PUBLIC (spec CEL guards the
+    # invalid combination before AWS would).
     auto_deployments_enabled = var.spec.auto_deployments_enabled
 
     dynamic "authentication_configuration" {
       for_each = local.needs_auth_config ? [1] : []
       content {
+        # Private ECR pulls use the access role; code repositories use the
+        # out-of-band App Runner connection. The two never coexist because
+        # the source arms are mutually exclusive.
         access_role_arn = var.spec.image_source != null ? (
           var.spec.image_source.access_role_arn != "" ? var.spec.image_source.access_role_arn : null
         ) : null
@@ -43,7 +36,6 @@ resource "aws_apprunner_service" "this" {
       }
     }
 
-    # Image-based source
     dynamic "image_repository" {
       for_each = var.spec.image_source != null ? [var.spec.image_source] : []
       content {
@@ -59,13 +51,14 @@ resource "aws_apprunner_service" "this" {
       }
     }
 
-    # Code-based source
     dynamic "code_repository" {
       for_each = var.spec.code_source != null ? [var.spec.code_source] : []
       content {
         repository_url   = code_repository.value.repository_url
         source_directory = code_repository.value.source_directory != "" ? code_repository.value.source_directory : null
 
+        # BRANCH is the only source-code-version type AWS supports; the spec
+        # models the branch directly rather than a one-value enum wrapper.
         source_code_version {
           type  = "BRANCH"
           value = code_repository.value.branch
@@ -74,6 +67,9 @@ resource "aws_apprunner_service" "this" {
         code_configuration {
           configuration_source = code_repository.value.configuration_source
 
+          # Build settings apply only in API mode; in REPOSITORY mode App
+          # Runner reads apprunner.yaml from the source directory and AWS
+          # rejects inline values.
           dynamic "code_configuration_values" {
             for_each = code_repository.value.configuration_source == "API" ? [1] : []
             content {
@@ -90,46 +86,48 @@ resource "aws_apprunner_service" "this" {
     }
   }
 
-  # --- Instance configuration ------------------------------------------------
+  # --- Instances ----------------------------------------------------------
   instance_configuration {
     cpu               = var.spec.cpu
     memory            = var.spec.memory
     instance_role_arn = var.spec.instance_role_arn != "" ? var.spec.instance_role_arn : null
   }
 
-  # --- Health check configuration --------------------------------------------
+  # --- Health check -------------------------------------------------------
+  # Only emitted when the spec configures it; AWS then applies TCP checks on
+  # the service port with its own defaults. The path is meaningful only for
+  # HTTP -- sending it alongside TCP would be silently ignored, so it is
+  # nulled deliberately.
   dynamic "health_check_configuration" {
     for_each = var.spec.health_check != null ? [var.spec.health_check] : []
     content {
       protocol            = health_check_configuration.value.protocol
       path                = health_check_configuration.value.protocol == "HTTP" ? health_check_configuration.value.path : null
-      interval            = health_check_configuration.value.interval_seconds
-      timeout             = health_check_configuration.value.timeout_seconds
+      interval            = health_check_configuration.value.interval
+      timeout             = health_check_configuration.value.timeout
       healthy_threshold   = health_check_configuration.value.healthy_threshold
       unhealthy_threshold = health_check_configuration.value.unhealthy_threshold
     }
   }
 
-  # --- Network configuration (dynamic: only when non-default) ----------------
-  dynamic "network_configuration" {
-    for_each = (
-      local.egress_type != "DEFAULT" ||
-      !var.spec.is_publicly_accessible ||
-      var.spec.ip_address_type != "IPV4"
-    ) ? [1] : []
-    content {
-      egress_configuration {
-        egress_type       = local.egress_type
-        vpc_connector_arn = local.effective_vpc_connector_arn
-      }
-      ingress_configuration {
-        is_publicly_accessible = var.spec.is_publicly_accessible
-      }
-      ip_address_type = var.spec.ip_address_type
+  # --- Networking ---------------------------------------------------------
+  # Always sent explicitly so the deployed shape never depends on AWS-side
+  # defaults: egress routes through the referenced VPC connector when one is
+  # set, ingress publicness and address family mirror the spec (middleware
+  # materializes the spec defaults; the null-guards keep direct module use
+  # deterministic too).
+  network_configuration {
+    egress_configuration {
+      egress_type       = local.egress_type
+      vpc_connector_arn = var.spec.vpc_connector_arn != "" ? var.spec.vpc_connector_arn : null
     }
+    ingress_configuration {
+      is_publicly_accessible = var.spec.is_publicly_accessible != null ? var.spec.is_publicly_accessible : true
+    }
+    ip_address_type = var.spec.ip_address_type
   }
 
-  # --- Encryption configuration (dynamic: only when KMS key provided) --------
+  # --- Encryption (ForceNew) ------------------------------------------------
   dynamic "encryption_configuration" {
     for_each = var.spec.kms_key_arn != "" ? [1] : []
     content {
@@ -137,9 +135,11 @@ resource "aws_apprunner_service" "this" {
     }
   }
 
-  # --- Observability configuration (dynamic: only when enabled) ---------------
+  # --- Observability --------------------------------------------------------
+  # Presence of the configuration reference IS the enable switch -- there is
+  # no separate toggle to drift out of sync.
   dynamic "observability_configuration" {
-    for_each = var.spec.observability_enabled ? [1] : []
+    for_each = var.spec.observability_configuration_arn != "" ? [1] : []
     content {
       observability_enabled           = true
       observability_configuration_arn = var.spec.observability_configuration_arn
@@ -147,11 +147,41 @@ resource "aws_apprunner_service" "this" {
   }
 
   # --- Auto scaling -----------------------------------------------------------
-  auto_scaling_configuration_arn = (
-    var.spec.auto_scaling != null
-    ? aws_apprunner_auto_scaling_configuration_version.this[0].arn
-    : null
-  )
+  # Null falls back to the account's default auto scaling configuration.
+  auto_scaling_configuration_arn = var.spec.auto_scaling_configuration_arn != "" ? var.spec.auto_scaling_configuration_arn : null
 
-  tags = local.tags
+  tags = local.aws_tags
+}
+
+# -----------------------------------------------------------------------------
+# Custom domain associations
+#
+# One association per spec entry, keyed by domain name so entries add and
+# remove independently. App Runner issues the TLS certificate; the
+# per-domain validation CNAMEs surface as stack outputs for external DNS
+# (or AwsRoute53DnsRecord composition). The association resource returns as
+# soon as validation records are AVAILABLE -- it deliberately does not wait
+# for the domain to go active, because that requires the DNS records this
+# module does not manage.
+# -----------------------------------------------------------------------------
+resource "aws_apprunner_custom_domain_association" "this" {
+  for_each = local.custom_domains
+
+  domain_name          = each.value.domain_name
+  service_arn          = aws_apprunner_service.this.arn
+  enable_www_subdomain = each.value.enable_www_subdomain != null ? each.value.enable_www_subdomain : true
+}
+
+# -----------------------------------------------------------------------------
+# WAF association
+#
+# The protected resource points at the web ACL (the same direction CloudFront
+# models it) -- the association is glue with no identity of its own, so it
+# folds here rather than existing as a kind.
+# -----------------------------------------------------------------------------
+resource "aws_wafv2_web_acl_association" "this" {
+  count = var.spec.web_acl_arn != "" ? 1 : 0
+
+  resource_arn = aws_apprunner_service.this.arn
+  web_acl_arn  = var.spec.web_acl_arn
 }

@@ -1,0 +1,36 @@
+# Minimal AzureIpGroup scenario: a mixed address set in the fixture
+# resource group.
+#
+# The resource-group reference resolves against the registry prerequisite's
+# captured outputs through the field's default kind. The cidrs list carries
+# both entry shapes Azure accepts (a single address and a CIDR block) so
+# the round-trip proves the set survives intact on both engines. The
+# ip_group_id output -- the join key firewall policy rules reference --
+# must populate on both engines. User tags exercise the
+# merge-over-metadata-tags path.
+apiVersion: azure.planton.dev/v1
+kind: AzureIpGroup
+metadata:
+  name: planton-oss-e2e-azureipgroup-smoke
+  id: planton-oss-e2e-azureipgroup-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureipgroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-ipg-smoke
+  cidrs:
+    - "203.0.113.7"
+    - "10.10.0.0/16"
+  tags:
+    e2e-suite: azure
+    purpose: smoke

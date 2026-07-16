@@ -1,0 +1,111 @@
+# Zone-scoped data-plane RBAC -- the primary access layer (Azure
+# checks these grants before consulting the POSIX ACLs). Every scope
+# below is a FILESYSTEM's container-proxy ARM id, not the account: the
+# grant boundary is the zone, so "analysts read curated" is a fact of
+# the architecture, not a convention. No grant carries account-wide
+# reach, and no access key is involved anywhere.
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: "{{ values.env }}-grant-eng-raw"
+spec:
+  scope:
+    valueFrom:
+      kind: AzureStorageDataLakeGen2Filesystem
+      name: "{{ values.env }}-zone-raw"
+      fieldPath: status.outputs.filesystem_id
+  roleDefinitionName: Storage Blob Data Contributor
+  principalId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: "{{ values.env }}-lake-engineering"
+      fieldPath: status.outputs.principal_id
+  principalType: SERVICE_PRINCIPAL
+  # The identity is created moments before this grant; skipping the
+  # directory existence check avoids losing the race against Entra's
+  # asynchronous replication (PrincipalNotFound).
+  skipServicePrincipalAadCheck: true
+  description: Engineering pipelines land raw data -- write access to the raw zone only
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: "{{ values.env }}-grant-eng-curated"
+spec:
+  scope:
+    valueFrom:
+      kind: AzureStorageDataLakeGen2Filesystem
+      name: "{{ values.env }}-zone-curated"
+      fieldPath: status.outputs.filesystem_id
+  roleDefinitionName: Storage Blob Data Contributor
+  principalId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: "{{ values.env }}-lake-engineering"
+      fieldPath: status.outputs.principal_id
+  principalType: SERVICE_PRINCIPAL
+  skipServicePrincipalAadCheck: true
+  description: Engineering pipelines publish validated data into the curated zone
+---
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: "{{ values.env }}-grant-eng-sandbox"
+spec:
+  scope:
+    valueFrom:
+      kind: AzureStorageDataLakeGen2Filesystem
+      name: "{{ values.env }}-zone-sandbox"
+      fieldPath: status.outputs.filesystem_id
+  roleDefinitionName: Storage Blob Data Contributor
+  principalId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: "{{ values.env }}-lake-engineering"
+      fieldPath: status.outputs.principal_id
+  principalType: SERVICE_PRINCIPAL
+  skipServicePrincipalAadCheck: true
+  description: Engineering experiments in the sandbox zone
+---
+# The analyst grant is READER, and only on curated -- raw (unscrubbed)
+# and sandbox (unvalidated) are architecturally out of reach.
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: "{{ values.env }}-grant-analysts-curated"
+spec:
+  scope:
+    valueFrom:
+      kind: AzureStorageDataLakeGen2Filesystem
+      name: "{{ values.env }}-zone-curated"
+      fieldPath: status.outputs.filesystem_id
+  roleDefinitionName: Storage Blob Data Reader
+  principalId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: "{{ values.env }}-lake-analysts"
+      fieldPath: status.outputs.principal_id
+  principalType: SERVICE_PRINCIPAL
+  skipServicePrincipalAadCheck: true
+  description: Analysts read the curated zone -- BI and notebooks, read-only
+---
+# Sandbox writes for analysts too -- exploration is the zone's purpose.
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: "{{ values.env }}-grant-analysts-sandbox"
+spec:
+  scope:
+    valueFrom:
+      kind: AzureStorageDataLakeGen2Filesystem
+      name: "{{ values.env }}-zone-sandbox"
+      fieldPath: status.outputs.filesystem_id
+  roleDefinitionName: Storage Blob Data Contributor
+  principalId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: "{{ values.env }}-lake-analysts"
+      fieldPath: status.outputs.principal_id
+  principalType: SERVICE_PRINCIPAL
+  skipServicePrincipalAadCheck: true
+  description: Analysts experiment in the sandbox zone

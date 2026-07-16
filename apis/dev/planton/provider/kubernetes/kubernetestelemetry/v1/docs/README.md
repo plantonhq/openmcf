@@ -26,8 +26,8 @@ authoritative. The CRDs installed by `KubernetesIstioBaseCrds` are generated fro
 
 ### Envelope and shared types
 
-Upstream spec fields are flattened after the Planton namespaced envelope (`target_cluster`,
-`namespace`); there is no nested `telemetry` sub-message. `namespace` is the one foreign key
+Upstream spec fields are flattened after the Planton namespaced envelope (`namespace`);
+there is no nested `telemetry` sub-message. `namespace` is the one foreign key
 (`StringValueOrRef` -> `KubernetesNamespace`). The `selector` reuses the shared **policy**
 selector `KubernetesIstioApiWorkloadSelector` (field `match_labels`, the
 `istio.type.v1beta1.WorkloadSelector` upstream uses), and `target_refs` reuses

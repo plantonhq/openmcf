@@ -1,6 +1,7 @@
 package module
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -9,11 +10,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// domain provisions the pool's hosted-UI domain (one per pool -- honestly
+// folded into the pool resource) and exports the domain join keys.
+//
+// Two shapes exist, distinguished by the presence of a dot in the domain:
+//   - Prefix domain ("myapp-auth"): AWS serves the UI at
+//     {prefix}.auth.{region}.amazoncognito.com; ready in about a minute.
+//   - Custom domain ("auth.example.com"): AWS fronts the UI with a managed
+//     CloudFront distribution; the deployer points DNS at the exported
+//     distribution domain (creation can take tens of minutes on AWS's side).
 func domain(ctx *pulumi.Context, locals *Locals, createdPool *cognito.UserPool, provider *aws.Provider) error {
 	if locals.Spec.Domain == nil || locals.Spec.Domain.Domain == "" {
-		// No domain configured — export empty values.
+		// No domain configured -- export empty values so the output contract
+		// stays shape-stable for downstream references.
 		ctx.Export(OpUserPoolDomain, pulumi.String(""))
+		ctx.Export(OpHostedUiUrl, pulumi.String(""))
+		ctx.Export(OpCloudfrontDistribution, pulumi.String(""))
 		ctx.Export(OpCloudfrontDistributionArn, pulumi.String(""))
+		ctx.Export(OpCloudfrontHostedZoneId, pulumi.String(""))
 		return nil
 	}
 
@@ -25,10 +39,18 @@ func domain(ctx *pulumi.Context, locals *Locals, createdPool *cognito.UserPool, 
 		UserPoolId: createdPool.ID(),
 	}
 
-	// Custom domains (containing a dot) require an ACM certificate.
+	// A certificate is what makes a domain "custom" to AWS: its presence
+	// switches the domain onto a CloudFront distribution. The spec's CEL
+	// already requires it for dotted domains.
 	isCustomDomain := strings.Contains(domainSpec.Domain, ".")
 	if isCustomDomain && domainSpec.CertificateArn.GetValue() != "" {
 		args.CertificateArn = pulumi.StringPtr(domainSpec.CertificateArn.GetValue())
+	}
+
+	// Only forward an explicit choice -- omitted means AWS's default (managed
+	// login for new domains).
+	if domainSpec.ManagedLoginVersion != nil {
+		args.ManagedLoginVersion = pulumi.IntPtr(int(*domainSpec.ManagedLoginVersion))
 	}
 
 	created, err := cognito.NewUserPoolDomain(ctx, resourceName, args, pulumi.Provider(provider))
@@ -36,25 +58,29 @@ func domain(ctx *pulumi.Context, locals *Locals, createdPool *cognito.UserPool, 
 		return errors.Wrap(err, "failed to create Cognito user pool domain")
 	}
 
-	// Export the full domain URL and CloudFront distribution ARN.
+	// The RAW domain string is the join key (ALB authenticate-cognito actions
+	// take it as user_pool_domain); the full URL is a separate convenience
+	// output for application configs.
+	ctx.Export(OpUserPoolDomain, pulumi.String(domainSpec.Domain))
 	if isCustomDomain {
-		ctx.Export(OpUserPoolDomain, pulumi.Sprintf("https://%s", domainSpec.Domain))
-		ctx.Export(OpCloudfrontDistributionArn, created.CloudfrontDistributionArn)
+		ctx.Export(OpHostedUiUrl, pulumi.Sprintf("https://%s", domainSpec.Domain))
 	} else {
-		// Cognito-hosted prefix domain: build the URL from domain + region.
-		// The region comes from the provider. We use the domain resource's computed
-		// CloudFront distribution to confirm creation, but the URL follows a known pattern.
-		ctx.Export(OpUserPoolDomain, created.CloudfrontDistribution.ApplyT(func(cf string) string {
-			// For prefix domains, the URL is: https://{domain}.auth.{region}.amazoncognito.com
-			// We can derive region from the pool ID (format: {region}_{id}).
-			// However, the simplest approach is to use the domain + the cloudfront distribution.
-			// Since cloudfront_distribution for prefix domains returns the CF domain, we use
-			// the known URL pattern instead.
-			return "https://" + domainSpec.Domain + ".auth." + cf
-		}).(pulumi.StringOutput))
+		ctx.Export(OpHostedUiUrl, pulumi.String(
+			fmt.Sprintf("https://%s.auth.%s.amazoncognito.com", domainSpec.Domain, locals.Spec.Region)))
+	}
 
-		// For prefix domains, the CF distribution ARN is not meaningful for DNS aliasing.
+	// CloudFront alias targets, meaningful only for custom domains (AWS
+	// reports the distribution the domain rides on). For prefix domains the
+	// provider returns the shared Cognito CloudFront value, which is not a
+	// DNS alias target -- export empty strings to keep the outputs honest.
+	if isCustomDomain {
+		ctx.Export(OpCloudfrontDistribution, created.CloudfrontDistribution)
+		ctx.Export(OpCloudfrontDistributionArn, created.CloudfrontDistributionArn)
+		ctx.Export(OpCloudfrontHostedZoneId, created.CloudfrontDistributionZoneId)
+	} else {
+		ctx.Export(OpCloudfrontDistribution, pulumi.String(""))
 		ctx.Export(OpCloudfrontDistributionArn, pulumi.String(""))
+		ctx.Export(OpCloudfrontHostedZoneId, pulumi.String(""))
 	}
 
 	return nil

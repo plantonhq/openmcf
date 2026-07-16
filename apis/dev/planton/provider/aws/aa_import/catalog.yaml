@@ -1,0 +1,232 @@
+apiVersion: iac.planton.dev/v1
+kind: ProviderImportCatalog
+metadata:
+  name: aws
+spec:
+  # Import-ID formats per AWS resource type, as documented by the upstream
+  # terraform-provider-aws / pulumi-aws providers. The FORMAT lives here
+  # (provider knowledge, shared by every component); which concrete value
+  # fills each {placeholder} lives in the owning component's import-map.yaml.
+  # Correctness is machine-proven by the E2E import round-trip (deploy a
+  # fixture, set state aside, re-import blind, plan must show zero diff) --
+  # never by review alone.
+  #
+  # cloud_control_type_name is the scan-side correspondence: the
+  # CloudFormation type name under which a read-only account scan (the Cloud
+  # Control API) reports this resource. It is declared ONLY for types
+  # verified listable via `aws cloudcontrol list-resources` with no extra
+  # list parameters; a covered type may legitimately carry none because it
+  # is unlistable (AWS::IAM::RolePolicy does not support LIST), needs
+  # scoping input Cloud Control cannot default (AWS::EC2::VPCCidrBlock
+  # requires a ResourceModel), or exists only as properties of a parent
+  # type's model (every S3 satellite except the bucket policy). Consumers
+  # treat absence as "not discoverable by scanning", never as an error.
+  resource_types:
+    # --- S3 ------------------------------------------------------------------
+    # Every S3 satellite imports by the bucket name; several accept optional
+    # suffixes (",{expected_bucket_owner}") that the platform never needs for
+    # same-account imports.
+    - terraform_type: aws_s3_bucket
+      pulumi_type: aws:s3/bucketV2:BucketV2
+      id_format: "{bucket}"
+      cloud_control_type_name: AWS::S3::Bucket
+      # force_destroy is engine behavior (empty-before-delete), not a bucket
+      # property -- import can never carry it, so post-import plans showing
+      # only this attribute are clean.
+      config_only_attributes: [force_destroy]
+    - terraform_type: aws_s3_bucket_versioning
+      pulumi_type: aws:s3/bucketVersioningV2:BucketVersioningV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_server_side_encryption_configuration
+      pulumi_type: aws:s3/bucketServerSideEncryptionConfigurationV2:BucketServerSideEncryptionConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_public_access_block
+      pulumi_type: aws:s3/bucketPublicAccessBlock:BucketPublicAccessBlock
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_ownership_controls
+      pulumi_type: aws:s3/bucketOwnershipControls:BucketOwnershipControls
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_acl
+      pulumi_type: aws:s3/bucketAclV2:BucketAclV2
+      id_format: "{bucket}"
+      notes: >-
+        When the bucket ACL was set with a canned ACL, the provider also
+        accepts "{bucket},{acl}"; the plain bucket form round-trips for
+        module-managed buckets.
+    - terraform_type: aws_s3_bucket_policy
+      pulumi_type: aws:s3/bucketPolicy:BucketPolicy
+      id_format: "{bucket}"
+      cloud_control_type_name: AWS::S3::BucketPolicy
+    - terraform_type: aws_s3_bucket_lifecycle_configuration
+      pulumi_type: aws:s3/bucketLifecycleConfigurationV2:BucketLifecycleConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_replication_configuration
+      pulumi_type: aws:s3/bucketReplicationConfig:BucketReplicationConfig
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_website_configuration
+      pulumi_type: aws:s3/bucketWebsiteConfigurationV2:BucketWebsiteConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_logging
+      pulumi_type: aws:s3/bucketLoggingV2:BucketLoggingV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_cors_configuration
+      pulumi_type: aws:s3/bucketCorsConfigurationV2:BucketCorsConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_notification
+      pulumi_type: aws:s3/bucketNotification:BucketNotification
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_object_lock_configuration
+      pulumi_type: aws:s3/bucketObjectLockConfigurationV2:BucketObjectLockConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_accelerate_configuration
+      pulumi_type: aws:s3/bucketAccelerateConfigurationV2:BucketAccelerateConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_request_payment_configuration
+      pulumi_type: aws:s3/bucketRequestPaymentConfigurationV2:BucketRequestPaymentConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_intelligent_tiering_configuration
+      pulumi_type: aws:s3/bucketIntelligentTieringConfiguration:BucketIntelligentTieringConfiguration
+      id_format: "{bucket}:{intelligent_tiering_name}"
+      notes: >-
+        The colon-joined second segment is the per-configuration name (the
+        module keys these off spec.intelligent_tiering_configurations[].name;
+        it also appears in the enumerated address's for_each key).
+
+    # --- VPC -----------------------------------------------------------------
+    - terraform_type: aws_vpc
+      pulumi_type: aws:ec2/vpc:Vpc
+      id_format: "{vpc_id}"
+      cloud_control_type_name: AWS::EC2::VPC
+    - terraform_type: aws_vpc_ipv4_cidr_block_association
+      pulumi_type: aws:ec2/vpcIpv4CidrBlockAssociation:VpcIpv4CidrBlockAssociation
+      id_format: "{cidr_association_id}"
+      notes: >-
+        The "vpc-cidr-assoc-..." association id (aws ec2 describe-vpcs shows
+        each association under CidrBlockAssociationSet).
+
+    # --- Security group ------------------------------------------------------
+    - terraform_type: aws_security_group
+      pulumi_type: aws:ec2/securityGroup:SecurityGroup
+      id_format: "{security_group_id}"
+      cloud_control_type_name: AWS::EC2::SecurityGroup
+      # revoke_rules_on_delete is engine delete behavior (revoke every rule
+      # before deleting, for groups other groups reference) -- EC2 never
+      # reports it, so it can never round-trip through import.
+      config_only_attributes: [revoke_rules_on_delete]
+
+    # --- ECR -----------------------------------------------------------------
+    - terraform_type: aws_ecr_repository
+      pulumi_type: aws:ecr/repository:Repository
+      id_format: "{repository_name}"
+      cloud_control_type_name: AWS::ECR::Repository
+      # force_delete mirrors S3's force_destroy: engine-only delete behavior.
+      config_only_attributes: [force_delete]
+    - terraform_type: aws_ecr_lifecycle_policy
+      pulumi_type: aws:ecr/lifecyclePolicy:LifecyclePolicy
+      id_format: "{repository_name}"
+
+    # --- Subnet (subnet + its owned route table + the association) -----------
+    - terraform_type: aws_subnet
+      pulumi_type: aws:ec2/subnet:Subnet
+      id_format: "{subnet_id}"
+      cloud_control_type_name: AWS::EC2::Subnet
+    - terraform_type: aws_route_table
+      pulumi_type: aws:ec2/routeTable:RouteTable
+      id_format: "{route_table_id}"
+      cloud_control_type_name: AWS::EC2::RouteTable
+    - terraform_type: aws_route_table_association
+      pulumi_type: aws:ec2/routeTableAssociation:RouteTableAssociation
+      id_format: "{subnet_id}/{route_table_id}"
+      cloud_control_type_name: AWS::EC2::SubnetRouteTableAssociation
+      notes: >-
+        Subnet associations import by "subnet-id/rtb-id" (gateway
+        associations use "igw-id/rtb-id" -- not a shape Planton modules
+        create today).
+
+    # --- Internet gateway -----------------------------------------------------
+    - terraform_type: aws_internet_gateway
+      pulumi_type: aws:ec2/internetGateway:InternetGateway
+      id_format: "{internet_gateway_id}"
+      cloud_control_type_name: AWS::EC2::InternetGateway
+
+    # --- NAT gateway -----------------------------------------------------------
+    - terraform_type: aws_nat_gateway
+      pulumi_type: aws:ec2/natGateway:NatGateway
+      id_format: "{nat_gateway_id}"
+      cloud_control_type_name: AWS::EC2::NatGateway
+
+    # --- IAM role (role + inline policies + managed-policy attachments) -------
+    - terraform_type: aws_iam_role
+      pulumi_type: aws:iam/role:Role
+      id_format: "{role_name}"
+      cloud_control_type_name: AWS::IAM::Role
+      # force_detach_policies is engine delete behavior (detach before
+      # delete), never readable from IAM -- same class as S3's force_destroy.
+      config_only_attributes: [force_detach_policies]
+    - terraform_type: aws_iam_role_policy
+      pulumi_type: aws:iam/rolePolicy:RolePolicy
+      id_format: "{role_name}:{inline_policy_name}"
+    - terraform_type: aws_iam_role_policy_attachment
+      pulumi_type: aws:iam/rolePolicyAttachment:RolePolicyAttachment
+      id_format: "{role_name}/{managed_policy_arn}"
+
+    # --- DynamoDB (table + folded satellites) ----------------------------------
+    - terraform_type: aws_dynamodb_table
+      pulumi_type: aws:dynamodb/table:Table
+      id_format: "{table_name}"
+      cloud_control_type_name: AWS::DynamoDB::Table
+    - terraform_type: aws_dynamodb_resource_policy
+      pulumi_type: aws:dynamodb/resourcePolicy:ResourcePolicy
+      id_format: "{table_arn}"
+      # DynamoDB normalizes the stored policy document (whitespace, key
+      # order, principal shapes), so a faithful import plans a semantically
+      # identical policy rewrite plus the computed revision bump. The
+      # provider's own import test ignores "policy" for the same reason.
+      write_normalized_attributes: [policy, revision_id]
+    - terraform_type: aws_dynamodb_kinesis_streaming_destination
+      pulumi_type: aws:dynamodb/kinesisStreamingDestination:KinesisStreamingDestination
+      id_format: "{table_name},{kinesis_stream_arn}"
+    - terraform_type: aws_dynamodb_contributor_insights
+      pulumi_type: aws:dynamodb/contributorInsights:ContributorInsights
+      id_format: "name:{table_name}/index:{index_name?}/{account_id}"
+      notes: >-
+        Table-level insights leave the index segment empty
+        ("name:tbl/index:/123456789012") -- the optional marker renders it
+        as such.
+
+    # --- SQS -------------------------------------------------------------------
+    - terraform_type: aws_sqs_queue
+      pulumi_type: aws:sqs/queue:Queue
+      id_format: "{queue_url}"
+      cloud_control_type_name: AWS::SQS::Queue
+      notes: >-
+        The full queue URL ("https://sqs.<region>.amazonaws.com/<account>/
+        <name>"), not the queue name or ARN.
+
+    # --- SNS -------------------------------------------------------------------
+    - terraform_type: aws_sns_topic
+      pulumi_type: aws:sns/topic:Topic
+      id_format: "{topic_arn}"
+      cloud_control_type_name: AWS::SNS::Topic
+    - terraform_type: aws_sns_topic_data_protection_policy
+      pulumi_type: aws:sns/dataProtectionPolicy:DataProtectionPolicy
+      id_format: "{topic_arn}"
+
+    # --- KMS -------------------------------------------------------------------
+    - terraform_type: aws_kms_key
+      pulumi_type: aws:kms/key:Key
+      id_format: "{kms_key_id}"
+      cloud_control_type_name: AWS::KMS::Key
+      notes: >-
+        The key id (UUID), not the alias or ARN. Imported keys also need
+        their policy/rotation read back, which the import's refresh does.
+      # deletion_window_in_days only exists as scheduling input to
+      # ScheduleKeyDeletion; KMS never reports it back.
+      config_only_attributes: [deletion_window_in_days]
+    - terraform_type: aws_kms_alias
+      pulumi_type: aws:kms/alias:Alias
+      id_format: "{kms_alias_name}"
+      cloud_control_type_name: AWS::KMS::Alias
+      notes: >-
+        The full alias name including the "alias/" prefix
+        (e.g. "alias/my-key-alias").

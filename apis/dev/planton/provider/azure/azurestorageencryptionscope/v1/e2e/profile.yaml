@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurestorageencryptionscope
+spec:
+  # The harness deploys the fixture resource group and a SCENARIO-LOCAL
+  # storage account (declared via the e2e-prerequisites annotation --
+  # account names are globally unique and Azure briefly holds a
+  # just-deleted name, so the account is never a shared recreate-per-
+  # scenario registry prerequisite), creates the scope, verifies it via
+  # the ARM API, destroys it, and verifies it is GONE-BY-STATE -- ARM has
+  # no true delete for scopes (destroy soft-disables), so the verifier is
+  # state-aware and treats Disabled as absent.
+  #
+  # The MICROSOFT_KEY_VAULT source is excluded from live runs: proving it
+  # live needs an account identity + vault + key + role-assignment
+  # fixture chain (with a ~10-minute vault purge) for a pairing the spec
+  # tests, tofu plan, and parity audit fully prove -- the same treatment
+  # the account's own customer_managed_key block gets.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

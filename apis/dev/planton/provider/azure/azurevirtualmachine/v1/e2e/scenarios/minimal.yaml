@@ -1,0 +1,64 @@
+# Minimal AzureVirtualMachine scenario: a burstable zonal Ubuntu VM on
+# the fixture NIC with a data disk attached at LUN 0.
+#
+# The NIC reference resolves against the registry prerequisite chain's
+# captured outputs (resource group -> virtual network -> subnet -> NIC).
+# The managed disk is a scenario-declared extra fixture (see the
+# annotation) -- attaching a data disk is an OPTIONAL seam, so the disk
+# kind must never pollute the registry prerequisites; the attachment
+# resource is one of the two seams under test. Zone "1" matches the disk
+# fixture's zone (a zonal disk only attaches to VMs in the same zone) and
+# the eastus burstable-size constraint. The throwaway SSH public key is
+# public material generated for this suite; it grants access to nothing.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualMachine
+metadata:
+  name: planton-oss-e2e-azurevirtualmachine-smoke
+  id: planton-oss-e2e-azurevirtualmachine-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevirtualmachine
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureManagedDisk"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-vm-smoke
+  size: Standard_B2s
+  networkInterfaceIds:
+    - valueFrom:
+        name: planton-oss-e2e-azure-fixture-nic
+  osProfile:
+    linux:
+      adminUsername: azureuser
+      sshPublicKeys:
+        - publicKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKp1QgHKux0e/js6p7UBR4jYOtb5aeedkl+0cNr5RB6Q planton-oss-e2e
+  osDisk:
+    caching: READ_WRITE
+    storageAccountType: STANDARD_SSD_LRS
+  sourceImageReference:
+    publisher: Canonical
+    offer: ubuntu-24_04-lts
+    sku: server
+    version: latest
+  dataDiskAttachments:
+    - managedDiskId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-disk
+      lun: 0
+      caching: READ_ONLY
+  identity:
+    type: SYSTEM_ASSIGNED
+  availability:
+    zone: "1"
+  bootDiagnostics: {}
+  tags:
+    e2e-suite: azure
+    purpose: smoke

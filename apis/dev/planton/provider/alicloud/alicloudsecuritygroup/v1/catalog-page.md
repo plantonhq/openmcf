@@ -23,7 +23,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudSecurityGroup
 metadata:
   name: my-web-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -93,7 +93,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudSecurityGroup
 metadata:
   name: web-tier-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -132,7 +132,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudSecurityGroup
 metadata:
   name: db-tier-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

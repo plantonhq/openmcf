@@ -1,50 +1,28 @@
 # AwsDocumentDb
 
-Provision an AWS DocumentDB cluster - a fully managed, MongoDB-compatible document database service. Focuses on essential networking, engine configuration, authentication, encryption, and backup settings.
+An Amazon DocumentDB (with MongoDB compatibility) cluster -- a managed document database speaking the MongoDB wire protocol over shared cluster storage, provisioned or Serverless.
 
-## Spec fields (summary)
-- subnets: Private subnets for the DB subnet group (>=2) or use db_subnet_group.
-- dbSubnetGroup: Existing DB subnet group name (alternative to subnets).
-- securityGroups: Security groups to associate with the cluster.
-- allowedCidrs: IPv4 CIDRs to allow ingress to the cluster.
-- vpc: VPC where the cluster will be deployed.
-- engineVersion: DocumentDB engine version (e.g., "4.0.0", "5.0.0"). Default: "5.0.0".
-- port: TCP port for connections. Default: 27017.
-- masterUsername: Master user name. Default: "docdbadmin".
-- masterPassword: Master user password (required).
-- instanceCount: Number of instances in the cluster. Default: 1.
-- instanceClass: Instance class (e.g., "db.r5.large", "db.r6g.large"). Default: "db.r6g.large".
-- storageEncrypted: Enable storage encryption at rest. Default: true.
-- kmsKey: KMS key ARN for storage encryption.
-- backupRetentionPeriod: Days to retain automated backups (1-35). Default: 7.
-- preferredBackupWindow: Daily backup time range in UTC (hh24:mi-hh24:mi).
-- preferredMaintenanceWindow: Weekly maintenance window in UTC (ddd:hh24:mi-ddd:hh24:mi).
-- deletionProtection: Prevent accidental cluster deletion.
-- skipFinalSnapshot: Skip final snapshot on deletion. Default: false.
-- finalSnapshotIdentifier: Identifier for final snapshot when not skipping.
-- enabledCloudwatchLogsExports: Log types to export ("audit", "profiler").
-- applyImmediately: Apply modifications immediately vs. next maintenance window.
-- autoMinorVersionUpgrade: Enable automatic minor version upgrades. Default: true.
-- clusterParameterGroupName: Custom cluster parameter group name.
-- clusterParameters: Custom parameters for the cluster parameter group.
+The cluster is the shared-storage brain -- endpoints, credentials, backups, encryption, and engine lifecycle. The compute that serves queries is the folded `instances` list: each entry materializes as its own DB instance inside the cluster (a writer plus any readers), managed per-name so scaling readers never touches the cluster. Subnets, security groups, and KMS keys compose by reference.
+
+## Spec highlights
+
+- **Cluster shapes** -- provisioned (`instances` with provisioned classes) or DocumentDB Serverless (`serverlessV2Scaling` DCU bounds + `db.serverless` instances).
+- **Credentials** -- `manageMasterUserPassword` (recommended) keeps the master password in Secrets Manager, generated and rotated by AWS, with the secret's ARN exported; or supply `masterPassword` directly (sensitive).
+- **Data protection** -- storage encryption (create-time one-way door), continuous backups with `backupRetentionPeriod`, deletion protection, and final-snapshot enforcement.
+- **Restore shapes** -- create from a snapshot (`snapshotIdentifier`) or from another cluster's continuous backup (`restoreToPointInTime`, including copy-on-write fast clones), and join a DocumentDB global cluster (`globalClusterIdentifier`).
+- **Observability** -- `audit` and `profiler` CloudWatch log exports (paired with their cluster parameters) and per-instance Performance Insights.
+- **Parameters** -- inline `parameters` (a module-managed cluster parameter group with the family derived from the pinned engine version) or an existing `dbClusterParameterGroupName`.
 
 ## Stack outputs
-- cluster_endpoint: Primary writer endpoint for the cluster.
-- cluster_reader_endpoint: Reader endpoint for load-balanced read traffic.
-- cluster_id: AWS identifier of the cluster.
-- cluster_arn: Amazon Resource Name of the cluster.
-- cluster_port: Port on which the cluster accepts connections.
-- db_subnet_group_name: Name of the associated DB subnet group.
-- security_group_id: Security group ID associated with the cluster.
-- cluster_parameter_group_name: Parameter group name in use.
-- connection_string: MongoDB-compatible connection string.
-- cluster_resource_id: Internal AWS resource identifier.
+
+`cluster_identifier`, `arn`, `cluster_resource_id`, `endpoint` (writer), `reader_endpoint`, `port`, `hosted_zone_id`, `engine_version_actual`, `master_user_secret_arn`, `db_subnet_group_name`, `db_cluster_parameter_group_name`, `instance_endpoints`.
 
 ## How it works
-The CLI passes a Stack Input with provisioner choice (Pulumi or Terraform), stack info, the target `AwsDocumentDb` resource, and AWS credentials to the corresponding module.
+
+Planton provisions via the Pulumi or Terraform module in `iac/`, both implementing the same contract at full parity. The API contract is protobuf-based (`spec.proto`); stack execution is orchestrated using `AwsDocumentDbStackInput` (provider credentials + IaC info).
 
 ## References
-- AWS DocumentDB: https://docs.aws.amazon.com/documentdb/latest/developerguide/what-is.html
-- DocumentDB Engine Versions: https://docs.aws.amazon.com/documentdb/latest/developerguide/release-notes.html
-- Instance Classes: https://docs.aws.amazon.com/documentdb/latest/developerguide/db-instance-classes.html
-- MongoDB Compatibility: https://docs.aws.amazon.com/documentdb/latest/developerguide/mongo-apis.html
+
+- DocumentDB developer guide: https://docs.aws.amazon.com/documentdb/latest/developerguide/what-is.html
+- DocumentDB Serverless: https://docs.aws.amazon.com/documentdb/latest/developerguide/docdb-serverless.html
+- Secrets Manager integration: https://docs.aws.amazon.com/documentdb/latest/developerguide/secrets-manager.html

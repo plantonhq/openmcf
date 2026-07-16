@@ -1,249 +1,159 @@
 # AWS RDS Instance
 
-Deploys a single AWS RDS database instance supporting engines such as PostgreSQL, MySQL, MariaDB, Oracle, and SQL Server. The component handles DB subnet group creation, security group attachment, optional storage encryption via KMS, and Multi-AZ deployment. Either subnet IDs or an existing DB subnet group name must be provided for VPC placement.
+Deploys a single RDS DB instance -- postgres, mysql, mariadb, oracle, or
+sqlserver -- with Multi-AZ standby failover, storage autoscaling, an
+AWS-managed master password in Secrets Manager, read-replica and
+point-in-time-restore create shapes, and Blue/Green near-zero-downtime
+updates, with every attachment (subnets, security groups, KMS keys, the
+monitoring role) composed by reference.
 
 ## What Gets Created
 
 When you deploy an AwsRdsInstance resource, Planton provisions:
 
-- **DB Subnet Group** — created only when `subnetIds` are provided and `dbSubnetGroupName` is not set; groups the specified subnets for RDS networking
-- **RDS DB Instance** — an `aws:rds:Instance` with the configured engine, version, instance class, storage, and networking settings, placed in the specified subnets with attached security groups
+- **DB instance** — an `aws_db_instance` / `rds.Instance` with the chosen
+  engine, class, and storage (gp3 IOPS/throughput tuning, autoscaling
+  ceiling, dedicated log volume), optionally Multi-AZ, publicly
+  addressable, or joined to an Active Directory
+- **DB subnet group** — managed automatically from `subnetIds` (pure
+  glue: a named list of subnets), or an existing group by name
+
+A read replica (`replicateSourceDb`), a snapshot restore
+(`snapshotIdentifier`), or a point-in-time restore
+(`restoreToPointInTime`) inherits engine, storage, and credentials from
+its source -- the spec validation keeps those fields empty so drift is
+impossible.
 
 ## Prerequisites
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **At least two private subnets** in different Availability Zones, or an existing DB subnet group name
-- **Security groups** allowing inbound traffic on the database port (e.g., 5432 for PostgreSQL, 3306 for MySQL)
-- **A KMS key ARN** if enabling customer-managed storage encryption
-- **Master credentials** (username and password) for the database root user
+- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
+- **Two subnets in distinct AZs** (`AwsSubnet`) or an existing DB subnet group -- AWS requires two AZs even for a single-AZ instance.
+- **A security group** (`AwsSecurityGroup`) allowing the database port from your application tier -- or omit to use the VPC default group.
+- **A KMS key** (`AwsKmsKey`) only when replacing the AWS-managed keys.
 
 ## Quick Start
-
-Create a file `rds-instance.yaml`:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsRdsInstance
 metadata:
-  name: my-db
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsRdsInstance.my-db
+  name: billing-db
 spec:
   region: us-west-2
   subnetIds:
-    - subnet-0a1b2c3d4e5f00001
-    - subnet-0a1b2c3d4e5f00002
+    - valueFrom:
+        kind: AwsSubnet
+        name: platform-private-1
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: platform-private-2
+        fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: database-sg
+        fieldPath: status.outputs.security_group_id
   engine: postgres
-  engineVersion: "14.10"
-  instanceClass: db.t3.micro
-  allocatedStorageGb: 20
-  username: dbadmin
-  password: changeme123
+  instanceClass: db.m6g.large
+  allocatedStorageGb: 50
+  storageType: gp3
+  storageEncrypted: true
+  manageMasterUserPassword: true
+  multiAz: true
+  skipFinalSnapshot: true
 ```
-
-Deploy:
 
 ```shell
 planton apply -f rds-instance.yaml
 ```
 
-This creates a single PostgreSQL 14.10 instance on a `db.t3.micro` with 20 GiB of storage, placed in two private subnets.
+This creates a Multi-AZ PostgreSQL instance on gp3 storage with its
+master password managed in Secrets Manager.
 
 ## Configuration Reference
 
 ### Required Fields
 
 | Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the RDS instance will be created. Example: `us-west-2`, `eu-west-1`. | |
-| `subnetIds` | `string[]` | Subnet IDs for the DB subnet group. Provide at least two private subnets for high availability. Required unless `dbSubnetGroupName` is set. | Minimum 2 items when used |
-| `subnetIds[].value` | `string` | Direct subnet ID value | — |
-| `subnetIds[].valueFrom` | `object` | Foreign key reference to an AwsSubnet resource | Default kind: `AwsSubnet`, field: `status.outputs.subnet_id` |
-| `dbSubnetGroupName` | `string` | Name of an existing DB subnet group. Required unless `subnetIds` (>=2) is provided. Can reference another resource via `valueFrom`. | — |
-| `engine` | `string` | Database engine identifier (e.g., `"postgres"`, `"mysql"`, `"mariadb"`, `"oracle-se2"`, `"sqlserver-ex"`). | Minimum length 1 |
-| `engineVersion` | `string` | Engine version string (e.g., `"14.10"` for PostgreSQL, `"8.0.35"` for MySQL). | Minimum length 1 |
-| `instanceClass` | `string` | DB instance class (e.g., `"db.t3.micro"`, `"db.m6g.large"`, `"db.r6g.xlarge"`). | Must start with `db.` |
-| `allocatedStorageGb` | `int32` | Allocated storage size in GiB. | Must be greater than 0 |
-| `username` | `string` | Master username for the database. | Minimum length 1 |
-| `password` | `string` | Master password for the database. | Minimum length 1 |
+| --- | --- | --- | --- |
+| `region` | `string` | AWS region; must match the referenced subnets/SGs/keys. | Required; non-empty |
+| `instanceClass` | `string` | The compute size, e.g. `db.t4g.micro`, `db.m6g.large`. | Required; `db.` prefix |
+| `engine` | `string` | The database engine. Required for a new instance; inherited on replicas/restores. | Conditional |
+| `allocatedStorageGb` | `int` | Storage in GiB. Required for a new instance; inherited on replicas/restores. | Conditional |
+| networking | — | At least two `subnetIds` (distinct AZs) or an existing `dbSubnetGroupName`. | Enforced |
 
-### Optional Fields
+### Storage Fields
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `securityGroupIds` | `string[]` | `[]` | Security group IDs to associate with the instance's network interface. Can reference AwsSecurityGroup resources via `valueFrom`. |
-| `storageEncrypted` | `bool` | `false` | Enables encryption at rest for the DB instance storage. |
-| `kmsKeyId` | `string` | — | Customer-managed KMS key ARN or alias for storage encryption. Only used when `storageEncrypted` is `true`. If not set, the default AWS-managed RDS key is used. Can reference an AwsKmsKey resource via `valueFrom`. |
-| `port` | `int32` | Engine default | Database port number. If not set, the engine default is used (e.g., 5432 for PostgreSQL, 3306 for MySQL). | 
-| `publiclyAccessible` | `bool` | `false` | When `true`, the instance is assigned a public IP and is reachable from outside the VPC. |
-| `multiAz` | `bool` | `false` | When `true`, deploys a standby replica in a different Availability Zone for automatic failover. |
-| `parameterGroupName` | `string` | — | Name of a DB parameter group to associate with the instance for engine-specific tuning. |
-| `optionGroupName` | `string` | — | Name of an option group to associate with the instance (applicable to certain engines like Oracle and SQL Server). |
+| --- | --- | --- | --- |
+| `storageType` | `string` | AWS default | `gp3` (modern default), `gp2`, `io1`, `io2`, `standard`. |
+| `iops` / `storageThroughput` | `int` | type baseline | Raise gp3 above 3000 IOPS / 125 MiB/s; required for io1/io2. |
+| `maxAllocatedStorageGb` | `int` | 0 (off) | Storage autoscaling ceiling -- insurance against disk-full outages. |
+| `dedicatedLogVolume` | `bool` | `false` | A separate EBS volume for logs. |
+| `storageEncrypted` + `kmsKeyId` | — | recommended on | Create-time one-way door; reference an `AwsKmsKey` `key_arn` output. |
 
-## Examples
+### Credentials
 
-### Encrypted PostgreSQL with Security Group
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `manageMasterUserPassword` | `bool` | recommended `true` | AWS generates, stores, and rotates the master password in Secrets Manager; ARN exported as `master_user_secret_arn`. |
+| `password` | `string` (sensitive) | — | Direct password; mutually exclusive with the managed strategy. |
+| `username` | `string` | — | Required for a new instance (AWS has no default); create-only. Replicas and restores inherit it. |
+| `iamDatabaseAuthenticationEnabled` | `bool` | `false` | Short-lived IAM auth tokens instead of passwords. |
 
-A PostgreSQL instance with storage encryption and a security group for controlled access:
+### Availability, Replicas, and Restores
 
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsRdsInstance
-metadata:
-  name: app-db
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AwsRdsInstance.app-db
-spec:
-  region: us-west-2
-  subnetIds:
-    - subnet-private-az1
-    - subnet-private-az2
-  securityGroupIds:
-    - sg-postgres-access
-  engine: postgres
-  engineVersion: "15.4"
-  instanceClass: db.t3.medium
-  allocatedStorageGb: 50
-  storageEncrypted: true
-  username: appuser
-  password: s3cur3P@ssw0rd
-  port: 5432
-```
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `multiAz` | `bool` | `false` | Synchronous standby in a second AZ with automatic failover. |
+| `availabilityZone` | `string` | AWS-placed | Single-AZ pin; mutually exclusive with `multiAz`. |
+| `replicateSourceDb` | `string` | — | Make this a read replica (identifier same-region, ARN cross-region); `replicaMode: mounted` for Oracle DR. |
+| `snapshotIdentifier` / `restoreToPointInTime` | — | — | Create from a snapshot or another instance's continuous backup. |
+| `blueGreenUpdateEnabled` | `bool` | `false` | Updates run on a synchronized green copy and switch over in under a minute. |
 
-### Multi-AZ MySQL with Existing Subnet Group
+### Data Protection and Operations
 
-A MySQL instance using an existing DB subnet group and Multi-AZ deployment for high availability:
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `backupRetentionPeriod` | `int` | engine default | 0-35 days; 0 disables automated backups and PITR. |
+| `skipFinalSnapshot` / `finalSnapshotIdentifier` | — | safe | A final-snapshot name is required unless skipping is explicit. |
+| `deletionProtection` / `deleteAutomatedBackups` | — | — | The same two-step-delete and backup-retention posture as the cluster kind. |
+| `backupWindow` / `maintenanceWindow` | `string` | AWS-assigned | UTC windows; must not overlap. |
+| `autoMinorVersionUpgrade` | `bool` | `true` | Tri-state; disable only for manual patch control. |
+| `allowMajorVersionUpgrade` / `applyImmediately` | `bool` | `false` | Major-version guard; immediate-vs-window application. |
 
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsRdsInstance
-metadata:
-  name: ha-mysql
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsRdsInstance.ha-mysql
-spec:
-  region: us-west-2
-  dbSubnetGroupName: existing-db-subnet-group
-  securityGroupIds:
-    - sg-mysql-access
-  engine: mysql
-  engineVersion: "8.0.35"
-  instanceClass: db.m6g.large
-  allocatedStorageGb: 100
-  storageEncrypted: true
-  username: mysqladmin
-  password: pr0dP@ssw0rd
-  port: 3306
-  multiAz: true
-  parameterGroupName: custom-mysql80-params
-```
+### Observability and Enterprise
 
-### Full-Featured Production PostgreSQL
-
-Production configuration with KMS encryption, Multi-AZ, parameter group, and security groups:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsRdsInstance
-metadata:
-  name: prod-db
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsRdsInstance.prod-db
-spec:
-  region: us-west-2
-  subnetIds:
-    - subnet-private-az1
-    - subnet-private-az2
-    - subnet-private-az3
-  securityGroupIds:
-    - sg-prod-db
-  engine: postgres
-  engineVersion: "15.4"
-  instanceClass: db.r6g.xlarge
-  allocatedStorageGb: 500
-  storageEncrypted: true
-  kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/abcd1234-5678-90ab-cdef-example11111
-  username: prodadmin
-  password: pr0dDBp@ss!
-  port: 5432
-  multiAz: true
-  parameterGroupName: prod-postgres15-tuned
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding IDs:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsRdsInstance
-metadata:
-  name: ref-db
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsRdsInstance.ref-db
-spec:
-  region: us-west-2
-  subnetIds:
-    - valueFrom:
-        kind: AwsSubnet
-        name: my-private-subnet-a
-        fieldPath: status.outputs.subnet_id
-    - valueFrom:
-        kind: AwsSubnet
-        name: my-private-subnet-b
-        fieldPath: status.outputs.subnet_id
-  securityGroupIds:
-    - valueFrom:
-        kind: AwsSecurityGroup
-        name: db-sg
-        field: status.outputs.security_group_id
-  engine: postgres
-  engineVersion: "15.4"
-  instanceClass: db.m6g.large
-  allocatedStorageGb: 100
-  storageEncrypted: true
-  kmsKeyId:
-    valueFrom:
-      kind: AwsKmsKey
-      name: db-encryption-key
-      field: status.outputs.key_arn
-  username: dbadmin
-  password: s3cur3P@ssw0rd
-  port: 5432
-  multiAz: true
-```
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `performanceInsightsEnabled` + retention/KMS | — | off | Per-query telemetry; free at 7-day retention. |
+| `monitoringInterval` + `monitoringRoleArn` | — | off | Enhanced Monitoring through a referenced `AwsIamRole`. |
+| `databaseInsightsMode` | `string` | `standard` | `advanced` for fleet-level analysis. |
+| `enabledCloudwatchLogsExports` | `list` | `[]` | Engine-specific log types. |
+| `activeDirectory` | `object` | — | AWS-managed (`domain` + role) or self-managed (fqdn/OU/secret ARN/DNS IPs) AD join. |
+| `licenseModel` / `characterSetName` / `ncharCharacterSetName` / `timezone` | `string` | engine default | Oracle / SQL Server create-time knobs. |
+| `parameterGroupName` / `optionGroupName` | `string` | engine default | Engine-configuration attachments by name. |
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
+| Output | Description |
+| --- | --- |
+| `instance_identifier` | The instance identifier. |
+| `arn` | The instance ARN. |
+| `resource_id` | The immutable resource ID -- keys PITR, IAM auth policies, CloudWatch. |
+| `endpoint` | The connection endpoint (`address:port`). |
+| `address` | The bare hostname. |
+| `port` | The listening port. |
+| `hosted_zone_id` | For Route53 alias records. |
+| `engine_version_actual` | The resolved running version. |
+| `master_user_secret_arn` | The Secrets Manager ARN of the managed master password (managed strategy only). |
+| `db_subnet_group_name` | The subnet group in use. |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `rds_instance_id` | `string` | RDS DB instance resource identifier |
-| `rds_instance_arn` | `string` | Amazon Resource Name of the DB instance |
-| `rds_instance_endpoint` | `string` | Hostname of the DB instance endpoint (e.g., `my-db.abc123.us-east-1.rds.amazonaws.com`) |
-| `rds_instance_port` | `int32` | Port on which the DB instance accepts connections |
-| `rds_subnet_group` | `string` | Name of the DB subnet group associated with the instance. Set when `subnetIds` are provided or `dbSubnetGroupName` is specified. |
-| `rds_security_group` | `string` | First security group ID associated with the instance. Set only when `securityGroupIds` are provided. |
-| `rds_parameter_group` | `string` | Name of the parameter group associated with the instance. Set only when `parameterGroupName` is specified. |
+## Related Resources
 
-## Related Components
-
-- [AwsVpc](/docs/catalog/aws/awsvpc) — provides the subnets for DB instance placement
-- [AwsSecurityGroup](/docs/catalog/aws/awssecuritygroup) — controls inbound and outbound traffic to the DB instance
-- [AwsKmsKey](/docs/catalog/aws/awskmskey) — provides the customer-managed key for storage encryption
+- [AwsSubnet](/docs/catalog/aws/awssubnet) — the private subnets behind the subnet group
+- [AwsSecurityGroup](/docs/catalog/aws/awssecuritygroup) — database ingress rules live here
+- [AwsKmsKey](/docs/catalog/aws/awskmskey) — customer-managed encryption keys
+- [AwsIamRole](/docs/catalog/aws/awsiamrole) — the Enhanced Monitoring role
+- [AwsRdsCluster](/docs/catalog/aws/awsrdscluster) — Aurora and Multi-AZ cluster shapes

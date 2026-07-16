@@ -1,0 +1,25 @@
+# Scenario-local Standard static public IP for the firewall's data path.
+# The firewall scenario deploys this via the e2e-prerequisites annotation
+# (a manifest path -- the shared AzurePublicIp fixture is pinned to zone 1
+# for the NAT gateway's zonal pairing, while the firewall smoke deploys
+# without zones, so it brings its own no-zone address).
+apiVersion: azure.planton.dev/v1
+kind: AzurePublicIp
+metadata:
+  name: planton-oss-e2e-azure-fixture-fw-pip
+  id: planton-oss-e2e-azure-fixture-fw-pip
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefirewall
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azure-fixture-fw-pip

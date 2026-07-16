@@ -37,7 +37,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDynamicRoutingGateway
 metadata:
   name: my-drg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -146,7 +146,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDynamicRoutingGateway
 metadata:
   name: peering-drg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -176,7 +176,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDynamicRoutingGateway
 metadata:
   name: hub-drg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: networking
@@ -239,7 +239,7 @@ metadata:
   name: transit-drg
   org: acme
   env: prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: networking

@@ -21,6 +21,7 @@ go_library(
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws",
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/lb",
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/route53",
+        "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/wafv2",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
     ],
 )

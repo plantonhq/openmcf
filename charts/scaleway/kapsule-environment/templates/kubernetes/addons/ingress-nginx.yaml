@@ -9,7 +9,7 @@ metadata:
       name: "{{ values.env }}-{{ values.cluster_name }}"
       type: runs_on
 spec:
-  targetCluster:
-    clusterKind: ScalewayKapsuleCluster
-    clusterName: "{{ values.env }}-{{ values.cluster_name }}"
+  namespace:
+    value: ingress-nginx
+  createNamespace: true
 {% endif %}

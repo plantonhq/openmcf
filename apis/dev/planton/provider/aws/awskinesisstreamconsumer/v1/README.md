@@ -33,6 +33,7 @@ Use an AwsKinesisStreamConsumer when you need:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `stream_arn` | StringValueOrRef | **Yes** | ARN of the parent Kinesis Data Stream. ForceNew. |
+| `resource_policy` | Struct | No | Resource-based access policy on the consumer — cross-account `SubscribeToShard`/`DescribeStreamConsumer` grants without role assumption. |
 
 The consumer name is derived from `metadata.name` and cannot be changed after creation (ForceNew).
 
@@ -47,11 +48,11 @@ The consumer name is derived from `metadata.name` and cannot be changed after cr
 
 ## Immutability
 
-Both inputs (`name` from metadata and `stream_arn`) are **ForceNew**. Any change to either value causes the consumer to be deregistered and re-registered. There are no mutable configuration options — this resource is effectively create-or-replace.
+The registration inputs (`name` from metadata and `stream_arn`) are **ForceNew**. Any change to either value causes the consumer to be deregistered and re-registered. The resource policy is the one mutable surface — it can be added, changed, or removed in place.
 
-## Deliberate v1 Omissions
+## Deliberate Omissions
 
-This component has no omissions. The `aws_kinesis_stream_consumer` resource has only two inputs (`name` and `stream_arn`), both of which are exposed. Tags are managed via metadata labels.
+None. The provider's consumer resource has two registration inputs (`name` and `stream_arn`) plus tags — all exposed — and the consumer-scoped resource policy is folded as `resource_policy`.
 
 ## Related Resources
 

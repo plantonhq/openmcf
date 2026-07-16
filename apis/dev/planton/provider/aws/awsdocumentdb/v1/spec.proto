@@ -6,180 +6,461 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
-// AwsDocumentDbSpec defines the specification for deploying an AWS DocumentDB cluster.
-// DocumentDB is a fully managed, MongoDB-compatible document database service that
-// provides fast, scalable, and highly available database operations.
+// AwsDocumentDbSpec defines an Amazon DocumentDB (with MongoDB
+// compatibility) cluster -- a managed document database that speaks the
+// MongoDB 4.0/5.0 wire protocol over shared cluster storage.
+//
+// The cluster is the shared-storage brain -- endpoints, credentials,
+// backups, encryption, and engine lifecycle live here. The compute that
+// serves queries is the `instances` list: each entry materializes as its
+// own DB instance inside the cluster (a writer plus any readers). Cluster
+// instances are sub-resources of exactly one cluster and are referenced by
+// nothing else, so they are folded into this spec rather than modeled as a
+// standalone kind; both IaC modules manage each entry as its own provider
+// resource keyed by name, so adding or removing a reader is an in-place
+// update, never a cluster replacement.
+//
+// The cluster identifier comes from metadata.name. Security groups,
+// subnets, and KMS keys compose by reference -- this cluster never creates
+// or mutates resources that deserve to be their own nodes.
 message AwsDocumentDbSpec {
-  // The AWS region where the resource will be created.
-  // Example: "us-west-2", "eu-west-1"
+  // The AWS region the cluster is created in. Must match the region of
+  // the subnets, security groups, and KMS keys it references.
+  // Example: "us-west-2", "eu-west-1".
   string region = 1 [(buf.validate.field).string.min_len = 1];
 
-  // subnets is the list of subnet IDs for the DB subnet group.
-  // Provide at least two subnets in distinct Availability Zones for high availability.
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 2 [
+  // Subnets for the cluster's DB subnet group. Provide at least two
+  // subnets in DISTINCT availability zones -- AWS rejects a subnet group
+  // that covers fewer than two AZs. Reference AwsSubnet subnet_id outputs
+  // or pass literal subnet IDs. The module manages the subnet group
+  // itself (pure glue: a named list of subnets); alternatively point
+  // db_subnet_group_name at an existing group.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
-  // db_subnet_group is an optional name of an existing DB subnet group to use
-  // instead of creating one from subnets.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef db_subnet_group = 3;
+  // Name of an existing DB subnet group to place the cluster in, instead
+  // of providing subnet_ids. Changing the subnet group replaces the
+  // cluster.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef db_subnet_group_name = 3;
 
-  // security_groups are the VPC security groups to associate with the cluster.
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_groups = 4 [
+  // Security groups attached to the cluster. Empty uses the VPC's
+  // default security group (the AWS default). Reference AwsSecurityGroup
+  // security_group_id outputs or pass literal SG IDs -- database ingress
+  // rules belong on the referenced AwsSecurityGroup node, never inside
+  // this cluster.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 4 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
   ];
 
-  // allowed_cidrs are IPv4 CIDRs to allow ingress to the cluster security group.
-  repeated string allowed_cidrs = 5 [
-    (buf.validate.field).repeated.items.string.pattern = "^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$",
-    (buf.validate.field).repeated.unique = true
-  ];
+  // Availability zones the cluster's storage is replicated across. Leave
+  // empty and AWS picks three zones automatically -- the right call
+  // almost always, because this list is create-time-only and a later
+  // change replaces the cluster.
+  repeated string availability_zones = 5;
 
-  // vpc is the VPC where the cluster will be deployed.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc = 6 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
-  ];
+  // The network stack of the cluster: "IPV4" (AWS default when unset) or
+  // "DUAL" for dual-stack IPv4+IPv6. Requires subnets with IPv6 CIDRs
+  // for "DUAL".
+  string network_type = 6;
 
-  // engine_version is the DocumentDB engine version.
-  // Examples: "4.0.0", "5.0.0"
-  optional string engine_version = 7 [
-    (dev.planton.shared.options.default) = "5.0.0",
-    (buf.validate.field).string.min_len = 1
-  ];
+  // The port the cluster accepts connections on. 0 keeps the AWS default
+  // (27017 -- the MongoDB convention). DocumentDB rejects ports below
+  // 1150. Create-time only -- changing the port replaces the cluster.
+  int32 port = 7;
 
-  // port is the TCP port on which the cluster accepts connections.
-  optional int32 port = 8 [
-    (dev.planton.shared.options.default) = "27017",
-    (buf.validate.field).int32 = {
-      gte: 1
-      lte: 65535
+  // The DocumentDB engine version, e.g. "5.0.0". Leave empty to let AWS
+  // pick the current default version -- an empty pin never goes stale.
+  // Minor upgrades apply in place; major upgrades additionally need
+  // allow_major_version_upgrade.
+  string engine_version = 8;
+
+  // The storage I/O model: "" or "standard" (billed per I/O, the AWS
+  // default) or "iopt1" (I/O-Optimized -- predictable pricing that pays
+  // off for I/O-heavy workloads; switchable once per 30 days).
+  string storage_type = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "standard",
+        "iopt1"
+      ]
     }
   ];
 
-  // master_username is the master user name for the cluster.
-  optional string master_username = 9 [
-    (dev.planton.shared.options.default) = "docdbadmin",
-    (buf.validate.field).string.min_len = 1
-  ];
+  // The DB instances that serve this cluster's queries -- one writer
+  // (lowest promotion tier) plus any number of readers. Each entry is
+  // managed as its own provider resource keyed by `name`, so scaling
+  // readers in and out never touches the cluster. Empty is only valid
+  // for headless shapes that attach compute later: a snapshot or
+  // point-in-time restore, or a cluster joined to a global cluster --
+  // a regular cluster with no instances stores data but cannot serve a
+  // single query.
+  repeated AwsDocumentDbInstance instances = 10;
 
-  // master_password is the master user password. Required unless using Secrets Manager.
-  string master_password = 10 [
-    (buf.validate.field).required = true,
-    (dev.planton.shared.options.sensitive) = true
-  ];
+  // DocumentDB Serverless capacity bounds. When set, every instance in
+  // `instances` must use class "db.serverless" -- each such instance
+  // scales independently within these bounds. Adding or modifying this
+  // block is an in-place update; REMOVING it from a live cluster
+  // replaces the cluster (AWS cannot switch a cluster off serverless).
+  AwsDocumentDbServerlessV2Scaling serverless_v2_scaling = 11;
 
-  // instance_count is the number of instances to create in the cluster.
-  optional int32 instance_count = 11 [
-    (dev.planton.shared.options.default) = "1",
-    (buf.validate.field).int32.gte = 1
-  ];
+  // The master username. Required for a brand-new cluster -- AWS has no
+  // default and rejects a blank value at CreateDBCluster. Only clusters
+  // that inherit credentials from a source (snapshot restore,
+  // point-in-time restore, or joining a global cluster) leave it empty.
+  // Create-time only -- changing it replaces the cluster.
+  string master_username = 12;
 
-  // instance_class is the compute and memory capacity of the DB instances.
-  // Examples: "db.r5.large", "db.r5.xlarge", "db.r6g.large"
-  optional string instance_class = 12 [
-    (dev.planton.shared.options.default) = "db.r6g.large",
-    (buf.validate.field).string.min_len = 1
-  ];
+  // Let AWS manage the master password in Secrets Manager: AWS
+  // generates it, stores it, rotates it on schedule, and no secret ever
+  // touches this manifest or the IaC state. The managed secret's ARN is
+  // exported as the master_user_secret_arn output. Mutually exclusive
+  // with master_password -- and the recommended posture.
+  bool manage_master_user_password = 13 [(dev.planton.shared.options.recommended_default) = "true"];
 
-  // storage_encrypted indicates whether to encrypt the cluster storage at rest.
-  optional bool storage_encrypted = 13 [(dev.planton.shared.options.default) = "true"];
+  // The master password, supplied directly. Stored in IaC state --
+  // prefer manage_master_user_password, which keeps the secret in
+  // Secrets Manager entirely. Mutually exclusive with
+  // manage_master_user_password.
+  string master_password = 14 [(dev.planton.shared.options.sensitive) = true];
 
-  // kms_key is the ARN of the KMS key for storage encryption.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 14 [
+  // Encrypt cluster storage at rest. Strongly recommended -- and
+  // create-time only: an unencrypted cluster cannot be encrypted later
+  // (requires a snapshot-restore migration).
+  bool storage_encrypted = 15 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // The KMS key for storage encryption when storage_encrypted is true.
+  // Empty uses the AWS-managed aws/rds key. Reference an AwsKmsKey
+  // key_arn output or pass a literal key ARN. Create-time only.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 16 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
   ];
 
-  // backup_retention_period is the number of days to retain automated backups (1-35).
-  optional int32 backup_retention_period = 15 [
-    (dev.planton.shared.options.default) = "7",
-    (buf.validate.field).int32 = {
-      gte: 1
-      lte: 35
-    }
+  // Days automated backups are retained, 1-35. 0 keeps the AWS default
+  // (1 day). Backups are continuous -- this window bounds point-in-time
+  // recovery, so production clusters typically want 7+.
+  int32 backup_retention_period = 17 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 35
   ];
 
-  // preferred_backup_window is the daily time range for automated backups in UTC.
-  // Format: "hh24:mi-hh24:mi" (e.g., "03:00-04:00")
-  string preferred_backup_window = 16 [
+  // The daily backup window in UTC, format "hh24:mi-hh24:mi" (e.g.
+  // "04:00-05:00"). Empty lets AWS assign one. Must not overlap the
+  // maintenance window.
+  string preferred_backup_window = 18 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.pattern = "^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$"
   ];
 
-  // preferred_maintenance_window is the weekly time range for maintenance in UTC.
-  // Format: "ddd:hh24:mi-ddd:hh24:mi" (e.g., "sun:05:00-sun:06:00")
-  string preferred_maintenance_window = 17 [
+  // The weekly maintenance window in UTC, format
+  // "ddd:hh24:mi-ddd:hh24:mi" (e.g. "sun:05:00-sun:06:00"). Empty lets
+  // AWS assign one.
+  string preferred_maintenance_window = 19 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.pattern = "^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$"
   ];
 
-  // deletion_protection prevents accidental cluster deletion when enabled.
-  bool deletion_protection = 18;
+  // Skip the final snapshot when the cluster is deleted. When false
+  // (the safe default), final_snapshot_identifier must be set -- AWS
+  // refuses to delete without knowing the snapshot name.
+  bool skip_final_snapshot = 20;
 
-  // skip_final_snapshot controls whether a final snapshot is created on deletion.
-  optional bool skip_final_snapshot = 19 [(dev.planton.shared.options.default) = "false"];
-
-  // final_snapshot_identifier is the identifier for the final snapshot when
+  // The name for the final snapshot taken on deletion. Required when
   // skip_final_snapshot is false.
-  string final_snapshot_identifier = 20 [
-    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string.min_len = 1
-  ];
+  string final_snapshot_identifier = 21;
 
-  // enabled_cloudwatch_logs_exports lists log types to export to CloudWatch.
-  // Valid values: "audit", "profiler"
-  repeated string enabled_cloudwatch_logs_exports = 21 [(buf.validate.field).repeated.unique = true];
+  // Refuse deletion of the cluster while enabled. Turn this on for
+  // anything holding data you cannot recreate -- deletion then requires
+  // an explicit two-step (disable, delete).
+  bool deletion_protection = 22;
 
-  // apply_immediately specifies whether modifications are applied immediately
-  // or during the next maintenance window.
-  bool apply_immediately = 22;
+  // Database log types to export to CloudWatch Logs: "audit" (DDL and
+  // authentication events; requires the audit_logs cluster parameter)
+  // and "profiler" (slow-operation profiling; requires the profiler
+  // cluster parameters).
+  repeated string enabled_cloudwatch_logs_exports = 23 [(buf.validate.field).repeated.unique = true];
 
-  // auto_minor_version_upgrade enables automatic minor engine version upgrades.
-  optional bool auto_minor_version_upgrade = 23 [(dev.planton.shared.options.default) = "true"];
+  // Restore the cluster from an existing cluster snapshot (name or ARN)
+  // at create time. Create-time only; mutually exclusive with
+  // restore_to_point_in_time.
+  string snapshot_identifier = 24;
 
-  // cluster_parameter_group_name is the name of the cluster parameter group.
-  string cluster_parameter_group_name = 24;
+  // Clone or restore this cluster from another cluster's continuous
+  // backup at create time -- point-in-time recovery as a first-class
+  // create shape. Create-time only; mutually exclusive with
+  // snapshot_identifier.
+  AwsDocumentDbRestoreToPointInTime restore_to_point_in_time = 25;
 
-  // cluster_parameters are custom parameters for the cluster parameter group.
-  repeated AwsDocumentDbParameter cluster_parameters = 25;
+  // Join a DocumentDB global cluster: the identifier of the
+  // aws_docdb_global_cluster this cluster participates in. The first
+  // cluster joined becomes the global writer; clusters added afterwards
+  // become read-only secondaries that inherit credentials from the
+  // primary.
+  string global_cluster_identifier = 26;
 
-  // Conditional validations
+  // The name of an existing cluster parameter group to use. Mutually
+  // exclusive with `parameters` -- either bring your own group or let
+  // the module manage one from inline parameters.
+  string db_cluster_parameter_group_name = 27;
+
+  // Cluster-level engine parameters (e.g. "audit_logs", "tls",
+  // "ttl_monitor"), managed as a dedicated parameter group owned by this
+  // cluster (the group is glue -- a named parameter list -- so it stays
+  // folded). Mutually exclusive with db_cluster_parameter_group_name.
+  repeated AwsDocumentDbParameter parameters = 28;
+
+  // Apply modifications immediately instead of waiting for the next
+  // maintenance window. Immediate changes can interrupt connections;
+  // deferred changes wait quietly. AWS defaults to deferred.
+  bool apply_immediately = 29;
+
+  // Permit engine_version changes that cross a major version. Off (the
+  // default) guards against an accidental major upgrade hidden in a
+  // version bump.
+  bool allow_major_version_upgrade = 30;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
   option (buf.validate.message).cel = {
     id: "subnets_or_group"
-    message: "Provide either subnets (>=2) or db_subnet_group"
-    expression: "(this.subnets.size() >= 2) || has(this.db_subnet_group)"
+    message: "provide at least two subnet_ids (distinct AZs) or an existing db_subnet_group_name"
+    expression: "(this.subnet_ids.size() >= 2) || has(this.db_subnet_group_name)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "port_range"
+    message: "port must be between 1150 and 65535 when set -- DocumentDB rejects ports below 1150; 0 keeps the AWS default (27017)"
+    expression: "this.port == 0 || (this.port >= 1150 && this.port <= 65535)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "password_xor_managed"
+    message: "master_password cannot be set when manage_master_user_password is true -- pick one password strategy"
+    expression: "this.manage_master_user_password ? this.master_password == '' : true"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "master_username_required_unless_derived"
+    message: "master_username is required for a new cluster -- AWS rejects a blank username; only snapshot/point-in-time restores and global-cluster members inherit credentials from their source"
+    expression: "this.master_username != '' || this.snapshot_identifier != '' || has(this.restore_to_point_in_time) || this.global_cluster_identifier != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "instances_required_unless_headless"
+    message: "instances is required -- a cluster with no instances cannot serve queries; only snapshot/point-in-time restores and global-cluster members may start headless and attach compute later"
+    expression: "this.instances.size() > 0 || this.snapshot_identifier != '' || has(this.restore_to_point_in_time) || this.global_cluster_identifier != ''"
   };
 
   option (buf.validate.message).cel = {
     id: "final_snapshot_id_required_when_not_skipping"
-    message: "final_snapshot_identifier must be set when skip_final_snapshot is false"
-    expression: "this.skip_final_snapshot ? true : this.final_snapshot_identifier != \"\""
+    message: "final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the cluster without a final snapshot name"
+    expression: "this.skip_final_snapshot ? true : this.final_snapshot_identifier != ''"
   };
 
   option (buf.validate.message).cel = {
-    id: "logs_exports_valid_values"
-    message: "enabled_cloudwatch_logs_exports must contain only valid values: audit, profiler"
-    expression: "this.enabled_cloudwatch_logs_exports.all(x, x == \"audit\" || x == \"profiler\")"
+    id: "log_exports_valid"
+    message: "enabled_cloudwatch_logs_exports must contain only 'audit' or 'profiler' -- the two log types DocumentDB exports"
+    expression: "this.enabled_cloudwatch_logs_exports.all(x, x in ['audit', 'profiler'])"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "network_type_valid"
+    message: "network_type must be 'IPV4' or 'DUAL' when set"
+    expression: "this.network_type == '' || this.network_type in ['IPV4', 'DUAL']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "serverless_instances_are_db_serverless"
+    message: "every instance must use instance_class 'db.serverless' when serverless_v2_scaling is set -- provisioned and serverless instances cannot mix"
+    expression: "!has(this.serverless_v2_scaling) || this.instances.all(i, i.instance_class == 'db.serverless')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "db_serverless_requires_scaling"
+    message: "serverless_v2_scaling is required when any instance uses class 'db.serverless' -- AWS rejects a serverless instance without capacity bounds on the cluster"
+    expression: "!this.instances.exists(i, i.instance_class == 'db.serverless') || has(this.serverless_v2_scaling)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "snapshot_xor_point_in_time"
+    message: "snapshot_identifier and restore_to_point_in_time are mutually exclusive create-time restore sources"
+    expression: "this.snapshot_identifier == '' || !has(this.restore_to_point_in_time)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "own_parameters_xor_existing_group"
+    message: "parameters and db_cluster_parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group"
+    expression: "this.db_cluster_parameter_group_name == '' || this.parameters.size() == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "parameters_require_engine_version"
+    message: "inline parameters require a pinned engine_version -- the managed parameter group's family is derived from it and must match the running engine"
+    expression: "this.parameters.size() == 0 || this.engine_version != ''"
   };
 }
 
-// AwsDocumentDbParameter represents a parameter for the cluster parameter group.
-message AwsDocumentDbParameter {
-  // name is the parameter name.
-  string name = 1 [(buf.validate.field).string.min_len = 1];
-  // value is the parameter value.
-  string value = 2 [(buf.validate.field).string.min_len = 1];
-  // apply_method specifies when the parameter is applied: "immediate" or "pending-reboot".
-  string apply_method = 3 [
-    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {
-      in: [
-        "immediate",
-        "pending-reboot"
-      ]
-    }
+// AwsDocumentDbInstance is one DB instance inside the cluster -- the unit
+// of compute. The instance with the lowest promotion tier that is
+// available becomes the writer; all others serve reads from the shared
+// cluster storage. The engine version is inherited from the cluster.
+message AwsDocumentDbInstance {
+  // Instance name, unique within the cluster. Becomes part of the AWS
+  // instance identifier and the key both IaC engines manage the
+  // provider resource by -- renaming an entry replaces that instance
+  // (the others are untouched). Required.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9-]*$"
   ];
+
+  // The instance class: a provisioned class like "db.r6g.large", or
+  // "db.serverless" for a DocumentDB Serverless instance that scales
+  // within the cluster's serverless_v2_scaling bounds. Required.
+  string instance_class = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^db\\."
+  ];
+
+  // Failover priority, 0-15 (lower is promoted first). Give the
+  // largest readers tier 0/1 so a failover lands on capacity that can
+  // absorb the write load. 0 is the AWS default.
+  int32 promotion_tier = 3 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 15
+  ];
+
+  // Pin the instance to one availability zone. Empty lets AWS place it
+  // -- preferred, since AWS spreads instances across the cluster's
+  // zones automatically. Create-time only.
+  string availability_zone = 4;
+
+  // Apply minor engine version patches automatically during the
+  // maintenance window. AWS defaults this to true; disable only when
+  // patch timing must be controlled manually.
+  optional bool auto_minor_version_upgrade = 5 [(dev.planton.shared.options.default) = "true"];
+
+  // Per-instance Performance Insights (per-query performance
+  // telemetry). Free at the default 7-day retention. DocumentDB scopes
+  // this to the instance -- there is no cluster-level setting.
+  bool performance_insights_enabled = 6;
+
+  // The KMS key encrypting this instance's Performance Insights data.
+  // Empty uses the AWS default. Reference an AwsKmsKey key_arn output
+  // or pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef performance_insights_kms_key_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // The weekly maintenance window for THIS instance in UTC, format
+  // "ddd:hh24:mi-ddd:hh24:mi". Empty inherits scheduling from AWS --
+  // stagger per-instance windows so readers never patch simultaneously.
+  string preferred_maintenance_window = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$"
+  ];
+
+  // The CA certificate bundle for this instance (e.g.
+  // "rds-ca-rsa2048-g1"). Empty keeps the AWS default.
+  string ca_cert_identifier = 9;
+
+  // Copy this instance's tags onto its snapshots.
+  bool copy_tags_to_snapshot = 10;
+}
+
+// AwsDocumentDbServerlessV2Scaling bounds DocumentDB Serverless capacity
+// in DCUs (DocumentDB Capacity Units -- each DCU is ~2 GiB of memory with
+// matching CPU). Applies to every "db.serverless" instance in the cluster.
+message AwsDocumentDbServerlessV2Scaling {
+  // Minimum DCUs, 0.5-256 in half-step multiples. The floor each
+  // serverless instance never scales below -- also the idle cost floor
+  // (DocumentDB Serverless does not pause to zero). Required.
+  double min_capacity = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).double.gte = 0.5,
+    (buf.validate.field).double.lte = 256
+  ];
+
+  // Maximum DCUs, 1-256 in half-step multiples. The hard
+  // spend/performance ceiling per instance. Required.
+  double max_capacity = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).double.gte = 1,
+    (buf.validate.field).double.lte = 256
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "v2_bounds_ordered"
+    message: "max_capacity must be greater than or equal to min_capacity"
+    expression: "this.max_capacity >= this.min_capacity"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "capacity_half_steps"
+    message: "min_capacity and max_capacity must be multiples of 0.5 -- AWS only accepts half-step DCU values"
+    expression: "double(int(this.min_capacity * 2.0)) == this.min_capacity * 2.0 && double(int(this.max_capacity * 2.0)) == this.max_capacity * 2.0"
+  };
+}
+
+// AwsDocumentDbRestoreToPointInTime creates the cluster from another
+// cluster's continuous backup -- a point-in-time restore or a fast clone.
+// Every field is create-time only.
+message AwsDocumentDbRestoreToPointInTime {
+  // The source cluster identifier (name or ARN). Required.
+  string source_cluster_identifier = 1 [(buf.validate.field).required = true];
+
+  // The UTC timestamp to restore to, RFC3339 (e.g.
+  // "2026-07-01T09:45:00Z"). Mutually exclusive with
+  // use_latest_restorable_time.
+  string restore_to_time = 2;
+
+  // Restore to the most recent recoverable moment. Mutually exclusive
+  // with restore_to_time.
+  bool use_latest_restorable_time = 3;
+
+  // "full-copy" (independent storage, AWS default) or "copy-on-write"
+  // (a fast clone -- shares storage with the source and only pays for
+  // divergence; ideal for prod-data staging environments).
+  string restore_type = 4;
+
+  option (buf.validate.message).cel = {
+    id: "exactly_one_time"
+    message: "exactly one of restore_to_time or use_latest_restorable_time must be set"
+    expression: "(this.restore_to_time != '') != this.use_latest_restorable_time"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "restore_type_valid"
+    message: "restore_type must be 'full-copy' or 'copy-on-write' when set"
+    expression: "this.restore_type == '' || this.restore_type in ['full-copy', 'copy-on-write']"
+  };
+}
+
+// AwsDocumentDbParameter is one cluster-level engine parameter, applied
+// through the module-managed cluster parameter group.
+message AwsDocumentDbParameter {
+  // The parameter name (e.g. "audit_logs", "tls",
+  // "ttl_monitor"). Required.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The parameter value. Required.
+  string value = 2 [(buf.validate.field).required = true];
+
+  // When the change lands: "immediate" (AWS default -- dynamic
+  // parameters apply now) or "pending-reboot" (static parameters wait
+  // for the next instance reboot).
+  string apply_method = 3;
+
+  option (buf.validate.message).cel = {
+    id: "apply_method_valid"
+    message: "apply_method must be 'immediate' or 'pending-reboot' when set"
+    expression: "this.apply_method == '' || this.apply_method in ['immediate', 'pending-reboot']"
+  };
 }

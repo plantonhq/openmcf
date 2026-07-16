@@ -30,7 +30,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsElasticIp
 metadata:
   name: my-eip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -74,7 +74,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsElasticIp
 metadata:
   name: nlb-eip-az1
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -89,41 +89,33 @@ Wire the Elastic IP into an NLB subnet mapping via `valueFrom`:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
-kind: AwsNetworkLoadBalancer
+kind: AwsNlb
 metadata:
   name: api-nlb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsNetworkLoadBalancer.api-nlb
+    pulumi.planton.dev/stack.name: prod.AwsNlb.api-nlb
 spec:
+  region: us-east-1
   subnetMappings:
     - subnetId:
         valueFrom:
           kind: AwsVpc
           name: prod-vpc
-          field: status.outputs.public_subnets.[0].id
+          fieldPath: status.outputs.public_subnets.[0].id
       allocationId:
         valueFrom:
           kind: AwsElasticIp
           name: nlb-eip-az1
-          field: status.outputs.allocation_id
-  listeners:
-    - name: https
-      port: 443
-      protocol: TLS
-      tlsConfig:
-        certificateArn:
-          valueFrom:
-            kind: AwsCertManagerCert
-            name: api-cert
-            fieldPath: status.outputs.cert_arn
-      targetGroup:
-        port: 8443
-        protocol: TCP
-        targetType: ip
+          fieldPath: status.outputs.allocation_id
 ```
+
+The NLB's ports and TLS material live on separate `AwsLbListener` resources
+that attach to the NLB by ARN, with `AwsLbTargetGroup` resources as the
+destinations — the Elastic IP binding above is purely a placement concern of
+the load balancer itself.
 
 ### BYOIP Pool Allocation
 
@@ -134,7 +126,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsElasticIp
 metadata:
   name: byoip-eip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -158,6 +150,6 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [AwsNetworkLoadBalancer](/docs/catalog/aws/network-load-balancer) — uses `allocationId` in subnet mappings for static public IPs
+- [AwsNlb](/docs/catalog/aws/nlb) — uses `allocationId` in subnet mappings for static public IPs
 - [AwsVpc](/docs/catalog/aws/vpc) — provides the VPC and subnets where EIP consumers are deployed
 - [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls traffic to resources associated with the EIP

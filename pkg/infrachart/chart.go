@@ -64,6 +64,13 @@ type chartYaml struct {
 	} `json:"spec"`
 }
 
+// IsChartDir reports whether dir holds an infra-chart. A Chart.yaml is the
+// marker, matching how chart bundles are discovered everywhere else.
+func IsChartDir(dir string) bool {
+	info, err := os.Stat(filepath.Join(dir, "Chart.yaml"))
+	return err == nil && !info.IsDir()
+}
+
 // LoadDir loads a chart from a directory containing Chart.yaml, values.yaml,
 // and templates/.
 func LoadDir(dir string) (*Chart, error) {

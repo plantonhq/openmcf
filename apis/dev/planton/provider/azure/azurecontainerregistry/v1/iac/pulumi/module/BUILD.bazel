@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "module",
     srcs = [
+        "locals.go",
         "main.go",
         "outputs.go",
     ],
@@ -10,9 +11,10 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//apis/dev/planton/provider/azure/azurecontainerregistry/v1:azurecontainerregistry",
+        "//apis/dev/planton/shared/cloudresourcekind",
+        "//pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider",
         "@com_github_pkg_errors//:errors",
-        "@com_github_pulumi_pulumi_azure_native_sdk_containerregistry_v3//:containerregistry",
-        "@com_github_pulumi_pulumi_azure_native_sdk_v3//:pulumi-azure-native-sdk",
+        "@com_github_pulumi_pulumi_azure_sdk_v6//go/azure/containerservice",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
     ],
 )

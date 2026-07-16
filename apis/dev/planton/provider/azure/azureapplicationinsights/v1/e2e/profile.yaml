@@ -1,0 +1,15 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureapplicationinsights
+spec:
+  # The scenario deploys workspace-based Application Insights through the
+  # composed RG -> workspace fixture chain, verifies it via the ARM API,
+  # destroys it, and verifies it is gone. Components create in seconds;
+  # the fixture workspace adds about a minute each way.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

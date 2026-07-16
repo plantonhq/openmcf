@@ -24,13 +24,13 @@ const (
 // **AzureServicePlanStackOutputs** captures the outputs of provisioning an
 // Azure App Service Plan.
 //
-// The primary output is `plan_id`, which is referenced by downstream
-// resources as the `service_plan_id` field:
+// The primary output is `service_plan_id`, which downstream app kinds
+// reference as their `service_plan_id` field:
 // - AzureFunctionApp (service_plan_id)
 // - AzureLinuxWebApp (service_plan_id)
 //
-// The remaining outputs (`plan_name`, `os_type`, `sku_name`) are informational
-// and useful for debugging, auditing, and infra chart visibility.
+// The remaining outputs are informational -- useful for debugging,
+// auditing, cost tracking, and infra-chart visibility.
 type AzureServicePlanStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Azure Resource Manager ID of the Service Plan.
@@ -39,16 +39,22 @@ type AzureServicePlanStackOutputs struct {
 	// This is the primary reference output. Referenced by:
 	// - AzureFunctionApp (service_plan_id)
 	// - AzureLinuxWebApp (service_plan_id)
-	PlanId string `protobuf:"bytes,1,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	ServicePlanId string `protobuf:"bytes,1,opt,name=service_plan_id,json=servicePlanId,proto3" json:"service_plan_id,omitempty"`
 	// The name of the Service Plan.
 	// Echo of the input name, useful for debugging and audit trails.
-	PlanName string `protobuf:"bytes,2,opt,name=plan_name,json=planName,proto3" json:"plan_name,omitempty"`
-	// The configured operating system type ("Linux" or "Windows").
-	// Informational output for downstream visibility.
+	ServicePlanName string `protobuf:"bytes,2,opt,name=service_plan_name,json=servicePlanName,proto3" json:"service_plan_name,omitempty"`
+	// The configured operating system type ("Linux", "Windows", or
+	// "WindowsContainer"). Informational output for downstream visibility.
 	OsType string `protobuf:"bytes,3,opt,name=os_type,json=osType,proto3" json:"os_type,omitempty"`
-	// The configured SKU name (e.g., "P1v3", "EP1", "Y1").
-	// Informational output for cost tracking and capacity planning.
-	SkuName       string `protobuf:"bytes,4,opt,name=sku_name,json=skuName,proto3" json:"sku_name,omitempty"`
+	// The configured SKU name in Azure's spelling (e.g. "P1v3", "EP1",
+	// "Y1"). Informational output for cost tracking and capacity planning.
+	SkuName string `protobuf:"bytes,4,opt,name=sku_name,json=skuName,proto3" json:"sku_name,omitempty"`
+	// Azure's computed plan kind (e.g. "linux", "elastic", "functionapp") --
+	// the API's own classification of the plan, read back after creation.
+	Kind string `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
+	// Whether the plan runs Linux workers (`reserved = true` in the Azure
+	// API). Read back after creation.
+	Reserved      bool `protobuf:"varint,6,opt,name=reserved,proto3" json:"reserved,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -83,16 +89,16 @@ func (*AzureServicePlanStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azureserviceplan_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AzureServicePlanStackOutputs) GetPlanId() string {
+func (x *AzureServicePlanStackOutputs) GetServicePlanId() string {
 	if x != nil {
-		return x.PlanId
+		return x.ServicePlanId
 	}
 	return ""
 }
 
-func (x *AzureServicePlanStackOutputs) GetPlanName() string {
+func (x *AzureServicePlanStackOutputs) GetServicePlanName() string {
 	if x != nil {
-		return x.PlanName
+		return x.ServicePlanName
 	}
 	return ""
 }
@@ -111,16 +117,32 @@ func (x *AzureServicePlanStackOutputs) GetSkuName() string {
 	return ""
 }
 
+func (x *AzureServicePlanStackOutputs) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *AzureServicePlanStackOutputs) GetReserved() bool {
+	if x != nil {
+		return x.Reserved
+	}
+	return false
+}
+
 var File_dev_planton_provider_azure_azureserviceplan_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azureserviceplan_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/azure/azureserviceplan/v1/stack_outputs.proto\x12.dev.planton.provider.azure.azureserviceplan.v1\"\x88\x01\n" +
-	"\x1cAzureServicePlanStackOutputs\x12\x17\n" +
-	"\aplan_id\x18\x01 \x01(\tR\x06planId\x12\x1b\n" +
-	"\tplan_name\x18\x02 \x01(\tR\bplanName\x12\x17\n" +
+	"Bdev/planton/provider/azure/azureserviceplan/v1/stack_outputs.proto\x12.dev.planton.provider.azure.azureserviceplan.v1\"\xd6\x01\n" +
+	"\x1cAzureServicePlanStackOutputs\x12&\n" +
+	"\x0fservice_plan_id\x18\x01 \x01(\tR\rservicePlanId\x12*\n" +
+	"\x11service_plan_name\x18\x02 \x01(\tR\x0fservicePlanName\x12\x17\n" +
 	"\aos_type\x18\x03 \x01(\tR\x06osType\x12\x19\n" +
-	"\bsku_name\x18\x04 \x01(\tR\askuNameB\x8b\x03\n" +
+	"\bsku_name\x18\x04 \x01(\tR\askuName\x12\x12\n" +
+	"\x04kind\x18\x05 \x01(\tR\x04kind\x12\x1a\n" +
+	"\breserved\x18\x06 \x01(\bR\breservedB\x8b\x03\n" +
 	"2com.dev.planton.provider.azure.azureserviceplan.v1B\x11StackOutputsProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureserviceplan/v1;azureserviceplanv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Azure.Azureserviceplan.V1\xca\x02.Dev\\Planton\\Provider\\Azure\\Azureserviceplan\\V1\xe2\x02:Dev\\Planton\\Provider\\Azure\\Azureserviceplan\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Azure::Azureserviceplan::V1b\x06proto3"
 
 var (

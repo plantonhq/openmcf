@@ -1,0 +1,26 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awssubnet
+spec:
+  # A subnet's identity is the AWS-assigned "subnet-..." id; when the spec
+  # declares inline routes the module also owns a route table ("rtb-...")
+  # and the association joining the two ("{subnet_id}/{route_table_id}").
+  # All three ids are AWS-assigned -- discoverable from a prior deploy's
+  # outputs or the console, never derivable from the spec.
+  values:
+    - name: subnet_id
+      derivations:
+        - from_stack_output: subnet_id
+        - from_arn_part: resource_id
+      where_to_find: >-
+        VPC console -> Subnets (the Subnet ID column), or
+        `aws ec2 describe-subnets` (SubnetId).
+    - name: route_table_id
+      derivations:
+        - from_stack_output: route_table_id
+      where_to_find: >-
+        VPC console -> Route tables (the Route table ID column), or
+        `aws ec2 describe-route-tables
+        --filters Name=association.subnet-id,Values=<subnet-id>`
+        (RouteTableId).

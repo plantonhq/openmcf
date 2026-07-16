@@ -208,6 +208,12 @@ When using provisioned mode, you can increase `provisioned_throughput_in_mibps` 
 
 ## 7. Access Points
 
+Access points are their own resource — `AwsEfsAccessPoint` — referencing the
+file system by `file_system_id`. One file system serves many applications, each
+behind its own access point (up to 1,000 per file system), and the access point
+is what Lambda file-system configs and ECS task-definition EFS volumes
+reference. The concepts below describe what an access point enforces.
+
 ### POSIX Identity Enforcement
 
 An access point defines a POSIX user (UID) and group (GID) that are applied to all file operations through that access point. The NFS client's claimed identity is overridden — regardless of what UID/GID the client sends, EFS uses the access point's identity.
@@ -226,13 +232,13 @@ Each access point can expose a specific directory as the root (`/`). When a clie
 
 ### Use with ECS
 
-- **Task definition:** Add an EFS volume with `file_system_id` and `transit_encryption: ENABLED` (or `NONE` for internal-only).
-- **Access point:** Use `access_point_id` from `status.outputs.access_point_ids.<name>`.
+- **Task definition:** Add an EFS volume referencing the file system (transit encryption is always enabled by the modules).
+- **Access point:** Reference the AwsEfsAccessPoint's `status.outputs.access_point_id`.
 - **Container:** Mount the volume at a path (e.g., `/mnt/efs`). The container sees the access point's root directory as `/`.
 
 ### Use with Lambda
 
-- **File system config:** Lambda requires an access point **ARN** (not ID). Use `status.outputs.access_point_arns.<name>`.
+- **File system config:** Lambda requires an access point **ARN** (not ID). Reference the AwsEfsAccessPoint's `status.outputs.access_point_arn`.
 - **Mount path:** Lambda mounts at a configurable path (e.g., `/mnt/efs`). The function reads/writes using the access point's POSIX identity.
 - **Limitation:** Lambda supports only one EFS mount per function. Use a single access point that exposes the needed subtree.
 
@@ -434,12 +440,12 @@ parameters:
    ]
    ```
 
-2. Reference `file_system_id` and `access_point_id` from AwsElasticFileSystem outputs.
+2. Reference `file_system_id` from the AwsElasticFileSystem's outputs and `access_point_id` from the AwsEfsAccessPoint's outputs.
 3. Mount the volume in the container definition at `/mnt/efs` (or desired path).
 
 ### Lambda File System Config
 
-1. Create an EFS file system with an access point.
+1. Create an EFS file system and an AwsEfsAccessPoint referencing it.
 2. In the Lambda function configuration, add `fileSystemConfig`:
 
    ```json
@@ -449,7 +455,7 @@ parameters:
    }
    ```
 
-3. Use `valueFrom` to reference `status.outputs.access_point_arns.<name>`.
+3. Use `valueFrom` to reference the AwsEfsAccessPoint's `status.outputs.access_point_arn`.
 4. Ensure the Lambda function is in a VPC with connectivity to the EFS mount targets (same VPC or VPC peering, security groups allowing NFS).
 
 ### EC2 Direct NFS Mount
@@ -555,6 +561,28 @@ The EFS service uses `CreateGrant` to obtain decrypt permissions for the key. Wi
 
 ---
 
+## 17. Replication and Overwrite Protection
+
+EFS replication keeps a read-only replica of the file system in sync in another
+region (regional replica) or another Availability Zone (One Zone replica — the
+cheaper DR shape). Key mechanics:
+
+- **One per file system, create-time immutable.** Changing any destination
+  field replaces the replication configuration; the destination file system
+  itself survives that replacement.
+- **Replicas are always encrypted**, regardless of the source's encryption
+  state. Omit the destination KMS key to use the destination region's
+  AWS-managed `aws/elasticfilesystem` key.
+- **Overwrite protection gates the destination.** Every file system's
+  `replication_overwrite_protection` defaults to ENABLED. To replicate INTO an
+  existing file system, that destination's protection must be DISABLED — and
+  after replication stops, the (former) destination must again have protection
+  DISABLED before it can be modified or deleted.
+- **Failover** is manual: delete the replication configuration, wait for the
+  final sync, and repoint clients at the (now writable) replica.
+
+---
+
 ## 18. CloudWatch Metrics and Monitoring
 
 EFS publishes metrics to CloudWatch at the file system level. Key metrics:
@@ -586,8 +614,9 @@ EFS publishes metrics to CloudWatch at the file system level. Key metrics:
 | **Encryption** | At rest (KMS); in transit (TLS + resource policy). |
 | **Backup** | Enable for production; AWS Backup integration. |
 | **Security** | Resource policies, security groups, IAM, access points. |
+| **Replication** | One replica per file system (region or AZ); overwrite protection gates destinations. |
 
-For API reference and examples, see the parent [README.md](../README.md) and [examples.md](../examples.md).
+For API reference and examples, see the parent [README.md](../README.md).
 
 ---
 

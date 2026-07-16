@@ -1,11 +1,14 @@
 package module
 
 const (
-	OpRdsInstanceId       = "rds_instance_id"
-	OpRdsInstanceArn      = "rds_instance_arn"
-	OpRdsInstanceEndpoint = "rds_instance_endpoint"
-	OpRdsInstancePort     = "rds_instance_port"
-	OpRdsSubnetGroup      = "rds_subnet_group"
-	OpRdsSecurityGroup    = "rds_security_group"
-	OpRdsParameterGroup   = "rds_parameter_group"
+	OpInstanceIdentifier  = "instance_identifier"
+	OpArn                 = "arn"
+	OpResourceId          = "resource_id"
+	OpEndpoint            = "endpoint"
+	OpAddress             = "address"
+	OpPort                = "port"
+	OpHostedZoneId        = "hosted_zone_id"
+	OpEngineVersionActual = "engine_version_actual"
+	OpMasterUserSecretArn = "master_user_secret_arn"
+	OpDbSubnetGroupName   = "db_subnet_group_name"
 )

@@ -20,11 +20,6 @@ spec:
         kind: AwsSubnet
         name: production-private-subnet-c
         fieldPath: status.outputs.subnet_id
-  vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: production-vpc
-      fieldPath: status.outputs.vpc_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup

@@ -1,22 +1,22 @@
 package kubecontext
 
 import (
-	"github.com/plantonhq/planton/pkg/kubernetes/kuberneteslabels"
+	"github.com/plantonhq/planton/pkg/kubernetes/kubernetesannotationkeys"
 	"github.com/plantonhq/planton/pkg/reflection/metadatareflect"
 	"google.golang.org/protobuf/proto"
 )
 
-// ExtractFromManifest extracts the kubectl context from manifest labels.
+// ExtractFromManifest extracts the kubectl context from manifest annotations.
 // Returns:
-//   - The context name if the label exists
-//   - Empty string if the label is not present (uses default context from kubeconfig)
+//   - The context name if the annotation exists
+//   - Empty string if the annotation is not present (uses default context from kubeconfig)
 func ExtractFromManifest(manifest proto.Message) string {
-	labels := metadatareflect.ExtractLabels(manifest)
-	if labels == nil {
+	annotations := metadatareflect.ExtractAnnotations(manifest)
+	if annotations == nil {
 		return ""
 	}
 
-	context, ok := labels[kuberneteslabels.KubeContextLabelKey]
+	context, ok := annotations[kubernetesannotationkeys.KubeContextAnnotationKey]
 	if !ok {
 		return ""
 	}

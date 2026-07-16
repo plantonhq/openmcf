@@ -13,8 +13,8 @@ spec:
   subnetIds:
     - value: "<private-subnet-id-az1>"
     - value: "<private-subnet-id-az2>"
-  associateSecurityGroupIds:
-    - value: "<security-group-id>"
+  securityGroupIds:
+    - value: "<mwaa-security-group-id>"
   environmentClass: mw1.small
   minWorkers: 1
   maxWorkers: 5

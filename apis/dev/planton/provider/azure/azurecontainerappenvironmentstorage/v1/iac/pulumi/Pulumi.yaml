@@ -1,0 +1,3 @@
+name: azure-container-app-environment-storage
+runtime: go
+description: Pulumi program for Azure Container App Environment storage registrations

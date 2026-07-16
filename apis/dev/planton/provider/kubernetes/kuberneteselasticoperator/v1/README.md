@@ -65,7 +65,6 @@ kubernetes-elastic-operator
 ├── kind: "KubernetesElasticOperator"
 ├── metadata: CloudResourceMetadata
 └── spec: KubernetesElasticOperatorSpec
-    ├── target_cluster: KubernetesAddonTargetCluster
     ├── namespace: StringValueOrRef
     ├── create_namespace: bool
     └── container: KubernetesElasticOperatorSpecContainer
@@ -112,18 +111,6 @@ These defaults are suitable for managing moderate-sized Elastic Stack deployment
 - **Number of managed clusters**: More clusters = higher resource needs
 - **Cluster sizes**: Larger Elasticsearch clusters require more operator resources
 - **Update frequency**: Frequent updates increase operator workload
-
-### Target Cluster Configuration
-
-The `target_cluster` field specifies where to install the operator:
-
-```yaml
-spec:
-  target_cluster:
-    cluster_name: "my-gke-cluster"
-  namespace:
-    value: "elastic-system"
-```
 
 ### Namespace Management
 
@@ -172,8 +159,6 @@ kind: KubernetesElasticOperator
 metadata:
   name: eck-operator
 spec:
-  target_cluster:
-    cluster_name: "my-gke-cluster"
   namespace:
     value: "elastic-system"
   container:
@@ -196,8 +181,6 @@ kind: KubernetesElasticOperator
 metadata:
   name: eck-operator-ha
 spec:
-  target_cluster:
-    cluster_name: "production-gke-cluster"
   namespace:
     value: "elastic-system"
   container:
@@ -220,8 +203,6 @@ kind: KubernetesElasticOperator
 metadata:
   name: eck-operator-dev
 spec:
-  target_cluster:
-    cluster_name: "dev-gke-cluster"
   namespace:
     value: "elastic-system"
   container:

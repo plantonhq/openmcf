@@ -2,6 +2,7 @@ package infrachart
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
@@ -104,7 +105,10 @@ func visitMessage(fd protoreflect.FieldDescriptor, m protoreflect.Message, path 
 //     out a DIFFERENT field path than the annotation, that is an error: the
 //     annotated path is the composition key the modules are proven to accept,
 //     and overriding it is the id/name/self-link mismatch class that
-//     otherwise only surfaces at deploy time.
+//     otherwise only surfaces at deploy time. A path that EXTENDS the
+//     annotated path is not an override: map-typed composition keys are
+//     addressed by entry key (`status.outputs.backend_pool_ids.web`), and
+//     the entry key is chart data the annotation cannot name.
 //  4. The effective field path must resolve against the target kind's actual
 //     proto surface (stack outputs, spec, or metadata).
 func checkRef(use refUse) (refTarget, []string) {
@@ -136,13 +140,14 @@ func checkRef(use refUse) (refTarget, []string) {
 				fmt.Sprintf("%s: valueFrom targets %s but has no fieldPath, and no annotated default applies — add an explicit `fieldPath:`", use.fieldPath, targetKind))
 			return refTarget{kind: targetKind, name: use.ref.GetName()}, problems
 		}
-	} else if targetKind == annotatedKind && annotatedPath != "" && effectivePath != annotatedPath {
+	} else if targetKind == annotatedKind && annotatedPath != "" && effectivePath != annotatedPath &&
+		!strings.HasPrefix(effectivePath, annotatedPath+".") {
 		problems = append(problems,
 			fmt.Sprintf("%s: valueFrom overrides the annotated composition key for %s — the field's contract is %q but the chart references %q (id/name/self-link format mismatches only surface at deploy time; use the annotated path)",
 				use.fieldPath, targetKind, annotatedPath, effectivePath))
 	}
 
-	if reason := refcheck.ResolveRefPath(targetKind, effectivePath); reason != "" {
+	if reason := refcheck.ResolveValueFromPath(targetKind, effectivePath); reason != "" {
 		problems = append(problems,
 			fmt.Sprintf("%s: valueFrom fieldPath %q does not resolve on %s: %s", use.fieldPath, effectivePath, targetKind, reason))
 	}

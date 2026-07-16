@@ -1,0 +1,97 @@
+params:
+  # ── Placement ───────────────────────────────────────────────────────────
+  - name: aws_region
+    description: >
+      AWS region for the entire network. Every resource in this chart is
+      regional; cross-region networking (peering, Transit Gateway) composes on
+      top of this foundation afterwards, per region.
+    value: us-east-1
+
+  # ── Identity ────────────────────────────────────────────────────────────
+  - name: network_name
+    description: >
+      Name prefix for every resource this chart creates (VPC, subnets,
+      gateways, endpoint). Lets you run more than one network foundation in
+      the same environment (e.g. "core" and "data") without name collisions.
+    value: core
+
+  # ── Address plan ────────────────────────────────────────────────────────
+  - name: vpc_cidr
+    description: >
+      The VPC's primary IPv4 CIDR block. /16 gives 65k addresses — the
+      conventional starting point that leaves room to grow for years. Pick a
+      range that does not overlap any network you may ever peer or VPN with
+      (other VPCs, on-prem ranges); overlapping CIDRs are the one mistake
+      this chart cannot undo, because the block is immutable after creation.
+    value: 10.0.0.0/16
+
+  - name: availability_zones
+    description: >
+      Availability zones to stripe the network across. One public and one
+      private subnet is created per AZ, and the subnet CIDR lists below must
+      carry exactly one entry per AZ, in the same order. Two AZs is the
+      high-availability minimum; add a third for workloads that must survive
+      a dual-AZ event (and for services like Redshift Serverless that require
+      three).
+    type: list
+    value:
+      - us-east-1a
+      - us-east-1b
+
+  - name: public_subnet_cidrs
+    description: >
+      IPv4 CIDR for each public subnet, index-matched to availability_zones.
+      /20 (4k addresses each) is deliberately generous — load balancers and
+      NAT gateways consume addresses per AZ as they scale, and resizing a
+      subnet later means replacing it. The defaults carve non-overlapping
+      slices out of 10.0.0.0/16; adjust them together with vpc_cidr.
+    type: list
+    value:
+      - 10.0.0.0/20
+      - 10.0.16.0/20
+
+  - name: private_subnet_cidrs
+    description: >
+      IPv4 CIDR for each private subnet, index-matched to availability_zones.
+      Private subnets host the bulk of your compute (databases, containers,
+      instances), so the defaults start at the top half of the VPC range with
+      the same /20 sizing, leaving the middle free for future subnet tiers.
+    type: list
+    value:
+      - 10.0.128.0/20
+      - 10.0.144.0/20
+
+  # ── Egress (the cost dials) ─────────────────────────────────────────────
+  - name: nat_gateway_enabled
+    type: bool
+    description: >
+      Give private subnets outbound internet access through a managed NAT
+      gateway. This is what most workloads need (pulling packages, calling
+      external APIs) and it is the one always-on cost in this chart: each NAT
+      gateway bills hourly (~$32/month) plus per-GB processed. Turn it off
+      for fully isolated networks — private subnets then reach AWS services
+      only through VPC endpoints like the S3 gateway below.
+    value: true
+
+  - name: nat_gateway_per_az
+    type: bool
+    description: >
+      Place one NAT gateway in every availability zone instead of a single
+      shared one. Per-AZ NAT doubles-or-triples the hourly cost but removes
+      the two failure modes of the shared default: an AZ outage taking down
+      egress for every AZ, and cross-AZ data-processing charges on egress
+      traffic from the other AZs. Turn this on when the network carries
+      production traffic that must survive an AZ failure; leave it off for
+      dev/staging where the single gateway's cost profile wins.
+    value: false
+
+  # ── Feature toggles ─────────────────────────────────────────────────────
+  - name: s3_endpoint_enabled
+    type: bool
+    description: >
+      Add a gateway VPC endpoint for S3. Gateway endpoints are free and keep
+      all S3 traffic on the AWS network instead of routing it through the NAT
+      gateway — for S3-heavy workloads this alone can save more than the NAT
+      gateway costs. There is no reason to disable it other than wanting the
+      absolute minimum resource set.
+    value: true

@@ -1,12 +1,13 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchLogGroup
 metadata:
-  name: ${name}
+  name: my-archive-logs
 spec:
+  region: <aws-region>
   retentionInDays: 365
-  logGroupClass: INFREQUENT_ACCESS
+  logGroupClass: INFREQUENT_ACCESS  # ~50% cheaper storage; no metric/subscription filters
   kmsKeyId:
     valueFrom:
       kind: AwsKmsKey
-      name: ${kms_key_name}
+      name: <kms-key-name>  # key policy must allow logs.<region>.amazonaws.com
       fieldPath: status.outputs.key_arn

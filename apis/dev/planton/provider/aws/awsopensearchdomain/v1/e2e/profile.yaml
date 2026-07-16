@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsopensearchdomain
+spec:
+  # An OpenSearch domain under E2E: a true leaf (no prerequisites -- the
+  # scenario is a public single-node t3.small.search domain outside any
+  # VPC), so the harness runs the lifecycle directly. Verification is
+  # DescribeDomain keyed on the domain name. Auto-Tune is excluded from
+  # the scenario because t3 instance types do not support it.
+  #
+  # deferred: per the session-018 decision both engines were validated
+  # offline only -- tofu init/validate/plan and pulumi preview against
+  # the hack manifest -- with no live provision lane (domain creation
+  # runs 15-25 minutes each way per engine). The scenario and verifier
+  # are live-ready; flip to green after the first full deploy -> verify
+  # -> destroy run on both provisioners.
+  tier: 1
+  status: deferred
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 90

@@ -9,7 +9,7 @@ order: 50
 
 Every IaC deployment tracks state -- the mapping between what your manifest declares and what actually exists in the cloud. State enables Planton to know what has changed between deployments, what needs to be created, updated, or destroyed, and what the current outputs of a deployment are.
 
-How state is stored depends on which IaC engine you use. Pulumi and OpenTofu/Terraform have different backend systems, and Planton configures them through manifest labels.
+How state is stored depends on which IaC engine you use. Pulumi and OpenTofu/Terraform have different backend systems, and Planton configures them through manifest annotations.
 
 ## Pulumi State Backends
 
@@ -17,11 +17,11 @@ Pulumi organizes state by **stack** -- a named instance of a deployment identifi
 
 ### Configuring Pulumi State
 
-Pulumi state configuration is provided through manifest labels:
+Pulumi state configuration is provided through manifest annotations:
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: platform
@@ -44,19 +44,19 @@ planton pulumi up -f postgres.yaml --stack acme/platform/production
 | **Azure Blob** | Self-managed state in Azure Blob Storage. |
 | **Local** | State stored on the local filesystem. Suitable for development only. |
 
-The Pulumi backend is configured through Pulumi's standard mechanisms (environment variables, `pulumi login`, or configuration files). Planton's role is to set the stack FQDN from the manifest labels, not to configure the backend connection itself.
+The Pulumi backend is configured through Pulumi's standard mechanisms (environment variables, `pulumi login`, or configuration files). Planton's role is to set the stack FQDN from the manifest annotations, not to configure the backend connection itself.
 
 ## OpenTofu/Terraform State Backends
 
-OpenTofu and Terraform use a `backend` block in the Terraform configuration to determine where state is stored. Planton generates this configuration from manifest labels.
+OpenTofu and Terraform use a `backend` block in the Terraform configuration to determine where state is stored. Planton generates this configuration from manifest annotations.
 
 ### Configuring Tofu/Terraform State
 
-State backend configuration is provided through manifest labels with the `tofu.planton.dev/backend.*` prefix:
+State backend configuration is provided through manifest annotations with the `tofu.planton.dev/backend.*` prefix:
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
     tofu.planton.dev/backend.type: s3
     tofu.planton.dev/backend.bucket: my-tfstate-bucket
@@ -64,9 +64,9 @@ metadata:
     tofu.planton.dev/backend.region: us-east-1
 ```
 
-The CLI reads these labels, writes a `backend.tf` file in the workspace, and passes the configuration to `tofu init`.
+The CLI reads these annotations, writes a `backend.tf` file in the workspace, and passes the configuration to `tofu init`.
 
-Legacy `terraform.planton.dev/backend.*` labels are also supported for backward compatibility.
+Legacy `terraform.planton.dev/backend.*` annotations are also supported for backward compatibility.
 
 ### Supported Backends and Required Fields
 
@@ -110,7 +110,7 @@ Planton supports S3-compatible backends for teams using Cloudflare R2, MinIO, or
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     tofu.planton.dev/backend.type: s3
     tofu.planton.dev/backend.bucket: my-r2-state
     tofu.planton.dev/backend.key: prod/terraform.tfstate

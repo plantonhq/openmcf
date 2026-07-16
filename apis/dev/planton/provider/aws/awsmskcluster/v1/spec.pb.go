@@ -26,8 +26,14 @@ const (
 
 // AwsMskClusterSpec defines the desired state of an Amazon MSK (Managed Streaming for Apache Kafka) cluster.
 // MSK is a fully managed service that provisions, configures, and maintains Apache Kafka clusters,
-// handling broker infrastructure, ZooKeeper coordination, and storage so teams can focus on producing
-// and consuming streaming data rather than operating Kafka infrastructure.
+// handling broker infrastructure, coordination (ZooKeeper or KRaft, depending on the Kafka version),
+// and storage so teams can focus on producing and consuming streaming data rather than operating
+// Kafka infrastructure.
+//
+// Network ingress is composed, never embedded: brokers attach the referenced
+// security_group_ids directly, and the ingress rules that open the Kafka/ZooKeeper
+// ports live on those first-class AwsSecurityGroup nodes where they can be shared,
+// audited, and evolved independently of the cluster.
 type AwsMskClusterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the resource will be created.
@@ -35,40 +41,64 @@ type AwsMskClusterSpec struct {
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
 	// kafka_version is the Apache Kafka version for all brokers in the cluster.
 	// Examples: "3.6.0", "3.5.1", "3.4.0", "2.8.1".
-	// Upgrades are applied via rolling restart; downgrades force cluster replacement.
+	// Upgrades are applied in place via rolling restart (an UpdateClusterKafkaVersion
+	// operation); a version DOWNGRADE cannot be performed in place and forces cluster
+	// replacement.
 	KafkaVersion string `protobuf:"bytes,2,opt,name=kafka_version,json=kafkaVersion,proto3" json:"kafka_version,omitempty"`
 	// number_of_broker_nodes is the total number of Kafka broker nodes in the cluster.
 	// Must be a multiple of the number of subnets provided in subnet_ids so that
-	// brokers are evenly distributed across Availability Zones.
+	// brokers are evenly distributed across Availability Zones. Broker count can be
+	// INCREASED in place (an UpdateBrokerCount operation); AWS does not support
+	// decreasing the broker count.
 	NumberOfBrokerNodes int32 `protobuf:"varint,3,opt,name=number_of_broker_nodes,json=numberOfBrokerNodes,proto3" json:"number_of_broker_nodes,omitempty"`
 	// instance_type determines the compute and memory capacity of each broker node.
 	// Standard types: kafka.m5.large, kafka.m5.xlarge, kafka.m5.2xlarge, kafka.m5.4xlarge.
 	// Graviton types: kafka.m7g.large, kafka.m7g.xlarge (better price-performance).
-	// Small/dev types: kafka.t3.small.
+	// Express brokers: express.m7g.large and up (AWS-managed storage, faster scaling,
+	// intelligent rebalancing -- see rebalancing_status).
+	// Small/dev types: kafka.t3.small (no tiered storage, no public access, no
+	// provisioned throughput).
+	// Updatable in place: changing the instance type is a rolling UpdateBrokerType
+	// operation, not a replacement.
 	InstanceType string `protobuf:"bytes,4,opt,name=instance_type,json=instanceType,proto3" json:"instance_type,omitempty"`
 	// subnet_ids are the VPC subnets where broker nodes are placed.
 	// Brokers are distributed round-robin across subnets. The number of broker nodes
 	// must be a multiple of the number of subnets for even AZ distribution.
 	// ForceNew: changing subnets forces cluster replacement.
 	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,5,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
-	// security_group_ids are source security groups allowed to reach brokers on Kafka and ZooKeeper ports.
-	// When provided (along with vpc_id), a managed security group is created with ingress rules
-	// permitting TCP traffic from these source security groups on ports 9092-9098 (Kafka) and 2181-2182 (ZooKeeper).
+	// security_group_ids are the security groups ATTACHED to the broker network
+	// interfaces -- they define what can reach the brokers. Ingress rules for the
+	// Kafka listener ports (9092 plaintext, 9094 TLS, 9096 SASL/SCRAM, 9098
+	// SASL/IAM) and ZooKeeper (2181-2182) belong on these referenced
+	// AwsSecurityGroup nodes.
+	// ForceNew: adding or removing entries after creation forces cluster replacement.
 	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,6,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
-	// allowed_cidr_blocks are IPv4 CIDR ranges allowed to reach brokers.
-	// When provided (along with vpc_id), a managed security group is created with ingress rules
-	// permitting TCP traffic from these CIDRs on ports 9092-9098 (Kafka) and 2181-2182 (ZooKeeper).
-	AllowedCidrBlocks []string `protobuf:"bytes,7,rep,name=allowed_cidr_blocks,json=allowedCidrBlocks,proto3" json:"allowed_cidr_blocks,omitempty"`
-	// associate_security_group_ids are existing security groups attached directly to the cluster
-	// alongside the managed security group (if one is created from security_group_ids/allowed_cidr_blocks).
-	// IMPORTANT: The broker_node_group_info.security_groups field in AWS is ForceNew.
-	// Adding or removing entries here after cluster creation forces cluster replacement.
-	AssociateSecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,8,rep,name=associate_security_group_ids,json=associateSecurityGroupIds,proto3" json:"associate_security_group_ids,omitempty"`
-	// vpc_id is the VPC in which to create the managed security group.
-	// Required when security_group_ids or allowed_cidr_blocks are provided.
-	VpcId *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
+	// public_access_type controls whether the cluster is reachable from the public internet.
+	// "DISABLED" (default): brokers are only reachable within the VPC.
+	// "SERVICE_PROVIDED_EIPS": AWS assigns public IPs to brokers.
+	// AWS only allows turning public access ON for an EXISTING cluster: creation always
+	// starts DISABLED, and the provider applies SERVICE_PROVIDED_EIPS as a follow-up
+	// connectivity update. Public access also requires real client authentication
+	// (SASL/IAM, SASL/SCRAM, or mTLS -- unauthenticated must be off) and TLS-only
+	// client_broker_encryption.
+	PublicAccessType string `protobuf:"bytes,7,opt,name=public_access_type,json=publicAccessType,proto3" json:"public_access_type,omitempty"`
+	// vpc_connectivity enables multi-VPC private connectivity (AWS PrivateLink) so
+	// clients in OTHER VPCs or accounts connect to the brokers without peering or
+	// public exposure. Enable at least one authentication scheme here; each scheme
+	// requires the same scheme to be enabled in `authentication` (an IAM-only
+	// cluster cannot offer SCRAM over PrivateLink). AWS activates PrivateLink
+	// connectivity as a follow-up update after the cluster is created; the consumer
+	// side (an aws_msk_vpc_connection in the client VPC) is a separate surface.
+	VpcConnectivity *AwsMskClusterVpcConnectivity `protobuf:"bytes,8,opt,name=vpc_connectivity,json=vpcConnectivity,proto3" json:"vpc_connectivity,omitempty"`
+	// network_type selects the IP addressing of the broker network interfaces.
+	// "IPV4" (default): IPv4-only.
+	// "DUAL": dual-stack IPv4 + IPv6 (requires dual-stack subnets).
+	// One-way: AWS only supports updating IPV4 -> DUAL; going back forces replacement.
+	NetworkType string `protobuf:"bytes,9,opt,name=network_type,json=networkType,proto3" json:"network_type,omitempty"`
 	// ebs_volume_size_gib is the size of the EBS volume per broker, in GiB.
 	// Range: 1-16384. If omitted, AWS uses the instance-type-specific default.
+	// Volume size can be increased in place (an UpdateBrokerStorage operation).
+	// Not applicable to express.* instance types (AWS manages Express broker storage).
 	EbsVolumeSizeGib *int32 `protobuf:"varint,10,opt,name=ebs_volume_size_gib,json=ebsVolumeSizeGib,proto3,oneof" json:"ebs_volume_size_gib,omitempty"`
 	// provisioned_throughput_enabled enables provisioned EBS throughput for higher streaming performance.
 	// Only supported on kafka.m5.4xlarge and larger instance types with ebs_volume_size_gib >= 10 GiB.
@@ -76,10 +106,11 @@ type AwsMskClusterSpec struct {
 	// provisioned_throughput_mbs is the provisioned EBS throughput in MiB/s per broker.
 	// Range: 250-2375. Required when provisioned_throughput_enabled is true.
 	ProvisionedThroughputMbs int32 `protobuf:"varint,12,opt,name=provisioned_throughput_mbs,json=provisionedThroughputMbs,proto3" json:"provisioned_throughput_mbs,omitempty"`
-	// storage_mode controls data storage strategy.
+	// storage_mode controls the data storage strategy.
 	// "LOCAL" (default): all data on broker EBS volumes.
-	// "TIERED": hot data on EBS, warm data automatically offloaded to S3 for cost optimization.
-	// Tiered storage requires Kafka 2.8.2.tiered+ and supported instance types.
+	// "TIERED": hot data on EBS, warm data automatically offloaded to low-cost storage.
+	// Tiered storage requires Kafka 2.8.2.tiered+ and supported instance types
+	// (not kafka.t3.small). One-way: moving TIERED -> LOCAL forces cluster replacement.
 	StorageMode string `protobuf:"bytes,13,opt,name=storage_mode,json=storageMode,proto3" json:"storage_mode,omitempty"`
 	// kms_key_arn is the KMS key ARN for encrypting data at rest on broker EBS volumes.
 	// If omitted, AWS uses the default aws/msk service key.
@@ -97,44 +128,59 @@ type AwsMskClusterSpec struct {
 	// Multiple methods can be enabled simultaneously (e.g., SASL/IAM + TLS).
 	// If no authentication is configured, the cluster accepts unauthenticated connections.
 	Authentication *AwsMskClusterAuthentication `protobuf:"bytes,17,opt,name=authentication,proto3" json:"authentication,omitempty"`
+	// scram_secret_arns are AWS Secrets Manager secret ARNs associated with the
+	// cluster for SASL/SCRAM username/password authentication. Each secret holds a
+	// {"username": ..., "password": ...} JSON document, MUST be named with the
+	// AmazonMSK_ prefix, and MUST be encrypted with a customer-managed KMS key
+	// (AWS rejects secrets on the default aws/secretsmanager key). Associations are
+	// a cluster-keyed setting (added/removed in place); the secrets themselves are
+	// managed outside this resource.
+	ScramSecretArns []string `protobuf:"bytes,18,rep,name=scram_secret_arns,json=scramSecretArns,proto3" json:"scram_secret_arns,omitempty"`
+	// cluster_policy is a resource-based IAM policy attached to the cluster, as a
+	// JSON document -- the mechanism behind cross-account PrivateLink access
+	// (granting kafka:CreateVpcConnection and the Get*ForVpcConnection actions to
+	// consumer principals). A cluster setting keyed by the cluster ARN, updated in
+	// place.
+	ClusterPolicy string `protobuf:"bytes,19,opt,name=cluster_policy,json=clusterPolicy,proto3" json:"cluster_policy,omitempty"`
 	// configuration_arn is the ARN of an externally managed MSK Configuration resource.
 	// MSK Configurations hold Apache Kafka server.properties overrides (e.g., replication factor,
 	// min ISR, log retention). Mutually exclusive with server_properties.
-	ConfigurationArn string `protobuf:"bytes,18,opt,name=configuration_arn,json=configurationArn,proto3" json:"configuration_arn,omitempty"`
+	ConfigurationArn string `protobuf:"bytes,20,opt,name=configuration_arn,json=configurationArn,proto3" json:"configuration_arn,omitempty"`
 	// configuration_revision is the revision number of the external MSK Configuration.
 	// Required when configuration_arn is set. Must be >= 1.
-	ConfigurationRevision int32 `protobuf:"varint,19,opt,name=configuration_revision,json=configurationRevision,proto3" json:"configuration_revision,omitempty"`
+	ConfigurationRevision int32 `protobuf:"varint,21,opt,name=configuration_revision,json=configurationRevision,proto3" json:"configuration_revision,omitempty"`
 	// server_properties defines Apache Kafka server.properties overrides as key-value pairs.
-	// When provided, an inline MSK Configuration resource is created and associated with the cluster.
-	// Common properties: auto.create.topics.enable, default.replication.factor, min.insync.replicas,
-	// num.partitions, log.retention.hours, log.retention.bytes.
+	// When provided, a module-managed MSK Configuration resource is created and associated
+	// with the cluster (the folded shape; bring an existing one via configuration_arn).
+	// Common properties: auto.create.topics.enable, default.replication.factor,
+	// min.insync.replicas, num.partitions, log.retention.hours, log.retention.bytes.
 	// Mutually exclusive with configuration_arn.
-	ServerProperties map[string]string `protobuf:"bytes,20,rep,name=server_properties,json=serverProperties,proto3" json:"server_properties,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	ServerProperties map[string]string `protobuf:"bytes,22,rep,name=server_properties,json=serverProperties,proto3" json:"server_properties,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// logging configures broker log delivery to one or more destinations.
 	// All three destinations (CloudWatch Logs, Kinesis Data Firehose, S3) can be
 	// enabled simultaneously for different operational workflows.
-	Logging *AwsMskClusterLogging `protobuf:"bytes,21,opt,name=logging,proto3" json:"logging,omitempty"`
+	Logging *AwsMskClusterLogging `protobuf:"bytes,23,opt,name=logging,proto3" json:"logging,omitempty"`
 	// enhanced_monitoring sets the level of CloudWatch metrics published by the cluster.
 	// "DEFAULT": cluster-level and topic-level metrics.
 	// "PER_BROKER": adds per-broker metrics.
 	// "PER_TOPIC_PER_BROKER": adds per-topic-per-broker metrics.
 	// "PER_TOPIC_PER_PARTITION": most granular, adds per-partition metrics.
-	EnhancedMonitoring string `protobuf:"bytes,22,opt,name=enhanced_monitoring,json=enhancedMonitoring,proto3" json:"enhanced_monitoring,omitempty"`
+	EnhancedMonitoring string `protobuf:"bytes,24,opt,name=enhanced_monitoring,json=enhancedMonitoring,proto3" json:"enhanced_monitoring,omitempty"`
 	// jmx_exporter_enabled enables the Prometheus JMX Exporter on all brokers.
 	// When enabled, JMX metrics are available on port 11001 for Prometheus scraping.
 	// Provides detailed JVM and Kafka broker metrics.
-	JmxExporterEnabled bool `protobuf:"varint,23,opt,name=jmx_exporter_enabled,json=jmxExporterEnabled,proto3" json:"jmx_exporter_enabled,omitempty"`
+	JmxExporterEnabled bool `protobuf:"varint,25,opt,name=jmx_exporter_enabled,json=jmxExporterEnabled,proto3" json:"jmx_exporter_enabled,omitempty"`
 	// node_exporter_enabled enables the Prometheus Node Exporter on all brokers.
 	// When enabled, host-level metrics (CPU, memory, disk, network) are available
 	// on port 11002 for Prometheus scraping.
-	NodeExporterEnabled bool `protobuf:"varint,24,opt,name=node_exporter_enabled,json=nodeExporterEnabled,proto3" json:"node_exporter_enabled,omitempty"`
-	// public_access_type controls whether the cluster is reachable from the public internet.
-	// "DISABLED" (default): brokers are only reachable within the VPC.
-	// "SERVICE_PROVIDED_EIPS": AWS assigns Elastic IPs to brokers for public access.
-	// Public access requires specific authentication (SASL/IAM or SASL/SCRAM) and TLS encryption.
-	PublicAccessType string `protobuf:"bytes,25,opt,name=public_access_type,json=publicAccessType,proto3" json:"public_access_type,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	NodeExporterEnabled bool `protobuf:"varint,26,opt,name=node_exporter_enabled,json=nodeExporterEnabled,proto3" json:"node_exporter_enabled,omitempty"`
+	// rebalancing_status controls intelligent rebalancing on Express-broker clusters
+	// (instance_type express.*): MSK automatically redistributes partitions when
+	// brokers are added or removed. "ACTIVE" (the AWS default for Express clusters)
+	// or "PAUSED". Not applicable to standard kafka.* instance types.
+	RebalancingStatus string `protobuf:"bytes,27,opt,name=rebalancing_status,json=rebalancingStatus,proto3" json:"rebalancing_status,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *AwsMskClusterSpec) Reset() {
@@ -209,25 +255,25 @@ func (x *AwsMskClusterSpec) GetSecurityGroupIds() []*v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AwsMskClusterSpec) GetAllowedCidrBlocks() []string {
+func (x *AwsMskClusterSpec) GetPublicAccessType() string {
 	if x != nil {
-		return x.AllowedCidrBlocks
+		return x.PublicAccessType
+	}
+	return ""
+}
+
+func (x *AwsMskClusterSpec) GetVpcConnectivity() *AwsMskClusterVpcConnectivity {
+	if x != nil {
+		return x.VpcConnectivity
 	}
 	return nil
 }
 
-func (x *AwsMskClusterSpec) GetAssociateSecurityGroupIds() []*v1.StringValueOrRef {
+func (x *AwsMskClusterSpec) GetNetworkType() string {
 	if x != nil {
-		return x.AssociateSecurityGroupIds
+		return x.NetworkType
 	}
-	return nil
-}
-
-func (x *AwsMskClusterSpec) GetVpcId() *v1.StringValueOrRef {
-	if x != nil {
-		return x.VpcId
-	}
-	return nil
+	return ""
 }
 
 func (x *AwsMskClusterSpec) GetEbsVolumeSizeGib() int32 {
@@ -286,6 +332,20 @@ func (x *AwsMskClusterSpec) GetAuthentication() *AwsMskClusterAuthentication {
 	return nil
 }
 
+func (x *AwsMskClusterSpec) GetScramSecretArns() []string {
+	if x != nil {
+		return x.ScramSecretArns
+	}
+	return nil
+}
+
+func (x *AwsMskClusterSpec) GetClusterPolicy() string {
+	if x != nil {
+		return x.ClusterPolicy
+	}
+	return ""
+}
+
 func (x *AwsMskClusterSpec) GetConfigurationArn() string {
 	if x != nil {
 		return x.ConfigurationArn
@@ -335,9 +395,9 @@ func (x *AwsMskClusterSpec) GetNodeExporterEnabled() bool {
 	return false
 }
 
-func (x *AwsMskClusterSpec) GetPublicAccessType() string {
+func (x *AwsMskClusterSpec) GetRebalancingStatus() string {
 	if x != nil {
-		return x.PublicAccessType
+		return x.RebalancingStatus
 	}
 	return ""
 }
@@ -354,7 +414,7 @@ type AwsMskClusterAuthentication struct {
 	// sasl_scram_enabled enables SASL/SCRAM-SHA-512 authentication.
 	// Clients authenticate with username/password stored in AWS Secrets Manager.
 	// Useful for non-AWS clients that cannot use IAM. Brokers listen on port 9096.
-	// Secrets must be associated with the cluster via aws_msk_scram_secret_association.
+	// Associate the credential secrets via scram_secret_arns on the spec.
 	SaslScramEnabled bool `protobuf:"varint,2,opt,name=sasl_scram_enabled,json=saslScramEnabled,proto3" json:"sasl_scram_enabled,omitempty"`
 	// tls_enabled enables mutual TLS (mTLS) authentication.
 	// Clients present X.509 certificates signed by a private Certificate Authority.
@@ -437,6 +497,73 @@ func (x *AwsMskClusterAuthentication) GetUnauthenticated() bool {
 	return false
 }
 
+// AwsMskClusterVpcConnectivity configures multi-VPC private connectivity (PrivateLink)
+// authentication schemes. At least one scheme must be enabled for PrivateLink access
+// to be usable, and each enabled scheme must also be enabled in the cluster's own
+// `authentication` (CEL-enforced on the spec).
+type AwsMskClusterVpcConnectivity struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// sasl_iam_enabled offers SASL/IAM authentication to PrivateLink clients.
+	SaslIamEnabled bool `protobuf:"varint,1,opt,name=sasl_iam_enabled,json=saslIamEnabled,proto3" json:"sasl_iam_enabled,omitempty"`
+	// sasl_scram_enabled offers SASL/SCRAM authentication to PrivateLink clients.
+	SaslScramEnabled bool `protobuf:"varint,2,opt,name=sasl_scram_enabled,json=saslScramEnabled,proto3" json:"sasl_scram_enabled,omitempty"`
+	// tls_enabled offers mutual TLS authentication to PrivateLink clients.
+	TlsEnabled    bool `protobuf:"varint,3,opt,name=tls_enabled,json=tlsEnabled,proto3" json:"tls_enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsMskClusterVpcConnectivity) Reset() {
+	*x = AwsMskClusterVpcConnectivity{}
+	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsMskClusterVpcConnectivity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsMskClusterVpcConnectivity) ProtoMessage() {}
+
+func (x *AwsMskClusterVpcConnectivity) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsMskClusterVpcConnectivity.ProtoReflect.Descriptor instead.
+func (*AwsMskClusterVpcConnectivity) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsMskClusterVpcConnectivity) GetSaslIamEnabled() bool {
+	if x != nil {
+		return x.SaslIamEnabled
+	}
+	return false
+}
+
+func (x *AwsMskClusterVpcConnectivity) GetSaslScramEnabled() bool {
+	if x != nil {
+		return x.SaslScramEnabled
+	}
+	return false
+}
+
+func (x *AwsMskClusterVpcConnectivity) GetTlsEnabled() bool {
+	if x != nil {
+		return x.TlsEnabled
+	}
+	return false
+}
+
 // AwsMskClusterLogging configures broker log delivery destinations.
 // All three destinations can be enabled simultaneously.
 type AwsMskClusterLogging struct {
@@ -453,7 +580,7 @@ type AwsMskClusterLogging struct {
 
 func (x *AwsMskClusterLogging) Reset() {
 	*x = AwsMskClusterLogging{}
-	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -465,7 +592,7 @@ func (x *AwsMskClusterLogging) String() string {
 func (*AwsMskClusterLogging) ProtoMessage() {}
 
 func (x *AwsMskClusterLogging) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -478,7 +605,7 @@ func (x *AwsMskClusterLogging) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsMskClusterLogging.ProtoReflect.Descriptor instead.
 func (*AwsMskClusterLogging) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AwsMskClusterLogging) GetCloudwatchLogs() *AwsMskClusterCloudwatchLogging {
@@ -516,7 +643,7 @@ type AwsMskClusterCloudwatchLogging struct {
 
 func (x *AwsMskClusterCloudwatchLogging) Reset() {
 	*x = AwsMskClusterCloudwatchLogging{}
-	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -528,7 +655,7 @@ func (x *AwsMskClusterCloudwatchLogging) String() string {
 func (*AwsMskClusterCloudwatchLogging) ProtoMessage() {}
 
 func (x *AwsMskClusterCloudwatchLogging) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -541,7 +668,7 @@ func (x *AwsMskClusterCloudwatchLogging) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsMskClusterCloudwatchLogging.ProtoReflect.Descriptor instead.
 func (*AwsMskClusterCloudwatchLogging) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AwsMskClusterCloudwatchLogging) GetEnabled() bool {
@@ -572,7 +699,7 @@ type AwsMskClusterFirehoseLogging struct {
 
 func (x *AwsMskClusterFirehoseLogging) Reset() {
 	*x = AwsMskClusterFirehoseLogging{}
-	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -584,7 +711,7 @@ func (x *AwsMskClusterFirehoseLogging) String() string {
 func (*AwsMskClusterFirehoseLogging) ProtoMessage() {}
 
 func (x *AwsMskClusterFirehoseLogging) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -597,7 +724,7 @@ func (x *AwsMskClusterFirehoseLogging) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsMskClusterFirehoseLogging.ProtoReflect.Descriptor instead.
 func (*AwsMskClusterFirehoseLogging) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AwsMskClusterFirehoseLogging) GetEnabled() bool {
@@ -631,7 +758,7 @@ type AwsMskClusterS3Logging struct {
 
 func (x *AwsMskClusterS3Logging) Reset() {
 	*x = AwsMskClusterS3Logging{}
-	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -643,7 +770,7 @@ func (x *AwsMskClusterS3Logging) String() string {
 func (*AwsMskClusterS3Logging) ProtoMessage() {}
 
 func (x *AwsMskClusterS3Logging) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -656,7 +783,7 @@ func (x *AwsMskClusterS3Logging) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsMskClusterS3Logging.ProtoReflect.Descriptor instead.
 func (*AwsMskClusterS3Logging) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AwsMskClusterS3Logging) GetEnabled() bool {
@@ -684,7 +811,7 @@ var File_dev_planton_provider_aws_awsmskcluster_v1_spec_proto protoreflect.FileD
 
 const file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4dev/planton/provider/aws/awsmskcluster/v1/spec.proto\x12)dev.planton.provider.aws.awsmskcluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc1\x17\n" +
+	"4dev/planton/provider/aws/awsmskcluster/v1/spec.proto\x12)dev.planton.provider.aws.awsmskcluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe9$\n" +
 	"\x11AwsMskClusterSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12+\n" +
 	"\rkafka_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fkafkaVersion\x12?\n" +
@@ -692,11 +819,11 @@ const file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDesc = "" +
 	"\xbaH\a\xc8\x01\x01\x1a\x02(\x01R\x13numberOfBrokerNodes\x12+\n" +
 	"\rinstance_type\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\finstanceType\x12|\n" +
 	"\n" +
-	"subnet_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\xa1\x01\n" +
-	"\x13allowed_cidr_blocks\x18\a \x03(\tBq\xbaHn\x92\x01k\x18\x01\"gre2c^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$R\x11allowedCidrBlocks\x12\x9e\x01\n" +
-	"\x1cassociate_security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x19associateSecurityGroupIds\x12i\n" +
-	"\x06vpc_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12?\n" +
+	"subnet_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12W\n" +
+	"\x12public_access_type\x18\a \x01(\tB)\xbaH&\xd8\x01\x01r!R\bDISABLEDR\x15SERVICE_PROVIDED_EIPSR\x10publicAccessType\x12r\n" +
+	"\x10vpc_connectivity\x18\b \x01(\v2G.dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterVpcConnectivityR\x0fvpcConnectivity\x127\n" +
+	"\fnetwork_type\x18\t \x01(\tB\x14\xbaH\x11\xd8\x01\x01r\fR\x04IPV4R\x04DUALR\vnetworkType\x12?\n" +
 	"\x13ebs_volume_size_gib\x18\n" +
 	" \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\x80\x01(\x01H\x00R\x10ebsVolumeSizeGib\x88\x01\x01\x12D\n" +
 	"\x1eprovisioned_throughput_enabled\x18\v \x01(\bR\x1cprovisionedThroughputEnabled\x12L\n" +
@@ -705,33 +832,46 @@ const file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDesc = "" +
 	"\vkms_key_arn\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12j\n" +
 	"\x18client_broker_encryption\x18\x0f \x01(\tB+\xbaH!r\x1fR\x03TLSR\rTLS_PLAINTEXTR\tPLAINTEXT\x8a\xa6\x1d\x03TLSH\x01R\x16clientBrokerEncryption\x88\x01\x01\x12A\n" +
 	"\x15in_cluster_encryption\x18\x10 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x13inClusterEncryption\x88\x01\x01\x12n\n" +
-	"\x0eauthentication\x18\x11 \x01(\v2F.dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterAuthenticationR\x0eauthentication\x12+\n" +
-	"\x11configuration_arn\x18\x12 \x01(\tR\x10configurationArn\x12A\n" +
-	"\x16configuration_revision\x18\x13 \x01(\x05B\n" +
+	"\x0eauthentication\x18\x11 \x01(\v2F.dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterAuthenticationR\x0eauthentication\x12\xed\x01\n" +
+	"\x11scram_secret_arns\x18\x12 \x03(\tB\xc0\x01\xbaHS\x92\x01P\x18\x01\"LrJ2H^arn:aws[a-zA-Z-]*:secretsmanager:[a-z0-9-]+:\\d{12}:secret:AmazonMSK_.+$\xaa\xa6\x1dfSecrets Manager secret ARNs (references resolved by MSK at authentication time), never secret materialR\x0fscramSecretArns\x12%\n" +
+	"\x0ecluster_policy\x18\x13 \x01(\tR\rclusterPolicy\x12+\n" +
+	"\x11configuration_arn\x18\x14 \x01(\tR\x10configurationArn\x12A\n" +
+	"\x16configuration_revision\x18\x15 \x01(\x05B\n" +
 	"\xbaH\a\xd8\x01\x01\x1a\x02(\x01R\x15configurationRevision\x12\x7f\n" +
-	"\x11server_properties\x18\x14 \x03(\v2R.dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.ServerPropertiesEntryR\x10serverProperties\x12Y\n" +
-	"\alogging\x18\x15 \x01(\v2?.dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterLoggingR\alogging\x12}\n" +
-	"\x13enhanced_monitoring\x18\x16 \x01(\tBL\xbaHI\xd8\x01\x01rDR\aDEFAULTR\n" +
+	"\x11server_properties\x18\x16 \x03(\v2R.dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.ServerPropertiesEntryR\x10serverProperties\x12Y\n" +
+	"\alogging\x18\x17 \x01(\v2?.dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterLoggingR\alogging\x12}\n" +
+	"\x13enhanced_monitoring\x18\x18 \x01(\tBL\xbaHI\xd8\x01\x01rDR\aDEFAULTR\n" +
 	"PER_BROKERR\x14PER_TOPIC_PER_BROKERR\x17PER_TOPIC_PER_PARTITIONR\x12enhancedMonitoring\x120\n" +
-	"\x14jmx_exporter_enabled\x18\x17 \x01(\bR\x12jmxExporterEnabled\x122\n" +
-	"\x15node_exporter_enabled\x18\x18 \x01(\bR\x13nodeExporterEnabled\x12W\n" +
-	"\x12public_access_type\x18\x19 \x01(\tB)\xbaH&\xd8\x01\x01r!R\bDISABLEDR\x15SERVICE_PROVIDED_EIPSR\x10publicAccessType\x1aC\n" +
+	"\x14jmx_exporter_enabled\x18\x19 \x01(\bR\x12jmxExporterEnabled\x122\n" +
+	"\x15node_exporter_enabled\x18\x1a \x01(\bR\x13nodeExporterEnabled\x12G\n" +
+	"\x12rebalancing_status\x18\x1b \x01(\tB\x18\xbaH\x15\xd8\x01\x01r\x10R\x06ACTIVER\x06PAUSEDR\x11rebalancingStatus\x1aC\n" +
 	"\x15ServerPropertiesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xf0\x04\xbaH\xec\x04\x1a\x87\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb3\x11\xbaH\xaf\x11\x1a\x87\x02\n" +
 	"#provisioned_throughput_requires_mbs\x12]provisioned_throughput_mbs must be set (250-2375) when provisioned_throughput_enabled is true\x1a\x80\x01this.provisioned_throughput_enabled ? (this.provisioned_throughput_mbs >= 250 && this.provisioned_throughput_mbs <= 2375) : true\x1a\xaa\x01\n" +
 	"\x1econfiguration_mutual_exclusion\x12>configuration_arn and server_properties are mutually exclusive\x1aHthis.configuration_arn != '' ? this.server_properties.size() == 0 : true\x1a\xb2\x01\n" +
-	"\x1fconfiguration_revision_required\x12Gconfiguration_revision is required (>= 1) when configuration_arn is set\x1aFthis.configuration_arn != '' ? this.configuration_revision >= 1 : trueB\x16\n" +
+	"\x1fconfiguration_revision_required\x12Gconfiguration_revision is required (>= 1) when configuration_arn is set\x1aFthis.configuration_arn != '' ? this.configuration_revision >= 1 : true\x1a\xdc\x01\n" +
+	" scram_secrets_require_scram_auth\x12Gscram_secret_arns requires authentication.sasl_scram_enabled to be true\x1aothis.scram_secret_arns.size() > 0 ? (has(this.authentication) && this.authentication.sasl_scram_enabled) : true\x1a\x9b\x02\n" +
+	")vpc_connectivity_iam_requires_cluster_iam\x12Yvpc_connectivity.sasl_iam_enabled requires authentication.sasl_iam_enabled on the cluster\x1a\x92\x01(has(this.vpc_connectivity) && this.vpc_connectivity.sasl_iam_enabled) ? (has(this.authentication) && this.authentication.sasl_iam_enabled) : true\x1a\xa7\x02\n" +
+	"-vpc_connectivity_scram_requires_cluster_scram\x12]vpc_connectivity.sasl_scram_enabled requires authentication.sasl_scram_enabled on the cluster\x1a\x96\x01(has(this.vpc_connectivity) && this.vpc_connectivity.sasl_scram_enabled) ? (has(this.authentication) && this.authentication.sasl_scram_enabled) : true\x1a\x87\x02\n" +
+	")vpc_connectivity_tls_requires_cluster_tls\x12Ovpc_connectivity.tls_enabled requires authentication.tls_enabled on the cluster\x1a\x88\x01(has(this.vpc_connectivity) && this.vpc_connectivity.tls_enabled) ? (has(this.authentication) && this.authentication.tls_enabled) : true\x1a\x8f\x04\n" +
+	"(public_access_requires_authenticated_tls\x12\x97\x01public access requires TLS-only client_broker_encryption and at least one of SASL/IAM, SASL/SCRAM, or mTLS authentication with unauthenticated disabled\x1a\xc8\x02this.public_access_type == 'SERVICE_PROVIDED_EIPS' ? (has(this.authentication) && !this.authentication.unauthenticated && (this.authentication.sasl_iam_enabled || this.authentication.sasl_scram_enabled || this.authentication.tls_enabled) && (!has(this.client_broker_encryption) || this.client_broker_encryption == 'TLS')) : trueB\x16\n" +
 	"\x14_ebs_volume_size_gibB\x1b\n" +
 	"\x19_client_broker_encryptionB\x18\n" +
-	"\x16_in_cluster_encryption\"\xb9\x02\n" +
+	"\x16_in_cluster_encryption\"\xf8\x03\n" +
 	"\x1bAwsMskClusterAuthentication\x12(\n" +
 	"\x10sasl_iam_enabled\x18\x01 \x01(\bR\x0esaslIamEnabled\x12,\n" +
 	"\x12sasl_scram_enabled\x18\x02 \x01(\bR\x10saslScramEnabled\x12\x1f\n" +
 	"\vtls_enabled\x18\x03 \x01(\bR\n" +
 	"tlsEnabled\x12w\n" +
 	"\x1etls_certificate_authority_arns\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x1btlsCertificateAuthorityArns\x12(\n" +
-	"\x0funauthenticated\x18\x05 \x01(\bR\x0funauthenticated\"\xc2\x02\n" +
+	"\x0funauthenticated\x18\x05 \x01(\bR\x0funauthenticated:\xbc\x01\xbaH\xb8\x01\x1a\xb5\x01\n" +
+	"$tls_requires_certificate_authorities\x12Ctls_certificate_authority_arns is required when tls_enabled is true\x1aHthis.tls_enabled ? this.tls_certificate_authority_arns.size() > 0 : true\"\x97\x01\n" +
+	"\x1cAwsMskClusterVpcConnectivity\x12(\n" +
+	"\x10sasl_iam_enabled\x18\x01 \x01(\bR\x0esaslIamEnabled\x12,\n" +
+	"\x12sasl_scram_enabled\x18\x02 \x01(\bR\x10saslScramEnabled\x12\x1f\n" +
+	"\vtls_enabled\x18\x03 \x01(\bR\n" +
+	"tlsEnabled\"\xc2\x02\n" +
 	"\x14AwsMskClusterLogging\x12r\n" +
 	"\x0fcloudwatch_logs\x18\x01 \x01(\v2I.dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterCloudwatchLoggingR\x0ecloudwatchLogs\x12c\n" +
 	"\bfirehose\x18\x02 \x01(\v2G.dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterFirehoseLoggingR\bfirehose\x12Q\n" +
@@ -763,38 +903,38 @@ func file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDescGZIP() []b
 	return file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_goTypes = []any{
 	(*AwsMskClusterSpec)(nil),              // 0: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec
 	(*AwsMskClusterAuthentication)(nil),    // 1: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterAuthentication
-	(*AwsMskClusterLogging)(nil),           // 2: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterLogging
-	(*AwsMskClusterCloudwatchLogging)(nil), // 3: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterCloudwatchLogging
-	(*AwsMskClusterFirehoseLogging)(nil),   // 4: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterFirehoseLogging
-	(*AwsMskClusterS3Logging)(nil),         // 5: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterS3Logging
-	nil,                                    // 6: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.ServerPropertiesEntry
-	(*v1.StringValueOrRef)(nil),            // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsMskClusterVpcConnectivity)(nil),   // 2: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterVpcConnectivity
+	(*AwsMskClusterLogging)(nil),           // 3: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterLogging
+	(*AwsMskClusterCloudwatchLogging)(nil), // 4: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterCloudwatchLogging
+	(*AwsMskClusterFirehoseLogging)(nil),   // 5: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterFirehoseLogging
+	(*AwsMskClusterS3Logging)(nil),         // 6: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterS3Logging
+	nil,                                    // 7: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.ServerPropertiesEntry
+	(*v1.StringValueOrRef)(nil),            // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_depIdxs = []int32{
-	7,  // 0: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 1: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 2: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.associate_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 3: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 4: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 5: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.authentication:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterAuthentication
-	6,  // 6: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.server_properties:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.ServerPropertiesEntry
-	2,  // 7: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.logging:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterLogging
-	7,  // 8: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterAuthentication.tls_certificate_authority_arns:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 9: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterLogging.cloudwatch_logs:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterCloudwatchLogging
-	4,  // 10: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterLogging.firehose:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterFirehoseLogging
-	5,  // 11: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterLogging.s3:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterS3Logging
-	7,  // 12: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterCloudwatchLogging.log_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 13: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterFirehoseLogging.delivery_stream:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 14: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterS3Logging.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	8,  // 0: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 1: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 2: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.vpc_connectivity:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterVpcConnectivity
+	8,  // 3: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 4: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.authentication:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterAuthentication
+	7,  // 5: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.server_properties:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.ServerPropertiesEntry
+	3,  // 6: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterSpec.logging:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterLogging
+	8,  // 7: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterAuthentication.tls_certificate_authority_arns:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 8: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterLogging.cloudwatch_logs:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterCloudwatchLogging
+	5,  // 9: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterLogging.firehose:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterFirehoseLogging
+	6,  // 10: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterLogging.s3:type_name -> dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterS3Logging
+	8,  // 11: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterCloudwatchLogging.log_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 12: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterFirehoseLogging.delivery_stream:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 13: dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterS3Logging.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_init() }
@@ -809,7 +949,7 @@ func file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

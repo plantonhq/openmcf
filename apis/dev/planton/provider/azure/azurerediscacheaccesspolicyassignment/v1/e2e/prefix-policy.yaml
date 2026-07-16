@@ -1,0 +1,24 @@
+# Dedicated AzureRedisCacheAccessPolicy for the grant-chain scenario:
+# the custom policy the assignment under test grants, proving the
+# policy-name FK seam (the assignment references this policy's name
+# output rather than a built-in literal).
+apiVersion: azure.planton.dev/v1
+kind: AzureRedisCacheAccessPolicy
+metadata:
+  name: planton-oss-e2e-redisgrant-fixture-policy
+  id: planton-oss-e2e-redisgrant-fixture-policy
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurerediscacheaccesspolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  redisCacheId:
+    valueFrom:
+      name: planton-oss-e2e-redisgrant-fixture-cache
+  policyName: e2e-grant-chain-read-only
+  permissions: "+@read +@connection ~app:*"

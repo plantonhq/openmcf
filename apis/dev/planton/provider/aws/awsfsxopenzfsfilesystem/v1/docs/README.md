@@ -23,6 +23,10 @@ First-generation single-AZ deployment. Lower throughput ceiling (max 4,096 MB/s)
 
 Latest single-AZ deployment (recommended for new workloads). Higher throughput ceiling (max 10,240 MB/s). More features than SINGLE_AZ_1. One subnet, one ENI.
 
+### SINGLE_AZ_HA_1 / SINGLE_AZ_HA_2
+
+HA variants of the two single-AZ generations: an active/standby file-server pair inside one availability zone. Automatic failover without cross-AZ data transfer charges — the middle ground between plain single-AZ and MULTI_AZ_1. One subnet; throughput follows the parent generation's value set (validated by AWS at create time).
+
 ### MULTI_AZ_1
 
 Multi-AZ deployment with automatic failover. Data is synchronously replicated across two AZs. Requires two subnets in different AZs, a preferred subnet (active node), route table IDs for automatic route management, and optionally an endpoint IP address range for floating IPs. Same throughput range as SINGLE_AZ_2.
@@ -31,13 +35,13 @@ Failover is transparent to NFS clients — the DNS name resolves to a floating I
 
 ## Storage Types
 
-### SSD (v1 supported)
+### SSD
 
-Solid-state drives. Sub-millisecond latency. Available for all deployment types. Storage capacity: 64–524,288 GiB.
+Solid-state drives. Sub-millisecond latency. Available for all deployment types. Storage capacity: 64–524,288 GiB, provisioned upfront and grown in place.
 
-### INTELLIGENT_TIERING (v1 deferred)
+### INTELLIGENT_TIERING
 
-Automatic data tiering between SSD and capacity pool storage. Only available with MULTI_AZ_1. No explicit storage capacity — AWS manages capacity automatically. Requires `read_cache_configuration`. Deferred from v1 due to complexity and limited adoption.
+Elastic, pay-for-what-you-store capacity with automatic tiering between a provisioned SSD read cache and cold storage. MULTI_AZ_1 only; forbids `storage_capacity_gib` and requires `read_cache_configuration` (`PROPORTIONAL_TO_THROUGHPUT_CAPACITY` for AWS-sized caching, `USER_PROVISIONED` with `size_gib` to pin economics, or `NO_CACHE` for purely archival patterns).
 
 ## Disk IOPS
 
@@ -51,7 +55,7 @@ The root volume is automatically created with the file system. Key settings:
 - **data_compression_type**: NONE, ZSTD (best ratio, ~2-3x), LZ4 (fastest, ~1.5-2x)
 - **record_size_kib**: 4–1024 KiB. Default 128. Smaller for random I/O (databases), larger for sequential (analytics).
 - **nfs_exports**: Client configurations with IP/CIDR/wildcard + mount options (rw, ro, crossmnt, root_squash, etc.)
-- **user_and_group_quotas**: Per-UID/GID storage limits. Up to 100 entries.
+- **user_and_group_quotas**: Per-UID/GID storage limits (AWS validates counts service-side).
 - **read_only**: Makes the entire root volume read-only.
 
 ## Networking
@@ -60,39 +64,42 @@ The root volume is automatically created with the file system. Key settings:
 - **SINGLE_AZ**: 1 ENI in the specified subnet
 - **MULTI_AZ**: 2 ENIs (one per subnet), floating IP for failover
 
-## Backup
+## Backup and Restore
 
 - Automatic backups: 0–90 day retention (0 = disabled)
 - Daily backup window: HH:MM UTC format
-- Final backup on deletion: controlled by `skip_final_backup`
+- Final backup on deletion: controlled by `skip_final_backup`; `final_backup_tags` tag the backup when one is taken
+- Restore: `backup_id` creates the file system from an existing FSx backup (capacity comes from the backup)
 - Tag propagation: `copy_tags_to_backups`, `copy_tags_to_volumes`
+
+## Deletion Behavior
+
+By default, deleting a file system fails while child volumes or snapshots exist — a guard rail against cascading data loss. `delete_options: [DELETE_CHILD_VOLUMES_AND_SNAPSHOTS]` opts into the cascade deliberately.
 
 ## ForceNew Attributes
 
 Changing these requires replacing the file system (destructive):
 
 - `deployment_type`
+- `storage_type`
 - `subnet_ids`
 - `security_group_ids`
 - `kms_key_id`
+- `backup_id`
 - `preferred_subnet_id`
 - `endpoint_ip_address_range`
 - `root_volume_configuration.copy_tags_to_snapshots`
 
-## v1 Scope and Exclusions
+## Scope
 
 ### Included
-- File system creation with all deployment types
+- File system creation with all five deployment types and both storage classes
 - Root volume configuration (compression, NFS, quotas, record size)
 - Disk IOPS configuration
-- Backup configuration
+- Backup, restore-from-backup, and deletion behavior
 - Customer-managed KMS encryption
 - Multi-AZ networking (preferred subnet, route tables, endpoint IP range)
 
-### Excluded (future versions)
-- `INTELLIGENT_TIERING` storage type and `read_cache_configuration`
-- `backup_id` (create from existing backup)
-- `delete_options` (child volume deletion behavior)
-- `final_backup_tags`
-- Child volumes (`aws_fsx_openzfs_volume`) — separate component
-- Snapshots (`aws_fsx_openzfs_snapshot`) — separate component
+### Separate resources (referenced via outputs, never embedded)
+- Child volumes (`aws_fsx_openzfs_volume`) — join via the `root_volume_id` output
+- Snapshots (`aws_fsx_openzfs_snapshot`) — point-in-time operations

@@ -1,91 +1,85 @@
-# AwsClientVpn
+# Overview
 
-The **AwsClientVpn** resource provides a standardized way to provision and manage AWS Client VPN endpoints through Planton. It enables secure remote access into AWS VPCs using OpenVPN, allowing developers and teams to connect from their laptops or remote networks to private resources within a VPC.
+The AwsClientVpn API resource creates an AWS Client VPN endpoint — the
+managed OpenVPN server remote users and machines connect to for secure
+access into AWS networks — together with its three endpoint-scoped
+satellites: target network associations, authorization rules, and routes.
 
-## Spec Fields (80/20)
+## Why We Created This API Resource
 
-### Essential Fields (80% Use Case)
+Remote access is a whole posture, not just a server:
 
-- **vpc_id**: The target AWS VPC where the Client VPN endpoint will be created. Must be in the same region as your AWS credentials. Required.
-- **subnets**: List of subnet IDs within the VPC to associate as target networks. Each subnet association enables VPN clients to access resources in that subnet's Availability Zone. Minimum of 1 required.
-- **client_cidr_block**: IPv4 CIDR block (e.g., "10.0.0.0/22") from which to assign client IP addresses. Must not overlap with VPC CIDR or any VPC routes. CIDR block size must be between /22 and /12. Required.
-- **server_certificate_arn**: ARN of the AWS Certificate Manager (ACM) certificate to use for the VPN server. This TLS certificate is presented to clients upon connection. Required.
-- **cidr_authorization_rules**: List of IPv4 CIDR ranges that VPN clients are authorized to access (e.g., ["10.0.0.0/16"]). Typically corresponds to private subnet ranges within the VPC.
+- **The endpoint is only the front door**: without an associated subnet,
+  an authorization rule, and (for anything beyond the VPC) a route, a
+  connected client reaches nothing. All three fold into this one spec
+  because none has identity outside its endpoint — and each is still its
+  own provider resource, so membership edits apply in place.
+- **Three honest authentication arms**: mutual-TLS client certificates,
+  Active Directory user/password, or SAML federation (which unlocks the
+  self-service portal). Up to two options combine; a client passes on ANY.
+- **Composable by reference**: the server certificate and client CA chain
+  reference AwsCertManagerCert, subnets reference AwsSubnet, logging
+  references AwsCloudwatchLogGroup, the posture-check hook references
+  AwsLambda, and the transit-gateway arm references AwsTransitGateway.
 
-### Advanced Fields (20% Use Case)
+## Key Features
 
-- **description**: Human-friendly description for the Client VPN endpoint, visible in AWS Console.
-- **authentication_type**: Authentication method for clients. Currently only "certificate" (mutual TLS) is supported in v1. This requires clients to present a certificate signed by a trusted CA.
-- **disable_split_tunnel**: When false (default), only traffic to authorized CIDRs goes through VPN; other traffic stays local. When true, all client traffic is routed through the VPN (full-tunnel mode).
-- **vpn_port**: Port number for VPN connections. Default is 443 (recommended for firewall traversal). Allowed values: 443 (TCP) or 1194 (UDP).
-- **transport_protocol**: Protocol for VPN sessions - "tcp" (default, recommended for reliability) or "udp" (lower latency but may be blocked by firewalls).
-- **log_group_name**: CloudWatch Logs group name for connection logging. If specified, VPN connection events are logged. If omitted, logging is disabled.
-- **security_groups**: List of security group IDs to apply to the VPN endpoint's network associations. Controls traffic between VPN clients and VPC resources. If not provided, VPC's default security group is used.
-- **dns_servers**: Custom DNS server IP addresses for VPN clients (maximum 2). If not set, clients use the VPC's DNS (AmazonProvidedDNS).
+### Authentication (create-time immutable)
 
-## Stack Outputs
+- **certificate-authentication** — mutual TLS against a client CA chain
+  (its own reference, never silently the server certificate)
+- **directory-service-authentication** — user/password against AWS
+  Directory Service
+- **federated-authentication** — SAML 2.0 SSO through an IAM SAML
+  provider; the only type that supports the self-service portal
 
-After provisioning, the AwsClientVpn resource provides the following outputs:
+### Access control (folded satellites)
 
-- **client_vpn_endpoint_id**: The unique identifier of the Client VPN endpoint.
-- **security_group_id**: The ID of the security group applied to the VPN endpoint associations.
-- **subnet_association_ids**: Map of subnet IDs to their association IDs.
-- **vpn_endpoint_dns_name**: DNS name of the VPN endpoint for client configuration.
+- **`subnetIds`** — target network associations, one per subnet (each
+  bills hourly and takes minutes to attach/detach); a zero-association
+  endpoint is a valid pre-staged front door
+- **`authorizationRules`** — network-ACL-style grants: everyone
+  (`authorizeAllGroups`) or one IdP group (`accessGroupId`) per
+  destination CIDR
+- **`routes`** — entries beyond the auto-created per-VPC route: 0.0.0.0/0
+  through a NAT-ed subnet for full-tunnel egress, on-prem CIDRs through a
+  gateway-connected subnet
 
-## How It Works
+### Tunnel shape and client experience
 
-When you define an AwsClientVpn resource, Planton:
+- Split-tunnel vs full-tunnel, UDP/TCP transport, 443/1194 port
+- IPv6/dual-stack endpoint and tunnel addressing
+- Session timeout (8/10/12/24h) with optional hard disconnect
+- Login banner, connection posture-check Lambda, client route enforcement,
+  custom DNS servers, CloudWatch connection logging
 
-1. **Creates VPN Endpoint**: Provisions an AWS Client VPN endpoint in the specified VPC with the configured authentication and network settings.
-2. **Associates Subnets**: Attaches the specified subnets as target networks, enabling clients to access resources in those subnets.
-3. **Configures Authorization**: Creates authorization rules for the specified CIDR ranges, allowing VPN clients to access those networks.
-4. **Applies Security**: Attaches security groups to control traffic between VPN clients and VPC resources.
-5. **Enables Logging (Optional)**: If a CloudWatch log group is specified, enables connection logging for audit and troubleshooting.
-6. **Configures Client Settings**: Sets up split-tunnel routing, DNS servers, and transport protocol based on the specification.
+### Transit-gateway attachment
 
-The resource uses Pulumi or Terraform under the hood (depending on your stack configuration) to provision all necessary AWS resources consistently.
+Attach the endpoint to a transit gateway instead of a VPC — clients reach
+every network the gateway routes to, without per-subnet associations.
 
-## Use Cases
+## Benefits
 
-### Remote Developer Access
-Enable developers to securely connect to private databases, internal APIs, and other VPC resources from their local machines without exposing those resources to the internet.
+- **Whole-posture manifests**: one document declares who may connect, what
+  they may reach, and how traffic flows — reviewable security posture.
+- **Honest constraints**: per-type identity sources, the
+  client-CIDR-vs-IPv6 coupling, TGW-vs-VPC exclusivity, and
+  exactly-one-grantee rules are CEL-enforced at validation time.
+- **Consistency**: identical behavior across Terraform and Pulumi.
 
-### Secure Site-to-Site Access
-Provide secure access for remote offices or contractors to AWS resources without setting up complex VPN hardware or dedicated connections.
+## Stack outputs
 
-### Split-Tunnel for Optimal Performance
-Use split-tunnel mode (default) to route only internal traffic through the VPN, keeping internet traffic local for better performance and reduced VPN bandwidth costs.
+- `client_vpn_endpoint_id` / `client_vpn_endpoint_arn`: the endpoint's
+  identifiers
+- `endpoint_dns_name`: what clients connect to
+- `self_service_portal_url`: where federated users download their client
+  configuration
+- `subnet_association_ids`: subnet ID → association ID map
+- `transit_gateway_attachment_id`: for TGW-attached endpoints
 
-### Full-Tunnel for Maximum Security
-Enable full-tunnel mode for scenarios requiring all client traffic to be inspected or filtered through AWS security controls.
+## Deliberately Skipped (with reasons)
 
-### Multi-AZ High Availability
-Associate subnets across multiple Availability Zones to ensure VPN connectivity remains available even if one AZ experiences issues.
-
-## Important Notes
-
-### Certificate Requirements
-- Certificate-based authentication (mutual TLS) requires both a server certificate and client certificates.
-- The server certificate must be in AWS Certificate Manager in the same region as the VPN endpoint.
-- Client certificates must be generated and distributed to VPN users separately.
-
-### Network Planning
-- The client CIDR block must not overlap with your VPC CIDR or any connected networks.
-- Plan for enough client IPs - a /22 CIDR provides ~1,000 client IPs.
-- Authorization rules must match the networks clients need to access.
-
-### Port and Protocol Selection
-- Port 443 with TCP is recommended as it traverses most corporate firewalls.
-- Port 1194 with UDP offers lower latency but may be blocked by firewalls.
-- The port and protocol must be paired correctly: TCP↔443, UDP↔1194.
-
-### Split Tunnel vs Full Tunnel
-- Split tunnel (default): Only internal traffic goes through VPN, internet traffic stays local.
-- Full tunnel: All client traffic routes through VPN, providing more control but potentially slower internet access.
-
-## References
-
-- [AWS Client VPN Documentation](https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/what-is.html)
-- [AWS Client VPN Getting Started](https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/cvpn-getting-started.html)
-- [OpenVPN Client Configuration](https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/cvpn-working-endpoint-export.html)
-- [AWS Client VPN Authentication Methods](https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html)
+- **Port↔protocol pairing rules**: AWS allows 443 and 1194 with either
+  transport protocol — only the port value set (443/1194) is validated.
+- **A `status` output**: the provider exposes no endpoint status
+  attribute; deployment state is the deploy's own success signal.

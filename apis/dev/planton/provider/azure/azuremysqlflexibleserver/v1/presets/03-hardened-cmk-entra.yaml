@@ -1,0 +1,64 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureMysqlFlexibleServer
+metadata:
+  name: hardened-mysql
+spec:
+  region: eastus
+  resourceGroup:
+    value: <resource-group-name>
+  # Replace: lowercase letters, digits, and hyphens, globally unique -- it
+  # becomes {name}.mysql.database.azure.com.
+  serverName: myorg-hardened-mysql
+  # MySQL always keeps password auth on (it cannot be disabled, unlike
+  # PostgreSQL Flexible Server) -- keep the password in a secret manager
+  # and layer the Entra administrator on top for token-based access.
+  # Replace: letters, digits, and underscores only; reserved names
+  # (admin, administrator, root, guest, public, azure_superuser) rejected.
+  administratorLogin: mysqladmin
+  administratorPassword:
+    value: <admin-password>
+  skuName: GP_Standard_D4ds_v4
+  storage:
+    sizeGb: 128
+    autoGrowEnabled: true
+  # Every identity the server carries. MySQL supports user-assigned
+  # identities only; the CMK identity unwraps the key and the Entra
+  # administrator's identity validates directory tokens.
+  userAssignedIdentityIds:
+    - valueFrom:
+        kind: AzureUserAssignedIdentity
+        name: <cmk-identity-resource-name>
+        fieldPath: status.outputs.identity_id
+  # Customer-managed-key encryption: data is encrypted with a Key Vault
+  # key you own, unwrapped through the user-assigned identity.
+  customerManagedKey:
+    keyVaultKeyId:
+      valueFrom:
+        kind: AzureKeyVaultKey
+        name: <cmk-key-resource-name>
+        fieldPath: status.outputs.versionless_id
+    primaryUserAssignedIdentityId:
+      valueFrom:
+        kind: AzureUserAssignedIdentity
+        name: <cmk-identity-resource-name>
+        fieldPath: status.outputs.identity_id
+  # The single Microsoft Entra administrator (use a group to admit a
+  # team). Its backing identity must be in userAssignedIdentityIds.
+  aadAdministrator:
+    identityId:
+      valueFrom:
+        kind: AzureUserAssignedIdentity
+        name: <cmk-identity-resource-name>
+        fieldPath: status.outputs.identity_id
+    login: <entra-group-name>
+    objectId:
+      value: <entra-group-object-id>
+  backupRetentionDays: 35
+  # Pin sensitive parameters explicitly (each is a user override on
+  # Azure's per-SKU default).
+  serverParameters:
+    require_secure_transport: "ON"
+    audit_log_enabled: "ON"
+  tags:
+    cost-center: <cost-center>
+    data-classification: confidential

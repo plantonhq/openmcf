@@ -1,0 +1,3 @@
+name: azure-cosmosdb-mongo-database
+runtime: go
+description: Pulumi program for Azure Cosmos DB MongoDB database

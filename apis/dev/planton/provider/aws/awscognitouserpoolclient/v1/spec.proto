@@ -1,0 +1,372 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awscognitouserpoolclient.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// AwsCognitoUserPoolClientSpec defines the desired configuration for a Cognito
+// User Pool app client -- the OAuth 2.0 / OIDC contract between ONE application
+// and a user pool.
+//
+// An app client is deliberately its own resource rather than a field on the
+// pool: a pool serves many applications (a web frontend, a mobile app, an M2M
+// service), each with its own grant types, redirect URLs, token lifetimes, and
+// client ID -- and that client ID is what downstream systems reference (an API
+// Gateway JWT authorizer's audience, an ALB authenticate-cognito action).
+//
+// Key design notes:
+// - `generate_secret` is **ForceNew**: whether a client is confidential
+//   (server-side, holds a secret) or public (SPA/mobile, no secret) is decided
+//   at creation. Public clients rely on PKCE instead of a secret.
+// - Token lifetimes pair a value with a unit (`token_validity_units`). AWS
+//   bounds them: access/ID tokens 5 minutes to 24 hours, refresh tokens
+//   60 minutes to 10 years.
+// - Federated sign-in is enabled per client: list the identity providers
+//   (by reference or literal name, plus "COGNITO" for the pool's own
+//   directory) in `supported_identity_providers`.
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsCognitoUserPoolClientSpec {
+  // The AWS region where the resource will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The Cognito User Pool this client authenticates against.
+  // Format: "{region}_{poolId}" (e.g., "us-east-1_Ab1Cd2EfG").
+  // ForceNew -- a client cannot be moved between pools.
+  // Accepts a direct pool ID or a reference to an AwsCognitoUserPool resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_pool_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCognitoUserPool,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.user_pool_id"
+  ];
+
+  // Whether AWS generates a client secret. ForceNew -- cannot be changed after
+  // creation. Set true for confidential clients (server-side applications that
+  // can protect the secret, machine-to-machine clients); leave false for
+  // public clients (SPAs, mobile apps), which authenticate with PKCE instead.
+  bool generate_secret = 3;
+
+  // ---------------------------------------------------------------------------
+  // OAuth 2.0 / OIDC
+  // ---------------------------------------------------------------------------
+
+  // Enable OAuth 2.0 flows for this client. Must be true for
+  // `allowed_oauth_flows` and `allowed_oauth_scopes` to take effect.
+  bool allowed_oauth_flows_user_pool_client = 4;
+
+  // OAuth 2.0 grant types this client can use. Valid values:
+  // - "code": Authorization Code grant (recommended for most apps; pair with
+  //   PKCE for public clients).
+  // - "implicit": Implicit grant (legacy; tokens leak into browser history --
+  //   avoid for new applications).
+  // - "client_credentials": Client Credentials grant (machine-to-machine;
+  //   requires a client secret and custom scopes from a resource server, and
+  //   cannot be combined with the user-facing grants on the same client).
+  repeated string allowed_oauth_flows = 5 [(buf.validate.field).repeated.max_items = 3];
+
+  // OAuth 2.0 scopes this client can request. Built-in values: "openid",
+  // "email", "profile", "phone", "aws.cognito.signin.user.admin". Custom
+  // scopes minted by an AwsCognitoResourceServer use the form
+  // "{resource-server-identifier}/{scope_name}" -- reference the resource
+  // server's scope_identifiers output for the exact strings.
+  repeated string allowed_oauth_scopes = 6 [(buf.validate.field).repeated.max_items = 50];
+
+  // Callback URLs for OAuth redirects after authentication. Required for
+  // Authorization Code and Implicit grants. Maximum 100 URLs.
+  repeated string callback_urls = 7 [(buf.validate.field).repeated.max_items = 100];
+
+  // URLs where Cognito redirects after sign-out. Maximum 100 URLs.
+  repeated string logout_urls = 8 [(buf.validate.field).repeated.max_items = 100];
+
+  // Default redirect URI. Must be one of the `callback_urls`. Used when no
+  // redirect_uri is specified in the authorization request.
+  string default_redirect_uri = 9 [(buf.validate.field).string.max_len = 1024];
+
+  // Identity providers this client offers at sign-in. Use the literal
+  // "COGNITO" for the pool's own user directory, and add federated providers
+  // by name -- either as literals ("Google", "CorpOkta") or as references to
+  // AwsCognitoIdentityProvider resources (which also gives the deployment
+  // graph the right ordering: the provider exists before the client lists it).
+  // When omitted, AWS enables all of the pool's providers for this client.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef supported_identity_providers = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCognitoIdentityProvider,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.provider_name"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Authentication flows
+  // ---------------------------------------------------------------------------
+
+  // Explicit authentication flows enabled for this client. Controls which
+  // authentication APIs the client can use. Valid values:
+  // - "ALLOW_USER_SRP_AUTH": Secure Remote Password (recommended)
+  // - "ALLOW_REFRESH_TOKEN_AUTH": Enable token refresh (always recommended)
+  // - "ALLOW_USER_PASSWORD_AUTH": Direct username/password (less secure)
+  // - "ALLOW_ADMIN_USER_PASSWORD_AUTH": Admin-initiated auth
+  // - "ALLOW_CUSTOM_AUTH": Custom auth flow via Lambda triggers
+  // - "ALLOW_USER_AUTH": Choice-based sign-in (passwordless first factors --
+  //   pairs with the pool's allowed_first_auth_factors)
+  // The legacy pre-ALLOW spellings ("ADMIN_NO_SRP_AUTH",
+  // "CUSTOM_AUTH_FLOW_ONLY", "USER_PASSWORD_AUTH") are accepted for pools that
+  // still use them, but cannot be mixed with ALLOW_* values on one client.
+  repeated string explicit_auth_flows = 11;
+
+  // How long the session token of one sign-in attempt (the challenge
+  // handshake) stays valid, in minutes. Range: 3-15. AWS default: 3.
+  optional int32 auth_session_validity = 12 [(buf.validate.field).int32 = {
+    gte: 3
+    lte: 15
+  }];
+
+  // ---------------------------------------------------------------------------
+  // Token lifetimes
+  // ---------------------------------------------------------------------------
+
+  // Access token lifetime, in `token_validity_units.access_token` units
+  // (default: hours). AWS bounds the result to 5 minutes - 24 hours.
+  // AWS default: 1 hour.
+  optional int32 access_token_validity = 13;
+
+  // ID token lifetime, in `token_validity_units.id_token` units (default:
+  // hours). AWS bounds the result to 5 minutes - 24 hours. AWS default: 1 hour.
+  optional int32 id_token_validity = 14;
+
+  // Refresh token lifetime, in `token_validity_units.refresh_token` units
+  // (default: days). AWS bounds the result to 60 minutes - 10 years.
+  // AWS default: 30 days.
+  optional int32 refresh_token_validity = 15;
+
+  // The units the three token lifetimes are expressed in.
+  AwsCognitoUserPoolClientTokenValidityUnits token_validity_units = 16;
+
+  // Refresh-token rotation: each refresh issues a NEW refresh token and
+  // retires the old one, shrinking the blast radius of a stolen token.
+  // When ENABLED, do not also list ALLOW_REFRESH_TOKEN_AUTH in
+  // explicit_auth_flows -- rotation owns the refresh behavior and AWS
+  // rejects the combination.
+  AwsCognitoUserPoolClientRefreshTokenRotation refresh_token_rotation = 17;
+
+  // ---------------------------------------------------------------------------
+  // Security posture
+  // ---------------------------------------------------------------------------
+
+  // Whether tokens can be revoked (sign-out revokes the refresh token and the
+  // access/ID tokens minted from it). AWS default: true. Only set false when
+  // the marginal token-validation latency matters more than revocability.
+  optional bool enable_token_revocation = 18;
+
+  // Propagate client IP and user-agent to Cognito threat protection for
+  // server-side flows (where Cognito otherwise sees only the server's IP).
+  // Requires a client secret and the pool's threat protection to be active.
+  bool enable_propagate_additional_user_context_data = 19;
+
+  // How to handle requests for non-existent users. Valid values:
+  // - "ENABLED": Return the same error for non-existent and incorrect-password
+  //   users to prevent user enumeration attacks (recommended).
+  // - "LEGACY": Return different errors (reveals whether a user exists).
+  string prevent_user_existence_errors = 20;
+
+  // ---------------------------------------------------------------------------
+  // Attribute access
+  // ---------------------------------------------------------------------------
+
+  // User attributes this client can READ (e.g. "email", "email_verified",
+  // "custom:tenant_id"). When omitted, AWS grants read access to all
+  // attributes.
+  repeated string read_attributes = 21;
+
+  // User attributes this client can WRITE. When omitted, AWS grants write
+  // access to all mutable attributes.
+  repeated string write_attributes = 22;
+
+  // ---------------------------------------------------------------------------
+  // Analytics
+  // ---------------------------------------------------------------------------
+
+  // Amazon Pinpoint analytics wiring: Cognito publishes sign-in/sign-up events
+  // to a Pinpoint project for user-journey analytics.
+  AwsCognitoUserPoolClientAnalyticsConfig analytics_configuration = 23;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  // allowed_oauth_flows valid values.
+  option (buf.validate.message).cel = {
+    id: "allowed_oauth_flows_valid"
+    message: "allowed_oauth_flows must contain only 'code', 'implicit', or 'client_credentials'"
+    expression: "this.allowed_oauth_flows.all(f, f in ['code', 'implicit', 'client_credentials'])"
+  };
+
+  // client_credentials is a machine grant -- AWS rejects mixing it with the
+  // user-facing grants on one client.
+  option (buf.validate.message).cel = {
+    id: "client_credentials_not_mixed"
+    message: "'client_credentials' cannot be combined with 'code' or 'implicit' on the same client -- create a separate machine-to-machine client"
+    expression: "!this.allowed_oauth_flows.exists(f, f == 'client_credentials') || this.allowed_oauth_flows.size() == 1"
+  };
+
+  // OAuth grants need the OAuth switch on.
+  option (buf.validate.message).cel = {
+    id: "oauth_flows_require_oauth_enabled"
+    message: "allowed_oauth_flows requires allowed_oauth_flows_user_pool_client to be true"
+    expression: "this.allowed_oauth_flows.size() == 0 || this.allowed_oauth_flows_user_pool_client"
+  };
+
+  // Browser-redirect grants need somewhere to redirect to.
+  option (buf.validate.message).cel = {
+    id: "redirect_grants_require_callback_urls"
+    message: "the 'code' and 'implicit' grants require at least one callback_url"
+    expression: "!this.allowed_oauth_flows.exists(f, f in ['code', 'implicit']) || this.callback_urls.size() > 0"
+  };
+
+  // default_redirect_uri must be one of the callback URLs.
+  option (buf.validate.message).cel = {
+    id: "default_redirect_uri_in_callback_urls"
+    message: "default_redirect_uri must be one of the callback_urls"
+    expression: "this.default_redirect_uri == '' || this.default_redirect_uri in this.callback_urls"
+  };
+
+  // explicit_auth_flows valid values.
+  option (buf.validate.message).cel = {
+    id: "explicit_auth_flows_valid"
+    message: "explicit_auth_flows must contain only ALLOW_USER_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH, ALLOW_USER_PASSWORD_AUTH, ALLOW_ADMIN_USER_PASSWORD_AUTH, ALLOW_CUSTOM_AUTH, ALLOW_USER_AUTH, or the legacy ADMIN_NO_SRP_AUTH / CUSTOM_AUTH_FLOW_ONLY / USER_PASSWORD_AUTH values"
+    expression: "this.explicit_auth_flows.all(f, f in ['ALLOW_USER_SRP_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH', 'ALLOW_USER_PASSWORD_AUTH', 'ALLOW_ADMIN_USER_PASSWORD_AUTH', 'ALLOW_CUSTOM_AUTH', 'ALLOW_USER_AUTH', 'ADMIN_NO_SRP_AUTH', 'CUSTOM_AUTH_FLOW_ONLY', 'USER_PASSWORD_AUTH'])"
+  };
+
+  // Legacy and ALLOW_* auth-flow spellings cannot be mixed.
+  option (buf.validate.message).cel = {
+    id: "explicit_auth_flows_no_mixing"
+    message: "legacy auth flow values (ADMIN_NO_SRP_AUTH, CUSTOM_AUTH_FLOW_ONLY, USER_PASSWORD_AUTH) cannot be mixed with ALLOW_* values on one client"
+    expression: "!this.explicit_auth_flows.exists(f, f in ['ADMIN_NO_SRP_AUTH', 'CUSTOM_AUTH_FLOW_ONLY', 'USER_PASSWORD_AUTH']) || !this.explicit_auth_flows.exists(f, f.startsWith('ALLOW_'))"
+  };
+
+  // With rotation enabled, refresh-token behavior is governed by the rotation
+  // feature itself -- AWS rejects the ALLOW_REFRESH_TOKEN_AUTH spelling on
+  // the same client.
+  option (buf.validate.message).cel = {
+    id: "refresh_rotation_excludes_refresh_auth_flow"
+    message: "ALLOW_REFRESH_TOKEN_AUTH cannot be listed in explicit_auth_flows when refresh_token_rotation is ENABLED -- rotation owns the refresh behavior"
+    expression: "!has(this.refresh_token_rotation) || this.refresh_token_rotation.feature != 'ENABLED' || !this.explicit_auth_flows.exists(f, f == 'ALLOW_REFRESH_TOKEN_AUTH')"
+  };
+
+  // Access token lifetime within AWS bounds (5 minutes - 24 hours), honoring
+  // the configured unit (default: hours).
+  option (buf.validate.message).cel = {
+    id: "access_token_validity_range"
+    message: "access_token_validity must be between 5 minutes and 24 hours (in the configured token_validity_units)"
+    expression: "!has(this.access_token_validity) || ((this.access_token_validity * ((has(this.token_validity_units) && this.token_validity_units.access_token != '' ? this.token_validity_units.access_token : 'hours') == 'seconds' ? 1 : (has(this.token_validity_units) && this.token_validity_units.access_token != '' ? this.token_validity_units.access_token : 'hours') == 'minutes' ? 60 : (has(this.token_validity_units) && this.token_validity_units.access_token != '' ? this.token_validity_units.access_token : 'hours') == 'days' ? 86400 : 3600)) >= 300 && (this.access_token_validity * ((has(this.token_validity_units) && this.token_validity_units.access_token != '' ? this.token_validity_units.access_token : 'hours') == 'seconds' ? 1 : (has(this.token_validity_units) && this.token_validity_units.access_token != '' ? this.token_validity_units.access_token : 'hours') == 'minutes' ? 60 : (has(this.token_validity_units) && this.token_validity_units.access_token != '' ? this.token_validity_units.access_token : 'hours') == 'days' ? 86400 : 3600)) <= 86400)"
+  };
+
+  // ID token lifetime within AWS bounds (5 minutes - 24 hours).
+  option (buf.validate.message).cel = {
+    id: "id_token_validity_range"
+    message: "id_token_validity must be between 5 minutes and 24 hours (in the configured token_validity_units)"
+    expression: "!has(this.id_token_validity) || ((this.id_token_validity * ((has(this.token_validity_units) && this.token_validity_units.id_token != '' ? this.token_validity_units.id_token : 'hours') == 'seconds' ? 1 : (has(this.token_validity_units) && this.token_validity_units.id_token != '' ? this.token_validity_units.id_token : 'hours') == 'minutes' ? 60 : (has(this.token_validity_units) && this.token_validity_units.id_token != '' ? this.token_validity_units.id_token : 'hours') == 'days' ? 86400 : 3600)) >= 300 && (this.id_token_validity * ((has(this.token_validity_units) && this.token_validity_units.id_token != '' ? this.token_validity_units.id_token : 'hours') == 'seconds' ? 1 : (has(this.token_validity_units) && this.token_validity_units.id_token != '' ? this.token_validity_units.id_token : 'hours') == 'minutes' ? 60 : (has(this.token_validity_units) && this.token_validity_units.id_token != '' ? this.token_validity_units.id_token : 'hours') == 'days' ? 86400 : 3600)) <= 86400)"
+  };
+
+  // Refresh token lifetime within AWS bounds (60 minutes - 10 years).
+  option (buf.validate.message).cel = {
+    id: "refresh_token_validity_range"
+    message: "refresh_token_validity must be between 60 minutes and 10 years (in the configured token_validity_units)"
+    expression: "!has(this.refresh_token_validity) || ((this.refresh_token_validity * ((has(this.token_validity_units) && this.token_validity_units.refresh_token != '' ? this.token_validity_units.refresh_token : 'days') == 'seconds' ? 1 : (has(this.token_validity_units) && this.token_validity_units.refresh_token != '' ? this.token_validity_units.refresh_token : 'days') == 'minutes' ? 60 : (has(this.token_validity_units) && this.token_validity_units.refresh_token != '' ? this.token_validity_units.refresh_token : 'days') == 'hours' ? 3600 : 86400)) >= 3600 && (this.refresh_token_validity * ((has(this.token_validity_units) && this.token_validity_units.refresh_token != '' ? this.token_validity_units.refresh_token : 'days') == 'seconds' ? 1 : (has(this.token_validity_units) && this.token_validity_units.refresh_token != '' ? this.token_validity_units.refresh_token : 'days') == 'minutes' ? 60 : (has(this.token_validity_units) && this.token_validity_units.refresh_token != '' ? this.token_validity_units.refresh_token : 'days') == 'hours' ? 3600 : 86400)) <= 315360000)"
+  };
+
+  // prevent_user_existence_errors valid values.
+  option (buf.validate.message).cel = {
+    id: "prevent_user_existence_errors_valid"
+    message: "prevent_user_existence_errors must be 'ENABLED' or 'LEGACY' when set"
+    expression: "this.prevent_user_existence_errors == '' || this.prevent_user_existence_errors in ['ENABLED', 'LEGACY']"
+  };
+}
+
+// AwsCognitoUserPoolClientTokenValidityUnits sets the unit each token lifetime
+// is expressed in.
+message AwsCognitoUserPoolClientTokenValidityUnits {
+  // Unit for access_token_validity: "seconds", "minutes", "hours" (AWS
+  // default), or "days".
+  string access_token = 1 [(dev.planton.shared.options.sensitive_exempt_reason) = "Time unit for the access-token lifetime (heuristic matched the word token), not a token value."];
+
+  // Unit for id_token_validity: "seconds", "minutes", "hours" (AWS default),
+  // or "days".
+  string id_token = 2 [(dev.planton.shared.options.sensitive_exempt_reason) = "Time unit for the ID-token lifetime (heuristic matched the word token), not a token value."];
+
+  // Unit for refresh_token_validity: "seconds", "minutes", "hours", or "days"
+  // (AWS default).
+  string refresh_token = 3 [(dev.planton.shared.options.sensitive_exempt_reason) = "Time unit for the refresh-token lifetime (heuristic matched the word token), not a token value."];
+
+  // Unit valid values.
+  option (buf.validate.message).cel = {
+    id: "token_validity_units_valid"
+    message: "token validity units must be 'seconds', 'minutes', 'hours', or 'days'"
+    expression: "(this.access_token == '' || this.access_token in ['seconds', 'minutes', 'hours', 'days']) && (this.id_token == '' || this.id_token in ['seconds', 'minutes', 'hours', 'days']) && (this.refresh_token == '' || this.refresh_token in ['seconds', 'minutes', 'hours', 'days'])"
+  };
+}
+
+// AwsCognitoUserPoolClientRefreshTokenRotation configures rotating refresh
+// tokens: each token refresh issues a new refresh token and retires the one
+// that was presented.
+message AwsCognitoUserPoolClientRefreshTokenRotation {
+  // "ENABLED" or "DISABLED".
+  string feature = 1 [(buf.validate.field).required = true];
+
+  // How long (seconds) the RETIRED refresh token keeps working after a
+  // rotation, absorbing clients that lose the response carrying the new token.
+  // Range: 0-60. AWS default: 0 (immediate retirement).
+  int32 retry_grace_period_seconds = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 60
+  }];
+
+  // feature valid values.
+  option (buf.validate.message).cel = {
+    id: "refresh_token_rotation_feature_valid"
+    message: "refresh_token_rotation feature must be 'ENABLED' or 'DISABLED'"
+    expression: "this.feature in ['ENABLED', 'DISABLED']"
+  };
+}
+
+// AwsCognitoUserPoolClientAnalyticsConfig publishes sign-in/sign-up events to
+// an Amazon Pinpoint project. Identify the project EITHER by application ARN
+// (same-account, modern shape) OR by application ID plus the IAM role and
+// external ID Cognito uses to publish cross-account.
+message AwsCognitoUserPoolClientAnalyticsConfig {
+  // The Pinpoint project (application) ARN. Mutually exclusive with
+  // `application_id`; when set, AWS derives the publish role itself.
+  string application_arn = 1;
+
+  // The Pinpoint application ID. Requires `external_id` and `role_arn`.
+  string application_id = 2;
+
+  // The external ID for the role assumption (confused-deputy guard).
+  string external_id = 3;
+
+  // The IAM role Cognito assumes to publish events to Pinpoint. Accepts a
+  // direct role ARN or a reference to an AwsIamRole resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Whether Cognito includes user data (endpoint attributes) in the events
+  // it publishes.
+  bool user_data_shared = 5;
+
+  // Exactly one project identity arm.
+  option (buf.validate.message).cel = {
+    id: "analytics_application_exactly_one"
+    message: "set exactly one of application_arn or application_id"
+    expression: "(this.application_arn != '' && this.application_id == '') || (this.application_arn == '' && this.application_id != '')"
+  };
+
+  // The application_id arm needs the role wiring.
+  option (buf.validate.message).cel = {
+    id: "analytics_application_id_requires_role"
+    message: "application_id requires both external_id and role_arn (application_arn derives them automatically)"
+    expression: "this.application_id == '' || (this.external_id != '' && has(this.role_arn))"
+  };
+}

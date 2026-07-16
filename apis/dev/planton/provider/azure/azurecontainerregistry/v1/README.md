@@ -1,56 +1,38 @@
 # Overview
 
-The **Azure Container Registry API Resource** provides a consistent and standardized interface for deploying and managing Azure Container Registry (ACR) instances within your infrastructure. This resource simplifies the provisioning of private Docker/OCI container registries on Azure, enabling secure storage and distribution of container images.
+The **Azure Container Registry API Resource** provides a consistent and standardized interface for deploying and managing Azure Container Registry (ACR) instances within our infrastructure. ACR is the managed, private OCI registry that stores the container images and artifacts a platform's workloads run — this resource makes provisioning it declarative, validated, and composable.
 
 ## Purpose
 
-We developed this API resource to streamline the deployment and management of Azure Container Registry. By offering a unified interface, it reduces the complexity involved in setting up private container registries on Azure, enabling you to:
+We developed this API resource to streamline the deployment of production container registries on Azure. The spec mirrors Azure's own SKU tiering rather than hiding it, enabling:
 
-- **Easily Deploy Container Registries**: Quickly provision ACR instances with minimal configuration
-- **Choose the Right SKU**: Select from Basic, Standard, or Premium tiers based on your requirements
-- **Enable Geo-Replication**: Distribute images across multiple Azure regions for global deployments (Premium)
-- **Integrate with AKS**: Seamlessly connect registries to Azure Kubernetes Service clusters
-- **Control Access**: Configure authentication using Azure AD, managed identities, or admin credentials
+- **Fail-Fast Configuration**: Spec-level validation enforces the same SKU gates ARM does, so a misconfigured manifest (e.g. geo-replication on a Standard registry) fails at validation, not at apply
+- **Full Premium Surface**: Geo-replication, zone redundancy, network isolation, content-trust/quarantine/retention policies, and customer-managed-key encryption — all declared in one spec
+- **Secure Defaults**: Admin account off by default; Microsoft Entra ID (managed identities, service principals) is the production authentication path
+- **Composition by Reference**: The identities and grants the registry works with are first-class catalog resources, never bundled
 
 ## Key Features
 
-- **Consistent Interface**: Aligns with Planton's APIs for deploying cloud infrastructure and services
-- **Simplified Deployment**: Automates the provisioning of ACR, including resource groups and SKU configuration
-- **SKU Flexibility**: Support for Basic, Standard, and Premium tiers to match performance and cost requirements
-- **Geo-Replication**: Automatic setup of multi-region replicas for Premium SKUs
-- **Security-First**: Admin user disabled by default; supports Azure AD integration and managed identities
-- **Integration**: Works seamlessly with Azure Kubernetes Service, Azure DevOps, and GitHub Actions
+- **Consistent Interface**: Aligns with our existing APIs for deploying cloud infrastructure across multiple providers
+- **SKU as the Feature Gate**: `BASIC` for dev/test, `STANDARD` as the production baseline (applied when the SKU is left unspecified), `PREMIUM` for the enterprise surface — with every Premium-only field validated against the chosen tier
+- **Geo-Replication**: Per-replica configuration (region, zone redundancy, regional endpoint, tags); the home region is implicit and excluded from the list
+- **Network Isolation Options**: IP allowlisting via `networkRuleSet`, fully private via `publicNetworkAccessEnabled: false`, and dedicated data endpoints for exact firewall allowlisting
+- **CMK Encryption**: Customer-managed-key encryption through a referenced first-class `AzureUserAssignedIdentity` that unwraps the Key Vault key
+- **AKS Integration**: AKS clusters reference the registry via its `container_registry_id` output; `AcrPull`/`AcrPush` grants are composed with the standalone `AzureRoleAssignment` resource
 
 ## Use Cases
 
-- **Private Container Images**: Store and manage private Docker images for your applications
-- **AKS Integration**: Provide container images to Azure Kubernetes Service clusters
-- **CI/CD Pipelines**: Use as a target for Docker builds in Azure DevOps or GitHub Actions
-- **Global Deployments**: Leverage geo-replication for multi-region Kubernetes deployments
-- **Development and Production**: Use Basic SKU for dev/test, Standard/Premium for production
+- **Private Container Images**: Store and distribute the images AKS clusters, App Service, and Container Apps run
+- **CI/CD Pipelines**: Push targets for Azure DevOps, GitHub Actions, and GitLab CI builds, authenticated via Entra service principals or OIDC
+- **Global Deployments**: Premium geo-replication serves pulls locally in every deployment region — lower latency, no cross-region egress fees, and pull availability through a regional outage
+- **Locked-Down Environments**: IP-allowlisted or fully private registries with dedicated data endpoints, quarantine-gated pushes, signed images, and customer-managed encryption keys
+- **Registry Hygiene**: Retention policies that automatically purge untagged manifests so CI push churn cannot grow storage without bound
 
-## SKU Tiers
+## Future Enhancements
 
-- **Basic**: Development and testing (~$5/month, 10 GB storage)
-- **Standard**: Production workloads (~$20/month, 100 GB storage, higher throughput)
-- **Premium**: Enterprise features (~$20/month base + replica costs, geo-replication, private link)
+Future updates will include:
 
-## Minimal Example
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureContainerRegistry
-metadata:
-  name: my-container-registry
-spec:
-  region: eastus
-  registryName: mycompanyacr
-```
-
-This creates a Standard SKU container registry in East US region with admin user disabled (production best practice).
-
-## Next Steps
-
-- Review [examples.md](./examples.md) for detailed configuration examples
-- Read the [research documentation](./docs/README.md) for deployment best practices
-- Check the [Pulumi module documentation](./iac/pulumi/README.md) for IaC details
+- **Repository-Scoped Tokens and Scope Maps**: Fine-grained, repo-level credentials for systems that cannot use Entra ID
+- **Webhooks**: Push/delete event notifications for downstream automation
+- **Cache Rules**: Pull-through caching of upstream registries (Docker Hub, MCR)
+- **ACR Tasks**: Cloud-native image builds and scheduled maintenance jobs

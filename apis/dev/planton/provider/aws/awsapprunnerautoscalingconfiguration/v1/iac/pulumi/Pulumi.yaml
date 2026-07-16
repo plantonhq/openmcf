@@ -1,0 +1,3 @@
+name: aws-app-runner-auto-scaling-configuration
+runtime: go
+description: Deploy an AWS App Runner auto scaling configuration using Planton

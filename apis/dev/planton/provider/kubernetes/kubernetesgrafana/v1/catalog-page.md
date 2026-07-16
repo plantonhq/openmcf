@@ -30,7 +30,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGrafana
 metadata:
   name: my-grafana
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -81,7 +81,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGrafana
 metadata:
   name: monitoring-grafana
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGrafana
 metadata:
   name: team-grafana
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -140,7 +140,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGrafana
 metadata:
   name: prod-grafana
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

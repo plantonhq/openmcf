@@ -34,7 +34,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRocketmqInstance
 metadata:
   name: my-mq
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -127,7 +127,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRocketmqInstance
 metadata:
   name: dev-mq
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -149,7 +149,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRocketmqInstance
 metadata:
   name: prod-mq
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: messaging
@@ -203,7 +203,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRocketmqInstance
 metadata:
   name: enterprise-mq
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: fintech-corp
     pulumi.planton.dev/project: messaging

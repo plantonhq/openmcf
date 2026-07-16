@@ -1,0 +1,29 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsfsxlustrefilesystem
+spec:
+  # An FSx for Lustre file system under live E2E: two lanes. The scratch
+  # lane proves the cheapest creatable shape (SCRATCH_2, 1200 GiB SSD) on
+  # the shared subnet + security-group fixtures. The persistent lane proves
+  # the PERSISTENT_2 depth surface: per-TiB throughput, LZ4 compression,
+  # user-provisioned metadata IOPS, root squash with an exempt NID, backups
+  # with an explicit final-backup decision, and a maintenance window.
+  # Excluded arms recorded here: INTELLIGENT_TIERING (billing-committed
+  # 4000 MB/s throughput floor), HDD + drive cache (6000 GiB minimum
+  # capacity), efa_enabled (needs an EFA-enabled SG and GPU-adjacent
+  # networking), backup_id restore (needs a pre-existing backup), the
+  # legacy S3 link arm (exercised structurally by the data repository
+  # association kind instead), and CloudWatch logging (needs a
+  # policy-bearing log group fixture). Verification is DescribeFileSystems
+  # keyed on file_system_id, lifecycle-state-aware (DELETING counts as
+  # absent). Expected timings from AWS's documented provisioning: ~10-15
+  # minutes per create, ~5-10 per delete.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision: FSx file systems are long-provisioning and
+    expensive, so the family stops at the offline gate (green tofu plan +
+    pulumi preview per engine). Artifacts are complete and the lanes stay
+    re-runnable.
+  timeout_minutes: 60

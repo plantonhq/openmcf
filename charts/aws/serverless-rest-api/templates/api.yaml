@@ -1,0 +1,83 @@
+# The front door: an HTTP API (API Gateway v2) proxying everything to the
+# function. HTTP APIs are the right v2-era default for REST — a fraction
+# of REST-API (v1) pricing, lower latency, and first-class JWT
+# authorization. The $default stage with auto-deploy means route changes
+# in this spec are live on apply, with no deployment step to forget.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsHttpApiGateway
+metadata:
+  name: "{{ values.api_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+  description: "{{ values.api_name }} serverless REST API"
+{% if values.cors_enabled | bool %}
+  # CORS is answered by the gateway itself — preflight OPTIONS requests
+  # never reach (or bill) the function. Headers cover the JSON-API
+  # basics; Authorization is included so a browser can send the JWT when
+  # auth is enabled.
+  corsConfiguration:
+    allowOrigins:
+{% for origin in values.cors_allowed_origins %}
+      - "{{ origin }}"
+{% endfor %}
+    allowMethods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    allowHeaders:
+      - Content-Type
+      - Authorization
+    # Browsers cache the preflight verdict for an hour — one OPTIONS
+    # round-trip per origin per hour instead of one per request.
+    maxAgeSeconds: 3600
+{% endif %}
+  # One catch-all route: the function's own router owns the URL space.
+  # Add explicit route keys beside it later only when a path needs
+  # DIFFERENT gateway treatment (public webhook on an authed API, a
+  # stricter throttle) — the gateway always picks the most specific
+  # match.
+  routes:
+    - routeKey: "$default"
+      integration:
+        integrationType: AWS_PROXY
+        integrationUri:
+          valueFrom:
+            kind: AwsLambda
+            name: "{{ values.api_name }}-fn"
+            fieldPath: status.outputs.function_arn
+        # The 2.0 event format — simpler event shape and inferred JSON
+        # response encoding; every current runtime's tooling expects it.
+        payloadFormatVersion: "2.0"
+{% if values.auth_enabled | bool %}
+      # With auth on, the catch-all itself demands a valid JWT — there
+      # is no unauthenticated path to the function, and rejected
+      # requests are answered by the gateway for free.
+      authorizationType: JWT
+      authorizerName: cognito-jwt
+  authorizers:
+    - name: cognito-jwt
+      authorizerType: JWT
+      # Where the token must come from: the standard Authorization
+      # header ("Bearer <token>").
+      identitySources:
+        - "$request.header.Authorization"
+      jwtConfiguration:
+        # The gateway validates the token's signature against the pool's
+        # JWKS, its "iss" claim against the pool's issuer URL, and its
+        # "aud"/client claim against the app client id — all before any
+        # code of yours runs.
+        issuer:
+          valueFrom:
+            kind: AwsCognitoUserPool
+            name: "{{ values.api_name }}-users"
+            fieldPath: status.outputs.issuer
+        audiences:
+          - valueFrom:
+              kind: AwsCognitoUserPoolClient
+              name: "{{ values.api_name }}-client"
+              fieldPath: status.outputs.client_id
+{% endif %}

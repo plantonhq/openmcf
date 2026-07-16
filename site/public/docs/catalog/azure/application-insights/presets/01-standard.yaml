@@ -1,15 +1,23 @@
+# Standard workspace-based Application Insights -- full-fidelity
+# telemetry for a web application, wired to the platform workspace.
 apiVersion: azure.planton.dev/v1
 kind: AzureApplicationInsights
 metadata:
-  name: my-app-insights
+  name: my-web-app-insights
 spec:
-  region: <azure-region>
+  region: eastus
   resourceGroup:
-    value: "<your-resource-group-name>"
-  name: <your-app-insights-name>
-  applicationType: web  # default from spec
+    valueFrom:
+      kind: AzureResourceGroup
+      name: my-observability-rg
+      fieldPath: status.outputs.resource_group_name
+  applicationInsightsName: my-web-app-insights
+  applicationType: WEB
   workspaceId:
-    value: "<log-analytics-workspace-id>"
-  retentionInDays: 90  # default from spec; free tier includes 90 days
-  dailyDataCapInGb: 100  # default from spec
-  samplingPercentage: 100  # default from spec; full telemetry collection
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: my-platform-logs
+      fieldPath: status.outputs.workspace_id
+  retentionInDays: 90
+  tags:
+    cost-center: platform

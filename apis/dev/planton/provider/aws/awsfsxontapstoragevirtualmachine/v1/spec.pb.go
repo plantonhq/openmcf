@@ -47,6 +47,9 @@ const (
 //     the SVM. The file system must be an AwsFsxOntapFileSystem.
 //   - `root_volume_security_style` is ForceNew — it sets the default security
 //     style for all volumes created under this SVM.
+//   - Everything else updates in place: `svm_admin_password` and the entire
+//     `active_directory_configuration` block (domain join details included) can
+//     be changed after creation without replacing the SVM.
 //   - Active Directory is OPTIONAL — only required for SMB access. NFS-only and
 //     iSCSI-only SVMs do not need AD. Unlike Windows FSx (where AD is mandatory),
 //     ONTAP SVMs support self-managed AD only (no AWS Managed Microsoft AD).
@@ -206,27 +209,35 @@ type AwsFsxOntapStorageVirtualMachineActiveDirectoryConfiguration struct {
 	NetbiosName string `protobuf:"bytes,1,opt,name=netbios_name,json=netbiosName,proto3" json:"netbios_name,omitempty"`
 	// Fully qualified domain name of the Active Directory directory.
 	// Example: "corp.example.com"
+	//
+	// Constraints: 1-255 characters. Can be changed after creation (the SVM
+	// re-joins the new domain).
 	DomainName string `protobuf:"bytes,2,opt,name=domain_name,json=domainName,proto3" json:"domain_name,omitempty"`
 	// IP addresses of the DNS servers for the AD domain. Required. These must be
 	// reachable from the file system's subnets (typically in the same VPC CIDR or
 	// connected via VPN/peering).
 	//
-	// Minimum 1, maximum 3 IP addresses.
+	// Minimum 1, maximum 3 IPv4 addresses.
 	DnsIps []string `protobuf:"bytes,3,rep,name=dns_ips,json=dnsIps,proto3" json:"dns_ips,omitempty"`
 	// Service account username for AD domain join operations. Required.
 	//
 	// This account must have permissions to create computer objects in the
 	// specified OU (or the default Computers container).
+	//
+	// Constraints: 1-256 characters.
 	Username string `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
 	// Service account password for AD domain join operations. Required.
 	//
 	// This value is sensitive and will not be returned in read operations.
 	// For production workloads, consider injecting this value via CI/CD secrets
 	// management rather than storing it in the resource manifest.
+	//
+	// Constraints: 1-256 characters.
 	Password string `protobuf:"bytes,5,opt,name=password,proto3" json:"password,omitempty"`
 	// Name of the AD domain group whose members are granted administrative
 	// privileges on the SVM for file share management.
 	//
+	// Constraints: 1-256 characters.
 	// Default: Domain Admins
 	FileSystemAdministratorsGroup *string `protobuf:"bytes,6,opt,name=file_system_administrators_group,json=fileSystemAdministratorsGroup,proto3,oneof" json:"file_system_administrators_group,omitempty"`
 	// Organizational Unit (OU) distinguished name within the AD directory where
@@ -237,6 +248,8 @@ type AwsFsxOntapStorageVirtualMachineActiveDirectoryConfiguration struct {
 	// Only the OU immediately above the computer object can be specified.
 	// If not provided, the computer object is created in the default "Computers"
 	// container in the AD domain.
+	//
+	// Constraints: up to 2000 characters.
 	OrganizationalUnitDistinguishedName string `protobuf:"bytes,7,opt,name=organizational_unit_distinguished_name,json=organizationalUnitDistinguishedName,proto3" json:"organizational_unit_distinguished_name,omitempty"`
 	unknownFields                       protoimpl.UnknownFields
 	sizeCache                           protoimpl.SizeCache
@@ -336,17 +349,19 @@ const file_dev_planton_provider_aws_awsfsxontapstoragevirtualmachine_v1_spec_pro
 	"\x14security_style_valid\x12=root_volume_security_style must be 'UNIX', 'NTFS', or 'MIXED'\x1aethis.root_volume_security_style == '' || this.root_volume_security_style in ['UNIX', 'NTFS', 'MIXED']\x1a\xbf\x01\n" +
 	"\x15admin_password_length\x128svm_admin_password must be 8-50 characters when provided\x1althis.svm_admin_password == '' || (size(this.svm_admin_password) >= 8 && size(this.svm_admin_password) <= 50)\x1a\xb2\x01\n" +
 	"\vname_format\x12jname must contain only alphanumeric characters and underscores (no hyphens, spaces, or special characters)\x1a7this.name == '' || this.name.matches('^[a-zA-Z0-9_]+$')B\x1d\n" +
-	"\x1b_root_volume_security_style\"\x88\x05\n" +
+	"\x1b_root_volume_security_style\"\xac\x06\n" +
 	"<AwsFsxOntapStorageVirtualMachineActiveDirectoryConfiguration\x12!\n" +
-	"\fnetbios_name\x18\x01 \x01(\tR\vnetbiosName\x12(\n" +
-	"\vdomain_name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
-	"domainName\x12#\n" +
-	"\adns_ips\x18\x03 \x03(\tB\n" +
-	"\xbaH\a\x92\x01\x04\b\x01\x10\x03R\x06dnsIps\x12#\n" +
-	"\busername\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\busername\x12'\n" +
-	"\bpassword\x18\x05 \x01(\tB\v\xbaH\x04r\x02\x10\x01\xa0\xa6\x1d\x01R\bpassword\x12_\n" +
-	" file_system_administrators_group\x18\x06 \x01(\tB\x11\x8a\xa6\x1d\rDomain AdminsH\x00R\x1dfileSystemAdministratorsGroup\x88\x01\x01\x12S\n" +
-	"&organizational_unit_distinguished_name\x18\a \x01(\tR#organizationalUnitDistinguishedName:\xac\x01\xbaH\xa8\x01\x1a\xa5\x01\n" +
+	"\fnetbios_name\x18\x01 \x01(\tR\vnetbiosName\x12+\n" +
+	"\vdomain_name\x18\x02 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\xff\x01R\n" +
+	"domainName\x12\xab\x01\n" +
+	"\adns_ips\x18\x03 \x03(\tB\x91\x01\xbaH\x8d\x01\x92\x01\x89\x01\b\x01\x10\x03\"\x82\x01\xba\x01\x7f\n" +
+	"\rdns_ip_format\x12>each dns_ips entry must be an IPv4 address (e.g., '10.0.0.10')\x1a.this.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}$')R\x06dnsIps\x12&\n" +
+	"\busername\x18\x04 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80\x02R\busername\x12*\n" +
+	"\bpassword\x18\x05 \x01(\tB\x0e\xbaH\ar\x05\x10\x01\x18\x80\x02\xa0\xa6\x1d\x01R\bpassword\x12g\n" +
+	" file_system_administrators_group\x18\x06 \x01(\tB\x19\xbaH\x05r\x03\x18\x80\x02\x8a\xa6\x1d\rDomain AdminsH\x00R\x1dfileSystemAdministratorsGroup\x88\x01\x01\x12]\n" +
+	"&organizational_unit_distinguished_name\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR#organizationalUnitDistinguishedName:\xac\x01\xbaH\xa8\x01\x1a\xa5\x01\n" +
 	"\x13netbios_name_length\x122netbios_name must be 1-15 characters when provided\x1aZthis.netbios_name == '' || (size(this.netbios_name) >= 1 && size(this.netbios_name) <= 15)B#\n" +
 	"!_file_system_administrators_groupB\xe8\x03\n" +
 	"@com.dev.planton.provider.aws.awsfsxontapstoragevirtualmachine.v1B\tSpecProtoP\x01Z\x81\x01github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxontapstoragevirtualmachine/v1;awsfsxontapstoragevirtualmachinev1\xa2\x02\x05DPPAA\xaa\x02<Dev.Planton.Provider.Aws.Awsfsxontapstoragevirtualmachine.V1\xca\x02<Dev\\Planton\\Provider\\Aws\\Awsfsxontapstoragevirtualmachine\\V1\xe2\x02HDev\\Planton\\Provider\\Aws\\Awsfsxontapstoragevirtualmachine\\V1\\GPBMetadata\xea\x02ADev::Planton::Provider::Aws::Awsfsxontapstoragevirtualmachine::V1b\x06proto3"

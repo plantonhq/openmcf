@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureeventhubdisasterrecoveryconfig.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureEventHubDisasterRecoveryConfigSpec** defines a geo-disaster-
+// recovery pairing between two Event Hubs namespaces: metadata (hubs,
+// consumer groups, authorization rules -- not event data) continuously
+// replicates from the primary to the partner, and a failover-stable ALIAS
+// DNS name fronts whichever namespace is currently primary.
+//
+// Clients connect through the alias
+// (`{alias_name}.servicebus.windows.net`) instead of either namespace, so
+// a failover needs no client reconfiguration. Alias-addressed connection
+// strings surface on the namespace's and the authorization rule kinds'
+// `*_connection_string_alias` outputs once a pairing exists.
+//
+// **Azure's pairing contracts** (apply-time -- they involve both live
+// namespaces): the namespaces must be in DIFFERENT regions, on the same
+// tier (STANDARD or higher; geo-DR is not available on BASIC), and the
+// partner must be empty (no hubs) when pairing is created. Changing
+// partner_namespace_id breaks the existing pairing and re-pairs to the
+// new partner.
+//
+// **Failover is an operational action, not a config change**: triggered
+// from the SECONDARY side (portal/CLI/SDK) during a regional incident;
+// after failover the alias points at the former partner. Deleting this
+// resource breaks the pairing gracefully -- both namespaces keep running
+// independently, and the alias name is released once Azure finishes the
+// break-pair/name-release choreography (the modules wait it out).
+//
+// **ForceNew fields**: `alias_name`, `primary_namespace_id`.
+message AzureEventHubDisasterRecoveryConfigSpec {
+  // The alias name -- becomes the failover-stable DNS name
+  // `{alias_name}.servicebus.windows.net`, so it shares the namespace
+  // name uniqueness scope (globally unique; it cannot collide with any
+  // existing namespace name either). Up to 60 characters of letters,
+  // numbers, periods, hyphens, and underscores, starting and ending with
+  // a letter or number.
+  //
+  // **ForceNew**: changing the alias replaces the pairing.
+  string alias_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 60,
+    (buf.validate.field).cel = {
+      id: "event_hub_dr_alias_name_format"
+      message: "alias_name must be up to 60 characters of letters, numbers, periods, hyphens, and underscores, starting and ending with a letter or number"
+      expression: "this.matches('^[a-zA-Z0-9]$') || this.matches('^[a-zA-Z0-9][-._a-zA-Z0-9]{0,58}[a-zA-Z0-9]$')"
+    }
+  ];
+
+  // The PRIMARY namespace -- the one clients actively use, by ARM ID.
+  // References an AzureEventHubNamespace's namespace_id output. The
+  // pairing lives under this namespace. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef primary_namespace_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHubNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.namespace_id"
+  ];
+
+  // The PARTNER (secondary) namespace metadata replicates to, by ARM ID.
+  // Must be in a DIFFERENT region than the primary, on the same tier,
+  // and empty (no hubs) at pairing time -- Azure validates all three
+  // when the pairing is created. Changing it breaks the current pairing
+  // and re-pairs to the new partner.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef partner_namespace_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHubNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.namespace_id"
+  ];
+}

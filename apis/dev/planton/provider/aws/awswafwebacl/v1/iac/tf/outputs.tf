@@ -17,3 +17,8 @@ output "capacity" {
   description = "The WCUs consumed by all rules in this Web ACL."
   value       = aws_wafv2_web_acl.this.capacity
 }
+
+output "application_integration_url" {
+  description = "The AWS WAF JavaScript integration URL for CAPTCHA/Challenge client integrations (empty when neither action is used)."
+  value       = aws_wafv2_web_acl.this.application_integration_url
+}

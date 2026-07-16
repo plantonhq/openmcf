@@ -88,13 +88,13 @@ func runHcl(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOpera
 	return nil
 }
 
-// buildAndValidateBackendConfig builds backend config from CLI flags and manifest labels,
+// buildAndValidateBackendConfig builds backend config from CLI flags and manifest annotations,
 // validates it, and prompts for missing values if in interactive mode.
 func buildAndValidateBackendConfig(ctx *Context, cmd *cobra.Command, provisionerType string) (*backendconfig.TofuBackendConfig, error) {
 	// Extract CLI flags for backend configuration
 	cliFlags := extractCLIBackendFlags(cmd)
 
-	// Build merged configuration (CLI flags override manifest labels)
+	// Build merged configuration (CLI flags override manifest annotations)
 	config, err := backendconfig.BuildBackendConfig(ctx.ManifestObject, provisionerType, cliFlags)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build backend configuration: %w", err)
@@ -127,7 +127,7 @@ func buildAndValidateBackendConfig(ctx *Context, cmd *cobra.Command, provisioner
 		if !prompt.IsInteractive() {
 			// Non-interactive mode: show error and fail
 			ui.MissingBackendConfigError(validation.MissingFields, config.BackendType)
-			return nil, fmt.Errorf("incomplete backend configuration - provide missing values via CLI flags or manifest labels")
+			return nil, fmt.Errorf("incomplete backend configuration - provide missing values via CLI flags or manifest annotations")
 		}
 
 		// Interactive mode: prompt for missing values

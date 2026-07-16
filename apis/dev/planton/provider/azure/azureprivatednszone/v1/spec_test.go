@@ -15,216 +15,85 @@ func TestAzurePrivateDnsZoneSpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "AzurePrivateDnsZoneSpec Validation Tests")
 }
 
+// literal builds a StringValueOrRef carrying a literal value.
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+// ref builds a StringValueOrRef carrying a value_from reference.
+func ref(name string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{Name: name},
+		},
+	}
+}
+
+// validResource returns a minimal valid AzurePrivateDnsZone that individual
+// cases then mutate into the shape under test.
+func validResource() *AzurePrivateDnsZone {
+	return &AzurePrivateDnsZone{
+		ApiVersion: "azure.planton.dev/v1",
+		Kind:       "AzurePrivateDnsZone",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "pg-private-dns",
+		},
+		Spec: &AzurePrivateDnsZoneSpec{
+			ResourceGroup: literal("my-rg"),
+			Name:          "privatelink.postgres.database.azure.com",
+		},
+	}
+}
+
 var _ = ginkgo.Describe("AzurePrivateDnsZoneSpec Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
 		ginkgo.Context("azure_private_dns_zone", func() {
 
 			ginkgo.It("should not return a validation error for minimal valid fields (privatelink zone)", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "pg-private-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "privatelink.postgres.database.azure.com",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-					},
+				err := protovalidate.Validate(validResource())
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept the resource group as a reference", func() {
+				input := validResource()
+				input.Spec.ResourceGroup = ref("platform-rg")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a custom internal zone name", func() {
+				input := validResource()
+				input.Spec.Name = "corp.internal"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a single-label zone name", func() {
+				input := validResource()
+				input.Spec.Name = "internal"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept an SOA record customization", func() {
+				input := validResource()
+				minimumTtl := int64(30)
+				input.Spec.SoaRecord = &AzurePrivateDnsZoneSoaRecord{
+					Email:      "dnsadmin.contoso.com",
+					MinimumTtl: &minimumTtl,
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with full metadata", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "prod-pg-dns",
-						Org:  "mycompany",
-						Env:  "production",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "prod-network-rg",
-							},
-						},
-						Name: "privatelink.postgres.database.azure.com",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-network-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for mysql privatelink zone", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "mysql-private-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "privatelink.mysql.database.azure.com",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for custom internal DNS zone", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "internal-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "contoso.internal",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with registration_enabled set to true", func() {
-				regEnabled := true
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "internal-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "contoso.internal",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						RegistrationEnabled: &regEnabled,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with registration_enabled set to false", func() {
-				regEnabled := false
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "pg-private-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "privatelink.postgres.database.azure.com",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-						RegistrationEnabled: &regEnabled,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for keyvault privatelink zone", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "kv-private-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "privatelink.vaultcore.azure.net",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with valueFrom reference for resource_group", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "pg-private-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-								ValueFrom: &foreignkeyv1.ValueFromRef{
-									Name: "my-rg-resource",
-								},
-							},
-						},
-						Name: "privatelink.postgres.database.azure.com",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-								ValueFrom: &foreignkeyv1.ValueFromRef{
-									Name: "my-vpc-resource",
-								},
-							},
-						},
-					},
+			ginkgo.It("should accept user tags", func() {
+				input := validResource()
+				input.Spec.Tags = map[string]string{
+					"cost-center": "platform",
+					"owner":       "network-team",
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
@@ -236,199 +105,75 @@ var _ = ginkgo.Describe("AzurePrivateDnsZoneSpec Validation Tests", func() {
 		ginkgo.Context("azure_private_dns_zone", func() {
 
 			ginkgo.It("should return a validation error when resource_group is missing", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						Name: "privatelink.postgres.database.azure.com",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-					},
-				}
+				input := validResource()
+				input.Spec.ResourceGroup = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when name is missing", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-					},
-				}
+				input := validResource()
+				input.Spec.Name = ""
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when vnet_id is missing", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "privatelink.postgres.database.azure.com",
-					},
-				}
+			ginkgo.It("should return a validation error for an invalid zone name", func() {
+				input := validResource()
+				input.Spec.Name = "Not A Zone Name!"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when zone name has invalid format (uppercase)", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "PrivateLink.Postgres.Database.Azure.COM",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-					},
-				}
+			ginkgo.It("should return a validation error for a zone name with an uppercase label", func() {
+				input := validResource()
+				input.Spec.Name = "Corp.Internal"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when zone name has invalid format (leading dot)", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: ".invalid.domain.com",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-					},
+			ginkgo.It("should return a validation error when the SOA record omits its email", func() {
+				input := validResource()
+				input.Spec.SoaRecord = &AzurePrivateDnsZoneSoaRecord{}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a negative SOA timer", func() {
+				input := validResource()
+				expire := int64(-1)
+				input.Spec.SoaRecord = &AzurePrivateDnsZoneSoaRecord{
+					Email:      "dnsadmin.contoso.com",
+					ExpireTime: &expire,
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when api_version is incorrect", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "wrong.version/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "privatelink.postgres.database.azure.com",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-					},
-				}
+				input := validResource()
+				input.ApiVersion = "wrong.version/v1"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when kind is incorrect", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "WrongKind",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-dns",
-					},
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "privatelink.postgres.database.azure.com",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-					},
-				}
+				input := validResource()
+				input.Kind = "WrongKind"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when metadata is missing", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Spec: &AzurePrivateDnsZoneSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "privatelink.postgres.database.azure.com",
-						VnetId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet",
-							},
-						},
-					},
-				}
+				input := validResource()
+				input.Metadata = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when spec is missing", func() {
-				input := &AzurePrivateDnsZone{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzurePrivateDnsZone",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-dns",
-					},
-				}
+				input := validResource()
+				input.Spec = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

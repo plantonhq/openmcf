@@ -12,24 +12,30 @@ import "google/protobuf/struct.proto";
 // capacity automatically as files are added or removed, with no provisioning or
 // capacity planning required.
 //
-// This component bundles the file system with its mount targets, optional access
-// points, backup policy, and resource policy. Mount targets are created
-// automatically from the provided subnet IDs — one per subnet (and thus per AZ).
+// This component bundles the file system with its mount targets, backup policy,
+// resource policy, replication-overwrite protection, and cross-region/cross-AZ
+// replication. Mount targets are declared per subnet (one per Availability Zone)
+// and can pin static IPv4/IPv6 addresses. Access points are a separate,
+// first-class resource: see the AwsEfsAccessPoint kind, which references this
+// file system and is itself referenced by Lambda and ECS task definitions.
 //
 // EFS is the foundation for shared persistent storage across:
 // - EKS pods via the EFS CSI driver (PersistentVolume backed by file_system_id)
 // - ECS tasks via EFS volumes in task definitions
-// - Lambda functions via access point ARNs
+// - Lambda functions via AwsEfsAccessPoint ARNs
 // - EC2 instances via direct NFS mount at the dns_name
 //
 // Key design notes:
-// - `encrypted`, `performance_mode`, and `availability_zone_name` are ForceNew
-//   — changing them requires replacing the file system. Plan these upfront.
-// - `subnet_ids` is required because an EFS without mount targets cannot be
-//   mounted. One mount target per AZ is allowed; providing two subnets in the
-//   same AZ causes an AWS API error at deploy time.
+// - `encrypted`, `kms_key_id`, `performance_mode`, and `availability_zone_name`
+//   are ForceNew — changing them requires replacing the file system. Plan these
+//   upfront.
+// - Mount targets are required (min 1) because an EFS without mount targets
+//   cannot be mounted. AWS allows at most one mount target per Availability
+//   Zone; declaring two mount targets in subnets of the same AZ fails at deploy
+//   time with an API error.
 // - Security groups must allow NFS traffic (TCP port 2049) from the clients.
-// - Credentials, region, and deployment workflow live outside this spec in stack inputs.
+// - Credentials, region, and deployment workflow live outside this spec in
+//   stack inputs.
 message AwsElasticFileSystemSpec {
   // The AWS region where the resource will be created.
   // Example: "us-west-2", "eu-west-1"
@@ -53,27 +59,34 @@ message AwsElasticFileSystemSpec {
   ];
 
   // File system performance mode. ForceNew — cannot be changed after creation.
+  // Empty keeps the AWS default ("generalPurpose").
   //
   // - "generalPurpose" (default): lowest latency, suitable for most workloads.
   //   Recommended for all new file systems, especially with "elastic" throughput.
   // - "maxIO": higher aggregate throughput for highly parallelized workloads
   //   (thousands of EC2 instances). Slightly higher per-operation latency.
-  //   Note: AWS recommends generalPurpose + elastic throughput as a replacement.
+  //   AWS recommends generalPurpose + elastic throughput as a replacement, and
+  //   maxIO cannot be combined with elastic throughput or One Zone storage.
   string performance_mode = 4;
 
   // Throughput mode controlling how EFS delivers read/write bandwidth.
+  // Empty keeps the AWS default ("bursting").
   //
   // - "bursting" (default): throughput scales with file system size. 50 MiB/s
   //   per TiB of Standard storage, with bursts up to 100 MiB/s.
   // - "provisioned": fixed throughput independent of storage size. Set
   //   `provisioned_throughput_in_mibps` to specify the exact value.
   // - "elastic": automatically scales throughput up/down based on workload.
-  //   Recommended for unpredictable or spiky access patterns. Requires
-  //   generalPurpose performance mode.
+  //   Recommended for unpredictable or spiky access patterns. Requires the
+  //   generalPurpose performance mode (AWS rejects elastic + maxIO).
+  //
+  // Throughput mode is mutable, but AWS enforces a 24-hour cooldown between
+  // throughput-mode changes (and between decreases of provisioned throughput).
   string throughput_mode = 5;
 
   // Provisioned throughput in MiB/s. Only applicable when `throughput_mode` is
-  // "provisioned". Range: 1.0–3414.0 for generalPurpose; 1.0–1024.0 for maxIO.
+  // "provisioned". AWS accepts 1.0–3414.0 for generalPurpose and 1.0–1024.0 for
+  // maxIO (server-side limits; higher values require a quota increase).
   double provisioned_throughput_in_mibps = 6;
 
   // AWS Availability Zone name for One Zone storage classes (e.g., "us-east-1a").
@@ -120,44 +133,48 @@ message AwsElasticFileSystemSpec {
   bool backup_enabled = 11;
 
   // ---------------------------------------------------------------------------
+  // Replication-Overwrite Protection
+  // ---------------------------------------------------------------------------
+
+  // Controls whether this file system can be used as the DESTINATION of an EFS
+  // replication configuration. Empty keeps the AWS default ("ENABLED").
+  //
+  // - "ENABLED" (default): the file system is protected — it cannot be
+  //   overwritten by a replication from another file system.
+  // - "DISABLED": the file system may be targeted as a replication destination.
+  //   AWS also requires protection to be DISABLED before a replication
+  //   destination file system can be modified or deleted after replication
+  //   stops — set this when adopting an existing file system as a replica.
+  string replication_overwrite_protection = 12;
+
+  // ---------------------------------------------------------------------------
   // Mount Targets (Networking)
   // ---------------------------------------------------------------------------
 
-  // Subnet IDs to create mount targets in. Required (min 1). One mount target is
-  // created per subnet. AWS allows at most one mount target per Availability Zone
-  // — providing two subnets in the same AZ will cause an API error at deploy time.
+  // Mount targets expose the file system as an NFS endpoint inside a VPC.
+  // Required (min 1) — an EFS without mount targets cannot be mounted. Declare
+  // one mount target per Availability Zone (AWS allows at most one per AZ;
+  // two subnets in the same AZ fail at deploy time).
   //
-  // For regional (multi-AZ) file systems, provide one subnet per AZ for maximum
-  // availability. For One Zone file systems, provide exactly one subnet in the
-  // AZ specified by `availability_zone_name`.
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 12 [
+  // For regional (multi-AZ) file systems, declare one mount target per AZ for
+  // maximum availability and to avoid cross-AZ data charges. For One Zone file
+  // systems, declare exactly one mount target in a subnet belonging to
+  // `availability_zone_name`.
+  repeated AwsElasticFileSystemMountTarget mount_targets = 13 [
     (buf.validate.field).required = true,
-    (buf.validate.field).repeated.min_items = 1,
-    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+    (buf.validate.field).repeated.min_items = 1
   ];
 
-  // Security groups to apply to all mount targets. These must allow inbound NFS
+  // Security groups applied to ALL mount targets. These must allow inbound NFS
   // traffic (TCP port 2049) from the clients that will mount the file system.
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 13 [
+  // When omitted, AWS attaches the VPC's default security group.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 14 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
   ];
 
   // ---------------------------------------------------------------------------
-  // Access Points (optional)
-  // ---------------------------------------------------------------------------
-
-  // Access points provide application-specific entry points into the file system,
-  // each with its own POSIX user/group identity and root directory. Commonly used
-  // with ECS tasks and Lambda functions to enforce least-privilege file access.
-  //
-  // Each access point must have a unique `name` which serves as the map key in
-  // the `access_point_ids` and `access_point_arns` stack outputs.
-  repeated AwsElasticFileSystemAccessPoint access_points = 14;
-
-  // ---------------------------------------------------------------------------
-  // Resource Policy (optional)
+  // Resource Policy
   // ---------------------------------------------------------------------------
 
   // IAM resource policy for the file system. Common uses:
@@ -168,6 +185,23 @@ message AwsElasticFileSystemSpec {
   // Provide as a JSON object structure. Serialized to JSON by IaC modules.
   // Consistent with SQS policy, SNS policy, and EventBridge event_pattern.
   google.protobuf.Struct policy = 15;
+
+  // Skip AWS's policy-lockout safety check when putting the resource policy.
+  // By default AWS rejects a policy that would lock the requesting principal
+  // out of future PutFileSystemPolicy calls. Only set this when intentionally
+  // deploying such a policy — a locked-out policy can only be fixed by the
+  // account root. Requires `policy` to be set.
+  bool bypass_policy_lockout_safety_check = 16;
+
+  // ---------------------------------------------------------------------------
+  // Replication (optional)
+  // ---------------------------------------------------------------------------
+
+  // Replicate this file system to another region or Availability Zone for
+  // disaster recovery. EFS replication is one-per-file-system and create-time
+  // immutable: changing the destination replaces the replication configuration
+  // (the destination file system itself is never deleted by that replacement).
+  AwsElasticFileSystemReplication replication = 17;
 
   // ---------------------------------------------------------------------------
   // CEL Validations
@@ -185,6 +219,13 @@ message AwsElasticFileSystemSpec {
     id: "throughput_mode_valid"
     message: "throughput_mode must be 'bursting', 'provisioned', or 'elastic' when set"
     expression: "this.throughput_mode == '' || this.throughput_mode in ['bursting', 'provisioned', 'elastic']"
+  };
+
+  // elastic throughput is rejected by AWS on maxIO file systems.
+  option (buf.validate.message).cel = {
+    id: "elastic_requires_general_purpose"
+    message: "elastic throughput requires the generalPurpose performance mode (AWS rejects elastic + maxIO)"
+    expression: "this.throughput_mode != 'elastic' || this.performance_mode != 'maxIO'"
   };
 
   // provisioned_throughput requires provisioned mode.
@@ -235,77 +276,116 @@ message AwsElasticFileSystemSpec {
     message: "transition_to_primary_storage_class must be 'AFTER_1_ACCESS' when set"
     expression: "this.transition_to_primary_storage_class == '' || this.transition_to_primary_storage_class == 'AFTER_1_ACCESS'"
   };
+
+  // replication_overwrite_protection valid values.
+  option (buf.validate.message).cel = {
+    id: "replication_overwrite_protection_valid"
+    message: "replication_overwrite_protection must be 'ENABLED' or 'DISABLED' when set"
+    expression: "this.replication_overwrite_protection == '' || this.replication_overwrite_protection in ['ENABLED', 'DISABLED']"
+  };
+
+  // bypass_policy_lockout_safety_check is meaningless without a policy.
+  option (buf.validate.message).cel = {
+    id: "bypass_requires_policy"
+    message: "bypass_policy_lockout_safety_check requires policy to be set (there is no policy put to bypass the check for)"
+    expression: "!this.bypass_policy_lockout_safety_check || has(this.policy)"
+  };
 }
 
-// AwsElasticFileSystemAccessPoint defines an EFS access point — an application-
-// specific entry point into the file system that enforces a POSIX user/group
-// identity and optionally restricts the visible root directory.
-//
-// Access points are the recommended way to give ECS tasks and Lambda functions
-// file system access, as they enforce least-privilege without requiring the
-// application to manage POSIX permissions.
-message AwsElasticFileSystemAccessPoint {
-  // Unique name for this access point within the file system. Used as the map key
-  // in `access_point_ids` and `access_point_arns` stack outputs.
-  string name = 1 [(buf.validate.field).required = true];
-
-  // POSIX user and group identity enforced for all file operations through this
-  // access point. When set, the NFS client's identity is overridden — regardless
-  // of what UID/GID the client claims, all operations use these values.
-  AwsElasticFileSystemAccessPointPosixUser posix_user = 2;
-
-  // Root directory exposed as "/" when mounting through this access point. If the
-  // directory does not exist, provide `creation_info` to have EFS create it
-  // automatically with the specified ownership and permissions.
-  AwsElasticFileSystemAccessPointRootDirectory root_directory = 3;
-}
-
-// AwsElasticFileSystemAccessPointPosixUser defines the POSIX identity enforced
-// for all file operations through an access point.
-message AwsElasticFileSystemAccessPointPosixUser {
-  // POSIX user ID. All file system operations through this access point use
-  // this UID as the file owner.
-  int32 uid = 1 [(buf.validate.field).required = true];
-
-  // POSIX primary group ID. All file system operations through this access point
-  // use this GID as the file group.
-  int32 gid = 2 [(buf.validate.field).required = true];
-
-  // Secondary POSIX group IDs. These supplement the primary GID for group
-  // permission checks.
-  repeated int32 secondary_gids = 3;
-}
-
-// AwsElasticFileSystemAccessPointRootDirectory configures the directory on the
-// EFS file system that is exposed as the root when mounting through an access
-// point.
-message AwsElasticFileSystemAccessPointRootDirectory {
-  // Path on the EFS file system to expose as the root directory. Must be an
-  // absolute path (starts with "/"). Up to 4 subdirectories deep.
-  // Default: "/" (entire file system).
-  //
-  // If this path does not exist and `creation_info` is provided, EFS creates
-  // the directory with the specified POSIX ownership and permissions.
-  string path = 1 [(buf.validate.field).required = true];
-
-  // POSIX ownership and permissions to apply when creating the root directory.
-  // Required when the path does not already exist on the file system.
-  AwsElasticFileSystemAccessPointCreationInfo creation_info = 2;
-}
-
-// AwsElasticFileSystemAccessPointCreationInfo specifies the POSIX ownership and
-// permissions applied when EFS automatically creates the access point's root
-// directory.
-message AwsElasticFileSystemAccessPointCreationInfo {
-  // POSIX user ID for the directory owner.
-  int32 owner_uid = 1 [(buf.validate.field).required = true];
-
-  // POSIX group ID for the directory owner.
-  int32 owner_gid = 2 [(buf.validate.field).required = true];
-
-  // POSIX permissions for the directory, in octal notation (e.g., "0755", "0750").
-  string permissions = 3 [
+// AwsElasticFileSystemMountTarget declares one NFS endpoint for the file
+// system inside a VPC subnet. AWS allows at most one mount target per
+// Availability Zone, so declare one per AZ (per subnet) — clients in an AZ
+// mount through that AZ's target to avoid cross-AZ data charges.
+message AwsElasticFileSystemMountTarget {
+  // The subnet to place this mount target in. The subnet's Availability Zone
+  // determines which AZ's clients this target serves.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^0[0-7]{3}$"
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
+
+  // Static IPv4 address for the mount target, from the subnet's IPv4 CIDR.
+  // ForceNew. When omitted, AWS assigns an address automatically. Useful for
+  // static NFS mount configurations that cannot resolve the EFS DNS names.
+  string ip_address = 2;
+
+  // Address family for the mount target. Empty keeps the AWS default
+  // ("IPV4_ONLY"). ForceNew.
+  //
+  // - "IPV4_ONLY" (default): IPv4 address only.
+  // - "IPV6_ONLY": IPv6 address only — requires an IPv6-enabled subnet.
+  // - "DUAL_STACK": both IPv4 and IPv6 addresses.
+  string ip_address_type = 3;
+
+  // Static IPv6 address for the mount target, from the subnet's IPv6 CIDR.
+  // ForceNew. Only valid when `ip_address_type` is "IPV6_ONLY" or "DUAL_STACK".
+  string ipv6_address = 4;
+
+  // ip_address_type valid values.
+  option (buf.validate.message).cel = {
+    id: "ip_address_type_valid"
+    message: "ip_address_type must be 'IPV4_ONLY', 'IPV6_ONLY', or 'DUAL_STACK' when set"
+    expression: "this.ip_address_type == '' || this.ip_address_type in ['IPV4_ONLY', 'IPV6_ONLY', 'DUAL_STACK']"
+  };
+
+  // A static IPv4 address is impossible on an IPv6-only mount target.
+  option (buf.validate.message).cel = {
+    id: "ipv4_address_not_on_ipv6_only"
+    message: "ip_address cannot be set when ip_address_type is 'IPV6_ONLY' (the mount target has no IPv4 address)"
+    expression: "this.ip_address == '' || this.ip_address_type != 'IPV6_ONLY'"
+  };
+
+  // A static IPv6 address requires an IPv6-capable address type.
+  option (buf.validate.message).cel = {
+    id: "ipv6_address_requires_ipv6_type"
+    message: "ipv6_address requires ip_address_type to be 'IPV6_ONLY' or 'DUAL_STACK'"
+    expression: "this.ipv6_address == '' || this.ip_address_type in ['IPV6_ONLY', 'DUAL_STACK']"
+  };
+}
+
+// AwsElasticFileSystemReplication replicates the file system to a destination
+// region and/or Availability Zone for disaster recovery. EFS keeps the replica
+// in sync automatically; the replica is read-only while replication is active.
+//
+// The entire configuration is create-time immutable (changing any field
+// replaces the replication configuration). Deleting the replication stops
+// syncing but leaves the destination file system in place — to then modify or
+// delete the destination, its own `replication_overwrite_protection` must be
+// "DISABLED".
+message AwsElasticFileSystemReplication {
+  // Destination region for the replica (e.g., "us-east-2"). At least one of
+  // `destination_region` or `destination_availability_zone_name` is required.
+  // Same-region replication (with a different AZ) is valid.
+  string destination_region = 1;
+
+  // Destination Availability Zone name (e.g., "us-east-2a"). Creates the
+  // replica as a One Zone file system in that AZ — the cheaper DR shape. At
+  // least one of `destination_region` or `destination_availability_zone_name`
+  // is required.
+  string destination_availability_zone_name = 2;
+
+  // KMS key for the replica's encryption at rest. When omitted, AWS uses the
+  // AWS-managed key `aws/elasticfilesystem` in the destination region.
+  // Replicas are always encrypted regardless of the source's encryption state.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef destination_kms_key_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Replicate into an EXISTING file system instead of having AWS create the
+  // replica. The referenced file system must have
+  // `replication_overwrite_protection` set to "DISABLED". When omitted, AWS
+  // creates a fresh destination file system.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef destination_file_system_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsElasticFileSystem,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.file_system_id"
+  ];
+
+  // The destination must be pinned to a region and/or an Availability Zone.
+  option (buf.validate.message).cel = {
+    id: "replication_destination_required"
+    message: "at least one of destination_region or destination_availability_zone_name is required"
+    expression: "this.destination_region != '' || this.destination_availability_zone_name != ''"
+  };
 }

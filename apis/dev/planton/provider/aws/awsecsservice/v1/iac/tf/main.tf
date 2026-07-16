@@ -1,232 +1,298 @@
 # AWS ECS Service Terraform Module
-# Auto-release test: Single Terraform module change triggers v{semver}-terraform-awsecsservice-{YYYYMMDD}.{N}
+#
+# The service only SCHEDULES: the task definition, cluster, target groups,
+# subnets, and security groups are all referenced resources resolved before
+# this module runs -- the module never creates or mutates a resource it
+# merely references. Traffic reaches the service through first-class
+# AwsLbTargetGroup / AwsLbListener / AwsLbListenerRule nodes; this module
+# only registers task IPs into the referenced groups.
 
-# CloudWatch Log Group for ECS service logging
-resource "aws_cloudwatch_log_group" "this" {
-  count             = local.logging_enabled ? 1 : 0
-  name              = "/ecs/${local.resource_name}"
-  retention_in_days = 30
-  tags              = local.tags
-}
-
-# Data source to get ALB information for outputs
-data "aws_lb" "selected" {
-  count = local.has_alb_config ? 1 : 0
-  arn   = local.safe_alb_arn
-}
-
-# Resolve the VPC from the first service subnet. The ALB target group needs a VPC id
-# but the spec only carries subnet ids, so we derive it -- matching the Pulumi module's
-# ec2.LookupSubnet(firstSubnet).VpcId.
-data "aws_subnet" "first" {
-  count = local.alb_enabled && local.container_port != null ? 1 : 0
-  id    = local.safe_subnet_ids[0]
-}
-
-# Resolve the real ALB listener ARN by load balancer + port. A listener ARN cannot be
-# synthesized from the load balancer ARN, so we look it up -- matching the Pulumi
-# module's lb.LookupListener(LoadBalancerArn, Port). The ALB module creates the listener
-# on this port (443 when SSL is on, 80 otherwise) before this service's node runs.
-data "aws_lb_listener" "selected" {
-  count             = local.alb_enabled && local.container_port != null ? 1 : 0
-  load_balancer_arn = local.safe_alb_arn
-  port              = local.alb_listener_port
-}
-
-# Current AWS region data source
-data "aws_region" "current" {}
-
-# ECS Task Definition
-resource "aws_ecs_task_definition" "this" {
-  family                   = local.resource_name
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = tostring(local.cpu)
-  memory                   = tostring(local.memory)
-
-  container_definitions = jsonencode([
-    {
-      name      = local.resource_name
-      image     = local.container_image
-      essential = true
-      
-      # Port mappings (only if container port is specified)
-      portMappings = local.container_port != null ? [{
-        containerPort = local.container_port
-        protocol      = "tcp"
-      }] : []
-      
-      # Logging configuration
-      logConfiguration = local.logging_enabled ? {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.this[0].name
-          awslogs-region        = data.aws_region.current.name
-          awslogs-stream-prefix = "ecs"
-        }
-      } : null
-      
-      # Environment variables
-      environment = [
-        for k, v in try(var.spec.container.env.variables, {}) : {
-          name  = k
-          value = v
-        }
-      ]
-      
-      # Secrets (if any)
-      secrets = [
-        for k, v in try(var.spec.container.env.secrets, {}) : {
-          name      = k
-          valueFrom = v
-        }
-      ]
-      
-      # Environment files from S3 (if any)
-      environmentFiles = [
-        for s3_uri in try(var.spec.container.env.s3_files, []) : {
-          value = s3_uri
-          type  = "s3"
-        }
-      ]
-    }
-  ])
-
-  # IAM roles
-  execution_role_arn = local.safe_task_execution_role_arn
-  task_role_arn      = local.safe_task_role_arn
-  
-  tags = local.tags
-}
-
-# ECS Service
 resource "aws_ecs_service" "this" {
-  name            = local.resource_name
-  cluster         = local.safe_cluster_arn
-  task_definition = aws_ecs_task_definition.this.arn
+  name            = local.service_name
+  cluster         = var.spec.cluster_arn
+  task_definition = var.spec.task_definition
   desired_count   = local.desired_count
-  launch_type     = "FARGATE"
 
-  # Network configuration
-  network_configuration {
-    subnets          = local.safe_subnet_ids
-    security_groups  = local.safe_security_group_ids
-    assign_public_ip = false
-  }
+  # Exactly one of these is set (spec CEL): a named launch type, or a
+  # capacity-provider blend.
+  launch_type = local.launch_type
 
-  # Load balancer configuration (only if ALB is enabled and container port is specified)
-  dynamic "load_balancer" {
-    for_each = local.alb_enabled && local.container_port != null ? [1] : []
+  dynamic "capacity_provider_strategy" {
+    for_each = var.spec.capacity_provider_strategy
     content {
-      target_group_arn = aws_lb_target_group.this[0].arn
-      container_name   = local.resource_name
-      container_port   = local.container_port
+      capacity_provider = capacity_provider_strategy.value.capacity_provider
+      base              = capacity_provider_strategy.value.base
+      weight            = capacity_provider_strategy.value.weight
     }
   }
 
-  # Health check grace period (only when ALB is enabled)
-  health_check_grace_period_seconds = local.alb_enabled && local.container_port != null ? local.health_check_grace_period_seconds : null
+  platform_version    = var.spec.platform_version != "" ? var.spec.platform_version : null
+  scheduling_strategy = var.spec.scheduling_strategy != "" ? var.spec.scheduling_strategy : null
 
-  # desired_count is runtime state: when autoscaling is enabled the appautoscaling
-  # target owns it, and operators may scale out of band. Terraform sets the initial
-  # count from spec.container.replicas and then leaves it alone. ignore_changes must
-  # be a static literal list (OpenTofu forbids a conditional expression here), so this
-  # always ignores -- matching the house convention for autoscaling-managed counts
-  # (e.g. gcp-gke-node-pool's node_count).
+  # network is a pruned optional message: guard with a ternary (HCL's &&
+  # does not short-circuit on null). Required for awsvpc task definitions --
+  # every Fargate task and the modern EC2 posture.
+  dynamic "network_configuration" {
+    for_each = var.spec.network != null ? [var.spec.network] : []
+    content {
+      subnets          = network_configuration.value.subnets
+      security_groups  = network_configuration.value.security_groups
+      assign_public_ip = network_configuration.value.assign_public_ip
+    }
+  }
+
+  # Load-balancer wiring registers task IPs into referenced target groups.
+  # AWS requires each group to already be associated with a listener when
+  # the service is created -- the graph's FK ordering guarantees it.
+  dynamic "load_balancer" {
+    for_each = var.spec.load_balancers
+    content {
+      target_group_arn = load_balancer.value.target_group_arn
+      container_name   = load_balancer.value.container_name
+      container_port   = load_balancer.value.container_port
+
+      # The blue/green pair: ECS swaps the production listener rule between
+      # the two target groups as deployments bake.
+      dynamic "advanced_configuration" {
+        for_each = load_balancer.value.advanced_configuration != null ? [load_balancer.value.advanced_configuration] : []
+        content {
+          alternate_target_group_arn = advanced_configuration.value.alternate_target_group_arn
+          production_listener_rule   = advanced_configuration.value.production_listener_rule
+          test_listener_rule         = advanced_configuration.value.test_listener_rule != "" ? advanced_configuration.value.test_listener_rule : null
+          role_arn                   = advanced_configuration.value.role_arn
+        }
+      }
+    }
+  }
+
+  health_check_grace_period_seconds = local.health_check_grace_period_seconds
+
+  # Proto-optional bounds: null lets AWS default (200/100), an explicit
+  # value -- including one that matches the default -- is sent as-is.
+  deployment_maximum_percent         = var.spec.deployment_maximum_percent
+  deployment_minimum_healthy_percent = var.spec.deployment_minimum_healthy_percent
+
+  dynamic "deployment_circuit_breaker" {
+    for_each = var.spec.deployment_circuit_breaker != null ? [var.spec.deployment_circuit_breaker] : []
+    content {
+      enable   = deployment_circuit_breaker.value.enable
+      rollback = deployment_circuit_breaker.value.rollback
+    }
+  }
+
+  # Alarm gating watches CloudWatch alarms BY NAME during deployments -- the
+  # referenced AwsCloudwatchAlarm nodes publish their names as outputs
+  # precisely for consumers like this.
+  dynamic "alarms" {
+    for_each = var.spec.alarms != null ? [var.spec.alarms] : []
+    content {
+      alarm_names = alarms.value.alarm_names
+      enable      = alarms.value.enable
+      rollback    = alarms.value.rollback
+    }
+  }
+
+  dynamic "deployment_configuration" {
+    for_each = var.spec.deployment_configuration != null ? [var.spec.deployment_configuration] : []
+    content {
+      strategy             = deployment_configuration.value.strategy != "" ? deployment_configuration.value.strategy : null
+      bake_time_in_minutes = deployment_configuration.value.bake_time_in_minutes
+
+      dynamic "canary_configuration" {
+        for_each = deployment_configuration.value.canary_configuration != null ? [deployment_configuration.value.canary_configuration] : []
+        content {
+          canary_percent              = canary_configuration.value.canary_percent
+          canary_bake_time_in_minutes = canary_configuration.value.canary_bake_time_in_minutes
+        }
+      }
+
+      dynamic "linear_configuration" {
+        for_each = deployment_configuration.value.linear_configuration != null ? [deployment_configuration.value.linear_configuration] : []
+        content {
+          step_percent              = linear_configuration.value.step_percent
+          step_bake_time_in_minutes = linear_configuration.value.step_bake_time_in_minutes
+        }
+      }
+
+      dynamic "lifecycle_hook" {
+        for_each = deployment_configuration.value.lifecycle_hooks
+        content {
+          hook_target_arn  = lifecycle_hook.value.hook_target_arn
+          role_arn         = lifecycle_hook.value.role_arn
+          lifecycle_stages = lifecycle_hook.value.lifecycle_stages
+          hook_details     = lifecycle_hook.value.hook_details != "" ? lifecycle_hook.value.hook_details : null
+        }
+      }
+    }
+  }
+
+  dynamic "deployment_controller" {
+    for_each = var.spec.deployment_controller != "" ? [var.spec.deployment_controller] : []
+    content {
+      type = deployment_controller.value
+    }
+  }
+
+  dynamic "service_connect_configuration" {
+    for_each = var.spec.service_connect != null ? [var.spec.service_connect] : []
+    content {
+      enabled   = service_connect_configuration.value.enabled
+      namespace = service_connect_configuration.value.namespace != "" ? service_connect_configuration.value.namespace : null
+
+      dynamic "log_configuration" {
+        for_each = service_connect_configuration.value.log_configuration != null ? [service_connect_configuration.value.log_configuration] : []
+        content {
+          log_driver = log_configuration.value.log_driver
+          options    = log_configuration.value.options
+
+          # Secret options are name -> ARN pairs the ECS agent resolves at
+          # task start; sorted iteration keeps the plan deterministic.
+          dynamic "secret_option" {
+            for_each = { for option_name in sort(keys(log_configuration.value.secret_options)) : option_name => log_configuration.value.secret_options[option_name] }
+            content {
+              name       = secret_option.key
+              value_from = secret_option.value
+            }
+          }
+        }
+      }
+
+      dynamic "service" {
+        for_each = service_connect_configuration.value.services
+        content {
+          port_name             = service.value.port_name
+          discovery_name        = service.value.discovery_name != "" ? service.value.discovery_name : null
+          ingress_port_override = service.value.ingress_port_override
+
+          dynamic "client_alias" {
+            for_each = service.value.client_alias != null ? [service.value.client_alias] : []
+            content {
+              port     = client_alias.value.port
+              dns_name = client_alias.value.dns_name != "" ? client_alias.value.dns_name : null
+            }
+          }
+
+          dynamic "timeout" {
+            for_each = service.value.timeout != null ? [service.value.timeout] : []
+            content {
+              idle_timeout_seconds        = timeout.value.idle_timeout_seconds > 0 ? timeout.value.idle_timeout_seconds : null
+              per_request_timeout_seconds = timeout.value.per_request_timeout_seconds > 0 ? timeout.value.per_request_timeout_seconds : null
+            }
+          }
+
+          dynamic "tls" {
+            for_each = service.value.tls != null ? [service.value.tls] : []
+            content {
+              issuer_cert_authority {
+                aws_pca_authority_arn = tls.value.aws_pca_authority_arn
+              }
+              kms_key  = tls.value.kms_key != "" ? tls.value.kms_key : null
+              role_arn = tls.value.role_arn != "" ? tls.value.role_arn : null
+            }
+          }
+        }
+      }
+    }
+  }
+
+  dynamic "service_registries" {
+    for_each = var.spec.service_registries != null ? [var.spec.service_registries] : []
+    content {
+      registry_arn   = service_registries.value.registry_arn
+      container_name = service_registries.value.container_name != "" ? service_registries.value.container_name : null
+      container_port = service_registries.value.container_port
+      port           = service_registries.value.port
+    }
+  }
+
+  dynamic "volume_configuration" {
+    for_each = var.spec.volume_configuration != null ? [var.spec.volume_configuration] : []
+    content {
+      name = volume_configuration.value.name
+
+      managed_ebs_volume {
+        role_arn         = volume_configuration.value.managed_ebs_volume.role_arn
+        size_in_gb       = volume_configuration.value.managed_ebs_volume.size_in_gb > 0 ? volume_configuration.value.managed_ebs_volume.size_in_gb : null
+        volume_type      = volume_configuration.value.managed_ebs_volume.volume_type != "" ? volume_configuration.value.managed_ebs_volume.volume_type : null
+        iops             = volume_configuration.value.managed_ebs_volume.iops > 0 ? volume_configuration.value.managed_ebs_volume.iops : null
+        throughput       = volume_configuration.value.managed_ebs_volume.throughput > 0 ? volume_configuration.value.managed_ebs_volume.throughput : null
+        encrypted        = volume_configuration.value.managed_ebs_volume.encrypted
+        kms_key_id       = volume_configuration.value.managed_ebs_volume.kms_key_id != "" ? volume_configuration.value.managed_ebs_volume.kms_key_id : null
+        snapshot_id      = volume_configuration.value.managed_ebs_volume.snapshot_id != "" ? volume_configuration.value.managed_ebs_volume.snapshot_id : null
+        file_system_type = volume_configuration.value.managed_ebs_volume.file_system_type != "" ? volume_configuration.value.managed_ebs_volume.file_system_type : null
+      }
+    }
+  }
+
+  dynamic "ordered_placement_strategy" {
+    for_each = var.spec.ordered_placement_strategy
+    content {
+      type  = ordered_placement_strategy.value.type
+      field = ordered_placement_strategy.value.field != "" ? ordered_placement_strategy.value.field : null
+    }
+  }
+
+  dynamic "placement_constraints" {
+    for_each = var.spec.placement_constraints
+    content {
+      type       = placement_constraints.value.type
+      expression = placement_constraints.value.expression != "" ? placement_constraints.value.expression : null
+    }
+  }
+
+  # Unset lets AWS decide (new services default to ENABLED where supported)
+  # -- the spec deliberately has no default here because the provider
+  # dropped its own.
+  availability_zone_rebalancing = var.spec.availability_zone_rebalancing != "" ? var.spec.availability_zone_rebalancing : null
+
+  propagate_tags          = var.spec.propagate_tags != "" ? var.spec.propagate_tags : null
+  enable_ecs_managed_tags = var.spec.enable_ecs_managed_tags
+  enable_execute_command  = var.spec.enable_execute_command
+  force_delete            = var.spec.force_delete
+
+  tags = local.aws_tags
+
+  # desired_count is runtime state once the service is live: the autoscaler
+  # owns it when configured, and operators may scale out of band. The module
+  # seeds the initial count and then leaves it alone. ignore_changes must be
+  # a static literal list (OpenTofu forbids a conditional expression here),
+  # so this always ignores -- matching the house convention for
+  # autoscaling-managed counts (the Pulumi module ignores the same path).
   lifecycle {
     ignore_changes = [desired_count]
   }
-
-  depends_on = [aws_ecs_task_definition.this]
-  tags       = local.tags
 }
 
-# ALB Target Group (only if ALB is enabled and container port is specified).
-# Fargate tasks use awsvpc networking, so they register with the load balancer by IP
-# (target_type = "ip"), which also requires the VPC id -- derived from the service's
-# first subnet above. Matches the Pulumi module (TargetType "ip", VpcId from the subnet).
-resource "aws_lb_target_group" "this" {
-  count       = local.alb_enabled && local.container_port != null ? 1 : 0
-  name        = substr("tg-${local.resource_name}", 0, 32)
-  port        = local.container_port
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = data.aws_subnet.first[0].vpc_id
+# ---------------------------------------------------------------------------
+# Folded autoscaling: the scaler's identity IS this service (one scalable
+# target per service), so it lives here rather than as its own kind. Each
+# target-tracking policy creates its own AWS-managed CloudWatch alarms.
+# ---------------------------------------------------------------------------
 
-  # Health check configuration
-  health_check {
-    enabled             = true
-    path                = coalesce(try(var.spec.alb.health_check.path, null), "/")
-    interval            = coalesce(try(var.spec.alb.health_check.interval, null), 30)
-    timeout             = coalesce(try(var.spec.alb.health_check.timeout, null), 5)
-    healthy_threshold   = coalesce(try(var.spec.alb.health_check.healthy_threshold, null), 5)
-    unhealthy_threshold = coalesce(try(var.spec.alb.health_check.unhealthy_threshold, null), 2)
-    protocol            = coalesce(try(var.spec.alb.health_check.protocol, null), "HTTP")
-    port                = coalesce(try(var.spec.alb.health_check.port, null), "traffic-port")
-  }
-
-  tags = local.tags
-}
-
-# ALB Listener Rule (only if ALB is enabled and container port is specified)
-resource "aws_lb_listener_rule" "this" {
-  count        = local.alb_enabled && local.container_port != null ? 1 : 0
-  listener_arn = data.aws_lb_listener.selected[0].arn
-  priority     = local.alb_listener_priority
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.this[0].arn
-  }
-
-  # Path-based routing condition
-  dynamic "condition" {
-    for_each = local.alb_routing_type == "path" && local.alb_path != null ? [1] : []
-    content {
-      path_pattern {
-        values = [local.alb_path]
-      }
-    }
-  }
-
-  # Hostname-based routing condition
-  dynamic "condition" {
-    for_each = local.alb_routing_type == "hostname" && local.alb_hostname != null ? [1] : []
-    content {
-      host_header {
-        values = [local.alb_hostname]
-      }
-    }
-  }
-
-  depends_on = [aws_lb_target_group.this]
-}
-
-# Auto Scaling Target (only if autoscaling is enabled)
-resource "aws_appautoscaling_target" "ecs_target" {
+resource "aws_appautoscaling_target" "this" {
   count              = local.autoscaling_enabled ? 1 : 0
-  max_capacity       = local.autoscaling_max_tasks
-  min_capacity       = local.autoscaling_min_tasks
-  resource_id        = "service/${local.cluster_name}/${local.resource_name}"
+  max_capacity       = var.spec.autoscaling.max_tasks
+  min_capacity       = var.spec.autoscaling.min_tasks
+  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.this.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
-
-  depends_on = [aws_ecs_service.this]
 }
 
-# Auto Scaling Policy - CPU-based (only if autoscaling is enabled and target_cpu_percent is set)
-resource "aws_appautoscaling_policy" "ecs_cpu_policy" {
-  count              = local.autoscaling_enabled && local.autoscaling_target_cpu_percent != null ? 1 : 0
-  name               = "${local.resource_name}-cpu-scaling"
+resource "aws_appautoscaling_policy" "cpu" {
+  # HCL's && does not short-circuit on null, so the autoscaling guard and
+  # the per-policy guard must nest as ternaries.
+  count              = local.autoscaling_enabled ? (var.spec.autoscaling.cpu != null ? 1 : 0) : 0
+  name               = "${local.service_name}-cpu-scaling"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs_target[0].resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs_target[0].scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs_target[0].service_namespace
+  resource_id        = aws_appautoscaling_target.this[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.this[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.this[0].service_namespace
 
   target_tracking_scaling_policy_configuration {
-    target_value       = local.autoscaling_target_cpu_percent
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 60
+    target_value       = var.spec.autoscaling.cpu.target_percent
+    scale_in_cooldown  = coalesce(var.spec.autoscaling.cpu.scale_in_cooldown_seconds, local.default_scale_in_cooldown)
+    scale_out_cooldown = coalesce(var.spec.autoscaling.cpu.scale_out_cooldown_seconds, local.default_scale_out_cooldown)
+    disable_scale_in   = var.spec.autoscaling.cpu.disable_scale_in
 
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
@@ -234,19 +300,19 @@ resource "aws_appautoscaling_policy" "ecs_cpu_policy" {
   }
 }
 
-# Auto Scaling Policy - Memory-based (only if autoscaling is enabled and target_memory_percent is set)
-resource "aws_appautoscaling_policy" "ecs_memory_policy" {
-  count              = local.autoscaling_enabled && local.autoscaling_target_memory_percent != null ? 1 : 0
-  name               = "${local.resource_name}-memory-scaling"
+resource "aws_appautoscaling_policy" "memory" {
+  count              = local.autoscaling_enabled ? (var.spec.autoscaling.memory != null ? 1 : 0) : 0
+  name               = "${local.service_name}-memory-scaling"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs_target[0].resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs_target[0].scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs_target[0].service_namespace
+  resource_id        = aws_appautoscaling_target.this[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.this[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.this[0].service_namespace
 
   target_tracking_scaling_policy_configuration {
-    target_value       = local.autoscaling_target_memory_percent
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 60
+    target_value       = var.spec.autoscaling.memory.target_percent
+    scale_in_cooldown  = coalesce(var.spec.autoscaling.memory.scale_in_cooldown_seconds, local.default_scale_in_cooldown)
+    scale_out_cooldown = coalesce(var.spec.autoscaling.memory.scale_out_cooldown_seconds, local.default_scale_out_cooldown)
+    disable_scale_in   = var.spec.autoscaling.memory.disable_scale_in
 
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageMemoryUtilization"
@@ -254,3 +320,26 @@ resource "aws_appautoscaling_policy" "ecs_memory_policy" {
   }
 }
 
+resource "aws_appautoscaling_policy" "requests" {
+  count              = local.autoscaling_enabled ? (var.spec.autoscaling.requests_per_target != null ? 1 : 0) : 0
+  name               = "${local.service_name}-requests-scaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.this[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.this[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.this[0].service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = var.spec.autoscaling.requests_per_target.target_requests_per_target
+    scale_in_cooldown  = coalesce(var.spec.autoscaling.requests_per_target.scale_in_cooldown_seconds, local.default_scale_in_cooldown)
+    scale_out_cooldown = coalesce(var.spec.autoscaling.requests_per_target.scale_out_cooldown_seconds, local.default_scale_out_cooldown)
+    disable_scale_in   = var.spec.autoscaling.requests_per_target.disable_scale_in
+
+    predefined_metric_specification {
+      predefined_metric_type = "ALBRequestCountPerTarget"
+      # ALBRequestCountPerTarget is scoped by "<lb-arn-suffix>/<tg-arn-suffix>"
+      # -- both halves come from the referenced load balancer's and target
+      # group's arn_suffix outputs.
+      resource_label = "${var.spec.autoscaling.requests_per_target.load_balancer_arn_suffix}/${var.spec.autoscaling.requests_per_target.target_group_arn_suffix}"
+    }
+  }
+}

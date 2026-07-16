@@ -1,0 +1,37 @@
+# AwsGlueCatalogDatabase full-surface scenario: the regular-database shape a
+# data lake actually runs -- description, a default table location under the
+# shared S3 bucket fixture (declared via the e2e-prerequisites annotation;
+# location_uri is a plain URI string, so it names the fixture bucket's fixed
+# name directly), catalog metadata parameters, and a Lake Formation
+# create-table default grant in the IAM-compatibility mode AWS itself
+# defaults to.
+#
+# Deliberately not exercised live: target_database resource links and
+# federated_database (both need externally shared infrastructure) and
+# cross-account catalog_id -- see the profile.
+apiVersion: aws.planton.dev/v1
+kind: AwsGlueCatalogDatabase
+metadata:
+  name: planton-oss-e2e-awsglue-db
+  id: planton-oss-e2e-awsglue-db
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsgluecatalogdatabase
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsS3Bucket"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E Glue Data Catalog database
+  locationUri: s3://planton-oss-e2e-awss3bucket-prereq/glue-tables/
+  parameters:
+    classification: parquet
+    managed-by: planton-e2e
+  createTableDefaultPermissions:
+    - permissions:
+        - ALL
+      principal: IAM_ALLOWED_PRINCIPALS

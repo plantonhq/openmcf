@@ -1,6 +1,6 @@
 package module
 
 const (
-	OpNsgId   = "nsg_id"
-	OpNsgName = "nsg_name"
+	OpNetworkSecurityGroupId   = "network_security_group_id"
+	OpNetworkSecurityGroupName = "network_security_group_name"
 )

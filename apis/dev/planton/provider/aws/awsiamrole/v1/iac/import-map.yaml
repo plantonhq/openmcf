@@ -1,0 +1,34 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsiamrole
+spec:
+  # The module names the role after the Planton resource (main.tf:
+  # name = var.metadata.name), so the role and both policy surfaces derive
+  # with zero user input: inline policies are keyed by their policy name
+  # and managed attachments by the policy ARN -- in both cases the module's
+  # for_each key IS the second import-ID segment, so the enumerated address
+  # carries it.
+  values:
+    - name: role_name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: role_name
+      where_to_find: >-
+        IAM console -> Roles (the role name), or `aws iam list-roles`
+        (RoleName). The name only -- not the path or ARN.
+    - name: inline_policy_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        IAM console -> Roles -> <role> -> Permissions (each inline
+        policy's name), or
+        `aws iam list-role-policies --role-name <role>` (PolicyNames).
+    - name: managed_policy_arn
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        IAM console -> Roles -> <role> -> Permissions (each attached
+        managed policy's ARN), or
+        `aws iam list-attached-role-policies --role-name <role>`
+        (PolicyArn).

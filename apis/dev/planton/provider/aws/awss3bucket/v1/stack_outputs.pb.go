@@ -38,7 +38,20 @@ type AwsS3BucketStackOutputs struct {
 	BucketRegionalDomainName string `protobuf:"bytes,4,opt,name=bucket_regional_domain_name,json=bucketRegionalDomainName,proto3" json:"bucket_regional_domain_name,omitempty"`
 	// Hosted zone ID for the S3 bucket's region
 	// Used for Route53 alias records pointing to S3 bucket
-	HostedZoneId  string `protobuf:"bytes,5,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
+	HostedZoneId string `protobuf:"bytes,5,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
+	// Global (legacy path-style) domain name of the S3 bucket
+	// Format: bucket-name.s3.amazonaws.com
+	BucketDomainName string `protobuf:"bytes,6,opt,name=bucket_domain_name,json=bucketDomainName,proto3" json:"bucket_domain_name,omitempty"`
+	// Website endpoint for the bucket, populated only when static website
+	// hosting is configured
+	// Format: bucket-name.s3-website-region.amazonaws.com (or s3-website.region for newer regions)
+	// Used as a CloudFront custom origin or direct HTTP website address
+	WebsiteEndpoint string `protobuf:"bytes,7,opt,name=website_endpoint,json=websiteEndpoint,proto3" json:"website_endpoint,omitempty"`
+	// Website domain of the region's S3 website service, populated only when
+	// static website hosting is configured
+	// Format: s3-website-region.amazonaws.com
+	// Used for Route53 alias records pointing to the website endpoint
+	WebsiteDomain string `protobuf:"bytes,8,opt,name=website_domain,json=websiteDomain,proto3" json:"website_domain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -108,18 +121,42 @@ func (x *AwsS3BucketStackOutputs) GetHostedZoneId() string {
 	return ""
 }
 
+func (x *AwsS3BucketStackOutputs) GetBucketDomainName() string {
+	if x != nil {
+		return x.BucketDomainName
+	}
+	return ""
+}
+
+func (x *AwsS3BucketStackOutputs) GetWebsiteEndpoint() string {
+	if x != nil {
+		return x.WebsiteEndpoint
+	}
+	return ""
+}
+
+func (x *AwsS3BucketStackOutputs) GetWebsiteDomain() string {
+	if x != nil {
+		return x.WebsiteDomain
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awss3bucket_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awss3bucket_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	";dev/planton/provider/aws/awss3bucket/v1/stack_outputs.proto\x12'dev.planton.provider.aws.awss3bucket.v1\"\xd2\x01\n" +
+	";dev/planton/provider/aws/awss3bucket/v1/stack_outputs.proto\x12'dev.planton.provider.aws.awss3bucket.v1\"\xd2\x02\n" +
 	"\x17AwsS3BucketStackOutputs\x12\x1b\n" +
 	"\tbucket_id\x18\x01 \x01(\tR\bbucketId\x12\x1d\n" +
 	"\n" +
 	"bucket_arn\x18\x02 \x01(\tR\tbucketArn\x12\x16\n" +
 	"\x06region\x18\x03 \x01(\tR\x06region\x12=\n" +
 	"\x1bbucket_regional_domain_name\x18\x04 \x01(\tR\x18bucketRegionalDomainName\x12$\n" +
-	"\x0ehosted_zone_id\x18\x05 \x01(\tR\fhostedZoneIdB\xdc\x02\n" +
+	"\x0ehosted_zone_id\x18\x05 \x01(\tR\fhostedZoneId\x12,\n" +
+	"\x12bucket_domain_name\x18\x06 \x01(\tR\x10bucketDomainName\x12)\n" +
+	"\x10website_endpoint\x18\a \x01(\tR\x0fwebsiteEndpoint\x12%\n" +
+	"\x0ewebsite_domain\x18\b \x01(\tR\rwebsiteDomainB\xdc\x02\n" +
 	"+com.dev.planton.provider.aws.awss3bucket.v1B\x11StackOutputsProtoP\x01ZWgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1;awss3bucketv1\xa2\x02\x05DPPAA\xaa\x02'Dev.Planton.Provider.Aws.Awss3bucket.V1\xca\x02'Dev\\Planton\\Provider\\Aws\\Awss3bucket\\V1\xe2\x023Dev\\Planton\\Provider\\Aws\\Awss3bucket\\V1\\GPBMetadata\xea\x02,Dev::Planton::Provider::Aws::Awss3bucket::V1b\x06proto3"
 
 var (

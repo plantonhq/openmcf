@@ -31,7 +31,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerPool
 metadata:
   name: web-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -83,7 +83,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerPool
 metadata:
   name: web-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -107,7 +107,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerPool
 metadata:
   name: app-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -133,7 +133,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerPool
 metadata:
   name: tcp-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -157,7 +157,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerPool
 metadata:
   name: ref-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

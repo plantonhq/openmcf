@@ -1,20 +1,19 @@
 locals {
-  resource_name = coalesce(try(var.metadata.name, null), "aws-kms-key")
-  tags          = merge({
-    "Name" = local.resource_name
-  }, try(var.metadata.labels, {}))
+  # metadata.name drives the Name identity tag -- KMS keys have no AWS name,
+  # only a generated ID/ARN.
+  key_name = var.metadata.name
 
-  key_spec_normalized      = upper(try(var.spec.key_spec, "SYMMETRIC"))
-  customer_master_key_spec = local.key_spec_normalized == "SYMMETRIC" ? "SYMMETRIC_DEFAULT" : local.key_spec_normalized
+  # Resource-identity tags match the Pulumi module key-for-key.
+  aws_tags = {
+    "Name"                     = var.metadata.name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsKmsKey"
+    "planton.ai/resource-id"   = var.metadata.id
+  }
 
-  is_rotation_disabled = try(var.spec.disable_key_rotation, false)
-  deletion_window_days = try(var.spec.deletion_window_days, 30)
-  description          = try(var.spec.description, null)
-  alias_name           = try(var.spec.alias_name, null)
-
-  # Rotation only applicable for symmetric keys
-  rotation_enabled = (local.key_spec_normalized == "SYMMETRIC") && (!local.is_rotation_disabled)
+  # Aliases keyed by name so each materializes as its own resource and list
+  # edits add/remove in place. CEL enforces name uniqueness.
+  aliases = { for a in coalesce(var.spec.aliases, []) : a => a }
 }
-
-
-

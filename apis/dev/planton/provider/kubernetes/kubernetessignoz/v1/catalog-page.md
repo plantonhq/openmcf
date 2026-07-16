@@ -32,7 +32,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: my-signoz
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -65,8 +65,6 @@ This creates a SigNoz instance with a single SigNoz replica (1000m CPU / 2Gi mem
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `signozContainer.replicas` | `int32` | `1` | Number of SigNoz (UI/API/Ruler/Alertmanager) pods. Must be at least 1. |
 | `signozContainer.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for each SigNoz pod. |
@@ -130,7 +128,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: dev-signoz
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -181,7 +179,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: prod-signoz
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -254,7 +252,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: shared-signoz
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -307,7 +305,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: team-signoz
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -335,7 +333,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: custom-signoz
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureservicebusqueue
+spec:
+  # The harness deploys the fixture resource group and a SCENARIO-LOCAL
+  # Service Bus namespace (declared via the e2e-prerequisites
+  # annotation -- namespace names are globally unique with a post-delete
+  # hold, so the namespace is never a shared recreate-per-scenario
+  # registry prerequisite), creates a fully-dialed queue (sessions,
+  # duplicate detection with its window, dead-letter routing, size
+  # ladder), verifies it via the ARM API, destroys it, and verifies it
+  # is gone -- on both provisioners. Queues create in seconds; the
+  # namespace fixture dominates the lane.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

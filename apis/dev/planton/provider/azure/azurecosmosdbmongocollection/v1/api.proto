@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurecosmosdbmongocollection.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azurecosmosdbmongocollection/v1/spec.proto";
+import "dev/planton/provider/azure/azurecosmosdbmongocollection/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureCosmosdbMongoCollection is the top-level API resource for a
+// MongoDB API collection inside a Cosmos DB database (referenced via
+// mongo_database_id) -- the unit of storage and scale-out where documents
+// actually live. Shard key, indexes, TTL, and dedicated throughput are
+// set per collection.
+message AzureCosmosdbMongoCollection {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureCosmosdbMongoCollection'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureCosmosdbMongoCollectionSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureCosmosdbMongoCollectionStatus status = 5;
+}
+
+// AzureCosmosdbMongoCollectionStatus holds the deployment status and outputs.
+message AzureCosmosdbMongoCollectionStatus {
+  // stack-outputs
+  AzureCosmosdbMongoCollectionStackOutputs outputs = 1;
+}

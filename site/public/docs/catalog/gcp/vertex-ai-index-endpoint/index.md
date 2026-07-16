@@ -31,7 +31,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiIndexEndpoint
 metadata:
   name: vector-serving
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -81,7 +81,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiIndexEndpoint
 metadata:
   name: search-serving
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -101,7 +101,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiIndexEndpoint
 metadata:
   name: private-search
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -122,7 +122,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiIndexEndpoint
 metadata:
   name: psc-search
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform
@@ -146,7 +146,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiIndexEndpoint
 metadata:
   name: composed-serving
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: ml-platform

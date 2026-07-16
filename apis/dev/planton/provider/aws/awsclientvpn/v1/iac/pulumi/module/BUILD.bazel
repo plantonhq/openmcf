@@ -3,18 +3,18 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "module",
     srcs = [
+        "authorization.go",
+        "endpoint.go",
         "locals.go",
         "main.go",
+        "network.go",
         "outputs.go",
-        "variables.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsclientvpn/v1/iac/pulumi/module",
     visibility = ["//visibility:public"],
     deps = [
         "//apis/dev/planton/provider/aws/awsclientvpn/v1:awsclientvpn",
         "//apis/dev/planton/shared/cloudresourcekind",
-        "//pkg/iac/pulumi/pulumimodule/datatypes/stringmaps",
-        "//pkg/iac/pulumi/pulumimodule/datatypes/stringmaps/convertstringmaps",
         "//pkg/iac/pulumi/pulumimodule/provider/aws/awstagkeys",
         "//pkg/iac/pulumi/pulumimodule/provider/aws/pulumiawsprovider",
         "@com_github_pkg_errors//:errors",

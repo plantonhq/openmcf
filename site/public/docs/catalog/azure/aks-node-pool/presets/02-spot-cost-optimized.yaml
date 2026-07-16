@@ -3,19 +3,17 @@ kind: AzureAksNodePool
 metadata:
   name: my-spot-pool
 spec:
-  clusterName:
-    value: "<aks-cluster-name>"
-  resourceGroup:
-    value: "<your-resource-group-name>"
+  kubernetesClusterId:
+    value: "<aks-cluster-arm-id>"
+  name: spot
   vmSize: Standard_D4s_v5
-  initialNodeCount: 1
-  autoscaling:
-    minNodes: 0
-    maxNodes: 10
-  availabilityZones:
+  priority: SPOT
+  evictionPolicy: EVICTION_DELETE
+  autoScalingEnabled: true
+  minCount: 0
+  maxCount: 20
+  zones:
     - "1"
     - "2"
     - "3"
-  osType: LINUX
   mode: USER
-  spotEnabled: true

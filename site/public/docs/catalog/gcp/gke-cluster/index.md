@@ -36,7 +36,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeCluster
 metadata:
   name: dev-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -202,7 +202,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeCluster
 metadata:
   name: prod-primary
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -250,7 +250,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeCluster
 metadata:
   name: autopilot-primary
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -282,7 +282,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeCluster
 metadata:
   name: secure-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

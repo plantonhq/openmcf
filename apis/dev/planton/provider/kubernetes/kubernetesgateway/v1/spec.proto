@@ -4,7 +4,6 @@ package dev.planton.provider.kubernetes.kubernetesgateway.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/gateway_api.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // KubernetesGatewaySpec defines a Kubernetes Gateway API Gateway: a
@@ -15,7 +14,7 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // 100% fidelity with the upstream Gateway API v1.5.1 GatewaySpec
 // (kubernetes-sigs/gateway-api apis/v1/gateway_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
-// (target_cluster, namespace). The experimental `defaultScope` field is
+// (namespace). The experimental `defaultScope` field is
 // intentionally excluded: it is absent from the standard-channel CRD and from
 // the typed Pulumi resource Planton provisions with.
 message KubernetesGatewaySpec {
@@ -46,11 +45,6 @@ message KubernetesGatewaySpec {
     message: "each requested Hostname address value must be unique"
     expression: "this.addresses.all(a1, (a1.type == 'Hostname' && a1.value != '') ? this.addresses.exists_one(a2, a2.type == 'Hostname' && a2.value == a1.value) : true)"
   };
-
-  // Target Kubernetes cluster where this Gateway is created. The Gateway API
-  // CRDs (KubernetesGatewayApiCrds) and a controller-backed GatewayClass must
-  // already be present on the cluster.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
 
   // Namespace in which the Gateway is created. Routes that attach to this
   // Gateway, and the TLS Secrets its listeners reference, are subject to the

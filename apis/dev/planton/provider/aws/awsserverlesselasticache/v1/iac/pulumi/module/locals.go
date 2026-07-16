@@ -14,19 +14,28 @@ type Locals struct {
 	Target  *awsserverlesselasticachev1.AwsServerlessElasticache
 	Spec    *awsserverlesselasticachev1.AwsServerlessElasticacheSpec
 	AwsTags map[string]string
+
+	// CacheName is metadata.name — create-only in AWS, and the basis both
+	// engines share so a manifest deploys identically on either.
+	CacheName string
 }
 
-func initializeLocals(ctx *pulumi.Context, in *awsserverlesselasticachev1.AwsServerlessElasticacheStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, in *awsserverlesselasticachev1.AwsServerlessElasticacheStackInput) *Locals {
 	locals := &Locals{}
 	locals.Target = in.Target
 	locals.Spec = in.Target.Spec
 
+	metadata := in.Target.Metadata
+	locals.CacheName = metadata.Name
+
+	// Resource-identity tags match the Terraform module key-for-key.
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
-		awstagkeys.Organization: locals.Target.Metadata.Org,
-		awstagkeys.Environment:  locals.Target.Metadata.Env,
+		awstagkeys.Organization: metadata.Org,
+		awstagkeys.Environment:  metadata.Env,
 		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsServerlessElasticache.String(),
-		awstagkeys.ResourceId:   locals.Target.Metadata.Id,
+		awstagkeys.ResourceId:   metadata.Id,
 	}
 
 	return locals

@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: Azure Service Bus Messaging
+spec:
+  selector:
+    kind: platform
+  description: The async integration backbone on Azure Service Bus -- dead-letter-postured command queues, a SQL-filtered topic fan-out for events, least-privilege send/listen credentials per entity, and an alert that fires the moment anything dead-letters
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/azure/azureservicebusnamespace/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/azure/service-bus-messaging
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/azure/service-bus-messaging/README.md

@@ -1,140 +1,171 @@
-# Azure DNS Record Terraform Module
-# Creates individual DNS records in an existing Azure DNS Zone.
+# Create one DNS record set in an Azure public DNS zone.
+#
+# The record type is whichever typed payload the spec carries (validation
+# guarantees exactly one), so exactly one of the count-gated resources
+# below materializes. Azure's management plane addresses record sets by
+# (resource group, zone name, type, record name) -- there is no ARM-id
+# addressing mode for record sets on either engine.
+#
+# Alias records (A/AAAA/CNAME only): when the payload carries
+# target_resource_id instead of literal values, Azure keeps the answer in
+# sync with the referenced resource -- no drift window when a Public IP's
+# address changes, and a way to point the zone APEX at an Azure resource
+# where DNS itself forbids CNAME. The provider requires exactly one of
+# records/target_resource_id, which spec validation already guarantees;
+# empty collections are passed as null so the provider never sees an
+# empty-but-present argument.
 
-# Create A record if record_type is A
-resource "azurerm_dns_a_record" "a_record" {
-  count = local.is_a_record ? 1 : 0
+# IPv4 address record -- literal addresses or an Azure-resource alias.
+resource "azurerm_dns_a_record" "main" {
+  count = var.spec.a != null ? 1 : 0
 
   name                = var.spec.name
   zone_name           = var.spec.zone_name
   resource_group_name = var.spec.resource_group
-  ttl                 = var.spec.ttl_seconds
-  records             = var.spec.values
+  ttl                 = local.ttl
+  records             = length(var.spec.a.addresses) > 0 ? var.spec.a.addresses : null
+  target_resource_id  = var.spec.a.target_resource_id != "" ? var.spec.a.target_resource_id : null
   tags                = local.final_tags
 }
 
-# Create AAAA record if record_type is AAAA
-resource "azurerm_dns_aaaa_record" "aaaa_record" {
-  count = local.is_aaaa_record ? 1 : 0
+# IPv6 address record -- literal addresses or an Azure-resource alias.
+resource "azurerm_dns_aaaa_record" "main" {
+  count = var.spec.aaaa != null ? 1 : 0
 
   name                = var.spec.name
   zone_name           = var.spec.zone_name
   resource_group_name = var.spec.resource_group
-  ttl                 = var.spec.ttl_seconds
-  records             = var.spec.values
+  ttl                 = local.ttl
+  records             = length(var.spec.aaaa.addresses) > 0 ? var.spec.aaaa.addresses : null
+  target_resource_id  = var.spec.aaaa.target_resource_id != "" ? var.spec.aaaa.target_resource_id : null
   tags                = local.final_tags
 }
 
-# Create CNAME record if record_type is CNAME
-resource "azurerm_dns_cname_record" "cname_record" {
-  count = local.is_cname_record ? 1 : 0
+# Canonical-name record -- one target hostname or an Azure-resource alias.
+# value is a StringValueOrRef in the spec; the tfvars converter flattens it
+# to the resolved literal (e.g. a Front Door endpoint's host_name), so the
+# module reads a plain string.
+resource "azurerm_dns_cname_record" "main" {
+  count = var.spec.cname != null ? 1 : 0
 
   name                = var.spec.name
   zone_name           = var.spec.zone_name
   resource_group_name = var.spec.resource_group
-  ttl                 = var.spec.ttl_seconds
-  record              = var.spec.values[0]
+  ttl                 = local.ttl
+  record              = var.spec.cname.value != "" ? var.spec.cname.value : null
+  target_resource_id  = var.spec.cname.target_resource_id != "" ? var.spec.cname.target_resource_id : null
   tags                = local.final_tags
 }
 
-# Create MX record if record_type is MX
-resource "azurerm_dns_mx_record" "mx_record" {
-  count = local.is_mx_record ? 1 : 0
+# Mail-exchange record set -- each entry carries its own preference, so
+# multi-server mail setups (10 primary / 20 secondary) express exactly.
+# The provider's preference attribute is string-typed; the spec's integer
+# is converted here.
+resource "azurerm_dns_mx_record" "main" {
+  count = length(var.spec.mx) > 0 ? 1 : 0
 
   name                = var.spec.name
   zone_name           = var.spec.zone_name
   resource_group_name = var.spec.resource_group
-  ttl                 = var.spec.ttl_seconds
+  ttl                 = local.ttl
   tags                = local.final_tags
 
   dynamic "record" {
-    for_each = var.spec.values
+    for_each = var.spec.mx
     content {
-      preference = var.spec.mx_priority
-      exchange   = record.value
+      preference = tostring(record.value.preference)
+      exchange   = record.value.exchange
     }
   }
 }
 
-# Create TXT record if record_type is TXT
-resource "azurerm_dns_txt_record" "txt_record" {
-  count = local.is_txt_record ? 1 : 0
+# Service-locator record set -- priority/weight/port/target per endpoint.
+resource "azurerm_dns_srv_record" "main" {
+  count = length(var.spec.srv) > 0 ? 1 : 0
 
   name                = var.spec.name
   zone_name           = var.spec.zone_name
   resource_group_name = var.spec.resource_group
-  ttl                 = var.spec.ttl_seconds
+  ttl                 = local.ttl
   tags                = local.final_tags
 
   dynamic "record" {
-    for_each = var.spec.values
+    for_each = var.spec.srv
+    content {
+      priority = record.value.priority
+      weight   = record.value.weight
+      port     = record.value.port
+      target   = record.value.target
+    }
+  }
+}
+
+# Certificate-authority-authorization record set -- which CAs may issue
+# certificates for this name.
+resource "azurerm_dns_caa_record" "main" {
+  count = length(var.spec.caa) > 0 ? 1 : 0
+
+  name                = var.spec.name
+  zone_name           = var.spec.zone_name
+  resource_group_name = var.spec.resource_group
+  ttl                 = local.ttl
+  tags                = local.final_tags
+
+  dynamic "record" {
+    for_each = var.spec.caa
+    content {
+      flags = record.value.flags
+      tag   = local.caa_tag_map[record.value.tag]
+      value = record.value.value
+    }
+  }
+}
+
+# Text record set -- SPF, DKIM, DMARC, domain verification. Values up to
+# 4096 characters are legal: the provider transparently splits each into
+# the 254-character strings DNS requires and reassembles them on read.
+# Each value is a StringValueOrRef in the spec; the tfvars converter
+# flattens the list to resolved literals (e.g. a Front Door custom
+# domain's validation_token), so the module reads plain strings.
+resource "azurerm_dns_txt_record" "main" {
+  count = length(var.spec.txt) > 0 ? 1 : 0
+
+  name                = var.spec.name
+  zone_name           = var.spec.zone_name
+  resource_group_name = var.spec.resource_group
+  ttl                 = local.ttl
+  tags                = local.final_tags
+
+  dynamic "record" {
+    for_each = var.spec.txt
     content {
       value = record.value
     }
   }
 }
 
-# Create NS record if record_type is NS
-resource "azurerm_dns_ns_record" "ns_record" {
-  count = local.is_ns_record ? 1 : 0
+# Name-server record set -- delegates a CHILD subdomain to another zone's
+# name servers. The zone's own apex NS records are Azure-managed.
+resource "azurerm_dns_ns_record" "main" {
+  count = length(var.spec.ns) > 0 ? 1 : 0
 
   name                = var.spec.name
   zone_name           = var.spec.zone_name
   resource_group_name = var.spec.resource_group
-  ttl                 = var.spec.ttl_seconds
-  records             = var.spec.values
+  ttl                 = local.ttl
+  records             = var.spec.ns
   tags                = local.final_tags
 }
 
-# Create CAA record if record_type is CAA
-resource "azurerm_dns_caa_record" "caa_record" {
-  count = local.is_caa_record ? 1 : 0
+# Pointer record set -- reverse DNS (IP-to-name) in in-addr.arpa /
+# ip6.arpa zones.
+resource "azurerm_dns_ptr_record" "main" {
+  count = length(var.spec.ptr) > 0 ? 1 : 0
 
   name                = var.spec.name
   zone_name           = var.spec.zone_name
   resource_group_name = var.spec.resource_group
-  ttl                 = var.spec.ttl_seconds
-  tags                = local.final_tags
-
-  dynamic "record" {
-    for_each = var.spec.values
-    content {
-      flags = 0
-      tag   = "issue"
-      value = record.value
-    }
-  }
-}
-
-# Create SRV record if record_type is SRV
-resource "azurerm_dns_srv_record" "srv_record" {
-  count = local.is_srv_record ? 1 : 0
-
-  name                = var.spec.name
-  zone_name           = var.spec.zone_name
-  resource_group_name = var.spec.resource_group
-  ttl                 = var.spec.ttl_seconds
-  tags                = local.final_tags
-
-  dynamic "record" {
-    for_each = var.spec.values
-    content {
-      priority = 10
-      weight   = 10
-      port     = 80
-      target   = record.value
-    }
-  }
-}
-
-# Create PTR record if record_type is PTR
-resource "azurerm_dns_ptr_record" "ptr_record" {
-  count = local.is_ptr_record ? 1 : 0
-
-  name                = var.spec.name
-  zone_name           = var.spec.zone_name
-  resource_group_name = var.spec.resource_group
-  ttl                 = var.spec.ttl_seconds
-  records             = var.spec.values
+  ttl                 = local.ttl
+  records             = var.spec.ptr
   tags                = local.final_tags
 }

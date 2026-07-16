@@ -28,7 +28,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIstio
 metadata:
   name: my-mesh
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -60,8 +60,6 @@ This creates an Istio service mesh with three Helm releases (base, istiod, ingre
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates both the `istio-system` and `istio-ingress` namespaces before deploying Helm releases. |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for the Istiod control plane pod. |
 | `container.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for the Istiod control plane pod. |
@@ -79,7 +77,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIstio
 metadata:
   name: dev-mesh
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -106,7 +104,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIstio
 metadata:
   name: prod-mesh
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -133,7 +131,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIstio
 metadata:
   name: platform-mesh
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

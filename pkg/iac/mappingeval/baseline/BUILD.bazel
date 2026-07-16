@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "baseline",
+    srcs = ["baseline.go"],
+    importpath = "github.com/plantonhq/planton/pkg/iac/mappingeval/baseline",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//apis/dev/planton/iac/importmappingproposal/v1:importmappingproposal",
+        "//pkg/iac/envpartition",
+        "//pkg/iac/envpartition/awsscan",
+        "//pkg/iac/mappingeval",
+        "@com_github_pkg_errors//:errors",
+        "@org_golang_google_protobuf//types/known/structpb",
+    ],
+)

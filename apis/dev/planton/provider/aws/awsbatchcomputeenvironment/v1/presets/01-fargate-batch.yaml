@@ -1,16 +1,17 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsBatchComputeEnvironment
 metadata:
-  name: my-fargate-batch
+  org: example-org
+  env: prod
+  name: fargate-batch
+  id: fargate-batch-id
 spec:
+  region: <aws-region>
   computeResources:
     type: FARGATE
     maxVcpus: 256
     subnetIds:
-      - value: "<private-subnet-id-az1>"
-      - value: "<private-subnet-id-az2>"
+      - value: <private-subnet-id-az1>
+      - value: <private-subnet-id-az2>
     securityGroupIds:
-      - value: "<security-group-id>"
-  jobQueues:
-    - name: default
-      priority: 1
+      - value: <security-group-id>

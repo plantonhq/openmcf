@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureloadbalancer
+spec:
+  # The harness deploys the fixture resource group (registry
+  # prerequisite) plus the public IP fixture (scenario-declared extra --
+  # frontends are optional references, so the address kinds never
+  # pollute the registry prerequisites), creates a PUBLIC Standard load
+  # balancer carrying the full traffic surface -- frontend, backend
+  # pool, HTTP health probe, load-balancing rule, single-target inbound
+  # NAT rule, and an explicit outbound SNAT rule (a public-frontend-only
+  # family an internal scenario could never prove) -- verifies it via
+  # the ARM API, destroys it, and verifies it is gone, on both
+  # provisioners. An idle load balancer costs cents; the run holds it
+  # for minutes.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 25

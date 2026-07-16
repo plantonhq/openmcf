@@ -4,15 +4,14 @@ metadata:
   name: awsrdsinstance-demo
 spec:
   region: us-west-2
-  # Provide either 2+ subnetIds or a dbSubnetGroupName
   subnetIds:
-    - value: subnet-aaaa
-    - value: subnet-bbbb
+    - value: subnet-0a1b2c3d4e5f60001
+    - value: subnet-0a1b2c3d4e5f60002
   engine: postgres
-  engineVersion: "14.10"
-  instanceClass: db.t3.micro
+  instanceClass: db.t4g.micro
   allocatedStorageGb: 20
+  storageType: gp3
   storageEncrypted: true
-  port: 5432
-  publiclyAccessible: false
-  multiAz: false
+  username: hackadmin
+  manageMasterUserPassword: true
+  skipFinalSnapshot: true

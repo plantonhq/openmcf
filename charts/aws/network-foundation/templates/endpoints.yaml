@@ -1,0 +1,50 @@
+# A gateway VPC endpoint for S3 — free, and it keeps S3 traffic on the AWS
+# network instead of hairpinning through the NAT gateway (where it would bill
+# per GB). Gateway endpoints work by injecting a managed prefix-list route
+# into route tables, so the attachment list below must name every route table
+# whose subnets should reach S3 privately.
+{% if values.s3_endpoint_enabled | bool %}
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsVpcEndpoint
+metadata:
+  name: "{{ values.network_name }}-s3-endpoint"
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: "{{ values.network_name }}-vpc"
+      fieldPath: status.outputs.vpc_id
+  # Gateway is the endpoint type for S3/DynamoDB route-table integration; the
+  # interface flavor exists too but bills hourly — the gateway is the free,
+  # correct default for S3.
+  endpointType: Gateway
+  serviceName: "com.amazonaws.{{ values.aws_region }}.s3"
+  routeTableIds:
+    # Every subnet in subnets.yaml that declares inline routes owns its route
+    # table and exports it; attaching all of them gives the whole network
+    # private S3 access.
+{% for az in values.availability_zones %}
+    - valueFrom:
+        kind: AwsSubnet
+        name: "{{ values.network_name }}-public-{{ az }}"
+        fieldPath: status.outputs.route_table_id
+{% endfor %}
+{% if values.nat_gateway_enabled | bool %}
+{% for az in values.availability_zones %}
+    - valueFrom:
+        kind: AwsSubnet
+        name: "{{ values.network_name }}-private-{{ az }}"
+        fieldPath: status.outputs.route_table_id
+{% endfor %}
+{% else %}
+    # Without NAT the private subnets declare no routes, so they ride the
+    # VPC's main route table instead of owning one — attach the main table so
+    # they still reach S3 (their only AWS path in the isolated layout).
+    - valueFrom:
+        kind: AwsVpc
+        name: "{{ values.network_name }}-vpc"
+        fieldPath: status.outputs.main_route_table_id
+{% endif %}
+{% endif %}

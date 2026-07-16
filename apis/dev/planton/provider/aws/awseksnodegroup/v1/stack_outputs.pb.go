@@ -21,22 +21,26 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsEksNodeGroupStackOutputs describes the key output values returned after
-// provisioning an AWS EKS node group. These outputs are often referenced by other
-// resources or users.
+// AwsEksNodeGroupStackOutputs describes the values returned after
+// provisioning a managed EKS node group.
 type AwsEksNodeGroupStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// nodegroup_name is the actual name of the created EKS node group.
+	// nodegroup_name is the name of the managed node group.
 	NodegroupName string `protobuf:"bytes,1,opt,name=nodegroup_name,json=nodegroupName,proto3" json:"nodegroup_name,omitempty"`
-	// asg_name is the name of the underlying AWS Auto Scaling Group managing the nodes.
-	AsgName string `protobuf:"bytes,2,opt,name=asg_name,json=asgName,proto3" json:"asg_name,omitempty"`
-	// remote_access_sg_id is the ID of the security group used for SSH access to nodes (if created).
-	// This is present only if an SSH key was provided in the spec, enabling remote access.
-	RemoteAccessSgId string `protobuf:"bytes,3,opt,name=remote_access_sg_id,json=remoteAccessSgId,proto3" json:"remote_access_sg_id,omitempty"`
-	// instance_profile_arn is the ARN of the EC2 instance profile associated with the nodes.
-	InstanceProfileArn string `protobuf:"bytes,4,opt,name=instance_profile_arn,json=instanceProfileArn,proto3" json:"instance_profile_arn,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// nodegroup_arn is the Amazon Resource Name of the node group -- the
+	// identifier EKS access entries and IAM policies reference.
+	NodegroupArn string `protobuf:"bytes,2,opt,name=nodegroup_arn,json=nodegroupArn,proto3" json:"nodegroup_arn,omitempty"`
+	// asg_name is the name of the EC2 Auto Scaling group AWS manages behind
+	// the node group -- the hook for ASG-level tooling (activity history,
+	// suspended processes, custom CloudWatch metrics).
+	AsgName string `protobuf:"bytes,3,opt,name=asg_name,json=asgName,proto3" json:"asg_name,omitempty"`
+	// remote_access_sg_id is the ID of the security group AWS creates for
+	// SSH access when remote_access is enabled without explicit source
+	// security groups. Empty when remote access is off or scoped to
+	// provided groups.
+	RemoteAccessSgId string `protobuf:"bytes,4,opt,name=remote_access_sg_id,json=remoteAccessSgId,proto3" json:"remote_access_sg_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AwsEksNodeGroupStackOutputs) Reset() {
@@ -76,6 +80,13 @@ func (x *AwsEksNodeGroupStackOutputs) GetNodegroupName() string {
 	return ""
 }
 
+func (x *AwsEksNodeGroupStackOutputs) GetNodegroupArn() string {
+	if x != nil {
+		return x.NodegroupArn
+	}
+	return ""
+}
+
 func (x *AwsEksNodeGroupStackOutputs) GetAsgName() string {
 	if x != nil {
 		return x.AsgName
@@ -90,23 +101,16 @@ func (x *AwsEksNodeGroupStackOutputs) GetRemoteAccessSgId() string {
 	return ""
 }
 
-func (x *AwsEksNodeGroupStackOutputs) GetInstanceProfileArn() string {
-	if x != nil {
-		return x.InstanceProfileArn
-	}
-	return ""
-}
-
 var File_dev_planton_provider_aws_awseksnodegroup_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awseksnodegroup_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/aws/awseksnodegroup/v1/stack_outputs.proto\x12+dev.planton.provider.aws.awseksnodegroup.v1\"\xc0\x01\n" +
+	"?dev/planton/provider/aws/awseksnodegroup/v1/stack_outputs.proto\x12+dev.planton.provider.aws.awseksnodegroup.v1\"\xb3\x01\n" +
 	"\x1bAwsEksNodeGroupStackOutputs\x12%\n" +
-	"\x0enodegroup_name\x18\x01 \x01(\tR\rnodegroupName\x12\x19\n" +
-	"\basg_name\x18\x02 \x01(\tR\aasgName\x12-\n" +
-	"\x13remote_access_sg_id\x18\x03 \x01(\tR\x10remoteAccessSgId\x120\n" +
-	"\x14instance_profile_arn\x18\x04 \x01(\tR\x12instanceProfileArnB\xf8\x02\n" +
+	"\x0enodegroup_name\x18\x01 \x01(\tR\rnodegroupName\x12#\n" +
+	"\rnodegroup_arn\x18\x02 \x01(\tR\fnodegroupArn\x12\x19\n" +
+	"\basg_name\x18\x03 \x01(\tR\aasgName\x12-\n" +
+	"\x13remote_access_sg_id\x18\x04 \x01(\tR\x10remoteAccessSgIdB\xf8\x02\n" +
 	"/com.dev.planton.provider.aws.awseksnodegroup.v1B\x11StackOutputsProtoP\x01Z_github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseksnodegroup/v1;awseksnodegroupv1\xa2\x02\x05DPPAA\xaa\x02+Dev.Planton.Provider.Aws.Awseksnodegroup.V1\xca\x02+Dev\\Planton\\Provider\\Aws\\Awseksnodegroup\\V1\xe2\x027Dev\\Planton\\Provider\\Aws\\Awseksnodegroup\\V1\\GPBMetadata\xea\x020Dev::Planton::Provider::Aws::Awseksnodegroup::V1b\x06proto3"
 
 var (

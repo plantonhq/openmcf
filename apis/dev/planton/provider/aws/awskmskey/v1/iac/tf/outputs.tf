@@ -1,22 +1,14 @@
 output "key_id" {
-  description = "The KMS key ID (UUID)."
+  description = "The generated key ID (UUID; mrk-... for multi-Region keys)."
   value       = aws_kms_key.this.key_id
 }
 
 output "key_arn" {
-  description = "The KMS key ARN."
+  description = "The key ARN -- the join key encryption-at-rest fields across the catalog reference."
   value       = aws_kms_key.this.arn
 }
 
-output "alias_name" {
-  description = "Alias name assigned to the KMS key, if any."
-  value       = local.alias_name != null && local.alias_name != "" ? local.alias_name : ""
+output "alias_names" {
+  description = "The alias names attached to the key (each alias/...), in spec order."
+  value       = var.spec.aliases
 }
-
-output "rotation_enabled" {
-  description = "Whether key rotation is enabled."
-  value       = local.rotation_enabled
-}
-
-
-

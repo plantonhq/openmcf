@@ -6,208 +6,175 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
-// **AzureMysqlFlexibleServerSpec** defines the configuration for creating
-// an Azure Database for MySQL Flexible Server with optional databases and
-// firewall rules.
+// **AzureMysqlFlexibleServerSpec** defines the configuration for creating an
+// Azure Database for MySQL Flexible Server: Azure's managed MySQL with
+// per-server compute/storage sizing, zone-redundant high availability,
+// Microsoft Entra (Azure AD) administration, customer-managed-key encryption,
+// read replicas, and point-in-time restore.
 //
-// Azure Database for MySQL Flexible Server is a fully managed relational
-// database service designed for granular control over database management and
-// configuration. It offers zone-redundant and same-zone high availability,
-// burstable/general-purpose/memory-optimized compute tiers, and configurable
-// storage with auto-grow.
+// The server is the unit of management -- databases, firewall rules, server
+// parameters, and the Entra administrator are configured on it and live with
+// it, so they are folded into this spec rather than modeled as standalone
+// kinds (none of them has an independent lifecycle or is referenced by
+// anything else).
 //
-// This component bundles the flexible server (`azurerm_mysql_flexible_server`)
-// with its databases (`azurerm_mysql_flexible_database`) and firewall rules
-// (`azurerm_mysql_flexible_server_firewall_rule`) because a server without at
-// least a connection path (firewall rules or VNet integration) and databases
-// has no practical utility. This follows DD03 (Composite Bundling Rules).
+// **Network access** has two mutually exclusive postures, matching Azure's
+// real contract: a public endpoint (with `firewall_rules` as its allowlist)
+// or VNet injection via `delegated_subnet_id` + `private_dns_zone_id`. A
+// VNet-injected server cannot have a public endpoint -- leave
+// `public_network_access` unset and Azure derives DISABLED.
 //
-// **Network access mode** is determined by whether `delegated_subnet_id` is set:
-// - `delegated_subnet_id` set --> **private VNet access** (public access disabled)
-// - `delegated_subnet_id` not set --> **public access** (firewall rules control access)
-// There is no `public_network_access_enabled` boolean; the IaC modules derive this
-// from the presence of `delegated_subnet_id` to eliminate contradiction risk.
+// **Authentication** always includes MySQL password auth (unlike PostgreSQL
+// Flexible Server, it cannot be switched off). Microsoft Entra authentication
+// is additive: declare the single `aad_administrator` (MySQL supports exactly
+// one) backed by a user-assigned identity attached to the server.
 //
-// **Authentication**: Password authentication is used for all connections.
-// Azure Active Directory authentication is not exposed in v1 and can be configured
-// post-deployment via the Azure portal for advanced scenarios.
-//
-// **Versions**: MySQL 5.7, 8.0.21, and 8.4 are supported. The default is "8.0.21"
-// (current production standard). Version 8.4 is the latest GA release with performance
-// improvements. Version 5.7 is approaching EOL and should only be used for legacy
-// migration.
-//
-// **SKU naming convention**: `{TIER}_Standard_{SIZE}` where TIER is:
-// - `B` (Burstable) -- dev/test, e.g., "B_Standard_B1ms", "B_Standard_B2s"
-// - `GP` (General Purpose) -- production, e.g., "GP_Standard_D2ds_v4", "GP_Standard_D4ads_v5"
-// - `MO` (Memory Optimized) -- analytics/caching, e.g., "MO_Standard_E2ds_v4"
-//
-// **ForceNew fields** (changing these destroys and recreates the server):
-// `name`, `administrator_login`, `delegated_subnet_id`, `private_dns_zone_id`,
-// `geo_redundant_backup_enabled`.
-// These are documented prominently because database recreation causes data loss.
+// **Lifecycle modes** (`create_mode`) cover the full server story: a fresh
+// server (DEFAULT), a read replica (REPLICA + `source_server_id`),
+// point-in-time restore (POINT_IN_TIME_RESTORE + the restore timestamp), and
+// cross-region geo-restore of the latest geo-redundant backup (GEO_RESTORE).
+// A replica is promoted to a standalone primary by setting `replication_role`
+// to NONE.
 message AzureMysqlFlexibleServerSpec {
-  // The Azure region where the MySQL Flexible Server will be created.
-  // Must match the region of the VNet/subnet if VNet integration is used.
-  // Examples: "eastus", "westus2", "westeurope", "southeastasia".
+  // The Azure region where the server will be created (e.g. "eastus",
+  // "westeurope"). Must match the region of the delegated subnet when the
+  // server is VNet-injected. Changing the region replaces the server.
   string region = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The Azure Resource Group where the MySQL Flexible Server will be created.
-  // Can be a literal string or a reference to an AzureResourceGroup output.
+  // The Azure resource group the server will be created in. Can be a
+  // literal resource-group name or a reference to an AzureResourceGroup's
+  // name output. Changing it replaces the server.
   dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
   ];
 
-  // The name of the MySQL Flexible Server.
-  // Must be globally unique across Azure. Used as the server hostname:
-  // `{name}.mysql.database.azure.com`
-  // Allowed characters: lowercase letters, numbers, and hyphens.
-  // Must start with a letter or number. Length: 3 to 63 characters.
-  //
-  // **ForceNew**: Changing this destroys and recreates the server.
-  string name = 3 [
+  // The server's name: 3-63 lowercase letters, digits, and hyphens,
+  // starting and ending with a letter or digit -- and GLOBALLY unique
+  // across Azure, because it becomes the server's DNS name
+  // ({name}.mysql.database.azure.com, the fqdn output). Changing the name
+  // replaces the server.
+  string server_name = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 3,
     (buf.validate.field).string.max_len = 63,
+    (buf.validate.field).string.pattern = "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+  ];
+
+  // How the server comes into existence. Unspecified means DEFAULT (a
+  // fresh, empty server). The restore/replica modes consume
+  // source_server_id (and, for point-in-time restore, the restore
+  // timestamp) and are fixed at creation.
+  AzureMysqlFlexibleServerCreateMode create_mode = 4;
+
+  // For REPLICA, POINT_IN_TIME_RESTORE, and GEO_RESTORE: the ARM ID of the
+  // server to replicate or restore from. References another
+  // AzureMysqlFlexibleServer's server_id output, so a primary-plus-replicas
+  // topology composes in one manifest set. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_server_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMysqlFlexibleServer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.server_id"
+  ];
+
+  // For POINT_IN_TIME_RESTORE only: the RFC-3339 UTC instant to restore
+  // the source server to (e.g. "2026-07-01T08:30:00Z"). Must fall inside
+  // the source's backup retention window. GEO_RESTORE takes no timestamp --
+  // it restores the latest geo-replicated backup. Fixed at creation.
+  string point_in_time_restore_time_in_utc = 6 [(buf.validate.field).cel = {
+    id: "mysql_restore_time_rfc3339"
+    message: "point_in_time_restore_time_in_utc must be an RFC-3339 UTC timestamp, e.g. 2026-07-01T08:30:00Z"
+    expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+  }];
+
+  // Promotion control for a replica. Setting NONE on a server created
+  // with create_mode REPLICA breaks replication and promotes it to a
+  // standalone read-write primary (irreversible). Cannot be set at
+  // creation and has no meaning on non-replica servers.
+  AzureMysqlFlexibleServerReplicationRole replication_role = 7;
+
+  // The administrator login for MySQL password authentication: 1-32
+  // letters, digits, and underscores. Azure reserves "azure_superuser",
+  // "admin", "administrator", "root", "guest", and "public". Required for
+  // a fresh (DEFAULT) server; a replica or restore inherits the source's
+  // login. The login is fixed once set.
+  string administrator_login = 8 [
+    (buf.validate.field).string.max_len = 32,
     (buf.validate.field).cel = {
-      id: "server_name_format"
-      message: "Server name must start with a letter or number and contain only lowercase letters, numbers, and hyphens"
-      expression: "this.matches('^[a-z0-9][a-z0-9-]*[a-z0-9]$')"
+      id: "mysql_admin_login_format"
+      message: "administrator_login must contain only letters, digits, and underscores, and cannot be azure_superuser, admin, administrator, root, guest, or public"
+      expression: "this == '' || (this.matches('^[a-zA-Z0-9_]+$') && !(this.lowerAscii() in ['azure_superuser', 'admin', 'administrator', 'root', 'guest', 'public']))"
     }
   ];
 
-  // The administrator login name for the server.
-  // Cannot be "azure_superuser", "admin", "administrator", "root", "guest", or "public".
-  // Must start with a letter or underscore. Length: 1 to 32 characters.
-  //
-  // **ForceNew**: Changing this destroys and recreates the server.
-  string administrator_login = 4 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 32
-  ];
+  // The administrator password (8-128 characters, from at least three of:
+  // uppercase, lowercase, digits, special characters). Can be a literal
+  // value or a reference to another resource's output. Required for a
+  // fresh (DEFAULT) server; updatable in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef administrator_password = 9 [(dev.planton.shared.options.sensitive) = true];
 
-  // The administrator password for the server.
-  // Can be a literal value or a reference to another resource's output
-  // (e.g., a generated random password or a Key Vault secret value).
+  // The MySQL version, using Azure's exact version strings. Unspecified
+  // applies "8.0.21" (Azure's identifier for the MySQL 8.0 series -- the
+  // production standard). In-place upgrade from 5.7 to 8.0.21 is
+  // supported (irreversible); downgrading replaces the server.
   //
-  // Password requirements: 8-128 characters, must contain characters from
-  // at least three of: uppercase, lowercase, digits, special characters.
-  //
-  // This is a polymorphic StringValueOrRef with no default_kind because
-  // the password source varies (literal, chart variable, external secret).
-  dev.planton.shared.foreignkey.v1.StringValueOrRef administrator_password = 5 [
-    (buf.validate.field).required = true,
-    (dev.planton.shared.options.sensitive) = true
-  ];
-
-  // The MySQL major version.
-  // Uses Azure's exact version strings for provider authenticity.
-  //
-  // Valid values: "5.7", "8.0.21", "8.4"
-  // Default: "8.0.21" (current GA production standard)
-  //
-  // - "5.7": Approaching EOL, use only for legacy migration
-  // - "8.0.21": Active, recommended for most production workloads (default)
-  // - "8.4": Latest GA, performance improvements, new features
-  optional string version = 6 [
+  // - "5.7": approaching end of life -- legacy migrations only
+  // - "8.0.21": the MySQL 8.0 series, recommended for new deployments
+  // - "8.4": the newest supported LTS release
+  optional string version = 10 [
     (dev.planton.shared.options.default) = "8.0.21",
     (buf.validate.field).cel = {
-      id: "version_valid"
+      id: "mysql_version_valid"
       message: "version must be one of: 5.7, 8.0.21, 8.4"
       expression: "this in ['5.7', '8.0.21', '8.4']"
     }
   ];
 
-  // The SKU name defining the compute tier and size.
-  // Format: {TIER}_Standard_{SIZE}
-  //
-  // Burstable (dev/test):
-  //   "B_Standard_B1ms" (1 vCPU, 2 GiB), "B_Standard_B2ms" (2 vCPU, 4 GiB),
-  //   "B_Standard_B4ms" (4 vCPU, 8 GiB), "B_Standard_B8ms" (8 vCPU, 16 GiB)
-  //
-  // General Purpose (production):
-  //   "GP_Standard_D2ds_v4" (2 vCPU, 8 GiB), "GP_Standard_D4ds_v4" (4 vCPU, 16 GiB),
-  //   "GP_Standard_D8ds_v4" (8 vCPU, 32 GiB), "GP_Standard_D16ds_v4" (16 vCPU, 64 GiB),
-  //   "GP_Standard_D2ads_v5" through "GP_Standard_D64ads_v5"
-  //
-  // Memory Optimized (analytics, caching):
-  //   "MO_Standard_E2ds_v4" (2 vCPU, 16 GiB) through "MO_Standard_E96ads_v5"
-  string sku_name = 7 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
-  ];
+  // The compute SKU, as {TIER}_Standard_{SIZE}: B_ (Burstable -- dev/test,
+  // e.g. "B_Standard_B1ms", "B_Standard_B2s"), GP_ (General Purpose --
+  // production, e.g. "GP_Standard_D2ds_v4", "GP_Standard_D4ads_v5"), or
+  // MO_ (Memory Optimized -- analytics/caching, e.g. "MO_Standard_E4ds_v4").
+  // Required for a fresh (DEFAULT) server; a replica left unset inherits
+  // the source's SKU. Resizable in place (brief restart). Burstable SKUs
+  // do not support high availability or read replicas.
+  string sku_name = 11 [(buf.validate.field).cel = {
+    id: "mysql_sku_name_format"
+    message: "sku_name must be {TIER}_Standard_{SIZE} where TIER is B, GP, or MO, e.g. B_Standard_B1ms, GP_Standard_D2ds_v4, MO_Standard_E4ds_v4"
+    expression: "this == '' || this.matches('^(B|GP|MO)_Standard_[A-Za-z0-9_]+$')"
+  }];
 
-  // The storage size in gigabytes.
-  // Range: 20 GB to 16384 GB (16 TB).
-  //
-  // **Cannot be downgraded** -- decreasing storage_size_gb forces server recreation.
-  // Azure validates exact values; the minimum is enforced here.
-  int32 storage_size_gb = 8 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).int32.gte = 20
-  ];
+  // The server's storage profile: capacity, provisioned IOPS or elastic
+  // IOPS scaling, auto-grow, and the slow-query-log placement. Omit to
+  // accept Azure's defaults (20 GiB, auto-grow on, default IOPS for the
+  // size).
+  AzureMysqlFlexibleServerStorage storage = 12;
 
-  // Enable storage auto-grow.
-  // When enabled, Azure automatically increases storage when free storage
-  // falls below a threshold. Prevents out-of-storage failures for databases
-  // that grow unpredictably.
-  //
-  // Default: true (MySQL provider default; note this differs from PostgreSQL
-  // where auto-grow defaults to false)
-  optional bool auto_grow_enabled = 9 [(dev.planton.shared.options.default) = "true"];
+  // The availability zone for the primary server ("1", "2", or "3").
+  // Unset lets Azure choose. After creation the zone can only change via
+  // a planned failover that swaps primary and standby -- Azure rejects an
+  // independent zone change.
+  string zone = 13 [(buf.validate.field).cel = {
+    id: "mysql_zone_valid"
+    message: "zone must be \"1\", \"2\", or \"3\""
+    expression: "this == '' || this in ['1', '2', '3']"
+  }];
 
-  // The ID of a subnet delegated to Microsoft.DBforMySQL/flexibleServers.
-  // When set, the server is deployed with **private VNet access** and
-  // public network access is automatically disabled.
-  //
-  // The subnet must have the delegation `Microsoft.DBforMySQL/flexibleServers`.
-  // Use the AzureSubnet component with a delegation block to create a properly
-  // configured subnet.
-  //
-  // **ForceNew**: Changing this destroys and recreates the server.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef delegated_subnet_id = 10 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
-  ];
+  // High availability: presence enables a standby server with synchronous
+  // replication and automatic failover. Omit for a single-instance
+  // server. Burstable SKUs and replica servers do not support HA.
+  AzureMysqlFlexibleServerHighAvailability high_availability = 14;
 
-  // The ID of a private DNS zone for server name resolution within the VNet.
-  // Typically "privatelink.mysql.database.azure.com" for private access.
-  //
-  // When `delegated_subnet_id` is set, providing a private DNS zone enables
-  // VNet-connected clients to resolve the server's FQDN to its private IP.
-  //
-  // **ForceNew**: Changing this destroys and recreates the server.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef private_dns_zone_id = 11 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePrivateDnsZone,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
-  ];
+  // The weekly maintenance window for Azure-managed patching. Omit for a
+  // system-managed window (Azure picks an off-peak slot). Presence pins
+  // patching to the declared day and start time.
+  AzureMysqlFlexibleServerMaintenanceWindow maintenance_window = 15;
 
-  // The availability zone for the primary server.
-  // Valid values: "1", "2", "3". If omitted, Azure selects automatically.
-  //
-  // When using ZoneRedundant high availability, the standby is placed in
-  // a different zone from the primary. Set this to control primary placement.
-  string zone = 12;
-
-  // High availability configuration.
-  // If this message is present, high availability is enabled.
-  // If omitted, the server runs as a single instance (no HA).
-  //
-  // Burstable SKUs (B_Standard_*) do NOT support high availability.
-  // General Purpose and Memory Optimized SKUs support both modes.
-  AzureMysqlHighAvailability high_availability = 13;
-
-  // The number of days to retain backups.
-  // Azure performs automatic daily backups. This controls how far back
-  // you can restore using point-in-time restore.
-  // Default: 7 days. Range: 1 to 35 days.
-  optional int32 backup_retention_days = 14 [
+  // How many days automatic backups are retained (the point-in-time
+  // restore horizon). 1-35; unspecified applies Azure's default of 7.
+  optional int32 backup_retention_days = 16 [
     (dev.planton.shared.options.default) = "7",
     (buf.validate.field).int32 = {
       gte: 1
@@ -215,117 +182,421 @@ message AzureMysqlFlexibleServerSpec {
     }
   ];
 
-  // Enable geo-redundant backup storage.
-  // When enabled, backup data is replicated to a paired Azure region,
-  // enabling cross-region restore for disaster recovery.
-  //
-  // **ForceNew**: Changing this destroys and recreates the server.
-  // Only available in regions that support geo-redundant storage.
-  // Default: false
-  optional bool geo_redundant_backup_enabled = 15 [(dev.planton.shared.options.default) = "false"];
+  // Whether backups are replicated to the paired Azure region, enabling
+  // cross-region GEO_RESTORE for disaster recovery. Azure's default is
+  // false. Fixed at creation.
+  bool geo_redundant_backup_enabled = 17;
 
-  // Databases to create on the server.
-  // Each database is created as a separate `azurerm_mysql_flexible_database`
-  // resource with its own lifecycle.
-  //
-  // If omitted, only the default system databases exist (created by Azure
-  // automatically). Most applications create at least one application database.
-  repeated AzureMysqlDatabase databases = 16;
+  // Whether the server accepts connections on its public endpoint.
+  // Unspecified lets Azure derive it: ENABLED for a public server,
+  // DISABLED when the server is VNet-injected via delegated_subnet_id
+  // (a VNet-injected server cannot have a public endpoint).
+  AzureMysqlFlexibleServerPublicNetworkAccess public_network_access = 18;
 
-  // Firewall rules for public access mode.
-  // Only effective when `delegated_subnet_id` is NOT set (public access mode).
-  // Each rule allows connections from a range of IP addresses.
-  //
-  // To allow all Azure services: start_ip_address = "0.0.0.0", end_ip_address = "0.0.0.0"
-  // To allow a single IP: set both start and end to the same address.
-  repeated AzureMysqlFirewallRule firewall_rules = 17;
-}
+  // For VNet injection (private access): the ARM ID of a subnet delegated
+  // to Microsoft.DBforMySQL/flexibleServers, with no other resources in
+  // it. Requires private_dns_zone_id. Fixed at creation. Use an
+  // AzureSubnet with the matching delegation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef delegated_subnet_id = 19 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
 
-// AzureMysqlHighAvailability defines the high availability configuration
-// for the MySQL Flexible Server.
-//
-// When this message is present on the spec, HA is enabled. Omitting it means
-// the server runs as a single instance.
-message AzureMysqlHighAvailability {
-  // The high availability mode.
-  // Uses Azure's exact API values for provider authenticity.
-  //
-  // Valid values:
-  // - "ZoneRedundant" -- Standby in a different availability zone (recommended for production)
-  // - "SameZone" -- Standby in the same zone as primary (lower latency failover)
-  //
-  // ZoneRedundant provides protection against zone-level failures.
-  // SameZone provides faster failover but no zone-level protection.
-  string mode = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "ha_mode_valid"
-      message: "mode must be one of: ZoneRedundant, SameZone"
-      expression: "this in ['ZoneRedundant', 'SameZone']"
+  // For VNet injection: the ARM ID of a private DNS zone (conventionally
+  // ending ".mysql.database.azure.com") where the server registers its
+  // private address, so VNet-connected clients resolve the fqdn to the
+  // private IP. Required whenever delegated_subnet_id is set.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef private_dns_zone_id = 20 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePrivateDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // The user-assigned identities attached to the server, by ARM ID.
+  // MySQL Flexible Server supports user-assigned identities only (no
+  // system-assigned flavor). Required for customer-managed-key encryption
+  // (the unwrapping identity must be attached here) and for the Entra
+  // administrator (aad_administrator.identity_id must be attached here).
+  // Reference AzureUserAssignedIdentity resources so Key Vault grants can
+  // be composed before the server exists.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_ids = 21 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // Customer-managed-key (CMK) encryption: the server's data is encrypted
+  // with a Key Vault key you own instead of a Microsoft-managed key.
+  // Requires a user-assigned identity (in user_assigned_identity_ids)
+  // that has wrap/unwrap access on the key's vault.
+  AzureMysqlFlexibleServerCustomerManagedKey customer_managed_key = 22;
+
+  // The single Microsoft Entra (Azure AD) administrator of the server --
+  // MySQL Flexible Server supports exactly one (a group can be used to
+  // admit a team). The grant is backed by a user-assigned identity
+  // attached to the server, which Azure uses to validate Entra tokens.
+  AzureMysqlFlexibleServerAadAdministrator aad_administrator = 23;
+
+  // Databases to create on the server, each a separate Azure sub-resource
+  // with its own charset/collation. Most applications declare at least
+  // one database here.
+  repeated AzureMysqlFlexibleServerDatabase databases = 24;
+
+  // Public-endpoint firewall allowlist: each rule admits a contiguous
+  // IPv4 range. Only meaningful while the server has a public endpoint.
+  // The special rule 0.0.0.0-0.0.0.0 admits Azure-internal services only
+  // (not the internet).
+  repeated AzureMysqlFlexibleServerFirewallRule firewall_rules = 25;
+
+  // MySQL server parameters to override (e.g. "max_connections",
+  // "slow_query_log", "require_secure_transport"), by parameter name.
+  // Values are applied as user overrides on Azure's per-SKU defaults;
+  // removing an entry resets the parameter to its default. Static
+  // (non-dynamic) parameters need a server restart to take effect --
+  // Azure applies them but reports "pending restart" until one happens.
+  map<string, string> server_parameters = 26 [(buf.validate.field).map = {
+    keys: {
+      string: {min_len: 1}
     }
-  ];
+    values: {
+      string: {min_len: 1}
+    }
+  }];
 
-  // The availability zone for the standby server.
-  // Valid values: "1", "2", "3". If omitted, Azure selects automatically.
-  //
-  // Must be different from the primary server's `zone` when using ZoneRedundant mode.
-  // Can only be set during initial creation; updates are not supported.
-  string standby_availability_zone = 2;
+  // Free-form tags applied to the server, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag
+  // with the same key wins. Tags are Azure's governance surface -- Azure
+  // Policy enforces them and Microsoft Cost Management groups by them.
+  map<string, string> tags = 27;
+
+  option (buf.validate.message).cel = {
+    id: "mysql_source_matches_create_mode"
+    message: "source_server_id is required for POINT_IN_TIME_RESTORE, REPLICA, and GEO_RESTORE, and must be omitted for a fresh (DEFAULT) server"
+    expression: "(this.create_mode >= 2 && this.create_mode <= 4) == has(this.source_server_id)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mysql_restore_time_matches_create_mode"
+    message: "point_in_time_restore_time_in_utc is required for POINT_IN_TIME_RESTORE and must be omitted for other create modes (GEO_RESTORE restores the latest geo-backup and takes no timestamp)"
+    expression: "(this.create_mode == 2) ? this.point_in_time_restore_time_in_utc != '' : this.point_in_time_restore_time_in_utc == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mysql_replication_role_replica_only"
+    message: "replication_role (NONE, replica promotion) is only valid on a server created with create_mode REPLICA"
+    expression: "this.replication_role == 0 || this.create_mode == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mysql_default_mode_requires_credentials"
+    message: "a fresh (DEFAULT) server requires administrator_login and administrator_password; only replicas and restores may omit them to inherit from the source"
+    expression: "!(this.create_mode == 0 || this.create_mode == 1) || (this.administrator_login != '' && has(this.administrator_password))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mysql_sku_required_for_default_mode"
+    message: "sku_name is required for a fresh (DEFAULT) server; only replicas and restores may omit it to inherit from the source"
+    expression: "!(this.create_mode == 0 || this.create_mode == 1) || this.sku_name != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mysql_vnet_injection_requires_private_dns_zone"
+    message: "delegated_subnet_id (VNet injection) requires private_dns_zone_id"
+    expression: "!has(this.delegated_subnet_id) || has(this.private_dns_zone_id)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mysql_vnet_injection_forbids_public_access"
+    message: "public_network_access cannot be ENABLED on a VNet-injected server (delegated_subnet_id set); leave it unset and Azure derives DISABLED"
+    expression: "!has(this.delegated_subnet_id) || this.public_network_access != 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mysql_cmk_requires_user_assigned_identity"
+    message: "customer_managed_key requires primary_user_assigned_identity_id and at least one entry in user_assigned_identity_ids"
+    expression: "!has(this.customer_managed_key) || (has(this.customer_managed_key.primary_user_assigned_identity_id) && this.user_assigned_identity_ids.size() > 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mysql_aad_admin_requires_user_assigned_identity"
+    message: "aad_administrator requires at least one entry in user_assigned_identity_ids (its identity_id must be attached to the server)"
+    expression: "!has(this.aad_administrator) || this.user_assigned_identity_ids.size() > 0"
+  };
 }
 
-// AzureMysqlDatabase defines a database to create on the MySQL Flexible Server.
-// Each database is a separate Azure resource with its own lifecycle, enabling
-// independent management.
-message AzureMysqlDatabase {
-  // The name of the database.
-  // Must be unique within the server.
-  // Must be a valid MySQL identifier.
-  string name = 1 [
+// The server's storage profile.
+message AzureMysqlFlexibleServerStorage {
+  // The provisioned storage size in GiB, 20-16384. Unspecified applies
+  // Azure's default of 20. Storage only grows -- shrinking replaces the
+  // server.
+  optional int32 size_gb = 1 [(buf.validate.field).int32 = {
+    gte: 20
+    lte: 16384
+  }];
+
+  // Provisioned IOPS, 360-48000 (bounded by the SKU and storage size).
+  // Unspecified applies Azure's default for the storage size. Cannot be
+  // combined with io_scaling_enabled -- elastic scaling manages IOPS
+  // itself.
+  optional int32 iops = 2 [(buf.validate.field).int32 = {
+    gte: 360
+    lte: 48000
+  }];
+
+  // Whether storage grows automatically when free space runs low,
+  // without downtime. Azure's default for MySQL is true (note: the
+  // opposite of PostgreSQL Flexible Server's default).
+  optional bool auto_grow_enabled = 3 [(dev.planton.shared.options.default) = "true"];
+
+  // Elastic IOPS scaling: Azure scales IOPS up and down automatically
+  // with workload demand instead of holding a provisioned value. Azure's
+  // default is false. Mutually exclusive with iops.
+  bool io_scaling_enabled = 4;
+
+  // Whether the slow query log is written to the server's disk (counted
+  // against storage) instead of Azure's default log pipeline. Azure's
+  // default is false; enable only when a compliance regime requires
+  // on-disk logs.
+  bool log_on_disk_enabled = 5;
+
+  option (buf.validate.message).cel = {
+    id: "mysql_storage_iops_conflicts_io_scaling"
+    message: "iops cannot be set when io_scaling_enabled is true -- elastic scaling manages IOPS itself"
+    expression: "!has(this.iops) || !this.io_scaling_enabled"
+  };
+}
+
+// High availability configuration: a standby server with synchronous
+// replication and automatic failover.
+message AzureMysqlFlexibleServerHighAvailability {
+  // ZONE_REDUNDANT places the standby in a different availability zone
+  // (survives zone failure -- the production recommendation); SAME_ZONE
+  // co-locates it (faster failover, no zone-level protection).
+  AzureMysqlFlexibleServerHighAvailabilityMode mode = 1 [(buf.validate.field).required = true];
+
+  // The availability zone for the standby ("1", "2", or "3"). Unset lets
+  // Azure choose. For ZONE_REDUNDANT it must differ from the primary's
+  // zone. After creation, zones only change via a planned failover that
+  // swaps zone and standby_availability_zone.
+  string standby_availability_zone = 2 [(buf.validate.field).cel = {
+    id: "mysql_standby_zone_valid"
+    message: "standby_availability_zone must be \"1\", \"2\", or \"3\""
+    expression: "this == '' || this in ['1', '2', '3']"
+  }];
+}
+
+// The weekly maintenance window for Azure-managed patching.
+message AzureMysqlFlexibleServerMaintenanceWindow {
+  // Day of the week: 0 (Sunday) through 6 (Saturday).
+  int32 day_of_week = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 6
+  }];
+
+  // The window's start hour, 0-23 (UTC).
+  int32 start_hour = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 23
+  }];
+
+  // The window's start minute, 0-59.
+  int32 start_minute = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 59
+  }];
+}
+
+// Customer-managed-key encryption settings.
+message AzureMysqlFlexibleServerCustomerManagedKey {
+  // The Key Vault key that encrypts the server's data, by data-plane key
+  // ID. Defaults to referencing an AzureKeyVaultKey's versionless_id
+  // output so key rotations propagate automatically; pin a versioned ID
+  // only when a compliance regime demands an immutable key version. The
+  // key's vault must have purge protection enabled.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+
+  // The user-assigned identity Azure uses to unwrap the key, by ARM ID.
+  // Must be one of the identities in user_assigned_identity_ids, with
+  // wrap/unwrap access on the key's vault (a "Key Vault Crypto Service
+  // Encryption User" role assignment, or the equivalent access policy).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef primary_user_assigned_identity_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // For geo-redundant backups: the Key Vault key (in the paired region's
+  // vault) that encrypts the geo-replicated backup data. Requires
+  // geo_backup_user_assigned_identity_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef geo_backup_key_vault_key_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+
+  // The user-assigned identity that unwraps the geo-backup key, by ARM
+  // ID. Required together with geo_backup_key_vault_key_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef geo_backup_user_assigned_identity_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "mysql_cmk_geo_pair"
+    message: "geo_backup_key_vault_key_id and geo_backup_user_assigned_identity_id must be set together"
+    expression: "has(this.geo_backup_key_vault_key_id) == has(this.geo_backup_user_assigned_identity_id)"
+  };
+}
+
+// The server's single Microsoft Entra administrator grant.
+message AzureMysqlFlexibleServerAadAdministrator {
+  // The user-assigned identity (attached to the server via
+  // user_assigned_identity_ids) that Azure uses to read directory
+  // objects when validating Entra logins, by ARM ID.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef identity_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // The administrator principal's display name as it appears in Entra
+  // (e.g. "dba-team@contoso.com" for a user, the group name for a
+  // group). MySQL uses it as the login name for Entra connections.
+  string login = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The character set for the database.
-  // Default: "utf8mb4" (recommended for most applications, supports full Unicode
-  // including emojis and supplementary characters).
-  // Common values: "utf8mb4", "utf8", "latin1".
-  //
-  // Note: The charset comparison is case-insensitive in Azure.
-  optional string charset = 2 [(dev.planton.shared.options.default) = "utf8mb4"];
+  // The ID of the Entra principal being granted the administrator role.
+  // For a user or group this is the directory object ID; for a managed
+  // identity MySQL validates tokens against the identity's CLIENT
+  // (application) ID -- which is why the default reference points at an
+  // AzureUserAssignedIdentity's client_id output, not its principal_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef object_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.client_id"
+  ];
 
-  // The collation for the database.
-  // Default: "utf8mb4_0900_ai_ci" (MySQL 8.0+ default, accent-insensitive,
-  // case-insensitive).
-  // For MySQL 5.7: use "utf8mb4_unicode_ci" instead.
-  //
-  // Determines sort order and string comparison behavior.
-  optional string collation = 3 [(dev.planton.shared.options.default) = "utf8mb4_0900_ai_ci"];
+  // The Entra tenant of the administrator principal. Leave unset to use
+  // the deploying credential's tenant -- the correct value for virtually
+  // every deployment.
+  optional string tenant_id = 4 [(buf.validate.field).string.uuid = true];
 }
 
-// AzureMysqlFirewallRule defines a firewall rule for public access mode.
-// Each rule allows connections from a contiguous range of IPv4 addresses.
-message AzureMysqlFirewallRule {
-  // The name of the firewall rule.
-  // Must be unique within the server.
-  // Examples: "allow-office", "allow-azure-services", "allow-dev-machine".
+// One database on the server, a separate Azure sub-resource. All fields
+// are fixed at creation (changing any replaces the database).
+message AzureMysqlFlexibleServerDatabase {
+  // The database name: 1-64 characters, a valid MySQL schema identifier;
+  // unique within the server.
   string name = 1 [
     (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // The database character set. Unspecified applies "utf8mb4" (full
+  // Unicode including supplementary characters -- the right choice for
+  // virtually all applications). Other MySQL charsets (e.g. "latin1",
+  // "utf8mb3") are accepted for legacy migrations.
+  optional string charset = 2 [
+    (dev.planton.shared.options.default) = "utf8mb4",
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The start of the IP address range (inclusive).
-  // Must be a valid IPv4 address.
-  // Use "0.0.0.0" with end "0.0.0.0" to allow all Azure services.
+  // The database collation (sort order and string comparison), e.g.
+  // "utf8mb4_0900_ai_ci" (the MySQL 8.0 default), "utf8mb4_unicode_ci"
+  // (for MySQL 5.7), or "utf8mb4_bin".
+  optional string collation = 3 [
+    (dev.planton.shared.options.default) = "utf8mb4_0900_ai_ci",
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// One public-endpoint firewall rule admitting a contiguous IPv4 range.
+message AzureMysqlFlexibleServerFirewallRule {
+  // The rule's name: 1-128 letters, digits, hyphens, and underscores;
+  // unique within the server. E.g. "allow-office", "allow-ci".
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9-_]+$"
+  ];
+
+  // The first IPv4 address of the admitted range (inclusive). Use
+  // 0.0.0.0 for both start and end to admit Azure-internal services.
   string start_ip_address = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 7
+    (buf.validate.field).string.ipv4 = true
   ];
 
-  // The end of the IP address range (inclusive).
-  // Must be a valid IPv4 address and >= start_ip_address.
-  // Set equal to start_ip_address for a single IP rule.
+  // The last IPv4 address of the admitted range (inclusive). Equal to
+  // start_ip_address for a single-address rule.
   string end_ip_address = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 7
+    (buf.validate.field).string.ipv4 = true
   ];
+}
+
+// How the server comes into existence.
+enum AzureMysqlFlexibleServerCreateMode {
+  // Not specified: DEFAULT (a fresh, empty server).
+  azure_mysql_flexible_server_create_mode_unspecified = 0;
+
+  // A fresh, empty server (requires sku_name and the admin credentials).
+  DEFAULT = 1;
+
+  // Restore the source server to a point in time, in the same region
+  // (requires source_server_id + point_in_time_restore_time_in_utc).
+  POINT_IN_TIME_RESTORE = 2;
+
+  // A read replica of the source server, asynchronously replicated
+  // (requires source_server_id; SKU/storage left unset inherit the
+  // source's).
+  REPLICA = 3;
+
+  // Restore the source's latest geo-redundant backup into the paired
+  // region (requires source_server_id and geo_redundant_backup_enabled
+  // on the source; takes no timestamp).
+  GEO_RESTORE = 4;
+}
+
+// Replication role updates (replica promotion).
+enum AzureMysqlFlexibleServerReplicationRole {
+  // Not specified: leave the replication topology as created.
+  azure_mysql_flexible_server_replication_role_unspecified = 0;
+
+  // Break replication and promote this replica to a standalone
+  // read-write primary (irreversible).
+  NONE = 1;
+}
+
+// High availability modes.
+enum AzureMysqlFlexibleServerHighAvailabilityMode {
+  // Not specified -- invalid; choose an explicit mode when the HA block
+  // is present.
+  azure_mysql_flexible_server_high_availability_mode_unspecified = 0;
+
+  // Standby in a different availability zone: survives zone failure.
+  // The production recommendation.
+  ZONE_REDUNDANT = 1;
+
+  // Standby in the same zone: faster failover, no zone-level protection.
+  SAME_ZONE = 2;
+}
+
+// Public-endpoint control.
+enum AzureMysqlFlexibleServerPublicNetworkAccess {
+  // Not specified: Azure derives the value -- ENABLED for a public
+  // server, DISABLED when the server is VNet-injected.
+  azure_mysql_flexible_server_public_network_access_unspecified = 0;
+
+  // The server accepts connections on its public endpoint, filtered by
+  // firewall_rules.
+  ENABLED = 1;
+
+  // The server has no public endpoint (reachable only through VNet
+  // injection or private connectivity).
+  DISABLED = 2;
 }

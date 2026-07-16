@@ -46,11 +46,19 @@ type AwsMwaaEnvironmentStackOutputs struct {
 	// status is the current status of the MWAA environment
 	// (e.g., "AVAILABLE", "CREATING", "UPDATING", "DELETING").
 	Status string `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
-	// security_group_id is the ID of the managed security group, if one was created
-	// from security_group_ids or allowed_cidr_blocks in the spec.
-	SecurityGroupId string `protobuf:"bytes,8,opt,name=security_group_id,json=securityGroupId,proto3" json:"security_group_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// created_at is the timestamp when the environment was created.
+	CreatedAt string `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// database_vpc_endpoint_service is the VPC endpoint service name for the
+	// environment's Airflow metadata database. When endpoint_management is
+	// "CUSTOMER", create an AwsVpcEndpoint against this service name.
+	DatabaseVpcEndpointService string `protobuf:"bytes,9,opt,name=database_vpc_endpoint_service,json=databaseVpcEndpointService,proto3" json:"database_vpc_endpoint_service,omitempty"`
+	// webserver_vpc_endpoint_service is the VPC endpoint service name for the
+	// environment's Airflow webserver. When endpoint_management is "CUSTOMER",
+	// create an AwsVpcEndpoint against this service name. Empty when the
+	// webserver is PUBLIC_ONLY.
+	WebserverVpcEndpointService string `protobuf:"bytes,10,opt,name=webserver_vpc_endpoint_service,json=webserverVpcEndpointService,proto3" json:"webserver_vpc_endpoint_service,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *AwsMwaaEnvironmentStackOutputs) Reset() {
@@ -132,9 +140,23 @@ func (x *AwsMwaaEnvironmentStackOutputs) GetStatus() string {
 	return ""
 }
 
-func (x *AwsMwaaEnvironmentStackOutputs) GetSecurityGroupId() string {
+func (x *AwsMwaaEnvironmentStackOutputs) GetCreatedAt() string {
 	if x != nil {
-		return x.SecurityGroupId
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *AwsMwaaEnvironmentStackOutputs) GetDatabaseVpcEndpointService() string {
+	if x != nil {
+		return x.DatabaseVpcEndpointService
+	}
+	return ""
+}
+
+func (x *AwsMwaaEnvironmentStackOutputs) GetWebserverVpcEndpointService() string {
+	if x != nil {
+		return x.WebserverVpcEndpointService
 	}
 	return ""
 }
@@ -143,7 +165,7 @@ var File_dev_planton_provider_aws_awsmwaaenvironment_v1_stack_outputs_proto prot
 
 const file_dev_planton_provider_aws_awsmwaaenvironment_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/aws/awsmwaaenvironment/v1/stack_outputs.proto\x12.dev.planton.provider.aws.awsmwaaenvironment.v1\"\xdd\x02\n" +
+	"Bdev/planton/provider/aws/awsmwaaenvironment/v1/stack_outputs.proto\x12.dev.planton.provider.aws.awsmwaaenvironment.v1\"\xd8\x03\n" +
 	"\x1eAwsMwaaEnvironmentStackOutputs\x12'\n" +
 	"\x0fenvironment_arn\x18\x01 \x01(\tR\x0eenvironmentArn\x12)\n" +
 	"\x10environment_name\x18\x02 \x01(\tR\x0fenvironmentName\x12#\n" +
@@ -151,8 +173,12 @@ const file_dev_planton_provider_aws_awsmwaaenvironment_v1_stack_outputs_proto_ra
 	"\x0fairflow_version\x18\x04 \x01(\tR\x0eairflowVersion\x12(\n" +
 	"\x10service_role_arn\x18\x05 \x01(\tR\x0eserviceRoleArn\x12+\n" +
 	"\x11environment_class\x18\x06 \x01(\tR\x10environmentClass\x12\x16\n" +
-	"\x06status\x18\a \x01(\tR\x06status\x12*\n" +
-	"\x11security_group_id\x18\b \x01(\tR\x0fsecurityGroupIdB\x8d\x03\n" +
+	"\x06status\x18\a \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\x12A\n" +
+	"\x1ddatabase_vpc_endpoint_service\x18\t \x01(\tR\x1adatabaseVpcEndpointService\x12C\n" +
+	"\x1ewebserver_vpc_endpoint_service\x18\n" +
+	" \x01(\tR\x1bwebserverVpcEndpointServiceB\x8d\x03\n" +
 	"2com.dev.planton.provider.aws.awsmwaaenvironment.v1B\x11StackOutputsProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmwaaenvironment/v1;awsmwaaenvironmentv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Aws.Awsmwaaenvironment.V1\xca\x02.Dev\\Planton\\Provider\\Aws\\Awsmwaaenvironment\\V1\xe2\x02:Dev\\Planton\\Provider\\Aws\\Awsmwaaenvironment\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Aws::Awsmwaaenvironment::V1b\x06proto3"
 
 var (

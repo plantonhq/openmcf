@@ -141,6 +141,19 @@ message AwsSqsQueueSpec {
   google.protobuf.Struct policy = 15;
 
   // ---------------------------------------------------------------------------
+  // Redrive allow policy (dead-letter permissions)
+  // ---------------------------------------------------------------------------
+
+  // Controls which source queues are allowed to use THIS queue as their
+  // dead-letter queue. This is the permission side of the dead-letter
+  // relationship: `dead_letter_config` on a source queue points at a DLQ,
+  // while `redrive_allow_policy` on the DLQ itself restricts who may point
+  // at it. When unset, AWS allows all source queues in the account (the
+  // "allowAll" behavior). Locking a shared DLQ down with "byQueue" prevents
+  // unrelated workloads from silently routing their failures into it.
+  AwsSqsQueueRedriveAllowPolicy redrive_allow_policy = 16;
+
+  // ---------------------------------------------------------------------------
   // CEL validations
   // ---------------------------------------------------------------------------
 
@@ -217,4 +230,47 @@ message AwsSqsQueueDeadLetterConfig {
     gte: 1
     lte: 1000
   }];
+}
+
+// AwsSqsQueueRedriveAllowPolicy restricts which source queues may designate this
+// queue as their dead-letter queue. AWS evaluates this policy when a source
+// queue's redrive (dead-letter) configuration is created or updated — it does
+// not affect messages already in flight.
+message AwsSqsQueueRedriveAllowPolicy {
+  // The redrive permission mode.
+  // Valid values:
+  // - "allowAll": any source queue in the same account and region may use this
+  //   queue as its DLQ (AWS's default behavior when no policy is set).
+  // - "denyAll": no source queue may use this queue as a DLQ. Use this to
+  //   protect a queue that must never receive redriven messages.
+  // - "byQueue": only the queues listed in `source_queue_arns` may use this
+  //   queue as their DLQ. The recommended mode for shared/central DLQs.
+  string redrive_permission = 1 [(buf.validate.field).required = true];
+
+  // ARNs of the source queues permitted to use this queue as their dead-letter
+  // queue. Each entry accepts a direct ARN or a reference to another
+  // AwsSqsQueue resource. Only valid (and required) when `redrive_permission`
+  // is "byQueue". AWS caps the list at 10 source queues; to allow more than
+  // 10, use "allowAll" instead.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_queue_arns = 2 [
+    (buf.validate.field).repeated.max_items = 10,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSqsQueue,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_arn"
+  ];
+
+  // The permission mode must be one of AWS's three accepted values.
+  option (buf.validate.message).cel = {
+    id: "redrive_permission_valid"
+    message: "redrive_permission must be 'allowAll', 'denyAll', or 'byQueue'"
+    expression: "this.redrive_permission in ['allowAll', 'denyAll', 'byQueue']"
+  };
+
+  // byQueue is the only mode that takes an explicit source list; the other two
+  // modes reject one. Checked via list size only (never dereferencing the
+  // reference entries) so the rule stays portable across protovalidate runtimes.
+  option (buf.validate.message).cel = {
+    id: "source_queues_match_permission"
+    message: "source_queue_arns is required (1-10 entries) with redrive_permission 'byQueue' and must be empty for 'allowAll' or 'denyAll'"
+    expression: "this.redrive_permission == 'byQueue' ? size(this.source_queue_arns) >= 1 : size(this.source_queue_arns) == 0"
+  };
 }

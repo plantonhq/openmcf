@@ -53,9 +53,68 @@ message KubernetesProviderConfigGcpGke {
   string service_account_key = 3 [(buf.validate.field).required = true];
 }
 
-// KubernetesProviderConfigAwsEks message represents the specification required to connect to a Elastic Kubernetes Service (EKS) cluster.
-// This message consolidates the necessary input parameters for establishing a secure connection with a EKS cluster.
-message KubernetesProviderConfigAwsEks {}
+// KubernetesProviderConfigAwsEks contains the connection parameters for an Amazon Elastic
+// Kubernetes Service (EKS) cluster.
+//
+// EKS has no long-lived bearer credential: API-server tokens are presigned STS
+// GetCallerIdentity URLs that expire within ~15 minutes and are validated per request.
+// This config therefore carries the cluster identity as plain values plus the AWS
+// credentials used to mint those tokens on demand. The caller (a deploy engine or an
+// in-process Kubernetes client) exchanges the AWS credentials for a fresh EKS token
+// whenever one is needed; the token itself is never stored here.
+message KubernetesProviderConfigAwsEks {
+  // The EKS cluster name. Bound into every minted token via the x-k8s-aws-id signed
+  // header, which is how the cluster's API server ties the token to itself.
+  string cluster_name = 1 [(buf.validate.field).required = true];
+
+  // The cluster API server endpoint URL.
+  string cluster_endpoint = 2 [(buf.validate.field).required = true];
+
+  // Base64-encoded cluster Certificate Authority (CA) certificate.
+  // This is the standard kubeconfig CA data format.
+  string cluster_ca_data = 3 [(buf.validate.field).required = true];
+
+  // The AWS region hosting the cluster. Token minting signs against this region's
+  // STS endpoint, so it is required even though the endpoint URL implies it.
+  string region = 4 [(buf.validate.field).required = true];
+
+  // The AWS Access Key ID used to mint EKS tokens. Optional: when the static key
+  // fields are empty, tokens are minted from the ambient AWS credential chain of the
+  // process (shared config profile, environment, or instance role). When present, it
+  // must start with 'AKIA' (long-term) or 'ASIA' (temporary) followed by 16
+  // alphanumeric characters; the format rules are skipped when the field is empty.
+  string access_key_id = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.len = 20,
+    (buf.validate.field).cel = {
+      id: "kubernetes.aws_eks.access_key_id.prefix"
+      message: "Must start with 'AKIA' (long-term) or 'ASIA' (temporary)"
+      expression: "this.matches('^A(K|S)IA.*')"
+    },
+    (buf.validate.field).cel = {
+      id: "kubernetes.aws_eks.access_key_id.format"
+      message: "Must start with 'AKIA' or 'ASIA' followed by 16 alphanumeric characters"
+      expression: "this.matches('^.{4}[a-zA-Z0-9]{16}$')"
+    }
+  ];
+
+  // The AWS Secret Access Key paired with access_key_id. Optional (see access_key_id);
+  // when present it must be exactly 40 characters of numbers, letters, slashes (/),
+  // and plus signs (+). The format rule is skipped when the field is empty.
+  string secret_access_key = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.len = 40,
+    (buf.validate.field).cel = {
+      id: "kubernetes.aws_eks.secret_access_key"
+      message: "Must contain exactly 40 characters consisting of numbers, letters, slashes (/), and plus signs (+)"
+      expression: "this.matches('^[0-9a-zA-Z/+]{40}$')"
+    }
+  ];
+
+  // The AWS Session Token, required when access_key_id carries temporary security
+  // credentials (an 'ASIA' key from an STS exchange). Empty for long-term keys.
+  string session_token = 7;
+}
 
 // KubernetesProviderConfigAzureEks message represents the specification required to connect to a Azure Kubernetes Service (AKS) cluster.
 // This message consolidates the necessary input parameters for establishing a secure connection with a AKS cluster.

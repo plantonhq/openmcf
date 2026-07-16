@@ -21,29 +21,27 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsEcsServiceStackOutputs describes values returned by Pulumi/Terraform for an ECS service.
+// AwsEcsServiceStackOutputs captures the observable outputs of a
+// provisioned ECS service.
 type AwsEcsServiceStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// aws_ecs_service_name is the final name of the ECS service.
-	AwsEcsServiceName string `protobuf:"bytes,1,opt,name=aws_ecs_service_name,json=awsEcsServiceName,proto3" json:"aws_ecs_service_name,omitempty"`
-	// ecs_cluster_name indicates which cluster the service is deployed in.
-	EcsClusterName string `protobuf:"bytes,2,opt,name=ecs_cluster_name,json=ecsClusterName,proto3" json:"ecs_cluster_name,omitempty"`
-	// load_balancer_dns_name is the DNS name of the ALB/NLB if is_public is true.
-	LoadBalancerDnsName string `protobuf:"bytes,3,opt,name=load_balancer_dns_name,json=loadBalancerDnsName,proto3" json:"load_balancer_dns_name,omitempty"`
-	// service_url is the final external endpoint if domain_name was configured.
-	ServiceUrl string `protobuf:"bytes,4,opt,name=service_url,json=serviceUrl,proto3" json:"service_url,omitempty"`
-	// service_discovery_name is the internal DNS name if service discovery was used.
-	ServiceDiscoveryName string `protobuf:"bytes,5,opt,name=service_discovery_name,json=serviceDiscoveryName,proto3" json:"service_discovery_name,omitempty"`
-	// cloudwatch_log_group_name is the name of the CloudWatch log group for the service.
-	CloudwatchLogGroupName string `protobuf:"bytes,6,opt,name=cloudwatch_log_group_name,json=cloudwatchLogGroupName,proto3" json:"cloudwatch_log_group_name,omitempty"`
-	// cloudwatch_log_group_arn is the ARN of the CloudWatch log group for the service.
-	CloudwatchLogGroupArn string `protobuf:"bytes,7,opt,name=cloudwatch_log_group_arn,json=cloudwatchLogGroupArn,proto3" json:"cloudwatch_log_group_arn,omitempty"`
-	// service_arn is the Amazon Resource Name of the ECS service.
-	ServiceArn string `protobuf:"bytes,8,opt,name=service_arn,json=serviceArn,proto3" json:"service_arn,omitempty"`
-	// target_group_arn is the ARN of the associated target group when ALB/NLB is enabled.
-	TargetGroupArn string `protobuf:"bytes,9,opt,name=target_group_arn,json=targetGroupArn,proto3" json:"target_group_arn,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The ARN of the service (e.g. "arn:aws:ecs:us-west-2:123456789012:
+	// service/my-cluster/api"). The primary handle for IAM policies, audit
+	// tooling, and imports; it encodes both the cluster and service names.
+	ServiceArn string `protobuf:"bytes,1,opt,name=service_arn,json=serviceArn,proto3" json:"service_arn,omitempty"`
+	// The service's name (metadata.name), the ECS API's join key together
+	// with the cluster.
+	ServiceName string `protobuf:"bytes,2,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
+	// The ARN of the cluster the service runs in -- resolved from the
+	// cluster_arn reference, republished so downstream consumers can join
+	// on it without re-resolving the reference chain.
+	ClusterArn string `protobuf:"bytes,3,opt,name=cluster_arn,json=clusterArn,proto3" json:"cluster_arn,omitempty"`
+	// The full task definition ARN (family:revision) this deployment of the
+	// service is running -- the resolved value of the task_definition
+	// reference at deploy time.
+	TaskDefinitionArn string `protobuf:"bytes,4,opt,name=task_definition_arn,json=taskDefinitionArn,proto3" json:"task_definition_arn,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *AwsEcsServiceStackOutputs) Reset() {
@@ -76,55 +74,6 @@ func (*AwsEcsServiceStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsecsservice_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AwsEcsServiceStackOutputs) GetAwsEcsServiceName() string {
-	if x != nil {
-		return x.AwsEcsServiceName
-	}
-	return ""
-}
-
-func (x *AwsEcsServiceStackOutputs) GetEcsClusterName() string {
-	if x != nil {
-		return x.EcsClusterName
-	}
-	return ""
-}
-
-func (x *AwsEcsServiceStackOutputs) GetLoadBalancerDnsName() string {
-	if x != nil {
-		return x.LoadBalancerDnsName
-	}
-	return ""
-}
-
-func (x *AwsEcsServiceStackOutputs) GetServiceUrl() string {
-	if x != nil {
-		return x.ServiceUrl
-	}
-	return ""
-}
-
-func (x *AwsEcsServiceStackOutputs) GetServiceDiscoveryName() string {
-	if x != nil {
-		return x.ServiceDiscoveryName
-	}
-	return ""
-}
-
-func (x *AwsEcsServiceStackOutputs) GetCloudwatchLogGroupName() string {
-	if x != nil {
-		return x.CloudwatchLogGroupName
-	}
-	return ""
-}
-
-func (x *AwsEcsServiceStackOutputs) GetCloudwatchLogGroupArn() string {
-	if x != nil {
-		return x.CloudwatchLogGroupArn
-	}
-	return ""
-}
-
 func (x *AwsEcsServiceStackOutputs) GetServiceArn() string {
 	if x != nil {
 		return x.ServiceArn
@@ -132,9 +81,23 @@ func (x *AwsEcsServiceStackOutputs) GetServiceArn() string {
 	return ""
 }
 
-func (x *AwsEcsServiceStackOutputs) GetTargetGroupArn() string {
+func (x *AwsEcsServiceStackOutputs) GetServiceName() string {
 	if x != nil {
-		return x.TargetGroupArn
+		return x.ServiceName
+	}
+	return ""
+}
+
+func (x *AwsEcsServiceStackOutputs) GetClusterArn() string {
+	if x != nil {
+		return x.ClusterArn
+	}
+	return ""
+}
+
+func (x *AwsEcsServiceStackOutputs) GetTaskDefinitionArn() string {
+	if x != nil {
+		return x.TaskDefinitionArn
 	}
 	return ""
 }
@@ -143,19 +106,14 @@ var File_dev_planton_provider_aws_awsecsservice_v1_stack_outputs_proto protorefl
 
 const file_dev_planton_provider_aws_awsecsservice_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/aws/awsecsservice/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awsecsservice.v1\"\xc1\x03\n" +
-	"\x19AwsEcsServiceStackOutputs\x12/\n" +
-	"\x14aws_ecs_service_name\x18\x01 \x01(\tR\x11awsEcsServiceName\x12(\n" +
-	"\x10ecs_cluster_name\x18\x02 \x01(\tR\x0eecsClusterName\x123\n" +
-	"\x16load_balancer_dns_name\x18\x03 \x01(\tR\x13loadBalancerDnsName\x12\x1f\n" +
-	"\vservice_url\x18\x04 \x01(\tR\n" +
-	"serviceUrl\x124\n" +
-	"\x16service_discovery_name\x18\x05 \x01(\tR\x14serviceDiscoveryName\x129\n" +
-	"\x19cloudwatch_log_group_name\x18\x06 \x01(\tR\x16cloudwatchLogGroupName\x127\n" +
-	"\x18cloudwatch_log_group_arn\x18\a \x01(\tR\x15cloudwatchLogGroupArn\x12\x1f\n" +
-	"\vservice_arn\x18\b \x01(\tR\n" +
-	"serviceArn\x12(\n" +
-	"\x10target_group_arn\x18\t \x01(\tR\x0etargetGroupArnB\xea\x02\n" +
+	"=dev/planton/provider/aws/awsecsservice/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awsecsservice.v1\"\xb0\x01\n" +
+	"\x19AwsEcsServiceStackOutputs\x12\x1f\n" +
+	"\vservice_arn\x18\x01 \x01(\tR\n" +
+	"serviceArn\x12!\n" +
+	"\fservice_name\x18\x02 \x01(\tR\vserviceName\x12\x1f\n" +
+	"\vcluster_arn\x18\x03 \x01(\tR\n" +
+	"clusterArn\x12.\n" +
+	"\x13task_definition_arn\x18\x04 \x01(\tR\x11taskDefinitionArnB\xea\x02\n" +
 	"-com.dev.planton.provider.aws.awsecsservice.v1B\x11StackOutputsProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecsservice/v1;awsecsservicev1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Aws.Awsecsservice.V1\xca\x02)Dev\\Planton\\Provider\\Aws\\Awsecsservice\\V1\xe2\x025Dev\\Planton\\Provider\\Aws\\Awsecsservice\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Aws::Awsecsservice::V1b\x06proto3"
 
 var (

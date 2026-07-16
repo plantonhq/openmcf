@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awshttpapidomain.v1;
+
+// AwsHttpApiDomainStackOutputs captures observable identifiers from a
+// provisioned API Gateway v2 custom domain name. The target_domain_name and
+// hosted_zone_id pair is the DNS composition surface: point an alias record
+// (AwsRoute53DnsRecord) at them to route the domain to API Gateway.
+message AwsHttpApiDomainStackOutputs {
+  // The custom domain name (e.g. "api.example.com"). Exported as an output
+  // because it is the domain's join key -- downstream resources resolve
+  // references against outputs.
+  string domain_name = 1;
+
+  // The ARN of the domain name resource. Useful for IAM policies and
+  // tag-based governance.
+  string domain_name_arn = 2;
+
+  // The API Gateway-managed regional domain name to target from DNS (e.g.
+  // "d-abc123.execute-api.us-east-1.amazonaws.com"). Create an alias or
+  // CNAME record from the custom domain to this value.
+  string target_domain_name = 3;
+
+  // The Route 53 hosted zone ID of the API Gateway regional endpoint. Use as
+  // the alias target zone when creating a Route 53 alias record for the
+  // domain.
+  string hosted_zone_id = 4;
+}

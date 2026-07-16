@@ -1,8 +1,12 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsBatchComputeEnvironment
 metadata:
-  name: my-ec2-batch
+  org: example-org
+  env: prod
+  name: ec2-batch
+  id: ec2-batch-id
 spec:
+  region: <aws-region>
   computeResources:
     type: EC2
     maxVcpus: 512
@@ -11,17 +15,12 @@ spec:
       - optimal
     allocationStrategy: BEST_FIT_PROGRESSIVE
     subnetIds:
-      - value: "<private-subnet-id-az1>"
-      - value: "<private-subnet-id-az2>"
+      - value: <private-subnet-id-az1>
+      - value: <private-subnet-id-az2>
     securityGroupIds:
-      - value: "<security-group-id>"
+      - value: <security-group-id>
     instanceRole:
-      value: "<ecs-instance-profile-arn>"
+      value: <ecs-instance-profile-arn>
   updatePolicy:
     terminateJobsOnUpdate: false
     jobExecutionTimeoutMinutes: 60
-  jobQueues:
-    - name: high-priority
-      priority: 10
-    - name: low-priority
-      priority: 1

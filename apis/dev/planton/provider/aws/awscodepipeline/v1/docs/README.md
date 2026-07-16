@@ -248,7 +248,7 @@ triggers:
               - main
           events:
             - OPEN
-            - UPDATE
+            - UPDATED
 ```
 
 ### Filter Logic

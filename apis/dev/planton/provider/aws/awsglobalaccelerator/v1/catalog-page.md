@@ -26,7 +26,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: my-ga
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -57,7 +57,7 @@ This creates a Global Accelerator with a TCP listener on port 443 and one endpoi
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `region` | `string` | AWS region where the global accelerator will be created (e.g., `us-west-2`, `eu-west-1`). | Required; non-empty |
+| `region` | `string` | AWS provider region for the deployment. Global Accelerator itself is a global service (its API is homed in us-west-2 regardless of this value); this region serves as the default `endpointGroupRegion` for endpoint groups that do not set one. | Required; non-empty |
 | `listeners` | `object[]` | Listener definitions. Each defines a protocol, port ranges, and endpoint groups. | Minimum 1 item |
 | `listeners[].name` | `string` | Unique name for the listener. Used as key in output maps. | Lowercase alphanumeric and hyphens, starts with letter, max 63 chars |
 | `listeners[].protocol` | `string` | Layer 4 protocol: `TCP` or `UDP`. | Required |
@@ -82,13 +82,14 @@ This creates a Global Accelerator with a TCP listener on port 443 and one endpoi
 | `listeners[].endpointGroups[].healthCheckPort` | `int` | Listener port | Port for health checks. |
 | `listeners[].endpointGroups[].healthCheckProtocol` | `string` | `TCP` | `TCP`, `HTTP`, or `HTTPS`. |
 | `listeners[].endpointGroups[].healthCheckPath` | `string` | — | Path for HTTP/HTTPS health checks. Required when protocol is `HTTP` or `HTTPS`. |
-| `listeners[].endpointGroups[].healthCheckIntervalSeconds` | `int` | `30` | Health check interval. Must be exactly `10` or `30` (AWS constraint). |
+| `listeners[].endpointGroups[].healthCheckIntervalSeconds` | `int` | `30` | Health check interval in seconds. Must be exactly `10` or `30` (AWS constraint). |
 | `listeners[].endpointGroups[].thresholdCount` | `int` | `3` | Consecutive checks to change health status. Range: 1–10. |
 | `listeners[].endpointGroups[].trafficDialPercentage` | `float` | `100.0` | Percentage of traffic to route to this group. 0.0–100.0. Set to 0 to drain a region. |
 | `listeners[].endpointGroups[].endpoints` | `object[]` | `[]` | Endpoints to register. Can be added later. |
 | `listeners[].endpointGroups[].endpoints[].endpointId` | `string` | — | ALB ARN, NLB ARN, EIP allocation ID, or EC2 instance ID. Can reference via `valueFrom`. |
-| `listeners[].endpointGroups[].endpoints[].weight` | `int` | `128` | Relative traffic weight. 0–255. Set 0 to stop traffic without removing. |
-| `listeners[].endpointGroups[].endpoints[].clientIpPreservationEnabled` | `bool` | `false` | Preserve original client IP. Supported for ALB and EC2 endpoints. |
+| `listeners[].endpointGroups[].endpoints[].weight` | `int` | `128` (when omitted) | Relative traffic weight. 0–255. An explicit `0` stops traffic without removing the endpoint. |
+| `listeners[].endpointGroups[].endpoints[].clientIpPreservationEnabled` | `bool` | AWS per-type default | Preserve the original client IP. Applies to ALB and EC2 endpoints; omitted means the AWS default for the endpoint type. |
+| `listeners[].endpointGroups[].endpoints[].attachmentArn` | `string` | `""` | Cross-account attachment ARN authorizing an endpoint owned by another AWS account. Empty for same-account endpoints. |
 | `listeners[].endpointGroups[].portOverrides` | `object[]` | `[]` | Remap listener ports to different endpoint ports. Maximum 10. |
 | `listeners[].endpointGroups[].portOverrides[].listenerPort` | `int` | — | Source listener port. 1–65535. |
 | `listeners[].endpointGroups[].portOverrides[].endpointPort` | `int` | — | Destination endpoint port. 1–65535. |
@@ -104,7 +105,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: web-ga
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +138,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: global-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -189,7 +190,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: game-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -222,7 +223,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: ref-ga
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -273,7 +274,7 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [AwsAlb](/docs/catalog/aws/awsalb) — common endpoint type for HTTP/HTTPS workloads behind the accelerator
-- [AwsNetworkLoadBalancer](/docs/catalog/aws/awsnetworkloadbalancer) — common endpoint type for Layer 4 workloads
+- [AwsNlb](/docs/catalog/aws/awsnlb) — common endpoint type for Layer 4 workloads
 - [AwsElasticIp](/docs/catalog/aws/awselasticip) — provides static IP endpoints for direct server routing
 - [AwsS3Bucket](/docs/catalog/aws/awss3bucket) — stores flow logs when flow log delivery is enabled
 - [AwsRoute53Zone](/docs/catalog/aws/awsroute53zone) — create alias records pointing custom domains to the accelerator DNS name

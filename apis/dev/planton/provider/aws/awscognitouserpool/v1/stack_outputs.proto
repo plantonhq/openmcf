@@ -3,46 +3,56 @@ syntax = "proto3";
 package dev.planton.provider.aws.awscognitouserpool.v1;
 
 // AwsCognitoUserPoolStackOutputs captures observable identifiers and endpoints
-// from a provisioned Cognito User Pool. These outputs are used by downstream
-// resources (e.g., API Gateway JWT authorizers, application environment configs)
-// to wire dependencies via StringValueOrRef.
+// from a provisioned Cognito User Pool. Downstream resources (app clients,
+// identity providers, resource servers, JWT authorizers, ALB authentication
+// actions) wire their dependencies from these values via StringValueOrRef.
 message AwsCognitoUserPoolStackOutputs {
   // The user pool identifier. Primary reference used in SDK calls, IAM policies,
-  // and as the user_pool_id input for identity providers and resource servers.
-  // Format: "{region}_{poolId}" (e.g., "us-east-1_Ab1Cd2EfG").
+  // and as the user_pool_id input for app clients, identity providers, and
+  // resource servers. Format: "{region}_{poolId}" (e.g., "us-east-1_Ab1Cd2EfG").
   string user_pool_id = 1;
 
-  // The Amazon Resource Name of the user pool. Used in IAM policies and
-  // cross-service permissions.
+  // The Amazon Resource Name of the user pool. Used in IAM policies,
+  // cross-service permissions, and ALB authenticate-cognito actions.
   string user_pool_arn = 2;
 
-  // The OIDC issuer endpoint URL for the user pool. Format:
-  // "https://cognito-idp.{region}.amazonaws.com/{user_pool_id}"
-  //
-  // This is the value used as the JWT `issuer` in API Gateway authorizers
-  // and OIDC client configurations.
+  // The pool's endpoint as AWS reports it -- host and path WITHOUT a scheme:
+  // "cognito-idp.{region}.amazonaws.com/{user_pool_id}". Use `issuer` when a
+  // consumer needs the full OIDC issuer URL.
   string user_pool_endpoint = 3;
 
-  // The full domain URL for the hosted UI. For Cognito-hosted domains:
-  // "https://{prefix}.auth.{region}.amazoncognito.com"
-  // For custom domains: "https://{custom_domain}"
-  // Empty when no domain is configured.
-  string user_pool_domain = 4;
+  // The OIDC issuer URL for tokens minted by this pool:
+  // "https://cognito-idp.{region}.amazonaws.com/{user_pool_id}".
+  // This is the value JWT authorizers (API Gateway, ALB) and OIDC client
+  // libraries validate the token's "iss" claim against.
+  string issuer = 4;
 
-  // The CloudFront distribution ARN for custom domains. Use this to create
-  // a Route53 alias record pointing your custom domain to CloudFront.
-  // Empty when using a Cognito-hosted prefix domain or no domain.
-  string cloudfront_distribution_arn = 5;
+  // The hosted-UI domain exactly as configured on the pool -- the prefix of a
+  // Cognito-hosted domain (e.g. "myapp-auth") or the full custom domain (e.g.
+  // "auth.example.com"), with no scheme. This is the join key ALB
+  // authenticate-cognito actions take as their user_pool_domain. Empty when no
+  // domain is configured.
+  string user_pool_domain = 5;
 
-  // Map of client name to client ID. The keys correspond to the `name` field
-  // of each entry in `spec.clients`. Downstream resources reference specific
-  // client IDs via `valueFrom` using `status.outputs.client_ids.{name}`.
-  //
-  // Example: {"web-app": "1a2b3c4d5e", "api-server": "6f7g8h9i0j"}
-  map<string, string> client_ids = 6;
+  // The full https:// URL of the hosted sign-in UI:
+  // "https://{prefix}.auth.{region}.amazoncognito.com" for Cognito-hosted
+  // domains, or "https://{custom_domain}" for custom domains. Empty when no
+  // domain is configured.
+  string hosted_ui_url = 6;
 
-  // Map of client name to client secret. Only populated for clients with
-  // `generate_secret` set to true. Keys match `spec.clients[*].name`.
-  // Sensitive — treat as a credential.
-  map<string, string> client_secrets = 7;
+  // The CloudFront distribution DOMAIN NAME fronting a custom domain (e.g.
+  // "d111abcdef8.cloudfront.net"). Point the custom domain's DNS at this
+  // value -- with AwsRoute53DnsRecord, an alias A record composed from this
+  // output and `cloudfront_hosted_zone_id`. Empty for Cognito-hosted prefix
+  // domains or when no domain is configured.
+  string cloudfront_distribution = 7;
+
+  // The ARN of the CloudFront distribution fronting a custom domain. Useful
+  // for IAM policies and tag-based governance. Empty for prefix domains.
+  string cloudfront_distribution_arn = 8;
+
+  // The Route53 hosted-zone ID of the CloudFront distribution (the fixed
+  // CloudFront zone) -- the alias target zone for DNS alias records pointing
+  // the custom domain at CloudFront. Empty for prefix domains.
+  string cloudfront_hosted_zone_id = 9;
 }

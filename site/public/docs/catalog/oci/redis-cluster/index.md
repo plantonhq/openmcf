@@ -32,7 +32,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciRedisCluster
 metadata:
   name: my-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -88,7 +88,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciRedisCluster
 metadata:
   name: dev-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +112,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciRedisCluster
 metadata:
   name: prod-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +143,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciRedisCluster
 metadata:
   name: ref-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -178,7 +178,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciRedisCluster
 metadata:
   name: custom-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

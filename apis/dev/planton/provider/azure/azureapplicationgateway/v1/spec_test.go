@@ -7,7 +7,6 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -16,17 +15,16 @@ func TestAzureApplicationGatewaySpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "AzureApplicationGatewaySpec Validation Tests")
 }
 
-// helper to create a StringValueOrRef with a literal value
-func svr(val string) *foreignkeyv1.StringValueOrRef {
+func literal(value string) *foreignkeyv1.StringValueOrRef {
 	return &foreignkeyv1.StringValueOrRef{
-		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-			Value: val,
-		},
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
 	}
 }
 
-// helper to build a minimal valid AzureApplicationGateway
-func minimalAppGateway() *AzureApplicationGateway {
+// minimal valid spec: a Standard_v2 gateway with one public HTTP
+// listener routed to one pool.
+func minimalSpec() *AzureApplicationGateway {
+	capacity := int32(1)
 	return &AzureApplicationGateway{
 		ApiVersion: "azure.planton.dev/v1",
 		Kind:       "AzureApplicationGateway",
@@ -35,27 +33,42 @@ func minimalAppGateway() *AzureApplicationGateway {
 		},
 		Spec: &AzureApplicationGatewaySpec{
 			Region:        "eastus",
-			ResourceGroup: svr("my-rg"),
+			ResourceGroup: literal("my-rg"),
 			Name:          "test-agw",
-			SubnetId:      svr("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/agw-subnet"),
-			PublicIpId:    svr("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/publicIPAddresses/agw-pip"),
-			Sku:           "Standard_v2",
-			BackendAddressPools: []*AzureBackendAddressPool{
-				{Name: "default", Fqdns: []string{"backend.contoso.com"}},
+			SubnetId:      literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/agw"),
+			Sku:           AzureApplicationGatewaySku_STANDARD_V2,
+			Capacity:      &capacity,
+			FrontendIpConfigurations: []*AzureApplicationGatewayFrontendIpConfiguration{
+				{
+					Name:              "public",
+					PublicIpAddressId: literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/publicIPAddresses/agw-pip"),
+				},
 			},
-			BackendHttpSettings: []*AzureBackendHttpSettings{
-				{Name: "http-settings", Port: 80, Protocol: "Http"},
+			FrontendPorts: []*AzureApplicationGatewayFrontendPort{
+				{Name: "http", Port: 80},
 			},
-			HttpListeners: []*AzureHttpListener{
-				{Name: "http-listener", Port: 80, Protocol: "Http"},
+			BackendAddressPools: []*AzureApplicationGatewayBackendAddressPool{
+				{Name: "web", IpAddresses: []string{"10.0.1.4"}},
 			},
-			RequestRoutingRules: []*AzureRequestRoutingRule{
+			BackendHttpSettings: []*AzureApplicationGatewayBackendHttpSettings{
+				{Name: "http-settings", Port: 8080, Protocol: AzureApplicationGatewayProtocol_HTTP},
+			},
+			HttpListeners: []*AzureApplicationGatewayHttpListener{
+				{
+					Name:                        "http-listener",
+					FrontendIpConfigurationName: "public",
+					FrontendPortName:            "http",
+					Protocol:                    AzureApplicationGatewayProtocol_HTTP,
+				},
+			},
+			RequestRoutingRules: []*AzureApplicationGatewayRequestRoutingRule{
 				{
 					Name:                    "http-rule",
+					RuleType:                AzureApplicationGatewayRequestRoutingRuleType_BASIC_ROUTING,
 					HttpListenerName:        "http-listener",
-					BackendAddressPoolName:  "default",
-					BackendHttpSettingsName: "http-settings",
 					Priority:                100,
+					BackendAddressPoolName:  "web",
+					BackendHttpSettingsName: "http-settings",
 				},
 			},
 		},
@@ -65,532 +78,550 @@ func minimalAppGateway() *AzureApplicationGateway {
 var _ = ginkgo.Describe("AzureApplicationGatewaySpec Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("azure_application_gateway", func() {
 
-			ginkgo.It("should not return a validation error for a minimal HTTP Application Gateway", func() {
-				input := minimalAppGateway()
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept a minimal Standard_v2 gateway", func() {
+			gomega.Expect(protovalidate.Validate(minimalSpec())).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with WAF_v2 SKU and WAF enabled", func() {
-				input := minimalAppGateway()
-				input.Spec.Sku = "WAF_v2"
-				wafEnabled := true
-				input.Spec.WafEnabled = &wafEnabled
-				wafMode := "Prevention"
-				input.Spec.WafMode = &wafMode
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept autoscale instead of capacity", func() {
+			input := minimalSpec()
+			input.Spec.Capacity = nil
+			input.Spec.Autoscale = &AzureApplicationGatewayAutoscale{MinCapacity: 2}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with WAF mode Detection", func() {
-				input := minimalAppGateway()
-				input.Spec.Sku = "WAF_v2"
-				wafEnabled := true
-				input.Spec.WafEnabled = &wafEnabled
-				wafMode := "Detection"
-				input.Spec.WafMode = &wafMode
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept zones and HTTP/2", func() {
+			http2 := true
+			input := minimalSpec()
+			input.Spec.Zones = []string{"1", "2", "3"}
+			input.Spec.Http2Enabled = &http2
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with HTTPS listener and SSL certificate", func() {
-				input := minimalAppGateway()
-				input.Spec.SslCertificates = []*AzureSslCertificate{
-					{
-						Name:             "wildcard-cert",
-						KeyVaultSecretId: "https://my-vault.vault.azure.net/secrets/wildcard-cert",
-					},
-				}
-				input.Spec.IdentityIds = []*foreignkeyv1.StringValueOrRef{
-					svr("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/agw-identity"),
-				}
-				input.Spec.HttpListeners = append(input.Spec.HttpListeners, &AzureHttpListener{
-					Name:               "https-listener",
-					Port:               443,
-					Protocol:           "Https",
-					SslCertificateName: "wildcard-cert",
+		ginkgo.It("should accept a private frontend with a static address", func() {
+			input := minimalSpec()
+			input.Spec.FrontendIpConfigurations = append(input.Spec.FrontendIpConfigurations,
+				&AzureApplicationGatewayFrontendIpConfiguration{
+					Name:                       "internal",
+					SubnetId:                   literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/agw"),
+					PrivateIpAddress:           "10.0.2.10",
+					PrivateIpAddressAllocation: AzureApplicationGatewayIpAllocation_STATIC,
 				})
-				input.Spec.RequestRoutingRules = append(input.Spec.RequestRoutingRules, &AzureRequestRoutingRule{
-					Name:                    "https-rule",
-					HttpListenerName:        "https-listener",
-					BackendAddressPoolName:  "default",
-					BackendHttpSettingsName: "http-settings",
-					Priority:                200,
-				})
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with custom health probes", func() {
-				input := minimalAppGateway()
-				interval := int32(15)
-				timeout := int32(10)
-				threshold := int32(5)
-				input.Spec.Probes = []*AzureHealthProbe{
-					{
-						Name:               "api-health",
-						Protocol:           "Http",
-						Path:               "/health",
-						Host:               "api.contoso.com",
-						Interval:           &interval,
-						Timeout:            &timeout,
-						UnhealthyThreshold: &threshold,
-					},
-				}
-				input.Spec.BackendHttpSettings[0].ProbeName = "api-health"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
+		ginkgo.It("should accept an HTTPS listener with a Key Vault certificate and identity", func() {
+			input := minimalSpec()
+			input.Spec.Identity = &AzureApplicationGatewayIdentity{
+				Type:        AzureApplicationGatewayIdentityType_USER_ASSIGNED,
+				IdentityIds: []*foreignkeyv1.StringValueOrRef{literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/agw")},
+			}
+			input.Spec.SslCertificates = []*AzureApplicationGatewaySslCertificate{
+				{Name: "tls", KeyVaultSecretId: literal("https://vault.vault.azure.net/secrets/tls-cert")},
+			}
+			input.Spec.FrontendPorts = append(input.Spec.FrontendPorts, &AzureApplicationGatewayFrontendPort{Name: "https", Port: 443})
+			input.Spec.HttpListeners = append(input.Spec.HttpListeners, &AzureApplicationGatewayHttpListener{
+				Name:                        "https-listener",
+				FrontendIpConfigurationName: "public",
+				FrontendPortName:            "https",
+				Protocol:                    AzureApplicationGatewayProtocol_HTTPS,
+				SslCertificateName:          "tls",
+				HostNames:                   []string{"www.contoso.com", "*.contoso.com"},
+				RequireSni:                  true,
 			})
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with autoscale configuration", func() {
-				input := minimalAppGateway()
-				input.Spec.Capacity = nil // clear fixed capacity
-				maxCap := int32(10)
-				input.Spec.Autoscale = &AzureApplicationGatewayAutoscale{
-					MinCapacity: 2,
-					MaxCapacity: &maxCap,
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept an inline PFX certificate with a password", func() {
+			input := minimalSpec()
+			input.Spec.SslCertificates = []*AzureApplicationGatewaySslCertificate{
+				{Name: "inline-tls", Data: "bWljcm9zb2Z0LXBmeA==", Password: "changeit"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with multiple backend pools", func() {
-				input := minimalAppGateway()
-				input.Spec.BackendAddressPools = []*AzureBackendAddressPool{
-					{Name: "api-pool", Fqdns: []string{"api.contoso.com"}},
-					{Name: "web-pool", IpAddresses: []string{"10.0.1.4", "10.0.1.5"}},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with host-based routing", func() {
-				input := minimalAppGateway()
-				input.Spec.HttpListeners = []*AzureHttpListener{
-					{Name: "api-listener", Port: 80, Protocol: "Http", HostName: "api.contoso.com"},
-					{Name: "web-listener", Port: 80, Protocol: "Http", HostName: "www.contoso.com"},
-				}
-				input.Spec.BackendAddressPools = []*AzureBackendAddressPool{
-					{Name: "api-pool", Fqdns: []string{"api-backend.internal"}},
-					{Name: "web-pool", Fqdns: []string{"web-backend.internal"}},
-				}
-				input.Spec.BackendHttpSettings = []*AzureBackendHttpSettings{
-					{Name: "http-settings", Port: 80, Protocol: "Http"},
-				}
-				input.Spec.RequestRoutingRules = []*AzureRequestRoutingRule{
-					{Name: "api-rule", HttpListenerName: "api-listener", BackendAddressPoolName: "api-pool", BackendHttpSettingsName: "http-settings", Priority: 100},
-					{Name: "web-rule", HttpListenerName: "web-listener", BackendAddressPoolName: "web-pool", BackendHttpSettingsName: "http-settings", Priority: 200},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with backend HTTPS settings", func() {
-				input := minimalAppGateway()
-				requestTimeout := int32(60)
-				pickHost := true
-				input.Spec.BackendHttpSettings = []*AzureBackendHttpSettings{
-					{
-						Name:                           "https-backend",
-						Port:                           443,
-						Protocol:                       "Https",
-						RequestTimeout:                 &requestTimeout,
-						PickHostNameFromBackendAddress: &pickHost,
-					},
-				}
-				input.Spec.RequestRoutingRules[0].BackendHttpSettingsName = "https-backend"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with HTTP/2 enabled", func() {
-				input := minimalAppGateway()
-				http2 := true
-				input.Spec.EnableHttp2 = &http2
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with cookie-based affinity enabled", func() {
-				input := minimalAppGateway()
-				affinity := "Enabled"
-				input.Spec.BackendHttpSettings[0].CookieBasedAffinity = &affinity
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with fixed capacity", func() {
-				input := minimalAppGateway()
-				cap := int32(5)
-				input.Spec.Capacity = &cap
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with valueFrom resource_group", func() {
-				input := minimalAppGateway()
-				input.Spec.ResourceGroup = &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-						ValueFrom: &foreignkeyv1.ValueFromRef{
-							Kind:      cloudresourcekind.CloudResourceKind_AzureResourceGroup,
-							Name:      "prod-rg",
-							FieldPath: "status.outputs.resource_group_name",
+		ginkgo.It("should accept path-based routing with a url path map", func() {
+			input := minimalSpec()
+			input.Spec.UrlPathMaps = []*AzureApplicationGatewayUrlPathMap{
+				{
+					Name:                           "paths",
+					DefaultBackendAddressPoolName:  "web",
+					DefaultBackendHttpSettingsName: "http-settings",
+					PathRules: []*AzureApplicationGatewayPathRule{
+						{
+							Name:                    "api",
+							Paths:                   []string{"/api/*"},
+							BackendAddressPoolName:  "web",
+							BackendHttpSettingsName: "http-settings",
 						},
 					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+				},
+			}
+			input.Spec.RequestRoutingRules[0].RuleType = AzureApplicationGatewayRequestRoutingRuleType_PATH_BASED_ROUTING
+			input.Spec.RequestRoutingRules[0].BackendAddressPoolName = ""
+			input.Spec.RequestRoutingRules[0].BackendHttpSettingsName = ""
+			input.Spec.RequestRoutingRules[0].UrlPathMapName = "paths"
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error with Https health probe", func() {
-				input := minimalAppGateway()
-				input.Spec.Probes = []*AzureHealthProbe{
-					{Name: "https-probe", Protocol: "Https", Path: "/healthz"},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept an HTTP -> HTTPS redirect rule", func() {
+			input := minimalSpec()
+			input.Spec.RedirectConfigurations = []*AzureApplicationGatewayRedirectConfiguration{
+				{
+					Name:               "to-https",
+					RedirectType:       AzureApplicationGatewayRedirectType_PERMANENT,
+					TargetListenerName: "http-listener",
+					IncludePath:        true,
+					IncludeQueryString: true,
+				},
+			}
+			input.Spec.RequestRoutingRules[0].BackendAddressPoolName = ""
+			input.Spec.RequestRoutingRules[0].BackendHttpSettingsName = ""
+			input.Spec.RequestRoutingRules[0].RedirectConfigurationName = "to-https"
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept rewrite rule sets with URL rewriting on v2", func() {
+			input := minimalSpec()
+			input.Spec.RewriteRuleSets = []*AzureApplicationGatewayRewriteRuleSet{
+				{
+					Name: "rewrites",
+					RewriteRules: []*AzureApplicationGatewayRewriteRule{
+						{
+							Name:         "strip-prefix",
+							RuleSequence: 100,
+							Conditions: []*AzureApplicationGatewayRewriteRuleCondition{
+								{Variable: "var_uri_path", Pattern: "^/legacy/(.*)", IgnoreCase: true},
+							},
+							RequestHeaderConfigurations: []*AzureApplicationGatewayRewriteRuleHeaderConfiguration{
+								{HeaderName: "X-Forwarded-Host", HeaderValue: "{var_host}"},
+							},
+							Url: &AzureApplicationGatewayRewriteRuleUrl{Path: "/{var_uri_path_1}", Reroute: true},
+						},
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept probes with match criteria and TCP probes", func() {
+			input := minimalSpec()
+			input.Spec.Probes = []*AzureApplicationGatewayProbe{
+				{
+					Name:               "http-health",
+					Protocol:           AzureApplicationGatewayProtocol_HTTP,
+					Path:               "/healthz",
+					Host:               "app.internal",
+					Interval:           30,
+					Timeout:            10,
+					UnhealthyThreshold: 3,
+					Match: &AzureApplicationGatewayProbeMatch{
+						StatusCodes: []string{"200-399"},
+					},
+				},
+				{
+					Name:                       "tcp-health",
+					Protocol:                   AzureApplicationGatewayProtocol_TCP,
+					Interval:                   30,
+					Timeout:                    10,
+					UnhealthyThreshold:         3,
+					ProxyProtocolHeaderEnabled: true,
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept mTLS via an SSL profile with a custom policy", func() {
+			input := minimalSpec()
+			input.Spec.TrustedClientCertificates = []*AzureApplicationGatewayTrustedClientCertificate{
+				{Name: "client-ca", Data: "Y2xpZW50LWNh"},
+			}
+			input.Spec.SslProfiles = []*AzureApplicationGatewaySslProfile{
+				{
+					Name:                              "mtls",
+					TrustedClientCertificateNames:     []string{"client-ca"},
+					VerifyClientCertificateIssuerDn:   true,
+					VerifyClientCertificateRevocation: AzureApplicationGatewayClientRevocationCheck_OCSP,
+					SslPolicy: &AzureApplicationGatewaySslPolicy{
+						PolicyType:         AzureApplicationGatewaySslPolicyType_CUSTOM_V2,
+						MinProtocolVersion: AzureApplicationGatewayTlsProtocol_TLS_V1_3,
+						CipherSuites:       []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"},
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a gateway-wide predefined SSL policy", func() {
+			input := minimalSpec()
+			input.Spec.SslPolicy = &AzureApplicationGatewaySslPolicy{
+				PolicyType: AzureApplicationGatewaySslPolicyType_PREDEFINED,
+				PolicyName: "AppGwSslPolicy20220101S",
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept disabling TLS versions without a policy type", func() {
+			input := minimalSpec()
+			input.Spec.SslPolicy = &AzureApplicationGatewaySslPolicy{
+				DisabledProtocols: []AzureApplicationGatewayTlsProtocol{
+					AzureApplicationGatewayTlsProtocol_TLS_V1_0,
+					AzureApplicationGatewayTlsProtocol_TLS_V1_1,
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a WAF policy on the WAF_V2 SKU", func() {
+			input := minimalSpec()
+			input.Spec.Sku = AzureApplicationGatewaySku_WAF_V2
+			input.Spec.FirewallPolicyId = literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/applicationGatewayWebApplicationFirewallPolicies/waf")
+			input.Spec.ForceFirewallPolicyAssociation = true
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a layer-4 TLS proxy trio", func() {
+			input := minimalSpec()
+			input.Spec.SslCertificates = []*AzureApplicationGatewaySslCertificate{
+				{Name: "tls", Data: "cGZ4"},
+			}
+			input.Spec.FrontendPorts = append(input.Spec.FrontendPorts, &AzureApplicationGatewayFrontendPort{Name: "amqps", Port: 5671})
+			input.Spec.Listeners = []*AzureApplicationGatewayLayer4Listener{
+				{
+					Name:                        "amqps-listener",
+					FrontendIpConfigurationName: "public",
+					FrontendPortName:            "amqps",
+					Protocol:                    AzureApplicationGatewayProtocol_TLS,
+					SslCertificateName:          "tls",
+				},
+			}
+			input.Spec.Backends = []*AzureApplicationGatewayLayer4BackendSettings{
+				{Name: "amqps-backend", Port: 5671, Protocol: AzureApplicationGatewayProtocol_TCP, ClientIpPreservationEnabled: true},
+			}
+			input.Spec.RoutingRules = []*AzureApplicationGatewayLayer4RoutingRule{
+				{
+					Name:                   "amqps-rule",
+					ListenerName:           "amqps-listener",
+					BackendAddressPoolName: "web",
+					BackendSettingsName:    "amqps-backend",
+					Priority:               200,
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept private link, custom errors, buffering, and connection draining", func() {
+			off := false
+			input := minimalSpec()
+			input.Spec.FrontendIpConfigurations[0].PrivateLinkConfigurationName = "pl"
+			input.Spec.PrivateLinkConfigurations = []*AzureApplicationGatewayPrivateLinkConfiguration{
+				{
+					Name: "pl",
+					IpConfigurations: []*AzureApplicationGatewayPrivateLinkIpConfiguration{
+						{
+							Name:                       "nat",
+							SubnetId:                   literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/agw"),
+							PrivateIpAddressAllocation: AzureApplicationGatewayIpAllocation_DYNAMIC,
+							Primary:                    true,
+						},
+					},
+				},
+			}
+			input.Spec.CustomErrorConfigurations = []*AzureApplicationGatewayCustomErrorConfiguration{
+				{StatusCode: AzureApplicationGatewayCustomErrorStatusCode_HTTP_STATUS_502, CustomErrorPageUrl: "https://errors.contoso.com/502.html"},
+			}
+			input.Spec.GlobalConfiguration = &AzureApplicationGatewayGlobalConfiguration{
+				RequestBufferingEnabled:  &off,
+				ResponseBufferingEnabled: &off,
+			}
+			input.Spec.BackendHttpSettings[0].ConnectionDraining = &AzureApplicationGatewayConnectionDraining{
+				Enabled:         true,
+				DrainTimeoutSec: 60,
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a BASIC gateway inside its limits", func() {
+			capacity := int32(2)
+			input := minimalSpec()
+			input.Spec.Sku = AzureApplicationGatewaySku_BASIC
+			input.Spec.Capacity = &capacity
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("azure_application_gateway", func() {
 
-			ginkgo.It("should return a validation error when api_version is wrong", func() {
-				input := minimalAppGateway()
-				input.ApiVersion = "wrong/v1"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject both capacity and autoscale", func() {
+			input := minimalSpec()
+			input.Spec.Autoscale = &AzureApplicationGatewayAutoscale{MinCapacity: 2}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when kind is wrong", func() {
-				input := minimalAppGateway()
-				input.Kind = "WrongKind"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject neither capacity nor autoscale", func() {
+			input := minimalSpec()
+			input.Spec.Capacity = nil
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when metadata is missing", func() {
-				input := minimalAppGateway()
-				input.Metadata = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject autoscale on the BASIC SKU", func() {
+			input := minimalSpec()
+			input.Spec.Sku = AzureApplicationGatewaySku_BASIC
+			input.Spec.Capacity = nil
+			input.Spec.Autoscale = &AzureApplicationGatewayAutoscale{MinCapacity: 2}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when spec is missing", func() {
-				input := minimalAppGateway()
-				input.Spec = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject BASIC capacity above 2", func() {
+			capacity := int32(3)
+			input := minimalSpec()
+			input.Spec.Sku = AzureApplicationGatewaySku_BASIC
+			input.Spec.Capacity = &capacity
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when region is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.Region = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject mTLS certificates on the BASIC SKU", func() {
+			capacity := int32(2)
+			input := minimalSpec()
+			input.Spec.Sku = AzureApplicationGatewaySku_BASIC
+			input.Spec.Capacity = &capacity
+			input.Spec.TrustedClientCertificates = []*AzureApplicationGatewayTrustedClientCertificate{
+				{Name: "ca", Data: "Y2E="},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when resource_group is missing", func() {
-				input := minimalAppGateway()
-				input.Spec.ResourceGroup = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject URL rewriting on the BASIC SKU", func() {
+			capacity := int32(2)
+			input := minimalSpec()
+			input.Spec.Sku = AzureApplicationGatewaySku_BASIC
+			input.Spec.Capacity = &capacity
+			input.Spec.RewriteRuleSets = []*AzureApplicationGatewayRewriteRuleSet{
+				{
+					Name: "rw",
+					RewriteRules: []*AzureApplicationGatewayRewriteRule{
+						{Name: "r", RuleSequence: 1, Url: &AzureApplicationGatewayRewriteRuleUrl{Path: "/x"}},
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when name is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.Name = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a WAF policy on a non-WAF SKU", func() {
+			input := minimalSpec()
+			input.Spec.FirewallPolicyId = literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/applicationGatewayWebApplicationFirewallPolicies/waf")
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when name exceeds 80 characters", func() {
-				input := minimalAppGateway()
-				longName := ""
-				for i := 0; i < 81; i++ {
-					longName += "a"
-				}
-				input.Spec.Name = longName
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a frontend that is both public and private", func() {
+			input := minimalSpec()
+			input.Spec.FrontendIpConfigurations[0].SubnetId = literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/agw")
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when subnet_id is missing", func() {
-				input := minimalAppGateway()
-				input.Spec.SubnetId = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a static private frontend without an address", func() {
+			input := minimalSpec()
+			input.Spec.FrontendIpConfigurations = []*AzureApplicationGatewayFrontendIpConfiguration{
+				{
+					Name:                       "internal",
+					SubnetId:                   literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/agw"),
+					PrivateIpAddressAllocation: AzureApplicationGatewayIpAllocation_STATIC,
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when public_ip_id is missing", func() {
-				input := minimalAppGateway()
-				input.Spec.PublicIpId = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject an HTTPS listener without a certificate", func() {
+			input := minimalSpec()
+			input.Spec.HttpListeners[0].Protocol = AzureApplicationGatewayProtocol_HTTPS
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when sku is invalid", func() {
-				input := minimalAppGateway()
-				input.Spec.Sku = "Standard"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a TCP protocol on an HTTP listener", func() {
+			input := minimalSpec()
+			input.Spec.HttpListeners[0].Protocol = AzureApplicationGatewayProtocol_TCP
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when sku is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.Sku = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a routing rule with both a backend and a redirect", func() {
+			input := minimalSpec()
+			input.Spec.RedirectConfigurations = []*AzureApplicationGatewayRedirectConfiguration{
+				{Name: "r", RedirectType: AzureApplicationGatewayRedirectType_PERMANENT, TargetUrl: "https://contoso.com"},
+			}
+			input.Spec.RequestRoutingRules[0].RedirectConfigurationName = "r"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when capacity exceeds 125", func() {
-				input := minimalAppGateway()
-				cap := int32(126)
-				input.Spec.Capacity = &cap
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a PATH_BASED_ROUTING rule without a url path map", func() {
+			input := minimalSpec()
+			input.Spec.RequestRoutingRules[0].RuleType = AzureApplicationGatewayRequestRoutingRuleType_PATH_BASED_ROUTING
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when capacity is 0", func() {
-				input := minimalAppGateway()
-				cap := int32(0)
-				input.Spec.Capacity = &cap
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a routing rule without a priority", func() {
+			input := minimalSpec()
+			input.Spec.RequestRoutingRules[0].Priority = 0
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when autoscale min_capacity exceeds 100", func() {
-				input := minimalAppGateway()
-				input.Spec.Capacity = nil
-				input.Spec.Autoscale = &AzureApplicationGatewayAutoscale{
-					MinCapacity: 101,
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a url path map defaulting to both backend and redirect", func() {
+			input := minimalSpec()
+			input.Spec.UrlPathMaps = []*AzureApplicationGatewayUrlPathMap{
+				{
+					Name:                             "paths",
+					DefaultBackendAddressPoolName:    "web",
+					DefaultBackendHttpSettingsName:   "http-settings",
+					DefaultRedirectConfigurationName: "r",
+					PathRules: []*AzureApplicationGatewayPathRule{
+						{Name: "api", Paths: []string{"/api/*"}, BackendAddressPoolName: "web", BackendHttpSettingsName: "http-settings"},
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when autoscale max_capacity exceeds 125", func() {
-				input := minimalAppGateway()
-				input.Spec.Capacity = nil
-				maxCap := int32(126)
-				input.Spec.Autoscale = &AzureApplicationGatewayAutoscale{
-					MinCapacity: 2,
-					MaxCapacity: &maxCap,
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a certificate with both Key Vault and inline sources", func() {
+			input := minimalSpec()
+			input.Spec.SslCertificates = []*AzureApplicationGatewaySslCertificate{
+				{Name: "tls", KeyVaultSecretId: literal("https://v.vault.azure.net/secrets/c"), Data: "cGZ4"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when backend_address_pools is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.BackendAddressPools = []*AzureBackendAddressPool{}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a certificate password without inline data", func() {
+			input := minimalSpec()
+			input.Spec.SslCertificates = []*AzureApplicationGatewaySslCertificate{
+				{Name: "tls", KeyVaultSecretId: literal("https://v.vault.azure.net/secrets/c"), Password: "x"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when backend pool name is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.BackendAddressPools[0].Name = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a probe whose timeout exceeds its interval", func() {
+			input := minimalSpec()
+			input.Spec.Probes = []*AzureApplicationGatewayProbe{
+				{Name: "p", Protocol: AzureApplicationGatewayProtocol_HTTP, Path: "/h", Host: "h", Interval: 10, Timeout: 30, UnhealthyThreshold: 3},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when backend_http_settings is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.BackendHttpSettings = []*AzureBackendHttpSettings{}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject an HTTP probe without a path", func() {
+			input := minimalSpec()
+			input.Spec.Probes = []*AzureApplicationGatewayProbe{
+				{Name: "p", Protocol: AzureApplicationGatewayProtocol_HTTP, Host: "h", Interval: 30, Timeout: 10, UnhealthyThreshold: 3},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when backend HTTP settings name is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.BackendHttpSettings[0].Name = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a TCP probe carrying HTTP fields", func() {
+			input := minimalSpec()
+			input.Spec.Probes = []*AzureApplicationGatewayProbe{
+				{Name: "p", Protocol: AzureApplicationGatewayProtocol_TCP, Path: "/h", Interval: 30, Timeout: 10, UnhealthyThreshold: 3},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when backend HTTP settings port is 0", func() {
-				input := minimalAppGateway()
-				input.Spec.BackendHttpSettings[0].Port = 0
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject an SSL policy mixing disabled protocols with a policy type", func() {
+			input := minimalSpec()
+			input.Spec.SslPolicy = &AzureApplicationGatewaySslPolicy{
+				PolicyType:        AzureApplicationGatewaySslPolicyType_PREDEFINED,
+				PolicyName:        "AppGwSslPolicy20220101S",
+				DisabledProtocols: []AzureApplicationGatewayTlsProtocol{AzureApplicationGatewayTlsProtocol_TLS_V1_0},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when backend HTTP settings port exceeds 65535", func() {
-				input := minimalAppGateway()
-				input.Spec.BackendHttpSettings[0].Port = 65536
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a CUSTOM SSL policy without cipher suites", func() {
+			input := minimalSpec()
+			input.Spec.SslPolicy = &AzureApplicationGatewaySslPolicy{
+				PolicyType:         AzureApplicationGatewaySslPolicyType_CUSTOM,
+				MinProtocolVersion: AzureApplicationGatewayTlsProtocol_TLS_V1_2,
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when backend HTTP settings protocol is invalid", func() {
-				input := minimalAppGateway()
-				input.Spec.BackendHttpSettings[0].Protocol = "TCP"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a redirect with both listener and URL targets", func() {
+			input := minimalSpec()
+			input.Spec.RedirectConfigurations = []*AzureApplicationGatewayRedirectConfiguration{
+				{Name: "r", RedirectType: AzureApplicationGatewayRedirectType_PERMANENT, TargetListenerName: "http-listener", TargetUrl: "https://contoso.com"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when cookie_based_affinity is invalid", func() {
-				input := minimalAppGateway()
-				badAffinity := "SomeValue"
-				input.Spec.BackendHttpSettings[0].CookieBasedAffinity = &badAffinity
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a TLS layer-4 listener without a certificate", func() {
+			input := minimalSpec()
+			input.Spec.Listeners = []*AzureApplicationGatewayLayer4Listener{
+				{
+					Name:                        "l4",
+					FrontendIpConfigurationName: "public",
+					FrontendPortName:            "http",
+					Protocol:                    AzureApplicationGatewayProtocol_TLS,
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when request_timeout exceeds 86400", func() {
-				input := minimalAppGateway()
-				timeout := int32(86401)
-				input.Spec.BackendHttpSettings[0].RequestTimeout = &timeout
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject host names on a TCP layer-4 listener", func() {
+			input := minimalSpec()
+			input.Spec.Listeners = []*AzureApplicationGatewayLayer4Listener{
+				{
+					Name:                        "l4",
+					FrontendIpConfigurationName: "public",
+					FrontendPortName:            "http",
+					Protocol:                    AzureApplicationGatewayProtocol_TCP,
+					HostNames:                   []string{"x.contoso.com"},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when http_listeners is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.HttpListeners = []*AzureHttpListener{}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a host_name on TCP layer-4 backend settings", func() {
+			input := minimalSpec()
+			input.Spec.Backends = []*AzureApplicationGatewayLayer4BackendSettings{
+				{Name: "b", Port: 5671, Protocol: AzureApplicationGatewayProtocol_TCP, HostName: "x"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when listener name is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.HttpListeners[0].Name = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a buffering block missing one field", func() {
+			on := true
+			input := minimalSpec()
+			input.Spec.GlobalConfiguration = &AzureApplicationGatewayGlobalConfiguration{
+				RequestBufferingEnabled: &on,
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when listener port is 0", func() {
-				input := minimalAppGateway()
-				input.Spec.HttpListeners[0].Port = 0
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a gateway without frontends or ports", func() {
+			input := minimalSpec()
+			input.Spec.FrontendIpConfigurations = nil
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 
-			ginkgo.It("should return a validation error when listener protocol is invalid", func() {
-				input := minimalAppGateway()
-				input.Spec.HttpListeners[0].Protocol = "TCP"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+			input = minimalSpec()
+			input.Spec.FrontendPorts = nil
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when request_routing_rules is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.RequestRoutingRules = []*AzureRequestRoutingRule{}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a gateway without listeners or routing rules", func() {
+			input := minimalSpec()
+			input.Spec.HttpListeners = nil
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 
-			ginkgo.It("should return a validation error when routing rule name is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.RequestRoutingRules[0].Name = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+			input = minimalSpec()
+			input.Spec.RequestRoutingRules = nil
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when routing rule http_listener_name is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.RequestRoutingRules[0].HttpListenerName = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject an invalid zone", func() {
+			input := minimalSpec()
+			input.Spec.Zones = []string{"4"}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when routing rule backend_address_pool_name is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.RequestRoutingRules[0].BackendAddressPoolName = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when routing rule backend_http_settings_name is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.RequestRoutingRules[0].BackendHttpSettingsName = ""
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when routing rule priority is 0", func() {
-				input := minimalAppGateway()
-				input.Spec.RequestRoutingRules[0].Priority = 0
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when routing rule priority exceeds 20000", func() {
-				input := minimalAppGateway()
-				input.Spec.RequestRoutingRules[0].Priority = 20001
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when health probe name is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.Probes = []*AzureHealthProbe{
-					{Name: "", Protocol: "Http", Path: "/health"},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when health probe protocol is invalid", func() {
-				input := minimalAppGateway()
-				input.Spec.Probes = []*AzureHealthProbe{
-					{Name: "bad-probe", Protocol: "Tcp", Path: "/health"},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when health probe path is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.Probes = []*AzureHealthProbe{
-					{Name: "bad-probe", Protocol: "Http", Path: ""},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when health probe unhealthy_threshold exceeds 20", func() {
-				input := minimalAppGateway()
-				threshold := int32(21)
-				input.Spec.Probes = []*AzureHealthProbe{
-					{Name: "bad-probe", Protocol: "Http", Path: "/health", UnhealthyThreshold: &threshold},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when SSL certificate name is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.SslCertificates = []*AzureSslCertificate{
-					{Name: "", KeyVaultSecretId: "https://vault.vault.azure.net/secrets/cert"},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when SSL certificate key_vault_secret_id is empty", func() {
-				input := minimalAppGateway()
-				input.Spec.SslCertificates = []*AzureSslCertificate{
-					{Name: "my-cert", KeyVaultSecretId: ""},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when waf_mode is invalid", func() {
-				input := minimalAppGateway()
-				input.Spec.Sku = "WAF_v2"
-				wafEnabled := true
-				input.Spec.WafEnabled = &wafEnabled
-				badMode := "Monitor"
-				input.Spec.WafMode = &badMode
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject host_name together with pick_host_name on backend settings", func() {
+			input := minimalSpec()
+			input.Spec.BackendHttpSettings[0].HostName = "app.internal"
+			input.Spec.BackendHttpSettings[0].PickHostNameFromBackendAddress = true
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 	})
 })

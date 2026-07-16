@@ -1,0 +1,43 @@
+# Web-test availability alert -- fires when an Application Insights
+# availability test fails from three or more locations simultaneously,
+# the outside-in "is the site up" pager.
+apiVersion: azure.planton.dev/v1
+kind: AzureMonitorMetricAlert
+metadata:
+  name: my-homepage-availability
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: my-observability-rg
+      fieldPath: status.outputs.resource_group_name
+  alertName: homepage-unreachable
+  # Web-test criteria scope the alert at the web test itself -- reference
+  # its ARM id so the alert follows the test, never a hand-copied id.
+  scopes:
+    - valueFrom:
+        kind: AzureApplicationInsightsStandardWebTest
+        name: my-homepage-web-test
+        fieldPath: status.outputs.web_test_id
+  description: The homepage availability test is failing from multiple locations -- the site is likely down for real users.
+  severity: 0
+  webTestAvailabilityCriteria:
+    webTestId:
+      valueFrom:
+        kind: AzureApplicationInsightsStandardWebTest
+        name: my-homepage-web-test
+        fieldPath: status.outputs.web_test_id
+    componentId:
+      valueFrom:
+        kind: AzureApplicationInsights
+        name: my-web-app-insights
+        fieldPath: status.outputs.application_insights_id
+    failedLocationCount: 3
+  actions:
+    - actionGroupId:
+        valueFrom:
+          kind: AzureMonitorActionGroup
+          name: my-platform-oncall
+          fieldPath: status.outputs.action_group_id
+  tags:
+    team: platform

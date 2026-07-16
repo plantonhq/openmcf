@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorEndpoint
+metadata:
+  name: my-staging-endpoint
+spec:
+  profileId:
+    valueFrom:
+      kind: AzureFrontDoorProfile
+      name: <front-door-profile-resource-name>
+      fieldPath: status.outputs.profile_id
+  endpointName: my-staging
+  # Provisioned but not serving: flip to true (or remove -- true is the
+  # default) to go live without re-provisioning anything. The hostname
+  # is generated now, so DNS can be prepared before launch.
+  enabled: false

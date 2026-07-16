@@ -1,0 +1,45 @@
+# Minimal AwsEcsService scenario: schedule the task-definition prerequisite
+# into the Fargate cluster prerequisite on the two-AZ subnet pair, at
+# desiredCount 0 -- the full wiring (cluster ref, revision-carrying task-def
+# ref, subnets, circuit breaker) is exercised while no task ever launches.
+# Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsEcsService
+metadata:
+  name: planton-oss-e2e-ecs-service
+  id: planton-oss-e2e-ecs-service
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsecsservice
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  clusterArn:
+    valueFrom:
+      kind: AwsEcsCluster
+      name: planton-oss-e2e-ecs-cluster-prereq
+      fieldPath: status.outputs.cluster_arn
+  taskDefinition:
+    valueFrom:
+      kind: AwsEcsTaskDefinition
+      name: planton-oss-e2e-ecs-taskdef
+      fieldPath: status.outputs.task_definition_arn
+  desiredCount: 0
+  network:
+    subnets:
+      - valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-a
+          fieldPath: status.outputs.subnet_id
+      - valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-b
+          fieldPath: status.outputs.subnet_id
+  deploymentCircuitBreaker:
+    enable: true
+    rollback: true

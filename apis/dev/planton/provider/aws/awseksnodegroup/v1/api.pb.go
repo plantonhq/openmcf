@@ -23,18 +23,19 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsEksNodeGroup represents a containerized application deployed on AWS ECS.
-// This resource manages ECS services that can run on either Fargate or EC2.
+// AwsEksNodeGroup represents a managed EKS node group: an EC2 worker fleet
+// that AWS provisions, health-checks, and rolls, registered to an
+// AwsEksCluster.
 type AwsEksNodeGroup struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version must be set to "aws.planton.dev/v1".
 	ApiVersion string `protobuf:"bytes,1,opt,name=api_version,json=apiVersion,proto3" json:"api_version,omitempty"`
-	// resource-kind for this ECS service resource.
+	// resource-kind for this managed node group resource.
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
 	// metadata captures identifying information (name, org, version, etc.)
 	// and must pass standard validations for resource naming.
 	Metadata *shared.CloudResourceMetadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	// spec holds the core configuration data defining how the ECS service is deployed.
+	// spec holds the core configuration data defining how the node group is provisioned.
 	Spec *AwsEksNodeGroupSpec `protobuf:"bytes,4,opt,name=spec,proto3" json:"spec,omitempty"`
 	// status holds runtime or post-deployment information.
 	Status        *AwsEksNodeGroupStatus `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
@@ -107,7 +108,7 @@ func (x *AwsEksNodeGroup) GetStatus() *AwsEksNodeGroupStatus {
 	return nil
 }
 
-// AwsEksNodeGroupStatus describes the status fields for an ECS service resource.
+// AwsEksNodeGroupStatus describes the status fields for a managed node group resource.
 type AwsEksNodeGroupStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.

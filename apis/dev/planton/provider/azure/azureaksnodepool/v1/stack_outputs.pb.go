@@ -21,18 +21,26 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AzureAksNodePoolStackOutputs describes the info retrieved after provisioning an AKS node pool.
+// **AzureAksNodePoolStackOutputs** captures the outputs of provisioning an
+// AKS node pool.
+//
+// Nothing downstream deploys INTO a node pool (workloads target pools via
+// Kubernetes labels and taints, not ARM references), so the outputs are
+// the pool's own identifiers plus the node image actually rolled out.
 type AzureAksNodePoolStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the node pool in AKS. Typically matches the AzureAksNodePool metadata.name.
-	NodePoolName string `protobuf:"bytes,1,opt,name=node_pool_name,json=nodePoolName,proto3" json:"node_pool_name,omitempty"`
-	// Azure Resource Manager ID of the created node pool (Agent Pool resource).
-	AgentPoolResourceId string `protobuf:"bytes,2,opt,name=agent_pool_resource_id,json=agentPoolResourceId,proto3" json:"agent_pool_resource_id,omitempty"`
-	// The maximum number of pods that can run on each node of this pool.
-	// (Determined by AKS based on network configuration and VM size.)
-	MaxPodsPerNode uint32 `protobuf:"varint,3,opt,name=max_pods_per_node,json=maxPodsPerNode,proto3" json:"max_pods_per_node,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The Azure Resource Manager ID of the agent pool.
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.ContainerService/managedClusters/{cluster}/agentPools/{name}
+	NodePoolId string `protobuf:"bytes,1,opt,name=node_pool_id,json=nodePoolId,proto3" json:"node_pool_id,omitempty"`
+	// The name of the node pool (the value used in Kubernetes node labels
+	// like "kubernetes.azure.com/agentpool" for scheduling).
+	NodePoolName string `protobuf:"bytes,2,opt,name=node_pool_name,json=nodePoolName,proto3" json:"node_pool_name,omitempty"`
+	// The node image version the pool is actually running (e.g.
+	// "AKSUbuntu-2204gen2containerd-202502.03.0") -- useful for auditing
+	// node-OS patch currency across pools.
+	NodeImageVersion string `protobuf:"bytes,3,opt,name=node_image_version,json=nodeImageVersion,proto3" json:"node_image_version,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AzureAksNodePoolStackOutputs) Reset() {
@@ -65,6 +73,13 @@ func (*AzureAksNodePoolStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azureaksnodepool_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
+func (x *AzureAksNodePoolStackOutputs) GetNodePoolId() string {
+	if x != nil {
+		return x.NodePoolId
+	}
+	return ""
+}
+
 func (x *AzureAksNodePoolStackOutputs) GetNodePoolName() string {
 	if x != nil {
 		return x.NodePoolName
@@ -72,29 +87,23 @@ func (x *AzureAksNodePoolStackOutputs) GetNodePoolName() string {
 	return ""
 }
 
-func (x *AzureAksNodePoolStackOutputs) GetAgentPoolResourceId() string {
+func (x *AzureAksNodePoolStackOutputs) GetNodeImageVersion() string {
 	if x != nil {
-		return x.AgentPoolResourceId
+		return x.NodeImageVersion
 	}
 	return ""
-}
-
-func (x *AzureAksNodePoolStackOutputs) GetMaxPodsPerNode() uint32 {
-	if x != nil {
-		return x.MaxPodsPerNode
-	}
-	return 0
 }
 
 var File_dev_planton_provider_azure_azureaksnodepool_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azureaksnodepool_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/azure/azureaksnodepool/v1/stack_outputs.proto\x12.dev.planton.provider.azure.azureaksnodepool.v1\"\xa4\x01\n" +
-	"\x1cAzureAksNodePoolStackOutputs\x12$\n" +
-	"\x0enode_pool_name\x18\x01 \x01(\tR\fnodePoolName\x123\n" +
-	"\x16agent_pool_resource_id\x18\x02 \x01(\tR\x13agentPoolResourceId\x12)\n" +
-	"\x11max_pods_per_node\x18\x03 \x01(\rR\x0emaxPodsPerNodeB\x8b\x03\n" +
+	"Bdev/planton/provider/azure/azureaksnodepool/v1/stack_outputs.proto\x12.dev.planton.provider.azure.azureaksnodepool.v1\"\x94\x01\n" +
+	"\x1cAzureAksNodePoolStackOutputs\x12 \n" +
+	"\fnode_pool_id\x18\x01 \x01(\tR\n" +
+	"nodePoolId\x12$\n" +
+	"\x0enode_pool_name\x18\x02 \x01(\tR\fnodePoolName\x12,\n" +
+	"\x12node_image_version\x18\x03 \x01(\tR\x10nodeImageVersionB\x8b\x03\n" +
 	"2com.dev.planton.provider.azure.azureaksnodepool.v1B\x11StackOutputsProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureaksnodepool/v1;azureaksnodepoolv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Azure.Azureaksnodepool.V1\xca\x02.Dev\\Planton\\Provider\\Azure\\Azureaksnodepool\\V1\xe2\x02:Dev\\Planton\\Provider\\Azure\\Azureaksnodepool\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Azure::Azureaksnodepool::V1b\x06proto3"
 
 var (

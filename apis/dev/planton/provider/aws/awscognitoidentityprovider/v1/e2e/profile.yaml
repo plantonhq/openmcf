@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscognitoidentityprovider
+spec:
+  # An identity provider under live E2E: the registry-declared
+  # AwsCognitoUserPool prerequisite deploys first (seconds), then the Google
+  # provider proves create (AWS accepts placeholder credentials -- it never
+  # calls Google at create time), verify (DescribeIdentityProvider on the
+  # composite pool-id/provider-name identity), destroy, and verify-destroyed
+  # on both provisioners. The OIDC arm is excluded from the live lane (AWS
+  # performs live discovery against oidc_issuer at create, which needs a real
+  # issuer); its wiring is proven by the offline gate and the SAML/OIDC CEL
+  # spec tests.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

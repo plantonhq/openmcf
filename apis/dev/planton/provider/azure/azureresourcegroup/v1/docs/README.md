@@ -216,7 +216,7 @@ In every Azure infra chart, resource group is the root node:
 
 ```
 AzureResourceGroup (Layer 0)
-├── AzureVpc (Layer 1)
+├── AzureVirtualNetwork (Layer 1)
 │   ├── AzureSubnet (Layer 2)
 │   │   ├── AzurePostgresqlFlexibleServer (Layer 3)
 │   │   └── AzureContainerAppEnvironment (Layer 3)

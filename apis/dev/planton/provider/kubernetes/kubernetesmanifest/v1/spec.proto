@@ -3,7 +3,6 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetesmanifest.v1;
 
 import "buf/validate/validate.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 /**
@@ -12,9 +11,6 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
  * including multi-document manifests containing multiple resources.
  */
 message KubernetesManifestSpec {
-  // Target Kubernetes Cluster
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // Kubernetes Namespace
   // The namespace where the manifest resources will be deployed.
   // Note: Resources in the manifest that specify their own namespace will use their specified namespace.

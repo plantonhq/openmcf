@@ -7,6 +7,9 @@ terraform {
   }
 }
 
+# Credentials are injected by the runtime as ARM_* environment variables
+# (service principal or keyless OIDC). Keep this block empty -- wiring
+# static credentials here would break the keyless path.
 provider "azurerm" {
   features {}
 }

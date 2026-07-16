@@ -5,34 +5,53 @@ package dev.planton.provider.azure.azureloadbalancer.v1;
 // **AzureLoadBalancerStackOutputs** captures the outputs of provisioning
 // an Azure Load Balancer.
 //
-// The primary outputs are `lb_id` for resource identification and
-// `frontend_ip_address` for DNS record association. The `backend_pool_id`
-// output provides the ID of the first (default) backend pool, which is
-// used by VMSS, AKS, and NIC associations to register backend members.
-//
-// In the enterprise-network-foundation infra chart, the frontend IP is
-// referenced by AzureDnsRecord to create A-records pointing to the LB.
+// The maps keyed by sub-resource NAME are the composition seams: backend
+// pool membership is expressed from the member side in Azure's model, so
+// a network interface or a virtual machine scale set references
+// `status.outputs.backend_pool_ids.<pool-name>` to join a pool, a NIC's
+// NAT-rule association references `status.outputs.nat_rule_ids.<rule-name>`,
+// and a scale set's rolling-upgrade health probe references
+// `status.outputs.probe_ids.<probe-name>`.
 message AzureLoadBalancerStackOutputs {
-  // The Azure Resource Manager ID of the Load Balancer.
+  // The Azure Resource Manager ID of the load balancer.
   // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/loadBalancers/{name}
-  string lb_id = 1;
+  string load_balancer_id = 1;
 
-  // The name of the Load Balancer.
-  string lb_name = 2;
+  // The name of the load balancer.
+  string load_balancer_name = 2;
 
-  // The frontend IP address of the Load Balancer.
-  // For public LBs, this is the public IP address.
-  // For internal LBs, this is the private IP address from the subnet.
-  string frontend_ip_address = 3;
+  // The first internal frontend's private IP address -- the address DNS
+  // records for an internal load balancer point at. Empty when every
+  // frontend is public (a public frontend's address lives on its
+  // referenced AzurePublicIp resource).
+  string private_ip_address = 3;
 
-  // The Azure Resource Manager ID of the frontend IP configuration.
-  // Useful for creating NAT rules or additional routing configurations
-  // that reference this frontend.
-  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/loadBalancers/{name}/frontendIPConfigurations/{config}
-  string frontend_ip_configuration_id = 4;
+  // The private IP addresses of ALL internal frontends, in declaration
+  // order.
+  repeated string private_ip_addresses = 4;
 
-  // The Azure Resource Manager ID of the first (default) backend address pool.
-  // This is the primary output for backend membership -- VMSS instances, AKS
-  // node pools, or NICs are associated with this pool to receive traffic.
-  string backend_pool_id = 5;
+  // The ARM ID of each frontend IP configuration, keyed by the
+  // frontend's name. Referenced when chaining a frontend behind a
+  // Gateway load balancer or registering a regional frontend in a
+  // GLOBAL-tier pool.
+  // Example valueFrom fieldPath: status.outputs.frontend_ip_configuration_ids.public
+  map<string, string> frontend_ip_configuration_ids = 5;
+
+  // The ARM ID of each backend address pool, keyed by the pool's name.
+  // THE membership seam: NIC ip_configurations and scale-set network
+  // profiles reference a pool ID here to join the pool.
+  // Example valueFrom fieldPath: status.outputs.backend_pool_ids.web
+  map<string, string> backend_pool_ids = 6;
+
+  // The ARM ID of each health probe, keyed by the probe's name. A
+  // virtual machine scale set's rolling-upgrade health_probe_id
+  // references one.
+  // Example valueFrom fieldPath: status.outputs.probe_ids.http-health
+  map<string, string> probe_ids = 7;
+
+  // The ARM ID of each inbound NAT rule, keyed by the rule's name. A
+  // NIC's NAT-rule association references a single-target rule here to
+  // complete the attachment.
+  // Example valueFrom fieldPath: status.outputs.nat_rule_ids.ssh-admin
+  map<string, string> nat_rule_ids = 8;
 }

@@ -1,0 +1,23 @@
+# Fully tuned auto scaling configuration -- exercises every dial (warm
+# floor, scale-out ceiling, concurrency threshold) on the dependency-free
+# leaf. Named minimal.yaml so consumers composing this kind through the
+# e2e-prerequisites annotation resolve it as the install manifest.
+apiVersion: aws.planton.dev/v1
+kind: AwsAppRunnerAutoScalingConfiguration
+metadata:
+  name: planton-oss-e2e-awsarasc
+  id: planton-oss-e2e-awsarasc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsapprunnerautoscalingconfiguration
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  maxConcurrency: 50
+  maxSize: 5
+  minSize: 1

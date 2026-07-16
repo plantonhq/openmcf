@@ -26,8 +26,9 @@ const (
 // AzurePostgresqlFlexibleServer is the top-level API resource for an Azure
 // Database for PostgreSQL Flexible Server.
 // Azure Database for PostgreSQL Flexible Server is a fully managed relational
-// database service with granular control over compute, storage, high availability,
-// and networking. Supports PostgreSQL 12 through 17.
+// database service with granular control over compute, storage, high
+// availability, authentication, encryption, and networking. Supports
+// PostgreSQL 11 through 18.
 type AzurePostgresqlFlexibleServer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version

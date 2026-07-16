@@ -224,68 +224,26 @@ While `AwsRoute53Zone` can create records inline within a zone, a standalone rec
 
 ### Schema Design Rationale
 
-**1. Using Shared DnsRecordType Enum**
-Instead of creating an AWS-specific enum, we use the shared `DnsRecordType` from `dev.planton.shared.networking.enums.dnsrecordtype`. This provides consistency across providers (AWS, GCP, Cloudflare) and enables potential cross-provider DNS abstractions.
+**1. Record Type as a Provider String**
+The record type is a validated string carrying Route 53's full RRType vocabulary (A through TLSA) rather than an enum. Provider strings keep the spec honest to AWS's own API surface — a new RRType is a validation-list addition, not a cross-language enum migration — and the value round-trips into both engines without translation tables.
 
 **2. Values vs Alias as Mutually Exclusive**
-The schema enforces that `values` (for standard records) and `alias_target` (for alias records) cannot both be specified. This matches Route53's API behavior and prevents configuration errors.
+The schema enforces that `values` (for standard records) and `alias_target` (for alias records) cannot both be specified — and that exactly one is. Alias records additionally reject a TTL (the target's TTL applies) while standard records require one. All four couplings match Route 53's API behavior and fail at authoring time.
 
 **3. Routing Policy as Oneof**
-Only one routing policy can be active per record. The schema uses protobuf `oneof` to enforce this at the type level, preventing invalid combinations.
+Only one routing policy can be active per record. The schema uses protobuf `oneof` across all seven policies (weighted, latency, failover, geolocation, geoproximity, CIDR, multivalue answer) to enforce this at the type level, mirroring the provider's mutual-conflict matrix.
 
 **4. Set Identifier Validation**
-The schema validates that `set_identifier` is required when using non-simple routing policies, preventing deployment failures.
+The schema validates that `set_identifier` is required whenever a routing policy is set, and that multivalue answer routing never combines with an alias target — both AWS rules that otherwise only fail at apply.
+
+**5. Health Check as a Reference**
+`health_check_id` is a `StringValueOrRef` defaulting to `AwsRoute53HealthCheck.status.outputs.health_check_id`, so failover pairs and health-gated weighted members compose in the resource graph instead of by copied UUIDs.
 
 ## Implementation Landscape
 
-### Pulumi Implementation
+### Dual-Engine Implementation
 
-The Pulumi module uses the `aws.route53.Record` resource:
-
-```go
-recordArgs := &route53.RecordArgs{
-    ZoneId: pulumi.String(spec.HostedZoneId),
-    Name:   pulumi.String(spec.Name),
-    Type:   pulumi.String(spec.Type.String()),
-}
-
-if len(spec.Values) > 0 {
-    recordArgs.Ttl = pulumi.Int(spec.Ttl)
-    recordArgs.Records = pulumi.ToStringArray(spec.Values)
-} else if spec.AliasTarget != nil {
-    recordArgs.Aliases = route53.RecordAliasArray{
-        &route53.RecordAliasArgs{
-            Name:                 pulumi.String(spec.AliasTarget.DnsName),
-            ZoneId:               pulumi.String(spec.AliasTarget.HostedZoneId),
-            EvaluateTargetHealth: pulumi.Bool(spec.AliasTarget.EvaluateTargetHealth),
-        },
-    }
-}
-```
-
-### Terraform Implementation
-
-The Terraform module uses `aws_route53_record`:
-
-```hcl
-resource "aws_route53_record" "record" {
-  zone_id = var.hosted_zone_id
-  name    = var.name
-  type    = var.type
-  
-  dynamic "alias" {
-    for_each = var.alias_target != null ? [var.alias_target] : []
-    content {
-      name                   = alias.value.dns_name
-      zone_id                = alias.value.hosted_zone_id
-      evaluate_target_health = alias.value.evaluate_target_health
-    }
-  }
-  
-  ttl     = var.alias_target == null ? var.ttl : null
-  records = var.alias_target == null ? var.values : null
-}
-```
+Both engines create the single `aws_route53_record` / `aws.route53.Record` resource with identical semantics: the standard-vs-alias branch (values + TTL, or the alias block with the target's DNS name and service zone ID), the seven mutually exclusive routing-policy arguments, health-check gating, the set identifier, and `allow_overwrite`. The record's AWS identity is (zone, name, type, set identifier), so zone and name changes replace the record on both engines.
 
 ## Production Best Practices
 

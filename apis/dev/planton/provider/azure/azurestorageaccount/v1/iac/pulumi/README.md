@@ -1,106 +1,42 @@
-# Azure Storage Account Pulumi Module
+# AzureStorageAccount - Pulumi Module
 
-This Pulumi module deploys Azure Storage Accounts with blob containers, network access controls, and data protection features.
+Pulumi implementation for the AzureStorageAccount deployment component.
 
-## Usage
+## Architecture
 
-### Standalone Module Usage
-
-```go
-package main
-
-import (
-    "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-    "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestorageaccount/v1/iac/pulumi/module"
-    azurestorageaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestorageaccount/v1"
-)
-
-func main() {
-    pulumi.Run(func(ctx *pulumi.Context) error {
-        stackInput := &azurestorageaccountv1.AzureStorageAccountStackInput{
-            // Configure your input here
-        }
-        return module.Resources(ctx, stackInput)
-    })
-}
+```
+storage.Account (the account)
+├── storage.ManagementPolicy      (when lifecycle_rules are declared)
+└── storage.AccountStaticWebsite  (when static_website is declared)
 ```
 
-### Via Planton CLI
+## Key Design Decisions
 
-```bash
-# Deploy using Pulumi backend
-planton pulumi update \
-  --manifest storage.yaml \
-  --stack org/project/env \
-  --module-dir apis/dev/planton/provider/azure/azurestorageaccount/v1/iac/pulumi
-```
+- **Unset SKU enums materialize the spec's documented defaults**
+  (StorageV2 / Standard / LRS) -- stack inputs built from a manifest do
+  NOT materialize proto defaults, and the provider requires tier and
+  replication. Unset `access_tier` / `dns_endpoint_type` /
+  `allowed_copy_scope` / key types are NOT sent at all, mirroring the
+  Terraform module's nulls so both engines produce the same ARM payload.
+- **Every optional-with-default bool is presence-guarded** to its proto
+  default (`https_traffic_only_enabled`, `shared_access_key_enabled`,
+  `allow_nested_items_to_be_public`, `public_network_access_enabled`,
+  `local_user_enabled`, retention days).
+- **The lifecycle policy is a separate `storage.ManagementPolicy`**
+  parented to the account -- ARM models it as one singleton per-account
+  policy document, which is why the rules fold into the account spec
+  rather than being their own kind. Absent aging thresholds are simply
+  not sent (the provider's -1 sentinel is an HCL-ergonomics artifact
+  this module never needs).
+- **The static website is the standalone `storage.AccountStaticWebsite`
+  resource** -- the inline block is deprecated for removal in azurerm
+  v5; the spec's shape is identical either way.
+- **`identity_principal_id` is exported via ApplyT** on the identity
+  output (empty unless the type includes SystemAssigned).
 
-## Environment Variables
+## Provider
 
-The module expects stack input via the `STACK_INPUT` environment variable, which is automatically set by the Planton CLI.
-
-For manual testing:
-
-```bash
-export STACK_INPUT=$(cat manifest.yaml | base64)
-pulumi up
-```
-
-## Required Azure Credentials
-
-The module requires Azure Service Principal credentials:
-
-- `client_id` - Azure AD Application (client) ID
-- `client_secret` - Azure AD Application secret
-- `tenant_id` - Azure AD Tenant ID
-- `subscription_id` - Azure Subscription ID
-
-These are provided via the `provider_config` field in the stack input.
-
-## Resources Created
-
-- Azure Storage Account
-- Blob Containers (as specified in manifest)
-- Network ACLs (firewall rules)
-- Blob soft delete policy
-- Container soft delete policy
-
-## Outputs
-
-| Output | Description |
-|--------|-------------|
-| `storage_account_id` | Azure Resource Manager ID |
-| `storage_account_name` | Storage account name |
-| `primary_blob_endpoint` | Primary blob service URL |
-| `primary_queue_endpoint` | Primary queue service URL |
-| `primary_table_endpoint` | Primary table service URL |
-| `primary_file_endpoint` | Primary file service URL |
-| `primary_dfs_endpoint` | Primary DFS (Data Lake) URL |
-| `primary_web_endpoint` | Primary static website URL |
-| `container_url_map` | Map of container names to URLs |
-| `region` | Azure region |
-| `resource_group` | Resource group name |
-
-## Development
-
-### Build
-
-```bash
-make build
-```
-
-### Update Dependencies
-
-```bash
-make update-deps
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Name conflicts**: Storage account names must be globally unique and 3-24 characters (lowercase alphanumeric only).
-
-2. **Network lockout**: If you enable network rules with default "Deny", ensure you include your source IP in the allowed list.
-
-3. **Provider errors**: Verify Azure credentials are valid and have sufficient permissions (Storage Account Contributor role recommended).
+The Azure provider is built by the shared
+`pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)` builder, which
+dispatches static client-secret, keyless web-identity (OIDC), and
+ambient credential chains. Never construct a provider inline.

@@ -51,13 +51,13 @@ The TF/Pulumi providers wrap tracing in a nested block: `tracing_configuration {
 
 AWS requires the CloudWatch Log Group ARN for Step Functions logging to end with `:*`. This is a provider quirk that should not burden users. The IaC modules automatically append `:*` if the ARN does not already end with it, so users can reference a log group ARN directly via `StringValueOrRef` without worrying about the suffix.
 
-### 5. Version Publishing Omitted (v1)
+### 5. Version Publishing as a Single Toggle
 
-The TF provider supports `publish` and `version_description` for state machine versioning (blue-green deployments with aliases). This is omitted from v1 because:
+The provider models state machine versioning through `publish`: when true, every create and configuration update publishes an immutable version (definition + role + logging/tracing/encryption at publish time). The spec exposes exactly that toggle and exports the latest version's ARN (`state_machine_version_arn`) plus the current `revision_id` as stack outputs. Consumers that need deployment pinning point at the version ARN instead of the mutable state machine ARN. Weighted routing between versions (`aws_sfn_alias`) is a separate deployment-orchestration resource that composes later through the exported version ARN; it is deferred until pulled by real demand.
 
-- Fewer than 20% of Step Functions users use versioning
-- It adds complexity to both the spec and IaC modules
-- It can be added in a future version without breaking changes
+### 5a. No Description Field
+
+The `CreateStateMachine` API has no description input -- the provider computes `description` as a read-only attribute (the console derives it from the definition's `Comment` field). A spec field would be silently dropped by both engines, so the component deliberately does not model one. Document workflows in the ASL `Comment` field.
 
 ### 6. State Machine Type is Force-New
 

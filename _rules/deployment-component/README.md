@@ -89,7 +89,7 @@ Bootstrap complete, production-ready deployment components from scratch.
 ✅ **Proto API Definitions** - All 4 proto files with validations and tests
 ✅ **IaC Modules** - Both Pulumi and Terraform with feature parity
 ✅ **Documentation** - User-facing, research, and technical docs
-✅ **Supporting Files** - Test manifests, debug scripts, build configs
+✅ **Supporting Files** - Test manifests, build configs
 ✅ **Registry Entry** - Registered in cloud_resource_kind.proto
 ✅ **Validation** - Build and test validation passed
 
@@ -283,7 +283,7 @@ Automatically creates missing items:
 - ✅ User-facing docs (if missing/incomplete)
 - ✅ Examples (if missing/incomplete)
 - ✅ Pulumi overview (if missing)
-- ✅ Supporting files (manifests, debug scripts)
+- ✅ Supporting files (manifests)
 
 **Note:** Only fills gaps, doesn't modify existing files
 

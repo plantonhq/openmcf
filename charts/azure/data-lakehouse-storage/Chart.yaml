@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: Azure Data Lakehouse Storage
+spec:
+  selector:
+    kind: platform
+  description: A governed ADLS Gen2 lakehouse foundation -- the medallion zones (raw, curated, sandbox) as first-class filesystems with POSIX inheritance posture, per-zone encryption scopes with customer-managed keys on by default, least-privilege data-plane RBAC scoped to each zone, lifecycle tiering that pays for hot storage only where it earns it, and the data-access audit log a governed lake is defined by
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/azure/azurestorageaccount/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/azure/data-lakehouse-storage
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/azure/data-lakehouse-storage/README.md

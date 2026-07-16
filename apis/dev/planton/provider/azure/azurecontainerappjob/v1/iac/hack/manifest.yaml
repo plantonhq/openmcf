@@ -1,0 +1,71 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppJob
+metadata:
+  name: test-job
+spec:
+  region: eastus
+  resource_group:
+    value: test-rg
+  job_name: test-batch-job
+  container_app_environment_id:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.App/managedEnvironments/test-env
+  replica_timeout_in_seconds: 1800
+  replica_retry_limit: 2
+  workload_profile_name: dedicated-d4
+  containers:
+    - name: worker
+      image: mcr.microsoft.com/k8se/quickstart-jobs:latest
+      cpu: 0.5
+      memory: "1Gi"
+      command: ["/bin/process"]
+      args: ["--batch-size", "100"]
+      env:
+        - name: MODE
+          value: batch
+        - name: QUEUE_CONN
+          secret_name: queue-conn
+      startup_probe:
+        transport: TCP_SOCKET
+        port: 8080
+        failure_count_threshold: 60
+      volume_mounts:
+        - name: work-data
+          path: /work
+  init_containers:
+    - name: fetch-config
+      image: mcr.microsoft.com/k8se/quickstart-jobs:latest
+      command: ["/bin/fetch-config"]
+  volumes:
+    - name: work-data
+      storage_type: AZURE_FILE
+      storage_name:
+        value: test-env-storage
+  event_trigger:
+    parallelism: 2
+    replica_completion_count: 2
+    scale:
+      max_executions: 20
+      min_executions: 0
+      polling_interval_in_seconds: 60
+      rules:
+        - name: queue-depth
+          custom_rule_type: azure-queue
+          metadata:
+            queueName: work
+            queueLength: "5"
+          authentication:
+            - secret_name: queue-conn
+              trigger_parameter: connection
+  secrets:
+    - name: queue-conn
+      value: DefaultEndpointsProtocol=https;AccountName=test
+    - name: db-password
+      key_vault_secret_id: https://test-vault.vault.azure.net/secrets/db-password
+      identity: System
+  registries:
+    - server: testregistry.azurecr.io
+      identity: System
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    team: platform

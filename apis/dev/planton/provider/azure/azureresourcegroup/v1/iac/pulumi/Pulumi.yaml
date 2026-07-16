@@ -1,5 +1,5 @@
 #name should be updated based on the choice of 'project' name in pulumi backend
-name: planton-aws-module-test
+name: planton-azure-module-test
 runtime:
   name: go
 #  options:

@@ -33,21 +33,26 @@ module "service_plan" {
   }
 
   spec = {
-    region         = "eastus"
-    resource_group = "my-rg"
-    name           = "my-plan"
-    os_type        = "Linux"
-    sku_name       = "P1v3"
-    worker_count   = 3
+    region            = "eastus"
+    resource_group    = "my-rg"
+    service_plan_name = "my-plan"
+    os_type           = "LINUX"
+    sku_name          = "PREMIUM_P1V3"
+    worker_count      = 3
   }
 }
 ```
+
+The `os_type` and `sku_name` values arrive as the spec enum's name strings;
+`locals.tf` maps them to Azure's wire spellings (`Linux`, `P1v3`).
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `plan_id` | ARM resource ID of the Service Plan |
-| `plan_name` | Name of the Service Plan |
-| `os_type` | Configured OS type |
-| `sku_name` | Configured SKU name |
+| `service_plan_id` | ARM resource ID of the Service Plan |
+| `service_plan_name` | Name of the Service Plan |
+| `os_type` | Configured OS type in Azure's spelling |
+| `sku_name` | Configured SKU name in Azure's spelling |
+| `kind` | Azure's computed plan classification |
+| `reserved` | Whether the plan runs Linux workers |

@@ -1,0 +1,3 @@
+name: azure-storage-table
+runtime: go
+description: Pulumi program for Azure Storage table

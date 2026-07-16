@@ -1,0 +1,38 @@
+# Standard state machine over the Step Functions execution-role fixture: a
+# Pass-state workflow (invokes no services, so the empty-permission role is
+# honest), published so the version surface (state_machine_version_arn,
+# revision_id) is exercised live. Logging and encryption are deliberately not
+# in this lane -- logging would pull the CloudWatch log-group full-surface
+# chain and KMS association would slow the destroy leg; both arms are proven
+# by spec tests and the offline gate.
+apiVersion: aws.planton.dev/v1
+kind: AwsStepFunction
+metadata:
+  name: planton-oss-e2e-awssfn
+  id: planton-oss-e2e-awssfn
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsstepfunction
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  type: STANDARD
+  publish: true
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sfn-execution-role
+      fieldPath: status.outputs.role_arn
+  definition:
+    Comment: Planton E2E smoke workflow
+    StartAt: Hello
+    States:
+      Hello:
+        Type: Pass
+        Result: Hello, E2E!
+        End: true

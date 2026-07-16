@@ -1,0 +1,52 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorFirewallPolicy
+metadata:
+  name: my-edge-waf
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: <resource-group-resource-name>
+      fieldPath: status.outputs.resource_group_name
+  policyName: edgewaf
+  # PREMIUM unlocks Microsoft's managed rule sets and the bot
+  # challenges -- pair it with a PREMIUM Front Door profile (the skus
+  # must match at association time).
+  sku: PREMIUM
+  mode: PREVENTION
+  # Redact secrets and client IPs from the WAF logs before they land in
+  # Log Analytics.
+  logScrubbing:
+    scrubbingRules:
+      - matchVariable: SCRUB_REQUEST_HEADER_NAMES
+        operator: SELECTOR_EQUALS
+        selector: Authorization
+      - matchVariable: SCRUB_REQUEST_IP_ADDRESS
+        operator: SELECTOR_EQUALS_ANY
+  managedRules:
+    # Microsoft's default rule set 2.1: OWASP-class SQLI/XSS/RCE
+    # coverage plus Microsoft threat-intelligence rules, on the
+    # anomaly-scoring model (individual rules score; crossing the
+    # threshold triggers the set's action).
+    - type: Microsoft_DefaultRuleSet
+      version: "2.1"
+      action: RULE_SET_BLOCK
+      # Example false-positive tuning: a session cookie whose random
+      # values keep tripping injection rules -- excluded set-wide
+      # instead of disabling any rule.
+      exclusions:
+        - matchVariable: EXCLUDE_REQUEST_COOKIE_NAMES
+          operator: SELECTOR_EQUALS
+          selector: session-token
+    # The bot manager: classify and gate good/bad/unknown bots. Unknown
+    # bots get a JavaScript challenge instead of a hard block -- real
+    # browsers pass invisibly.
+    - type: Microsoft_BotManagerRuleSet
+      version: "1.1"
+      action: RULE_SET_BLOCK
+      overrides:
+        - ruleGroupName: UnknownBots
+          rules:
+            - ruleId: Bot300700
+              enabled: true
+              action: OVERRIDE_JS_CHALLENGE

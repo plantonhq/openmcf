@@ -10,12 +10,16 @@ order: 200
 presets:
   - slug: "01-standard-rbac"
     rank: "01"
-    title: "Standard Key Vault with RBAC"
-    excerpt: "This preset creates an Azure Key Vault with Standard SKU, Azure RBAC authorization, purge protection, and 90-day soft delete retention. This is the recommended configuration for most production..."
+    title: "Standard RBAC Vault"
+    excerpt: "This preset creates the baseline modern vault: Standard SKU, Azure RBAC authorization (the spec default), public endpoint, and Azure's own deletion-safety defaults (90-day soft delete, purge..."
   - slug: "02-premium-network-restricted"
     rank: "02"
-    title: "Premium Key Vault with Network Restrictions"
-    excerpt: "This preset creates an Azure Key Vault with Premium SKU (HSM-backed keys), Azure RBAC, and network access control. Network ACLs restrict access to specific IP ranges and VNet subnets, with a..."
+    title: "Premium Network-Restricted CMK Vault"
+    excerpt: "This preset creates the production posture for a vault holding customer-managed keys: Premium SKU (unlocks the HSM-backed key types for the `AzureKeyVaultKey` resources inside), purge protection ON..."
+  - slug: "03-legacy-access-policy"
+    rank: "03"
+    title: "Legacy Access-Policy Vault"
+    excerpt: "This preset runs the vault in the legacy access-policy authorization mode: `rbacAuthorizationEnabled: false` with explicit per-principal permission lists carried on the vault itself. ARM stores but..."
 ---
 
 # Key Vault Presets

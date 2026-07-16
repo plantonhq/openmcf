@@ -1,0 +1,93 @@
+# The pipeline itself — a V2 pipeline (git triggers, queued executions)
+# wiring Source → Build (→ Deploy when toggled). Two wiring notes worth
+# knowing: action configuration values are plain strings by AWS's schema
+# (a map<string,string>), so the build project is wired by its NAME — the
+# chart renders both names from pipeline_name, closing the loop at render
+# time — and the connection ARN is the literal the user pasted, because
+# the connection handshake itself is a human-approved console step.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsCodePipeline
+metadata:
+  name: "{{ values.pipeline_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+  pipelineType: V2
+  # QUEUED runs pushes in arrival order instead of cancelling in-flight
+  # executions (SUPERSEDED) — with a deploy stage in play, every commit
+  # gets its own complete, attributable run.
+  executionMode: QUEUED
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: "{{ values.pipeline_name }}-codepipeline-role"
+      fieldPath: status.outputs.role_arn
+  artifactStores:
+    - location:
+        valueFrom:
+          kind: AwsS3Bucket
+          name: "{{ values.artifacts_bucket_name }}"
+          fieldPath: status.outputs.bucket_id
+  stages:
+    - name: Source
+      actions:
+        - name: FetchSource
+          category: Source
+          owner: AWS
+          provider: CodeStarSourceConnection
+          version: "1"
+          configuration:
+            ConnectionArn: "{{ values.connection_arn }}"
+            FullRepositoryId: "{{ values.repository_id }}"
+            BranchName: "{{ values.branch }}"
+            # CODE_ZIP ships just the tree — fastest for builds that don't
+            # need git history. Switch to CODEBUILD_CLONE_REF if your
+            # buildspec runs git commands (version stamping from tags).
+            OutputArtifactFormat: CODE_ZIP
+          outputArtifacts:
+            - SourceOutput
+          namespace: SourceVariables
+    - name: Build
+      actions:
+        - name: BuildAndPush
+          category: Build
+          owner: AWS
+          provider: CodeBuild
+          version: "1"
+          configuration:
+            ProjectName: "{{ values.pipeline_name }}-build"
+          inputArtifacts:
+            - SourceOutput
+          outputArtifacts:
+            - BuildOutput
+{% if values.ecs_deploy_enabled | bool %}
+    - name: Deploy
+      actions:
+        # The ECS rolling deploy: reads imagedefinitions.json from the
+        # build output (container name → new image URI), registers a new
+        # task-definition revision, and rolls the service through its own
+        # deployment safety (circuit breaker, health checks). The names
+        # pair with the fargate-web-service chart's defaults.
+        - name: RollEcsService
+          category: Deploy
+          owner: AWS
+          provider: ECS
+          version: "1"
+          configuration:
+            ClusterName: "{{ values.ecs_cluster_name }}"
+            ServiceName: "{{ values.ecs_service_name }}"
+            FileName: imagedefinitions.json
+          inputArtifacts:
+            - BuildOutput
+{% endif %}
+  # The V2 git trigger: push events on the watched branch start the
+  # pipeline. Without an explicit trigger block the pipeline would still
+  # poll — the trigger makes starts immediate and filterable.
+  triggers:
+    - providerType: CodeStarSourceConnection
+      gitConfiguration:
+        sourceActionName: FetchSource
+        push:
+          - branches:
+              includes:
+                - "{{ values.branch }}"

@@ -78,7 +78,7 @@ KubernetesNamespace ──namespace FK──┐                                 
 
 The upstream `GatewaySpec` (standard channel, v1.5.1) has the following fields,
 all mirrored in `KubernetesGatewaySpec` after the Planton envelope
-(`target_cluster`, `namespace`):
+(`namespace`):
 
 | Upstream field | Planton field | Notes |
 |----------------|---------------|-------|

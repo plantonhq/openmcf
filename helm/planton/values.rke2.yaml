@@ -1,0 +1,34 @@
+# Planton on RKE2 / Rancher-managed clusters.
+#
+#   helm install planton oci://ghcr.io/plantonhq/charts/planton \
+#     --namespace planton --create-namespace \
+#     --values https://raw.githubusercontent.com/plantonhq/planton/main/helm/planton/values.rke2.yaml
+#
+# Active below: only what is true of every stock RKE2 cluster. RKE2 ships
+# ingress-nginx as its default ingress controller, so ingress can be enabled
+# out of the box -- with no hostname, Planton derives a working URL from the
+# controller's published address and serves plain HTTP (the status explains
+# it). Everything specific to YOUR environment is a commented recipe.
+
+platform:
+  spec:
+    ingress:
+      enabled: true
+      # RKE2's bundled controller; also the cluster default, stated
+      # explicitly so this file works on clusters with additional
+      # controllers installed.
+      ingressClassName: nginx
+
+      # Serve at your own domain (point its DNS at your ingress first):
+      # hostname: planton.example.com
+
+      # HTTPS -- exactly one of the two, and hostname is required:
+      # tls:
+      #   secretName: planton-tls                        # a cert you bring
+      #   issuer: {name: letsencrypt, kind: ClusterIssuer}  # or cert-manager
+
+    # The in-cluster runner deploys by default. To let it deploy real cloud
+    # infrastructure, give it a cloud identity via a Secret you own (created
+    # in the install namespace; keys become environment variables):
+    # runner:
+    #   cloudCredentialsSecretName: my-cloud-credentials

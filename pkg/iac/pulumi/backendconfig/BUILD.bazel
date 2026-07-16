@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/pkg/iac/pulumi/backendconfig",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/iac/pulumi/pulumilabels",
+        "//pkg/iac/pulumi/pulumiannotationkeys",
         "//pkg/reflection/metadatareflect",
         "@org_golang_google_protobuf//proto",
     ],
@@ -19,7 +19,7 @@ go_test(
     deps = [
         "//apis/dev/planton/provider/aws/awsvpc/v1:awsvpc",
         "//apis/dev/planton/shared",
-        "//pkg/iac/pulumi/pulumilabels",
+        "//pkg/iac/pulumi/pulumiannotationkeys",
         "@com_github_stretchr_testify//assert",
     ],
 )

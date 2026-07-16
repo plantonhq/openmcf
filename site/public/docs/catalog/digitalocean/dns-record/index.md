@@ -31,7 +31,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDnsRecord
 metadata:
   name: www-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -94,7 +94,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDnsRecord
 metadata:
   name: www-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -118,7 +118,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDnsRecord
 metadata:
   name: blog-cname
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -142,7 +142,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDnsRecord
 metadata:
   name: mail-mx
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -167,7 +167,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDnsRecord
 metadata:
   name: caa-letsencrypt
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -193,7 +193,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDnsRecord
 metadata:
   name: api-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -28,7 +28,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsStepFunction
 metadata:
   name: my-step-function
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -68,7 +68,7 @@ This creates a STANDARD state machine with a single Pass state that returns a st
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `type` | `string` | `"STANDARD"` | State machine type. `STANDARD` for long-running workflows (up to 1 year, exactly-once). `EXPRESS` for high-volume short-duration workflows (up to 5 minutes, at-most-once). Cannot be changed after creation (forces replacement). Must be `STANDARD` or `EXPRESS`. |
-| `description` | `string` | `""` | Free-form description visible in the AWS Console. |
+| `publish` | `bool` | `false` | Publish an immutable version on create and on every configuration change. The latest version's ARN is exported as a stack output, so consumers can pin executions to a snapshot instead of the mutable state machine. |
 | `tracingEnabled` | `bool` | `false` | Enables AWS X-Ray tracing. Requires `xray:PutTraceSegments` and `xray:PutTelemetryRecords` permissions on the execution role. |
 | `logging.level` | `string` | `"OFF"` | Logging level for execution history events. `ALL` logs every event type, `ERROR` logs errors only, `FATAL` logs fatal errors only, `OFF` disables logging. |
 | `logging.includeExecutionData` | `bool` | `false` | When `true`, includes full JSON payloads passed between states in log entries. Increases log volume and may expose sensitive data. |
@@ -87,14 +87,15 @@ apiVersion: aws.planton.dev/v1
 kind: AwsStepFunction
 metadata:
   name: order-processor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.AwsStepFunction.order-processor
 spec:
   region: us-east-1
-  roleArn: arn:aws:iam::123456789012:role/step-functions-exec
+  roleArn:
+    value: arn:aws:iam::123456789012:role/step-functions-exec
   definition:
     StartAt: ProcessOrder
     States:
@@ -123,7 +124,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsStepFunction
 metadata:
   name: event-ingest
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,12 +132,14 @@ metadata:
 spec:
   region: us-east-1
   type: EXPRESS
-  roleArn: arn:aws:iam::123456789012:role/step-functions-express-exec
+  roleArn:
+    value: arn:aws:iam::123456789012:role/step-functions-express-exec
   tracingEnabled: true
   logging:
     level: ERROR
     includeExecutionData: false
-    logDestination: arn:aws:logs:us-east-1:123456789012:log-group:/aws/stepfunctions/event-ingest
+    logDestination:
+      value: arn:aws:logs:us-east-1:123456789012:log-group:/aws/stepfunctions/event-ingest
   definition:
     StartAt: ValidateEvent
     States:
@@ -164,22 +167,25 @@ apiVersion: aws.planton.dev/v1
 kind: AwsStepFunction
 metadata:
   name: payment-workflow
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.AwsStepFunction.payment-workflow
 spec:
   region: us-east-1
-  roleArn: arn:aws:iam::123456789012:role/payment-sfn-exec
-  description: Processes payment transactions with PCI-compliant encryption.
+  roleArn:
+    value: arn:aws:iam::123456789012:role/payment-sfn-exec
+  publish: true
   tracingEnabled: true
   logging:
     level: ALL
     includeExecutionData: true
-    logDestination: arn:aws:logs:us-east-1:123456789012:log-group:/aws/stepfunctions/payment-workflow
+    logDestination:
+      value: arn:aws:logs:us-east-1:123456789012:log-group:/aws/stepfunctions/payment-workflow
   encryption:
-    kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/abcd-1234-efgh-5678
+    kmsKeyId:
+      value: arn:aws:kms:us-east-1:123456789012:key/abcd-1234-efgh-5678
     kmsDataKeyReusePeriodSeconds: 60
   definition:
     StartAt: AuthorizePayment
@@ -203,7 +209,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsStepFunction
 metadata:
   name: ref-step-function
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -239,6 +245,10 @@ After deployment, the following outputs are available in `status.outputs`:
 |--------|------|-------------|
 | `state_machine_arn` | `string` | ARN of the created Step Functions state machine, used for invoking executions and cross-service references (EventBridge targets, API Gateway integrations, IAM policies) |
 | `state_machine_name` | `string` | Name of the state machine, useful for dashboards, monitoring, and human-readable log references |
+| `state_machine_version_arn` | `string` | ARN of the most recently published version (populated when `publish` is true) -- pin consumers here for immutable snapshots |
+| `revision_id` | `string` | Revision identifier of the current definition; changes on every definition or configuration update |
+| `status` | `string` | Lifecycle status reported by AWS (e.g. `ACTIVE`) |
+| `creation_date` | `string` | RFC3339 timestamp of state machine creation |
 
 ## Related Components
 

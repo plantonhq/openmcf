@@ -26,9 +26,6 @@ module "kubernetes_job" {
   }
 
   spec = {
-    target_cluster = {
-      cluster_name = "my-cluster"
-    }
     namespace        = "batch-jobs"
     create_namespace = true
     image = {
@@ -64,9 +61,6 @@ module "kubernetes_job" {
   }
 
   spec = {
-    target_cluster = {
-      cluster_name = "my-cluster"
-    }
     namespace        = "data-processing"
     create_namespace = true
     image = {
@@ -116,9 +110,6 @@ module "kubernetes_job" {
   }
 
   spec = {
-    target_cluster = {
-      cluster_name = "my-cluster"
-    }
     namespace        = "batch"
     create_namespace = true
     image = {

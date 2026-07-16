@@ -1,0 +1,15 @@
+# Offline-plan manifest: a dedicated cluster with an explicit capacity
+# count and a user tag, exercising the composed Dedicated_{n} sku and
+# the tag merge.
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHubCluster
+metadata:
+  name: test-eventhub-cluster
+spec:
+  region: eastus
+  resourceGroup:
+    value: my-rg
+  clusterName: hack-eventhub-cluster
+  capacityUnits: 1
+  tags:
+    team: streaming

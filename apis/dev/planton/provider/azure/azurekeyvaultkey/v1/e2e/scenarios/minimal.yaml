@@ -1,0 +1,42 @@
+# Minimal AzureKeyVaultKey scenario: an RSA-2048 CMK-shaped key (wrap/unwrap
+# capability pair) with a rotation policy, in the fixture vault.
+#
+# The vault reference resolves against the registry prerequisite's captured
+# outputs through the field's default kind. The rotation policy exercises
+# the paired expire_after/notify_before_expiry seam AND the automatic
+# trigger; the wrap/unwrap key_opts exercise the enum vocabulary. The
+# versionless_id / resource_versionless_id outputs -- the composition seams
+# CMK consumers reference -- must populate on both engines. User tags
+# exercise the merge-over-metadata-tags path.
+apiVersion: azure.planton.dev/v1
+kind: AzureKeyVaultKey
+metadata:
+  name: planton-oss-e2e-azurekeyvaultkey-smoke
+  id: planton-oss-e2e-azurekeyvaultkey-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurekeyvaultkey
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  name: pltn-oss-e2e-cmk-smoke
+  keyVaultId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-kv
+  keyType: RSA
+  keySize: 2048
+  keyOpts:
+    - WRAP_KEY
+    - UNWRAP_KEY
+  rotationPolicy:
+    expireAfter: P2Y
+    notifyBeforeExpiry: P30D
+    automatic:
+      timeBeforeExpiry: P60D
+  tags:
+    e2e-suite: azure
+    purpose: smoke

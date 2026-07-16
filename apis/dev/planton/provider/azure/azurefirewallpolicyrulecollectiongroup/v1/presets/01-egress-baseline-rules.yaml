@@ -1,0 +1,40 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFirewallPolicyRuleCollectionGroup
+metadata:
+  name: platform-baseline
+spec:
+  firewallPolicyId:
+    valueFrom:
+      name: <firewall-policy-name>
+  name: platform-baseline
+  priority: 500
+  networkRuleCollections:
+    - name: core-egress
+      priority: 200
+      action: ALLOW
+      rules:
+        - name: allow-dns
+          description: workload DNS to the resolvers
+          protocols: [UDP, TCP]
+          sourceAddresses: ["<spoke-cidr>"]
+          destinationAddresses: ["168.63.129.16"]
+          destinationPorts: ["53"]
+        - name: allow-ntp
+          protocols: [UDP]
+          sourceAddresses: ["<spoke-cidr>"]
+          destinationFqdns: ["time.windows.com"]
+          destinationPorts: ["123"]
+  applicationRuleCollections:
+    - name: web-egress
+      priority: 300
+      action: ALLOW
+      rules:
+        - name: allow-package-registries
+          protocols:
+            - type: HTTPS
+              port: 443
+          sourceAddresses: ["<spoke-cidr>"]
+          destinationFqdns:
+            - "github.com"
+            - "*.githubusercontent.com"
+            - "registry.npmjs.org"

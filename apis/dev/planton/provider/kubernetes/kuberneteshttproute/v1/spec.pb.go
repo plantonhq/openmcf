@@ -32,7 +32,7 @@ const (
 // 100% fidelity with the upstream Gateway API v1.5.1 HTTPRouteSpec
 // (kubernetes-sigs/gateway-api apis/v1/httproute_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
-// (target_cluster, namespace). Experimental fields are intentionally excluded
+// (namespace). Experimental fields are intentionally excluded
 // because they are absent from the standard-channel CRD and the typed Pulumi
 // resource Planton provisions with, so they would have no deployable target:
 //   - CommonRouteSpec.useDefaultGateways
@@ -40,10 +40,6 @@ const (
 //   - the ExternalAuth filter variant (and its sub-config)
 type KubernetesHttpRouteSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where this HTTPRoute is created. The Gateway API
-	// CRDs (KubernetesGatewayApiCrds) and a Gateway the route attaches to must
-	// already be present on the cluster.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace in which the HTTPRoute is created. Backends in other namespaces,
 	// and Gateways in other namespaces, are subject to the usual same-namespace /
 	// ReferenceGrant rules.
@@ -121,13 +117,6 @@ func (x *KubernetesHttpRouteSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesHttpRouteSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesHttpRouteSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kuberneteshttproute_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesHttpRouteSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesHttpRouteSpec) GetNamespace() *v1.StringValueOrRef {
@@ -1398,9 +1387,8 @@ var File_dev_planton_provider_kubernetes_kuberneteshttproute_v1_spec_proto proto
 
 const file_dev_planton_provider_kubernetes_kuberneteshttproute_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/kubernetes/kuberneteshttproute/v1/spec.proto\x126dev.planton.provider.kubernetes.kuberneteshttproute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc7\x04\n" +
-	"\x17KubernetesHttpRouteSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Adev/planton/provider/kubernetes/kuberneteshttproute/v1/spec.proto\x126dev.planton.provider.kubernetes.kuberneteshttproute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe4\x03\n" +
+	"\x17KubernetesHttpRouteSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
 	"\vparent_refs\x18\x03 \x03(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiParentReferenceB\b\xbaH\x05\x92\x01\x02\x10 R\n" +
 	"parentRefs\x12y\n" +
@@ -1590,44 +1578,42 @@ var file_dev_planton_provider_kubernetes_kuberneteshttproute_v1_spec_proto_goTyp
 	(*KubernetesHttpRouteCorsFilter)(nil),                         // 13: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteCorsFilter
 	(*KubernetesHttpRouteBackendRef)(nil),                         // 14: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteBackendRef
 	(*KubernetesHttpRouteTimeouts)(nil),                           // 15: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteTimeouts
-	(*kubernetes.KubernetesClusterSelector)(nil),                  // 16: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                                   // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesGatewayApiParentReference)(nil),        // 18: dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
-	(*kubernetes.KubernetesGatewayApiLocalObjectReference)(nil),   // 19: dev.planton.provider.kubernetes.KubernetesGatewayApiLocalObjectReference
-	(*kubernetes.KubernetesGatewayApiBackendObjectReference)(nil), // 20: dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference
-	(*kubernetes.KubernetesGatewayApiFraction)(nil),               // 21: dev.planton.provider.kubernetes.KubernetesGatewayApiFraction
+	(*v1.StringValueOrRef)(nil),                                   // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesGatewayApiParentReference)(nil),        // 17: dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
+	(*kubernetes.KubernetesGatewayApiLocalObjectReference)(nil),   // 18: dev.planton.provider.kubernetes.KubernetesGatewayApiLocalObjectReference
+	(*kubernetes.KubernetesGatewayApiBackendObjectReference)(nil), // 19: dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference
+	(*kubernetes.KubernetesGatewayApiFraction)(nil),               // 20: dev.planton.provider.kubernetes.KubernetesGatewayApiFraction
 }
 var file_dev_planton_provider_kubernetes_kuberneteshttproute_v1_spec_proto_depIdxs = []int32{
-	16, // 0: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	17, // 1: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	18, // 2: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteSpec.parent_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
-	1,  // 3: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteSpec.rules:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRule
-	2,  // 4: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRule.matches:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteMatch
-	6,  // 5: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRule.filters:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter
-	14, // 6: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRule.backend_refs:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteBackendRef
-	15, // 7: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRule.timeouts:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteTimeouts
-	3,  // 8: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteMatch.path:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRoutePathMatch
-	4,  // 9: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteMatch.headers:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeaderMatch
-	5,  // 10: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteMatch.query_params:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteQueryParamMatch
-	7,  // 11: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.request_header_modifier:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeaderFilter
-	7,  // 12: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.response_header_modifier:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeaderFilter
-	12, // 13: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.request_mirror:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRequestMirrorFilter
-	10, // 14: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.request_redirect:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRequestRedirectFilter
-	11, // 15: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.url_rewrite:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteUrlRewriteFilter
-	13, // 16: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.cors:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteCorsFilter
-	19, // 17: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.extension_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiLocalObjectReference
-	8,  // 18: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeaderFilter.set:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeader
-	8,  // 19: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeaderFilter.add:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeader
-	9,  // 20: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRequestRedirectFilter.path:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRoutePathModifier
-	9,  // 21: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteUrlRewriteFilter.path:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRoutePathModifier
-	20, // 22: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRequestMirrorFilter.backend_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference
-	21, // 23: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRequestMirrorFilter.fraction:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiFraction
-	6,  // 24: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteBackendRef.filters:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter
-	25, // [25:25] is the sub-list for method output_type
-	25, // [25:25] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	16, // 0: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 1: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteSpec.parent_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
+	1,  // 2: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteSpec.rules:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRule
+	2,  // 3: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRule.matches:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteMatch
+	6,  // 4: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRule.filters:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter
+	14, // 5: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRule.backend_refs:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteBackendRef
+	15, // 6: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRule.timeouts:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteTimeouts
+	3,  // 7: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteMatch.path:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRoutePathMatch
+	4,  // 8: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteMatch.headers:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeaderMatch
+	5,  // 9: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteMatch.query_params:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteQueryParamMatch
+	7,  // 10: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.request_header_modifier:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeaderFilter
+	7,  // 11: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.response_header_modifier:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeaderFilter
+	12, // 12: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.request_mirror:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRequestMirrorFilter
+	10, // 13: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.request_redirect:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRequestRedirectFilter
+	11, // 14: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.url_rewrite:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteUrlRewriteFilter
+	13, // 15: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.cors:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteCorsFilter
+	18, // 16: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter.extension_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiLocalObjectReference
+	8,  // 17: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeaderFilter.set:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeader
+	8,  // 18: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeaderFilter.add:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteHeader
+	9,  // 19: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRequestRedirectFilter.path:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRoutePathModifier
+	9,  // 20: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteUrlRewriteFilter.path:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRoutePathModifier
+	19, // 21: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRequestMirrorFilter.backend_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference
+	20, // 22: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRequestMirrorFilter.fraction:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiFraction
+	6,  // 23: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteBackendRef.filters:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter
+	24, // [24:24] is the sub-list for method output_type
+	24, // [24:24] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kuberneteshttproute_v1_spec_proto_init() }

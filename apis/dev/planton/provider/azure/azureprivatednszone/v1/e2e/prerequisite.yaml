@@ -1,0 +1,29 @@
+# AzurePrivateDnsZone install profile used as a prerequisite by composed
+# components (declared via prerequisites: [AzurePrivateDnsZone] in the kind
+# registry). The E2E harness deploys this document (via the zone's Pulumi
+# module) after its own prerequisite (the fixture resource group, whose name
+# the resource_group reference below addresses), and captures its outputs --
+# zone_id in particular -- for dependents' references to resolve against
+# (the virtual-network-link component writes its link on this zone). The
+# zone is a bare fixture: any link a consumer needs, the consumer's own
+# scenario provisions -- a component never mutates a resource it merely
+# references.
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZone
+metadata:
+  name: planton-oss-e2e-azure-fixture-pdns
+  id: planton-oss-e2e-azure-fixture-pdns
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureprivatednszone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: fixture.planton.internal

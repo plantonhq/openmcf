@@ -25,7 +25,7 @@ apiVersion: confluent.planton.dev/v1
 kind: ConfluentKafka
 metadata:
   name: my-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -76,7 +76,7 @@ apiVersion: confluent.planton.dev/v1
 kind: ConfluentKafka
 metadata:
   name: dev-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -99,7 +99,7 @@ apiVersion: confluent.planton.dev/v1
 kind: ConfluentKafka
 metadata:
   name: prod-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -122,7 +122,7 @@ apiVersion: confluent.planton.dev/v1
 kind: ConfluentKafka
 metadata:
   name: secure-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

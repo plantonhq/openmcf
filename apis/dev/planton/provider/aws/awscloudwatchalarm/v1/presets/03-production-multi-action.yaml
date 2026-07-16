@@ -3,6 +3,7 @@ kind: AwsCloudwatchAlarm
 metadata:
   name: prod-sqs-depth-alarm
 spec:
+  region: <aws-region>
   comparisonOperator: GreaterThanOrEqualToThreshold
   evaluationPeriods: 5
   datapointsToAlarm: 3

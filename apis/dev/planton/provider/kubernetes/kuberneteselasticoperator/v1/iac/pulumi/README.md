@@ -52,9 +52,6 @@ Create a `stack-input.json` file:
     "id": "eck-op-dev"
   },
   "spec": {
-    "target_cluster": {
-      "kubernetes_credential_id": "my-cluster-cred"
-    },
     "namespace": {
       "value": "elastic-system"
     },

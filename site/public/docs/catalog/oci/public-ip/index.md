@@ -31,7 +31,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciPublicIp
 metadata:
   name: my-public-ip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -78,7 +78,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciPublicIp
 metadata:
   name: reserved-ip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -98,7 +98,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciPublicIp
 metadata:
   name: web-server-ip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciPublicIp
 metadata:
   name: byoip-address
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -146,7 +146,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciPublicIp
 metadata:
   name: ref-ip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

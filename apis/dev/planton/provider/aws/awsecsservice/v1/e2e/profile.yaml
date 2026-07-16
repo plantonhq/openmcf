@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsecsservice
+spec:
+  # An ECS service under live E2E: the harness deploys the VPC, two-AZ
+  # subnet pair, Fargate cluster, and task-definition prerequisites, then
+  # runs deploy -> DescribeServices verify (ACTIVE) -> destroy ->
+  # verify-inactive on both provisioners. The scenario runs desiredCount 0,
+  # so the full scheduling wiring is proven while no task ever launches
+  # and the run stays free; the prerequisite chain dominates the runtime.
+  #
+  # Deliberately WITHOUT load-balancer wiring: AWS rejects CreateService
+  # when a referenced target group has no associated listener, so a
+  # LB-wired live scenario would force ALB + listener + rule fixtures onto
+  # every run. The target-group ref path is proven by the resolver unit
+  # tests and the offline gate instead.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

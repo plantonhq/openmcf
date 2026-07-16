@@ -31,7 +31,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRouterInterface
 metadata:
   name: my-router-interface
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -77,7 +77,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRouterInterface
 metadata:
   name: web-subnet-attachment
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -98,7 +98,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRouterInterface
 metadata:
   name: app-subnet-to-edge
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -125,7 +125,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRouterInterface
 metadata:
   name: region2-db-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

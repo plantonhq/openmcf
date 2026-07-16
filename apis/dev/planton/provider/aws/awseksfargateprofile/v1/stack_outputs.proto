@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awseksfargateprofile.v1;
+
+// AwsEksFargateProfileStackOutputs describes the values returned after
+// provisioning an EKS Fargate profile.
+message AwsEksFargateProfileStackOutputs {
+  // fargate_profile_arn is the Amazon Resource Name of the profile --
+  // arn:aws:eks:<region>:<account>:fargateprofile/<cluster>/<name>/<uuid>.
+  string fargate_profile_arn = 1;
+
+  // fargate_profile_name is the name of the profile.
+  string fargate_profile_name = 2;
+
+  // status is the profile's state after provisioning -- "ACTIVE" on a
+  // successful create.
+  string status = 3;
+}

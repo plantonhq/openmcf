@@ -71,7 +71,7 @@ backend Services (terminate TLS themselves)
 ## Anatomy of TLSRouteSpec
 
 The Planton spec flattens the upstream `TLSRouteSpec` after the standard
-namespaced envelope (`target_cluster`, `namespace`):
+namespaced envelope (`namespace`):
 
 - `parent_refs` -- the Gateways this route attaches to (max 32).
 - `hostnames` -- the SNI hostnames that select the route (**required**, 1 to 16;

@@ -61,32 +61,35 @@ func createEndpointGroup(
 		ListenerArn: listener.ID().ToStringOutput(),
 	}
 
+	// Empty string means "inherit the provider region" (the spec's region).
 	if spec.EndpointGroupRegion != "" {
 		args.EndpointGroupRegion = pulumi.StringPtr(spec.EndpointGroupRegion)
 	}
 
-	if spec.HealthCheckPort > 0 {
-		args.HealthCheckPort = pulumi.IntPtr(int(spec.HealthCheckPort))
+	// Presence-honest health-check dials: omit when unset so the provider/AWS
+	// defaults apply (listener port, TCP, interval 30, threshold 3).
+	if spec.HealthCheckPort != nil {
+		args.HealthCheckPort = pulumi.IntPtr(int(spec.GetHealthCheckPort()))
 	}
-
 	if spec.HealthCheckProtocol != nil {
 		args.HealthCheckProtocol = pulumi.StringPtr(spec.GetHealthCheckProtocol())
 	}
-
+	// health_check_path is meaningful only for HTTP/HTTPS checks (CEL-enforced
+	// in the spec).
 	if spec.HealthCheckPath != "" {
 		args.HealthCheckPath = pulumi.StringPtr(spec.HealthCheckPath)
 	}
-
 	if spec.HealthCheckIntervalSeconds != nil {
 		args.HealthCheckIntervalSeconds = pulumi.IntPtr(int(spec.GetHealthCheckIntervalSeconds()))
 	}
-
 	if spec.ThresholdCount != nil {
 		args.ThresholdCount = pulumi.IntPtr(int(spec.GetThresholdCount()))
 	}
 
-	if spec.TrafficDialPercentage != 0 {
-		args.TrafficDialPercentage = pulumi.Float64Ptr(spec.TrafficDialPercentage)
+	// Omitted means 100% (the AWS default). An explicit 0 is a real value —
+	// it drains the region while keeping its endpoints registered.
+	if spec.TrafficDialPercentage != nil {
+		args.TrafficDialPercentage = pulumi.Float64Ptr(spec.GetTrafficDialPercentage())
 	}
 
 	if len(spec.Endpoints) > 0 {
@@ -95,11 +98,21 @@ func createEndpointGroup(
 			epArgs := &globalaccelerator.EndpointGroupEndpointConfigurationArgs{
 				EndpointId: pulumi.StringPtr(ep.EndpointId.GetValue()),
 			}
-			if ep.Weight > 0 {
-				epArgs.Weight = pulumi.IntPtr(int(ep.Weight))
+			// Omitted lets AWS assign the default weight (128); an explicit 0
+			// stops routing to the endpoint without removing it.
+			if ep.Weight != nil {
+				epArgs.Weight = pulumi.IntPtr(int(ep.GetWeight()))
 			}
-			if ep.ClientIpPreservationEnabled {
-				epArgs.ClientIpPreservationEnabled = pulumi.BoolPtr(true)
+			// Tri-state: omitted lets AWS apply its per-endpoint-type default;
+			// an explicit value pins it. Only meaningful for ALB and EC2
+			// endpoints.
+			if ep.ClientIpPreservationEnabled != nil {
+				epArgs.ClientIpPreservationEnabled = pulumi.BoolPtr(ep.GetClientIpPreservationEnabled())
+			}
+			// Cross-account endpoints authorize through a Global Accelerator
+			// cross-account attachment created in the endpoint-owning account.
+			if ep.AttachmentArn != "" {
+				epArgs.AttachmentArn = pulumi.StringPtr(ep.AttachmentArn)
 			}
 			endpointConfigs[i] = epArgs
 		}

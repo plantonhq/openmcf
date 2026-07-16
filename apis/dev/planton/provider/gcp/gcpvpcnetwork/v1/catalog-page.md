@@ -26,7 +26,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVpcNetwork
 metadata:
   name: my-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -82,7 +82,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVpcNetwork
 metadata:
   name: dev-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -102,7 +102,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVpcNetwork
 metadata:
   name: prod-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -125,7 +125,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpVpcNetwork
 metadata:
   name: data-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -27,7 +27,7 @@ This preset creates a minimal Azure Container App Environment using the default 
 - **Consumption plan** (no `workloadProfiles`) -- Serverless, pay-per-use; Azure manages the infrastructure and auto-scales
 - **No VNet injection** (no `infrastructureSubnetId`) -- Azure manages networking; apps get public endpoints by default
 - **External mode** (`internalLoadBalancerEnabled` defaults to `false`) -- Apps can receive traffic from the public internet
-- **Log Analytics linked** (`logAnalyticsWorkspaceId`) -- Container app logs are persisted for KQL querying and alerting
+- **Log Analytics destination** (`logsDestination: LOG_ANALYTICS` + `logAnalyticsWorkspaceId`) -- Container app logs are persisted for KQL querying and alerting
 
 ## Placeholders to Replace
 

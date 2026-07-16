@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuremonitormetricalert
+spec:
+  # The scenario alerts on a scenario-local storage account's
+  # Transactions metric (the cheapest metric-bearing fixture -- accounts
+  # create in seconds) and fires into the fixture action group, proving
+  # the polymorphic scope seam and the action-group FK. The threshold is
+  # set far above anything the idle fixture can produce, so the alert
+  # never actually fires.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

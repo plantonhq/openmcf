@@ -37,10 +37,18 @@ This component provisions the FSx Lustre file system, its network interface (ENI
 |------|-----------|--------|----------|
 | **SCRATCH_1** | None — no replication. Data lost on hardware failure. | No | Legacy scratch. Lowest cost. |
 | **SCRATCH_2** | None — no replication. Higher burst throughput than SCRATCH_1. | No | Short-lived processing jobs, dev/test. Recommended over SCRATCH_1. |
-| **PERSISTENT_1** | Data replicated within AZ. | Yes | Long-running workloads. Supports SSD and HDD storage. |
-| **PERSISTENT_2** | Data replicated within AZ. Latest generation. | Yes | Production workloads. Highest throughput tiers, metadata IOPS configuration, SSD only. |
+| **PERSISTENT_1** | Data replicated within AZ. | Yes | Long-running workloads. The only type supporting HDD storage and (with SCRATCH) the legacy in-spec S3 link. |
+| **PERSISTENT_2** | Data replicated within AZ. Latest generation. | Yes | Production workloads. Highest throughput tiers, metadata IOPS configuration, EFA/GPUDirect, and the INTELLIGENT_TIERING storage class. |
 
 **Recommendation:** Use `SCRATCH_2` for ephemeral jobs and `PERSISTENT_2` for production. `PERSISTENT_1` is useful only when HDD storage is needed (large capacity at lower cost).
+
+## Storage Classes
+
+| Class | Capacity model | Throughput knob | Notes |
+|-------|---------------|-----------------|-------|
+| **SSD** | Provisioned (`storage_capacity_gib`) | `per_unit_storage_throughput` (MB/s per TiB) | Sub-millisecond latency. All deployment types. |
+| **HDD** | Provisioned | `per_unit_storage_throughput` (12 or 40) | PERSISTENT_1 only. Requires a `drive_cache_type` decision (`READ` provisions an SSD read cache at 20% of capacity). |
+| **INTELLIGENT_TIERING** | Elastic — no provisioned capacity | `throughput_capacity` (multiples of 4000 MB/s, absolute) | PERSISTENT_2 only. Requires `data_read_cache_configuration` and `metadata_configuration`. Pay for what you store; reads served from a provisioned SSD cache. |
 
 ## Prerequisites
 
@@ -55,23 +63,32 @@ This component provisions the FSx Lustre file system, its network interface (ENI
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `deployment_type` | string | No | `SCRATCH_1`, `SCRATCH_2` (default), `PERSISTENT_1`, or `PERSISTENT_2`. **ForceNew**. |
-| `storage_capacity_gib` | int32 | **Yes** | Storage in GiB. Min 1200. Valid increments depend on deployment/storage type (see below). Can increase but never decrease. |
-| `storage_type` | string | No | `SSD` (default) or `HDD`. **ForceNew**. HDD only with PERSISTENT_1. |
-| `per_unit_storage_throughput` | int32 | Conditional | MB/s per TiB. Required for PERSISTENT_1 and PERSISTENT_2. Invalid for SCRATCH. |
+| `storage_capacity_gib` | int32 | Conditional | Storage in GiB. Min 1200. Required unless restoring from `backup_id` or using `INTELLIGENT_TIERING`. Can increase but never decrease. |
+| `storage_type` | string | No | `SSD` (default), `HDD`, or `INTELLIGENT_TIERING`. **ForceNew**. |
+| `per_unit_storage_throughput` | int32 | Conditional | MB/s per TiB for provisioned (SSD/HDD) PERSISTENT capacity. Invalid for SCRATCH and INTELLIGENT_TIERING. |
+| `throughput_capacity` | int32 | Conditional | Absolute MB/s for INTELLIGENT_TIERING (multiples of 4000). Required there, invalid elsewhere. |
 | `data_compression_type` | string | No | `NONE` (default) or `LZ4`. Can be changed after creation. |
-| `file_system_type_version` | string | No | Lustre version (e.g., `2.15`). **ForceNew**. Leave empty for latest. |
+| `file_system_type_version` | string | No | Lustre version (e.g., `2.15`). Upgrades in place; downgrades replace. Leave empty for latest. |
+| `efa_enabled` | bool | No | Elastic Fabric Adapter + GPUDirect Storage. PERSISTENT_2 with `metadata_configuration` only. **ForceNew**; pins `per_unit_storage_throughput` while enabled. |
+| `drive_cache_type` | string | Conditional | `READ` or `NONE`. Required for HDD storage, invalid otherwise. **ForceNew**. |
+| `data_read_cache_configuration` | DataReadCacheConfiguration | Conditional | Provisioned SSD read cache. Required for INTELLIGENT_TIERING, invalid otherwise. |
 | `subnet_id` | StringValueOrRef | **Yes** | Subnet for the file system ENI. Exactly one subnet. **ForceNew**. |
-| `security_group_ids` | []StringValueOrRef | No | Security groups for the ENI. Must allow TCP 988 + 1018–1023. **ForceNew**. |
+| `security_group_ids` | []StringValueOrRef | No | Security groups for the ENI (max 50). Must allow TCP 988 + 1018–1023. **ForceNew**. |
 | `kms_key_id` | StringValueOrRef | No | Customer-managed KMS key ARN. **ForceNew**. Omit for AWS-managed key. |
-| `import_path` | string | No | S3 URI for data import (SCRATCH only). **ForceNew**. |
-| `export_path` | string | No | S3 URI for data export. Requires `import_path`. **ForceNew**. |
-| `log_configuration` | LogConfiguration | No | CloudWatch logging for audit events. |
+| `backup_id` | string | No | FSx backup to restore from. **ForceNew**. Excludes `storage_capacity_gib`. |
+| `import_path` | string | No | S3 URI for the legacy data repository link. Not PERSISTENT_2 (use `AwsFsxDataRepositoryAssociation`). **ForceNew**. |
+| `export_path` | string | No | S3 URI for data export. Requires `import_path`, same bucket. **ForceNew**. |
+| `auto_import_policy` | string | No | `NONE`, `NEW`, `NEW_CHANGED`, or `NEW_CHANGED_DELETED`. Requires `import_path`. |
+| `imported_file_chunk_size` | int32 | No | Stripe size in MiB for imported files (1–512000). Requires `import_path`. **ForceNew**. |
+| `root_squash_configuration` | RootSquashConfiguration | No | Map root clients to an unprivileged UID:GID, with NID-listed admin hosts exempt. |
+| `log_configuration` | LogConfiguration | No | CloudWatch logging for data repository events. |
+| `metadata_configuration` | MetadataConfiguration | No | Metadata IOPS config. PERSISTENT_2 only (required for INTELLIGENT_TIERING and EFA). |
 | `automatic_backup_retention_days` | int32 | No | Backup retention (0–90 days). PERSISTENT only. Default: 0 (disabled). |
 | `daily_automatic_backup_start_time` | string | No | Backup window in `HH:MM` UTC. PERSISTENT only. |
 | `copy_tags_to_backups` | bool | No | Copy file system tags to backups. **ForceNew**. |
 | `skip_final_backup` | bool | No | Skip final backup on deletion. Default: true. |
+| `final_backup_tags` | map | No | Tags applied to the final backup (when one is taken). |
 | `weekly_maintenance_start_time` | string | No | Maintenance window in `d:HH:MM` format (1=Mon, 7=Sun). |
-| `metadata_configuration` | MetadataConfiguration | No | Metadata IOPS config. PERSISTENT_2 only. |
 
 ### Storage Capacity Rules
 
@@ -103,7 +120,21 @@ This component provisions the FSx Lustre file system, its network interface (ENI
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `mode` | string | No | `AUTOMATIC` (default) or `USER_PROVISIONED`. |
-| `iops` | int32 | Conditional | Metadata IOPS when mode is `USER_PROVISIONED`. Values: 1500–192000 in defined steps. |
+| `iops` | int32 | Conditional | Metadata IOPS when mode is `USER_PROVISIONED`. Values: 1500, 3000, 6000, then multiples of 12000 up to 192000. Grows in place; a decrease replaces the file system. |
+
+### Data Read Cache Configuration Fields (INTELLIGENT_TIERING)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `sizing_mode` | string | **Yes** | `PROPORTIONAL_TO_THROUGHPUT_CAPACITY` (recommended), `USER_PROVISIONED`, or `NO_CACHE`. |
+| `size_gib` | int32 | Conditional | Cache size when `USER_PROVISIONED`: 32–131072 GiB per 4000 MB/s of `throughput_capacity`. |
+
+### Root Squash Configuration Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `root_squash` | string | No | UID:GID that root clients are squashed to (e.g., `65534:65534`). |
+| `no_squash_nids` | []string | No | Lustre NIDs exempt from squashing (e.g., `10.0.1.6@tcp`, ranges in brackets). |
 
 ## Outputs
 
@@ -201,22 +232,30 @@ The following fields require **resource replacement** if changed. Plan them upfr
 | Field | Impact |
 |-------|--------|
 | `deployment_type` | Cannot switch between SCRATCH and PERSISTENT or between generations. |
-| `storage_type` | Cannot switch between SSD and HDD. |
+| `storage_type` | Cannot switch between SSD, HDD, and INTELLIGENT_TIERING. |
 | `subnet_id` | Cannot move the file system to a different subnet/AZ. |
 | `security_group_ids` | Cannot change security groups after creation. |
 | `kms_key_id` | Cannot change the KMS key after creation. |
-| `file_system_type_version` | Cannot change the Lustre version after creation. |
-| `import_path` / `export_path` | Cannot change S3 paths after creation. |
+| `backup_id` | The restore source is a create-time decision. |
+| `efa_enabled` | EFA/GPUDirect must be decided at creation; while enabled it also pins `per_unit_storage_throughput`. |
+| `drive_cache_type` | The HDD read-cache decision cannot be changed. |
+| `import_path` / `export_path` / `imported_file_chunk_size` | The legacy S3 link cannot be changed after creation. |
 | `copy_tags_to_backups` | Cannot toggle after creation. |
+
+Storage capacity grows in place (never shrinks; growth on SCRATCH_1 replaces the file system). `file_system_type_version` upgrades in place; a downgrade replaces the file system. Metadata IOPS grow in place; a decrease replaces the file system.
+
+## S3 Integration
+
+Two generations exist:
+
+- **Legacy in-spec link** (`import_path` / `export_path` / `auto_import_policy` / `imported_file_chunk_size`): one immutable S3 link created with the file system. SCRATCH_1, SCRATCH_2, and PERSISTENT_1 only.
+- **`AwsFsxDataRepositoryAssociation`** (separate composable resource): many links per file system, each with its own lifecycle and bidirectional auto import/export policies. The only S3 path for PERSISTENT_2, and the recommended one everywhere persistent.
 
 ## Deliberately Omitted (v1)
 
 The following FSx for Lustre features are not exposed in this API version:
 
-- **Data repository associations** — managed as separate resources for flexible S3 integration on PERSISTENT deployments.
-- **File cache** — Amazon File Cache for hybrid/on-premises workloads.
-- **Storage capacity scaling** — increasing capacity is supported by AWS but not yet exposed as a spec update.
-- **Root squash configuration** — NFS root squash settings.
+- **File cache** — Amazon File Cache is a separate product surface (its own resource family).
 - **Cross-account access** — VPC peering or Transit Gateway-based access from other accounts.
 
 See [docs/README.md](docs/README.md) for architecture details and integration patterns.

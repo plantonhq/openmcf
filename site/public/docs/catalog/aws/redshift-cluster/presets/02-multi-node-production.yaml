@@ -29,6 +29,10 @@ spec:
       - connectionlog
       - useractivitylog
       - userlog
+  snapshotCopy:
+    destinationRegion: us-east-1
+    retentionPeriod: 7
+    snapshotCopyGrantName: "<snapshot-copy-grant-name>"
   parameters:
     - name: require_ssl
       value: "true"

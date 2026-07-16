@@ -31,7 +31,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackFloatingIp
 metadata:
   name: my-fip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -80,7 +80,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackFloatingIp
 metadata:
   name: web-fip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -100,7 +100,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackFloatingIp
 metadata:
   name: app-fip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackFloatingIp
 metadata:
   name: lb-fip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

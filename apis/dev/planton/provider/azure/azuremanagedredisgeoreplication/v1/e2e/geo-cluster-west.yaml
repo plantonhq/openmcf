@@ -1,0 +1,26 @@
+# The WEST member for the geo-replication scenario: same BALANCED_B3
+# size and the SAME group name as the east member, in a different
+# region -- active geo-replication is multi-primary across regions.
+apiVersion: azure.planton.dev/v1
+kind: AzureManagedRedis
+metadata:
+  name: planton-oss-e2e-amrgeo-fixture-west
+  id: planton-oss-e2e-amrgeo-fixture-west
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremanagedredis
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: westus2
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  clusterName: pltn-oss-e2e-amrgeo-west
+  skuName: BALANCED_B3
+  defaultDatabase:
+    geoReplicationGroupName: pltn-oss-e2e-amrgeo-group

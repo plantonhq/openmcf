@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsredshiftserverlessnamespace
+spec:
+  # A Redshift Serverless namespace under live E2E: the harness runs
+  # deploy -> GetNamespace verify -> destroy -> verify-destroyed on both
+  # provisioners. The namespace is account-level (no VPC prerequisite)
+  # and carries no compute, so it provisions in minutes and accrues no
+  # RPU charges. The scenario proves the recommended managed-password
+  # path: no secret in the manifest or state, the secret ARN surfacing
+  # as an output.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

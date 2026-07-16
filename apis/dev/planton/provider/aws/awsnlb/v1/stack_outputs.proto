@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsnlb.v1;
+
+// AwsNlbStackOutputs captures observable identifiers from a
+// provisioned Network Load Balancer, for listeners (which attach by ARN),
+// Route53 alias records, and Global Accelerator endpoints to reference.
+message AwsNlbStackOutputs {
+  // ARN of the Network Load Balancer. The primary handle other resources
+  // reference via status.outputs.load_balancer_arn -- listeners attach
+  // through it, and IAM policies, CloudWatch alarms, and Global Accelerator
+  // endpoints all take this value.
+  string load_balancer_arn = 1;
+
+  // Name assigned to the NLB (metadata.name, truncated to the 32-character
+  // AWS limit when necessary), for console URLs and CLI queries.
+  string load_balancer_name = 2;
+
+  // DNS name automatically assigned by AWS (e.g.,
+  // "my-nlb-abc123.elb.us-east-1.amazonaws.com"). Use this to create
+  // CNAME records or as the target for Route53 alias records.
+  string load_balancer_dns_name = 3;
+
+  // Route53 hosted zone ID for the NLB's DNS name. Required when creating
+  // Route53 alias records that point to this NLB.
+  string load_balancer_hosted_zone_id = 4;
+}

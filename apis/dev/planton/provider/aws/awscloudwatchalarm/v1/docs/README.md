@@ -90,9 +90,15 @@ The `treat_missing_data` field controls how CloudWatch handles evaluation period
 | Using `notBreaching` on a heartbeat metric | Agent crash goes undetected because missing data is treated as healthy | Use `breaching` |
 | Using `breaching` on a Lambda error metric | Alarm triggers during periods with zero invocations (no data = no errors = OK) | Use `notBreaching` |
 
-## Simple Metric Mode vs. Metric Query Mode
+## Simple Metric Mode vs. Metric Query Mode vs. PromQL Mode
 
-The spec supports two mutually exclusive modes for defining what the alarm evaluates. The CEL validation `simple_metric_or_metric_queries` enforces this exclusivity.
+The spec supports three mutually exclusive modes for defining what the alarm evaluates; the mode-exclusivity CEL rules enforce exactly one.
+
+### PromQL Mode (Prometheus workspaces)
+
+Set `evaluation_criteria.promql_criteria` with a PromQL query addressing an Amazon Managed Service for Prometheus workspace, plus an optional `evaluation_interval`. The query itself expresses the alarm condition (`... > 0.8`), `pending_period` is the Prometheus `for:` analog, and `recovery_period` dampens flapping — so the threshold-evaluation fields (`comparison_operator`, `evaluation_periods`, `threshold`, `datapoints_to_alarm`, and the simple-metric fields) do not apply and must be omitted.
+
+**Use when:** the metrics live in a Prometheus workspace (Kubernetes exporters, application histograms) and you want CloudWatch's action routing on Prometheus-native alerting rules.
 
 ### Simple Metric Mode
 
@@ -128,9 +134,11 @@ Set `metric_queries` with one or more `AwsCloudwatchAlarmMetricQuery` entries.
 ### Decision Flowchart
 
 ```
-Is the alarm on a single metric with a standard statistic?
-├── YES → Use simple metric mode
+Does the metric live in an Amazon Managed Service for Prometheus workspace?
+├── YES → Use PromQL mode (evaluation_criteria)
 └── NO
+    ├── Is the alarm on a single metric with a standard statistic?
+    │   └── YES → Use simple metric mode
     ├── Do you need to compute a ratio, rate, or composite value?
     │   └── YES → Use metric query mode with metric math
     ├── Do you need anomaly detection?
@@ -460,7 +468,7 @@ Composite alarms evaluate the states of other alarms using boolean logic (AND, O
 - Create hierarchical alerting (page only if both the error rate alarm AND latency alarm fire)
 - Implement "at least N of these M alarms must be in ALARM" patterns
 
-Composite alarms are a separate Terraform resource (`aws_cloudwatch_composite_alarm`) and will be a separate Planton component.
+Composite alarms are their own first-class component, `AwsCloudwatchCompositeAlarm`. Its rule expression references this alarm by NAME — compose from the `alarm_name` stack output.
 
 ### CloudWatch Dashboards
 
@@ -472,7 +480,7 @@ Contributor Insights identifies the top-N contributors to a metric (e.g., the to
 
 ### Metric Filters
 
-Metric filters extract numeric values from CloudWatch Logs and publish them as custom metrics. These custom metrics can then be alarmed on. The typical flow is:
+Metric filters extract numeric values from CloudWatch Logs and publish them as custom metrics. These custom metrics can then be alarmed on. Metric filters are configured on the `AwsCloudwatchLogGroup` component (its folded `metric_filters` block). The typical flow is:
 
 ```
 Logs → Metric Filter → Custom Metric → Metric Alarm → SNS Topic → Notification

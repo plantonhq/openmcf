@@ -33,6 +33,7 @@ var migratedKinds = []string{
 	"AwsAlb",
 	"AwsCertManagerCert",
 	"AwsEcsService",
+	"AwsEcsTaskDefinition",
 	// AWS networking primitives already on the modern schema, brought under the
 	// guard so they cannot regress.
 	"AwsVpc",
@@ -40,6 +41,162 @@ var migratedKinds = []string{
 	"AwsInternetGateway",
 	"AwsNatGateway",
 	"AwsElasticIp",
+	// EC2 fleet compute kinds, generator-owned from the day they were forged.
+	"AwsLaunchTemplate",
+	"AwsAutoScalingGroup",
+	// EKS control plane + managed node group, migrated off the legacy
+	// hand-written contract together.
+	"AwsEksCluster",
+	"AwsEksNodeGroup",
+	// EKS satellites, generator-owned from the day they were forged.
+	"AwsEksAddon",
+	"AwsEksFargateProfile",
+	"AwsEksAccessEntry",
+	// Networking fast-follow, generator-owned from the day it was forged.
+	"AwsVpcEndpoint",
+	// RDS pair, migrated off the legacy hand-written contracts together.
+	"AwsRdsCluster",
+	"AwsRdsInstance",
+	// ElastiCache family: RBAC kinds + three cache kinds, migrated off the
+	// legacy type = any contracts together.
+	"AwsElasticacheUser",
+	"AwsElasticacheUserGroup",
+	"AwsRedisElasticache",
+	"AwsMemcachedElasticache",
+	"AwsServerlessElasticache",
+	// Aurora-shaped siblings, migrated off the legacy hand-written
+	// contracts together.
+	"AwsDocumentDb",
+	"AwsNeptuneCluster",
+	// Redshift, migrated off the legacy hand-written contract.
+	"AwsRedshiftCluster",
+	// Redshift Serverless pair, generator-owned from the day it was forged.
+	"AwsRedshiftServerlessNamespace",
+	"AwsRedshiftServerlessWorkgroup",
+	// DynamoDB, migrated off the legacy hand-written contract.
+	"AwsDynamodb",
+	// Streaming + search depth pass: MSK migrated off its legacy hand-written
+	// contract, OpenSearch off its legacy type = any contract.
+	"AwsMskCluster",
+	"AwsOpenSearchDomain",
+	// EC2 instance, migrated off its legacy hand-written contract.
+	"AwsEc2Instance",
+	// MWAA, migrated off its legacy hand-written contract.
+	"AwsMwaaEnvironment",
+	// MSK Serverless, generator-owned from the day it was forged.
+	"AwsMskServerlessCluster",
+	// Lambda + KMS depth pass: both migrated off legacy hand-written
+	// contracts; the event source mapping generator-owned from the day
+	// it was forged.
+	"AwsLambda",
+	"AwsKmsKey",
+	"AwsLambdaEventSourceMapping",
+	// Edge pair: CloudFront migrated off its legacy hand-written contract
+	// (ACM was already enrolled and regenerated with its rebuilt spec).
+	"AwsCloudFront",
+	// Messaging + eventing depth pass: SQS, SNS topic/subscription, and
+	// EventBridge bus/rule, generator-owned from the day they were forged.
+	"AwsSqsQueue",
+	"AwsSnsTopic",
+	"AwsSnsSubscription",
+	"AwsEventBridgeBus",
+	"AwsEventBridgeRule",
+	// Object storage + streaming depth pass: S3 migrated off its legacy
+	// hand-written contract; the Kinesis family off its legacy type = any
+	// contracts.
+	"AwsS3Bucket",
+	"AwsKinesisStream",
+	"AwsKinesisStreamConsumer",
+	"AwsKinesisFirehose",
+	// DNS: the record migrated off its hand-written contract (the zone was
+	// already enrolled); the health check generator-owned from the day it
+	// was forged.
+	"AwsRoute53DnsRecord",
+	"AwsRoute53HealthCheck",
+	// Observability: the CloudWatch pair migrated off their legacy type = any
+	// contracts; the composite alarm generator-owned from the day it was
+	// forged.
+	"AwsCloudwatchLogGroup",
+	"AwsCloudwatchAlarm",
+	"AwsCloudwatchCompositeAlarm",
+	// Serverless front door: Step Functions migrated off its legacy type = any
+	// contract, the HTTP API off its hand-written typed contract; the VPC link
+	// and custom domain generator-owned from the day they were forged.
+	"AwsStepFunction",
+	"AwsHttpApiGateway",
+	"AwsHttpApiVpcLink",
+	"AwsHttpApiDomain",
+	// Cognito family: the user pool migrated off its region-only typed
+	// skeleton, the identity provider off its legacy type = any contract; the
+	// app client and resource server generator-owned from the day they were
+	// forged.
+	"AwsCognitoUserPool",
+	"AwsCognitoIdentityProvider",
+	"AwsCognitoUserPoolClient",
+	"AwsCognitoResourceServer",
+	// EFS family: the file system migrated off its legacy hand-written flat
+	// contract; the access point generator-owned from the day it was forged.
+	"AwsElasticFileSystem",
+	"AwsEfsAccessPoint",
+	// WAF family: the web ACL migrated off its legacy type = any contract;
+	// the IP set and regex pattern set generator-owned from the day they
+	// were forged.
+	"AwsWafWebAcl",
+	"AwsWafIpSet",
+	"AwsWafRegexPatternSet",
+	// Batch family: the compute environment migrated off its legacy
+	// hand-written contract; the job queue, scheduling policy, and job
+	// definition generator-owned from the day they were forged.
+	"AwsBatchComputeEnvironment",
+	"AwsBatchJobQueue",
+	"AwsBatchSchedulingPolicy",
+	"AwsBatchJobDefinition",
+	// SES family, generator-owned from the day it was forged.
+	"AwsSesConfigurationSet",
+	"AwsSesEmailIdentity",
+	// App Runner family: the service migrated off its legacy hand-written
+	// contract; the three companion kinds generator-owned from the day they
+	// were forged.
+	"AwsAppRunnerService",
+	"AwsAppRunnerAutoScalingConfiguration",
+	"AwsAppRunnerVpcConnector",
+	"AwsAppRunnerObservabilityConfiguration",
+	// Transit Gateway family: the gateway migrated off its hand-written
+	// contract; the VPC attachment and route table generator-owned from the
+	// day they were forged.
+	"AwsTransitGateway",
+	"AwsTransitGatewayVpcAttachment",
+	"AwsTransitGatewayRouteTable",
+	// Analytics pair, migrated off their hand-written contracts together.
+	"AwsAthenaWorkgroup",
+	"AwsGlueCatalogDatabase",
+	// CI/CD pair, migrated off their hand-written contracts together.
+	"AwsCodeBuildProject",
+	"AwsCodePipeline",
+	// MemoryDB family: the cluster migrated off its hand-written contract;
+	// the user and ACL generator-owned from the day they were forged.
+	"AwsMemorydbCluster",
+	"AwsMemorydbUser",
+	"AwsMemorydbAcl",
+	// Client VPN, migrated off its legacy hand-written contract.
+	"AwsClientVpn",
+	// Global Accelerator, migrated off its hand-written contract.
+	"AwsGlobalAccelerator",
+	// FSx standalone trio, migrated off their hand-written contracts
+	// together; the data repository association generator-owned from the
+	// day it was forged.
+	"AwsFsxLustreFileSystem",
+	"AwsFsxOpenzfsFileSystem",
+	"AwsFsxWindowsFileSystem",
+	"AwsFsxDataRepositoryAssociation",
+	// SageMaker Domain, migrated off its legacy hand-written contract.
+	"AwsSagemakerDomain",
+	// FSx ONTAP trio, migrated off their hand-written contracts together.
+	"AwsFsxOntapFileSystem",
+	"AwsFsxOntapStorageVirtualMachine",
+	"AwsFsxOntapVolume",
+	// S3 object set, migrated off its legacy hand-written contract.
+	"AwsS3ObjectSet",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed
@@ -99,6 +256,10 @@ func moduleVariablesPath(root string, msg proto.Message) string {
 }
 
 // repoRoot walks up from this test file to the directory containing go.mod.
+// Under the Bazel sandbox the repo checkout (and its committed variables.tf
+// files) is not present, so the drift guard cannot run there -- it is
+// enforced by the plain `go test` lane, and skips explicitly under Bazel
+// instead of failing on the unreachable go.mod.
 func repoRoot(t *testing.T) string {
 	t.Helper()
 	_, thisFile, _, ok := runtime.Caller(0)
@@ -112,6 +273,9 @@ func repoRoot(t *testing.T) string {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
+			if os.Getenv("TEST_WORKSPACE") != "" {
+				t.Skip("skipping drift guard under the Bazel sandbox: the repo checkout (go.mod + committed variables.tf) is not available; the guard runs via `go test`")
+			}
 			t.Fatal("could not locate repo root (go.mod)")
 		}
 		dir = parent

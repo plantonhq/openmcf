@@ -21,30 +21,30 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzureKeyVaultStackOutputs** captures the outputs of provisioning an Azure Key Vault.
-// These outputs provide essential information for applications to connect to and use the vault.
+// **AzureKeyVaultStackOutputs** captures the outputs of provisioning an Azure
+// Key Vault -- the values downstream resources reference to compose with the
+// vault.
 type AzureKeyVaultStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Manager ID of the Key Vault.
-	// Format: /subscriptions/{subscription-id}/resourceGroups/{resource-group}/providers/Microsoft.KeyVault/vaults/{vault-name}
-	VaultId string `protobuf:"bytes,1,opt,name=vault_id,json=vaultId,proto3" json:"vault_id,omitempty"`
-	// The name of the Key Vault.
-	VaultName string `protobuf:"bytes,2,opt,name=vault_name,json=vaultName,proto3" json:"vault_name,omitempty"`
-	// The URI of the Key Vault.
-	// Format: https://{vault-name}.vault.azure.net/
-	// Applications use this URI to access secrets, keys, and certificates.
+	// The vault's ARM resource ID:
+	// /subscriptions/{subscription}/resourceGroups/{rg}/providers/Microsoft.KeyVault/vaults/{name}
+	// The reference every child object (AzureKeyVaultKey,
+	// AzureKeyVaultCertificate) and every vault-scoped grant
+	// (AzureRoleAssignment on an RBAC vault) targets.
+	KeyVaultId string `protobuf:"bytes,1,opt,name=key_vault_id,json=keyVaultId,proto3" json:"key_vault_id,omitempty"`
+	// The vault's name.
+	KeyVaultName string `protobuf:"bytes,2,opt,name=key_vault_name,json=keyVaultName,proto3" json:"key_vault_name,omitempty"`
+	// The vault's data-plane URI: https://{name}.vault.azure.net/.
+	// Applications and SDKs address keys, secrets, and certificates through
+	// this endpoint.
 	VaultUri string `protobuf:"bytes,3,opt,name=vault_uri,json=vaultUri,proto3" json:"vault_uri,omitempty"`
-	// Map containing secret names and their corresponding secret IDs.
-	// Key: secret name, Value: full secret ID (https://{vault}.vault.azure.net/secrets/{name})
-	// Note: This map only contains secret IDs for secrets created by this stack.
-	// The actual secret values are NOT included (they must be set separately).
-	SecretIdMap map[string]string `protobuf:"bytes,4,rep,name=secret_id_map,json=secretIdMap,proto3" json:"secret_id_map,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// The Azure region where the Key Vault was deployed.
-	Region string `protobuf:"bytes,5,opt,name=region,proto3" json:"region,omitempty"`
-	// The resource group name where the Key Vault was created.
-	ResourceGroup string `protobuf:"bytes,6,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The Azure AD tenant the vault authenticates against (the deploying
+	// credential's tenant).
+	TenantId string `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// The resource group the vault was created in.
+	ResourceGroupName string `protobuf:"bytes,5,opt,name=resource_group_name,json=resourceGroupName,proto3" json:"resource_group_name,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *AzureKeyVaultStackOutputs) Reset() {
@@ -77,16 +77,16 @@ func (*AzureKeyVaultStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AzureKeyVaultStackOutputs) GetVaultId() string {
+func (x *AzureKeyVaultStackOutputs) GetKeyVaultId() string {
 	if x != nil {
-		return x.VaultId
+		return x.KeyVaultId
 	}
 	return ""
 }
 
-func (x *AzureKeyVaultStackOutputs) GetVaultName() string {
+func (x *AzureKeyVaultStackOutputs) GetKeyVaultName() string {
 	if x != nil {
-		return x.VaultName
+		return x.KeyVaultName
 	}
 	return ""
 }
@@ -98,23 +98,16 @@ func (x *AzureKeyVaultStackOutputs) GetVaultUri() string {
 	return ""
 }
 
-func (x *AzureKeyVaultStackOutputs) GetSecretIdMap() map[string]string {
+func (x *AzureKeyVaultStackOutputs) GetTenantId() string {
 	if x != nil {
-		return x.SecretIdMap
-	}
-	return nil
-}
-
-func (x *AzureKeyVaultStackOutputs) GetRegion() string {
-	if x != nil {
-		return x.Region
+		return x.TenantId
 	}
 	return ""
 }
 
-func (x *AzureKeyVaultStackOutputs) GetResourceGroup() string {
+func (x *AzureKeyVaultStackOutputs) GetResourceGroupName() string {
 	if x != nil {
-		return x.ResourceGroup
+		return x.ResourceGroupName
 	}
 	return ""
 }
@@ -123,18 +116,14 @@ var File_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto protore
 
 const file_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/azure/azurekeyvault/v1/stack_outputs.proto\x12+dev.planton.provider.azure.azurekeyvault.v1\"\xee\x02\n" +
-	"\x19AzureKeyVaultStackOutputs\x12\x19\n" +
-	"\bvault_id\x18\x01 \x01(\tR\avaultId\x12\x1d\n" +
-	"\n" +
-	"vault_name\x18\x02 \x01(\tR\tvaultName\x12\x1b\n" +
-	"\tvault_uri\x18\x03 \x01(\tR\bvaultUri\x12{\n" +
-	"\rsecret_id_map\x18\x04 \x03(\v2W.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultStackOutputs.SecretIdMapEntryR\vsecretIdMap\x12\x16\n" +
-	"\x06region\x18\x05 \x01(\tR\x06region\x12%\n" +
-	"\x0eresource_group\x18\x06 \x01(\tR\rresourceGroup\x1a>\n" +
-	"\x10SecretIdMapEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xf6\x02\n" +
+	"?dev/planton/provider/azure/azurekeyvault/v1/stack_outputs.proto\x12+dev.planton.provider.azure.azurekeyvault.v1\"\xcd\x01\n" +
+	"\x19AzureKeyVaultStackOutputs\x12 \n" +
+	"\fkey_vault_id\x18\x01 \x01(\tR\n" +
+	"keyVaultId\x12$\n" +
+	"\x0ekey_vault_name\x18\x02 \x01(\tR\fkeyVaultName\x12\x1b\n" +
+	"\tvault_uri\x18\x03 \x01(\tR\bvaultUri\x12\x1b\n" +
+	"\ttenant_id\x18\x04 \x01(\tR\btenantId\x12.\n" +
+	"\x13resource_group_name\x18\x05 \x01(\tR\x11resourceGroupNameB\xf6\x02\n" +
 	"/com.dev.planton.provider.azure.azurekeyvault.v1B\x11StackOutputsProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurekeyvault/v1;azurekeyvaultv1\xa2\x02\x05DPPAA\xaa\x02+Dev.Planton.Provider.Azure.Azurekeyvault.V1\xca\x02+Dev\\Planton\\Provider\\Azure\\Azurekeyvault\\V1\xe2\x027Dev\\Planton\\Provider\\Azure\\Azurekeyvault\\V1\\GPBMetadata\xea\x020Dev::Planton::Provider::Azure::Azurekeyvault::V1b\x06proto3"
 
 var (
@@ -149,18 +138,16 @@ func file_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto_rawDes
 	return file_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto_goTypes = []any{
 	(*AzureKeyVaultStackOutputs)(nil), // 0: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultStackOutputs
-	nil,                               // 1: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultStackOutputs.SecretIdMapEntry
 }
 var file_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultStackOutputs.secret_id_map:type_name -> dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultStackOutputs.SecretIdMapEntry
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto_init() }
@@ -174,7 +161,7 @@ func file_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto_init()
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto_rawDesc), len(file_dev_planton_provider_azure_azurekeyvault_v1_stack_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,0 +1,20 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRedisCacheAccessPolicyAssignment
+metadata:
+  name: my-operator-grant
+spec:
+  redisCacheId:
+    valueFrom:
+      kind: AzureRedisCache
+      name: <cache-resource-name>
+      fieldPath: status.outputs.redis_cache_id
+  assignmentName: <assignmentName>
+  # Full data access including admin commands -- for the on-call
+  # operator, not for applications.
+  accessPolicyName:
+    value: Data Owner
+  # A human user or an Entra group, by literal object id (users and
+  # groups are not Planton resources).
+  objectId:
+    value: <objectId>
+  objectIdAlias: <userOrGroupName>

@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRouteTable
+metadata:
+  name: blackhole-guardrails
+spec:
+  region: eastus
+  resourceGroup:
+    value: <resource-group-name>
+  name: blackhole-guardrails
+  routes:
+    - name: blackhole-data-tier
+      addressPrefix: <blocked-cidr>
+      nextHopType: NONE
+  tags:
+    cost-center: <cost-center>

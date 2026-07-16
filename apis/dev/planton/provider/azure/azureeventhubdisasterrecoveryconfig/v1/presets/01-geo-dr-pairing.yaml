@@ -1,0 +1,21 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureEventHubDisasterRecoveryConfig
+metadata:
+  name: my-streaming-dr
+spec:
+  # Becomes the failover-stable DNS name
+  # {aliasName}.servicebus.windows.net -- clients connect through it and
+  # survive a failover without reconfiguration.
+  aliasName: myorg-telemetry-alias
+  primaryNamespaceId:
+    valueFrom:
+      kind: AzureEventHubNamespace
+      name: my-telemetry-hubs
+      fieldPath: status.outputs.namespace_id
+  # A DIFFERENT region than the primary, empty (no hubs) at pairing
+  # time -- Azure validates both when the pairing is created.
+  partnerNamespaceId:
+    valueFrom:
+      kind: AzureEventHubNamespace
+      name: my-telemetry-hubs-dr
+      fieldPath: status.outputs.namespace_id

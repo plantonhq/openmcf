@@ -1,0 +1,53 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureMssqlServer
+metadata:
+  name: hardened-sql
+spec:
+  region: eastus
+  resourceGroup:
+    value: <resource-group-name>
+  # Replace: lowercase letters, digits, and hyphens, globally unique -- it
+  # becomes {name}.database.windows.net.
+  serverName: myorg-prod-sql
+  administratorLogin: <admin-login>
+  administratorPassword:
+    value: <admin-password>
+  # No public endpoint: the server is reachable only through an
+  # AzurePrivateEndpoint (subresource "sqlServer").
+  publicNetworkAccessEnabled: false
+  # Customer-managed TDE key: every database's encryption protector is a
+  # Key Vault key you own, unwrapped through the user-assigned identity.
+  identity:
+    type: USER_ASSIGNED
+    identityIds:
+      - valueFrom:
+          kind: AzureUserAssignedIdentity
+          name: <tde-identity-resource-name>
+          fieldPath: status.outputs.identity_id
+  primaryUserAssignedIdentityId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: <tde-identity-resource-name>
+      fieldPath: status.outputs.identity_id
+  transparentDataEncryptionKeyVaultKeyId:
+    valueFrom:
+      kind: AzureKeyVaultKey
+      name: <tde-key-resource-name>
+      fieldPath: status.outputs.key_id
+  # Restrict OUTBOUND connections (elastic queries, external tables) to
+  # the FQDNs you allow.
+  outboundNetworkRestrictionEnabled: true
+  outboundFirewallRules:
+    - <allowed-peer-fqdn>
+  # Audit every database to Azure Monitor (wire a diagnostic setting to
+  # consume SQLSecurityAuditEvents).
+  extendedAuditing:
+    logMonitoringEnabled: true
+  securityAlertPolicy:
+    state: ENABLED
+    emailAccountAdmins: true
+    emailAddresses:
+      - <security-team-email>
+  tags:
+    cost-center: <cost-center>
+    data-classification: confidential

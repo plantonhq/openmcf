@@ -59,10 +59,6 @@ var _ = ginkgo.Describe("KubernetesHttpRoute Validation Tests", func() {
 				Name: "test-route",
 			},
 			Spec: &KubernetesHttpRouteSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: literal("app-ns"),
 				ParentRefs: []*kubernetes.KubernetesGatewayApiParentReference{
 					{Name: "my-gateway"},

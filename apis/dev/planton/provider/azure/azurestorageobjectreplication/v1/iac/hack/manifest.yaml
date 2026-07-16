@@ -1,0 +1,27 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageObjectReplication
+metadata:
+  name: test-storage-object-replication
+spec:
+  sourceStorageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/plantonhackorsrc
+  destinationStorageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/plantonhackordst
+  rules:
+    # Exercises the backfill-everything special value and prefix
+    # filters.
+    - sourceContainerName:
+        value: invoices
+      destinationContainerName:
+        value: invoices-replica
+      copyBlobsCreatedAfter: Everything
+      prefixMatch:
+        - invoices/2026
+        - receipts/
+    # Exercises the RFC 3339 instant form alongside the provider-default
+    # rule shape.
+    - sourceContainerName:
+        value: exports
+      destinationContainerName:
+        value: exports-replica
+      copyBlobsCreatedAfter: "2026-01-01T00:00:00Z"

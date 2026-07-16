@@ -1,0 +1,45 @@
+# Minimal AzureFrontDoorRoute scenario -- the composed traffic-serving
+# chain: fixture RG -> profile -> endpoint + origin group -> origin ->
+# route. Exercises both parent references, the origin_ids ordering seam,
+# the HTTPS redirect with both protocols, and edge caching with
+# compression.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorRoute
+metadata:
+  name: planton-oss-e2e-azurefrontdoorroute-smoke
+  id: planton-oss-e2e-azurefrontdoorroute-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoorroute
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  endpointId:
+    valueFrom:
+      name: planton-oss-e2e-fd-endpoint-prereq
+  routeName: e2e-default-smoke
+  originGroupId:
+    valueFrom:
+      name: planton-oss-e2e-fd-og-prereq
+  originIds:
+    - valueFrom:
+        name: planton-oss-e2e-fd-origin-prereq
+  patternsToMatch:
+    - /*
+  supportedProtocols:
+    - HTTP
+    - HTTPS
+  forwardingProtocol: HTTPS_ONLY
+  cache:
+    queryStringCachingBehavior: IGNORE_QUERY_STRING
+    compressionEnabled: true
+    contentTypesToCompress:
+      - text/html
+      - text/css
+      - application/javascript
+      - application/json
+      - image/svg+xml
