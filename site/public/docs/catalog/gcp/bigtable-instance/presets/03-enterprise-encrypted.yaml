@@ -3,25 +3,36 @@ kind: GcpBigtableInstance
 metadata:
   name: my-enterprise-bigtable
 spec:
-  projectId:
-    value: "<gcp-project-id>"
-  instanceName: <instance-name>
-  displayName: <display-name>
+  instanceName: my-enterprise-bigtable
+  displayName: Enterprise Bigtable (CMEK)
   deletionProtection: true
+  labels:
+    team: data-platform
+    compliance: cmek
   clusters:
-    - clusterId: <cluster-id-zone-a>
-      zone: <gcp-zone-a>
+    # CMEK-encrypted replicating pair. The key must be regional (matching
+    # each cluster's region) and consistent across all clusters in the
+    # instance. Reference the GcpKmsKey so the key resource ID resolves
+    # automatically.
+    - clusterId: my-ent-bigtable-c1
+      zone: us-central1-a
       kmsKeyName:
-        value: "<kms-key-resource-name>"
+        valueFrom:
+          kind: GcpKmsKey
+          name: bigtable-cmek
+          fieldPath: status.outputs.key_id
       autoscalingConfig:
         minNodes: 5
         maxNodes: 50
         cpuTarget: 60
         storageTarget: 4096
-    - clusterId: <cluster-id-zone-b>
-      zone: <gcp-zone-b>
+    - clusterId: my-ent-bigtable-c2
+      zone: us-central1-b
       kmsKeyName:
-        value: "<kms-key-resource-name>"
+        valueFrom:
+          kind: GcpKmsKey
+          name: bigtable-cmek
+          fieldPath: status.outputs.key_id
       autoscalingConfig:
         minNodes: 5
         maxNodes: 50

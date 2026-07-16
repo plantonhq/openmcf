@@ -70,8 +70,9 @@ type ComponentTestContext struct {
 	// The runner package type-asserts to proto.Message when needed.
 	TransformedOutputs interface{}
 
-	// RepoRoot is the absolute path to the planton repository root.
-	// Used by the fixture system to discover fixture YAML files.
+	// RepoRoot is the absolute path to the planton repository root. Passed through
+	// to test helpers that need to locate checked-in assets (e.g. a function
+	// source tree under apis/.../e2e/fixtures/) or resolve module paths.
 	RepoRoot string
 
 	// RunID is the unique test run identifier, used for stack naming.

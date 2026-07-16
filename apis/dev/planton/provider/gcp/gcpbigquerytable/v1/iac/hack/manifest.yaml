@@ -1,0 +1,23 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpBigQueryTable
+metadata:
+  name: test-bq-table
+spec:
+  projectId:
+    value: "test-project"
+  datasetId:
+    value: test_analytics
+  tableId: events_raw
+  friendlyName: Raw Events
+  description: Hack manifest exercising the table surface offline
+  labels:
+    team: platform
+  schema: '[{"name":"event_time","type":"TIMESTAMP","mode":"REQUIRED"},{"name":"customer_id","type":"INT64"},{"name":"payload","type":"JSON"}]'
+  timePartitioning:
+    type: DAY
+    field: event_time
+    expirationMs: 7776000000
+  clustering:
+    - customer_id
+  requirePartitionFilter: true
+  deletionProtection: false

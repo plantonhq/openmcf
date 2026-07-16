@@ -84,4 +84,4 @@ params:
   - name: log_retention_days
     description: Days of firewall logs and policy analytics retained in the Log Analytics workspace (30-730). Raise for compliance regimes that audit egress decisions
     value: 30
-    type: int
+    type: number

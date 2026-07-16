@@ -47,11 +47,11 @@ requires customer-managed encryption keys (CMEK). Common compliance scenarios:
 
 ## How to Use
 
-1. Replace `<project-id>` with your GCP project ID
-2. Replace `<your_dataset_id>` with a descriptive name
-3. Replace `<kms-key-name>` with the fully qualified KMS key path
-4. Update `location` to match your KMS key's region
-5. Add `description` to document the dataset's purpose and compliance scope
+1. Replace `datasetId` with a descriptive name
+2. Replace the `kmsKeyName` ref's `name` with your GcpKmsKey resource name
+   (or swap `valueFrom` for a literal `value` with the fully qualified key path)
+3. Update `location` to match your KMS key's region
+4. Update `description` to document the dataset's purpose and compliance scope
 
 ## Cost Considerations
 

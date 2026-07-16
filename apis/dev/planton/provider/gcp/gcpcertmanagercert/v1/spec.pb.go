@@ -24,93 +24,65 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// CertificateType defines the type of certificate to create in GCP.
-type CertificateType int32
-
-const (
-	// MANAGED creates a certificate using Google Certificate Manager.
-	// This is the newer, more feature-rich option.
-	CertificateType_MANAGED CertificateType = 0
-	// LOAD_BALANCER creates a Google-managed SSL certificate.
-	// This is the classic option, typically used with load balancers.
-	CertificateType_LOAD_BALANCER CertificateType = 1
-)
-
-// Enum value maps for CertificateType.
-var (
-	CertificateType_name = map[int32]string{
-		0: "MANAGED",
-		1: "LOAD_BALANCER",
-	}
-	CertificateType_value = map[string]int32{
-		"MANAGED":       0,
-		"LOAD_BALANCER": 1,
-	}
-)
-
-func (x CertificateType) Enum() *CertificateType {
-	p := new(CertificateType)
-	*p = x
-	return p
-}
-
-func (x CertificateType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (CertificateType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (CertificateType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_enumTypes[0]
-}
-
-func (x CertificateType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use CertificateType.Descriptor instead.
-func (CertificateType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-// GcpCertManagerCertSpec defines the fields needed to provision a public SSL certificate
-// via Google Certificate Manager or Google-managed SSL certificates for Load Balancers,
-// using DNS validation with Google Cloud DNS.
+// GcpCertManagerCertSpec creates one Certificate Manager certificate — the
+// modern certificate resource external Application Load Balancers consume
+// via a target HTTPS proxy's certificate_manager_certificates list or a
+// certificate map.
+//
+// Exactly one of two arms must be configured:
+//
+//   - **managed**: Google provisions and RENEWS the certificate
+//     automatically for the listed domains. Domain control is proven
+//     either through DNS authorizations (first-class
+//     GcpCertManagerDnsAuthorization resources — required for wildcard
+//     domains and for issuing before traffic is serving), through a
+//     private-PKI issuance config, or — when neither is set — through
+//     load-balancer authorization (GCP validates via the serving load
+//     balancer itself once traffic reaches it).
+//
+//   - **self_managed**: you upload a PEM certificate chain and its private
+//     key. Renewal before expiry is your responsibility; rotation is a
+//     spec update with the new material.
+//
+// (The classic compute certificates are separate kinds:
+// GcpManagedSslCertificate for Google-managed classic certificates and
+// GcpSslCertificate for self-managed classic certificates.)
 type GcpCertManagerCertSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// gcp_project_id is the ID of the GCP project where the certificate will be created.
-	// This is a required field.
-	GcpProjectId string `protobuf:"bytes,1,opt,name=gcp_project_id,json=gcpProjectId,proto3" json:"gcp_project_id,omitempty"`
-	// primary_domain_name is a required field representing the main (apex or wildcard) domain name.
-	// Examples include "example.com" or "*.example.com" (wildcard).
-	// This domain will be set as the primary domain in the GCP certificate.
+	// The GCP project to create the certificate in.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
+	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// Name of the certificate in GCP. Must be 1-64 characters: start with a
+	// letter, then letters, digits, hyphens, or underscores. Certificate
+	// names must be unique per location. Immutable.
+	// If not specified, defaults to metadata.name.
+	CertName string `protobuf:"bytes,2,opt,name=cert_name,json=certName,proto3" json:"cert_name,omitempty"`
+	// Human-readable description of the certificate.
+	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	// The Certificate Manager location. Defaults to "global" — the correct
+	// choice for classic external HTTPS load balancers. Regional
+	// certificates serve regional load balancers only. Immutable.
+	Location string `protobuf:"bytes,4,opt,name=location,proto3" json:"location,omitempty"`
+	// Where the certificate is served from. Immutable.
 	//
-	// The pattern enforces a domain-like structure, allowing an optional wildcard prefix.
-	// The string is mandatory, so users must always supply a primary domain.
-	PrimaryDomainName string `protobuf:"bytes,2,opt,name=primary_domain_name,json=primaryDomainName,proto3" json:"primary_domain_name,omitempty"`
-	// alternate_domain_names is an optional list of Subject Alternative Names (SANs) for the certificate.
-	// Each entry must follow the same pattern as primary_domain_name and cannot contain duplicates.
-	// Primary domain should not be added to this list.
-	AlternateDomainNames []string `protobuf:"bytes,3,rep,name=alternate_domain_names,json=alternateDomainNames,proto3" json:"alternate_domain_names,omitempty"`
-	// cloud_dns_zone_id is the identifier of a Cloud DNS managed zone used for
-	// automatic DNS validation record creation. When set, the module creates CNAME
-	// validation records directly in this Cloud DNS zone. When omitted, the module
-	// still creates DNS authorizations but skips record insertion — the required
-	// validation records are exported as stack outputs (dns_validation_records) so
-	// they can be inserted manually into any DNS provider (e.g. AWS Route 53).
-	CloudDnsZoneId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=cloud_dns_zone_id,json=cloudDnsZoneId,proto3" json:"cloud_dns_zone_id,omitempty"`
-	// certificate_type indicates which type of certificate to create.
-	// MANAGED uses Google Certificate Manager (newer, more flexible).
-	// LOAD_BALANCER uses Google-managed SSL certificates (classic, for load balancers).
-	// By default, MANAGED is used.
-	CertificateType *CertificateType `protobuf:"varint,5,opt,name=certificate_type,json=certificateType,proto3,enum=dev.planton.provider.gcp.gcpcertmanagercert.v1.CertificateType,oneof" json:"certificate_type,omitempty"`
-	// validation_method indicates how the certificate verifies domain ownership.
-	// By default, DNS validation is used.
-	ValidationMethod *string `protobuf:"bytes,6,opt,name=validation_method,json=validationMethod,proto3,oneof" json:"validation_method,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	//	DEFAULT: core Google data centers (choose this if unsure).
+	//	EDGE_CACHE: Edge Points of Presence (Media CDN).
+	//	ALL_REGIONS: every GCP region (global certificates only —
+	//	  cross-region internal Application Load Balancers).
+	//	CLIENT_AUTH: presented BY the load balancer to the backend when
+	//	  backend mTLS is configured.
+	Scope string `protobuf:"bytes,5,opt,name=scope,proto3" json:"scope,omitempty"`
+	// Google-managed arm: provisioned and renewed automatically.
+	Managed *GcpCertManagerCertManaged `protobuf:"bytes,6,opt,name=managed,proto3" json:"managed,omitempty"`
+	// Self-managed arm: bring-your-own PEM certificate and key.
+	SelfManaged *GcpCertManagerCertSelfManaged `protobuf:"bytes,7,opt,name=self_managed,json=selfManaged,proto3" json:"self_managed,omitempty"`
+	// User labels merged onto the certificate beneath the platform's
+	// attribution labels (platform keys win on conflicts).
+	// Keys/values: lowercase letters, digits, underscores, hyphens.
+	Labels        map[string]string `protobuf:"bytes,8,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpCertManagerCertSpec) Reset() {
@@ -143,44 +115,189 @@ func (*GcpCertManagerCertSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *GcpCertManagerCertSpec) GetGcpProjectId() string {
+func (x *GcpCertManagerCertSpec) GetProjectId() *v1.StringValueOrRef {
 	if x != nil {
-		return x.GcpProjectId
-	}
-	return ""
-}
-
-func (x *GcpCertManagerCertSpec) GetPrimaryDomainName() string {
-	if x != nil {
-		return x.PrimaryDomainName
-	}
-	return ""
-}
-
-func (x *GcpCertManagerCertSpec) GetAlternateDomainNames() []string {
-	if x != nil {
-		return x.AlternateDomainNames
+		return x.ProjectId
 	}
 	return nil
 }
 
-func (x *GcpCertManagerCertSpec) GetCloudDnsZoneId() *v1.StringValueOrRef {
+func (x *GcpCertManagerCertSpec) GetCertName() string {
 	if x != nil {
-		return x.CloudDnsZoneId
+		return x.CertName
+	}
+	return ""
+}
+
+func (x *GcpCertManagerCertSpec) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *GcpCertManagerCertSpec) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+func (x *GcpCertManagerCertSpec) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
+func (x *GcpCertManagerCertSpec) GetManaged() *GcpCertManagerCertManaged {
+	if x != nil {
+		return x.Managed
 	}
 	return nil
 }
 
-func (x *GcpCertManagerCertSpec) GetCertificateType() CertificateType {
-	if x != nil && x.CertificateType != nil {
-		return *x.CertificateType
+func (x *GcpCertManagerCertSpec) GetSelfManaged() *GcpCertManagerCertSelfManaged {
+	if x != nil {
+		return x.SelfManaged
 	}
-	return CertificateType_MANAGED
+	return nil
 }
 
-func (x *GcpCertManagerCertSpec) GetValidationMethod() string {
-	if x != nil && x.ValidationMethod != nil {
-		return *x.ValidationMethod
+func (x *GcpCertManagerCertSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+// Configuration for a Google-managed certificate.
+type GcpCertManagerCertManaged struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The domains this certificate covers (e.g. "example.com",
+	// "*.example.com"). Wildcards are supported only with DNS authorizations
+	// or an issuance config. Immutable.
+	Domains []string `protobuf:"bytes,1,rep,name=domains,proto3" json:"domains,omitempty"`
+	// DNS authorizations proving control of the domains — one per distinct
+	// domain (an authorization covers its domain and that domain's
+	// wildcard). Each entry is the authorization's fully-qualified resource
+	// ID; reference GcpCertManagerDnsAuthorization resources.
+	// Omit (with no issuance_config) for load-balancer authorization.
+	DnsAuthorizations []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=dns_authorizations,json=dnsAuthorizations,proto3" json:"dns_authorizations,omitempty"`
+	// Private-PKI issuance: the CertificateIssuanceConfig resource name
+	// (projects/*/locations/*/certificateIssuanceConfigs/*) that signs
+	// certificates from your own CA instead of a public one.
+	// Mutually exclusive with dns_authorizations.
+	IssuanceConfig string `protobuf:"bytes,3,opt,name=issuance_config,json=issuanceConfig,proto3" json:"issuance_config,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GcpCertManagerCertManaged) Reset() {
+	*x = GcpCertManagerCertManaged{}
+	mi := &file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCertManagerCertManaged) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCertManagerCertManaged) ProtoMessage() {}
+
+func (x *GcpCertManagerCertManaged) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCertManagerCertManaged.ProtoReflect.Descriptor instead.
+func (*GcpCertManagerCertManaged) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GcpCertManagerCertManaged) GetDomains() []string {
+	if x != nil {
+		return x.Domains
+	}
+	return nil
+}
+
+func (x *GcpCertManagerCertManaged) GetDnsAuthorizations() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.DnsAuthorizations
+	}
+	return nil
+}
+
+func (x *GcpCertManagerCertManaged) GetIssuanceConfig() string {
+	if x != nil {
+		return x.IssuanceConfig
+	}
+	return ""
+}
+
+// Configuration for a self-managed (uploaded) certificate.
+type GcpCertManagerCertSelfManaged struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The certificate chain in PEM form: leaf certificate first, followed by
+	// any intermediates. Certificate material is public — only the key is
+	// secret. Updating the pair in place rotates the certificate.
+	PemCertificate string `protobuf:"bytes,1,opt,name=pem_certificate,json=pemCertificate,proto3" json:"pem_certificate,omitempty"`
+	// The leaf certificate's private key in PEM form. Secret material —
+	// never logged, masked in outputs.
+	PemPrivateKey string `protobuf:"bytes,2,opt,name=pem_private_key,json=pemPrivateKey,proto3" json:"pem_private_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCertManagerCertSelfManaged) Reset() {
+	*x = GcpCertManagerCertSelfManaged{}
+	mi := &file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCertManagerCertSelfManaged) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCertManagerCertSelfManaged) ProtoMessage() {}
+
+func (x *GcpCertManagerCertSelfManaged) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCertManagerCertSelfManaged.ProtoReflect.Descriptor instead.
+func (*GcpCertManagerCertSelfManaged) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GcpCertManagerCertSelfManaged) GetPemCertificate() string {
+	if x != nil {
+		return x.PemCertificate
+	}
+	return ""
+}
+
+func (x *GcpCertManagerCertSelfManaged) GetPemPrivateKey() string {
+	if x != nil {
+		return x.PemPrivateKey
 	}
 	return ""
 }
@@ -189,19 +306,37 @@ var File_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto protoreflect.
 
 const file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/gcp/gcpcertmanagercert/v1/spec.proto\x12.dev.planton.provider.gcp.gcpcertmanagercert.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xab\x05\n" +
-	"\x16GcpCertManagerCertSpec\x12,\n" +
-	"\x0egcp_project_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fgcpProjectId\x12s\n" +
-	"\x13primary_domain_name\x18\x02 \x01(\tBC\xbaH@\xc8\x01\x01r;29^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,})$R\x11primaryDomainName\x12}\n" +
-	"\x16alternate_domain_names\x18\x03 \x03(\tBG\xbaHD\x92\x01A\x18\x01\"=r;29^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,})$R\x14alternateDomainNames\x12\x80\x01\n" +
-	"\x11cloud_dns_zone_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdd\x04\x92\xd4a\x18status.outputs.zone_nameR\x0ecloudDnsZoneId\x12|\n" +
-	"\x10certificate_type\x18\x05 \x01(\x0e2?.dev.planton.provider.gcp.gcpcertmanagercert.v1.CertificateTypeB\v\x8a\xa6\x1d\aMANAGEDH\x00R\x0fcertificateType\x88\x01\x01\x12C\n" +
-	"\x11validation_method\x18\x06 \x01(\tB\x11\xbaH\ar\x05R\x03DNS\x8a\xa6\x1d\x03DNSH\x01R\x10validationMethod\x88\x01\x01B\x13\n" +
-	"\x11_certificate_typeB\x14\n" +
-	"\x12_validation_method*1\n" +
-	"\x0fCertificateType\x12\v\n" +
-	"\aMANAGED\x10\x00\x12\x11\n" +
-	"\rLOAD_BALANCER\x10\x01B\x85\x03\n" +
+	"9dev/planton/provider/gcp/gcpcertmanagercert/v1/spec.proto\x12.dev.planton.provider.gcp.gcpcertmanagercert.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xbf\n" +
+	"\n" +
+	"\x16GcpCertManagerCertSpec\x12u\n" +
+	"\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xe7\x01\n" +
+	"\tcert_name\x18\x02 \x01(\tB\xc9\x01\xbaH\xc5\x01\xba\x01\xc1\x01\n" +
+	"\x0fcert_name.valid\x12qcert_name must be 1-64 characters, start with a letter, and contain only letters, digits, hyphens, or underscores\x1a;this == '' || this.matches('^[a-zA-Z][a-zA-Z0-9_-]{0,63}$')R\bcertName\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1a\n" +
+	"\blocation\x18\x04 \x01(\tR\blocation\x12\xbb\x01\n" +
+	"\x05scope\x18\x05 \x01(\tB\xa4\x01\xbaH\xa0\x01\xba\x01\x9c\x01\n" +
+	"\vscope.valid\x12>scope must be DEFAULT, EDGE_CACHE, ALL_REGIONS, or CLIENT_AUTH\x1aMthis == '' || this in ['DEFAULT', 'EDGE_CACHE', 'ALL_REGIONS', 'CLIENT_AUTH']R\x05scope\x12c\n" +
+	"\amanaged\x18\x06 \x01(\v2I.dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertManagedR\amanaged\x12p\n" +
+	"\fself_managed\x18\a \x01(\v2M.dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSelfManagedR\vselfManaged\x12j\n" +
+	"\x06labels\x18\b \x03(\v2R.dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSpec.LabelsEntryR\x06labels\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc9\x02\xbaH\xc5\x02\x1aw\n" +
+	"\x14spec.exactly_one_arm\x122exactly one of managed or self_managed must be set\x1a+has(this.managed) != has(this.self_managed)\x1a\xc9\x01\n" +
+	"\x1aspec.all_regions_is_global\x12Zscope ALL_REGIONS is only valid for global certificates (leave location empty or 'global')\x1aOthis.scope != 'ALL_REGIONS' || this.location == '' || this.location == 'global'\"\x99\a\n" +
+	"\x19GcpCertManagerCertManaged\x12\xf5\x01\n" +
+	"\adomains\x18\x01 \x03(\tB\xda\x01\xbaH\xd6\x01\x92\x01\xd2\x01\b\x01\"\xcd\x01\xba\x01\xc9\x01\n" +
+	"\fdomain.valid\x12geach domain must be a bare or wildcard domain name (no trailing dot), e.g. example.com or *.example.com\x1aPthis.matches('^([*][.])?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z]{2,}$')R\adomains\x12\x8b\x01\n" +
+	"\x12dns_authorizations\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xcc\x05\x92\xd4a\x1fstatus.outputs.authorization_idR\x11dnsAuthorizations\x12'\n" +
+	"\x0fissuance_config\x18\x03 \x01(\tR\x0eissuanceConfig:\xcc\x03\xbaH\xc8\x03\x1a\xcb\x01\n" +
+	"\x1bmanaged.auth_mode_exclusive\x12idns_authorizations and issuance_config are mutually exclusive (omit both for load-balancer authorization)\x1aAthis.dns_authorizations.size() == 0 || this.issuance_config == ''\x1a\xf7\x01\n" +
+	"\x1fmanaged.wildcards_need_dns_auth\x12cwildcard domains require dns_authorizations (load-balancer authorization cannot validate wildcards)\x1ao!this.domains.exists(d, d.startsWith('*.')) || this.dns_authorizations.size() > 0 || this.issuance_config != ''\"\xc8\x03\n" +
+	"\x1dGcpCertManagerCertSelfManaged\x12\xd3\x01\n" +
+	"\x0fpem_certificate\x18\x01 \x01(\tB\xa9\x01\xbaH\xa5\x01\xba\x01\x9e\x01\n" +
+	"\x17pem_certificate.framing\x12_pem_certificate must be a PEM CERTIFICATE block (did you swap the certificate and private key?)\x1a\"this.contains('BEGIN CERTIFICATE')\xc8\x01\x01R\x0epemCertificate\x12\xd0\x01\n" +
+	"\x0fpem_private_key\x18\x02 \x01(\tB\xa7\x01\xbaH\x9f\x01\xba\x01\x98\x01\n" +
+	"\x17pem_private_key.framing\x12_pem_private_key must be a PEM PRIVATE KEY block (did you swap the certificate and private key?)\x1a\x1cthis.contains('PRIVATE KEY')\xc8\x01\x01\xa0\xa6\x1d\x01R\rpemPrivateKeyB\x85\x03\n" +
 	"2com.dev.planton.provider.gcp.gcpcertmanagercert.v1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagercert/v1;gcpcertmanagercertv1\xa2\x02\x05DPPGG\xaa\x02.Dev.Planton.Provider.Gcp.Gcpcertmanagercert.V1\xca\x02.Dev\\Planton\\Provider\\Gcp\\Gcpcertmanagercert\\V1\xe2\x02:Dev\\Planton\\Provider\\Gcp\\Gcpcertmanagercert\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Gcp::Gcpcertmanagercert::V1b\x06proto3"
 
 var (
@@ -216,21 +351,25 @@ func file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_rawDescGZIP(
 	return file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_goTypes = []any{
-	(CertificateType)(0),           // 0: dev.planton.provider.gcp.gcpcertmanagercert.v1.CertificateType
-	(*GcpCertManagerCertSpec)(nil), // 1: dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSpec
-	(*v1.StringValueOrRef)(nil),    // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpCertManagerCertSpec)(nil),        // 0: dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSpec
+	(*GcpCertManagerCertManaged)(nil),     // 1: dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertManaged
+	(*GcpCertManagerCertSelfManaged)(nil), // 2: dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSelfManaged
+	nil,                                   // 3: dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),           // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSpec.cloud_dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0, // 1: dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSpec.certificate_type:type_name -> dev.planton.provider.gcp.gcpcertmanagercert.v1.CertificateType
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	4, // 0: dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSpec.managed:type_name -> dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertManaged
+	2, // 2: dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSpec.self_managed:type_name -> dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSelfManaged
+	3, // 3: dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSpec.labels:type_name -> dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertSpec.LabelsEntry
+	4, // 4: dev.planton.provider.gcp.gcpcertmanagercert.v1.GcpCertManagerCertManaged.dns_authorizations:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_init() }
@@ -238,20 +377,18 @@ func file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_init() {
 	if File_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto != nil {
 		return
 	}
-	file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   1,
+			NumEnums:      0,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto = out.File

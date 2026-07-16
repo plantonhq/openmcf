@@ -11,8 +11,8 @@ message GcpSpannerDatabaseStackOutputs {
   // and connection strings.
   string database_id = 1;
 
-  // Short database name. This is the value passed during creation and
-  // can be used for display or logging purposes.
+  // Short database name. This is the value that GcpSpannerBackupSchedule
+  // and other downstream resources use to reference this database.
   string database_name = 2;
 
   // Database state: CREATING or READY.

@@ -1,0 +1,67 @@
+# The warehouse dataset and the data lake bucket — the two storage
+# planes of the lakehouse. BigQuery holds the queryable, structured
+# plane; the lake bucket holds everything else (raw files, exports,
+# Spark inputs/outputs) with storage classes managed automatically.
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpBigQueryDataset
+metadata:
+  name: "{{ values.lakehouse_name }}-warehouse"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  # BigQuery identifiers take underscores, not hyphens — derived from the
+  # lakehouse name mechanically.
+  datasetId: "{{ values.lakehouse_name | replace('-', '_') }}"
+  location: "{{ values.bigquery_location }}"
+  description: >-
+    {{ values.lakehouse_name }} warehouse — raw event history and derived
+    tables. Raw tables are written by streaming ingestion; curated tables
+    belong to your transformation tooling.
+  # The full 7-day time-travel window, explicit because for an analytics
+  # dataset it is the accidental-DROP recovery mechanism — datasets
+  # holding easily-rebuilt staging data can trade it down to 48h for
+  # storage savings on PHYSICAL billing.
+  maxTimeTravelHours: 168
+  # delete_contents_on_destroy stays at its default (false) on purpose:
+  # destroying the dataset while it still holds tables should fail —
+  # tables are deliberately deleted, never swept away with their
+  # container.
+
+---
+# The data lake bucket. Autoclass manages storage classes from observed
+# access patterns — hot data stays STANDARD, cold partitions drift to
+# NEARLINE and eventually ARCHIVE — which beats hand-written lifecycle
+# transitions for lake data, whose access pattern is precisely the thing
+# you cannot predict at deploy time.
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpGcsBucket
+metadata:
+  name: "{{ values.lake_bucket_name }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  bucketName: "{{ values.lake_bucket_name }}"
+  location: "{{ values.region }}"
+  # All access through IAM only — object ACLs are a second,
+  # easily-forgotten permission surface a shared lake must not have.
+  uniformBucketLevelAccessEnabled: true
+  # Lake data can never be public, regardless of any future IAM grant.
+  publicAccessPrevention: enforced
+  autoclass:
+    enabled: true
+    # ARCHIVE as the terminal class: lake partitions that go unread for
+    # months become near-free to keep — and Autoclass never charges
+    # retrieval to move them back when access resumes.
+    terminalStorageClass: ARCHIVE
+  lifecycleRules:
+    # Abandoned multipart uploads hold invisible storage forever unless
+    # a rule reclaims them.
+    - action:
+        type: AbortIncompleteMultipartUpload
+      condition:
+        ageDays: 7
+  # force_destroy stays at its default (false) on purpose: destroying the
+  # lake while it still holds objects should fail. Empty it deliberately
+  # before ever deleting the lakehouse.

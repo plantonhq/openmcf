@@ -17,11 +17,14 @@ GcpVertexAiNotebook provisions a [Vertex AI Workbench instance](https://cloud.go
 
 - **Pre-built ML images** -- TensorFlow, PyTorch, JAX, and other frameworks pre-installed
 - **GPU accelerators** -- NVIDIA Tesla T4, A100, L4, and other GPUs for training
+- **Reservation affinity** -- consume pre-purchased Compute reservations to guarantee GPU capacity
 - **Custom containers** -- bring your own Docker image for specialized environments
-- **Private networking** -- deploy inside a VPC with no public IP for security
+- **Private networking** -- deploy inside a VPC with no public IP, or pin a static external IP by reference
 - **CMEK encryption** -- encrypt boot and data disks with customer-managed KMS keys
 - **Cost management** -- stop instances when not in use (desired_state: STOPPED)
-- **Shielded VM** -- Secure Boot, vTPM, and integrity monitoring support
+- **Shielded VM & Confidential Computing** -- Secure Boot, vTPM, integrity monitoring, and AMD SEV memory encryption
+- **Per-user identity** -- managed end-user credentials so notebook code acts as the signed-in user
+- **User labels** -- cost attribution and ownership tagging, merged with platform labels
 
 ## Quick Start
 
@@ -31,13 +34,11 @@ kind: GcpVertexAiNotebook
 metadata:
   name: my-notebook
 spec:
-  projectId:
-    value: my-gcp-project
   location: us-central1-a
   machineType: e2-standard-4
 ```
 
-This creates a CPU-only notebook with the default deep learning VM image, accessible via JupyterLab proxy URL.
+This creates a CPU-only notebook in the provider's default project with the default deep learning VM image, accessible via JupyterLab proxy URL. Set `projectId` (literal or a GcpProject reference) to target another project.
 
 ## Configuration Highlights
 
@@ -50,13 +51,14 @@ Choose based on workload:
 ### Image Selection
 
 Two mutually exclusive options:
-- **VM image** (default): pre-built deep learning images from `deeplearning-platform-release`
+- **VM image** (default): omit `vmImage` for the service's latest Workbench image, or pin `cloud-notebooks-managed` / `workbench-instances`
 - **Container image**: custom Docker image from any registry
 
 ### Networking
 
-- Default: public IP with JupyterLab accessible via proxy URL
+- Default: ephemeral public IP with JupyterLab accessible via proxy URL
 - Private: set `disablePublicIp: true` and configure VPC network/subnet
+- Pinned address: reference a `GcpAddress` in `networkInterface.externalIp` when firewall allowlists or DNS depend on the instance IP
 
 ### Storage
 
@@ -64,10 +66,17 @@ Two mutually exclusive options:
 - **Data disk**: user notebooks and data (default 100 GB PD_STANDARD)
 - Both support CMEK encryption via KMS key references
 
+### Security
+
+- **Shielded VM**: Secure Boot, vTPM, and integrity monitoring
+- **Confidential Computing**: AMD SEV memory encryption (requires n2d machine types)
+- **Managed EUC**: JupyterLab acts as the signed-in user's identity for per-user auditability
+
 ## Related Components
 
 - **GcpProject** -- project where the notebook is created
-- **GcpVpc / GcpSubnetwork** -- VPC networking for private instances
+- **GcpVpcNetwork / GcpSubnetwork** -- VPC networking for private instances
+- **GcpAddress** -- static external IP pinned by reference
 - **GcpServiceAccount** -- VM identity for accessing GCP resources
 - **GcpKmsKey** -- encryption keys for CMEK-encrypted disks
 - **GcpGcsBucket** -- storage for notebooks and datasets

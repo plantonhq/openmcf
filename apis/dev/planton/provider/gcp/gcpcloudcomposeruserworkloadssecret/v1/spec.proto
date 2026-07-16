@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpcloudcomposeruserworkloadssecret.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpCloudComposerUserWorkloadsSecretSpec defines a Kubernetes Secret
+// delivered into a Cloud Composer environment's workloads namespace.
+//
+// User workloads Secrets are how Airflow DAGs receive credentials —
+// database passwords, API tokens, Airflow connection URIs — without
+// baking them into DAG code or environment variables. Composer manages
+// the underlying Kubernetes Secret in the environment's GKE cluster;
+// KubernetesPodOperator tasks and Airflow connections consume it by name.
+//
+// The Secret's data updates in place; the name, environment, region,
+// and project are immutable after creation. Deleting this resource
+// deletes the Kubernetes Secret from the environment.
+message GcpCloudComposerUserWorkloadsSecretSpec {
+  // GCP project of the Composer environment.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Region of the Composer environment (e.g., "us-central1").
+  // Immutable after creation.
+  string region = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z]+-[a-z]+[0-9]+$"
+  ];
+
+  // The Composer environment the Secret is delivered into. Resolves to
+  // the environment's name. Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef environment = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpCloudComposerEnvironment,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.environment_name"
+  ];
+
+  // Name of the Kubernetes Secret. Must be lowercase letters, numbers,
+  // and hyphens; start with a letter; end with a letter or number.
+  // Immutable after creation.
+  string secret_name = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$"
+  ];
+
+  // The Secret's key-value entries. Values MUST be base64-encoded
+  // (Kubernetes Secret semantics — e.g. `echo -n 'postgresql://...' |
+  // base64`); the API rejects raw values. The decoded material (Airflow
+  // connection URIs, passwords, tokens) is never placed in stack
+  // outputs, and the entries are held as secrets in IaC state.
+  map<string, string> data = 5 [
+    (buf.validate.field).map.min_pairs = 1,
+    (buf.validate.field).map.values = {
+      cel: {
+        id: "data_value_base64"
+        expression: "this.matches('^[A-Za-z0-9+/]+={0,2}$')"
+        message: "each data value must be base64-encoded (e.g. echo -n 'value' | base64)"
+      }
+    },
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}

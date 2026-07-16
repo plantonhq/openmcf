@@ -14,26 +14,39 @@ variable "metadata" {
 variable "spec" {
   description = "GcpVertexAiNotebook spec"
   type = object({
-    project_id   = object({ value = string })
-    location     = string
+    # StringValueOrRef fields arrive from the proto→tfvars converter as
+    # plain strings (already resolved), never as object({value}). If
+    # project_id is empty, the provider's default project is used
+    # (see locals.tf).
+    project_id = optional(string, "")
+
+    # Zone (not region). Immutable (ForceNew).
+    location = string
+
     machine_type = string
 
-    instance_name        = optional(string, "")
+    # Instance name; falls back to metadata.name. Immutable (ForceNew).
+    instance_name = optional(string, "")
+
     instance_owners      = optional(list(string), [])
     desired_state        = optional(string, "")
     disable_proxy_access = optional(bool, false)
     metadata             = optional(map(string), {})
 
+    # User labels; merged beneath the platform attribution labels.
+    labels = optional(map(string), {})
+
     boot_disk = optional(object({
       disk_type    = optional(string, "")
       disk_size_gb = optional(number, 0)
-      kms_key      = optional(object({ value = string }), null)
+      # Resolved from a GcpKmsKey reference to the key path.
+      kms_key = optional(string, "")
     }), null)
 
     data_disk = optional(object({
       disk_type    = optional(string, "")
       disk_size_gb = optional(number, 0)
-      kms_key      = optional(object({ value = string }), null)
+      kms_key      = optional(string, "")
     }), null)
 
     accelerator_config = optional(object({
@@ -42,15 +55,19 @@ variable "spec" {
     }), null)
 
     network_interface = optional(object({
-      network  = optional(object({ value = string }), null)
-      subnet   = optional(object({ value = string }), null)
+      # Resolved from GcpVpcNetwork / GcpSubnetwork references to self links.
+      network  = optional(string, "")
+      subnet   = optional(string, "")
       nic_type = optional(string, "")
+      # Resolved from a GcpAddress reference to the literal IP address.
+      external_ip = optional(string, "")
     }), null)
 
     disable_public_ip    = optional(bool, false)
     enable_ip_forwarding = optional(bool, false)
 
-    service_account = optional(object({ value = string }), null)
+    # Resolved from a GcpServiceAccount reference to the SA email.
+    service_account = optional(string, "")
 
     tags = optional(list(string), [])
 
@@ -70,7 +87,30 @@ variable "spec" {
       enable_vtpm                 = optional(bool, false)
       enable_integrity_monitoring = optional(bool, false)
     }), null)
+
+    confidential_instance_config = optional(object({
+      confidential_instance_type = optional(string, "")
+    }), null)
+
+    reservation_affinity = optional(object({
+      consume_reservation_type = optional(string, "")
+      key                      = optional(string, "")
+      values                   = optional(list(string), [])
+    }), null)
+
+    enable_managed_euc          = optional(bool, false)
+    enable_third_party_identity = optional(bool, false)
   })
+
+  validation {
+    condition     = var.spec.location != ""
+    error_message = "location is required."
+  }
+
+  validation {
+    condition     = var.spec.machine_type != ""
+    error_message = "machine_type is required."
+  }
 }
 
 variable "provider_config" {

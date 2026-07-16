@@ -285,6 +285,8 @@ func (x *GcpBigtableInstanceCluster) GetAutoscalingConfig() *GcpBigtableInstance
 type GcpBigtableInstanceSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project where the Bigtable instance will be created.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Name of the Bigtable instance (also called Instance ID in GCP Console).
 	// This becomes the GCP resource name and is used by Bigtable client
@@ -309,7 +311,11 @@ type GcpBigtableInstanceSpec struct {
 	// Each cluster must be in a different zone within the same or different
 	// regions. At least one cluster is required. Up to 8 clusters can be
 	// configured across cloud regions for multi-region replication.
-	Clusters      []*GcpBigtableInstanceCluster `protobuf:"bytes,6,rep,name=clusters,proto3" json:"clusters,omitempty"`
+	Clusters []*GcpBigtableInstanceCluster `protobuf:"bytes,6,rep,name=clusters,proto3" json:"clusters,omitempty"`
+	// User-defined labels to organize and track the instance (instance-level
+	// only — GCP has no per-cluster labels). Merged beneath Planton's
+	// platform attribution labels (platform keys win on conflict).
+	Labels        map[string]string `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -386,6 +392,13 @@ func (x *GcpBigtableInstanceSpec) GetClusters() []*GcpBigtableInstanceCluster {
 	return nil
 }
 
+func (x *GcpBigtableInstanceSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
 var File_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_rawDesc = "" +
@@ -414,15 +427,19 @@ const file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_rawDesc = 
 	"\x1fnode_scaling_factor_valid_value\x12Fnode_scaling_factor must be NodeScalingFactor1X or NodeScalingFactor2X\x1aDthis == '' || this in ['NodeScalingFactor1X', 'NodeScalingFactor2X']R\x11nodeScalingFactor\x12\x8b\x01\n" +
 	"\x12autoscaling_config\x18\a \x01(\v2\\.dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceClusterAutoscalingConfigR\x11autoscalingConfig:\x8f\x01\xbaH\x8b\x01\x1a\x88\x01\n" +
 	"\x18scaling_mutual_exclusion\x126only one of num_nodes or autoscaling_config may be set\x1a4this.num_nodes == 0 || !has(this.autoscaling_config)B\x0f\n" +
-	"\r_storage_type\"\xfc\x03\n" +
-	"\x17GcpBigtableInstanceSpec\x12{\n" +
+	"\r_storage_type\"\x9f\x05\n" +
+	"\x17GcpBigtableInstanceSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
 	"\rinstance_name\x18\x02 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x06\x18!2\x1e^[a-z][a-z0-9-]{4,31}[a-z0-9]$R\finstanceName\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12>\n" +
 	"\x13deletion_protection\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x12deletionProtection\x88\x01\x01\x12#\n" +
 	"\rforce_destroy\x18\x05 \x01(\bR\fforceDestroy\x12q\n" +
-	"\bclusters\x18\x06 \x03(\v2K.dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceClusterB\b\xbaH\x05\x92\x01\x02\b\x01R\bclustersB\x16\n" +
+	"\bclusters\x18\x06 \x03(\v2K.dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceClusterB\b\xbaH\x05\x92\x01\x02\b\x01R\bclusters\x12l\n" +
+	"\x06labels\x18\a \x03(\v2T.dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceSpec.LabelsEntryR\x06labels\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x16\n" +
 	"\x14_deletion_protectionB\x8c\x03\n" +
 	"3com.dev.planton.provider.gcp.gcpbigtableinstance.v1B\tSpecProtoP\x01Zggithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigtableinstance/v1;gcpbigtableinstancev1\xa2\x02\x05DPPGG\xaa\x02/Dev.Planton.Provider.Gcp.Gcpbigtableinstance.V1\xca\x02/Dev\\Planton\\Provider\\Gcp\\Gcpbigtableinstance\\V1\xe2\x02;Dev\\Planton\\Provider\\Gcp\\Gcpbigtableinstance\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Gcp::Gcpbigtableinstance::V1b\x06proto3"
 
@@ -438,23 +455,25 @@ func file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_rawDescGZIP
 	return file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_goTypes = []any{
 	(*GcpBigtableInstanceClusterAutoscalingConfig)(nil), // 0: dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceClusterAutoscalingConfig
 	(*GcpBigtableInstanceCluster)(nil),                  // 1: dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceCluster
 	(*GcpBigtableInstanceSpec)(nil),                     // 2: dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceSpec
-	(*v1.StringValueOrRef)(nil),                         // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                                                 // 3: dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),                         // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceCluster.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 0: dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceCluster.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0, // 1: dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceCluster.autoscaling_config:type_name -> dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceClusterAutoscalingConfig
-	3, // 2: dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 2: dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 3: dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceSpec.clusters:type_name -> dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceCluster
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 4: dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceSpec.labels:type_name -> dev.planton.provider.gcp.gcpbigtableinstance.v1.GcpBigtableInstanceSpec.LabelsEntry
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_init() }
@@ -470,7 +489,7 @@ func file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

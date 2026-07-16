@@ -2,50 +2,53 @@ package infrachart
 
 import (
 	"bytes"
-	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
 
 	"github.com/nikolalohinski/gonja/v2"
 	"github.com/nikolalohinski/gonja/v2/builtins"
+	"github.com/nikolalohinski/gonja/v2/config"
 	"github.com/nikolalohinski/gonja/v2/exec"
 	"github.com/nikolalohinski/gonja/v2/loaders"
 	"github.com/pkg/errors"
 )
 
-// The control plane renders chart templates with a sandboxed Jinja engine: the tags and
-// filters below are disabled there, so a template using them would behave differently (or
-// fail) when published. Rejecting them here keeps offline validation strict-or-stricter
-// than the engine of record -- a template this renderer accepts is always renderable by
-// the control plane.
+// The platform renders charts with a SANDBOXED Jinja engine: the tags and
+// filters below are disabled server-side, so a template using them would
+// render offline but fail (or worse, misbehave) on the platform. They are
+// rejected here by source scan, keeping the offline gate at least as strict
+// as the platform.
 var (
-	disabledTagPattern    = regexp.MustCompile(`\{%-?\s*(import|include|macro|call|set|do|from)\b`)
-	disabledFilterPattern = regexp.MustCompile(`\|\s*(attr|map|sort|shuffle)\b`)
+	bannedTagRe    = regexp.MustCompile(`\{%-?\s*(set|include|import|from|macro|call|do)\b`)
+	bannedFilterRe = regexp.MustCompile(`\|\s*(attr|map|sort|shuffle)\b`)
 )
 
-// renderEnvironment carries the Jinja builtins plus the chart-specific `bool` filter.
-// Built once; gonja environments are safe to share across templates.
-var renderEnvironment = newRenderEnvironment()
+func init() {
+	// gonja logs through logrus by default; a validation library must not
+	// write to the host process's output.
+	gonja.SetLoggerOutput(io.Discard)
+}
 
-func newRenderEnvironment() *exec.Environment {
-	filters := exec.NewFilterSet(map[string]exec.FilterFunction{
-		"bool": filterBool,
-	}).Update(builtins.Filters)
-	return &exec.Environment{
-		Context:           gonja.DefaultContext,
-		Filters:           filters,
-		Tests:             builtins.Tests,
-		ControlStructures: builtins.ControlStructures,
-		Methods: exec.Methods{
-			Bool:  builtins.Methods.Bool,
-			Int:   builtins.Methods.Int,
-			Float: builtins.Methods.Float,
-			Str:   patchedStrMethods(),
-			Dict:  builtins.Methods.Dict,
-			List:  builtins.Methods.List,
-		},
-	}
+// chartEnvironment carries the builtin Jinja surface plus the custom filters
+// the platform registers (bool) or that charts conventionally rely on
+// (b64decode), with the broken gonja string methods patched. Built once;
+// never mutates gonja's shared globals.
+var chartEnvironment = &exec.Environment{
+	Context:           gonja.DefaultContext,
+	Filters:           exec.NewFilterSet(map[string]exec.FilterFunction{"bool": filterBool, "b64decode": filterB64Decode}).Update(builtins.Filters),
+	Tests:             builtins.Tests,
+	ControlStructures: builtins.ControlStructures,
+	Methods: exec.Methods{
+		Bool:  builtins.Methods.Bool,
+		Int:   builtins.Methods.Int,
+		Float: builtins.Methods.Float,
+		Str:   patchedStrMethods(),
+		Dict:  builtins.Methods.Dict,
+		List:  builtins.Methods.List,
+	},
 }
 
 // gonjaStrMethodNames is gonja v2.8.0's full builtin string-method surface. The
@@ -98,11 +101,16 @@ func stripMethod(trim func(s, cutset string) string) exec.Method[string] {
 	}
 }
 
-// filterBool coerces a value to boolean the way chart authors use it on toggle params:
-// booleans pass through, "true"/"false" (any case) and "1"/"0" strings parse, numbers are
-// non-zero, and nil is false. Anything else is an error rather than a silent false, so a
-// template never renders differently here than on the control plane's engine.
-func filterBool(e *exec.Evaluator, in *exec.Value, params *exec.VarArgs) *exec.Value {
+// filterBool coerces a value to boolean the way chart authors use it on
+// toggle params. It is strict AND platform-faithful: booleans pass through,
+// the strings "true"/"false" (case-insensitive, matching the platform's Java
+// Boolean.parseBoolean semantics) and the empty string parse, and numbers are
+// non-zero. Every other string is a render ERROR rather than a silent
+// coercion: the platform's engine would evaluate e.g. "1" or "yes" as false,
+// so accepting them offline (as true OR false) would let a template validate
+// here and behave differently when published. Erroring keeps the offline
+// gate strict-or-stricter than the engine of record.
+func filterBool(_ *exec.Evaluator, in *exec.Value, params *exec.VarArgs) *exec.Value {
 	if in.IsError() {
 		return in
 	}
@@ -115,29 +123,70 @@ func filterBool(e *exec.Evaluator, in *exec.Value, params *exec.VarArgs) *exec.V
 	case in.IsBool():
 		return exec.AsValue(in.Bool())
 	case in.IsNumber():
-		return exec.AsValue(in.Integer() != 0)
+		return exec.AsValue(in.Float() != 0)
 	case in.IsString():
 		switch strings.ToLower(strings.TrimSpace(in.String())) {
-		case "true", "1":
+		case "true":
 			return exec.AsValue(true)
-		case "false", "0", "":
+		case "false", "":
 			return exec.AsValue(false)
 		}
-		return exec.AsValue(exec.ErrInvalidCall(fmt.Errorf("cannot coerce %q to bool", in.String())))
+		return exec.AsValue(exec.ErrInvalidCall(fmt.Errorf("cannot coerce %q to bool (only \"true\"/\"false\" parse identically offline and on the platform)", in.String())))
 	}
 	return exec.AsValue(exec.ErrInvalidCall(fmt.Errorf("cannot coerce %s to bool", in.String())))
 }
 
-// RenderTemplate renders one template source with the given param values. The rendering
-// context mirrors the control plane's: every param is addressable both bare and through
-// `values.*`, and org/env are always present (injected into both scopes, exactly like the
-// server-side overwriter, so templates reading `values.env` or bare `env` behave the same).
-func RenderTemplate(name, source string, values map[string]any, org, env string) (string, error) {
-	if m := disabledTagPattern.FindStringSubmatch(source); m != nil {
-		return "", errors.Errorf("template %s uses the '%s' tag, which the chart renderer disables", name, m[1])
+// filterB64Decode decodes a base64 string — the platform registers the same
+// filter for charts that embed encoded content.
+func filterB64Decode(_ *exec.Evaluator, in *exec.Value, _ *exec.VarArgs) *exec.Value {
+	decoded, err := base64.StdEncoding.DecodeString(in.String())
+	if err != nil {
+		return exec.AsValue(errors.Wrap(err, "b64decode: input is not valid base64"))
 	}
-	if m := disabledFilterPattern.FindStringSubmatch(source); m != nil {
-		return "", errors.Errorf("template %s uses the '%s' filter, which the chart renderer disables", name, m[1])
+	return exec.AsValue(string(decoded))
+}
+
+// scanBannedConstructs reports the sandbox-disabled tags/filters a template
+// uses, so authors learn about a server-side render failure offline.
+func scanBannedConstructs(templateSource string) []string {
+	var findings []string
+	for _, m := range bannedTagRe.FindAllStringSubmatch(templateSource, -1) {
+		findings = append(findings, fmt.Sprintf("'%s' tag is disabled by the platform's sandboxed renderer", m[1]))
+	}
+	for _, m := range bannedFilterRe.FindAllStringSubmatch(templateSource, -1) {
+		findings = append(findings, fmt.Sprintf("'%s' filter is disabled by the platform's sandboxed renderer", m[1]))
+	}
+	return findings
+}
+
+// renderTemplate renders one template file with the given context.
+func renderTemplate(name, source string, ctx map[string]any) (string, error) {
+	baseLoader, err := loaders.NewFileSystemLoader("")
+	if err != nil {
+		return "", errors.Wrap(err, "failed to construct template loader")
+	}
+	shifted, err := loaders.NewShiftedLoader(name, bytes.NewReader([]byte(source)), baseLoader)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to construct template loader")
+	}
+	tpl, err := exec.NewTemplate(name, config.New(), shifted, chartEnvironment)
+	if err != nil {
+		return "", err
+	}
+	return tpl.ExecuteToString(exec.NewContext(ctx))
+}
+
+// RenderTemplate renders one template source with the given param values,
+// rejecting sandbox-disabled constructs first. The rendering context mirrors
+// the control plane's: every param is addressable both bare and through
+// `values.*`, and org/env are always present in both scopes, exactly like the
+// server-side overwriter. This is the exported single-template entry point
+// (the engine-conformance suite pins its semantics); the validation pipeline
+// goes through Validate, which layers param typing and placeholder handling
+// on top via buildContext.
+func RenderTemplate(name, source string, values map[string]any, org, env string) (string, error) {
+	if findings := scanBannedConstructs(source); len(findings) > 0 {
+		return "", errors.Errorf("template %s uses the %s", name, findings[0])
 	}
 
 	scoped := make(map[string]any, len(values)+2)
@@ -153,42 +202,5 @@ func RenderTemplate(name, source string, values map[string]any, org, env string)
 	}
 	ctx["values"] = scoped
 
-	template, err := templateFromString(source)
-	if err != nil {
-		return "", errors.Wrapf(err, "parsing template %s", name)
-	}
-
-	var out bytes.Buffer
-	if err := template.Execute(&out, exec.NewContext(ctx)); err != nil {
-		return "", errors.Wrapf(err, "rendering template %s", name)
-	}
-	return out.String(), nil
-}
-
-// templateFromString parses a template against the chart render environment. It mirrors
-// gonja.FromString, which is hard-wired to the default environment.
-func templateFromString(source string) (*exec.Template, error) {
-	rootID := fmt.Sprintf("root-%x", sha256.Sum256([]byte(source)))
-	fsLoader, err := loaders.NewFileSystemLoader("")
-	if err != nil {
-		return nil, err
-	}
-	shiftedLoader, err := loaders.NewShiftedLoader(rootID, strings.NewReader(source), fsLoader)
-	if err != nil {
-		return nil, err
-	}
-	return exec.NewTemplate(rootID, gonja.DefaultConfig, shiftedLoader, renderEnvironment)
-}
-
-// ParamValues converts the chart's declared params into a render context value map,
-// applying the overrides on top of declared defaults.
-func ParamValues(params []Param, overrides map[string]any) map[string]any {
-	values := make(map[string]any, len(params))
-	for _, p := range params {
-		values[p.Name] = p.Value
-	}
-	for k, v := range overrides {
-		values[k] = v
-	}
-	return values
+	return renderTemplate(name, source, ctx)
 }

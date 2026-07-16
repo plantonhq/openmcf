@@ -1,0 +1,38 @@
+# The deploy grants: one additive GcpProjectIamMember per role in
+# deployer_roles. One resource per role means adding or removing a role
+# never disturbs the others.
+#
+# Who holds the roles depends on the impersonation toggle:
+#   - Off (default): bound directly to the GitHub principal. Direct
+#     federation is the modern keyless path — the workflow's short-lived
+#     credential holds exactly these roles, with no intermediate service
+#     account to impersonate and no extra credential hop to audit. The
+#     member string is assembled from parameters (not a valueFrom) because
+#     no single resource outputs it: IAM principals for federated
+#     identities are a composition of the pool's path (built on the
+#     project NUMBER) and a mapped attribute. With github_repo set, the
+#     principal is every workflow of that one repository; with it empty,
+#     every workflow in the entire github_org — the provider's attribute
+#     condition bounds it either way.
+#   - On: bound to the deployer service account from deployer-identity.yaml
+#     (its member output), which the GitHub principal impersonates. The
+#     reference also orders every grant after the account exists.
+{% for role in values.deployer_roles %}
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpProjectIamMember
+metadata:
+  name: "gha-deployer-{{ role | replace('roles/', '') | replace('.', '-') | replace('/', '-') | lower }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  role:
+    value: "{{ role }}"
+  member:
+{% if values.impersonationEnabled | bool %}
+    valueFrom:
+      name: "{{ values.deployer_service_account_id }}"
+{% else %}
+    value: "principalSet://iam.googleapis.com/projects/{{ values.gcp_project_number }}/locations/global/workloadIdentityPools/{{ values.pool_id }}/{% if values.github_repo %}attribute.repository/{{ values.github_org }}/{{ values.github_repo }}{% else %}attribute.repository_owner/{{ values.github_org }}{% endif %}"
+{% endif %}
+{% endfor %}

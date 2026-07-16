@@ -83,7 +83,14 @@ SEQUENTIAL STEPS
    -- e.g. ReferenceGrant's to[].group). Those keep the hand-written path below.
 
 2) Generate variables and read it: `echo '{"files":[]}' | python3 _rules/deployment-component/_scripts/terraform_module_write.py --provider <provider> --kindfolder <kindfolder> --kind <Kind> --stdin --make-local --generate-variables | cat`. Then open the generated `variables.tf` in the module path.
-3) Draft: Consult the reference component `iac/tf/` directories. Prepare a files JSON manifest for non-generated files. Comment the HCL to the module-comment bar (`architecture/deployment-component.md` §4.1 Code Quality): explain *why*, trade-offs, provider quirks, and non-obvious ordering -- not line-by-line narration. These modules render on the public catalog, so their comments are part of the deliverable.
+3) Draft: Consult the reference component `iac/tf/` directories. CAUTION when
+   mirroring a sibling's `variables.tf` instead of using the generator: the
+   proto->tfvars converter flattens every `StringValueOrRef` field to a PLAIN
+   STRING before the module runs (`pkg/iac/tofu/generators/typerules.go`), so a
+   ref field must be typed `string` in variables.tf — some older modules carry a
+   stale `object({ value = string })` shape that fails at plan time with
+   "attribute ...: object required". The generator emits the correct shape;
+   trust it over any hand-written sibling. Prepare a files JSON manifest for non-generated files. Comment the HCL to the module-comment bar (`architecture/deployment-component.md` §4.1 Code Quality): explain *why*, trade-offs, provider quirks, and non-obvious ordering -- not line-by-line narration. These modules render on the public catalog, so their comments are part of the deliverable.
 4) Write and validate:
    - `cat <<'JSON' | python3 _rules/deployment-component/_scripts/terraform_module_write.py --provider <provider> --kindfolder <kindfolder> --kind <Kind> --stdin --validate | cat`
      { "files": [ {"name": "provider.tf", "content": "..."}, {"name": "locals.tf", "content": "..."}, {"name": "outputs.tf", "content": "..."} ] }
@@ -114,6 +121,40 @@ SUCCESS CRITERIA
 
 NOTES
 - Generate variables once up-front; derive convenience in `locals.tf`.
+- **Offline plans through the CLI must point at the LIVE module with an ABSOLUTE
+  `--module-dir`:** `planton tofu plan --manifest <abs path> --module-dir <abs
+  path to .../v1/iac/tf>`. Without `--module-dir` (or when the working directory
+  is not the module dir) the CLI silently falls back to a STAGING CLONE of the
+  repo — a stale checkout whose `variables.tf` predates your edits — and the
+  plan fails with schema errors that look like your module's ("attributes ...
+  are required") but come from code you never wrote. A RELATIVE `--module-dir`
+  also fails (the generated tfvars path resolves against the wrong root). Both
+  paths absolute, always.
+- **Variable validations on nullable optional objects must guard with `try()`:**
+  HCL's `||` evaluates BOTH operands (it does not short-circuit), so a validation
+  shaped `var.spec.block == null || length(var.spec.block.field) > 0` fails at
+  plan time with "Attempt to get attribute from null value" whenever the block is
+  omitted. Write `var.spec.block == null || length(try(var.spec.block.field, {})) > 0`
+  instead. This only bites when the block is absent, so it escapes a happy-path
+  `terraform validate` against a fully-populated manifest — test the omitted case.
+- **Never guard possibly-empty optional strings with `coalesce()`:** HCL's
+  `coalesce()` skips empty strings as well as nulls, so `coalesce(var.spec.name, "")`
+  ERRORS (no non-empty argument) when the field is legitimately `""` — and inside a
+  validation's `can(...)` that error silently becomes `false`, failing the variable
+  with a misleading message. For an `optional(string, "")` field write the guard as
+  `var.spec.name == "" || can(regex(...))` (or `try(var.spec.name, "") == ""`).
+  This bites exactly when the optional field is omitted, so it escapes a plan
+  against a fully-populated manifest — test the omitted case.
+- **Gate ambient-project data sources with `count` on actual need:** an
+  unconditional `data "google_project"` (or any live-lookup data source) executes
+  during EVERY plan — including offline plans against the hack manifest's sample
+  project — and fails with "user does not have permission to access Project".
+  When a module resolves the provider's effective project only for entries that
+  omit theirs, compute a `needs_ambient_*` local (spec project empty AND some
+  entry empty) and set `count = local.needs_ambient_* ? 1 : 0` on the data
+  source, referencing it as `data.google_project.this[0]`. This also mirrors the
+  Pulumi side's only-when-needed `GetClientConfig` lookup, keeping the engines'
+  resolution behavior identical.
 - **Outputs surfacing provider-`Sensitive` attributes MUST carry `sensitive = true`.**
   OpenTofu rejects the whole configuration at plan time ("Output refers to
   sensitive values") when a root output references any attribute the provider
@@ -134,15 +175,18 @@ NOTES
   attribute makes even its `id` and `name` outputs "refer to sensitive
   values" and fails the plan. Same detection caveat as above: only a plan
   catches it.
-- **Pin the provider as a FLOOR, never a ceiling, and check what the lock
-  resolves.** `required_providers` uses a floor constraint (`>= 5.0.0`), not a
-  tilde pin (`~> 5.0` caps the module at that major forever). A stale
-  `.terraform.lock.hcl` silently freezes the resolved provider even with a
-  floor constraint -- so when adding fields that need a newer provider, run
-  `terraform init -upgrade` and confirm the lock file's resolved version, or
-  `terraform validate` fails with "Unsupported argument" on fields the current
-  provider genuinely has. Keep sibling modules of one provider on the same
-  resolved major so behavior never varies per kind.
+- **Use the provider's ONE repo-wide pin shape, and check what the lock
+  resolves.** Each provider's modules share a single `required_providers`
+  constraint convention — some providers pin a floor (`>= 5.0.0`), others a
+  major-capped range (`~> 6.0`) because the next major's fields are
+  deliberately excluded from the modeled surface; follow the sibling modules
+  of the SAME provider, never mix shapes within one provider. Either way, a
+  stale `.terraform.lock.hcl` silently freezes the resolved provider -- so
+  when adding fields that need a newer provider, run `terraform init -upgrade`
+  and confirm the lock file's resolved version, or `terraform validate` fails
+  with "Unsupported argument" on fields the current provider genuinely has.
+  Keep sibling modules of one provider on the same resolved version so
+  behavior never varies per kind.
 - **Enum values arrive as the FULL proto enum value name -- match them
   exactly.** The tfvars pipeline serializes enum fields as the proto value's
   declared name (e.g. `LINUX_AUTOMATIC_BY_PLATFORM`, `ASSESSMENT_IMAGE_DEFAULT`),

@@ -1,48 +1,39 @@
 # Overview
 
-The GCP DNS Zone API resource offers a consistent and streamlined interface for creating and managing DNS zones and records within Google Cloud DNS, Google's scalable, reliable, and managed authoritative Domain Name System (DNS) service. By abstracting the complexities of DNS configurations, this resource allows you to define your DNS settings effortlessly while ensuring consistency and compliance across different environments.
+The GCP DNS Zone API resource provisions a Google Cloud DNS **managed zone** — the authoritative container for a domain. DNS records are **not** embedded in this resource; use the separate **GcpDnsRecord** kind for individual record sets. This split follows the production "split state" pattern where platform teams own zones and application automation (external-dns, cert-manager) owns dynamic records.
 
 ## Why We Created This API Resource
 
-Managing DNS zones and records can be intricate due to the complexities of DNS protocols, record types, and best practices. To simplify this process and promote a standardized approach, we developed this API resource. It enables you to:
+Managing DNS zones in GCP involves visibility modes, VPC bindings, DNSSEC, forwarding, and peering — each with distinct constraints. This resource exposes the full `google_dns_managed_zone` surface while keeping record lifecycle in GcpDnsRecord.
 
-- **Simplify DNS Management**: Easily create and manage DNS zones and records without dealing with low-level GCP DNS configurations.
-- **Ensure Consistency**: Maintain uniform DNS settings across different environments and applications.
-- **Enhance Security**: Control access to DNS records by specifying IAM service accounts with the necessary permissions.
-- **Improve Productivity**: Reduce the time and effort required to manage DNS configurations, allowing you to focus on application development and deployment.
+- **Composable zones:** No bundled records or project-level IAM bindings that fight with other stacks
+- **Public and private:** Standard private zones, forwarding zones, and peering zones
+- **Security options:** DNSSEC, query logging, and force-destroy controls
+- **Foreign-key wiring:** VPC and GKE cluster refs resolve from sibling resources
 
 ## Key Features
 
-### Environment Integration
+### Zone Types
 
-- **Environment Info**: Integrates seamlessly with our environment management system to deploy DNS configurations within specific environments.
-- **Stack Job Settings**: Supports custom stack-update settings for infrastructure-as-code deployments.
+- **Public zones** — internet-facing authoritative DNS; configure returned nameservers at your registrar
+- **Private standard zones** — visible to listed VPC networks and/or GKE clusters
+- **Forwarding zones** — private zones that forward queries to upstream resolvers
+- **Peering zones** — private zones that peer with another VPC's Cloud DNS
 
-### GCP Credential Management
+### Spec Highlights
 
-- **GCP Credential ID**: Utilizes specified GCP credentials to ensure secure and authorized operations within Google Cloud DNS.
-- **Project ID**: Automatically computes and uses the GCP project ID where the managed DNS zone will be created, ensuring resources are correctly organized.
+- **`dnsName`** — optional FQDN; defaults to `metadata.name` + `.` when omitted
+- **`privateVisibilityConfig`** — network refs → GcpVpcNetwork `network_self_link`; GKE refs → GcpGkeCluster `cluster_id`
+- **`dnssecConfig`** — enable signing, custom key specs, NSEC/NSEC3
+- **`forwardingConfig` / `peeringConfig`** — private-only; mutually exclusive
 
-### Simplified DNS Zone and Record Management
+### Deliberately Removed (Safety)
 
-- **IAM Service Accounts**: Specify a list of GCP service accounts (`iam_service_accounts`) to be granted permissions to manage DNS records within the managed zone. This is particularly useful for workload identities like cert-manager.
-- **DNS Records Management**: Define DNS records within the zone, specifying record types, names, values, and TTLs.
-    - **Record Types Supported**: Supports various DNS record types as defined in the `DnsRecordType` enum, such as `A`, `AAAA`, `CNAME`, `MX`, `TXT`, etc.
-    - **Record Names**: Specify the fully qualified domain name (FQDN) for each record. The name should end with a dot (e.g., `example.com.`).
-    - **Record Values**: Provide the values for each DNS record. For `CNAME` records, each value should also end with a dot.
-    - **TTL Configuration**: Set the Time-To-Live (TTL) for each DNS record in seconds, controlling how long the record is cached by DNS resolvers.
-
-### Validation and Compliance
-
-- **Input Validation**: Implements validation rules to ensure that DNS names and record values conform to DNS standards.
-    - **DNS Name Validation**: Ensures that the domain names provided are valid DNS domain names using regular expressions.
-    - **Required Fields**: Enforces the presence of essential fields like `record_type` and `name`.
+- **`records[]`** — use GcpDnsRecord instead
+- **`iam_service_accounts`** — no project-level `roles/dns.admin` binding; grant least-privilege IAM separately
 
 ## Benefits
 
-- **Simplified Deployment**: Abstracts the complexities of Google Cloud DNS configurations into an easy-to-use API.
-- **Consistency**: Ensures all DNS zones and records adhere to organizational standards and best practices.
-- **Scalability**: Allows for efficient management of DNS settings as your application and infrastructure grow.
-- **Security**: Manages DNS configurations securely using specified GCP credentials and IAM service accounts, reducing the risk of unauthorized changes.
-- **Flexibility**: Customize DNS records extensively to meet specific application requirements without compromising on best practices.
-- **Compliance**: Helps maintain compliance with DNS standards and organizational policies through input validation and enforced field requirements.
+- **Safe composition:** Zone-only scope avoids authoritative IAM and record-set conflicts
+- **Full managed-zone floor:** Matches released `google_dns_managed_zone` capabilities
+- **Consistent engines:** Terraform and Pulumi both enable `dns.googleapis.com` before create

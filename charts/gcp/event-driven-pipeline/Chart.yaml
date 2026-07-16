@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: GCP Event-Driven Pipeline
+spec:
+  selector:
+    kind: platform
+  description: The complete eventing fabric for one message stream — a schema-validated Pub/Sub topic, a pull subscription with a dedicated worker identity, and a dead-letter queue that parks poison messages where you can inspect and replay them instead of losing them. Optional arms stream every message into a BigQuery table for analytics with zero pipeline code, and deploy a Cloud Run consumer that receives messages as authenticated OIDC push requests. Every edge is a reference, every failure path has somewhere to go, and the message contract is enforced at publish time.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/gcp/gcppubsubtopic/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/gcp/event-driven-pipeline
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/gcp/event-driven-pipeline/README.md

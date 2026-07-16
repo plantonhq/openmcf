@@ -1,6 +1,4 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
+name: gcp-router-nat
 runtime:
   name: go
-#  options:
-#    binary: ./debug.sh
+description: Planton GcpRouterNat Pulumi module

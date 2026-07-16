@@ -1,0 +1,20 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceAccountIamMember
+metadata:
+  name: my-token-broker-grant
+spec:
+  serviceAccountId:
+    # The account whose tokens may be minted (the impersonation TARGET).
+    valueFrom:
+      kind: GcpServiceAccount
+      name: <target-service-account-resource-name>
+      fieldPath: status.outputs.name
+  role:
+    value: roles/iam.serviceAccountTokenCreator
+  member:
+    # The caller allowed to mint tokens (the impersonation SOURCE); its
+    # `member` output is the ready-made serviceAccount:<email> string.
+    valueFrom:
+      kind: GcpServiceAccount
+      name: <caller-service-account-resource-name>
+      fieldPath: status.outputs.member

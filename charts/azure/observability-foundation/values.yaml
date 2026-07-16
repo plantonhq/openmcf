@@ -25,18 +25,18 @@ params:
   - name: log_retention_days
     description: Days of logs retained in the workspace (30-730). The first 31 days are free on pay-as-you-go; raise for compliance regimes that audit operational history
     value: 30
-    type: int
+    type: number
 
   - name: daily_quota_gb
     description: Daily ingestion cap in GB (-1 is uncapped). A cap is a cost guard that is ALSO a data-loss dial -- when it trips, ingestion stops until the next UTC day, so size it above normal volume or leave it uncapped in production
     value: -1
-    type: int
+    type: number
 
   # ─── Application error alerting ──────────────────────────────────────────────
   - name: error_spike_threshold
     description: Failed-request count over 5 minutes that fires the error-spike alert. Tune to the estate's traffic -- 10 catches real trouble on a modest service without paging on every blip
     value: 10
-    type: int
+    type: number
 
   # ─── Outside-in availability (optional) ──────────────────────────────────────
   - name: web_test_enabled
@@ -55,4 +55,4 @@ params:
   - name: web_test_failed_location_threshold
     description: How many probe locations must fail simultaneously before the availability alert pages. Locations minus two tolerates single-location blips while still catching partial outages
     value: 3
-    type: int
+    type: number

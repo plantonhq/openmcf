@@ -1,0 +1,4 @@
+name: gcpserviceconnectionpolicy-pulumi-project
+runtime:
+  name: go
+description: Planton GcpServiceConnectionPolicy Pulumi module

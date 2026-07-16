@@ -2,24 +2,39 @@ package module
 
 import (
 	"github.com/pkg/errors"
-	gcpcertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagercert/v1"
+	gcpcertmanagercertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagercert/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/gcp/pulumigoogleprovider"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources is the main entry point for the gcp_cert_manager_cert Pulumi module.
-// It prepares context, configures the GCP provider, and calls certManagerCert().
-func Resources(ctx *pulumi.Context, stackInput *gcpcertv1.GcpCertManagerCertStackInput) error {
+func Resources(ctx *pulumi.Context, stackInput *gcpcertmanagercertv1.GcpCertManagerCertStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
-	// Create gcp provider using credentials from the input
 	gcpProvider, err := pulumigoogleprovider.Get(ctx, stackInput.ProviderConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup gcp provider")
 	}
 
-	// Call the core logic for certificate creation and DNS validation setup.
-	if err := certManagerCert(ctx, locals, gcpProvider); err != nil {
+	// Enable the Certificate Manager API so a fresh project can host
+	// certificates. disable_on_destroy is false: tearing down one
+	// certificate must never disable the API for everything else in the
+	// project.
+	serviceArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("certificatemanager.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
+	}
+	if locals.ProjectId != "" {
+		serviceArgs.Project = pulumi.String(locals.ProjectId)
+	}
+	createdProjectService, err := projects.NewService(ctx,
+		"certificatemanager-certificatemanager.googleapis.com", serviceArgs, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to enable certificatemanager.googleapis.com api")
+	}
+
+	if err := certManagerCert(ctx, locals, gcpProvider, createdProjectService); err != nil {
 		return errors.Wrap(err, "failed to create gcp cert manager cert resource")
 	}
 

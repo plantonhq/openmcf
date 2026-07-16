@@ -26,20 +26,17 @@ type GcpDataprocClusterStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Fully qualified cluster resource name.
 	// Format: projects/{project}/regions/{region}/clusters/{cluster}
-	// Used by downstream resources (jobs, workflow templates) that
-	// reference this cluster.
+	// The composition handle downstream resources reference — including
+	// another cluster's spark_history_server_config, which consumes this
+	// exact format.
 	ClusterId string `protobuf:"bytes,1,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
 	// Short name of the cluster (same as the spec's cluster_name input).
 	// Useful for display, logging, and human-readable references.
 	ClusterName string `protobuf:"bytes,2,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
-	// Server-generated unique identifier for the cluster.
-	// Unlike cluster_name, this UUID is stable across cluster recreations
-	// with the same name.
-	ClusterUuid string `protobuf:"bytes,3,opt,name=cluster_uuid,json=clusterUuid,proto3" json:"cluster_uuid,omitempty"`
 	// Cloud Storage bucket used for staging job dependencies.
 	// This is either the user-supplied staging_bucket or the
 	// auto-created bucket chosen by GCP.
-	StagingBucket string `protobuf:"bytes,4,opt,name=staging_bucket,json=stagingBucket,proto3" json:"staging_bucket,omitempty"`
+	StagingBucket string `protobuf:"bytes,3,opt,name=staging_bucket,json=stagingBucket,proto3" json:"staging_bucket,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -88,13 +85,6 @@ func (x *GcpDataprocClusterStackOutputs) GetClusterName() string {
 	return ""
 }
 
-func (x *GcpDataprocClusterStackOutputs) GetClusterUuid() string {
-	if x != nil {
-		return x.ClusterUuid
-	}
-	return ""
-}
-
 func (x *GcpDataprocClusterStackOutputs) GetStagingBucket() string {
 	if x != nil {
 		return x.StagingBucket
@@ -106,13 +96,12 @@ var File_dev_planton_provider_gcp_gcpdataproccluster_v1_stack_outputs_proto prot
 
 const file_dev_planton_provider_gcp_gcpdataproccluster_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/gcp/gcpdataproccluster/v1/stack_outputs.proto\x12.dev.planton.provider.gcp.gcpdataproccluster.v1\"\xac\x01\n" +
+	"Bdev/planton/provider/gcp/gcpdataproccluster/v1/stack_outputs.proto\x12.dev.planton.provider.gcp.gcpdataproccluster.v1\"\x89\x01\n" +
 	"\x1eGcpDataprocClusterStackOutputs\x12\x1d\n" +
 	"\n" +
 	"cluster_id\x18\x01 \x01(\tR\tclusterId\x12!\n" +
-	"\fcluster_name\x18\x02 \x01(\tR\vclusterName\x12!\n" +
-	"\fcluster_uuid\x18\x03 \x01(\tR\vclusterUuid\x12%\n" +
-	"\x0estaging_bucket\x18\x04 \x01(\tR\rstagingBucketB\x8d\x03\n" +
+	"\fcluster_name\x18\x02 \x01(\tR\vclusterName\x12%\n" +
+	"\x0estaging_bucket\x18\x03 \x01(\tR\rstagingBucketB\x8d\x03\n" +
 	"2com.dev.planton.provider.gcp.gcpdataproccluster.v1B\x11StackOutputsProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdataproccluster/v1;gcpdataprocclusterv1\xa2\x02\x05DPPGG\xaa\x02.Dev.Planton.Provider.Gcp.Gcpdataproccluster.V1\xca\x02.Dev\\Planton\\Provider\\Gcp\\Gcpdataproccluster\\V1\xe2\x02:Dev\\Planton\\Provider\\Gcp\\Gcpdataproccluster\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Gcp::Gcpdataproccluster::V1b\x06proto3"
 
 var (

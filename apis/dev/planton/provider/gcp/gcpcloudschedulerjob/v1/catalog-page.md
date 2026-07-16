@@ -55,9 +55,6 @@ This creates a Cloud Scheduler job that sends an HTTP GET to `https://example.co
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project where the job is created | Required |
-| `projectId.value` | `string` | Direct project ID value | — |
-| `projectId.valueFrom` | `object` | Foreign key reference to a GcpProject resource | Default kind: `GcpProject` |
 | `location` | `string` | GCP region for the job (e.g., `us-central1`) | Required, immutable |
 | `schedule` | `string` | Unix-cron schedule expression (e.g., `"0 9 * * 1"`) | Required |
 | One of: `httpTarget`, `pubsubTarget`, `appEngineHttpTarget` | `object` | Exactly one target type must be specified | CEL: exactly one set |
@@ -66,6 +63,7 @@ This creates a Cloud Scheduler job that sends an HTTP GET to `https://example.co
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
+| `projectId` | `StringValueOrRef` | provider default project | GCP project where the job is created. Can reference a GcpProject resource via `valueFrom`. When omitted, the provider's default project is used. |
 | `jobName` | `string` | `metadata.name` | Explicit GCP job name. Immutable after creation. Must start with a letter. |
 | `timeZone` | `string` | `Etc/UTC` | Timezone for schedule interpretation (tz database name). |
 | `description` | `string` | — | Human-readable description. Maximum 500 characters. |

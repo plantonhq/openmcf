@@ -1,0 +1,26 @@
+# GcpRegionNetworkEndpointGroup install profile used when the NEG is an E2E
+# PREREQUISITE for another component (e.g. a backend service's serverless
+# backend). A serverless Cloud Run NEG naming a placeholder service — GCP
+# resolves serverless endpoints at serving time, so the NEG creates without a
+# live Cloud Run service. project_id is omitted and rides the harness-exported
+# GOOGLE_PROJECT.
+apiVersion: gcp.planton.dev/v1
+kind: GcpRegionNetworkEndpointGroup
+metadata:
+  name: planton-oss-e2e-gcprneg-prereq
+  id: planton-oss-e2e-gcprneg-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpregionnetworkendpointgroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral serverless NEG created by the Planton E2E harness as a prerequisite; safe to delete
+  region: us-central1
+  cloudRun:
+    service:
+      value: planton-oss-e2e-cloud-run-placeholder

@@ -26,22 +26,32 @@ const (
 // GcpKmsKeyVersionTemplate describes settings for new CryptoKeyVersions.
 //
 // Use this to control the encryption algorithm and protection level of
-// key versions created under a GcpKmsKey. If version_template is omitted
-// from the key spec, GCP defaults to GOOGLE_SYMMETRIC_ENCRYPTION with
-// SOFTWARE protection.
+// key versions created under a GcpKmsKey — both the initial version and
+// every version minted by automatic rotation. If version_template is
+// omitted from the key spec, GCP defaults to GOOGLE_SYMMETRIC_ENCRYPTION
+// with SOFTWARE protection, which is correct for standard CMEK use cases.
 type GcpKmsKeyVersionTemplate struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The algorithm to use when creating a CryptoKeyVersion based on this
-	// template. Required when version_template is specified.
+	// template. Required when version_template is specified. The algorithm
+	// must be compatible with the key's purpose; GCP rejects mismatches at
+	// create time. Mutable: changing the algorithm affects only versions
+	// created afterward — existing versions keep the algorithm they were
+	// generated with.
 	//
 	// Common values by purpose:
 	//
-	//	ENCRYPT_DECRYPT:    "GOOGLE_SYMMETRIC_ENCRYPTION" (default if omitted)
-	//	ASYMMETRIC_SIGN:    "EC_SIGN_P256_SHA256", "RSA_SIGN_PSS_2048_SHA256", etc.
-	//	ASYMMETRIC_DECRYPT: "RSA_DECRYPT_OAEP_2048_SHA256", etc.
-	//	MAC:                "HMAC_SHA256"
+	//	ENCRYPT_DECRYPT:     "GOOGLE_SYMMETRIC_ENCRYPTION" (default if omitted)
+	//	ASYMMETRIC_SIGN:     "EC_SIGN_P256_SHA256", "RSA_SIGN_PSS_2048_SHA256", ...
+	//	ASYMMETRIC_DECRYPT:  "RSA_DECRYPT_OAEP_2048_SHA256", ...
+	//	RAW_ENCRYPT_DECRYPT: "AES_128_GCM", "AES_256_GCM", ...
+	//	MAC:                 "HMAC_SHA256"
 	//
-	// See: https://cloud.google.com/kms/docs/reference/rest/v1/CryptoKeyVersionAlgorithm
+	// GCP adds algorithms over time (for example post-quantum signature
+	// schemes), so this field deliberately accepts any string and lets the
+	// API validate — see the CryptoKeyVersionAlgorithm reference for the
+	// authoritative list:
+	// https://cloud.google.com/kms/docs/reference/rest/v1/CryptoKeyVersionAlgorithm
 	Algorithm string `protobuf:"bytes,1,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
 	// The protection level for CryptoKeyVersions created with this template.
 	// Immutable after creation.
@@ -49,7 +59,12 @@ type GcpKmsKeyVersionTemplate struct {
 	// Valid values:
 	//
 	//	"SOFTWARE" (default) -- keys protected in software
-	//	"HSM"               -- keys protected by Cloud HSM (FIPS 140-2 Level 3)
+	//	"HSM"                -- keys protected by Cloud HSM (FIPS 140-2 Level 3)
+	//	"EXTERNAL"           -- key material held in an external key manager,
+	//	                        linked per version via an external key URI
+	//	"EXTERNAL_VPC"       -- key material held in an external key manager
+	//	                        reached over a VPC; requires the key-level
+	//	                        crypto_key_backend to name the EKM connection
 	ProtectionLevel string `protobuf:"bytes,2,opt,name=protection_level,json=protectionLevel,proto3" json:"protection_level,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
@@ -103,55 +118,80 @@ func (x *GcpKmsKeyVersionTemplate) GetProtectionLevel() string {
 //
 // A key belongs to a key ring and performs the actual cryptographic operations:
 // symmetric encryption/decryption (CMEK), asymmetric signing, asymmetric
-// decryption, or MAC generation. Keys are the primary resource that downstream
-// services (BigQuery, Spanner, GKE, CloudSQL, etc.) reference for customer-
-// managed encryption.
+// decryption, raw encryption, or MAC generation. Keys are the primary resource
+// that downstream services (BigQuery, Spanner, GKE, Cloud SQL, Cloud Run,
+// Pub/Sub, and others) reference for customer-managed encryption.
 //
 // Important behavioral notes:
 //
 //   - Keys cannot be deleted from GCP. On destroy, all key versions are
-//     destroyed and automatic rotation is disabled, but the key itself
-//     remains as a permanent resource in the key ring.
+//     destroyed (rendering all data encrypted under them unrecoverable once
+//     the destroy-scheduled window elapses) and automatic rotation is
+//     disabled, but the key object itself remains permanently in the key
+//     ring. A key name can therefore never be reused within its ring.
 //
 //   - Most fields are immutable after creation: key_ring_id, key_name,
-//     purpose, destroy_scheduled_duration, and version_template.protection_level.
-//     Only rotation_period, version_template.algorithm, and labels can be updated.
+//     purpose, destroy_scheduled_duration, import_only, crypto_key_backend,
+//     and version_template.protection_level. Only rotation_period,
+//     version_template.algorithm, and labels can be updated in place.
+//
+//   - Services consuming this key for CMEK need their service agent granted
+//     roles/cloudkms.cryptoKeyEncrypterDecrypter on the key — model that
+//     grant as a first-class IAM node alongside the consumer.
 type GcpKmsKeySpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The key ring that this key belongs to.
-	// Accepts the fully qualified key ring path:
+	// Accepts the fully qualified key ring path
 	//
 	//	projects/{project}/locations/{location}/keyRings/{name}
 	//
-	// Immutable after creation.
+	// or a reference to a GcpKmsKeyRing resource. The key inherits the ring's
+	// project and location. Immutable after creation.
 	KeyRingId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=key_ring_id,json=keyRingId,proto3" json:"key_ring_id,omitempty"`
 	// Name of the key in GCP. Immutable after creation.
 	// Must be 1-63 characters: letters (upper or lower), digits, hyphens,
 	// or underscores. This is the GCP resource name, distinct from the
-	// Planton metadata.name.
+	// Planton metadata.name. Because keys are permanent (see the message
+	// comment), a name can never be reused within its key ring — pick
+	// versioned names (e.g. "cmek-data-v2") if a key may ever be replaced.
 	// Example: "cmek-encrypt-key", "artifact-signing-key"
 	KeyName string `protobuf:"bytes,2,opt,name=key_name,json=keyName,proto3" json:"key_name,omitempty"`
 	// The immutable purpose of this key. Determines what cryptographic
-	// operations the key supports. Cannot be changed after creation.
-	// If not set, GCP defaults to ENCRYPT_DECRYPT.
+	// operations the key supports and which algorithms its version template
+	// may use. Cannot be changed after creation. If not set, GCP defaults
+	// to ENCRYPT_DECRYPT — the purpose every CMEK integration expects.
 	//
-	// Valid values:
+	// Known values:
 	//
 	//	"ENCRYPT_DECRYPT"      -- symmetric encryption for CMEK (default)
 	//	"ASYMMETRIC_SIGN"      -- digital signatures
 	//	"ASYMMETRIC_DECRYPT"   -- asymmetric decryption
-	//	"MAC"                  -- message authentication codes
-	//	"RAW_ENCRYPT_DECRYPT"  -- authenticated encryption for small payloads
+	//	"RAW_ENCRYPT_DECRYPT"  -- raw AES-GCM/CTR for interoperable encryption
+	//	"MAC"                  -- keyed message authentication codes
+	//
+	// GCP adds purposes over time (for example key encapsulation for
+	// post-quantum schemes), so this field deliberately accepts any string
+	// and lets the API validate — see the CryptoKeyPurpose reference for
+	// the authoritative list:
+	// https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys#CryptoKeyPurpose
 	Purpose string `protobuf:"bytes,3,opt,name=purpose,proto3" json:"purpose,omitempty"`
 	// How often to auto-generate a new CryptoKeyVersion and set it as primary.
 	// Format: decimal seconds with suffix "s" (e.g., "7776000s" for 90 days).
-	// Must be greater than 86400s (24 hours). Only meaningful for
-	// ENCRYPT_DECRYPT keys; other purposes require manual key version management.
+	// Must be at least 86400s (24 hours) with at most 9 fractional digits.
+	// Only allowed for ENCRYPT_DECRYPT keys (enforced pre-deploy); other
+	// purposes require manual key version management. Mutable: shortening or
+	// lengthening the period applies in place and reschedules the next
+	// rotation. Old versions remain usable for decryption until destroyed —
+	// rotation limits blast radius going forward; it does not re-encrypt
+	// existing data.
 	RotationPeriod string `protobuf:"bytes,4,opt,name=rotation_period,json=rotationPeriod,proto3" json:"rotation_period,omitempty"`
-	// How long CryptoKeyVersions spend in DESTROY_SCHEDULED state before
-	// being permanently destroyed. Immutable after creation.
+	// How long destroyed CryptoKeyVersions spend in DESTROY_SCHEDULED state
+	// before being permanently destroyed — the recovery window during which
+	// a destruction can still be undone. Immutable after creation.
 	// Format: decimal seconds with suffix "s" (e.g., "2592000s" for 30 days).
-	// Minimum: 86400s (24 hours). Default: 2592000s (30 days) if not specified.
+	// Defaults to 30 days when not specified. Shorter windows reduce the
+	// time compromised material lingers; longer windows protect against
+	// accidental destruction of data-encrypting keys.
 	DestroyScheduledDuration string `protobuf:"bytes,5,opt,name=destroy_scheduled_duration,json=destroyScheduledDuration,proto3" json:"destroy_scheduled_duration,omitempty"`
 	// Template describing settings for new CryptoKeyVersions.
 	// Use this to specify the encryption algorithm and protection level.
@@ -159,11 +199,32 @@ type GcpKmsKeySpec struct {
 	// protection -- which is correct for standard CMEK use cases.
 	VersionTemplate *GcpKmsKeyVersionTemplate `protobuf:"bytes,6,opt,name=version_template,json=versionTemplate,proto3" json:"version_template,omitempty"`
 	// If true, the key is created without an initial CryptoKeyVersion.
-	// You must create versions manually afterward using google_kms_crypto_key_version
-	// or a key ring import job. Only applicable during initial creation.
+	// You must create versions manually afterward (or import material via a
+	// key ring import job). Consumed only at create time. Required (and
+	// enforced pre-deploy) when import_only is true.
 	SkipInitialVersionCreation bool `protobuf:"varint,7,opt,name=skip_initial_version_creation,json=skipInitialVersionCreation,proto3" json:"skip_initial_version_creation,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// If true, this key may contain only imported key versions — GCP will
+	// never generate material for it, making the key a bring-your-own-key
+	// (BYOK) container whose material provenance is externally controlled.
+	// Immutable after creation. Requires skip_initial_version_creation
+	// (enforced pre-deploy), since an auto-generated initial version would
+	// violate the import-only guarantee.
+	ImportOnly bool `protobuf:"varint,8,opt,name=import_only,json=importOnly,proto3" json:"import_only,omitempty"`
+	// The EKM connection through which an external key manager backs this
+	// key's versions. Applies only when version_template.protection_level is
+	// EXTERNAL_VPC (enforced pre-deploy). Accepts the fully qualified
+	// connection path
+	//
+	//	projects/{project}/locations/{location}/ekmConnections/{name}
+	//
+	// Immutable after creation.
+	CryptoKeyBackend *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=crypto_key_backend,json=cryptoKeyBackend,proto3" json:"crypto_key_backend,omitempty"`
+	// User-defined labels attached to the key, for cost attribution and
+	// fleet queries. Merged with Planton's platform labels (which win on
+	// key conflicts). Mutable in place.
+	Labels        map[string]string `protobuf:"bytes,10,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpKmsKeySpec) Reset() {
@@ -245,26 +306,57 @@ func (x *GcpKmsKeySpec) GetSkipInitialVersionCreation() bool {
 	return false
 }
 
+func (x *GcpKmsKeySpec) GetImportOnly() bool {
+	if x != nil {
+		return x.ImportOnly
+	}
+	return false
+}
+
+func (x *GcpKmsKeySpec) GetCryptoKeyBackend() *v1.StringValueOrRef {
+	if x != nil {
+		return x.CryptoKeyBackend
+	}
+	return nil
+}
+
+func (x *GcpKmsKeySpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
 var File_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0dev/planton/provider/gcp/gcpkmskey/v1/spec.proto\x12%dev.planton.provider.gcp.gcpkmskey.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe1\x01\n" +
+	"0dev/planton/provider/gcp/gcpkmskey/v1/spec.proto\x12%dev.planton.provider.gcp.gcpkmskey.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9e\x02\n" +
 	"\x18GcpKmsKeyVersionTemplate\x12$\n" +
-	"\talgorithm\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\talgorithm\x12\x9e\x01\n" +
-	"\x10protection_level\x18\x02 \x01(\tBs\xbaHp\xba\x01m\n" +
-	"\x16valid_protection_level\x12(protection_level must be SOFTWARE or HSM\x1a)this == '' || this in ['SOFTWARE', 'HSM']R\x0fprotectionLevel\"\xdd\b\n" +
+	"\talgorithm\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\talgorithm\x12\xdb\x01\n" +
+	"\x10protection_level\x18\x02 \x01(\tB\xaf\x01\xbaH\xab\x01\xba\x01\xa7\x01\n" +
+	"\x16valid_protection_level\x12Fprotection_level must be one of: SOFTWARE, HSM, EXTERNAL, EXTERNAL_VPC\x1aEthis == '' || this in ['SOFTWARE', 'HSM', 'EXTERNAL', 'EXTERNAL_VPC']R\x0fprotectionLevel\"\xb0\x10\n" +
 	"\rGcpKmsKeySpec\x12}\n" +
 	"\vkey_ring_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xb2\x05\x92\xd4a\x1astatus.outputs.key_ring_idR\tkeyRingId\x12:\n" +
-	"\bkey_name\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-zA-Z0-9_-]{1,63}$R\akeyName\x12\x8c\x02\n" +
-	"\apurpose\x18\x03 \x01(\tB\xf1\x01\xbaH\xed\x01\xba\x01\xe9\x01\n" +
-	"\rvalid_purpose\x12fpurpose must be one of: ENCRYPT_DECRYPT, ASYMMETRIC_SIGN, ASYMMETRIC_DECRYPT, MAC, RAW_ENCRYPT_DECRYPT\x1apthis == '' || this in ['ENCRYPT_DECRYPT', 'ASYMMETRIC_SIGN', 'ASYMMETRIC_DECRYPT', 'MAC', 'RAW_ENCRYPT_DECRYPT']R\apurpose\x12\xd7\x01\n" +
-	"\x0frotation_period\x18\x04 \x01(\tB\xad\x01\xbaH\xa9\x01\xba\x01\xa5\x01\n" +
-	"\x1cvalid_rotation_period_format\x12Lrotation_period must be a duration in seconds (e.g., '7776000s' for 90 days)\x1a7this == '' || this.matches('^[0-9]+(\\\\.[0-9]{1,9})?s$')R\x0erotationPeriod\x12\xf8\x01\n" +
+	"\bkey_name\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-zA-Z0-9_-]{1,63}$R\akeyName\x12\x18\n" +
+	"\apurpose\x18\x03 \x01(\tR\apurpose\x12\xc3\x02\n" +
+	"\x0frotation_period\x18\x04 \x01(\tB\x99\x02\xbaH\x95\x02\xba\x01\x91\x02\n" +
+	"\x15valid_rotation_period\x12\x8b\x01rotation_period must be a duration in seconds of at least 86400s (24 hours) with at most 9 fractional digits (e.g., '7776000s' for 90 days)\x1ajthis == '' || this.matches('^(86[4-9][0-9]{2}|8[7-9][0-9]{3}|9[0-9]{4}|[1-9][0-9]{5,})(\\\\.[0-9]{1,9})?s$')R\x0erotationPeriod\x12\xf8\x01\n" +
 	"\x1adestroy_scheduled_duration\x18\x05 \x01(\tB\xb9\x01\xbaH\xb5\x01\xba\x01\xb1\x01\n" +
 	"\x1dvalid_destroy_duration_format\x12Wdestroy_scheduled_duration must be a duration in seconds (e.g., '2592000s' for 30 days)\x1a7this == '' || this.matches('^[0-9]+(\\\\.[0-9]{1,9})?s$')R\x18destroyScheduledDuration\x12j\n" +
 	"\x10version_template\x18\x06 \x01(\v2?.dev.planton.provider.gcp.gcpkmskey.v1.GcpKmsKeyVersionTemplateR\x0fversionTemplate\x12A\n" +
-	"\x1dskip_initial_version_creation\x18\a \x01(\bR\x1askipInitialVersionCreationB\xc6\x02\n" +
+	"\x1dskip_initial_version_creation\x18\a \x01(\bR\x1askipInitialVersionCreation\x12\x1f\n" +
+	"\vimport_only\x18\b \x01(\bR\n" +
+	"importOnly\x12`\n" +
+	"\x12crypto_key_backend\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x10cryptoKeyBackend\x12X\n" +
+	"\x06labels\x18\n" +
+	" \x03(\v2@.dev.planton.provider.gcp.gcpkmskey.v1.GcpKmsKeySpec.LabelsEntryR\x06labels\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc1\x06\xbaH\xbd\x06\x1a\xed\x01\n" +
+	"!rotation_only_for_encrypt_decrypt\x12qrotation_period can only be set for ENCRYPT_DECRYPT keys — other purposes require manual key version management\x1aUthis.rotation_period == '' || this.purpose == '' || this.purpose == 'ENCRYPT_DECRYPT'\x1a\xfc\x01\n" +
+	")import_only_requires_skip_initial_version\x12\x95\x01import_only keys must also set skip_initial_version_creation — GCP cannot generate an initial version for a key that only accepts imported material\x1a7!this.import_only || this.skip_initial_version_creation\x1a\xcb\x02\n" +
+	"(crypto_key_backend_requires_external_vpc\x12\xa3\x01crypto_key_backend applies only to keys with version_template.protection_level EXTERNAL_VPC (EXTERNAL keys link material per version via external key URIs instead)\x1ay!has(this.crypto_key_backend) || (has(this.version_template) && this.version_template.protection_level == 'EXTERNAL_VPC')B\xc6\x02\n" +
 	")com.dev.planton.provider.gcp.gcpkmskey.v1B\tSpecProtoP\x01ZSgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskey/v1;gcpkmskeyv1\xa2\x02\x05DPPGG\xaa\x02%Dev.Planton.Provider.Gcp.Gcpkmskey.V1\xca\x02%Dev\\Planton\\Provider\\Gcp\\Gcpkmskey\\V1\xe2\x021Dev\\Planton\\Provider\\Gcp\\Gcpkmskey\\V1\\GPBMetadata\xea\x02*Dev::Planton::Provider::Gcp::Gcpkmskey::V1b\x06proto3"
 
 var (
@@ -279,20 +371,23 @@ func file_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto_rawDescGZIP() []byte 
 	return file_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto_goTypes = []any{
 	(*GcpKmsKeyVersionTemplate)(nil), // 0: dev.planton.provider.gcp.gcpkmskey.v1.GcpKmsKeyVersionTemplate
 	(*GcpKmsKeySpec)(nil),            // 1: dev.planton.provider.gcp.gcpkmskey.v1.GcpKmsKeySpec
-	(*v1.StringValueOrRef)(nil),      // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                              // 2: dev.planton.provider.gcp.gcpkmskey.v1.GcpKmsKeySpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),      // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.gcp.gcpkmskey.v1.GcpKmsKeySpec.key_ring_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 0: dev.planton.provider.gcp.gcpkmskey.v1.GcpKmsKeySpec.key_ring_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0, // 1: dev.planton.provider.gcp.gcpkmskey.v1.GcpKmsKeySpec.version_template:type_name -> dev.planton.provider.gcp.gcpkmskey.v1.GcpKmsKeyVersionTemplate
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: dev.planton.provider.gcp.gcpkmskey.v1.GcpKmsKeySpec.crypto_key_backend:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 3: dev.planton.provider.gcp.gcpkmskey.v1.GcpKmsKeySpec.labels:type_name -> dev.planton.provider.gcp.gcpkmskey.v1.GcpKmsKeySpec.LabelsEntry
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto_init() }
@@ -306,7 +401,7 @@ func file_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

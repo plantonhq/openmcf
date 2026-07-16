@@ -27,12 +27,13 @@ This preset creates a KMS key ring in the `global` location, making encryption k
 - **Global location** — keys are accessible from any GCP region. No data residency guarantees.
 - **Simplicity** — no need to match key ring location with workload location.
 
-## Placeholders to Replace
+## Values to Adjust
 
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<gcp-project-id>` | GCP project ID where the key ring will be created | GCP Console or `GcpProject` outputs |
-| `<your-key-ring-name>` | Permanent name for this key ring (1-63 chars, letters/digits/hyphens/underscores) | Choose a descriptive name (e.g., `global-shared-keys`) |
+- `projectId.value` — the sample `my-gcp-project` must be replaced with
+  your project ID (or switch to a `valueFrom` reference to a `GcpProject`
+  resource).
+- `keyRingName` — the permanent GCP name for this ring (1-63 chars,
+  letters/digits/hyphens/underscores).
 
 ## Important
 

@@ -1,39 +1,26 @@
 # CMEK-Encrypted Database
 
-This preset creates a Cloud Spanner database with customer-managed encryption (CMEK), GCP API-level drop protection, a 3-day version retention period, and an explicit UTC time zone. Designed for regulated and enterprise environments.
+Provisions a compliance-grade Spanner database: customer-managed encryption (CMEK) by reference to a `GcpKmsKey`, GCP API-side drop protection, point-in-time recovery, and an explicit UTC time zone.
 
 ## When to Use
 
-- Compliance requirements mandate customer-managed encryption keys (HIPAA, PCI-DSS, FedRAMP)
-- Production databases that need protection against accidental deletion
-- Enterprise environments with key management policies
-- Workloads where the default time zone should be UTC for consistency
+- Regulated workloads that require customer-owned encryption keys
+- Databases whose deletion must be blocked at the GCP API level, not just in IaC
+- Compliance regimes that audit key rotation and access separately from data access
 
 ## Key Configuration
 
-- **CMEK encryption** -- database encrypted with a customer-managed KMS key; key must be in the same GCP location as the Spanner instance
-- **Drop protection enabled** -- prevents deletion of the database and its parent instance through any interface
-- **3-day version retention** -- balanced recovery window providing multi-day point-in-time recovery
-- **UTC time zone** -- explicit default for SQL timestamp functions, avoiding GCP's default of `America/Los_Angeles`
-- **GoogleSQL dialect** -- default dialect with full Spanner feature support
+- **CMEK by reference** — `kmsKeyName` resolves the KMS key's fully qualified `key_id` output; the key must live in the same location as the instance configuration. Encryption posture is immutable.
+- **Multi-region instances** use `kmsKeyNames` instead — one key per region of the instance configuration (exactly one shape may be set)
+- **enableDropProtection** — while true, NO interface (console, gcloud, API, IaC) can delete the database, and the parent instance cannot be deleted either
+- **Deletion protection ON by default** — the IaC-side guard on top of the API-side lock
 
-## Important Notes
+## Customization Notes
 
-- The KMS key **must exist in the same location** as the Spanner instance
-- The Spanner service account needs `cloudkms.cryptoKeyEncrypterDecrypter` role on the key
-- CMEK configuration is **immutable** -- changing the key requires recreating the database
-- To delete this database, you must first set `enableDropProtection` to `false`
-
-## Placeholders to Replace
-
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<gcp-project-id>` | GCP project ID where the Spanner instance lives | GCP Console or `GcpProject` outputs |
-| `<spanner-instance-name>` | Name of the existing Spanner instance | `GcpSpannerInstance` outputs (`instance_name`) |
-| `<database-name>` | Name for this database (2-30 chars, lowercase, hyphens/underscores allowed) | Choose a descriptive name (e.g., `secure-db`) |
-| `<kms-key-fully-qualified-name>` | Fully qualified KMS key path | `GcpKmsKey` outputs (`key_id`) or format: `projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{k}` |
+- Grant the Spanner service agent (`service-{project_number}@gcp-sa-spanner.iam.gserviceaccount.com`) the `roles/cloudkms.cryptoKeyEncrypterDecrypter` role on the key before creating the database
+- To tear down: first set `enableDropProtection: false` (applies in place), then `deletionProtection: false`, then destroy
 
 ## Related Presets
 
-- **01-basic-database** -- GoogleSQL with minimal configuration (no encryption, no protection)
-- **02-postgresql-database** -- PostgreSQL dialect with extended retention
+- **01-basic-database** — Google Standard SQL database
+- **02-postgresql-database** — PostgreSQL-dialect database

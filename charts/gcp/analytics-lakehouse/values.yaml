@@ -1,0 +1,98 @@
+params:
+  # ─── GCP placement ──────────────────────────────────────────────────────
+  - name: gcp_project_id
+    description: >
+      GCP project that owns the warehouse, the lake buckets, the
+      ingestion stream, and the optional Dataproc cluster.
+    value: my-gcp-project
+
+  - name: gcp_project_number
+    description: >
+      The NUMERIC project number of gcp_project_id (find it with
+      `gcloud projects describe <project-id> --format='value(projectNumber)'`).
+      Pub/Sub writes to BigQuery as its project-scoped service agent,
+      whose email is built from the project NUMBER — the grant that
+      authorizes it is assembled from this value.
+    value: "123456789012"
+
+  - name: region
+    description: >
+      Region for the regional pieces — the lake buckets and the optional
+      Dataproc cluster and its autoscaling policy. The warehouse location
+      is set separately (bigquery_location), because analytics stacks
+      often keep BigQuery multi-regional while compute stays regional.
+    value: us-central1
+
+  # ─── The lakehouse ───────────────────────────────────────────────────────
+  - name: lakehouse_name
+    description: >
+      Name of the lakehouse, and the prefix every resource name builds
+      on (dataset, ingestion topic, Dataproc cluster). Lowercase
+      letters, digits, and hyphens — BigQuery identifiers derive from it
+      with hyphens mapped to underscores.
+    value: analytics
+
+  - name: bigquery_location
+    description: >
+      Location of the warehouse dataset — a multi-region ("US", "EU") or
+      a region ("us-central1"). Immutable, and every table a query joins
+      must live in the same location; choose where your analytics stack
+      already runs.
+    value: US
+
+  - name: lake_bucket_name
+    description: >
+      Globally unique name for the data lake bucket (GCS bucket names
+      are a global namespace — a project or org prefix is the usual
+      disambiguator). The Dataproc staging/temp bucket names derive from
+      it with suffixes.
+    value: my-analytics-lake
+
+  # ─── Streaming ingestion ─────────────────────────────────────────────────
+  - name: streamingIngestionEnabled
+    description: >
+      Zero-code streaming ingestion: a Pub/Sub topic plus a BigQuery-sink
+      subscription that writes every published message as a row in the
+      day-partitioned raw events table — analysts get the full event
+      history in SQL within seconds of an event being published. On by
+      default because it is the fastest path from "deployed" to "first
+      insight"; turn it off when data arrives only by batch loads.
+    type: bool
+    value: true
+
+  # ─── Dataproc batch compute ──────────────────────────────────────────────
+  - name: dataprocEnabled
+    description: >
+      Add the Spark batch tier: an autoscaling Dataproc cluster with its
+      own staging/temp buckets, a least-privilege service account, and a
+      reusable autoscaling policy. Off by default — it runs VMs around
+      the clock (min 2 workers), so turn it on when scheduled Spark or
+      Hadoop jobs actually exist. Requires the subnetwork below to
+      already exist with Private Google Access enabled.
+    type: bool
+    value: false
+
+  - name: subnetwork_resource_name
+    description: >
+      Planton resource name of the EXISTING GcpSubnetwork the Dataproc
+      nodes attach to — typically the subnet a landing-zone chart such
+      as project-foundation deployed (its convention names the subnet
+      <network>-<region>). The nodes run without public IPs, so the
+      subnet must have Private Google Access enabled (project-foundation
+      does this by default). Only used when dataprocEnabled is true.
+    value: app-network-us-central1
+
+  - name: dataproc_worker_machine_type
+    description: >
+      Machine type for the Dataproc master and primary workers. Sizing
+      guidance: n2-standard-4 suits most ETL; memory-heavy Spark jobs
+      want highmem variants.
+    value: n2-standard-4
+
+  - name: dataproc_max_workers
+    description: >
+      Upper bound for the autoscaler's primary worker group — also the
+      cost ceiling of a runaway job. The policy additionally allows up
+      to the same number again as spot-priced secondary workers for
+      burst capacity, so the true node ceiling is twice this value.
+    value: "10"

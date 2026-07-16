@@ -1,0 +1,27 @@
+# GcpPubSubTopic scenario: a schema-validated topic composed on the
+# GcpPubSubSchema prerequisite — the live proof that the schema FK
+# resolves to the fully qualified projects/{p}/schemas/{name} path the
+# Pub/Sub API accepts at topic create.
+apiVersion: gcp.planton.dev/v1
+kind: GcpPubSubTopic
+metadata:
+  name: planton-oss-e2e-gcppst-validated
+  id: planton-oss-e2e-gcppst-validated
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcppubsubtopic
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  topicName: e2e-pst-validated-${E2E_RUN_ID}
+  schemaSettings:
+    schema:
+      valueFrom:
+        kind: GcpPubSubSchema
+        name: planton-oss-e2e-gcppsch-prereq
+        fieldPath: status.outputs.schema_id
+    encoding: JSON

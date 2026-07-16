@@ -1,27 +1,54 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpCloudComposerEnvironment
 metadata:
-  name: my-enterprise-composer-encrypted
+  name: enterprise-airflow
 spec:
   projectId:
-    value: "<your-gcp-project-id>"
+    value: my-gcp-project-123 # replace with your project ID
   region: us-central1
+
   environmentSize: ENVIRONMENT_SIZE_LARGE
   resilienceMode: HIGH_RESILIENCE
+
+  # Every Composer-managed resource (GKE nodes, Cloud SQL, DAG bucket)
+  # is encrypted with this key. Immutable after creation.
   kmsKeyName:
-    value: "<your-kms-key-resource-id>"
+    valueFrom:
+      kind: GcpKmsKey
+      name: composer-cmek # replace with your KMS key resource name
+      fieldPath: status.outputs.key_id
+
+  # Bring your own DAG bucket instead of the one Composer auto-creates.
+  storageBucket:
+    valueFrom:
+      kind: GcpGcsBucket
+      name: composer-dags # replace with your bucket resource name
+      fieldPath: status.outputs.bucket_id
+
   nodeConfig:
     network:
-      value: "<your-vpc-network-name>"
+      valueFrom:
+        kind: GcpVpcNetwork
+        name: prod-vpc # replace with your VPC resource name
+        fieldPath: status.outputs.network_self_link
     subnetwork:
-      value: "<your-vpc-subnetwork-name>"
+      valueFrom:
+        kind: GcpSubnetwork
+        name: prod-subnet # replace with your subnetwork resource name
+        fieldPath: status.outputs.subnetwork_self_link
     serviceAccount:
-      value: "<your-service-account-email>"
+      value: composer-sa@my-gcp-project-123.iam.gserviceaccount.com # replace with your service account
+
   softwareConfig:
-    imageVersion: "<composer-2-latest-airflow-version>"
+    imageVersion: composer-2.9.7-airflow-2.9.3 # replace with a current image version
+
   privateEnvironmentConfig:
     enablePrivateEndpoint: true
     connectionType: VPC_PEERING
+    masterIpv4CidrBlock: "172.16.0.0/28"
+    cloudSqlIpv4CidrBlock: "10.0.32.0/20"
+    cloudComposerNetworkIpv4CidrBlock: "10.0.48.0/20"
+
   workloadsConfig:
     scheduler:
       cpu: 4.0
@@ -42,18 +69,32 @@ spec:
       storageGb: 10.0
       minCount: 3
       maxCount: 10
+
   maintenanceWindow:
     startTime: "2026-01-01T00:00:00Z"
     endTime: "2026-01-01T12:00:00Z"
     recurrence: "FREQ=WEEKLY;BYDAY=SA,SU"
+
   recoveryConfig:
     enabled: true
-    snapshotLocation: "<your-gcs-snapshot-bucket-path>"
+    snapshotLocation: gs://my-composer-snapshots/enterprise-airflow # replace with your snapshot bucket path
     snapshotCreationSchedule: "0 4 * * *"
-    timeZone: "UTC"
+    timeZone: UTC
+
   webServerNetworkAccessControl:
     allowedIpRanges:
-      - value: "<your-allowed-ip-range-1>"
-        description: "Corporate office network"
-      - value: "<your-allowed-ip-range-2>"
-        description: "VPN network"
+      - value: "10.0.0.0/8"
+        description: Corporate network
+      - value: "203.0.113.0/24" # replace with your VPN range
+        description: VPN network
+
+  # Bound how long the environment accumulates operational data. On
+  # Composer 3, add airflowMetadataRetentionMode: RETENTION_MODE_ENABLED
+  # with airflowMetadataRetentionDays (30-730) instead.
+  dataRetentionConfig:
+    taskLogsStorageMode: CLOUD_LOGGING_AND_CLOUD_STORAGE
+
+  labels:
+    environment: production
+    team: data-platform
+    compliance: pci-dss

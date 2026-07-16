@@ -402,8 +402,8 @@ type GcpAlloydbClusterQueryInsightsConfig struct {
 	// Range: 0-20. Default: 5. Set to 0 to disable plan capture.
 	QueryPlansPerMinute int32 `protobuf:"varint,1,opt,name=query_plans_per_minute,json=queryPlansPerMinute,proto3" json:"query_plans_per_minute,omitempty"`
 	// Maximum length of the query string stored in insights.
-	// Range: 256-4500. Default: 1024. Longer strings help debug
-	// complex queries but use more storage.
+	// Range: 256-4500. 0 means unset — GCP applies its default (1024).
+	// Longer strings help debug complex queries but use more storage.
 	QueryStringLength int32 `protobuf:"varint,2,opt,name=query_string_length,json=queryStringLength,proto3" json:"query_string_length,omitempty"`
 	// Whether to record application tags set via
 	// pg_stat_statements.track_activity_query_size.
@@ -474,6 +474,100 @@ func (x *GcpAlloydbClusterQueryInsightsConfig) GetRecordClientAddress() bool {
 	return false
 }
 
+// GcpAlloydbClusterPscConfig enables Private Service Connect for the cluster
+// instead of VPC peering via Private Service Access.
+type GcpAlloydbClusterPscConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// When true, the cluster is reachable only through PSC endpoints.
+	PscEnabled    bool `protobuf:"varint,1,opt,name=psc_enabled,json=pscEnabled,proto3" json:"psc_enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpAlloydbClusterPscConfig) Reset() {
+	*x = GcpAlloydbClusterPscConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpAlloydbClusterPscConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpAlloydbClusterPscConfig) ProtoMessage() {}
+
+func (x *GcpAlloydbClusterPscConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpAlloydbClusterPscConfig.ProtoReflect.Descriptor instead.
+func (*GcpAlloydbClusterPscConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GcpAlloydbClusterPscConfig) GetPscEnabled() bool {
+	if x != nil {
+		return x.PscEnabled
+	}
+	return false
+}
+
+// GcpAlloydbClusterSecondaryConfig configures a cross-region DR secondary
+// cluster. Only valid when cluster_type is SECONDARY.
+type GcpAlloydbClusterSecondaryConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Full resource name of the primary cluster this secondary follows.
+	PrimaryClusterName string `protobuf:"bytes,1,opt,name=primary_cluster_name,json=primaryClusterName,proto3" json:"primary_cluster_name,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *GcpAlloydbClusterSecondaryConfig) Reset() {
+	*x = GcpAlloydbClusterSecondaryConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpAlloydbClusterSecondaryConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpAlloydbClusterSecondaryConfig) ProtoMessage() {}
+
+func (x *GcpAlloydbClusterSecondaryConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpAlloydbClusterSecondaryConfig.ProtoReflect.Descriptor instead.
+func (*GcpAlloydbClusterSecondaryConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GcpAlloydbClusterSecondaryConfig) GetPrimaryClusterName() string {
+	if x != nil {
+		return x.PrimaryClusterName
+	}
+	return ""
+}
+
 // GcpAlloydbClusterPrimaryInstance defines the configuration for the
 // primary compute instance bundled with the AlloyDB cluster.
 //
@@ -530,7 +624,7 @@ type GcpAlloydbClusterPrimaryInstance struct {
 
 func (x *GcpAlloydbClusterPrimaryInstance) Reset() {
 	*x = GcpAlloydbClusterPrimaryInstance{}
-	mi := &file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -542,7 +636,7 @@ func (x *GcpAlloydbClusterPrimaryInstance) String() string {
 func (*GcpAlloydbClusterPrimaryInstance) ProtoMessage() {}
 
 func (x *GcpAlloydbClusterPrimaryInstance) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -555,7 +649,7 @@ func (x *GcpAlloydbClusterPrimaryInstance) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpAlloydbClusterPrimaryInstance.ProtoReflect.Descriptor instead.
 func (*GcpAlloydbClusterPrimaryInstance) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GcpAlloydbClusterPrimaryInstance) GetInstanceId() string {
@@ -637,7 +731,8 @@ func (x *GcpAlloydbClusterPrimaryInstance) GetSslMode() string {
 //
 // Networking uses VPC peering via Private Service Access. The cluster's
 // network field references a VPC that must have Private Service Access
-// configured (typically done via GcpVpc's private_services_access setting).
+// configured (compose GcpGlobalAddress with VPC_PEERING purpose +
+// GcpServiceNetworkingConnection on the target VPC).
 //
 // Important behavioral notes:
 //
@@ -650,8 +745,8 @@ func (x *GcpAlloydbClusterPrimaryInstance) GetSslMode() string {
 //     backup (WAL streaming for point-in-time recovery). Both can be
 //     configured independently with separate CMEK keys.
 //
-//   - deletion_protection defaults to true. You must explicitly set it
-//     to false before destroying a cluster that contains data.
+//   - Connectivity is exactly one of PSA (network_config.network) or PSC
+//     (psc_config.psc_enabled). The provider enforces this mutual exclusion.
 type GcpAlloydbClusterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project where the AlloyDB cluster will be created.
@@ -664,11 +759,21 @@ type GcpAlloydbClusterSpec struct {
 	// GCP region where the cluster will be deployed (e.g., "us-central1").
 	// Immutable after creation.
 	Location string `protobuf:"bytes,3,opt,name=location,proto3" json:"location,omitempty"`
-	// VPC network for the cluster's private connectivity. The VPC must have
-	// Private Service Access configured. Expects a VPC network self-link or
-	// resource reference.
+	// VPC network for Private Service Access connectivity, as the relative
+	// resource path "projects/{project}/global/networks/{network}" (the
+	// AlloyDB API rejects full https:// self-link URLs). The VPC must have
+	// Private Service Access configured (compose GcpGlobalAddress +
+	// GcpServiceNetworkingConnection). Mutually exclusive with PSC.
 	// Immutable after creation.
 	Network *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=network,proto3" json:"network,omitempty"`
+	// Private Service Connect configuration. When psc_enabled is true, network
+	// must be unset — the cluster is reachable only through PSC endpoints.
+	PscConfig *GcpAlloydbClusterPscConfig `protobuf:"bytes,14,opt,name=psc_config,json=pscConfig,proto3" json:"psc_config,omitempty"`
+	// Cluster role. PRIMARY (default) is a writable primary; SECONDARY is a
+	// cross-region DR replica that follows a primary cluster.
+	ClusterType *string `protobuf:"bytes,15,opt,name=cluster_type,json=clusterType,proto3,oneof" json:"cluster_type,omitempty"`
+	// Required when cluster_type is SECONDARY — names the primary cluster.
+	SecondaryConfig *GcpAlloydbClusterSecondaryConfig `protobuf:"bytes,16,opt,name=secondary_config,json=secondaryConfig,proto3" json:"secondary_config,omitempty"`
 	// Name of the allocated IP range for Private Service Access.
 	// When set, the cluster uses this specific IP range for its private
 	// connectivity instead of an auto-allocated range. This is common in
@@ -696,21 +801,33 @@ type GcpAlloydbClusterSpec struct {
 	// Immutable after creation.
 	KmsKeyName *v1.StringValueOrRef `protobuf:"bytes,11,opt,name=kms_key_name,json=kmsKeyName,proto3" json:"kms_key_name,omitempty"`
 	// Preferred maintenance window for system updates.
+	//
+	// NOTE: a cluster-level deletion-protection flag is deliberately not
+	// modeled: the released terraform provider has no such attribute for
+	// AlloyDB (it exists only on the unreleased main line), so modeling it
+	// would create a safety posture one engine cannot honor.
 	MaintenanceWindow *GcpAlloydbClusterMaintenanceWindow `protobuf:"bytes,12,opt,name=maintenance_window,json=maintenanceWindow,proto3" json:"maintenance_window,omitempty"`
-	// Whether deletion protection is enabled. When true (the default),
-	// the cluster cannot be destroyed without first setting this to false.
-	// Strongly recommended for production clusters.
-	DeletionProtection bool `protobuf:"varint,13,opt,name=deletion_protection,json=deletionProtection,proto3" json:"deletion_protection,omitempty"`
 	// Primary instance configuration. Required -- a cluster without a
 	// primary instance cannot serve queries.
-	PrimaryInstance *GcpAlloydbClusterPrimaryInstance `protobuf:"bytes,14,opt,name=primary_instance,json=primaryInstance,proto3" json:"primary_instance,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	PrimaryInstance *GcpAlloydbClusterPrimaryInstance `protobuf:"bytes,13,opt,name=primary_instance,json=primaryInstance,proto3" json:"primary_instance,omitempty"`
+	// Unstructured metadata stored on the cluster (annotations, not labels —
+	// not used for billing filtering).
+	Annotations map[string]string `protobuf:"bytes,17,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Billing subscription tier: STANDARD (default) or TRIAL. A TRIAL cluster
+	// converts to STANDARD when trial credits end.
+	SubscriptionType string `protobuf:"bytes,18,opt,name=subscription_type,json=subscriptionType,proto3" json:"subscription_type,omitempty"`
+	// When true, a database_version change returns immediately instead of
+	// waiting for the in-place major-version upgrade to finish. The upgrade
+	// continues server-side; use for very large clusters where the wait
+	// exceeds sane IaC timeouts.
+	SkipAwaitMajorVersionUpgrade bool `protobuf:"varint,19,opt,name=skip_await_major_version_upgrade,json=skipAwaitMajorVersionUpgrade,proto3" json:"skip_await_major_version_upgrade,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *GcpAlloydbClusterSpec) Reset() {
 	*x = GcpAlloydbClusterSpec{}
-	mi := &file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -722,7 +839,7 @@ func (x *GcpAlloydbClusterSpec) String() string {
 func (*GcpAlloydbClusterSpec) ProtoMessage() {}
 
 func (x *GcpAlloydbClusterSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -735,7 +852,7 @@ func (x *GcpAlloydbClusterSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpAlloydbClusterSpec.ProtoReflect.Descriptor instead.
 func (*GcpAlloydbClusterSpec) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GcpAlloydbClusterSpec) GetProjectId() *v1.StringValueOrRef {
@@ -762,6 +879,27 @@ func (x *GcpAlloydbClusterSpec) GetLocation() string {
 func (x *GcpAlloydbClusterSpec) GetNetwork() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Network
+	}
+	return nil
+}
+
+func (x *GcpAlloydbClusterSpec) GetPscConfig() *GcpAlloydbClusterPscConfig {
+	if x != nil {
+		return x.PscConfig
+	}
+	return nil
+}
+
+func (x *GcpAlloydbClusterSpec) GetClusterType() string {
+	if x != nil && x.ClusterType != nil {
+		return *x.ClusterType
+	}
+	return ""
+}
+
+func (x *GcpAlloydbClusterSpec) GetSecondaryConfig() *GcpAlloydbClusterSecondaryConfig {
+	if x != nil {
+		return x.SecondaryConfig
 	}
 	return nil
 }
@@ -822,18 +960,32 @@ func (x *GcpAlloydbClusterSpec) GetMaintenanceWindow() *GcpAlloydbClusterMainten
 	return nil
 }
 
-func (x *GcpAlloydbClusterSpec) GetDeletionProtection() bool {
-	if x != nil {
-		return x.DeletionProtection
-	}
-	return false
-}
-
 func (x *GcpAlloydbClusterSpec) GetPrimaryInstance() *GcpAlloydbClusterPrimaryInstance {
 	if x != nil {
 		return x.PrimaryInstance
 	}
 	return nil
+}
+
+func (x *GcpAlloydbClusterSpec) GetAnnotations() map[string]string {
+	if x != nil {
+		return x.Annotations
+	}
+	return nil
+}
+
+func (x *GcpAlloydbClusterSpec) GetSubscriptionType() string {
+	if x != nil {
+		return x.SubscriptionType
+	}
+	return ""
+}
+
+func (x *GcpAlloydbClusterSpec) GetSkipAwaitMajorVersionUpgrade() bool {
+	if x != nil {
+		return x.SkipAwaitMajorVersionUpgrade
+	}
+	return false
 }
 
 var File_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto protoreflect.FileDescriptor
@@ -868,12 +1020,18 @@ const file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDesc = ""
 	"\"GcpAlloydbClusterMaintenanceWindow\x12Z\n" +
 	"\x03day\x18\x01 \x01(\tBH\xbaHE\xc8\x01\x01r@R\x06MONDAYR\aTUESDAYR\tWEDNESDAYR\bTHURSDAYR\x06FRIDAYR\bSATURDAYR\x06SUNDAYR\x03day\x12(\n" +
 	"\n" +
-	"start_hour\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00R\tstartHour\"\x8f\x02\n" +
+	"start_hour\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00R\tstartHour\"\xa2\x03\n" +
 	"$GcpAlloydbClusterQueryInsightsConfig\x12>\n" +
-	"\x16query_plans_per_minute\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x14(\x00R\x13queryPlansPerMinute\x12;\n" +
-	"\x13query_string_length\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x94#(\x80\x02R\x11queryStringLength\x126\n" +
+	"\x16query_plans_per_minute\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x14(\x00R\x13queryPlansPerMinute\x12\xcd\x01\n" +
+	"\x13query_string_length\x18\x02 \x01(\x05B\x9c\x01\xbaH\x98\x01\xba\x01\x94\x01\n" +
+	"\x19query_string_length_range\x12Kquery_string_length must be between 256 and 4500 (or 0 for the GCP default)\x1a*this == 0 || (this >= 256 && this <= 4500)R\x11queryStringLength\x126\n" +
 	"\x17record_application_tags\x18\x03 \x01(\bR\x15recordApplicationTags\x122\n" +
-	"\x15record_client_address\x18\x04 \x01(\bR\x13recordClientAddress\"\xe5\b\n" +
+	"\x15record_client_address\x18\x04 \x01(\bR\x13recordClientAddress\"=\n" +
+	"\x1aGcpAlloydbClusterPscConfig\x12\x1f\n" +
+	"\vpsc_enabled\x18\x01 \x01(\bR\n" +
+	"pscEnabled\"]\n" +
+	" GcpAlloydbClusterSecondaryConfig\x129\n" +
+	"\x14primary_cluster_name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x12primaryClusterName\"\xe5\b\n" +
 	" GcpAlloydbClusterPrimaryInstance\x12M\n" +
 	"\vinstance_id\x18\x01 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x02\x18?2\x1e^[a-z][a-z0-9-]{0,61}[a-z0-9]$R\n" +
 	"instanceId\x12\x1b\n" +
@@ -890,13 +1048,18 @@ const file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDesc = ""
 	"\x12DatabaseFlagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x8a\x01\xbaH\x86\x01\x1a\x83\x01\n" +
-	"\x1fmachine_config_mutual_exclusion\x120only one of cpu_count or machine_type may be set\x1a.this.cpu_count == 0 || this.machine_type == ''\"\xf8\v\n" +
-	"\x15GcpAlloydbClusterSpec\x12{\n" +
+	"\x1fmachine_config_mutual_exclusion\x120only one of cpu_count or machine_type may be set\x1a.this.cpu_count == 0 || this.machine_type == ''\"\x88\x17\n" +
+	"\x15GcpAlloydbClusterSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12O\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12O\n" +
 	"\fcluster_name\x18\x02 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x02\x18?2\x1e^[a-z][a-z0-9-]{0,61}[a-z0-9]$R\vclusterName\x12\"\n" +
-	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12}\n" +
-	"\anetwork\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12,\n" +
+	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12p\n" +
+	"\anetwork\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_idR\anetwork\x12h\n" +
+	"\n" +
+	"psc_config\x18\x0e \x01(\v2I.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPscConfigR\tpscConfig\x12\xa9\x01\n" +
+	"\fcluster_type\x18\x0f \x01(\tB\x80\x01\xbaHr\xba\x01o\n" +
+	"\x12cluster_type_valid\x12)cluster_type must be PRIMARY or SECONDARY\x1a.this == '' || this in ['PRIMARY', 'SECONDARY']\x8a\xa6\x1d\aPRIMARYH\x00R\vclusterType\x88\x01\x01\x12z\n" +
+	"\x10secondary_config\x18\x10 \x01(\v2O.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSecondaryConfigR\x0fsecondaryConfig\x12,\n" +
 	"\x12allocated_ip_range\x18\x05 \x01(\tR\x10allocatedIpRange\x12\xda\x01\n" +
 	"\x10database_version\x18\x06 \x01(\tB\xae\x01\xbaH\xaa\x01\xba\x01\xa6\x01\n" +
 	"\x1cdatabase_version_valid_value\x12Adatabase_version must be POSTGRES_14, POSTGRES_15, or POSTGRES_16\x1aCthis == '' || this in ['POSTGRES_14', 'POSTGRES_15', 'POSTGRES_16']R\x0fdatabaseVersion\x12!\n" +
@@ -907,9 +1070,18 @@ const file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDesc = ""
 	" \x01(\v2V.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterContinuousBackupConfigR\x16continuousBackupConfig\x12t\n" +
 	"\fkms_key_name\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12\x80\x01\n" +
-	"\x12maintenance_window\x18\f \x01(\v2Q.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterMaintenanceWindowR\x11maintenanceWindow\x12/\n" +
-	"\x13deletion_protection\x18\r \x01(\bR\x12deletionProtection\x12\x82\x01\n" +
-	"\x10primary_instance\x18\x0e \x01(\v2O.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstanceB\x06\xbaH\x03\xc8\x01\x01R\x0fprimaryInstanceB\xfe\x02\n" +
+	"\x12maintenance_window\x18\f \x01(\v2Q.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterMaintenanceWindowR\x11maintenanceWindow\x12\x82\x01\n" +
+	"\x10primary_instance\x18\r \x01(\v2O.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstanceB\x06\xbaH\x03\xc8\x01\x01R\x0fprimaryInstance\x12w\n" +
+	"\vannotations\x18\x11 \x03(\v2U.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.AnnotationsEntryR\vannotations\x12\xa6\x01\n" +
+	"\x11subscription_type\x18\x12 \x01(\tBy\xbaHv\xba\x01s\n" +
+	"\x17subscription_type_valid\x12+subscription_type must be TRIAL or STANDARD\x1a+this == '' || this in ['TRIAL', 'STANDARD']R\x10subscriptionType\x12F\n" +
+	" skip_await_major_version_upgrade\x18\x13 \x01(\bR\x1cskipAwaitMajorVersionUpgrade\x1a>\n" +
+	"\x10AnnotationsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x84\x05\xbaH\x80\x05\x1a\x98\x03\n" +
+	"\x18connectivity_psa_xor_psc\x12aset network for Private Service Access OR enable psc_config.psc_enabled — not both, not neither\x1a\x98\x02(has(this.network) && (has(this.network.value) || has(this.network.value_from)) && !(has(this.psc_config) && this.psc_config.psc_enabled)) || (!(has(this.network) && (has(this.network.value) || has(this.network.value_from))) && has(this.psc_config) && this.psc_config.psc_enabled)\x1a\xe2\x01\n" +
+	"#secondary_requires_secondary_config\x12Ecluster_type SECONDARY requires secondary_config.primary_cluster_name\x1atthis.cluster_type != 'SECONDARY' || (has(this.secondary_config) && this.secondary_config.primary_cluster_name != '')B\x0f\n" +
+	"\r_cluster_typeB\xfe\x02\n" +
 	"1com.dev.planton.provider.gcp.gcpalloydbcluster.v1B\tSpecProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpalloydbcluster/v1;gcpalloydbclusterv1\xa2\x02\x05DPPGG\xaa\x02-Dev.Planton.Provider.Gcp.Gcpalloydbcluster.V1\xca\x02-Dev\\Planton\\Provider\\Gcp\\Gcpalloydbcluster\\V1\xe2\x029Dev\\Planton\\Provider\\Gcp\\Gcpalloydbcluster\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Gcp::Gcpalloydbcluster::V1b\x06proto3"
 
 var (
@@ -924,7 +1096,7 @@ func file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDescGZIP()
 	return file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_goTypes = []any{
 	(*GcpAlloydbClusterInitialUser)(nil),            // 0: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterInitialUser
 	(*GcpAlloydbClusterBackupSchedule)(nil),         // 1: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterBackupSchedule
@@ -932,30 +1104,36 @@ var file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_goTypes = []an
 	(*GcpAlloydbClusterContinuousBackupConfig)(nil), // 3: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterContinuousBackupConfig
 	(*GcpAlloydbClusterMaintenanceWindow)(nil),      // 4: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterMaintenanceWindow
 	(*GcpAlloydbClusterQueryInsightsConfig)(nil),    // 5: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterQueryInsightsConfig
-	(*GcpAlloydbClusterPrimaryInstance)(nil),        // 6: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstance
-	(*GcpAlloydbClusterSpec)(nil),                   // 7: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec
-	nil,                                             // 8: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstance.DatabaseFlagsEntry
-	(*v1.StringValueOrRef)(nil),                     // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpAlloydbClusterPscConfig)(nil),              // 6: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPscConfig
+	(*GcpAlloydbClusterSecondaryConfig)(nil),        // 7: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSecondaryConfig
+	(*GcpAlloydbClusterPrimaryInstance)(nil),        // 8: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstance
+	(*GcpAlloydbClusterSpec)(nil),                   // 9: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec
+	nil,                                             // 10: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstance.DatabaseFlagsEntry
+	nil,                                             // 11: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.AnnotationsEntry
+	(*v1.StringValueOrRef)(nil),                     // 12: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterAutomatedBackupPolicy.weekly_schedule:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterBackupSchedule
-	9,  // 1: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterAutomatedBackupPolicy.encryption_kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 2: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterContinuousBackupConfig.encryption_kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 3: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstance.database_flags:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstance.DatabaseFlagsEntry
+	12, // 1: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterAutomatedBackupPolicy.encryption_kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 2: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterContinuousBackupConfig.encryption_kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 3: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstance.database_flags:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstance.DatabaseFlagsEntry
 	5,  // 4: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstance.query_insights_config:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterQueryInsightsConfig
-	9,  // 5: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 6: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0,  // 7: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.initial_user:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterInitialUser
-	2,  // 8: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.automated_backup_policy:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterAutomatedBackupPolicy
-	3,  // 9: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.continuous_backup_config:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterContinuousBackupConfig
-	9,  // 10: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 11: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.maintenance_window:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterMaintenanceWindow
-	6,  // 12: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.primary_instance:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstance
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	12, // 5: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 6: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 7: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.psc_config:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPscConfig
+	7,  // 8: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.secondary_config:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSecondaryConfig
+	0,  // 9: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.initial_user:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterInitialUser
+	2,  // 10: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.automated_backup_policy:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterAutomatedBackupPolicy
+	3,  // 11: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.continuous_backup_config:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterContinuousBackupConfig
+	12, // 12: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 13: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.maintenance_window:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterMaintenanceWindow
+	8,  // 14: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.primary_instance:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstance
+	11, // 15: dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.annotations:type_name -> dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterSpec.AnnotationsEntry
+	16, // [16:16] is the sub-list for method output_type
+	16, // [16:16] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_init() }
@@ -963,13 +1141,14 @@ func file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_init() {
 	if File_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

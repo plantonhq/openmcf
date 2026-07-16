@@ -1,0 +1,4 @@
+name: gcpcloudcomposerenvironment-pulumi-project
+runtime:
+  name: go
+description: Planton GcpCloudComposerEnvironment Pulumi module

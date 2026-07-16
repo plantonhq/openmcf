@@ -4,6 +4,7 @@ Provisions a Google Cloud Scheduler job using the Terraform Google provider (`~>
 
 ## Resources Created
 
+- `google_project_service.cloudscheduler_api` -- Enables the Cloud Scheduler API
 - `google_cloud_scheduler_job.this` -- The Cloud Scheduler job
 
 ## Usage
@@ -12,15 +13,19 @@ Provisions a Google Cloud Scheduler job using the Terraform Google provider (`~>
 module "scheduler_job" {
   source = "./path/to/module"
 
+  metadata = {
+    name = "nightly-trigger"
+  }
+
   spec = {
-    project_id = { value = "my-project" }
+    project_id = "my-project"
     location   = "us-central1"
     schedule   = "0 9 * * 1-5"
     http_target = {
       uri         = "https://my-service.run.app/api/trigger"
       http_method = "POST"
       oidc_token = {
-        service_account_email = { value = "invoker@my-project.iam.gserviceaccount.com" }
+        service_account_email = "invoker@my-project.iam.gserviceaccount.com"
       }
     }
   }
@@ -31,8 +36,8 @@ module "scheduler_job" {
 
 | Variable | Type | Required | Description |
 |----------|------|----------|-------------|
+| `metadata` | object | yes | Resource metadata (name, labels) |
 | `spec` | object | yes | GcpCloudSchedulerJob specification |
-| `provider_config` | object | no | GCP provider credentials |
 
 ## Outputs
 
@@ -40,11 +45,13 @@ module "scheduler_job" {
 |--------|-------------|
 | `job_id` | Fully qualified job ID |
 | `job_name` | Short job name |
-| `state` | Job state (ENABLED, PAUSED, etc.) |
+| `state` | Job state (ENABLED, PAUSED, DISABLED, UPDATE_FAILED) |
 
 ## Notes
 
 - Requires Google provider `~> 6.0`
 - Cloud Scheduler jobs do not support GCP labels
-- The `state` output is available in Terraform (unlike Cloud Tasks where it was Pulumi-only)
+- If `job_name` is empty, the job takes its name from `metadata.name`
+- If `project_id` is empty, the job is created in the provider's default
+  project (ambient project contract)
 - Dynamic blocks handle the three mutually exclusive target types

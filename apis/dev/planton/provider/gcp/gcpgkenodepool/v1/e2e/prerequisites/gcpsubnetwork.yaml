@@ -1,0 +1,35 @@
+# Consumer-scoped GcpSubnetwork install profile for the node pool's cluster
+# chain. Same shape and names as the GKE cluster's own consumer-scoped
+# subnetwork, so the cluster prerequisite's subnetwork reference resolves
+# identically whether the cluster is the component under test or a
+# prerequisite of this pool.
+apiVersion: gcp.planton.dev/v1
+kind: GcpSubnetwork
+metadata:
+  name: planton-oss-e2e-gcpsnw-gke-prereq
+  id: planton-oss-e2e-gcpsnw-gke-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpsubnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
+      fieldPath: status.outputs.network_self_link
+  subnetworkName: planton-oss-e2e-gke-subnet
+  region: us-central1
+  ipCidrRange: 10.210.0.0/20
+  privateIpGoogleAccess: true
+  secondaryIpRanges:
+    - rangeName: pods
+      ipCidrRange: 10.212.0.0/16
+    - rangeName: services
+      ipCidrRange: 10.213.0.0/20
+  description: Ephemeral subnet for the GcpGkeNodePool E2E chains; safe to delete

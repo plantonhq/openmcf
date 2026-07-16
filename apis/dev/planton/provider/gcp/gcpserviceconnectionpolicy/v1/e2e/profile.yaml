@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpserviceconnectionpolicy
+spec:
+  # Composed scenario: the policy needs a VPC and a subnet in its region,
+  # both installed from the prerequisite graph via this component's
+  # consumer-scoped overrides (run-scoped cloud names). deploy -> policy
+  # posture verify -> destroy -> verify gone, on both provisioners. The
+  # policy itself creates/deletes in seconds; the chain cost is the
+  # VPC + subnet prerequisites.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

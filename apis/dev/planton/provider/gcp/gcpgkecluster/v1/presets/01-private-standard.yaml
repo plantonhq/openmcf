@@ -1,22 +1,53 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpGkeCluster
 metadata:
-  name: my-gke-cluster
+  name: prod-primary
 spec:
   projectId:
-    value: "<gcp-project-id>"
-  networkSelfLink:
-    value: "<vpc-network-self-link>"
-  location: <gcp-region>
-  subnetworkSelfLink:
-    value: "<subnet-self-link>"
-  clusterSecondaryRangeName:
-    value: pods
-  servicesSecondaryRangeName:
-    value: services
-  masterIpv4CidrBlock: 172.16.0.0/28  # /28 required; must not overlap with VPC CIDRs
-  enablePublicNodes: false  # private nodes; internet egress via Cloud NAT
-  releaseChannel: REGULAR  # default from spec; balanced stability and feature availability
-  clusterName: <your-cluster-name>
-  routerNatName:
-    value: "<router-nat-name>"
+    value: my-gcp-project-123 # replace with your project ID
+  location: us-central1 # regional: control-plane replicas across three zones
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: my-app-vpc # replace with your GcpVpcNetwork resource name
+      fieldPath: status.outputs.network_self_link
+  subnetwork:
+    valueFrom:
+      kind: GcpSubnetwork
+      name: my-gke-subnet # replace with your GcpSubnetwork resource name
+      fieldPath: status.outputs.subnetwork_self_link
+  ipAllocation:
+    # Planned ranges defined on the subnetwork keep pod/service address
+    # space governed instead of letting GKE carve ranges ad hoc.
+    clusterSecondaryRangeName:
+      value: pods # replace with your subnetwork's pod range name
+    servicesSecondaryRangeName:
+      value: services # replace with your subnetwork's services range name
+  # Dataplane V2: native NetworkPolicy enforcement, no Calico addon needed.
+  datapathProvider: ADVANCED_DATAPATH
+  privateCluster:
+    # No public node IPs; compose a GcpRouterNat on the network for image
+    # pulls and other outbound traffic.
+    enablePrivateNodes: true
+    masterIpv4CidrBlock: "172.16.0.16/28" # replace: must not overlap any VPC range
+  masterAuthorizedNetworks:
+    cidrBlocks:
+      - cidrBlock: 203.0.113.0/24 # replace with your office/VPN egress range
+        displayName: corp-vpn
+  releaseChannel: REGULAR
+  maintenancePolicy:
+    dailyWindow:
+      startTime: "03:00" # UTC; pick your lowest-traffic window
+  securityPosture:
+    mode: BASIC
+    vulnerabilityMode: VULNERABILITY_BASIC
+  logging:
+    components:
+      - SYSTEM_COMPONENTS
+      - WORKLOADS
+  monitoring:
+    components:
+      - SYSTEM_COMPONENTS
+  enableCostManagement: true
+  # deletionProtection defaults to true — a destroy plan fails until it is
+  # explicitly set to false. Keep it on for production.

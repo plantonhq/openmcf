@@ -8,18 +8,18 @@ provider: "gcp"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-public-service"
+  - slug: "01-public-api-service"
     rank: "01"
-    title: "Public Cloud Run Service"
-    excerpt: "This preset deploys a publicly accessible Cloud Run service with unauthenticated access, scale-to-zero, and Gen 2 execution environment. It uses all recommended defaults from the spec and is the..."
-  - slug: "02-private-vpc-connected"
+    title: "Public API Service"
+    excerpt: "This preset creates a public, scale-to-zero HTTP API: unauthenticated callers reach the service directly on its run.app URL, instances appear with traffic and disappear when idle."
+  - slug: "02-private-vpc-service"
     rank: "02"
-    title: "Private VPC-Connected Cloud Run Service"
-    excerpt: "This preset deploys a Cloud Run service that is only accessible internally (within the VPC and other GCP services), requires IAM authentication, and has Direct VPC Egress for connecting to private..."
-  - slug: "03-cloud-sql-connected"
+    title: "Private VPC-Connected Backend"
+    excerpt: "This preset creates an internal backend service wired into a VPC: IAM-authenticated callers only, direct VPC egress to private resources, Cloud SQL over managed Unix sockets, credentials from Secret..."
+  - slug: "03-gpu-inference"
     rank: "03"
-    title: "Cloud Run with Cloud SQL Native Connection"
-    excerpt: "This preset deploys a Cloud Run service connected to a Cloud SQL instance via the native GCP-managed volume mount. GCP automatically creates a Unix socket at `/cloudsql/<connection_name>` for each..."
+    title: "GPU Inference Service"
+    excerpt: "This preset creates a GPU-backed model-serving endpoint: one NVIDIA L4 per instance, scale-to-zero so idle GPUs cost nothing, instance-based billing so the model stays resident, and IAM-authenticated..."
 ---
 
 # Cloud Run Presets

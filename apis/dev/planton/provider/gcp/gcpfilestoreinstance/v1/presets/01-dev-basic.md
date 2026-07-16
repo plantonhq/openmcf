@@ -1,28 +1,28 @@
-# Preset: Dev Basic
+# Dev Basic
 
-**Tier**: BASIC_SSD (single-zone SSD)
-**Use case**: Development, testing, CI/CD pipelines
+The minimal working Filestore instance for development, testing, and CI:
+SSD-backed, on the default VPC, easy to tear down.
 
-## What This Preset Provides
+## What this preset creates
 
-A minimal Filestore instance suitable for development and testing workloads:
+A BASIC_SSD instance at the tier's 2.5 TiB minimum, exporting a single
+share `vol1` that any client on the default VPC can mount read-write
+(`mount <ip>:/vol1 /mnt/nfs` — the address surfaces in the
+`ip_addresses` output). `instanceName` is omitted, so the instance takes
+its name from `metadata.name`. No deletion protection, so cleanup is
+frictionless.
 
-- **BASIC_SSD tier**: SSD-backed storage with good read/write performance
-- **2.5 TiB capacity**: minimum for BASIC_SSD tier
-- **Default VPC**: connects to the project's default network
-- **DIRECT_PEERING**: simplest network setup (default)
-- **No encryption**: uses Google-managed keys
-- **No deletion protection**: easy cleanup in dev environments
+## Remix ideas
 
-## When to Use
+- Add `nfsExportOptions` with `ipRanges` to restrict which subnets can
+  mount the share — empty export options allow all clients.
+- Switch `tier` to `STANDARD` for HDD-backed storage at lower cost
+  (1 TiB minimum) when throughput doesn't matter.
+- Grow `capacityGb` any time; it can never shrink, so start at the
+  minimum.
 
-- Local development with NFS-dependent applications
-- CI/CD pipelines requiring shared file storage
-- Testing NFS-based workflows before moving to production
-- Small teams needing shared file access
+## When to graduate
 
-## When NOT to Use
-
-- Production workloads requiring HA (use ENTERPRISE or REGIONAL tier)
-- Workloads requiring CMEK encryption
-- Applications needing >2.5 TiB of storage (increase capacity_gb)
+Production workloads want the enterprise preset: a regional tier for
+zone-failure tolerance, `deletionProtectionEnabled` as the destroy
+guard, and `PRIVATE_SERVICE_ACCESS` networking.

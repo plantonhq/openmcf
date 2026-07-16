@@ -4,32 +4,31 @@ metadata:
   name: my-enterprise-alloydb
 spec:
   projectId:
-    value: "<gcp-project-id>"
-  clusterName: <cluster-name>
-  location: <gcp-region>
+    value: my-gcp-project-123 # replace with your project ID
+  clusterName: enterprise-alloydb # replace with your cluster name
+  location: us-central1 # replace with your region
   network:
-    value: "<vpc-network-path>"
-  deletionProtection: true
+    value: projects/my-gcp-project-123/global/networks/prod-vpc # replace with your VPC path
   kmsKeyName:
-    value: "<kms-key-resource-name>"
+    value: projects/my-gcp-project-123/locations/us-central1/keyRings/data-kr/cryptoKeys/alloydb-key # replace with your KMS key
   initialUser:
     user: postgres
-    password: "<secure-password>"
+    password: change-me-immediately # replace before applying
   automatedBackupPolicy:
     enabled: true
     timeBasedRetentionPeriod: "2592000s"
     encryptionKmsKeyName:
-      value: "<backup-kms-key-resource-name>"
+      value: projects/my-gcp-project-123/locations/us-central1/keyRings/data-kr/cryptoKeys/backup-key # replace with your backup KMS key
   continuousBackupConfig:
     enabled: true
     recoveryWindowDays: 21
     encryptionKmsKeyName:
-      value: "<continuous-backup-kms-key-resource-name>"
+      value: projects/my-gcp-project-123/locations/us-central1/keyRings/data-kr/cryptoKeys/pitr-key # replace with your PITR KMS key
   maintenanceWindow:
     day: SUNDAY
     startHour: 3
   primaryInstance:
-    instanceId: <primary-instance-id>
+    instanceId: enterprise-primary # replace with your instance ID
     cpuCount: 8
     availabilityType: REGIONAL
     sslMode: ENCRYPTED_ONLY

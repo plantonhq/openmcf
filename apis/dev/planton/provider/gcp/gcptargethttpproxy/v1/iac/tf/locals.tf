@@ -1,0 +1,36 @@
+locals {
+  resource_id = (
+    var.metadata.id != null && var.metadata.id != ""
+    ? var.metadata.id
+    : var.metadata.name
+  )
+
+  # Honor the spec contract: an empty project_id falls back to the provider's
+  # default project. Passing null (instead of "") lets the google provider
+  # resolve its own project from configuration or the GOOGLE_PROJECT /
+  # GOOGLE_CLOUD_PROJECT environment chain; an empty string would be sent
+  # verbatim and rejected by the API.
+  project_id = var.spec.project_id != "" ? var.spec.project_id : null
+
+  # The cloud-side name defaults to metadata.name when the spec leaves
+  # proxy_name empty — the same naming basis every kind uses.
+  proxy_name = (
+    var.spec.proxy_name != null && var.spec.proxy_name != ""
+    ? var.spec.proxy_name
+    : var.metadata.name
+  )
+
+  description = var.spec.description != "" ? var.spec.description : null
+
+  # 0 means "let GCP apply its default" (610s on EXTERNAL_MANAGED); sending
+  # null keeps the API in charge of the default.
+  http_keep_alive_timeout_sec = (
+    var.spec.http_keep_alive_timeout_sec != 0
+    ? var.spec.http_keep_alive_timeout_sec
+    : null
+  )
+
+  # proxy_bind is a Traffic Director lever; the API default is false, so only
+  # an explicit true is worth sending (null lets the API compute it).
+  proxy_bind = var.spec.proxy_bind ? true : null
+}

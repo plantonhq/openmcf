@@ -1,108 +1,161 @@
-# Overview
+# GCP Cloud SQL
 
-The **GCP Cloud SQL API Resource** provides a consistent and standardized interface for deploying and managing relational databases on Google Cloud SQL within our infrastructure. This resource simplifies the process of creating and configuring fully managed MySQL and PostgreSQL database instances on Google Cloud Platform (GCP), allowing users to build scalable data storage solutions without managing underlying database infrastructure.
+Deploys a Cloud SQL instance (`google_sql_database_instance`) — a fully managed MySQL, PostgreSQL, or SQL Server database server — with the full production surface: edition and HA, disk tuning, explicit connectivity (public IPv4 / private VPC IP / Private Service Connect), backups with point-in-time recovery, maintenance scheduling, Query Insights, password policies, managed connection pooling, CMEK, delete guards, and read replicas.
 
-## Purpose
+## What Gets Created
 
-We developed this API resource to streamline the deployment and management of relational databases using GCP Cloud SQL. By offering a unified interface, it reduces the complexity involved in setting up and configuring production-grade databases, enabling users to:
+When you deploy a GcpCloudSql resource, Planton provisions:
 
-- **Easily Deploy Cloud SQL Instances**: Quickly create MySQL and PostgreSQL database instances in specified GCP projects.
-- **Simplify Configuration**: Abstract the complexities of setting up Cloud SQL, including networking, high availability, and backup configurations.
-- **Integrate Seamlessly**: Utilize existing GCP credentials and integrate with VPC networks for private connectivity.
-- **Focus on Applications**: Allow developers to concentrate on building applications rather than managing database infrastructure.
+- **Cloud SQL Admin API enablement** — a `google_project_service` resource that activates `sqladmin.googleapis.com` on the target project
+- **Cloud SQL instance** — a `google_sql_database_instance`: a primary, or (with `masterInstanceName`) a read replica of another instance
 
-## Key Features
+Databases and users inside the instance are separate composable resources — [GcpCloudSqlDatabase](/docs/catalog/gcp/gcpcloudsqldatabase) and [GcpCloudSqlUser](/docs/catalog/gcp/gcpcloudsqluser) — referencing this instance by its `instance_name` output.
 
-- **Consistent Interface**: Aligns with our existing APIs for deploying cloud infrastructure and managed services.
-- **Multiple Database Engines**: Support for both MySQL and PostgreSQL with configurable versions.
-- **Simplified Deployment**: Automates the provisioning of Cloud SQL instances with necessary configurations.
-- **Network Security**: Support for private IP connectivity through VPC networks and authorized network configurations for public access.
-- **High Availability**: Optional regional high availability configuration with automatic failover.
-- **Automated Backups**: Configurable backup schedules with customizable retention periods.
-- **Scalability**: Configure instance tiers and storage to match workload requirements.
-- **Flexible Configuration**: Support for database flags to fine-tune database behavior.
+## Prerequisites
 
-## Use Cases
+- **GCP credentials** configured via environment variables or Planton provider config
+- **An existing GCP project** — referenced via `projectId` (or the provider's default project)
+- **IAM permissions** — `roles/cloudsql.admin` on the target project
+- **For private IP** — the VPC must already carry private services access: a [GcpGlobalAddress](/docs/catalog/gcp/gcpglobaladdress) with `purpose: VPC_PEERING` plus a [GcpServiceNetworkingConnection](/docs/catalog/gcp/gcpservicenetworkingconnection). GCP rejects instance creation otherwise.
+- **For CMEK** — a [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) in the same region as the instance
 
-- **Application Databases**: Deploy production-grade relational databases for web and mobile applications.
-- **Microservices Data Layer**: Provide dedicated database instances for microservices architectures.
-- **Development and Testing**: Quickly spin up database instances for development, staging, and testing environments.
-- **Data Migration**: Migrate on-premises or other cloud databases to GCP Cloud SQL.
-- **Analytics Workloads**: Set up PostgreSQL instances for analytical queries and reporting.
-- **Multi-tenancy**: Deploy separate database instances for different customers or business units.
+## Quick Start
 
-## Architecture
+Create a file `postgres.yaml`:
 
-GCP Cloud SQL instances created through this API resource include:
+```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSql
+metadata:
+  name: my-postgres
+spec:
+  projectId:
+    value: my-gcp-project-123
+  instanceName: orders-db
+  region: us-central1
+  databaseEngine: POSTGRESQL
+  databaseVersion: POSTGRES_16
+  tier: db-custom-2-7680
+  backup:
+    enabled: true
+    pointInTimeRecoveryEnabled: true
+```
 
-- **Managed Database Engine**: Fully managed MySQL or PostgreSQL database with automatic updates and maintenance.
-- **Network Configuration**: Private IP connectivity through VPC peering and/or public IP with authorized networks.
-- **Storage Management**: SSD-backed storage with configurable size (10GB to 65TB).
-- **High Availability**: Optional regional HA configuration with synchronous replication to a standby instance.
-- **Automated Backups**: Point-in-time recovery with configurable backup windows and retention.
-- **Monitoring**: Built-in integration with Google Cloud Monitoring and Logging.
+Deploy:
 
-## Configuration Options
+```shell
+planton apply -f postgres.yaml
+```
 
-### Database Engine
+This creates a PostgreSQL 16 instance with a public IPv4 address and **no authorized networks** — reachable only through the IAM-authenticated Cloud SQL Auth Proxy or connectors, which is a safe default.
 
-Choose between:
-- **MySQL**: Versions like MYSQL_8_0, MYSQL_5_7
-- **PostgreSQL**: Versions like POSTGRES_15, POSTGRES_14, POSTGRES_13
+## Configuration Reference
 
-### Instance Tier
+### Required Fields
 
-Select machine types based on workload requirements:
-- Shared-core: `db-f1-micro`, `db-g1-small`
-- Standard: `db-n1-standard-1`, `db-n1-standard-2`, etc.
-- High-memory: `db-n1-highmem-2`, `db-n1-highmem-4`, etc.
-- Custom: Custom CPU and memory configurations
+| Field | Type | Description | Validation |
+|-------|------|-------------|------------|
+| `instanceName` | `string` | Instance name in GCP. Immutable; reserved ~1 week post-delete. | RFC 1035, max 98 chars |
+| `region` | `string` | GCP region (e.g. `us-central1`). Immutable. | Valid region name |
+| `databaseEngine` | `string` | `MYSQL`, `POSTGRESQL`, or `SQLSERVER`. | Drives engine-specific validation |
+| `databaseVersion` | `string` | Exact version, e.g. `POSTGRES_16`. Mutable (in-place upgrade). | Prefix must match the engine |
+| `tier` | `string` | Machine type, e.g. `db-custom-4-15360`. Mutable (in-place resize). | Non-empty |
 
-### Storage
+### Optional Fields (grouped)
 
-- Configurable from 10GB to 65,536GB (65TB)
-- SSD-backed for high performance
-- Automatic storage increase can be enabled
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `projectId` | `StringValueOrRef` | provider default project | GCP project. Can reference a GcpProject. |
+| `edition` | `string` | `ENTERPRISE` | `ENTERPRISE` or `ENTERPRISE_PLUS` (data cache, 99.99% HA SLA, 35-day PITR logs). |
+| `availabilityType` | `string` | `ZONAL` | `REGIONAL` enables HA with automatic failover (requires backups). |
+| `activationPolicy` | `string` | `ALWAYS` | `NEVER` stops the instance while retaining storage. |
+| `disk` | object | 10 GB PD_SSD, auto-resize | `type`, `sizeGb`, `autoResize`, `autoResizeLimit`. Disks grow, never shrink. |
+| `network` | object | public IPv4, no allowlist | `privateNetwork` (ref → GcpVpcNetwork), `ipv4Enabled`, `authorizedNetworks`, `allocatedIpRange`, `enablePrivatePathForGoogleCloudServices`, `sslMode`, `serverCaMode`/`serverCaPool`/`customSubjectAlternativeNames`, `psc`. |
+| `locationPreference` | object | GCP picks | `zone`, `secondaryZone` (REGIONAL only). |
+| `backup` | object | disabled | `enabled`, `startTime`, `location`, `binaryLogEnabled` (MySQL PITR), `pointInTimeRecoveryEnabled` (PG/SQL Server PITR), `transactionLogRetentionDays` (1–35), `retainedBackups`. |
+| `maintenanceWindow` | object | any time | `day` (1=Mon..7=Sun), `hour` (UTC), `updateTrack` (`canary`/`stable`/`week5`). |
+| `denyMaintenancePeriod` | object | — | `startDate`, `endDate`, `time` — a maintenance freeze (max 90 days). |
+| `insightsConfig` | object | disabled | Query Insights: `queryInsightsEnabled`, `queryStringLength`, `recordApplicationTags`, `recordClientAddress`, `queryPlansPerMinute`. |
+| `passwordValidationPolicy` | object | — | Instance-level password rules for built-in users. |
+| `dataCacheEnabled` | `bool` | `false` | Local-SSD read cache. ENTERPRISE_PLUS only. |
+| `connectionPooling` | object | disabled | Managed connection pooling (`enabled`, `flags`). |
+| `databaseFlags` | `map` | — | Engine flags, e.g. `cloudsql.iam_authentication: "on"`. |
+| `threadsPerCore`, `timeZone`, `collation`, `sqlServerAuditConfig`, `activeDirectoryDomain` | — | — | SQL Server-only surface (validated per engine). |
+| `connectorEnforcement` | `string` | `NOT_REQUIRED` | `REQUIRED` rejects all direct connections (connectors only). |
+| `enableGoogleMlIntegration`, `enableDataplexIntegration` | `bool` | `false` | Vertex AI / Dataplex integrations. |
+| `encryptionKeyName` | `StringValueOrRef` | Google-managed | CMEK crypto key (ref → GcpKmsKey `key_id`). Same region; immutable. |
+| `deletionProtection` | `bool` | `false` | Engine-side destroy guard (plan-time refusal). |
+| `deletionProtectionEnabled` | `bool` | `false` | API-side delete guard (blocks console/gcloud/API deletion too). |
+| `retainBackupsOnDelete` | `bool` | `false` | Keep backups (and PITR logs) after instance deletion. |
+| `masterInstanceName` | `StringValueOrRef` | — | Makes this instance a read replica of the named primary (ref → GcpCloudSql `instance_name`). Immutable. |
+| `replicaConfiguration` | object | — | Replica behavior + external-source replication channel (password and client key are secret). |
+| `rootPassword` | `string` (secret) | — | Initial admin password. Required for SQL Server. Write-only in GCP. |
 
-### Networking
+### Validation Rules (enforced pre-deploy)
 
-- **Private IP**: Connect through VPC peering for secure, low-latency access
-- **Public IP**: Access from the internet with authorized network CIDR restrictions
-- **Hybrid**: Enable both private and public IP addresses
+- `databaseVersion` prefix must match `databaseEngine` (`MYSQL_*` / `POSTGRES_*` / `SQLSERVER_*`).
+- SQL Server requires `rootPassword`.
+- PITR is PostgreSQL/SQL Server only; MySQL uses `binaryLogEnabled` (MySQL only) instead.
+- `REGIONAL` availability requires backups enabled — and binary logs on MySQL.
+- `dataCacheEnabled` requires `edition: ENTERPRISE_PLUS`.
+- `timeZone`, `collation`, `threadsPerCore`, `sqlServerAuditConfig`, `activeDirectoryDomain` are SQL Server only; `passwordValidationPolicy.passwordChangeInterval` is PostgreSQL only.
+- A present `network` block must enable at least one path: `ipv4Enabled`, `privateNetwork`, or `psc.enabled`; `authorizedNetworks` require `ipv4Enabled`; `allocatedIpRange` and private-path require `privateNetwork`; `serverCaPool` pairs exactly with `serverCaMode: CUSTOMER_MANAGED_CAS_CA`.
+- `replicaConfiguration` requires `masterInstanceName`; `secondaryZone` requires `REGIONAL`.
 
-### High Availability
+## Stack Outputs
 
-- Enable regional HA for 99.95% uptime SLA
-- Automatic failover to standby instance in different zone
-- Synchronous replication for zero data loss
+| Output | Type | Description |
+|--------|------|-------------|
+| `instance_name` | `string` | The composition key — databases, users, and replicas reference it |
+| `connection_name` | `string` | `project:region:instance` for the Auth Proxy and connectors |
+| `private_ip` | `string` | Private IP (empty unless `privateNetwork` is set) |
+| `public_ip` | `string` | Public IPv4 (empty unless `ipv4Enabled`) |
+| `self_link` | `string` | GCP resource self link |
+| `service_account_email` | `string` | The instance's Google-managed service account — grant it GCS access for imports/exports and audit uploads |
+| `dns_name` | `string` | DNS name (PSC-enabled instances) |
+| `psc_service_attachment_link` | `string` | PSC service attachment consumers target with endpoints |
 
-### Backups
+## Deployment Methods
 
-- Automated daily backups with configurable start time
-- Retention period from 1 to 365 days
-- Point-in-time recovery support
-- Manual backups can be triggered as needed
+### Pulumi (Go)
 
-## Security
+See [`iac/pulumi/README.md`](iac/pulumi/README.md).
 
-- **Encryption at Rest**: All data automatically encrypted using Google-managed keys
-- **Encryption in Transit**: SSL/TLS connections supported
-- **IAM Integration**: Database access controlled through GCP IAM
-- **Network Isolation**: Private IP connectivity through VPC peering
-- **Authorized Networks**: Restrict public IP access to specific CIDR ranges
-- **Password Protection**: Required strong root password (minimum 8 characters)
+### Terraform
 
-## Future Enhancements
+See [`iac/tf/README.md`](iac/tf/README.md).
 
-As this resource continues to evolve, future updates will include:
+## Important Notes
 
-- **Read Replicas**: Support for creating and managing read replicas for scaling read workloads.
-- **Database Users**: Automated creation and management of database users with different privileges.
-- **Database Creation**: Automatic creation of initial databases within the instance.
-- **Enhanced Monitoring**: Custom metrics and alerting configurations.
-- **Maintenance Windows**: Configurable maintenance windows for updates.
-- **SSL Certificate Management**: Automated SSL certificate provisioning and rotation.
-- **Cloud SQL Proxy**: Integration with Cloud SQL proxy for secure connections.
-- **Migration Tools**: Built-in support for database migration from other sources.
-- **Performance Insights**: Query performance monitoring and optimization recommendations.
+- **Name reservation**: a deleted instance's name stays reserved for about one week and cannot be reused.
+- **In-place changes**: `databaseVersion` upgrades and `tier`/`edition` changes apply in place (with a restart) — take a backup before major version upgrades.
+- **Private network is one-way**: it can be set or changed in place, but never removed — removing it forces instance replacement.
+- **Read replicas**: a replica is its own `GcpCloudSql` node with `masterInstanceName`; promotion to a standalone primary is an operational action performed outside IaC.
+- **Two delete guards**: `deletionProtection` stops IaC destroys; `deletionProtectionEnabled` makes GCP itself reject deletion from any surface. Set both in production.
 
+### Deliberately not modeled (recorded reasons)
+
+| Excluded Feature | Why |
+|---|---|
+| `clone` / `restore_backup_context` / `point_in_time_restore_context` / `backupdr_backup` | Restores and clones are operational actions, not steady-state configuration — running them through a declarative spec invites accidental re-execution. |
+| Read pools (`instance_type` / `node_count` / auto-scale) | Not on the released 6.x provider line. |
+| `replication_cluster` (DR replica pairs) | Enterprise Plus disaster-recovery pairs involve switchover choreography beyond declarative config; revisit on concrete pull. |
+| `maintenance_version` | Pinning a specific maintenance version is an operational action GCP advances out-of-band; modeling it invites permanent drift. |
+| `pricing_plan` | `PER_USE` is the only accepted value. |
+| `root_password_wo`, `entraid_config`, `data_api_access`, `final_backup_config`, `auto_upgrade_enabled`, Hyperdisk IOPS/throughput dials, `performance_capture_config` | Not on the released 6.x provider line (some beta-only). |
+| Instance-level `deletion_policy` (ABANDON) | Client-side lever that conflicts with managed destroy semantics. |
+
+## Related Components
+
+- [GcpCloudSqlDatabase](/docs/catalog/gcp/gcpcloudsqldatabase) — logical databases inside this instance
+- [GcpCloudSqlUser](/docs/catalog/gcp/gcpcloudsqluser) — per-application users
+- [GcpServiceNetworkingConnection](/docs/catalog/gcp/gcpservicenetworkingconnection) — the private services access peering private IP depends on
+- [GcpGlobalAddress](/docs/catalog/gcp/gcpglobaladdress) — the reserved peering range
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network for private IP
+- [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) — CMEK encryption
+
+## Additional Resources
+
+- [Cloud SQL documentation](https://cloud.google.com/sql/docs)
+- [About the Cloud SQL Auth Proxy](https://cloud.google.com/sql/docs/postgres/sql-proxy)
+- [Instance settings reference](https://cloud.google.com/sql/docs/postgres/instance-settings)

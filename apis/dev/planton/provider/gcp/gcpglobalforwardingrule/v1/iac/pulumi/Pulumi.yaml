@@ -1,0 +1,4 @@
+name: gcpglobalforwardingrule-pulumi-project
+runtime:
+  name: go
+description: Planton GcpGlobalForwardingRule Pulumi module

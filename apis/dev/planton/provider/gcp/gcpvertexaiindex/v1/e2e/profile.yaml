@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpvertexaiindex
+spec:
+  # An empty STREAM_UPDATE index (no initial data) creates in roughly
+  # 10-60 minutes — the provider's create timeout is a generous 180m
+  # because batch loads can run hours. The stream-minimal scenario is
+  # the timing probe for the deployed-index chain: keep the batch
+  # go test -timeout at >=240m for both engines.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 120

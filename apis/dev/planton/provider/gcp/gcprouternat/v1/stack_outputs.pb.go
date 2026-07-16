@@ -26,12 +26,17 @@ type GcpRouterNatStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Name of the Cloud NAT gateway (as created in GCP).
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Self-link URL of the Cloud Router that was created (or used) for this NAT.
+	// Self-link URL of the Cloud Router carrying this NAT.
 	RouterSelfLink string `protobuf:"bytes,2,opt,name=router_self_link,json=routerSelfLink,proto3" json:"router_self_link,omitempty"`
-	// List of external IP addresses utilized by this NAT (e.g. auto-allocated or static IPs provided).
-	NatIpAddresses []string `protobuf:"bytes,3,rep,name=nat_ip_addresses,json=natIpAddresses,proto3" json:"nat_ip_addresses,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Self links of the static external IPs the NAT translates through.
+	// Populated only for manual allocation (nat_ips set in the spec); the
+	// literal IP of each entry is the referenced GcpAddress node's `address`
+	// output. Empty for auto-allocation, where GCP manages an unlisted pool
+	// that can change as capacity scales — use manual allocation when the
+	// egress IPs must be stable and allowlistable.
+	NatIps        []string `protobuf:"bytes,3,rep,name=nat_ips,json=natIps,proto3" json:"nat_ips,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpRouterNatStackOutputs) Reset() {
@@ -78,9 +83,9 @@ func (x *GcpRouterNatStackOutputs) GetRouterSelfLink() string {
 	return ""
 }
 
-func (x *GcpRouterNatStackOutputs) GetNatIpAddresses() []string {
+func (x *GcpRouterNatStackOutputs) GetNatIps() []string {
 	if x != nil {
-		return x.NatIpAddresses
+		return x.NatIps
 	}
 	return nil
 }
@@ -89,11 +94,11 @@ var File_dev_planton_provider_gcp_gcprouternat_v1_stack_outputs_proto protorefle
 
 const file_dev_planton_provider_gcp_gcprouternat_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/gcp/gcprouternat/v1/stack_outputs.proto\x12(dev.planton.provider.gcp.gcprouternat.v1\"\x82\x01\n" +
+	"<dev/planton/provider/gcp/gcprouternat/v1/stack_outputs.proto\x12(dev.planton.provider.gcp.gcprouternat.v1\"q\n" +
 	"\x18GcpRouterNatStackOutputs\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12(\n" +
-	"\x10router_self_link\x18\x02 \x01(\tR\x0erouterSelfLink\x12(\n" +
-	"\x10nat_ip_addresses\x18\x03 \x03(\tR\x0enatIpAddressesB\xe3\x02\n" +
+	"\x10router_self_link\x18\x02 \x01(\tR\x0erouterSelfLink\x12\x17\n" +
+	"\anat_ips\x18\x03 \x03(\tR\x06natIpsB\xe3\x02\n" +
 	",com.dev.planton.provider.gcp.gcprouternat.v1B\x11StackOutputsProtoP\x01ZYgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcprouternat/v1;gcprouternatv1\xa2\x02\x05DPPGG\xaa\x02(Dev.Planton.Provider.Gcp.Gcprouternat.V1\xca\x02(Dev\\Planton\\Provider\\Gcp\\Gcprouternat\\V1\xe2\x024Dev\\Planton\\Provider\\Gcp\\Gcprouternat\\V1\\GPBMetadata\xea\x02-Dev::Planton::Provider::Gcp::Gcprouternat::V1b\x06proto3"
 
 var (

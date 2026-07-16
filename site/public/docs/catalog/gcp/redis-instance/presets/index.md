@@ -11,15 +11,15 @@ presets:
   - slug: "01-basic-cache"
     rank: "01"
     title: "Basic Cache"
-    excerpt: "This preset provisions a minimal Memorystore for Redis instance using the BASIC tier with 1 GB memory. It is ideal for development, testing, or lightweight caching workloads where high availability..."
+    excerpt: "This preset deploys a single-node BASIC tier Redis instance — the smallest, cheapest Memorystore shape — peered to your VPC over direct peering."
   - slug: "02-ha-production"
     rank: "02"
-    title: "HA Production"
-    excerpt: "This preset provisions a production-ready Memorystore for Redis instance with STANDARD_HA tier, authentication, TLS encryption, RDB persistence, a maintenance window, and deletion protection. It is..."
-  - slug: "03-ha-read-replicas"
+    title: "Production HA Cache"
+    excerpt: "This preset deploys a STANDARD_HA Redis instance — a primary with an automatic-failover replica in a second zone (99.9% SLA) — hardened with AUTH, TLS, RDB persistence, and a pinned maintenance..."
+  - slug: "03-private-services-access"
     rank: "03"
-    title: "HA with Read Replicas"
-    excerpt: "This preset provisions a Memorystore for Redis instance with STANDARD_HA tier, three read replicas, authentication, TLS, RDB persistence, and customer-managed encryption. It is designed for..."
+    title: "Private Services Access with Read Replicas"
+    excerpt: "This preset deploys a STANDARD_HA Redis instance over the VPC's private services access connection — the connectivity mode Shared VPC requires — with a read endpoint for scale-out, CMEK encryption at..."
 ---
 
 # Redis Instance Presets

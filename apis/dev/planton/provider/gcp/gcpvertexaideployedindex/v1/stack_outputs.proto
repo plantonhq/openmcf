@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpvertexaideployedindex.v1;
+
+// Outputs produced after deploying a Vertex AI index onto an index
+// endpoint.
+message GcpVertexAiDeployedIndexStackOutputs {
+  // Name of the DeployedIndex resource as the provider reports it.
+  string name = 1;
+
+  // The user-chosen deployment ID (pass-through from spec for
+  // downstream reference without needing to read the full resource).
+  string deployed_index_id = 2;
+
+  // RFC3339 timestamp of when the deployment was created.
+  string create_time = 3;
+
+  // RFC3339 timestamp up to which this deployment reflects the source
+  // index's updates: if it is at least the index's update_time, the
+  // deployment is in sync with the index contents.
+  string index_sync_time = 4;
+
+  // Private gRPC address for match queries inside the peered VPC.
+  // Populated only when the endpoint is VPC-peered.
+  string match_grpc_address = 5;
+
+  // PSC service attachment consumers target with forwarding rules.
+  // Populated only when the endpoint uses Private Service Connect.
+  string service_attachment = 6;
+
+  // Fully qualified resource path of the index endpoint this deployment
+  // lives on (projects/{project}/locations/{location}/indexEndpoints/{id}).
+  // Query clients need the endpoint path and the deployment ID together —
+  // this output carries the pair's other half.
+  string index_endpoint = 7;
+}

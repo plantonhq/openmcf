@@ -49,7 +49,7 @@ params:
   - name: worker_max_replicas
     description: Upper replica bound for the worker as queue depth grows (KEDA adds a replica per 10 pending messages). The floor is 0 -- the worker scales to zero when the queue is empty
     value: 10
-    type: int
+    type: number
 
   - name: job_cron_expression
     description: "UTC cron schedule for the batch job (5 fields: minute hour day-of-month month day-of-week). Default: daily at 03:00 UTC"
@@ -64,10 +64,10 @@ params:
   - name: shared_volume_quota_gb
     description: Size cap of the shared Azure Files volume mounted into the worker (GiB). Standard tier bills only for used capacity
     value: 64
-    type: int
+    type: number
 
   # ─── Telemetry ───────────────────────────────────────────────────────────────
   - name: log_retention_days
     description: Log Analytics workspace retention in days
     value: 30
-    type: int
+    type: number

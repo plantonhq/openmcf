@@ -8,7 +8,8 @@ spec:
   managedZone:
     value: "<dns-zone-name>"
   type: A
-  name: "<subdomain.example.com.>"
+  name:
+    value: "app.example.com."
   values:
-    - <ipv4-address>
+    - value: <ipv4-address>
   ttlSeconds: 300  # default from spec; 5 minutes

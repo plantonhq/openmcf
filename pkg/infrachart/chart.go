@@ -1,14 +1,16 @@
-// Package infrachart loads and validates infra-charts entirely offline: it renders each
-// chart's Jinja templates with the defaults declared in values.yaml and checks every
-// rendered manifest against the local kind registry -- protovalidate on the spec plus
-// resolution of every valueFrom reference. This is the same render -> parse -> validate
-// pipeline the control plane runs when a chart is published, rebuilt from the pieces the
-// CLI already owns, so chart breakage is caught at authoring time instead of after a
-// release ships.
+// Package infrachart loads, renders, and validates InfraCharts offline — the
+// parameterized bundles of cloud-resource manifests that live under charts/.
 //
-// The control plane remains the authoritative validator (its renderer is the engine of
-// record and it validates against the platform's kind registry); this package is the
-// shippability gate that runs with no backend at all.
+// The package mirrors the platform's server-side chart pipeline closely enough
+// to be a trustworthy pre-publish gate: templates are rendered with the
+// chart's default values through a Jinja engine constrained to the same
+// sandboxed language subset the platform renders with, every rendered
+// document is validated strictly against the protobuf schema of its kind, and
+// every valueFrom reference is checked for resolvability against the
+// referenced kind's actual proto surface. What it deliberately does NOT do is
+// talk to a control plane — the platform's `chart build` RPC remains the
+// authoritative server-side gate; this package is the fast, offline
+// equivalent for authoring loops and CI.
 package infrachart
 
 import (
@@ -18,123 +20,125 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	goyaml "gopkg.in/yaml.v3"
+	"sigs.k8s.io/yaml"
 )
 
-const (
-	chartFileName  = "Chart.yaml"
-	valuesFileName = "values.yaml"
-	templatesDir   = "templates"
-)
-
-// ParamType mirrors the chart param type vocabulary: string (the default), number, bool,
-// and list.
-type ParamType string
-
-const (
-	ParamTypeString ParamType = "string"
-	ParamTypeNumber ParamType = "number"
-	ParamTypeBool   ParamType = "bool"
-	ParamTypeList   ParamType = "list"
-)
-
-// Param is one entry of the values.yaml params list -- the chart's public input surface.
-type Param struct {
-	Name        string    `yaml:"name"`
-	Description string    `yaml:"description"`
-	Type        ParamType `yaml:"type"`
-	Value       any       `yaml:"value"`
-}
-
-// Chart is a loaded infra-chart directory: its params and its template files, keyed by
-// path relative to templates/ (the key order is made deterministic by Templates()).
+// Chart is an InfraChart loaded from a chart directory.
 type Chart struct {
 	// Dir is the chart directory the chart was loaded from.
 	Dir string
-	// Params are the declared inputs with their default values.
+
+	// Name is the human-readable chart name from Chart.yaml metadata.name.
+	Name string
+
+	// Description is spec.description from Chart.yaml.
+	Description string
+
+	// Params are the parameters declared in values.yaml, in declaration order.
 	Params []Param
 
-	templates map[string]string
+	// Templates are the template files under templates/, sorted by name for
+	// deterministic rendering and reporting.
+	Templates []TemplateFile
 }
 
-// IsChartDir reports whether dir holds an infra-chart (a Chart.yaml is the marker,
-// matching how chart bundles are discovered everywhere else).
+// TemplateFile is one file under the chart's templates/ directory.
+type TemplateFile struct {
+	// Name is the path relative to templates/ (e.g. "network.yaml").
+	Name string
+
+	// Content is the raw template source.
+	Content string
+}
+
+// chartYaml models the subset of Chart.yaml the loader needs. Unknown fields
+// are tolerated (Chart.yaml is a platform API whose schema may grow).
+type chartYaml struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	Metadata   struct {
+		Name string `json:"name"`
+	} `json:"metadata"`
+	Spec struct {
+		Description string `json:"description"`
+	} `json:"spec"`
+}
+
+// IsChartDir reports whether dir holds an infra-chart. A Chart.yaml is the
+// marker, matching how chart bundles are discovered everywhere else.
 func IsChartDir(dir string) bool {
-	info, err := os.Stat(filepath.Join(dir, chartFileName))
+	info, err := os.Stat(filepath.Join(dir, "Chart.yaml"))
 	return err == nil && !info.IsDir()
 }
 
-// Load reads a chart directory: params from values.yaml and every template under
-// templates/ (recursively -- charts nest templates in subdirectories).
-func Load(dir string) (*Chart, error) {
-	if !IsChartDir(dir) {
-		return nil, errors.Errorf("%s is not a chart directory (no %s)", dir, chartFileName)
-	}
-
-	valuesBytes, err := os.ReadFile(filepath.Join(dir, valuesFileName))
+// LoadDir loads a chart from a directory containing Chart.yaml, values.yaml,
+// and templates/.
+func LoadDir(dir string) (*Chart, error) {
+	chartYamlBytes, err := os.ReadFile(filepath.Join(dir, "Chart.yaml"))
 	if err != nil {
-		return nil, errors.Wrapf(err, "reading %s", valuesFileName)
+		return nil, errors.Wrapf(err, "failed to read Chart.yaml in %s", dir)
 	}
-	var values struct {
-		Params []Param `yaml:"params"`
+	var cy chartYaml
+	if err := yaml.Unmarshal(chartYamlBytes, &cy); err != nil {
+		return nil, errors.Wrap(err, "failed to parse Chart.yaml")
 	}
-	if err := goyaml.Unmarshal(valuesBytes, &values); err != nil {
-		return nil, errors.Wrapf(err, "parsing %s", valuesFileName)
+	if cy.Kind != "InfraChart" {
+		return nil, errors.Errorf("Chart.yaml kind must be InfraChart (got %q)", cy.Kind)
+	}
+	if cy.Metadata.Name == "" {
+		return nil, errors.New("Chart.yaml metadata.name is required")
 	}
 
-	templates := map[string]string{}
-	templatesRoot := filepath.Join(dir, templatesDir)
-	err = filepath.WalkDir(templatesRoot, func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+	params, err := loadValuesFile(filepath.Join(dir, "values.yaml"))
+	if err != nil {
+		return nil, err
+	}
+
+	templates, err := loadTemplates(filepath.Join(dir, "templates"))
+	if err != nil {
+		return nil, err
+	}
+	if len(templates) == 0 {
+		return nil, errors.Errorf("chart has no templates under %s", filepath.Join(dir, "templates"))
+	}
+
+	return &Chart{
+		Dir:         dir,
+		Name:        cy.Metadata.Name,
+		Description: cy.Spec.Description,
+		Params:      params,
+		Templates:   templates,
+	}, nil
+}
+
+// loadTemplates reads every .yaml/.yml file under templatesDir (recursively —
+// charts may group templates in subdirectories, e.g. kubernetes/addons/).
+func loadTemplates(templatesDir string) ([]TemplateFile, error) {
+	var out []TemplateFile
+	err := filepath.WalkDir(templatesDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
 			return err
 		}
-		if !strings.HasSuffix(d.Name(), ".yaml") && !strings.HasSuffix(d.Name(), ".yml") {
+		if d.IsDir() {
+			return nil
+		}
+		if ext := strings.ToLower(filepath.Ext(path)); ext != ".yaml" && ext != ".yml" {
 			return nil
 		}
 		content, err := os.ReadFile(path)
 		if err != nil {
-			return errors.Wrapf(err, "reading template %s", path)
+			return err
 		}
-		rel, err := filepath.Rel(templatesRoot, path)
+		rel, err := filepath.Rel(templatesDir, path)
 		if err != nil {
 			return err
 		}
-		templates[rel] = string(content)
+		out = append(out, TemplateFile{Name: rel, Content: string(content)})
 		return nil
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "walking %s", templatesRoot)
+		return nil, errors.Wrapf(err, "failed to read templates in %s", templatesDir)
 	}
-	if len(templates) == 0 {
-		return nil, errors.Errorf("chart %s has no templates under %s", dir, templatesDir)
-	}
-
-	return &Chart{Dir: dir, Params: values.Params, templates: templates}, nil
-}
-
-// Templates returns the template file names in deterministic order.
-func (c *Chart) Templates() []string {
-	names := make([]string, 0, len(c.templates))
-	for name := range c.templates {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
-}
-
-// Template returns one template's source by its Templates() name.
-func (c *Chart) Template(name string) string {
-	return c.templates[name]
-}
-
-// BoolParams returns the names of the chart's bool-typed params, in declaration order.
-// These are the branch toggles validation flips to reach conditional manifests.
-func (c *Chart) BoolParams() []string {
-	var names []string
-	for _, p := range c.Params {
-		if p.Type == ParamTypeBool {
-			names = append(names, p.Name)
-		}
-	}
-	return names
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
 }

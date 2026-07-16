@@ -30,3 +30,6 @@ SUCCESS CRITERIA
 OUTPUT STYLE IN CHAT
 - Show created/updated paths and a brief outline of sections
 - Show the deterministic tool invocation
+
+NOTES
+- Ensure any documented manifest path points to the top-level `iac/hack/manifest.yaml` (typically `../hack/manifest.yaml` from the pulumi folder)

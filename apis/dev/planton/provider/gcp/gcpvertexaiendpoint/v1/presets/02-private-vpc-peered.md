@@ -1,29 +1,33 @@
-# Preset: Private VPC-Peered Endpoint
+# Private VPC-Peered Endpoint
 
-**Rank**: 2
+Prediction serving reachable only from inside a peered VPC, encrypted
+under a customer-managed key, with an isolated dedicated DNS name.
 
-## Use Case
+## What this preset creates
 
-A production-grade endpoint with VPC peering for network isolation, CMEK encryption for data protection, and dedicated DNS for performance. Suitable for sensitive workloads in regulated environments (HIPAA, PCI, SOC 2).
-
-## What This Creates
-
-- One Vertex AI Endpoint peered to your VPC network
-- Customer-managed encryption via Cloud KMS
-- Dedicated DNS endpoint for isolated traffic
-- Accessible only from within the peered VPC
+An endpoint named `Internal Scoring` in `us-central1`, peered with the
+referenced `GcpVpcNetwork` (`scoring-vpc`) and CMEK-encrypted under the
+referenced `GcpKmsKey` (`scoring-key`). Prediction traffic never leaves
+private address space, and the dedicated DNS name isolates this
+endpoint's traffic from other users of the shared regional endpoint.
 
 ## Prerequisites
 
-- VPC with Private Services Access configured
-- Cloud KMS key ring and key in the same region as the endpoint
-- IAM permissions for the Vertex AI service agent on the KMS key
+The referenced VPC must already carry Private Services Access — compose
+a `GcpGlobalAddress` (purpose VPC_PEERING) and a
+`GcpServiceNetworkingConnection` on the same network. The KMS key must
+live in the endpoint's region.
 
-## Customize
+## When to use
 
-| Field | Default | Why Change |
-|-------|---------|------------|
-| `location` | `us-central1` | Must match your KMS key region |
-| `network` | placeholder | Your VPC's fully qualified path (uses project number, not ID) |
-| `kmsKeyName` | placeholder | Your KMS key's fully qualified path |
-| `dedicatedEndpointEnabled` | `true` | Set `false` if dedicated DNS is not needed |
+- Production inference on regulated or sensitive data
+- Serving that must be unreachable from the public internet
+- Environments with CMEK mandates
+
+## Remix ideas
+
+- Swap VPC peering for Private Service Connect (see the private-psc
+  preset) when you want per-project access control instead of
+  network-level reachability — note PSC excludes the dedicated DNS.
+- Add `requestResponseLoggingConfig` to sample predictions into BigQuery
+  for drift monitoring.

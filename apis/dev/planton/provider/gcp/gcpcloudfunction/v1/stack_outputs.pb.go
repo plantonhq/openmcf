@@ -49,8 +49,19 @@ type GcpCloudFunctionStackOutputs struct {
 	// Only populated for functions with EVENT_TRIGGER type.
 	// Format: "projects/{project}/locations/{region}/triggers/{trigger-name}"
 	EventarcTriggerId string `protobuf:"bytes,6,opt,name=eventarc_trigger_id,json=eventarcTriggerId,proto3" json:"eventarc_trigger_id,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The bare function name (the last segment of function_id) — the
+	// composition key serverless network endpoint groups and gcloud
+	// commands reference the function by.
+	Name string `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
+	// The URI of the underlying Cloud Run service serving the function —
+	// the *.run.app endpoint. Populated for every Gen 2 function.
+	Uri string `protobuf:"bytes,8,opt,name=uri,proto3" json:"uri,omitempty"`
+	// The environment the function runs in (e.g. "GEN_2").
+	Environment string `protobuf:"bytes,9,opt,name=environment,proto3" json:"environment,omitempty"`
+	// Timestamp of the last update to the function, in RFC 3339 format.
+	UpdateTime    string `protobuf:"bytes,10,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpCloudFunctionStackOutputs) Reset() {
@@ -125,11 +136,39 @@ func (x *GcpCloudFunctionStackOutputs) GetEventarcTriggerId() string {
 	return ""
 }
 
+func (x *GcpCloudFunctionStackOutputs) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionStackOutputs) GetUri() string {
+	if x != nil {
+		return x.Uri
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionStackOutputs) GetEnvironment() string {
+	if x != nil {
+		return x.Environment
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionStackOutputs) GetUpdateTime() string {
+	if x != nil {
+		return x.UpdateTime
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpcloudfunction_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpcloudfunction_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/gcp/gcpcloudfunction/v1/stack_outputs.proto\x12,dev.planton.provider.gcp.gcpcloudfunction.v1\"\x8d\x02\n" +
+	"@dev/planton/provider/gcp/gcpcloudfunction/v1/stack_outputs.proto\x12,dev.planton.provider.gcp.gcpcloudfunction.v1\"\xf6\x02\n" +
 	"\x1cGcpCloudFunctionStackOutputs\x12\x1f\n" +
 	"\vfunction_id\x18\x01 \x01(\tR\n" +
 	"functionId\x12!\n" +
@@ -137,7 +176,13 @@ const file_dev_planton_provider_gcp_gcpcloudfunction_v1_stack_outputs_proto_rawD
 	"\x15service_account_email\x18\x03 \x01(\tR\x13serviceAccountEmail\x12\x14\n" +
 	"\x05state\x18\x04 \x01(\tR\x05state\x12/\n" +
 	"\x14cloud_run_service_id\x18\x05 \x01(\tR\x11cloudRunServiceId\x12.\n" +
-	"\x13eventarc_trigger_id\x18\x06 \x01(\tR\x11eventarcTriggerIdB\xff\x02\n" +
+	"\x13eventarc_trigger_id\x18\x06 \x01(\tR\x11eventarcTriggerId\x12\x12\n" +
+	"\x04name\x18\a \x01(\tR\x04name\x12\x10\n" +
+	"\x03uri\x18\b \x01(\tR\x03uri\x12 \n" +
+	"\venvironment\x18\t \x01(\tR\venvironment\x12\x1f\n" +
+	"\vupdate_time\x18\n" +
+	" \x01(\tR\n" +
+	"updateTimeB\xff\x02\n" +
 	"0com.dev.planton.provider.gcp.gcpcloudfunction.v1B\x11StackOutputsProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudfunction/v1;gcpcloudfunctionv1\xa2\x02\x05DPPGG\xaa\x02,Dev.Planton.Provider.Gcp.Gcpcloudfunction.V1\xca\x02,Dev\\Planton\\Provider\\Gcp\\Gcpcloudfunction\\V1\xe2\x028Dev\\Planton\\Provider\\Gcp\\Gcpcloudfunction\\V1\\GPBMetadata\xea\x021Dev::Planton::Provider::Gcp::Gcpcloudfunction::V1b\x06proto3"
 
 var (

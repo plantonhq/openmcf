@@ -10,16 +10,16 @@ order: 200
 presets:
   - slug: "01-basic-public"
     rank: "01"
-    title: "Preset: Basic Public Endpoint"
-    excerpt: "**Rank**: 1 (most common)"
+    title: "Basic Public Endpoint"
+    excerpt: "The minimal serving surface: a public Vertex AI endpoint in the ambient project with prediction logging sampled into BigQuery."
   - slug: "02-private-vpc-peered"
     rank: "02"
-    title: "Preset: Private VPC-Peered Endpoint"
-    excerpt: "**Rank**: 2"
+    title: "Private VPC-Peered Endpoint"
+    excerpt: "Prediction serving reachable only from inside a peered VPC, encrypted under a customer-managed key, with an isolated dedicated DNS name."
   - slug: "03-private-psc"
     rank: "03"
-    title: "Preset: Private Service Connect Endpoint"
-    excerpt: "**Rank**: 3"
+    title: "Private PSC Endpoint"
+    excerpt: "Prediction serving exposed through Private Service Connect: per-project access control and IAM-authorized connections, without VPC peering."
 ---
 
 # Vertex AI Endpoint Presets

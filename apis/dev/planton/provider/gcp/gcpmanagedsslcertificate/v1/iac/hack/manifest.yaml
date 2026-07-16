@@ -1,0 +1,19 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpManagedSslCertificate
+metadata:
+  name: my-sample-managed-ssl-cert
+spec:
+  # GCP project that owns the certificate.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Cloud-side name; omit to default to metadata.name.
+  certificateName: app-cert
+
+  # What this certificate secures — shown in the GCP console.
+  description: TLS for the production app load balancer
+
+  # Domains the certificate is valid for (no wildcards).
+  domains:
+    - app.example.com

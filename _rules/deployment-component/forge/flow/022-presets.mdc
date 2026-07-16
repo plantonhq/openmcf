@@ -47,14 +47,24 @@ SEQUENTIAL STEPS
       - `apiVersion` and `kind` match `api.proto` constants exactly
       - `metadata.name` prefixed with `my-`
       - All `StringValueOrRef` fields use `value:` wrapper with angle-bracket placeholders
-      - **Format-validated fields get a concrete example, never an angle-bracket
-        placeholder**: a field whose spec carries a CEL/pattern rule (a version
-        string, a CIDR, an ARN shape) fails `planton validate-manifest` with
-        `<placeholder>` text — use a realistic replace-me value and note it in
-        the companion MD's Placeholders table instead
+      - Reference-form `StringValueOrRef` examples use the exact `valueFrom` key set
+        `kind` / `name` / `fieldPath` — the sub-key is `fieldPath`, never `field`
+        (a `field:` key fails manifest load with "Unknown field", which only
+        `planton validate` catches; copying a preset with the wrong key propagates
+        the defect to every preset written from it)
+      - **Every preset must pass `planton validate`** — a placeholder must satisfy the
+        field's OWN validation rules. Angle-bracket tokens like `<gcp-region>` fail any
+        pattern/CEL-validated field (a version string, a CIDR, an ARN shape); for
+        those, use a realistic sample value with a `# replace with your ...` comment
+        (e.g. `region: us-central1  # replace`) and note it in the companion MD's
+        Placeholders table. Reserve angle-bracket placeholders for free-form strings
+        and `value:` wrappers.
       - Fields with `recommended_default` or `default` annotations use the annotated value with a comment
       - Boolean flags set explicitly based on the use case
-      - No unnecessary quotes
+      - No unnecessary quotes -- EXCEPT string values that YAML 1.1 parses as
+        another type: bare `on`/`off`/`yes`/`no` become booleans and break
+        string-typed enum fields (e.g. a DNSSEC state of `on` MUST be `"on"`);
+        quote them and say why in a comment
    
    b) **Create the companion MD file** at `v1/presets/{rank}-{name}.md`:
       - Title (H1)

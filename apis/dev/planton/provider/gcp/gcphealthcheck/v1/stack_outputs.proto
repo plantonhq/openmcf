@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcphealthcheck.v1;
+
+// Outputs produced after provisioning a GCP Compute Engine health check.
+message GcpHealthCheckStackOutputs {
+  // Self-link URI of the health check. This is the value backend services
+  // reference in their health_checks list — the composition handle for the
+  // load balancing family.
+  // Global: https://www.googleapis.com/compute/v1/projects/{project}/global/healthChecks/{name}
+  // Regional: https://www.googleapis.com/compute/v1/projects/{project}/regions/{region}/healthChecks/{name}
+  string self_link = 1;
+
+  // Name of the health check as it exists in GCP.
+  string health_check_name = 2;
+
+  // The probe protocol GCP computed from the configured block
+  // (HTTP, HTTPS, HTTP2, TCP, SSL, GRPC, or GRPC_TLS).
+  string type = 3;
+
+  // Region of a regional health check; empty for a global one. Downstream
+  // composition can use this to confirm scope compatibility (regional
+  // backend services require a health check in their own region).
+  string region = 4;
+}

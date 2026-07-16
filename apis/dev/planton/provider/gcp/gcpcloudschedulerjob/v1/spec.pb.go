@@ -606,6 +606,8 @@ func (x *GcpCloudSchedulerJobRetryConfig) GetMaxDoublings() int32 {
 type GcpCloudSchedulerJobSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project where the scheduler job will be created.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Name of the Cloud Scheduler job.
 	// If not specified, defaults to metadata.name.
@@ -835,11 +837,11 @@ const file_dev_planton_provider_gcp_gcpcloudschedulerjob_v1_spec_proto_rawDesc =
 	"\x12max_retry_duration\x18\x02 \x01(\tR\x10maxRetryDuration\x120\n" +
 	"\x14min_backoff_duration\x18\x03 \x01(\tR\x12minBackoffDuration\x120\n" +
 	"\x14max_backoff_duration\x18\x04 \x01(\tR\x12maxBackoffDuration\x12#\n" +
-	"\rmax_doublings\x18\x05 \x01(\x05R\fmaxDoublings\"\x93\n" +
+	"\rmax_doublings\x18\x05 \x01(\x05R\fmaxDoublings\"\x8d\n" +
 	"\n" +
-	"\x18GcpCloudSchedulerJobSpec\x12{\n" +
+	"\x18GcpCloudSchedulerJobSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xcb\x01\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xcb\x01\n" +
 	"\bjob_name\x18\x02 \x01(\tB\xaf\x01\xbaH\xab\x01\xba\x01\xa7\x01\n" +
 	"\x0evalid_job_name\x12]job_name must start with a letter and contain only letters, numbers, hyphens, and underscores\x1a6this == '' || this.matches('^[a-zA-Z][a-zA-Z0-9_-]*$')R\ajobName\x12\"\n" +
 	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12\"\n" +

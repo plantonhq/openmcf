@@ -1,6 +1,4 @@
 name: gcp-alloydb-cluster
 runtime:
   name: go
-  options:
-    binary: ./pulumi
 description: Planton GcpAlloydbCluster Pulumi module

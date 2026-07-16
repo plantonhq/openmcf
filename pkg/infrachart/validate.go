@@ -2,7 +2,9 @@ package infrachart
 
 import (
 	"fmt"
-	"regexp"
+	"io"
+	"os"
+	"strconv"
 	"strings"
 
 	"buf.build/go/protovalidate"
@@ -12,281 +14,418 @@ import (
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/reflection/metadatareflect"
 	"google.golang.org/protobuf/proto"
+	yamlv3 "gopkg.in/yaml.v3"
 )
 
-// Validation renders with fixed org/env slugs, mirroring the control plane's behavior of
-// always injecting the caller's org/env over any declared params. The values are
-// slug-shaped so rendered names look like real resource names.
+// Severity of a validation issue.
+type Severity string
+
 const (
-	validationOrg = "planton"
-	validationEnv = "dev"
+	// SeverityError fails the gate.
+	SeverityError Severity = "error"
+	// SeverityWarning is surfaced but does not fail the gate.
+	SeverityWarning Severity = "warning"
 )
 
-// DocError is one failed validation on one rendered manifest document.
-type DocError struct {
-	// Template is the chart-relative template file the document came from.
-	Template string
-	// DocIndex is the zero-based document index within that template's rendered output.
-	DocIndex int
-	// Kind is the manifest's kind when it could be determined.
+// Issue is one problem found while validating a chart, attributed to the
+// template file it came from (the honest granularity — rendering merges
+// templates, so line numbers do not survive).
+type Issue struct {
+	Severity     Severity
+	File         string
+	ResourceKind string
+	ResourceName string
+	Message      string
+}
+
+// Doc is one rendered cloud-resource document.
+type Doc struct {
+	File string
 	Kind string
-	// Name is the manifest's metadata.name when it could be determined.
 	Name string
-	// Err is what failed: render, load (unknown kind / unknown field), protovalidate, or
-	// a valueFrom reference that does not resolve.
-	Err error
+	YAML []byte
+	Msg  proto.Message
+
+	refUses []refUse
 }
 
 // VariantResult is the outcome of validating one render variant of a chart.
 type VariantResult struct {
-	// Name identifies the variant: "defaults", or "<param>=<value>" for a flipped toggle.
+	// Name identifies the variant: "defaults", or "<param>=<value>" for a
+	// flipped bool toggle.
 	Name string
-	// Docs is how many manifest documents the variant rendered and checked.
-	Docs int
-	// Errors are the failures, empty when the variant is fully valid.
-	Errors []DocError
+	// Docs are the successfully loaded manifest documents the variant rendered.
+	Docs []Doc
+	// Issues are the variant's failures and warnings.
+	Issues []Issue
 }
 
-// Report is the outcome of validating one chart across all its render variants.
+// Report is the outcome of validating one chart across all its render
+// variants: the defaults (plus any --set overrides), then each bool param
+// flipped once so every conditional manifest is exercised in both branches —
+// one variant per toggle keeps the run linear in the number of toggles while
+// still rendering every conditional block at least once in each state.
 type Report struct {
-	// ChartDir is the directory the chart was loaded from.
-	ChartDir string
-	// Variants holds one result per render variant.
-	Variants []VariantResult
+	ChartName string
+	ChartDir  string
+	Variants  []VariantResult
 }
 
-// Valid reports whether every variant validated cleanly.
-func (r *Report) Valid() bool {
+// HasErrors reports whether any variant carries an error-severity issue.
+func (r *Report) HasErrors() bool {
 	for _, v := range r.Variants {
-		if len(v.Errors) > 0 {
-			return false
-		}
-	}
-	return len(r.Variants) > 0
-}
-
-// ValidateChart loads and validates a chart directory offline. Beyond the defaults
-// render, every bool param is flipped once so each conditional manifest is exercised in
-// both branches -- one variant per toggle keeps the run linear in the number of toggles
-// while still rendering every conditional block at least once in each state.
-func ValidateChart(dir string) (*Report, error) {
-	chart, err := Load(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	report := &Report{ChartDir: dir}
-
-	variants := []struct {
-		name      string
-		overrides map[string]any
-	}{{name: "defaults"}}
-	for _, name := range chart.BoolParams() {
-		flipped := !boolParamDefault(chart, name)
-		variants = append(variants, struct {
-			name      string
-			overrides map[string]any
-		}{
-			name:      fmt.Sprintf("%s=%v", name, flipped),
-			overrides: map[string]any{name: flipped},
-		})
-	}
-
-	for _, variant := range variants {
-		values := ParamValues(chart.Params, variant.overrides)
-		result := VariantResult{Name: variant.name}
-		var docs []renderedDoc
-		for _, templateName := range chart.Templates() {
-			docs = append(docs, validateTemplate(chart, templateName, values, &result)...)
-		}
-		checkIntraChartTargets(docs, &result)
-		report.Variants = append(report.Variants, result)
-	}
-	return report, nil
-}
-
-// renderedDoc is one successfully loaded manifest document of a render variant,
-// kept for the variant-wide checks that need to see all documents together.
-type renderedDoc struct {
-	Template string
-	DocIndex int
-	Loaded   proto.Message
-}
-
-// validateTemplate renders one template file, validates every document it produces, and
-// returns the successfully loaded documents for the variant-wide checks.
-func validateTemplate(chart *Chart, templateName string, values map[string]any, result *VariantResult) []renderedDoc {
-	rendered, err := RenderTemplate(templateName, chart.Template(templateName), values, validationOrg, validationEnv)
-	if err != nil {
-		result.Errors = append(result.Errors, DocError{Template: templateName, Err: err})
-		return nil
-	}
-
-	var docs []renderedDoc
-	for i, doc := range splitDocs(rendered) {
-		result.Docs++
-		loaded, docErr := validateDoc(doc)
-		if docErr != nil {
-			result.Errors = append(result.Errors, DocError{
-				Template: templateName,
-				DocIndex: i,
-				Kind:     scrapeTopLevel(doc, "kind"),
-				Name:     scrapeScalar(doc, "name"),
-				Err:      docErr,
-			})
-			continue
-		}
-		docs = append(docs, renderedDoc{Template: templateName, DocIndex: i, Loaded: loaded})
-	}
-	return docs
-}
-
-// checkIntraChartTargets verifies that every valueFrom reference in a variant's
-// rendered documents targets a resource the SAME variant defines: charts are
-// self-contained compositions, so a reference to a kind/name no document declares
-// would only fail at deploy time, inside a user's project. The check runs on the
-// rendered docs (names carry the org/env interpolations), and toggle variants are
-// each checked against their own document set -- a toggle that removes a resource
-// but leaves references to it standing fails that variant.
-func checkIntraChartTargets(docs []renderedDoc, result *VariantResult) {
-	type target struct {
-		kind cloudresourcekind.CloudResourceKind
-		name string
-	}
-	defined := make(map[target]bool, len(docs))
-	for _, d := range docs {
-		kind := crkreflect.KindFromString(string(d.Loaded.ProtoReflect().Descriptor().Name()))
-		name := metadatareflect.ExtractMetadata(d.Loaded).GetName()
-		defined[target{kind: kind, name: name}] = true
-	}
-
-	for _, d := range docs {
-		kind := scrapeKindName(d.Loaded)
-		name := metadatareflect.ExtractMetadata(d.Loaded).GetName()
-		for _, site := range collectValueFromRefs(d.Loaded) {
-			// Kind-less references are already rejected per document by
-			// CheckValueFromRefs; only resolvable targets are checked here.
-			if site.Ref.GetKind() == cloudresourcekind.CloudResourceKind_unspecified {
-				continue
+		for _, issue := range v.Issues {
+			if issue.Severity == SeverityError {
+				return true
 			}
-			if !defined[target{kind: site.Ref.GetKind(), name: site.Ref.GetName()}] {
-				result.Errors = append(result.Errors, DocError{
-					Template: d.Template,
-					DocIndex: d.DocIndex,
-					Kind:     kind,
-					Name:     name,
-					Err: errors.Errorf("%s references %s %q, which this chart does not define in this variant",
-						site.FieldPath, site.Ref.GetKind().String(), site.Ref.GetName()),
-				})
-			}
-		}
-	}
-}
-
-// scrapeKindName returns the manifest's kind name for error labeling.
-func scrapeKindName(loaded proto.Message) string {
-	return string(loaded.ProtoReflect().Descriptor().Name())
-}
-
-// validateDoc runs the full offline gate on one rendered manifest document: typed load
-// (catches unknown kinds and unknown/renamed fields), protovalidate on the spec, and
-// valueFrom reference resolution. Violations are reported compactly (one line each) --
-// this is a batch gate over many documents, not the interactive single-manifest flow.
-// The loaded manifest is returned for the variant-wide checks.
-func validateDoc(doc string) (proto.Message, error) {
-	loaded, err := manifest.LoadManifestBytes([]byte(doc), "rendered manifest")
-	if err != nil {
-		return nil, err
-	}
-
-	spec, err := manifest.ExtractSpec(loaded)
-	if err != nil {
-		return nil, errors.Wrap(err, "extracting spec")
-	}
-	validator, err := protovalidate.New(protovalidate.WithDisableLazy(), protovalidate.WithMessages(spec))
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing validator")
-	}
-	if err := validator.Validate(spec); err != nil {
-		var ve *protovalidate.ValidationError
-		if errors.As(err, &ve) {
-			msgs := make([]string, len(ve.Violations))
-			for i, violation := range ve.Violations {
-				msgs[i] = fmt.Sprintf("spec.%s: %s",
-					protovalidate.FieldPathString(violation.Proto.GetField()),
-					violation.Proto.GetMessage())
-			}
-			return nil, errors.New(strings.Join(msgs, "\n"))
-		}
-		return nil, err
-	}
-
-	if refErrs := CheckValueFromRefs(loaded); len(refErrs) > 0 {
-		msgs := make([]string, len(refErrs))
-		for i, re := range refErrs {
-			msgs[i] = re.Error()
-		}
-		return nil, errors.Errorf("unresolvable valueFrom reference(s):\n  %s", strings.Join(msgs, "\n  "))
-	}
-	return loaded, nil
-}
-
-// docSeparator matches a YAML document separator line, the convention chart templates and
-// the control plane's template combiner both rely on.
-var docSeparator = regexp.MustCompile(`(?m)^---\s*$`)
-
-// splitDocs splits rendered template output into manifest documents, dropping documents
-// that are empty or comment-only (a conditional block whose toggle is off renders empty).
-func splitDocs(rendered string) []string {
-	var docs []string
-	for _, doc := range docSeparator.Split(rendered, -1) {
-		if isBlank(doc) {
-			continue
-		}
-		docs = append(docs, doc)
-	}
-	return docs
-}
-
-// isBlank reports whether a document has no content other than whitespace and comments.
-func isBlank(doc string) bool {
-	for _, line := range strings.Split(doc, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "" && !strings.HasPrefix(trimmed, "#") {
-			return false
-		}
-	}
-	return true
-}
-
-// boolParamDefault returns a bool param's declared default, treating a missing or
-// non-bool default as false.
-func boolParamDefault(chart *Chart, name string) bool {
-	for _, p := range chart.Params {
-		if p.Name == name {
-			b, _ := p.Value.(bool)
-			return b
 		}
 	}
 	return false
 }
 
-// scrapeTopLevel reads a top-level scalar key from a YAML document textually -- used only
-// to label error reports, never for validation decisions.
-func scrapeTopLevel(doc, key string) string {
-	re := regexp.MustCompile(`(?m)^` + key + `:\s*"?([^"\n]+)"?\s*$`)
-	if m := re.FindStringSubmatch(doc); m != nil {
-		return strings.TrimSpace(m[1])
-	}
-	return ""
+// Options configures a validation run.
+type Options struct {
+	// Org and Env are bound as the reserved org/env template variables (the
+	// platform injects the real ones at render time). Sensible synthetic
+	// defaults are applied when empty.
+	Org string
+	Env string
+
+	// Set overrides param values by name (and may override org/env), letting
+	// the gate exercise specific parameter combinations beyond the automatic
+	// per-toggle flips.
+	Set map[string]string
 }
 
-// scrapeScalar reads the first occurrence of an indented scalar key (metadata.name in
-// practice) -- like scrapeTopLevel, only for labeling error reports.
-func scrapeScalar(doc, key string) string {
-	re := regexp.MustCompile(`(?m)^\s+` + key + `:\s*"?([^"\n]+)"?\s*$`)
-	if m := re.FindStringSubmatch(doc); m != nil {
-		return strings.TrimSpace(m[1])
+// Validate loads the chart at dir and validates it offline across render
+// variants: the defaults variant (declared values plus any Set overrides),
+// then one variant per bool param with that toggle flipped. Every rendered
+// document and reference is checked per variant; reference-target severity is
+// variant-aware (see checkReferences). It returns an error only when the
+// chart cannot be processed at all; rendering and validation problems are
+// returned as Issues in the Report.
+func Validate(dir string, opts Options) (*Report, error) {
+	chart, err := LoadDir(dir)
+	if err != nil {
+		return nil, err
 	}
-	return ""
+
+	org := opts.Org
+	if org == "" {
+		org = "acme"
+	}
+	env := opts.Env
+	if env == "" {
+		env = "dev"
+	}
+
+	report := &Report{ChartName: chart.Name, ChartDir: dir}
+
+	for _, variant := range planVariants(chart.Params, opts.Set) {
+		ctx, placeholders, err := buildContext(chart.Params, org, env, variant.set)
+		if err != nil {
+			return nil, err
+		}
+		result := VariantResult{Name: variant.name}
+		for _, tpl := range chart.Templates {
+			result.validateTemplate(tpl, ctx, placeholders)
+		}
+		report.Variants = append(report.Variants, result)
+	}
+
+	report.checkReferences()
+	return report, nil
+}
+
+// variantPlan is one render variant to validate: its display name and the
+// full --set-style override map to build its context with.
+type variantPlan struct {
+	name string
+	set  map[string]string
+}
+
+// planVariants produces the defaults variant (declared values + explicit Set
+// overrides) followed by one variant per bool param with the toggle flipped
+// relative to its effective default. Params the caller explicitly Set are not
+// auto-flipped — an explicit override is a deliberate arm choice.
+func planVariants(params []Param, set map[string]string) []variantPlan {
+	variants := []variantPlan{{name: "defaults", set: set}}
+	for _, p := range params {
+		if p.Type != paramTypeBool {
+			continue
+		}
+		if _, overridden := set[p.Name]; overridden {
+			continue
+		}
+		current, _ := p.Value.(bool)
+		flipped := strconv.FormatBool(!current)
+
+		variantSet := make(map[string]string, len(set)+1)
+		for k, v := range set {
+			variantSet[k] = v
+		}
+		variantSet[p.Name] = flipped
+		variants = append(variants, variantPlan{name: p.Name + "=" + flipped, set: variantSet})
+	}
+	return variants
+}
+
+// validateTemplate renders one template file and validates every document in
+// it, appending issues and docs to the variant result.
+func (r *VariantResult) validateTemplate(tpl TemplateFile, ctx map[string]any, placeholders []string) {
+	addError := func(format string, args ...any) {
+		r.Issues = append(r.Issues, Issue{Severity: SeverityError, File: tpl.Name, Message: fmt.Sprintf(format, args...)})
+	}
+
+	for _, finding := range scanBannedConstructs(tpl.Content) {
+		addError("%s", finding)
+	}
+
+	rendered, err := renderTemplate(tpl.Name, tpl.Content, ctx)
+	if err != nil {
+		addError("template rendering failed: %v", err)
+		return
+	}
+
+	// A value-less param renders as its "<name>" placeholder — legal for the
+	// platform (the value arrives from the InfraProject), but this gate's
+	// promise is that DEFAULTS render deployable, so depending on one is
+	// worth a warning even before schema validation rejects it.
+	for _, placeholder := range placeholders {
+		if strings.Contains(rendered, placeholder) {
+			r.Issues = append(r.Issues, Issue{
+				Severity: SeverityWarning, File: tpl.Name,
+				Message: fmt.Sprintf("template uses param %s, which has no default value — supply one in values.yaml or via --set", placeholder),
+			})
+		}
+	}
+
+	docs, err := splitDocs(rendered)
+	if err != nil {
+		addError("rendered output is not valid YAML: %v", err)
+		return
+	}
+
+	for _, docYaml := range docs {
+		r.validateDoc(tpl.Name, docYaml)
+	}
+}
+
+// validateDoc validates one rendered document: strict schema load, presence
+// of metadata.name, the spec's full protovalidate/CEL rule set, and collects
+// its valueFrom references for the cross-document pass.
+func (r *VariantResult) validateDoc(file string, docYaml []byte) {
+	msg, err := loadRenderedDoc(docYaml)
+	if err != nil {
+		r.Issues = append(r.Issues, Issue{Severity: SeverityError, File: file, Message: compactError(err)})
+		return
+	}
+
+	doc := Doc{
+		File: file,
+		Kind: string(msg.ProtoReflect().Descriptor().Name()),
+		YAML: docYaml,
+		Msg:  msg,
+	}
+	if meta := metadatareflect.ExtractMetadata(msg); meta != nil {
+		doc.Name = meta.GetName()
+	}
+
+	addIssue := func(severity Severity, format string, args ...any) {
+		r.Issues = append(r.Issues, Issue{
+			Severity: severity, File: file,
+			ResourceKind: doc.Kind, ResourceName: doc.Name,
+			Message: fmt.Sprintf(format, args...),
+		})
+	}
+
+	if doc.Name == "" {
+		addIssue(SeverityError, "metadata.name is required (it is the resource's identity in the chart's dependency graph)")
+	}
+
+	spec, err := manifest.ExtractSpec(msg)
+	if err != nil {
+		addIssue(SeverityError, "manifest has no spec: %v", err)
+	} else {
+		validator, err := protovalidate.New(protovalidate.WithDisableLazy(), protovalidate.WithMessages(spec))
+		if err != nil {
+			addIssue(SeverityError, "failed to initialize validator: %v", err)
+		} else if validationErr := validator.Validate(spec); validationErr != nil {
+			addIssue(SeverityError, "spec validation failed: %s", compactError(validationErr))
+		}
+	}
+
+	doc.refUses = collectRefUses(msg)
+	r.Docs = append(r.Docs, doc)
+}
+
+// checkReferences runs the cross-document pass on every variant:
+// per-reference integrity (annotations, field-path resolution), reference
+// target resolution, and dependency-cycle detection.
+//
+// Target resolution is variant-aware, and unresolved targets are WARNINGS
+// with two distinct diagnoses:
+//
+//   - target defined by some OTHER variant of the same chart: either a
+//     toggle removed the resource while a reference still stands (a real
+//     defect), or this is a bring-your-own arm whose parameter redirects
+//     the same reference to a resource owned outside the chart (a designed
+//     pattern — e.g. one network_name param naming the chart's own VPC in
+//     one arm and a landing zone's VPC in the other). The two are
+//     offline-indistinguishable, so the warning says exactly what to verify
+//     rather than false-failing the designed pattern;
+//   - target no variant defines: the plain cross-chart case — charts
+//     compose onto resources owned elsewhere by design, resolved in the
+//     target environment at deploy time.
+//
+// A reference that names an env explicitly points outside this chart's
+// deployment by design and is never treated as an in-chart edge.
+func (r *Report) checkReferences() {
+	// Union of every identity any variant renders — the "this chart can
+	// define it" set that separates toggle breakage from cross-chart intent.
+	anyVariant := map[refTarget]bool{}
+	for _, v := range r.Variants {
+		for _, doc := range v.Docs {
+			if doc.Name == "" {
+				continue
+			}
+			anyVariant[refTarget{kind: crkreflect.KindFromString(doc.Kind), name: doc.Name}] = true
+		}
+	}
+
+	for vi := range r.Variants {
+		v := &r.Variants[vi]
+
+		// Index the variant's resources by (kind, name). A duplicate identity
+		// is an error — the platform's dependency graph could not tell the
+		// two resources apart.
+		index := map[refTarget]int{}
+		for i, doc := range v.Docs {
+			if doc.Name == "" {
+				continue
+			}
+			key := refTarget{kind: crkreflect.KindFromString(doc.Kind), name: doc.Name}
+			if prev, dup := index[key]; dup {
+				v.Issues = append(v.Issues, Issue{
+					Severity: SeverityError, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
+					Message: fmt.Sprintf("duplicate resource identity: %s %q is also defined in %s", doc.Kind, doc.Name, v.Docs[prev].File),
+				})
+				continue
+			}
+			index[key] = i
+		}
+
+		edges := make([][]int, len(v.Docs))
+		for i, doc := range v.Docs {
+			for _, use := range doc.refUses {
+				target, problems := checkRef(use)
+				for _, p := range problems {
+					v.Issues = append(v.Issues, Issue{
+						Severity: SeverityError, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
+						Message: p,
+					})
+				}
+				if target.kind == cloudresourcekind.CloudResourceKind_unspecified || target.name == "" {
+					continue
+				}
+				if use.ref.GetEnv() != "" {
+					continue
+				}
+				if targetIdx, ok := index[target]; ok {
+					edges[i] = append(edges[i], targetIdx)
+				} else if anyVariant[target] {
+					v.Issues = append(v.Issues, Issue{
+						Severity: SeverityWarning, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
+						Message: fmt.Sprintf("%s: references %s %q, which this chart defines in another variant but not in this one — verify this is a bring-your-own arm resolving to an existing resource, not a toggle that removed the target while the reference still stands", use.fieldPath, target.kind, target.name),
+					})
+				} else {
+					v.Issues = append(v.Issues, Issue{
+						Severity: SeverityWarning, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
+						Message: fmt.Sprintf("%s: references %s %q, which this chart does not define — it must already exist in the target environment at deploy time", use.fieldPath, target.kind, target.name),
+					})
+				}
+			}
+		}
+
+		if cycle := findCycle(edges); cycle != nil {
+			var parts []string
+			for _, idx := range cycle {
+				parts = append(parts, fmt.Sprintf("%s %q", v.Docs[idx].Kind, v.Docs[idx].Name))
+			}
+			v.Issues = append(v.Issues, Issue{
+				Severity: SeverityError, File: v.Docs[cycle[0]].File,
+				ResourceKind: v.Docs[cycle[0]].Kind, ResourceName: v.Docs[cycle[0]].Name,
+				Message: "dependency cycle: " + strings.Join(parts, " -> "),
+			})
+		}
+	}
+}
+
+// loadRenderedDoc writes a rendered document to a temp file and loads it
+// through the CLI's canonical manifest loader — the same strict path (kind
+// registry, protojson with unknown fields rejected, proto field defaults)
+// every other planton command uses.
+func loadRenderedDoc(docYaml []byte) (proto.Message, error) {
+	tmp, err := os.CreateTemp("", "planton-chart-doc-*.yaml")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create temp file")
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(docYaml); err != nil {
+		tmp.Close()
+		return nil, errors.Wrap(err, "failed to write temp file")
+	}
+	if err := tmp.Close(); err != nil {
+		return nil, errors.Wrap(err, "failed to close temp file")
+	}
+	return manifest.LoadManifest(tmp.Name())
+}
+
+// splitDocs splits rendered multi-document YAML into per-document byte
+// slices, skipping empty documents (a template whose conditionals all
+// evaluate false legitimately renders to nothing).
+func splitDocs(rendered string) ([][]byte, error) {
+	var out [][]byte
+	decoder := yamlv3.NewDecoder(strings.NewReader(rendered))
+	for {
+		var node yamlv3.Node
+		err := decoder.Decode(&node)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, err
+		}
+		if isNullNode(&node) {
+			continue
+		}
+		docBytes, err := yamlv3.Marshal(&node)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, docBytes)
+	}
+	return out, nil
+}
+
+func isNullNode(node *yamlv3.Node) bool {
+	if node == nil || node.Kind == 0 {
+		return true
+	}
+	if node.Kind == yamlv3.DocumentNode {
+		if len(node.Content) == 0 {
+			return true
+		}
+		return node.Content[0].Tag == "!!null"
+	}
+	return node.Tag == "!!null"
+}
+
+// compactError flattens a (possibly multi-line, CLI-decorated) error into a
+// single readable message for the issue report.
+func compactError(err error) string {
+	msg := err.Error()
+	msg = strings.TrimPrefix(msg, "validation error:")
+	msg = strings.ReplaceAll(msg, "\n", " ")
+	return strings.Join(strings.Fields(msg), " ")
 }

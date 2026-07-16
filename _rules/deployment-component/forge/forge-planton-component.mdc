@@ -138,6 +138,16 @@ This is identified in rule 001 and applied in rule 002. The ratcheting gate
 forged component is not done until the gate is green. Authority: the option comments in
 `dev/planton/shared/options/options.proto`.
 
+FOREIGN-KEY FIELD-PATH FORMAT (verify against the CONSUMING API)
+When wiring `default_kind_field_path` for a network/resource reference, verify which
+address format the consuming API accepts -- GCP APIs are inconsistent. Compute-family
+APIs accept full `https://` self-links, but several service APIs (AlloyDB,
+Service Networking) reject them with "malformed network path" and require the
+relative resource path (`projects/{project}/global/networks/{name}`). Pick the
+producing kind's output that matches (`network_id` vs `network_self_link`) and record
+the expected format in the field comment. A wrong format passes every offline gate and
+fails only at live create.
+
 **Run registry-driven guards with a freshly built CLI, never the installed binary.**
 `secret-coverage`, `validate-refs`, and every other command that walks the kind registry
 reads the protos COMPILED INTO the binary, not the working tree -- a stale installed
@@ -572,6 +582,37 @@ resources that may not exist in the test tenant (e.g. an Auth0 role's `minimal`
 scenario omits permissions so it needs no pre-existing resource server). Add a
 richer scenario (seeding the dependency) when you need live coverage of dependent
 fields.
+
+**Soft-delete-reserved identifiers need the `${E2E_RUN_ID}` token.** Some cloud
+resources reserve their user-chosen identifier long after deletion (e.g. GCP
+workload identity pools/providers and KMS key rings hold their IDs through a
+soft-delete retention window, with no undelete-on-create). A scenario or
+prerequisite manifest that hardcodes such an identifier can never be deployed
+twice — the second engine's run minutes later collides with the first run's
+soft-deleted ghost. Embed `${E2E_RUN_ID}` in the cloud-side identifier field
+(e.g. `poolId: e2e-smoke-${E2E_RUN_ID}`); the shared runner expands it to an
+engine-scoped per-run value in both scenario and prerequisite manifests. Keep
+`metadata.name` fixed — prerequisite FK resolution and human debugging key off
+it, and only the cloud-side identifier needs uniqueness. Note the raw manifest
+will not pass `planton validate` until the token is substituted; validate it
+with a sample value substituted.
+
+When the identifier's character class forbids hyphens (letters/numbers/
+underscores only, e.g. a Vertex AI `deployed_index_id`), use the
+`${E2E_RUN_ID_UNDERSCORE}` variant — the plain token carries the runner's
+hyphenated engine suffix and would break the field. The hold class extends
+beyond names: a failed/undeploying Vertex AI DeployedIndex holds its
+user-chosen sub-resource ID with a 400 that SURVIVES deleting the parent
+endpoint, so a fixed ID fails across engines and back-to-back runs even
+with fresh prerequisites (see `e2e/README.md`).
+
+**Regional outputs: emit the spec region, not the provider attribute.** On
+released google/google-beta 6.x lines the `.region` attribute on regional
+resources (NEGs, subnetworks, regional health checks) may be a region self-link
+(`https://www.googleapis.com/compute/v1/projects/.../regions/us-central1`) rather
+than the plain name (`us-central1`). Stack outputs and E2E verifiers expect the
+plain name — export `var.spec.region` / `pulumi.String(spec.Region)` instead of
+the resource's `.region` attribute when the output proto documents a region name.
 
 ## Reference
 

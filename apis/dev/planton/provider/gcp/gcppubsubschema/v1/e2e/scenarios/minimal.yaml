@@ -1,0 +1,29 @@
+# GcpPubSubSchema scenario: an Avro event contract. project_id is
+# deliberately omitted (ambient project). The cloud-side schema_name
+# carries ${E2E_RUN_ID} so reruns never collide.
+apiVersion: gcp.planton.dev/v1
+kind: GcpPubSubSchema
+metadata:
+  name: planton-oss-e2e-gcppsch-smoke
+  id: planton-oss-e2e-gcppsch-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcppubsubschema
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  schemaName: e2e-psch-${E2E_RUN_ID}
+  type: AVRO
+  definition: |
+    {
+      "type": "record",
+      "name": "E2eEvent",
+      "fields": [
+        {"name": "event_id", "type": "string"},
+        {"name": "occurred_at_ms", "type": "long"}
+      ]
+    }

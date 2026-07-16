@@ -8,28 +8,24 @@ componentName: "gcpgkenodepool"
 
 # GCP GKE Node Pool
 
-Deploys a node pool into an existing GKE cluster on Google Cloud with configurable machine types, disk options, autoscaling, and Spot VM support. This component is a companion to [GcpGkeCluster](/docs/catalog/gcp/gke-cluster) — it manages the compute capacity for workloads while the cluster component manages the control plane.
+Deploys a Google Kubernetes Engine node pool — a group of identically configured Compute Engine VMs attached to a GKE cluster. This component is the compute companion to [GcpGkeCluster](/docs/catalog/gcp/gke-cluster): the cluster manages the control plane; node pools carry the workloads, each sized, tainted, and priced for its purpose.
 
 ## What Gets Created
 
 When you deploy a GcpGkeNodePool resource, Planton provisions:
 
-- **GKE Node Pool** — a `google_container_node_pool` resource with:
-  - Node configuration (machine type, disk size and type, OS image)
-  - Either a fixed node count or cluster autoscaler with min/max bounds and location policy
-  - Node management with auto-upgrade and auto-repair enabled by default
-  - Spot (preemptible) VM support
-  - Upgrade settings with max surge of 2 and max unavailable of 1
-  - Network tags following the `gke-<clusterName>` convention
-  - OAuth scopes for Monitoring, Logging, and Cloud Storage (read-only)
-  - Legacy metadata endpoints disabled
-  - GCP resource labels and optional Kubernetes node labels merged onto every node
+- **GKE node pool** — a `google_container_node_pool` in the parent cluster, addressed by the cluster's `name` and `location` outputs; the Kubernetes Engine API is enabled automatically so a fresh project works on the first deploy
+- **Sizing** — a fixed node count, or cluster-autoscaler management with per-zone or total bounds (including scale-to-zero)
+- **Node VMs** — machine type, boot disk, OS image, local SSDs, GPUs with GKE-managed drivers, shielded/confidential settings, and CMEK boot-disk encryption as configured
+- **Scheduling surface** — Kubernetes node labels and taints, GCE network tags, compact placement, and Spot/preemptible capacity
+- **Platform attribution** — organization, environment, and resource labels applied as GCE resource labels on the node VMs
 
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **An existing GKE cluster** — deployed via a [GcpGkeCluster](/docs/catalog/gcp/gke-cluster) resource or created externally
-- **IAM permissions** to create node pools in the target GCP project and GKE cluster
+- **A GKE cluster** — a [GcpGkeCluster](/docs/catalog/gcp/gke-cluster) resource (Standard mode; Autopilot clusters take no node pools)
+- **A service account** ([GcpServiceAccount](/docs/catalog/gcp/service-account)) for production pools — the Compute Engine default SA is used otherwise
+- **A Cloud KMS key** ([GcpKmsKey](/docs/catalog/gcp/kms-key)) if using CMEK boot-disk encryption
 
 ## Quick Start
 
@@ -39,21 +35,26 @@ Create a file `node-pool.yaml`:
 apiVersion: gcp.planton.dev/v1
 kind: GcpGkeNodePool
 metadata:
-  name: my-node-pool
+  name: general-pool
   annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpGkeNodePool.my-node-pool
+    pulumi.planton.dev/stack.name: dev.GcpGkeNodePool.general-pool
 spec:
-  nodePoolName: default-pool
-  clusterProjectId:
-    value: my-gcp-project-123
   clusterName:
-    value: dev-cluster
-  clusterLocation:
-    value: us-central1
-  nodeCount: 3
+    valueFrom:
+      kind: GcpGkeCluster
+      name: my-cluster
+      fieldPath: status.outputs.name
+  location:
+    valueFrom:
+      kind: GcpGkeCluster
+      name: my-cluster
+      fieldPath: status.outputs.location
+  autoscaling:
+    minNodes: 1
+    maxNodes: 3
 ```
 
 Deploy:
@@ -62,7 +63,7 @@ Deploy:
 planton apply -f node-pool.yaml
 ```
 
-This creates a 3-node pool named `default-pool` using `e2-medium` instances with 100 GB `pd-standard` disks and Container-Optimized OS.
+This creates an autoscaled pool of `e2-medium` nodes on Container-Optimized OS with auto-repair and auto-upgrade on — GKE's defaults, made explicit.
 
 ## Configuration Reference
 
@@ -70,139 +71,213 @@ This creates a 3-node pool named `default-pool` using `e2-medium` instances with
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `nodePoolName` | `string` | Name of the node pool in the GKE cluster. | 1-40 chars, lowercase letters/numbers/hyphens, must start with a letter and end with a letter or number |
-| `clusterProjectId` | `StringValueOrRef` | GCP project ID of the parent cluster. Can reference a GcpGkeCluster resource via `valueFrom` (resolves `spec.projectId`). | Required |
-| `clusterName` | `StringValueOrRef` | Name of the parent GKE cluster. Can reference a GcpGkeCluster resource via `valueFrom` (resolves `metadata.name`). | Required |
-| `clusterLocation` | `StringValueOrRef` | Region or zone of the parent GKE cluster (e.g., `us-central1`). Can reference a GcpGkeCluster resource via `valueFrom` (resolves `spec.location`). | Required |
+| `clusterName` | `StringValueOrRef` | Parent cluster's cloud name. Reference the cluster's `name` output. Immutable. | Required |
+| `location` | `StringValueOrRef` | Parent cluster's region or zone. Reference the cluster's `location` output. Immutable. | Required |
 
-### Optional Fields
+### Core Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `machineType` | `string` | `e2-medium` | Compute Engine machine type for node VMs (e.g., `n1-standard-4`, `e2-standard-8`). |
-| `diskSizeGb` | `uint32` | `100` | Boot disk size in GB for each node. Minimum 10 GB. |
-| `diskType` | `string` | `pd-standard` | Boot disk type: `pd-standard`, `pd-ssd`, or `pd-balanced`. |
-| `imageType` | `string` | `COS_CONTAINERD` | Node OS image. Common values: `COS_CONTAINERD`, `COS`, `UBUNTU`, `UBUNTU_CONTAINERD`. |
-| `serviceAccount` | `string` | GKE default | GCP service account email for nodes. If omitted, GKE assigns the default node service account. |
-| `spot` | `bool` | `false` | Use Spot (preemptible) VMs. Reduces cost but nodes may be reclaimed at any time. |
-| `nodeLabels` | `map<string, string>` | — | Kubernetes labels applied to every node in this pool. Merged with Planton-managed resource labels. |
-| `nodeCount` | `uint32` | — | Fixed number of nodes (no autoscaling). Mutually exclusive with `autoscaling`. |
-| `autoscaling.minNodes` | `uint32` | — | Minimum nodes per zone when autoscaling is enabled. Set to `0` for scale-to-zero. |
-| `autoscaling.maxNodes` | `uint32` | — | Maximum nodes per zone when autoscaling is enabled. |
-| `autoscaling.locationPolicy` | `string` | `BALANCED` | How the autoscaler distributes nodes across zones: `BALANCED` or `ANY`. |
-| `management.disableAutoUpgrade` | `bool` | `false` | Set to `true` to prevent automatic Kubernetes version upgrades on nodes. |
-| `management.disableAutoRepair` | `bool` | `false` | Set to `true` to prevent automatic repair of unhealthy nodes. |
+| `projectId` | `StringValueOrRef` | provider default | GCP project (must be the cluster's project). Can reference a GcpProject resource. |
+| `nodePoolName` | `string` | `metadata.name` | Pool name in GKE (1–40 chars, lowercase). Immutable. |
+| `nodeLocations` | `string[]` | cluster defaults | Zones this pool's nodes run in (subset of the cluster's region). Mutable. |
+| `version` | `string` | GKE-managed | Explicit node Kubernetes version — pin only with `autoUpgrade` off (they fight). |
+| `maxPodsPerNode` | `int` | cluster default (110) | Pods-per-node override (8–256). Immutable. |
+| `initialNodeCount` | `int` | — | Starting size for autoscaled pools (per zone). Immutable. |
 
-One of `nodeCount` or `autoscaling` must be provided. If neither is set, the module defaults to a single node.
+### Sizing
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `nodeCount` | `int` | GKE default (3) | Fixed size (per zone for regional clusters). Exclusive with `autoscaling`. |
+| `autoscaling.minNodes` / `maxNodes` | `int` | — | Per-zone bounds; `minNodes: 0` allows scale-to-zero. Exclusive with total bounds. |
+| `autoscaling.totalMinNodes` / `totalMaxNodes` | `int` | — | Bounds across ALL zones — an absolute cost cap regardless of zone spread. |
+| `autoscaling.locationPolicy` | `string` | `BALANCED` | `BALANCED` evens out zones; `ANY` prefers reservations and cuts Spot preemption risk. |
+
+### Lifecycle
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `management.autoRepair` | `bool` | `true` | Automatically repair unhealthy nodes. |
+| `management.autoUpgrade` | `bool` | `true` | Track the control-plane Kubernetes version. |
+| `upgradeSettings.maxSurge` / `maxUnavailable` | `int` | GKE default (1/0) | Surge rollout dials — how many nodes upgrade at once. |
+| `upgradeSettings.strategy` | `string` | `SURGE` | `SURGE` (rolling) or `BLUE_GREEN` (full green pool, migrate, soak, delete blue). |
+| `upgradeSettings.blueGreenSettings` | object | — | Batch percentage XOR node count, batch soak, and the final soak (rollback window). |
+| `placementPolicy` | object | — | `COMPACT` physical co-location for HPC/ML; carries `tpuTopology` for TPU pools. Immutable. |
+| `queuedProvisioningEnabled` | `bool` | `false` | Nodes obtainable only via the ProvisioningRequest API (Dynamic Workload Scheduler). Immutable. |
+
+### Networking
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `networkConfig.createPodRange` + `podRange` + `podIpv4CidrBlock` | mixed | cluster range | Dedicated per-pool pod range — create a new one or name an existing subnetwork range. Immutable. |
+| `networkConfig.enablePrivateNodes` | `bool` | cluster setting | Per-pool override for internal-only node IPs. |
+| `networkConfig.totalEgressBandwidthTier` | `string` | — | `TIER_1` unlocks up to 100 Gbps; requires `gvnicEnabled`. |
+| `networkConfig.podCidrOverprovisionDisabled` | `bool` | `false` | Disables the 2× per-node pod-CIDR overprovisioning. Immutable. |
+
+### Node Configuration (`nodeConfig`)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `machineType` | `string` | `e2-medium` | Compute Engine machine type. Immutable (changes replace the nodes). |
+| `diskSizeGb` | `int` | GKE default (100) | Boot disk per node, min 10 GB. |
+| `diskType` | `string` | GKE default (`pd-balanced`) | `pd-standard`, `pd-balanced`, `pd-ssd`, or hyperdisk variants. |
+| `imageType` | `string` | `COS_CONTAINERD` | Node OS: `COS_CONTAINERD`, `UBUNTU_CONTAINERD`, `WINDOWS_LTSC_CONTAINERD`. |
+| `serviceAccount` | `StringValueOrRef` | Compute default SA | Node identity (GcpServiceAccount reference). Immutable. |
+| `oauthScopes` | `string[]` | GKE defaults | Node scopes; with Workload Identity the defaults are usually right. |
+| `labels` | `map` | `{}` | Kubernetes node labels — what nodeSelector/affinity match. |
+| `resourceLabels` | `map` | `{}` | GCE billing/inventory labels, merged beneath the platform labels. |
+| `tags` | `string[]` | `[]` | GCE network tags for VPC firewall rules (additive to GKE's cluster tag). |
+| `taints[]` | list | `[]` | Scheduling fences: `key`/`value`/`effect` (`NO_SCHEDULE`, `PREFER_NO_SCHEDULE`, `NO_EXECUTE`). |
+| `spot` | `bool` | `false` | Spot VMs (60–91% discount, 30s preemption notice). Exclusive with `preemptible`. Immutable. |
+| `preemptible` | `bool` | `false` | Legacy preemptible VMs (24h lifetime) — prefer `spot`. Immutable. |
+| `guestAccelerators[]` | list | `[]` | GPUs: `type`, `count`, `gpuDriverVersion` (GKE-managed install), MIG `gpuPartitionSize`, `gpuSharingConfig`. |
+| `shieldedInstanceConfig` | object | GCP defaults | `enableSecureBoot` (default false) + `enableIntegrityMonitoring` (default true). Immutable. |
+| `confidentialNodes` | object | — | Hardware memory encryption: `SEV`, `SEV_SNP`, `TDX`. Immutable. |
+| `bootDiskKmsKey` | `StringValueOrRef` | Google-managed | CMEK for node boot disks (GcpKmsKey reference). Immutable. |
+| `minCpuPlatform` | `string` | — | CPU generation floor, e.g. `Intel Ice Lake`. Immutable. |
+| `localSsdCount` | `int` | `0` | SCSI local SSDs (legacy knob — prefer the NVMe surfaces below). Immutable. |
+| `ephemeralStorageLocalSsd` | object | — | Back emptyDir/logs/layers with local NVMe (+ optional GKE Data Cache count). Immutable. |
+| `localNvmeSsdBlock` | object | — | Raw-block local NVMe for workloads managing their own filesystem. Immutable. |
+| `gcfsEnabled` | `bool` | `false` | Image streaming — large images start minutes faster (COS only). |
+| `gvnicEnabled` | `bool` | `false` | Google Virtual NIC — required for TIER_1 bandwidth. Immutable. |
+| `fastSocketEnabled` | `bool` | `false` | NCCL Fast Socket for distributed GPU training. Requires gVNIC. |
+| `workloadMetadataMode` | `string` | cluster default | `GKE_METADATA` (Workload Identity) or `GCE_METADATA` (legacy). |
+| `reservationAffinity` | object | — | Consume Compute reservations: `ANY_RESERVATION`, `SPECIFIC_RESERVATION` (+ key/values), `NO_RESERVATION`. Immutable. |
+| `secondaryBootDisks[]` | list | `[]` | Preload container images/data from disk images (`CONTAINER_IMAGE_CACHE`). Immutable. |
+| `kubeletConfig` | object | GKE defaults | CPU manager, CFS quota, pod PID limit, read-only port posture, image pulls, log rotation, image GC. |
+| `linuxNodeConfig` | object | GKE defaults | Allowlisted sysctls, cgroup mode, hugepages pre-allocation. |
+| `loggingVariant` | `string` | `DEFAULT` | `MAX_THROUGHPUT` (10 MiB/s) for log-heavy pools. |
+| `flexStart` | `bool` | `false` | Dynamic Workload Scheduler flex-start capacity (up to 7 days, discounted). Immutable. |
+| `maxRunDuration` | `string` | — | Per-node max runtime (`"3600s"` format) before drain-and-delete. Immutable. |
 
 ## Examples
 
-### Fixed-Size Pool with Default Settings
-
-A simple 3-node pool using all defaults — suitable for development:
+### Scale-to-Zero Spot Pool for Batch
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpGkeNodePool
 metadata:
-  name: dev-pool
+  name: spot-batch
   annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpGkeNodePool.dev-pool
+    pulumi.planton.dev/stack.name: prod.GcpGkeNodePool.spot-batch
 spec:
-  nodePoolName: dev-pool
-  clusterProjectId:
-    value: my-dev-project
   clusterName:
-    value: dev-cluster
-  clusterLocation:
-    value: us-central1
-  nodeCount: 3
-```
-
-### Autoscaling Pool with Spot VMs
-
-A cost-optimized pool that scales between 1 and 10 nodes using Spot VMs and SSD disks:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpGkeNodePool
-metadata:
-  name: spot-pool
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.GcpGkeNodePool.spot-pool
-spec:
-  nodePoolName: spot-workers
-  clusterProjectId:
-    value: my-staging-project
-  clusterName:
-    value: staging-cluster
-  clusterLocation:
-    value: us-east1
-  machineType: n1-standard-4
-  diskSizeGb: 200
-  diskType: pd-ssd
-  spot: true
+    valueFrom:
+      kind: GcpGkeCluster
+      name: prod-primary
+      fieldPath: status.outputs.name
+  location:
+    valueFrom:
+      kind: GcpGkeCluster
+      name: prod-primary
+      fieldPath: status.outputs.location
   autoscaling:
-    minNodes: 1
+    minNodes: 0
     maxNodes: 10
-    locationPolicy: BALANCED
-  nodeLabels:
-    workload-type: batch
-    cost-tier: spot
+    locationPolicy: ANY
+  nodeConfig:
+    machineType: e2-standard-4
+    spot: true
+    labels:
+      workload-class: batch
+    taints:
+      - key: workload-class
+        value: batch
+        effect: NO_SCHEDULE
 ```
 
-### Production Pool with Foreign Key References
-
-A production-grade pool referencing a GcpGkeCluster resource, with auto-upgrade disabled for controlled rollouts:
+### GPU Inference Pool
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpGkeNodePool
 metadata:
-  name: prod-pool
+  name: gpu-inference
   annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpGkeNodePool.prod-pool
+    pulumi.planton.dev/stack.name: prod.GcpGkeNodePool.gpu-inference
 spec:
-  nodePoolName: prod-workers
-  clusterProjectId:
-    valueFrom:
-      kind: GcpGkeCluster
-      name: prod-cluster
-      field: spec.projectId
   clusterName:
     valueFrom:
       kind: GcpGkeCluster
-      name: prod-cluster
-      field: metadata.name
-  clusterLocation:
+      name: prod-primary
+      fieldPath: status.outputs.name
+  location:
     valueFrom:
       kind: GcpGkeCluster
-      name: prod-cluster
-      field: spec.location
-  machineType: e2-standard-8
-  diskSizeGb: 500
-  diskType: pd-balanced
-  imageType: COS_CONTAINERD
-  serviceAccount: gke-nodes@my-prod-project.iam.gserviceaccount.com
+      name: prod-primary
+      fieldPath: status.outputs.location
   autoscaling:
-    minNodes: 3
-    maxNodes: 20
-    locationPolicy: BALANCED
-  management:
-    disableAutoUpgrade: true
-    disableAutoRepair: false
-  nodeLabels:
-    environment: production
-    team: platform
+    minNodes: 0
+    maxNodes: 4
+  nodeConfig:
+    machineType: g2-standard-8
+    diskSizeGb: 200
+    diskType: pd-ssd
+    gcfsEnabled: true
+    guestAccelerators:
+      - type: nvidia-l4
+        count: 1
+        gpuDriverVersion: DEFAULT
+```
+
+### Hardened Production Pool
+
+```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpGkeNodePool
+metadata:
+  name: hardened-pool
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: my-org
+    pulumi.planton.dev/project: my-project
+    pulumi.planton.dev/stack.name: prod.GcpGkeNodePool.hardened-pool
+spec:
+  clusterName:
+    valueFrom:
+      kind: GcpGkeCluster
+      name: prod-primary
+      fieldPath: status.outputs.name
+  location:
+    valueFrom:
+      kind: GcpGkeCluster
+      name: prod-primary
+      fieldPath: status.outputs.location
+  autoscaling:
+    minNodes: 2
+    maxNodes: 6
+  upgradeSettings:
+    maxSurge: 1
+    maxUnavailable: 0
+  nodeConfig:
+    machineType: n2d-standard-8
+    serviceAccount:
+      valueFrom:
+        kind: GcpServiceAccount
+        name: gke-nodes
+        fieldPath: status.outputs.email
+    shieldedInstanceConfig:
+      enableSecureBoot: true
+    confidentialNodes:
+      enabled: true
+      confidentialInstanceType: SEV
+    bootDiskKmsKey:
+      valueFrom:
+        kind: GcpKmsKey
+        name: node-disks-key
+        fieldPath: status.outputs.key_id
+    workloadMetadataMode: GKE_METADATA
+    kubeletConfig:
+      insecureKubeletReadonlyPortEnabled: "FALSE"
+      podPidsLimit: 4096
 ```
 
 ## Stack Outputs
@@ -211,15 +286,18 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `nodePoolName` | `string` | Name of the node pool in the GKE cluster |
-| `instanceGroupUrls` | `repeated string` | URLs of the Compute Instance Group(s) backing this node pool (one per zone for regional clusters) |
-| `minNodes` | `string` | Minimum node count — equals `nodeCount` for fixed-size pools, or `autoscaling.minNodes` for autoscaling pools |
-| `maxNodes` | `string` | Maximum node count — equals `nodeCount` for fixed-size pools, or `autoscaling.maxNodes` for autoscaling pools |
-| `currentNodeCount` | `string` | Current number of running nodes in the pool |
+| `node_pool_name` | `string` | Pool name as created in GKE |
+| `instance_group_urls` | `string[]` | Managed instance group URLs backing the pool (one per zone) |
+| `min_nodes` | `string` | Effective minimum size (autoscaling minimum, or the fixed count) |
+| `max_nodes` | `string` | Effective maximum size (autoscaling maximum, or the fixed count) |
+| `current_node_count` | `string` | Nodes per zone at the last deploy |
+| `node_pool_id` | `string` | `projects/{project}/locations/{location}/clusters/{cluster}/nodePools/{name}` |
+| `location` | `string` | The pool's region or zone, exactly as provided in the spec |
+| `version` | `string` | Kubernetes version running on the pool's nodes |
 
 ## Related Components
 
-- [GcpGkeCluster](/docs/catalog/gcp/gke-cluster) — provides the parent GKE cluster that this node pool attaches to
-- [GcpVpc](/docs/catalog/gcp/vpc) — provides the VPC network used by the parent cluster
-- [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — provides the subnetwork with IP ranges for pods and services
-- [GcpRouterNat](/docs/catalog/gcp/router-nat) — provides Cloud NAT for private node outbound internet access
+- [GcpGkeCluster](/docs/catalog/gcp/gke-cluster) — the control plane this pool attaches to
+- [GcpServiceAccount](/docs/catalog/gcp/service-account) — the node identity
+- [GcpKmsKey](/docs/catalog/gcp/kms-key) — CMEK key for boot-disk encryption
+- [GcpGkeWorkloadIdentityBinding](/docs/catalog/gcp/gke-workload-identity-binding) — grants workloads IAM identities

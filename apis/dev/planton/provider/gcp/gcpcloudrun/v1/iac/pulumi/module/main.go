@@ -9,7 +9,7 @@ import (
 
 // Resources is the Pulumi program entry-point for the GcpCloudRun component.
 func Resources(ctx *pulumi.Context, stackInput *gcpcloudrunv1.GcpCloudRunStackInput) error {
-	locals := initializeLocals(stackInput)
+	locals := initializeLocals(ctx, stackInput)
 
 	// Set up the GCP provider from the supplied credential.
 	gcpProvider, err := pulumigoogleprovider.Get(ctx, stackInput.ProviderConfig)
@@ -17,7 +17,8 @@ func Resources(ctx *pulumi.Context, stackInput *gcpcloudrunv1.GcpCloudRunStackIn
 		return errors.Wrap(err, "failed to setup google provider")
 	}
 
-	// Create the Cloud Run service.
+	// Create the Cloud Run service (and its public-invoker grant when the
+	// spec asks for one).
 	createdService, err := service(ctx, locals, gcpProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create cloud-run service")
@@ -26,12 +27,9 @@ func Resources(ctx *pulumi.Context, stackInput *gcpcloudrunv1.GcpCloudRunStackIn
 	ctx.Export(OpUrl, createdService.Uri)
 	ctx.Export(OpServiceName, createdService.Name)
 	ctx.Export(OpRevision, createdService.LatestReadyRevision)
-
-	if locals.GcpCloudRun.Spec.Dns != nil && locals.GcpCloudRun.Spec.Dns.Enabled {
-		if err := customDns(ctx, locals, createdService, gcpProvider); err != nil {
-			return errors.Wrap(err, "failed to create custom dns mapping resources")
-		}
-	}
+	ctx.Export(OpLocation, createdService.Location)
+	ctx.Export(OpUid, createdService.Uid)
+	ctx.Export(OpUrls, createdService.Urls)
 
 	return nil
 }

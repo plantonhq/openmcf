@@ -1,17 +1,28 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpMemorystoreInstance
 metadata:
-  name: test-memorystore
+  name: my-test-memorystore
 spec:
+  # GCP project for the instance. Replace with your project ID.
   projectId:
-    value: "<gcp-project-id>"
+    value: my-gcp-project-123
+
   instanceName: my-test-memorystore
   location: us-central1
   shardCount: 1
+
+  # Standalone mode — compatible with any Valkey/Redis client.
   mode: CLUSTER_DISABLED
   nodeType: SHARED_CORE_NANO
+
+  # PSC endpoint in the consumer VPC. A GcpServiceConnectionPolicy for
+  # the gcp-memorystore class must exist on this network in this region
+  # before the instance is created. Replace with your project/network.
   pscAutoConnections:
     - network:
-        value: "projects/<gcp-project-id>/global/networks/<vpc-name>"
+        value: projects/my-gcp-project-123/global/networks/my-vpc
       projectId:
-        value: "<gcp-project-id>"
+        value: my-gcp-project-123
+
+  # Allow hack-manifest teardown without a two-step disable.
+  deletionProtectionEnabled: false

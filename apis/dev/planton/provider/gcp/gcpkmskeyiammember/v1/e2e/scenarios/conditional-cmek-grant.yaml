@@ -1,0 +1,37 @@
+# Composed GcpKmsKeyIamMember scenario. crypto_key_id references the key
+# prerequisite's `key_id` output (the CMEK composition handle) and member
+# references the service account prerequisite's `member` output — the exact
+# shape a CMEK consumer chart deploys. The grant carries an IAM condition so
+# the conditioned-binding arm is proven live on both engines (conditions are
+# part of the grant's identity; the verifier reads the policy at version 3).
+apiVersion: gcp.planton.dev/v1
+kind: GcpKmsKeyIamMember
+metadata:
+  name: planton-oss-e2e-gcpkim-smoke
+  id: planton-oss-e2e-gcpkim-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpkmskeyiammember
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cryptoKeyId:
+    valueFrom:
+      kind: GcpKmsKey
+      name: planton-oss-e2e-gcpkms-prereq
+      fieldPath: status.outputs.key_id
+  role:
+    value: roles/cloudkms.cryptoKeyEncrypterDecrypter
+  member:
+    valueFrom:
+      kind: GcpServiceAccount
+      name: planton-oss-e2e-gsa-prereq
+      fieldPath: status.outputs.member
+  condition:
+    title: e2e-expires-2100
+    expression: request.time < timestamp("2100-01-01T00:00:00Z")
+    description: Live proof of the conditioned-binding arm; effectively unconditioned

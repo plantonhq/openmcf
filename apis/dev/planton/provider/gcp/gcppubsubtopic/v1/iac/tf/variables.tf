@@ -1,11 +1,39 @@
-variable "spec" {
-  description = "GcpPubSubTopic spec"
+variable "metadata" {
+  description = "Metadata for the resource, including name and labels"
   type = object({
-    project_id = object({ value = string })
+    name    = string,
+    id      = optional(string),
+    org     = optional(string),
+    env     = optional(string),
+    labels  = optional(map(string)),
+    tags    = optional(list(string)),
+    version = optional(object({ id = string, message = string }))
+  })
+}
+
+variable "spec" {
+  description = "Specification for the GCP Pub/Sub topic"
+  type = object({
+    # StringValueOrRef fields arrive from the proto→tfvars converter as
+    # plain strings (already resolved), never as object({value}). If
+    # project_id is empty, the provider's default project is used
+    # (see locals.tf).
+    project_id = optional(string, "")
+
+    # Topic name (the GCP resource name). Immutable (ForceNew).
     topic_name = string
 
-    kms_key_name               = optional(object({ value = string }), null)
+    # CMEK key path (resolved from a GcpKmsKey reference). Empty means
+    # Google-managed encryption.
+    kms_key_name = optional(string, "")
+
+    # Topic-level retention window (e.g. "604800s"). Empty leaves
+    # retention to individual subscriptions.
     message_retention_duration = optional(string, "")
+
+    # User labels, merged beneath the platform attribution labels
+    # (see locals.tf).
+    labels = optional(map(string), {})
 
     message_storage_policy = optional(object({
       allowed_persistence_regions = list(string)
@@ -13,6 +41,8 @@ variable "spec" {
     }), null)
 
     schema_settings = optional(object({
+      # Resolved from a GcpPubSubSchema reference to the fully qualified
+      # projects/{project}/schemas/{name} path.
       schema   = string
       encoding = optional(string, "")
     }), null)
@@ -43,11 +73,11 @@ variable "spec" {
       }), null)
 
       cloud_storage = optional(object({
-        bucket = object({ value = string })
-        match_glob                = optional(string, "")
+        bucket                     = string
+        match_glob                 = optional(string, "")
         minimum_object_create_time = optional(string, "")
-        avro_format               = optional(bool, false)
-        pubsub_avro_format        = optional(bool, false)
+        avro_format                = optional(bool, false)
+        pubsub_avro_format         = optional(bool, false)
         text_format = optional(object({
           delimiter = optional(string, "")
         }), null)
@@ -65,13 +95,19 @@ variable "spec" {
         severity = optional(string, "")
       }), null)
     }), null)
-  })
-}
 
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = optional(string, "")
+    # Ordered transform pipeline applied to every published message.
+    message_transforms = optional(list(object({
+      javascript_udf = object({
+        function_name = string
+        code          = string
+      })
+      disabled = optional(bool, false)
+    })), [])
   })
-  default = { service_account_key = "" }
+
+  validation {
+    condition     = var.spec.topic_name != ""
+    error_message = "topic_name is required."
+  }
 }

@@ -66,7 +66,7 @@ This reserves a static external IPv4 address that you can attach to an HTTP(S) l
 | `addressType` | `string` | `EXTERNAL` | Type of address: `EXTERNAL` for public IPs, `INTERNAL` for private IP ranges within a VPC. |
 | `description` | `string` | `""` | Human-readable description for the address reservation. |
 | `ipVersion` | `string` | `IPV4` | IP version: `IPV4` or `IPV6`. |
-| `network` | `StringValueOrRef` | — | VPC network for INTERNAL addresses. Accepts a network name or self-link URL. Can reference a GcpVpc resource. Required when `addressType` is `INTERNAL`. |
+| `network` | `StringValueOrRef` | — | VPC network for INTERNAL addresses. Accepts a network name or self-link URL. Can reference a GcpVpcNetwork resource. Required when `addressType` is `INTERNAL`. |
 | `prefixLength` | `int32` | — | CIDR prefix length (8-29) for the reserved range. Required when `purpose` is `VPC_PEERING`. E.g., `20` reserves a /20 range (4,096 IPs). |
 | `purpose` | `string` | `""` | Purpose of this INTERNAL address: `VPC_PEERING`, `PRIVATE_SERVICE_CONNECT`, or empty. Only valid for INTERNAL addresses. |
 
@@ -126,10 +126,10 @@ For comprehensive examples, see [`examples.md`](examples.md), including:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network referenced by INTERNAL addresses
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the VPC network referenced by INTERNAL addresses
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project and enables the Compute Engine API
 - [GcpCloudSql](/docs/catalog/gcp/gcpcloudsql) — managed database that uses VPC peering ranges for private connectivity
-- [GcpCloudCdn](/docs/catalog/gcp/gcpcloudcdn) — CDN that uses external static IPs
+- [GcpGlobalForwardingRule](/docs/catalog/gcp/gcpglobalforwardingrule) — the load-balancer frontend that binds this static IP to a target proxy
 
 ## Additional Resources
 

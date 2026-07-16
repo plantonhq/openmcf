@@ -36,6 +36,9 @@ type GcpCloudComposerEnvironmentStackOutputs struct {
 	// Format: gs://{bucket}/dags
 	DagGcsPrefix string `protobuf:"bytes,4,opt,name=dag_gcs_prefix,json=dagGcsPrefix,proto3" json:"dag_gcs_prefix,omitempty"`
 	// Name of the underlying GKE cluster managed by Cloud Composer.
+	// Populated for Composer 2 environments (the cluster runs in your
+	// project); empty for Composer 3, whose cluster is Google-managed in
+	// a tenant project and never surfaced.
 	GkeCluster    string `protobuf:"bytes,5,opt,name=gke_cluster,json=gkeCluster,proto3" json:"gke_cluster,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

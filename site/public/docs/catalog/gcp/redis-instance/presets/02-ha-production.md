@@ -1,6 +1,6 @@
 ---
-title: "HA Production"
-description: "This preset provisions a production-ready Memorystore for Redis instance with STANDARD_HA tier, authentication, TLS encryption, RDB persistence, a maintenance window, and deletion protection. It is..."
+title: "Production HA Cache"
+description: "This preset deploys a STANDARD_HA Redis instance — a primary with an automatic-failover replica in a second zone (99.9% SLA) — hardened with AUTH, TLS, RDB persistence, and a pinned maintenance..."
 type: "preset"
 rank: "02"
 presetSlug: "02-ha-production"
@@ -11,37 +11,35 @@ icon: "package"
 order: 2
 ---
 
-# HA Production
+# Production HA Cache
 
-This preset provisions a production-ready Memorystore for Redis instance with STANDARD_HA tier, authentication, TLS encryption, RDB persistence, a maintenance window, and deletion protection. It is suitable for production workloads that require high availability and security controls.
+This preset deploys a STANDARD_HA Redis instance — a primary with an automatic-failover replica in a second zone (99.9% SLA) — hardened with AUTH, TLS, RDB persistence, and a pinned maintenance window.
 
 ## When to Use
 
-- Production application caching with 99.9% availability SLA
-- Session storage for stateless web applications
-- Workloads requiring encrypted connections and AUTH
-- Environments where accidental deletion must be prevented
+- Session stores, queues, and caches whose unavailability is a production incident
+- Workloads that need the data to survive a node failure (automatic failover) and a full restart (RDB snapshots)
+- Environments with compliance requirements for encryption in transit
 
-## Key Configuration
+## Key Configuration Choices
 
-- **STANDARD_HA tier** — primary and replica with automatic failover across zones
-- **5 GB memory** — moderate capacity; adjust based on workload
-- **authEnabled** — Redis AUTH string required; exported in stack outputs
-- **transitEncryptionMode: SERVER_AUTHENTICATION** — TLS for client connections
-- **maintenanceWindow** — Sunday 3:00 UTC; GCP applies patches during this window
-- **persistenceConfig** — RDB snapshots every 12 hours for durability
-- **deletionProtection** — prevents Terraform/Pulumi from destroying the instance
+- **STANDARD_HA with both zones pinned** — `locationId` + `alternativeLocationId` keep the primary and replica next to zonal workloads; failover flips `current_location_id` (watch the stack output)
+- **AUTH + TLS** — clients present the `auth_string` output and must trust the `server_ca_certs` output's CA chain
+- **RDB every 12 hours, anchored at 03:00 UTC** — `rdbSnapshotStartTime` places snapshot I/O in the quiet window instead of wherever creation time fell
+- **Maintenance window to the minute** — Sunday 03:30 UTC, coordinated after the snapshot
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 |---|---|---|
-| `<gcp-project-id>` | GCP project ID where the instance will be created | GCP Console or `GcpProject` outputs |
-| `<instance-name>` | Name for this Redis instance (2-40 chars, lowercase, hyphens) | Choose a descriptive name (e.g., `prod-cache`) |
-| `<gcp-region>` | GCP region for the instance (e.g., `us-central1`) | [GCP regions](https://cloud.google.com/about/locations) |
-| `<vpc-network-self-link>` | Full self-link of the VPC network (e.g., `projects/my-project/global/networks/prod-vpc`) | `GcpVpc` status outputs or GCP Console |
+| `my-gcp-project-123` | GCP project ID | GCP Console or `GcpProject` outputs |
+| `my-prod-vpc` | Your `GcpVpcNetwork` resource name | Your VPC manifest |
 
 ## Related Presets
 
-- **01-basic-cache** — Minimal BASIC tier for dev/test
-- **03-ha-read-replicas** — STANDARD_HA with read replicas for read scaling
+- **01-basic-cache** — when losing the cache on restart is acceptable
+- **03-private-services-access** — Shared VPC / PSA connectivity with read replicas and CMEK
+
+## Related Components
+
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network the cache attaches to

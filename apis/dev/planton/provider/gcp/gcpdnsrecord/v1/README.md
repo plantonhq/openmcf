@@ -2,38 +2,42 @@
 
 ## Overview
 
-`GcpDnsRecord` is a Planton deployment component for managing individual DNS records within a Google Cloud DNS Managed Zone. It provides a declarative way to create, update, and manage DNS records across your GCP infrastructure.
+`GcpDnsRecord` manages one DNS record set inside a Google Cloud DNS managed
+zone. A record set is the unit Cloud DNS manages: one (name, type) pair that
+answers queries either with a static list of values (round-robin) or with
+exactly one routing policy — weighted round robin, geolocation, or
+primary/backup failover with health-checked targets.
 
 ## Purpose
 
-This component simplifies DNS record management by:
-
-- **Declarative Configuration**: Define DNS records as code using YAML manifests
-- **Type Safety**: Strong validation ensures record configurations are correct before deployment
-- **Multi-Record Support**: Create A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, and SOA records
-- **Round-Robin**: Support multiple values for load distribution
-- **Wildcard Records**: Create wildcard DNS entries for flexible subdomain routing
+- **Declarative records**: define DNS records as code, with the zone owned
+  separately by `GcpDnsZone` — records and zones have independent lifecycles
+  and owners.
+- **All record types**: `type` accepts any record type the Cloud DNS API
+  supports (A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA, HTTPS, SVCB,
+  DS, DNSKEY, TLSA, SSHFP, NAPTR, ...), so new types need no component
+  change.
+- **Traffic steering**: weighted round robin for canary rollouts, geo
+  routing for latency-sensitive multi-region serving, and primary/backup
+  failover with health-checked internal load balancers or external
+  endpoints.
+- **Composable references**: the zone, project, health check, internal load
+  balancer VIPs (GcpAddress), and networks (GcpVpcNetwork) are all
+  referenceable resources, not hardcoded strings.
 
 ## Key Features
 
-- ✅ **All Common Record Types**: Support for A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA
-- ✅ **TTL Configuration**: Customizable time-to-live settings (1-86400 seconds)
-- ✅ **Multiple Values**: Round-robin DNS with multiple record values
-- ✅ **Wildcard Support**: Create `*.example.com.` records
-- ✅ **Validation**: Built-in validation for DNS name formats and record configurations
-- ✅ **Integration**: References existing GcpDnsZone resources or external zones
-
-## Benefits
-
-### Compared to Manual DNS Management
-- **Version Control**: Track DNS changes in git
-- **Consistency**: Apply the same DNS patterns across environments
-- **Automation**: Integrate DNS provisioning into CI/CD pipelines
-
-### Compared to Inline Zone Records
-- **Modularity**: Manage records independently from zones
-- **Flexibility**: Different teams can manage different records
-- **Granularity**: Fine-grained access control per record
+- Static values (round-robin across multiple values) OR one routing policy
+  per record — the same exclusive contract the Cloud DNS API enforces,
+  validated before deploy.
+- Weighted round robin with zero-weight staging entries.
+- Geolocation routing with optional fencing (unhealthy locations keep
+  answering instead of spilling to the next-closest location).
+- Primary/backup failover with a trickle ratio to keep backup paths warm.
+- Health-checked targets: internal load balancer frontends (implicit health
+  signal) or public endpoints (via a referenced GcpHealthCheck).
+- Wildcard (`*.example.com.`) and underscore service labels
+  (`_dmarc.example.com.`) supported.
 
 ## Example Usage
 
@@ -45,34 +49,65 @@ kind: GcpDnsRecord
 metadata:
   name: www-example-com
 spec:
-  projectId: my-gcp-project
-  managedZone: example-zone
-  recordType: A
+  managedZone:
+    value: example-zone
+  type: A
   name: www.example.com.
   values:
     - 192.0.2.1
+```
+
+`projectId` may be omitted — the record is then created in the provider's
+default project (ambient credentials decide).
+
+### Weighted Canary Rollout
+
+```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpDnsRecord
+metadata:
+  name: api-canary
+spec:
+  managedZone:
+    valueFrom:
+      kind: GcpDnsZone
+      name: example-com
+      fieldPath: status.outputs.zone_name
+  type: A
+  name: api.example.com.
+  routingPolicy:
+    wrr:
+      - weight: 95
+        values: ["203.0.113.10"]
+      - weight: 5
+        values: ["203.0.113.20"]
 ```
 
 ### Deploy with CLI
 
 ```bash
 planton pulumi up --manifest dns-record.yaml
-```
-
-Or with Terraform:
-
-```bash
-planton terraform apply --manifest dns-record.yaml
+# or
+planton tofu apply --manifest dns-record.yaml
 ```
 
 ## Best Practices
 
-1. **Always use FQDN**: DNS names must end with a trailing dot (e.g., `www.example.com.`)
-2. **Set appropriate TTL**: Use lower TTL (60-300s) for records that may change frequently
-3. **Use descriptive names**: Name your resources clearly (e.g., `api-production-a-record`)
-4. **Validate before deploy**: Run `planton validate` to check your manifests
+1. **Always use FQDNs**: record names end with a trailing dot
+   (`www.example.com.`).
+2. **TTL matches change cadence**: 60–300s for records that move during
+   failover or canaries; 3600+ for stable infrastructure records.
+3. **Keep one owner per (name, type) pair**: Cloud DNS stores one record
+   set per pair — two resources managing the same pair will fight.
+4. **Prefer references over literals**: point `managedZone` at the
+   GcpDnsZone resource and internal load balancer targets at GcpAddress /
+   GcpVpcNetwork resources so renames and rebuilds propagate.
 
 ## Related Components
 
-- **GcpDnsZone**: Parent resource for managing Cloud DNS zones
-- **GcpProject**: GCP project where the DNS zone resides
+- **GcpDnsZone**: the managed zone this record lives in (zone shell only —
+  records belong here).
+- **GcpHealthCheck**: health checks for routing policies with external
+  endpoints.
+- **GcpAddress** / **GcpVpcNetwork**: the VIPs and networks referenced by
+  health-checked internal load balancer targets.

@@ -1,3 +1,46 @@
+# Enable the Memorystore API — the control plane that owns the instance.
+# disable_on_destroy is false: tearing down one instance must never
+# disable the API for everything else in the project.
+resource "google_project_service" "memorystore_api" {
+  project = local.project_id
+  service = "memorystore.googleapis.com"
+
+  disable_dependent_services = true
+  disable_on_destroy         = false
+}
+
+# Enable the Network Connectivity API — the service connectivity
+# automation that places this instance's PSC endpoints is driven through
+# it (the GcpServiceConnectionPolicy prerequisite lives there too).
+resource "google_project_service" "networkconnectivity_api" {
+  project = local.project_id
+  service = "networkconnectivity.googleapis.com"
+
+  disable_dependent_services = true
+  disable_on_destroy         = false
+}
+
+# Resolves the provider's effective project for PSC endpoint entries that
+# omit their consumer project — the API requires one per entry, and the
+# common case is "same project as the instance". Only instantiated when
+# actually needed (see locals.needs_ambient_endpoint_project), mirroring
+# the Pulumi module's only-when-needed GetClientConfig lookup.
+data "google_project" "this" {
+  count = local.needs_ambient_endpoint_project ? 1 : 0
+}
+
+# The Memorystore (Valkey) instance. Connectivity is PSC-only and driven
+# by service connectivity automation: a service connection policy for the
+# gcp-memorystore class must already exist on each endpoint's network in
+# this region, or creation fails with a connectivity error — the policy
+# is a separate first-class resource, deployed before this one.
+#
+# The immutables (ForceNew): instance_id, location, mode,
+# authorization_mode, transit_encryption_mode, kms_key,
+# zone_distribution_config, the PSC endpoints, and the seed sources.
+# shard_count and replica_count resize in place; engine_configs,
+# persistence, maintenance, backups, labels, and the DR role update in
+# place too.
 resource "google_memorystore_instance" "this" {
   instance_id = local.instance_name
   project     = local.project_id
@@ -8,22 +51,37 @@ resource "google_memorystore_instance" "this" {
   node_type      = local.node_type
   engine_version = local.engine_version
   engine_configs = length(var.spec.engine_configs) > 0 ? var.spec.engine_configs : null
-  replica_count  = local.replica_count
+
+  # 0 is an explicit "no replicas" — sent through rather than nulled so
+  # the manifest value is authoritative (identical to the Pulumi module).
+  replica_count = local.replica_count
 
   authorization_mode      = local.authorization_mode
   transit_encryption_mode = local.transit_encryption_mode
   kms_key                 = local.kms_key
 
-  deletion_protection_enabled = local.deletion_protection_enabled
+  # Always sent explicitly (spec defaults TRUE) so destroy behavior is
+  # identical on both engines: omitting it would let the provider default
+  # decide, and a manifest that never mentions deletion protection must
+  # behave the same everywhere.
+  deletion_protection_enabled = var.spec.deletion_protection_enabled
 
-  labels = local.labels
+  labels = local.final_labels
 
-  # PSC auto-created endpoints for VPC connectivity.
+  # PSC auto-created endpoints for VPC connectivity. network arrives as
+  # the VPC's relative resource path — the only format the Service
+  # Connectivity API accepts (full https:// self-links are rejected).
+  # An entry that omits its consumer project rides the provider's
+  # effective project (the common same-project case).
   dynamic "desired_auto_created_endpoints" {
     for_each = var.spec.psc_auto_connections
     content {
-      network    = desired_auto_created_endpoints.value.network.value
-      project_id = desired_auto_created_endpoints.value.project_id.value
+      network = desired_auto_created_endpoints.value.network
+      project_id = (
+        desired_auto_created_endpoints.value.project_id != ""
+        ? desired_auto_created_endpoints.value.project_id
+        : (var.spec.project_id != "" ? var.spec.project_id : data.google_project.this[0].project_id)
+      )
     }
   }
 
@@ -85,4 +143,51 @@ resource "google_memorystore_instance" "this" {
       }
     }
   }
+
+  # Cross-region DR: PRIMARY lists its secondaries; SECONDARY points at
+  # its primary. Roles are exchanged in place during a planned
+  # switchover. Instance references arrive as full resource paths (the
+  # other instance's name output).
+  dynamic "cross_instance_replication_config" {
+    for_each = var.spec.cross_instance_replication_config != null ? [var.spec.cross_instance_replication_config] : []
+    content {
+      instance_role = cross_instance_replication_config.value.instance_role
+
+      dynamic "primary_instance" {
+        for_each = cross_instance_replication_config.value.primary_instance != null ? [cross_instance_replication_config.value.primary_instance] : []
+        content {
+          instance = primary_instance.value.instance
+        }
+      }
+
+      dynamic "secondary_instances" {
+        for_each = cross_instance_replication_config.value.secondary_instances
+        content {
+          instance = secondary_instances.value.instance
+        }
+      }
+    }
+  }
+
+  # Seed-from-GCS at creation (mutually exclusive with
+  # managed_backup_source; both ForceNew — seeding only happens once).
+  dynamic "gcs_source" {
+    for_each = var.spec.gcs_source != null ? [var.spec.gcs_source] : []
+    content {
+      uris = gcs_source.value.uris
+    }
+  }
+
+  # Seed-from-managed-backup at creation.
+  dynamic "managed_backup_source" {
+    for_each = var.spec.managed_backup_source != null ? [var.spec.managed_backup_source] : []
+    content {
+      backup = managed_backup_source.value.backup
+    }
+  }
+
+  depends_on = [
+    google_project_service.memorystore_api,
+    google_project_service.networkconnectivity_api,
+  ]
 }

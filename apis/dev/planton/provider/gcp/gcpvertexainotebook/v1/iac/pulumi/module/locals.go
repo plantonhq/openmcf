@@ -28,12 +28,15 @@ func initializeLocals(_ *pulumi.Context, stackInput *gcpvertexainotebookv1.GcpVe
 		locals.InstanceName = locals.GcpVertexAiNotebook.Metadata.Name
 	}
 
-	// Compute framework GCP labels.
-	locals.GcpLabels = map[string]string{
-		gcplabelkeys.Resource:     "true",
-		gcplabelkeys.ResourceName: locals.InstanceName,
-		gcplabelkeys.ResourceKind: strings.ToLower(cloudresourcekind.CloudResourceKind_GcpVertexAiNotebook.String()),
+	// User labels first so platform attribution labels win on key
+	// conflicts — identical merge order to the Terraform module.
+	locals.GcpLabels = map[string]string{}
+	for key, value := range locals.GcpVertexAiNotebook.Spec.Labels {
+		locals.GcpLabels[key] = value
 	}
+	locals.GcpLabels[gcplabelkeys.Resource] = "true"
+	locals.GcpLabels[gcplabelkeys.ResourceName] = locals.InstanceName
+	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpVertexAiNotebook.String())
 
 	if locals.GcpVertexAiNotebook.Metadata.Org != "" {
 		locals.GcpLabels[gcplabelkeys.Organization] = locals.GcpVertexAiNotebook.Metadata.Org

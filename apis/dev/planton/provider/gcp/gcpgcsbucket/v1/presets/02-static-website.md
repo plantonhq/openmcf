@@ -1,29 +1,33 @@
 # Static Website Bucket
 
-This preset creates a GCS bucket configured for static website hosting with public read access, CORS rules for browser access, and website routing (index.html / 404.html). For production websites, pair this with a Cloud CDN preset for HTTPS and global distribution.
+A publicly readable multi-region bucket serving a static site: index and
+404 pages configured, CORS opened for the application origin, and public
+access granted the additive way (one explicit `allUsers` reader).
 
-## When to Use
+## What this preset creates
 
-- Static websites (HTML, CSS, JS) served directly from GCS
-- Development or internal sites where direct GCS hosting is sufficient
-- Staging environments for static site generators (Hugo, Gatsby, Next.js export)
+A US multi-region bucket with website configuration and a single additive
+`roles/storage.objectViewer` grant to `allUsers`. Uniform bucket-level
+access stays on — public read comes from the IAM grant, never from legacy
+object ACLs.
 
-## Key Configuration Choices
+## Prerequisites
 
-- **Website configuration** -- `index.html` as main page, `404.html` for not-found responses
-- **Public read access** (`allUsers` with `objectViewer` role) -- all objects are publicly readable
-- **CORS enabled** -- allows GET/HEAD from any origin (adjust `origins` for production)
-- **Uniform bucket-level access** -- IAM-only, consistent with platform convention
-- **No versioning** -- static site content is typically regenerated, not version-tracked
+None — but the project's organization policy must permit public access
+(`publicAccessPrevention: inherited` defers to it; the grant fails if the
+org forbids public buckets).
 
-## Placeholders to Replace
+## Composing HTTPS serving
 
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<gcp-project-id>` | GCP project ID | `GcpProject` outputs |
-| `<your-bucket-name>` | Globally unique bucket name | Choose a unique name |
-| `<gcp-region>` | Bucket location (e.g., `us-central1`) | Your deployment region |
+The bucket's website endpoint is HTTP-only. For production HTTPS, compose
+the L7 load-balancer family instead: point a `GcpBackendBucket` at this
+bucket's `bucket_id` output, route it from a `GcpUrlMap`, and terminate
+TLS on a `GcpTargetHttpsProxy` — CDN caching comes from the backend
+bucket's `cdnPolicy`.
 
-## Related Presets
+## Remix ideas
 
-- **01-private-standard** -- Use for private data storage with versioning and public access prevention
+- Add a lifecycle rule deleting objects under a `previews/` prefix after
+  30 days for PR-preview deployments.
+- Set `forceDestroy: true` for ephemeral preview-site buckets that CI
+  tears down.

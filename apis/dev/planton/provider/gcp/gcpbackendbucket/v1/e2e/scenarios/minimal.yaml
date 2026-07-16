@@ -1,0 +1,36 @@
+# Composed GcpBackendBucket scenario. The origin is a value_from reference to
+# the GcpGcsBucket prerequisite (declared via prerequisites in the kind
+# registry); the E2E harness deploys the bucket first and resolves the
+# reference before the backend bucket is applied. project_id is omitted and
+# rides the harness-exported GOOGLE_PROJECT. CDN is enabled with a small
+# policy so the cdn_policy path is exercised live.
+apiVersion: gcp.planton.dev/v1
+kind: GcpBackendBucket
+metadata:
+  name: planton-oss-e2e-gcpbb-smoke
+  id: planton-oss-e2e-gcpbb-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpbackendbucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral backend bucket created by the Planton E2E harness; safe to delete
+  bucketName:
+    valueFrom:
+      kind: GcpGcsBucket
+      name: planton-oss-e2e-gcsb-prereq
+      fieldPath: status.outputs.bucket_id
+  enableCdn: true
+  cdnPolicy:
+    cacheMode: CACHE_ALL_STATIC
+    defaultTtl: 300
+    negativeCaching: true
+    negativeCachingPolicy:
+      - code: 404
+        ttl: 30
+  compressionMode: AUTOMATIC

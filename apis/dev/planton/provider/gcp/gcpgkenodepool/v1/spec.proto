@@ -6,101 +6,810 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
-// GcpGkeNodePoolSpec defines the configurable settings for a GKE cluster Node Pool.
+// GcpGkeNodePoolSpec defines a GKE node pool (`google_container_node_pool`) —
+// a group of Compute Engine VMs with one shared configuration, attached to a
+// GcpGkeCluster.
+//
+// Node pools are the compute half of the GKE composition boundary: the
+// cluster owns the control plane and cluster-wide configuration; every node
+// pool is a first-class resource with its own lifecycle, referencing the
+// cluster by its name output. Production clusters run several pools —
+// general-purpose on-demand, scale-to-zero Spot for fault-tolerant batch,
+// GPU pools for ML — each sized and tainted for its workloads. Autopilot
+// clusters take no node pools at all (GKE manages nodes).
+//
+// The node pool inherits its project and location from the parent cluster;
+// both resolve by reference so a manifest never has to repeat what the
+// cluster already knows.
 message GcpGkeNodePoolSpec {
-  // Reference to the parent GKE cluster (by name).
-  // Must refer to an existing GcpGkeCluster resource in the same environment.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_project_id = 1 [
-    (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpGkeCluster,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.project_id"
+  option (buf.validate.message).cel = {
+    id: "initial_node_count_requires_autoscaling"
+    message: "initial_node_count only applies to autoscaled pools — a fixed-size pool's size is node_count itself"
+    expression: "!has(this.initial_node_count) || has(this.autoscaling)"
+  };
+
+  // The GCP project the node pool is created in. Must be the parent
+  // cluster's project — node pools cannot live in a different project than
+  // their cluster. Accepts a literal project ID or a reference to a
+  // GcpProject resource. If omitted, the provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
-  // Reference to the parent GKE cluster (by name).
-  // Must refer to an existing GcpGkeCluster resource in the same environment.
+
+  // Name of the parent GKE cluster as created in GCP. Resolves from the
+  // cluster's name output — the name GCP actually assigned — so it stays
+  // correct even when the cluster's cloud name differs from its Planton
+  // metadata.name. Immutable.
   dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_name = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpGkeCluster,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
   ];
 
-  // Location of the parent GKE cluster (region or zone).
-  // Must refer to an existing GcpGkeCluster resource in the same environment.
-  // Example: "us-central1" (regional) or "us-central1-a" (zonal)
-  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_location = 3 [
+  // Location of the parent cluster — a region ("us-central1") for regional
+  // clusters or a zone ("us-central1-a") for zonal ones. Must match the
+  // cluster's own location; resolves from the cluster's location output by
+  // default. Immutable. For a regional cluster, size limits in autoscaling
+  // are PER ZONE (see autoscaling), and the pool gets one managed instance
+  // group per zone.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef location = 3 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpGkeCluster,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.location"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.location"
   ];
 
-  // Machine type for node VMs (e.g., "e2-medium", "n1-standard-4").
-  // If unspecified, defaults to "e2-medium" (2 vCPU, 4 GB RAM).
-  optional string machine_type = 4 [(dev.planton.shared.options.default) = "e2-medium"];
+  // Name of the node pool in GKE. Immutable. If not specified, defaults to
+  // metadata.name. Must be 1-40 characters: lowercase letters, digits, and
+  // hyphens; starting with a letter and ending with a letter or digit.
+  // Example: "general-pool", "spot-batch", "gpu-a100"
+  string node_pool_name = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[a-z]([a-z0-9-]{0,38}[a-z0-9])?$"
+  ];
 
-  // Size of boot disk (GB) for each node. Min 10 GB. Defaults to 100 GB if unset.
-  // Default 100 implied if not provided (handled in provisioning code or via options.default if supported).
-  uint32 disk_size_gb = 5;
+  // Zones this pool's nodes run in, e.g. ["us-central1-a", "us-central1-b"].
+  // Must be within the cluster's region. If unspecified, the cluster-level
+  // node_locations apply (all zones in the region for a regional cluster).
+  // Mutable. Narrowing a pool to fewer zones cuts cost and inter-zone
+  // traffic for workloads that tolerate zonal risk.
+  repeated string node_locations = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {pattern: "^[a-z]+-[a-z]+[0-9]+-[a-z]$"}
+      }
+    }
+  ];
 
-  // Type of boot disk: "pd-standard", "pd-ssd", or "pd-balanced".
-  // Defaults to "pd-standard" for unspecified.
-  optional string disk_type = 6 [
-    (dev.planton.shared.options.default) = "pd-standard",
+  // Kubernetes version for the nodes. If empty (recommended), GKE picks the
+  // version and auto-upgrade keeps it current. Setting an explicit version
+  // while management.auto_upgrade is on makes the two fight — pin a version
+  // only with auto-upgrade off, and expect to own upgrades manually from
+  // then on.
+  string version = 6;
+
+  // Maximum pods per node in this pool (8-256), overriding the cluster's
+  // default (110). Lower values shrink the per-node pod CIDR slice so the
+  // pod range stretches across more nodes. Immutable. Only effective on
+  // VPC-native clusters (which every Planton GKE cluster is).
+  optional int32 max_pods_per_node = 7 [(buf.validate.field).int32 = {
+    gte: 8
+    lte: 256
+  }];
+
+  // Number of nodes the pool starts with when autoscaling manages the size
+  // (per zone for regional clusters). Only meaningful with autoscaling —
+  // a fixed-size pool's size IS node_count. Immutable: changing it forces
+  // pool recreation, so set it once and let the autoscaler own the size
+  // from then on.
+  optional uint32 initial_node_count = 8;
+
+  // Pool sizing: a fixed node count, autoscaling, or neither (GKE's
+  // default of 3 nodes, unmanaged). For regional clusters both node_count
+  // and the autoscaling min/max are PER ZONE.
+  oneof node_pool_size {
+    // Fixed number of nodes (per zone for regional clusters). The pool
+    // stays at this size until you change it.
+    uint32 node_count = 9;
+
+    // Cluster-autoscaler management of the pool size between bounds.
+    GcpGkeNodePoolAutoscaling autoscaling = 10;
+  }
+
+  // Auto-repair and auto-upgrade. If omitted, both default to true — GKE's
+  // own defaults and the posture release channels expect.
+  GcpGkeNodePoolManagement management = 11;
+
+  // How node upgrades roll through the pool: surge (default — add
+  // max_surge nodes, drain max_unavailable at a time) or blue-green
+  // (provision a full green pool, shift workloads, soak, delete blue).
+  // If omitted, GKE's default surge settings (max_surge=1,
+  // max_unavailable=0) apply.
+  GcpGkeNodePoolUpgradeSettings upgrade_settings = 12;
+
+  // Compact placement: co-locates nodes physically for low inter-node
+  // latency (tightly-coupled HPC/ML workloads) — and carries the TPU
+  // topology for TPU pools. Immutable.
+  GcpGkeNodePoolPlacementPolicy placement_policy = 13;
+
+  // Nodes are obtainable only through the ProvisioningRequest API (Dynamic
+  // Workload Scheduler queued provisioning) — the pool provisions capacity
+  // in whole batches when it becomes available, for large atomic workloads
+  // like multi-node training jobs. Immutable.
+  bool queued_provisioning_enabled = 14;
+
+  // Pool-level networking overrides (pod range, private nodes, network
+  // performance). If omitted, the cluster-level defaults apply.
+  GcpGkeNodePoolNetworkConfig network_config = 15;
+
+  // The node VM configuration: machine type, disks, identity, scheduling
+  // constraints, accelerators, security posture, and kubelet/OS tuning.
+  // If omitted entirely, GKE defaults apply (e2-medium, 100 GB pd-balanced,
+  // Container-Optimized OS, Compute Engine default service account).
+  GcpGkeNodePoolNodeConfig node_config = 16;
+}
+
+// GcpGkeNodePoolAutoscaling bounds cluster-autoscaler management of the
+// pool size. Exactly one addressing mode: per-zone limits (min/max — the
+// common case) or total limits across all zones (total_min/total_max — for
+// when zone balance matters less than an absolute cap).
+message GcpGkeNodePoolAutoscaling {
+  option (buf.validate.message).cel = {
+    id: "per_zone_xor_total"
+    message: "use per-zone limits (min_nodes/max_nodes) or total limits (total_min_nodes/total_max_nodes), not both — they are mutually exclusive addressing modes"
+    expression: "!((has(this.min_nodes) || has(this.max_nodes)) && (has(this.total_min_nodes) || has(this.total_max_nodes)))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "max_requires_bounds"
+    message: "autoscaling needs a maximum: set max_nodes (per-zone mode) or total_max_nodes (total mode)"
+    expression: "has(this.max_nodes) || has(this.total_max_nodes)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "per_zone_min_lte_max"
+    message: "min_nodes cannot exceed max_nodes"
+    expression: "!has(this.min_nodes) || !has(this.max_nodes) || this.min_nodes <= this.max_nodes"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "total_min_lte_max"
+    message: "total_min_nodes cannot exceed total_max_nodes"
+    expression: "!has(this.total_min_nodes) || !has(this.total_max_nodes) || this.total_min_nodes <= this.total_max_nodes"
+  };
+
+  // Minimum nodes PER ZONE. 0 allows scale-to-zero — the pattern for Spot
+  // and GPU pools that should cost nothing while idle.
+  optional uint32 min_nodes = 1;
+
+  // Maximum nodes PER ZONE. A regional cluster in 3 zones with max_nodes=4
+  // can reach 12 nodes.
+  optional uint32 max_nodes = 2;
+
+  // Minimum nodes across ALL zones (total addressing mode).
+  optional uint32 total_min_nodes = 3;
+
+  // Maximum nodes across ALL zones (total addressing mode) — an absolute
+  // cost cap regardless of zone spread.
+  optional uint32 total_max_nodes = 4;
+
+  // Scale-up algorithm: BALANCED spreads new nodes to even out zone sizes;
+  // ANY prioritizes unused reservations and reduces Spot preemption risk —
+  // prefer ANY for Spot pools.
+  string location_policy = 5 [(buf.validate.field).cel = {
+    id: "location_policy_valid"
+    message: "location_policy must be empty, BALANCED, or ANY"
+    expression: "this == '' || this in ['BALANCED', 'ANY']"
+  }];
+}
+
+// GcpGkeNodePoolManagement configures automatic node lifecycle operations.
+// Both default to true — GKE's own defaults.
+message GcpGkeNodePoolManagement {
+  // Automatically repair nodes that fail health checks. Keep on; a pool of
+  // broken nodes heals itself instead of paging you.
+  optional bool auto_repair = 1 [(dev.planton.shared.options.default) = "true"];
+
+  // Automatically upgrade node Kubernetes versions to track the control
+  // plane. Keep on unless you pin `version` and own upgrades manually
+  // (required for pools on a release channel).
+  optional bool auto_upgrade = 2 [(dev.planton.shared.options.default) = "true"];
+}
+
+// GcpGkeNodePoolUpgradeSettings controls how many nodes GKE touches at once
+// during an upgrade, and which rollout strategy it uses.
+message GcpGkeNodePoolUpgradeSettings {
+  option (buf.validate.message).cel = {
+    id: "blue_green_settings_require_strategy"
+    message: "blue_green_settings apply only when strategy is BLUE_GREEN"
+    expression: "!has(this.blue_green_settings) || this.strategy == 'BLUE_GREEN'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "surge_settings_conflict_blue_green"
+    message: "max_surge/max_unavailable apply to the SURGE strategy — remove them when strategy is BLUE_GREEN"
+    expression: "this.strategy != 'BLUE_GREEN' || (!has(this.max_surge) && !has(this.max_unavailable))"
+  };
+
+  // Additional nodes added during a surge upgrade (0 or more). Higher means
+  // faster upgrades at temporary extra cost. max_surge + max_unavailable
+  // must be at least 1 and at most 20 combined.
+  optional uint32 max_surge = 1;
+
+  // Nodes that may be simultaneously unavailable during a surge upgrade.
+  // Higher trades workload disruption for speed.
+  optional uint32 max_unavailable = 2;
+
+  // SURGE (default): rolling replacement, cheapest. BLUE_GREEN: provision a
+  // complete new node set, migrate, soak, then delete the old one — safest
+  // rollback story, double capacity while in flight.
+  string strategy = 3 [(buf.validate.field).cel = {
+    id: "strategy_valid"
+    message: "strategy must be empty, SURGE, or BLUE_GREEN"
+    expression: "this == '' || this in ['SURGE', 'BLUE_GREEN']"
+  }];
+
+  // Blue-green rollout pacing. Only with strategy BLUE_GREEN.
+  GcpGkeNodePoolBlueGreenSettings blue_green_settings = 4;
+}
+
+// GcpGkeNodePoolBlueGreenSettings paces a blue-green node upgrade: the blue
+// (old) pool drains in batches, then soaks before deletion.
+message GcpGkeNodePoolBlueGreenSettings {
+  // How the blue pool drains, batch by batch.
+  GcpGkeNodePoolStandardRolloutPolicy standard_rollout_policy = 1 [(buf.validate.field).required = true];
+
+  // Time after the entire blue pool is drained before it is deleted —
+  // the rollback window. Duration in seconds format, e.g. "3600s".
+  string node_pool_soak_duration = 2 [(buf.validate.field).cel = {
+    id: "soak_duration_format"
+    message: "node_pool_soak_duration must be a seconds-format duration like \"3600s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+}
+
+// GcpGkeNodePoolStandardRolloutPolicy sizes the drain batches of a
+// blue-green upgrade. Batch size is a percentage XOR a node count.
+message GcpGkeNodePoolStandardRolloutPolicy {
+  option (buf.validate.message).cel = {
+    id: "percentage_xor_node_count"
+    message: "set batch_percentage or batch_node_count, not both"
+    expression: "!(has(this.batch_percentage) && has(this.batch_node_count))"
+  };
+
+  // Fraction of blue nodes drained per batch, 0.0-1.0.
+  optional float batch_percentage = 1 [(buf.validate.field).float = {
+    gte: 0.0
+    lte: 1.0
+  }];
+
+  // Number of blue nodes drained per batch.
+  optional uint32 batch_node_count = 2;
+
+  // Soak time after each batch drains before the next starts. Duration in
+  // seconds format, e.g. "600s".
+  string batch_soak_duration = 3 [(buf.validate.field).cel = {
+    id: "batch_soak_format"
+    message: "batch_soak_duration must be a seconds-format duration like \"600s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+}
+
+// GcpGkeNodePoolPlacementPolicy physically co-locates the pool's nodes.
+message GcpGkeNodePoolPlacementPolicy {
+  // COMPACT places nodes close together for minimal inter-node latency —
+  // for tightly-coupled HPC and multi-node ML training. Requires machine
+  // families that support compact placement (C2/C3/A2/A3...).
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: ["COMPACT"]
+    }
+  ];
+
+  // Optional user-supplied compute resource policy to place nodes under.
+  // Must be in the same project and region as the pool. When empty, GKE
+  // creates and owns the placement policy.
+  string policy_name = 2;
+
+  // TPU placement topology, e.g. "2x2x2" — TPU pools only.
+  // https://cloud.google.com/kubernetes-engine/docs/concepts/plan-tpus#topology
+  string tpu_topology = 3;
+}
+
+// GcpGkeNodePoolNetworkConfig overrides cluster-level networking for this
+// pool's nodes and pods.
+message GcpGkeNodePoolNetworkConfig {
+  option (buf.validate.message).cel = {
+    id: "create_pod_range_requires_pod_range"
+    message: "create_pod_range names the NEW range to create — set pod_range (the range name) alongside it, or set neither to use the cluster's pod range"
+    expression: "!this.create_pod_range || this.pod_range != ''"
+  };
+
+  // Create a NEW secondary range for this pool's pods (named by pod_range,
+  // sized by pod_ipv4_cidr_block) instead of drawing from the cluster's pod
+  // range. Immutable. Dedicated pod ranges isolate address planning per
+  // pool — useful when one pool's churn would exhaust the shared range.
+  bool create_pod_range = 1;
+
+  // The secondary range for this pool's pod IPs. With create_pod_range,
+  // the name given to the new range; without it, the name of an EXISTING
+  // secondary range on the cluster's subnetwork. Immutable.
+  string pod_range = 2;
+
+  // CIDR (e.g. "10.96.0.0/14") or netmask size (e.g. "/14") for the new pod
+  // range when create_pod_range is set; empty lets GKE choose. Immutable.
+  string pod_ipv4_cidr_block = 3;
+
+  // Whether this pool's nodes get only internal IPs, overriding the
+  // cluster-level private-nodes setting. Unset inherits from the cluster.
+  optional bool enable_private_nodes = 4;
+
+  // Network bandwidth tier: TIER_1 unlocks up to 100 Gbps total egress on
+  // supported machine families (N2/N2D/C2/C3...). Requires gVNIC on this
+  // pool (node_config.gvnic_enabled).
+  string total_egress_bandwidth_tier = 5 [(buf.validate.field).cel = {
+    id: "egress_tier_valid"
+    message: "total_egress_bandwidth_tier must be empty, TIER_UNSPECIFIED, or TIER_1"
+    expression: "this == '' || this in ['TIER_UNSPECIFIED', 'TIER_1']"
+  }];
+
+  // Disables the pod CIDR overprovisioning for this pool (GKE normally
+  // doubles the pod range slice per node). Only relevant with a dedicated
+  // pod range. Immutable.
+  bool pod_cidr_overprovision_disabled = 6;
+}
+
+// GcpGkeNodePoolNodeConfig is the VM configuration every node in the pool
+// shares: machine shape, disks, identity, Kubernetes scheduling metadata,
+// accelerators, security posture, and node-level tuning.
+message GcpGkeNodePoolNodeConfig {
+  option (buf.validate.message).cel = {
+    id: "spot_xor_preemptible"
+    message: "spot and preemptible are mutually exclusive — spot is the current model (no 24h max lifetime); preemptible is the legacy one"
+    expression: "!(this.spot && this.preemptible)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "fast_socket_requires_gvnic"
+    message: "fast_socket_enabled requires gvnic_enabled — NCCL Fast Socket rides on gVNIC"
+    expression: "!this.fast_socket_enabled || this.gvnic_enabled"
+  };
+
+  // Compute Engine machine type, e.g. "e2-medium", "n2-standard-8",
+  // "a2-highgpu-1g". Defaults to e2-medium (2 vCPU, 4 GB) — fine for
+  // sandboxes, undersized for real workloads. Immutable (changing it
+  // replaces the pool's nodes).
+  optional string machine_type = 1 [(dev.planton.shared.options.default) = "e2-medium"];
+
+  // Boot disk size in GB per node (min 10). GKE's default is 100.
+  optional uint32 disk_size_gb = 2 [(buf.validate.field).uint32.gte = 10];
+
+  // Boot disk type. pd-balanced (GKE's current default) suits most pools;
+  // pd-ssd for I/O-heavy node-local work; hyperdisk-balanced on machine
+  // families that require it (C3/C3D and newer).
+  string disk_type = 3 [(buf.validate.field).cel = {
+    id: "disk_type_valid"
+    message: "disk_type must be empty, pd-standard, pd-balanced, pd-ssd, hyperdisk-balanced, hyperdisk-extreme, or hyperdisk-throughput"
+    expression: "this == '' || this in ['pd-standard', 'pd-balanced', 'pd-ssd', 'hyperdisk-balanced', 'hyperdisk-extreme', 'hyperdisk-throughput']"
+  }];
+
+  // Node OS image. COS_CONTAINERD (Container-Optimized OS, the default and
+  // GKE's recommendation), UBUNTU_CONTAINERD (when you need Ubuntu
+  // packages/kernel modules), or WINDOWS_LTSC_CONTAINERD for Windows
+  // workloads.
+  optional string image_type = 4 [
+    (dev.planton.shared.options.default) = "COS_CONTAINERD",
+    (buf.validate.field).cel = {
+      id: "image_type_valid"
+      message: "image_type must be COS_CONTAINERD, UBUNTU_CONTAINERD, or WINDOWS_LTSC_CONTAINERD"
+      expression: "this in ['COS_CONTAINERD', 'UBUNTU_CONTAINERD', 'WINDOWS_LTSC_CONTAINERD']"
+    }
+  ];
+
+  // Service account the node VMs run as. Accepts an email literal or a
+  // reference to a GcpServiceAccount resource. Defaults to the Compute
+  // Engine default SA — create a minimal dedicated SA for production and
+  // grant workload permissions through Workload Identity instead of node
+  // scopes.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+
+  // OAuth scopes on the node VMs. Empty applies GKE's defaults
+  // (devstorage.read_only, logging.write, monitoring). With Workload
+  // Identity (the Planton cluster default), workload permissions come from
+  // IAM on Kubernetes service accounts — node scopes only gate node-level
+  // agents, so the defaults are usually right.
+  repeated string oauth_scopes = 6 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Kubernetes labels applied to every node in the pool — what nodeSelector
+  // and affinity rules match on. Example: {"workload-class": "batch"}.
+  map<string, string> labels = 7;
+
+  // GCE resource labels on the node VMs (cloud billing/inventory labels,
+  // not Kubernetes labels). Merged with the standard platform labels;
+  // platform attribution keys win on conflict.
+  map<string, string> resource_labels = 8;
+
+  // GCE network tags on the node VMs — what VPC firewall rules match.
+  // GKE adds its own cluster tag automatically; entries here are additive.
+  repeated string tags = 9 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // GCE instance metadata key/value pairs. GKE requires
+  // "disable-legacy-endpoints" = "true" and both engines enforce it
+  // beneath any entries set here. Immutable.
+  map<string, string> metadata = 10;
+
+  // Kubernetes taints applied to every node — the scheduling fence that
+  // keeps general workloads off special-purpose pools. Pair each taint
+  // with a matching toleration on the intended workloads. GPU pools get
+  // an automatic nvidia.com/gpu taint from GKE.
+  repeated GcpGkeNodePoolTaint taints = 11;
+
+  // Spot VMs: deeply discounted (60-91%) capacity with no availability
+  // guarantee — nodes can be preempted with 30s notice. The current model
+  // (no 24-hour max lifetime; replaces preemptible). Pair with
+  // scale-to-zero autoscaling, ANY location policy, and taints so only
+  // fault-tolerant workloads land here. Immutable.
+  bool spot = 12;
+
+  // Legacy preemptible VMs (24-hour max lifetime). Prefer spot for new
+  // pools. Immutable.
+  bool preemptible = 13;
+
+  // GPU accelerators attached to every node. The machine type must support
+  // the accelerator (or be an accelerator-optimized family like A2/A3/G2,
+  // where the GPU is implied by the machine type and this block must match
+  // it). GKE taints GPU nodes automatically.
+  repeated GcpGkeNodePoolGuestAccelerator guest_accelerators = 14;
+
+  // Shielded VM options. GKE's defaults: secure boot off (to tolerate
+  // unsigned third-party kernel modules), integrity monitoring on. Enable
+  // secure boot unless a workload loads unsigned modules. Immutable.
+  GcpGkeNodePoolShieldedInstanceConfig shielded_instance_config = 15;
+
+  // Confidential GKE nodes: hardware memory encryption (AMD SEV / Intel
+  // TDX) for the node VMs. Requires a supporting machine family (N2D/C2D/
+  // C3D...). Immutable.
+  GcpGkeNodePoolConfidentialNodes confidential_nodes = 16;
+
+  // Minimum CPU platform, e.g. "Intel Ice Lake" — pins scheduling to that
+  // CPU generation or newer for instruction-set or performance floors.
+  // Immutable.
+  string min_cpu_platform = 17;
+
+  // Local SSDs attached to each node for scratch I/O, automatically
+  // formatted and mounted by GKE (SCSI interface; legacy knob). For NVMe,
+  // prefer ephemeral_storage_local_ssd or local_nvme_ssd_block. Immutable.
+  optional uint32 local_ssd_count = 18;
+
+  // Back ephemeral storage (emptyDir, container layers, logs) with local
+  // NVMe SSDs instead of the boot disk — the biggest node-side I/O win for
+  // churn-heavy workloads. Immutable.
+  GcpGkeNodePoolEphemeralStorageLocalSsd ephemeral_storage_local_ssd = 19;
+
+  // Attach raw-block local NVMe SSDs for workloads that manage their own
+  // filesystem (databases with direct block access). Immutable.
+  GcpGkeNodePoolLocalNvmeSsdBlock local_nvme_ssd_block = 20;
+
+  // Image streaming (GCFS): containers start before the full image is
+  // pulled, pulling data on demand — large-image pools (ML frameworks)
+  // start minutes faster. Requires Container-Optimized OS.
+  bool gcfs_enabled = 21;
+
+  // gVNIC (Google Virtual NIC): higher-throughput networking than virtio;
+  // required for TIER_1 bandwidth and 100+ Gbps machine shapes. Immutable.
+  bool gvnic_enabled = 22;
+
+  // NCCL Fast Socket: optimizes multi-node collective communication for
+  // distributed GPU training. Requires gvnic_enabled.
+  bool fast_socket_enabled = 23;
+
+  // Customer-managed encryption key (CMEK) for the node boot disks.
+  // Accepts a full crypto key path or a reference to a GcpKmsKey resource.
+  // The Compute Engine service agent needs Encrypter/Decrypter on the key.
+  // Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef boot_disk_kms_key = 24 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // How workloads see instance metadata: GKE_METADATA runs the GKE
+  // metadata server per node (required for Workload Identity — the default
+  // on WI clusters and the right answer); GCE_METADATA exposes the raw VM
+  // metadata (legacy, leaks node credentials to pods).
+  string workload_metadata_mode = 25 [(buf.validate.field).cel = {
+    id: "workload_metadata_mode_valid"
+    message: "workload_metadata_mode must be empty, GCE_METADATA, or GKE_METADATA"
+    expression: "this == '' || this in ['GCE_METADATA', 'GKE_METADATA']"
+  }];
+
+  // Consume Compute Engine reservations: committed capacity for the pool.
+  // ANY_RESERVATION uses any matching reservation; SPECIFIC_RESERVATION
+  // targets one by name (key "compute.googleapis.com/reservation-name",
+  // values [name]); NO_RESERVATION opts out. Immutable.
+  GcpGkeNodePoolReservationAffinity reservation_affinity = 26;
+
+  // Secondary boot disks that preload container images or data onto every
+  // node — cold-start acceleration for very large images. Immutable.
+  repeated GcpGkeNodePoolSecondaryBootDisk secondary_boot_disks = 27;
+
+  // Kubelet tuning: CPU management, PID limits, log rotation, image GC.
+  // Only set what you need; unset fields keep GKE defaults.
+  GcpGkeNodePoolKubeletConfig kubelet_config = 28;
+
+  // Linux node OS tuning: sysctls, cgroup mode, hugepages.
+  GcpGkeNodePoolLinuxNodeConfig linux_node_config = 29;
+
+  // Node system-log throughput: DEFAULT (100 KiB/s) or MAX_THROUGHPUT
+  // (10 MiB/s, costs a little node CPU) for pools with log-heavy workloads.
+  string logging_variant = 30 [(buf.validate.field).cel = {
+    id: "logging_variant_valid"
+    message: "logging_variant must be empty, DEFAULT, or MAX_THROUGHPUT"
+    expression: "this == '' || this in ['DEFAULT', 'MAX_THROUGHPUT']"
+  }];
+
+  // Flex-start (Dynamic Workload Scheduler): nodes are requested when
+  // needed and run up to 7 days at a discount — the on-demand counterpart
+  // to queued provisioning for hard-to-get GPU capacity. Immutable.
+  bool flex_start = 31;
+
+  // Maximum runtime of each node, in seconds format (e.g. "3600s"), after
+  // which it is drained and deleted. Pairs with flex-start/Spot batch
+  // pools; leave empty for long-lived pools. Immutable.
+  string max_run_duration = 32 [(buf.validate.field).cel = {
+    id: "max_run_duration_format"
+    message: "max_run_duration must be a seconds-format duration like \"3600s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+}
+
+// GcpGkeNodePoolTaint is a Kubernetes taint applied to every node in the
+// pool.
+message GcpGkeNodePoolTaint {
+  // Taint key, e.g. "workload-class".
+  string key = 1 [(buf.validate.field).required = true];
+
+  // Taint value, e.g. "batch".
+  string value = 2 [(buf.validate.field).required = true];
+
+  // NO_SCHEDULE fences new pods without a toleration; PREFER_NO_SCHEDULE
+  // is advisory; NO_EXECUTE also evicts running pods without a toleration.
+  string effect = 3 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string = {
       in: [
-        "pd-standard",
-        "pd-ssd",
-        "pd-balanced"
+        "NO_SCHEDULE",
+        "PREFER_NO_SCHEDULE",
+        "NO_EXECUTE"
+      ]
+    }
+  ];
+}
+
+// GcpGkeNodePoolGuestAccelerator attaches GPUs to every node in the pool.
+message GcpGkeNodePoolGuestAccelerator {
+  // Accelerator type resource name, e.g. "nvidia-tesla-t4",
+  // "nvidia-l4", "nvidia-a100-80gb". Must be available in the pool's
+  // zones.
+  string type = 1 [(buf.validate.field).required = true];
+
+  // Number of accelerator cards per node.
+  uint32 count = 2 [(buf.validate.field).uint32.gte = 1];
+
+  // NVIDIA MIG partition size, e.g. "1g.5gb" — slices one physical GPU
+  // into isolated instances (A100/H100 families).
+  string gpu_partition_size = 3;
+
+  // Driver installation: DEFAULT (GKE installs the default driver
+  // version), LATEST (newest available; COS only), or
+  // INSTALLATION_DISABLED (bring your own DaemonSet). If omitted on GKE
+  // 1.30.1+, DEFAULT applies.
+  string gpu_driver_version = 4 [(buf.validate.field).cel = {
+    id: "gpu_driver_version_valid"
+    message: "gpu_driver_version must be empty, INSTALLATION_DISABLED, DEFAULT, or LATEST"
+    expression: "this == '' || this in ['INSTALLATION_DISABLED', 'DEFAULT', 'LATEST']"
+  }];
+
+  // GPU sharing: lets multiple pods share one physical GPU.
+  GcpGkeNodePoolGpuSharingConfig gpu_sharing_config = 5;
+}
+
+// GcpGkeNodePoolGpuSharingConfig shares physical GPUs across pods.
+message GcpGkeNodePoolGpuSharingConfig {
+  // GPU_TIME_SHARING context-switches the GPU between pods; MPS (NVIDIA
+  // Multi-Process Service) runs them concurrently with resource limits.
+  string gpu_sharing_strategy = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "GPU_TIME_SHARING",
+        "MPS"
       ]
     }
   ];
 
-  // Node image type (OS image). Default is "COS_CONTAINERD" (Container-Optimized OS with containerd).
-  optional string image_type = 7 [(dev.planton.shared.options.default) = "COS_CONTAINERD" /* (No validation on allowed values here; GKE accepts specific strings like "COS", "COS_CONTAINERD", "UBUNTU", etc.) */];
+  // Maximum pods sharing each physical GPU.
+  uint32 max_shared_clients_per_gpu = 2 [(buf.validate.field).uint32.gte = 1];
+}
 
-  // Service account email for nodes. If not provided, the GKE default node service account is used.
-  string service_account = 8;
+// GcpGkeNodePoolShieldedInstanceConfig hardens node VM boot integrity.
+message GcpGkeNodePoolShieldedInstanceConfig {
+  // Verify boot components against a signature baseline. GCP default
+  // false — because unsigned third-party kernel modules fail secure boot.
+  // Turn it on unless you load such modules.
+  bool enable_secure_boot = 1;
 
-  // Auto-upgrade and Auto-repair settings for node management.
-  GcpGkeClusterNodePoolNodeManagement management = 9 [(buf.validate.field).required = false];
+  // Monitor and attest boot integrity at runtime (GCP default true).
+  optional bool enable_integrity_monitoring = 2 [(dev.planton.shared.options.default) = "true"];
+}
 
-  // Whether to use Spot (preemptible) VMs for this node pool.
-  bool spot = 10;
+// GcpGkeNodePoolConfidentialNodes encrypts node memory in hardware.
+message GcpGkeNodePoolConfidentialNodes {
+  // Whether confidential nodes are enabled for this pool.
+  bool enabled = 1;
 
-  // Kubernetes labels to apply to all nodes in this pool.
-  map<string, string> node_labels = 11;
+  // Confidential computing technology: SEV (AMD, the common choice),
+  // SEV_SNP, or TDX (Intel). Empty lets GCP choose for the machine family.
+  string confidential_instance_type = 2 [(buf.validate.field).cel = {
+    id: "confidential_type_valid"
+    message: "confidential_instance_type must be empty, SEV, SEV_SNP, or TDX"
+    expression: "this == '' || this in ['SEV', 'SEV_SNP', 'TDX']"
+  }];
+}
 
-  // Oneof: either a fixed node count or autoscaling config must be provided.
-  oneof node_pool_size {
-    // Fixed number of nodes (no autoscaling).
-    uint32 node_count = 100;
+// GcpGkeNodePoolEphemeralStorageLocalSsd backs ephemeral storage with local
+// NVMe SSDs.
+message GcpGkeNodePoolEphemeralStorageLocalSsd {
+  // Number of local SSDs backing ephemeral storage. Each is 375 GB (or
+  // 3000 GB on Z3); count must match what the machine type supports.
+  uint32 local_ssd_count = 1 [(buf.validate.field).uint32.gte = 1];
 
-    // Autoscaling config for this node pool.
-    GcpGkeNodePoolAutoscaling autoscaling = 101;
-  }
+  // Of those, SSDs dedicated to GKE Data Cache (read caching for
+  // persistent volumes).
+  optional uint32 data_cache_count = 2;
+}
 
-  // Name of the node pool to create in the GKE cluster.
-  // Must be 1-40 characters, lowercase letters, numbers, or hyphens.
-  // Must start with a lowercase letter and end with a lowercase letter or number.
-  // Example: "default-pool", "high-memory-pool"
-  string node_pool_name = 12 [
+// GcpGkeNodePoolLocalNvmeSsdBlock attaches raw-block local NVMe SSDs.
+message GcpGkeNodePoolLocalNvmeSsdBlock {
+  // Number of raw-block local NVMe SSDs (375 GB each).
+  uint32 local_ssd_count = 1 [(buf.validate.field).uint32.gte = 1];
+}
+
+// GcpGkeNodePoolReservationAffinity targets Compute Engine capacity
+// reservations.
+message GcpGkeNodePoolReservationAffinity {
+  option (buf.validate.message).cel = {
+    id: "specific_requires_key_values"
+    message: "SPECIFIC_RESERVATION requires key \"compute.googleapis.com/reservation-name\" and the reservation name in values"
+    expression: "this.consume_reservation_type != 'SPECIFIC_RESERVATION' || (this.key != '' && this.values.size() > 0)"
+  };
+
+  // NO_RESERVATION opts out; ANY_RESERVATION consumes any matching
+  // reservation; SPECIFIC_RESERVATION targets one by name.
+  string consume_reservation_type = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^[a-z]([a-z0-9-]{0,38}[a-z0-9])?$"
+    (buf.validate.field).string = {
+      in: [
+        "NO_RESERVATION",
+        "ANY_RESERVATION",
+        "SPECIFIC_RESERVATION"
+      ]
+    }
   ];
+
+  // Reservation label key — "compute.googleapis.com/reservation-name" for
+  // SPECIFIC_RESERVATION.
+  string key = 2;
+
+  // Reservation label values — the reservation name(s).
+  repeated string values = 3;
 }
 
-// Nested message for autoscaler settings.
-message GcpGkeNodePoolAutoscaling {
-  // Minimum nodes (per zone) when autoscaling. 0 allows scale-to-zero.
-  uint32 min_nodes = 1;
-  // Maximum nodes (per zone) when autoscaling.
-  uint32 max_nodes = 2;
-  // (Optional) Location policy for scaling ("BALANCED" or "ANY").
-  optional string location_policy = 3 [(dev.planton.shared.options.default) = "BALANCED"];
+// GcpGkeNodePoolSecondaryBootDisk preloads data onto nodes at boot.
+message GcpGkeNodePoolSecondaryBootDisk {
+  // Disk image to create the secondary boot disk from (a prepared image
+  // containing the container images/data to preload).
+  string disk_image = 1 [(buf.validate.field).required = true];
+
+  // CONTAINER_IMAGE_CACHE serves preloaded container images to the
+  // container runtime. Empty attaches the disk without special handling.
+  string mode = 2 [(buf.validate.field).cel = {
+    id: "secondary_disk_mode_valid"
+    message: "mode must be empty or CONTAINER_IMAGE_CACHE"
+    expression: "this == '' || this == 'CONTAINER_IMAGE_CACHE'"
+  }];
 }
 
-// Node management settings for auto-upgrade/repair.
-message GcpGkeClusterNodePoolNodeManagement {
-  // Whether to enable automatic upgrades for nodes in this pool.
-  bool disable_auto_upgrade = 1;
-  // Whether to enable automatic repair of unhealthy nodes in this pool.
-  bool disable_auto_repair = 2;
+// GcpGkeNodePoolKubeletConfig tunes the kubelet on every node. Unset
+// fields keep GKE defaults.
+message GcpGkeNodePoolKubeletConfig {
+  // CPU management: "static" gives Guaranteed-QoS pods exclusive cores
+  // (latency-sensitive workloads); "none" (default) shares cores.
+  string cpu_manager_policy = 1 [(buf.validate.field).cel = {
+    id: "cpu_manager_policy_valid"
+    message: "cpu_manager_policy must be empty, static, or none"
+    expression: "this == '' || this in ['static', 'none']"
+  }];
+
+  // Enforce CPU CFS quota for containers with CPU limits. Disabling trades
+  // throttling for potential node CPU contention.
+  optional bool cpu_cfs_quota = 2;
+
+  // CFS quota period, e.g. "100ms" (kubelet default) — shorter periods
+  // smooth throttling for latency-sensitive workloads.
+  string cpu_cfs_quota_period = 3;
+
+  // Maximum processes per pod — a fork-bomb fence for multi-tenant pools.
+  optional int64 pod_pids_limit = 4 [(buf.validate.field).int64 = {
+    gte: 1024
+    lte: 4194304
+  }];
+
+  // The kubelet's insecure read-only port 10255: FALSE closes it (the
+  // hardened posture new clusters default to); TRUE keeps it open for
+  // legacy monitoring agents that still scrape it.
+  string insecure_kubelet_readonly_port_enabled = 5 [(buf.validate.field).cel = {
+    id: "readonly_port_valid"
+    message: "insecure_kubelet_readonly_port_enabled must be empty, TRUE, or FALSE"
+    expression: "this == '' || this in ['TRUE', 'FALSE']"
+  }];
+
+  // Parallel image pulls (kubelet default serializes fewer) — speeds up
+  // busy nodes that churn many images.
+  optional int64 max_parallel_image_pulls = 6;
+
+  // Container log file size before rotation, e.g. "10Mi" (10Mi-500Mi).
+  string container_log_max_size = 7;
+
+  // Rotated container log files kept per container (2-10).
+  optional int64 container_log_max_files = 8 [(buf.validate.field).int64 = {
+    gte: 2
+    lte: 10
+  }];
+
+  // Disk usage percent below which image GC never runs (must be lower
+  // than the high threshold).
+  optional int64 image_gc_low_threshold_percent = 9 [(buf.validate.field).int64 = {
+    gte: 10
+    lte: 85
+  }];
+
+  // Disk usage percent above which image GC always runs.
+  optional int64 image_gc_high_threshold_percent = 10 [(buf.validate.field).int64 = {
+    gte: 10
+    lte: 85
+  }];
+}
+
+// GcpGkeNodePoolLinuxNodeConfig tunes the node OS.
+message GcpGkeNodePoolLinuxNodeConfig {
+  // Sysctls applied to every node, e.g.
+  // {"net.core.somaxconn": "4096"} — only GKE's allowlisted keys.
+  map<string, string> sysctls = 1;
+
+  // Container runtime cgroup mode: CGROUP_MODE_V2 (the modern default on
+  // current GKE versions) or CGROUP_MODE_V1 for workloads that still need
+  // v1.
+  string cgroup_mode = 2 [(buf.validate.field).cel = {
+    id: "cgroup_mode_valid"
+    message: "cgroup_mode must be empty, CGROUP_MODE_UNSPECIFIED, CGROUP_MODE_V1, or CGROUP_MODE_V2"
+    expression: "this == '' || this in ['CGROUP_MODE_UNSPECIFIED', 'CGROUP_MODE_V1', 'CGROUP_MODE_V2']"
+  }];
+
+  // Hugepage pre-allocation for DPDK/database workloads.
+  GcpGkeNodePoolHugepagesConfig hugepages_config = 3;
+}
+
+// GcpGkeNodePoolHugepagesConfig pre-allocates hugepages on every node.
+message GcpGkeNodePoolHugepagesConfig {
+  // Number of 2MB hugepages.
+  optional int64 hugepage_size_2m = 1;
+
+  // Number of 1GB hugepages.
+  optional int64 hugepage_size_1g = 2;
 }

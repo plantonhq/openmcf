@@ -1,12 +1,13 @@
 # GCP DNS Record
 
-Deploys an individual DNS record set within an existing Google Cloud DNS Managed Zone. This component supports all standard record types (A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA), configurable TTL, and round-robin record sets with multiple values.
+Deploys an individual DNS record set within an existing Google Cloud DNS Managed Zone. A record set answers queries either with static values (round-robin) or with exactly one routing policy — weighted round robin, geolocation, or primary/backup failover with health-checked targets. All record types the Cloud DNS API supports are accepted (A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA, HTTPS, SVCB, and more).
 
 ## What Gets Created
 
 When you deploy a GcpDnsRecord resource, Planton provisions:
 
-- **DNS Record Set** — a `google_dns_record_set` resource in the specified managed zone, with the given type, FQDN, values, and TTL
+- **DNS Record Set** — a `google_dns_record_set` resource in the specified managed zone, with the given type, FQDN, TTL, and either static values or a routing policy
+- **Cloud DNS API enablement** — `dns.googleapis.com` is enabled on the target project (never disabled on destroy)
 
 ## Prerequisites
 
@@ -52,17 +53,35 @@ This creates an A record for `app.example.com.` pointing to `203.0.113.10` with 
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project ID where the managed zone exists. Can reference a GcpProject resource via `valueFrom`. | Required |
-| `managedZone` | `StringValueOrRef` | Name of the Cloud DNS Managed Zone where the record is created. Can reference a GcpDnsZone resource via `valueFrom`. | Required |
-| `type` | `RecordType` | DNS record type. One of: `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `NS`, `PTR`, `CAA`, `SOA`. | Required, must be a defined enum value |
+| `managedZone` | `StringValueOrRef` | Name of the Cloud DNS Managed Zone (the zone RESOURCE name, not the DNS name). Can reference a GcpDnsZone resource via `valueFrom`. | Required |
+| `type` | `string` | DNS record type, uppercase (e.g., `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `HTTPS`, `SVCB`). Any type the Cloud DNS API supports is accepted. | Required, uppercase alphanumeric |
 | `name` | `string` | Fully qualified domain name for the record. Must end with a trailing dot (e.g., `www.example.com.`). | Required, must match valid FQDN pattern |
-| `values` | `string[]` | Record values. For A records: IPv4 addresses. For AAAA: IPv6 addresses. For CNAME: target hostname with trailing dot. Multiple values create a round-robin record set. | Minimum 1 item |
+
+Exactly one of `values` or `routingPolicy` must be set:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `values` | `string[]` | Static record values (RRDATA). For A records: IPv4 addresses. For AAAA: IPv6 addresses. For CNAME: target hostname with trailing dot. Multiple values create a round-robin record set. |
+| `routingPolicy` | `object` | Query steering: exactly one of `wrr` (weighted round robin), `geo` (geolocation), or `primaryBackup` (failover). See below. |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `ttlSeconds` | `int32` | `300` | Time to live for the DNS record in seconds. Determines how long resolvers cache this record. Valid range: 1-86400. Common values: 60 (1 min), 300 (5 min), 3600 (1 hour), 86400 (1 day). |
+| `projectId` | `StringValueOrRef` | provider default | GCP project ID where the managed zone exists. Can reference a GcpProject resource via `valueFrom`. If omitted, the provider's default project is used. |
+| `ttlSeconds` | `int32` | `300` | Time to live in seconds — how long resolvers cache this record. Common values: 60 (fast failover), 300, 3600, 86400; NS records conventionally use 172800. |
+
+### Routing Policy
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `routingPolicy.wrr[]` | `object[]` | Weighted round robin entries: `weight` (required, ≥ 0; traffic splits by weight ratio; 0 stages an entry with no traffic), `values`, and/or `healthCheckedTargets`. |
+| `routingPolicy.geo[]` | `object[]` | Geolocation entries: `location` (a GCP location such as `us-east1`), `values`, and/or `healthCheckedTargets`. |
+| `routingPolicy.enableGeoFencing` | `bool` | Geo routing only: unhealthy locations keep answering instead of failing over to the next-closest location. |
+| `routingPolicy.primaryBackup` | `object` | Failover: `primary` (health-checked targets, required), `backupGeo[]` (regional fallback, required), `trickleRatio` (0.0–1.0 traffic to backups while primaries are healthy), `enableGeoFencingForBackups`. |
+| `routingPolicy.healthCheck` | `StringValueOrRef` | Health check for public-IP (external endpoint) targets. Can reference a GcpHealthCheck. Internal load balancer targets carry their own implicit health signal. |
+
+`healthCheckedTargets` (A/AAAA records only) holds `internalLoadBalancers[]` (each with `ipAddress` — referenceable to GcpAddress — `ipProtocol` tcp/udp, `networkUrl` — referenceable to GcpVpcNetwork — `port`, `project`, optional `loadBalancerType` and `region`) and/or `externalEndpoints[]` (public IPs, requiring `healthCheck`).
 
 ## Examples
 
@@ -195,6 +214,62 @@ spec:
   values:
     - "v=spf1 include:_spf.google.com ~all"
   ttlSeconds: 3600
+```
+
+### Weighted Canary Rollout
+
+A weighted round-robin policy sending 5% of traffic to a new backend:
+
+```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpDnsRecord
+metadata:
+  name: api-canary
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: my-org
+    pulumi.planton.dev/project: my-project
+    pulumi.planton.dev/stack.name: prod.GcpDnsRecord.api-canary
+spec:
+  projectId: my-prod-project-456
+  managedZone: example-zone
+  type: A
+  name: api.example.com.
+  routingPolicy:
+    wrr:
+      - weight: 95
+        values: ["203.0.113.10"]
+      - weight: 5
+        values: ["203.0.113.20"]
+  ttlSeconds: 60
+```
+
+### Geolocation Routing
+
+Answers each query from the location nearest the caller:
+
+```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpDnsRecord
+metadata:
+  name: app-geo
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: my-org
+    pulumi.planton.dev/project: my-project
+    pulumi.planton.dev/stack.name: prod.GcpDnsRecord.app-geo
+spec:
+  projectId: my-prod-project-456
+  managedZone: example-zone
+  type: A
+  name: app.example.com.
+  routingPolicy:
+    geo:
+      - location: us-east1
+        values: ["203.0.113.10"]
+      - location: europe-west3
+        values: ["198.51.100.10"]
+  ttlSeconds: 300
 ```
 
 ## Stack Outputs

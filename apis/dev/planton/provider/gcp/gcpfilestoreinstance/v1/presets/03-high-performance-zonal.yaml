@@ -4,20 +4,26 @@ metadata:
   name: perf-nfs
 spec:
   projectId:
-    value: "<gcp-project-id>"
-  instanceName: <instance-name>
-  location: <gcp-zone>
+    value: acme-ml-project # replace with your GCP project id
+  location: us-west1-a # replace — a zone (ZONAL is a single-zone tier)
   tier: ZONAL
-  description: High-performance NFS with fixed IOPS provisioning
+  description: High-throughput NFS with IOPS that scales with capacity
   kmsKeyName:
-    value: "<kms-key-resource-name>"
+    # CMEK-at-rest for compliance; reference your GcpKmsKey resource.
+    valueFrom:
+      kind: GcpKmsKey
+      name: storage-cmek
   fileShare:
     name: fast_vol
-    capacityGb: 2560
+    capacityGb: 2048 # 2 TiB; grow it and provisioned IOPS grows with it
   networkConfig:
     network:
-      value: "<vpc-network-name>"
-    connectMode: PRIVATE_SERVICE_ACCESS
+      value: ml-vpc # replace with your VPC network name
   performanceConfig:
-    fixedIops:
-      maxIops: 20000
+    # IOPS rides capacity: 2 TiB x 4000 = 8000 IOPS today, and growing
+    # the share raises IOPS automatically — no second knob to remember.
+    iopsPerTb:
+      maxIopsPerTb: 4000
+  labels:
+    team: ml-platform # replace with your cost-attribution labels
+    workload: training

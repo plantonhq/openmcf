@@ -1,0 +1,28 @@
+# BASIC-tier leaf over direct peering: the smallest Memorystore shape, peered
+# to the run-scoped prerequisite VPC. Exercises the ambient-project contract
+# (no spec.project_id) and the VPC reference wiring.
+apiVersion: gcp.planton.dev/v1
+kind: GcpRedisInstance
+metadata:
+  name: planton-oss-e2e-gcpred-basic
+  id: planton-oss-e2e-gcpred-basic
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpredisinstance
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  instanceName: planton-oss-e2e-red-basic-${E2E_RUN_ID}
+  region: us-central1
+  tier: BASIC
+  memorySizeGb: 1
+  redisVersion: REDIS_7_2
+  authorizedNetwork:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpc-prereq
+      fieldPath: status.outputs.network_self_link

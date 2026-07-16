@@ -1,0 +1,269 @@
+package module
+
+import (
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/bigquery"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+// table provisions the BigQuery table — a native table, a logical view, a
+// materialized view, or an external/BigLake table, all arms of one
+// resource. table_id, dataset_id, and project are immutable, as are the
+// encryption key, BigLake configuration, replication info, a materialized
+// view's query, and each partitioning field.
+func table(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
+	spec := locals.GcpBigQueryTable.Spec
+
+	// Enable the BigQuery API so a fresh project can host tables.
+	serviceArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("bigquery.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
+	}
+	if spec.ProjectId.GetValue() != "" {
+		serviceArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+	createdProjectService, err := projects.NewService(ctx,
+		"bigquery-bigquery.googleapis.com", serviceArgs, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to enable bigquery.googleapis.com api")
+	}
+
+	// Client-side destroy guard, default TRUE on both engines: a destroy
+	// fails until the spec explicitly sets it false.
+	deletionProtection := true
+	if spec.DeletionProtection != nil {
+		deletionProtection = spec.GetDeletionProtection()
+	}
+
+	args := &bigquery.TableArgs{
+		TableId:            pulumi.String(spec.TableId),
+		DatasetId:          pulumi.String(spec.DatasetId.GetValue()),
+		Labels:             pulumi.ToStringMap(locals.GcpLabels),
+		DeletionProtection: pulumi.BoolPtr(deletionProtection),
+	}
+
+	// Honor the spec contract: an empty project_id falls back to the
+	// provider's default project (omit the arg entirely).
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
+	}
+
+	// Empty-/zero-means-unset scalars are omitted so the API applies its
+	// own server-side defaults.
+	if spec.FriendlyName != "" {
+		args.FriendlyName = pulumi.StringPtr(spec.FriendlyName)
+	}
+	if spec.Description != "" {
+		args.Description = pulumi.StringPtr(spec.Description)
+	}
+	if spec.Schema != "" {
+		args.Schema = pulumi.StringPtr(spec.Schema)
+	}
+	if spec.ExpirationTime > 0 {
+		args.ExpirationTime = pulumi.IntPtr(int(spec.ExpirationTime))
+	}
+	if spec.MaxStaleness != "" {
+		args.MaxStaleness = pulumi.StringPtr(spec.MaxStaleness)
+	}
+	if len(spec.Clustering) > 0 {
+		args.Clusterings = pulumi.ToStringArray(spec.Clustering)
+	}
+	if spec.RequirePartitionFilter {
+		args.RequirePartitionFilter = pulumi.BoolPtr(true)
+	}
+	if len(spec.ResourceTags) > 0 {
+		args.ResourceTags = pulumi.ToStringMap(spec.ResourceTags)
+	}
+
+	if spec.TimePartitioning != nil {
+		timePartitioningArgs := &bigquery.TableTimePartitioningArgs{
+			Type: pulumi.String(spec.TimePartitioning.Type),
+		}
+		if spec.TimePartitioning.Field != "" {
+			timePartitioningArgs.Field = pulumi.StringPtr(spec.TimePartitioning.Field)
+		}
+		if spec.TimePartitioning.ExpirationMs > 0 {
+			timePartitioningArgs.ExpirationMs = pulumi.IntPtr(int(spec.TimePartitioning.ExpirationMs))
+		}
+		args.TimePartitioning = timePartitioningArgs
+	}
+
+	if spec.RangePartitioning != nil {
+		args.RangePartitioning = &bigquery.TableRangePartitioningArgs{
+			Field: pulumi.String(spec.RangePartitioning.Field),
+			Range: &bigquery.TableRangePartitioningRangeArgs{
+				Start:    pulumi.Int(int(spec.RangePartitioning.Range.Start)),
+				End:      pulumi.Int(int(spec.RangePartitioning.Range.End)),
+				Interval: pulumi.Int(int(spec.RangePartitioning.Range.Interval)),
+			},
+		}
+	}
+
+	if spec.View != nil {
+		args.View = &bigquery.TableViewArgs{
+			Query: pulumi.String(spec.View.Query),
+			// Always sent explicitly so the API's own legacy-SQL-by-default
+			// behavior for views never silently applies (spec default: false).
+			UseLegacySql: pulumi.BoolPtr(spec.View.UseLegacySql),
+		}
+	}
+
+	if spec.MaterializedView != nil {
+		materializedViewArgs := &bigquery.TableMaterializedViewArgs{
+			Query: pulumi.String(spec.MaterializedView.Query),
+		}
+		// Omitted when unset in the spec — the API's default (enabled)
+		// applies.
+		if spec.MaterializedView.EnableRefresh != nil {
+			materializedViewArgs.EnableRefresh = pulumi.BoolPtr(spec.MaterializedView.GetEnableRefresh())
+		}
+		if spec.MaterializedView.RefreshIntervalMs > 0 {
+			materializedViewArgs.RefreshIntervalMs = pulumi.IntPtr(int(spec.MaterializedView.RefreshIntervalMs))
+		}
+		if spec.MaterializedView.AllowNonIncrementalDefinition {
+			materializedViewArgs.AllowNonIncrementalDefinition = pulumi.BoolPtr(true)
+		}
+		args.MaterializedView = materializedViewArgs
+	}
+
+	// CMEK. Immutable — changing the key recreates the table. The BigQuery
+	// service agent must hold cryptoKeyEncrypterDecrypter on the key.
+	if spec.KmsKeyName.GetValue() != "" {
+		args.EncryptionConfiguration = &bigquery.TableEncryptionConfigurationArgs{
+			KmsKeyName: pulumi.String(spec.KmsKeyName.GetValue()),
+		}
+	}
+
+	if spec.ExternalDataConfiguration != nil {
+		args.ExternalDataConfiguration = buildExternalDataConfiguration(spec.ExternalDataConfiguration)
+	}
+
+	// Unenforced primary/foreign keys for the optimizer and lineage tools.
+	if spec.TableConstraints != nil {
+		constraintsArgs := &bigquery.TableTableConstraintsArgs{}
+		if spec.TableConstraints.PrimaryKey != nil {
+			constraintsArgs.PrimaryKey = &bigquery.TableTableConstraintsPrimaryKeyArgs{
+				Columns: pulumi.ToStringArray(spec.TableConstraints.PrimaryKey.Columns),
+			}
+		}
+		if len(spec.TableConstraints.ForeignKeys) > 0 {
+			foreignKeys := make(bigquery.TableTableConstraintsForeignKeyArray, 0, len(spec.TableConstraints.ForeignKeys))
+			for _, foreignKey := range spec.TableConstraints.ForeignKeys {
+				foreignKeyArgs := &bigquery.TableTableConstraintsForeignKeyArgs{
+					ReferencedTable: &bigquery.TableTableConstraintsForeignKeyReferencedTableArgs{
+						ProjectId: pulumi.String(foreignKey.ReferencedTable.ProjectId),
+						DatasetId: pulumi.String(foreignKey.ReferencedTable.DatasetId),
+						TableId:   pulumi.String(foreignKey.ReferencedTable.TableId.GetValue()),
+					},
+					ColumnReferences: &bigquery.TableTableConstraintsForeignKeyColumnReferencesArgs{
+						ReferencingColumn: pulumi.String(foreignKey.ColumnReferences.ReferencingColumn),
+						ReferencedColumn:  pulumi.String(foreignKey.ColumnReferences.ReferencedColumn),
+					},
+				}
+				if foreignKey.Name != "" {
+					foreignKeyArgs.Name = pulumi.StringPtr(foreignKey.Name)
+				}
+				foreignKeys = append(foreignKeys, foreignKeyArgs)
+			}
+			constraintsArgs.ForeignKeys = foreignKeys
+		}
+		args.TableConstraints = constraintsArgs
+	}
+
+	// Cross-dataset/region replica of a source materialized view. Immutable.
+	if spec.TableReplicationInfo != nil {
+		replicationArgs := &bigquery.TableTableReplicationInfoArgs{
+			SourceProjectId: pulumi.String(spec.TableReplicationInfo.SourceProjectId),
+			SourceDatasetId: pulumi.String(spec.TableReplicationInfo.SourceDatasetId),
+			SourceTableId:   pulumi.String(spec.TableReplicationInfo.SourceTableId),
+		}
+		if spec.TableReplicationInfo.ReplicationIntervalMs > 0 {
+			replicationArgs.ReplicationIntervalMs = pulumi.IntPtr(int(spec.TableReplicationInfo.ReplicationIntervalMs))
+		}
+		args.TableReplicationInfo = replicationArgs
+	}
+
+	// BigLake managed table: open-format (Iceberg) files in your own
+	// bucket, managed by BigQuery. Immutable.
+	if spec.BiglakeConfiguration != nil {
+		args.BiglakeConfiguration = &bigquery.TableBiglakeConfigurationArgs{
+			ConnectionId: pulumi.String(spec.BiglakeConfiguration.ConnectionId),
+			StorageUri:   pulumi.String(spec.BiglakeConfiguration.StorageUri),
+			FileFormat:   pulumi.String(spec.BiglakeConfiguration.FileFormat),
+			TableFormat:  pulumi.String(spec.BiglakeConfiguration.TableFormat),
+		}
+	}
+
+	if spec.SchemaForeignTypeInfo != nil {
+		args.SchemaForeignTypeInfo = &bigquery.TableSchemaForeignTypeInfoArgs{
+			TypeSystem: pulumi.String(spec.SchemaForeignTypeInfo.TypeSystem),
+		}
+	}
+
+	// Hive Metastore compatibility metadata for open-source engines.
+	if spec.ExternalCatalogTableOptions != nil {
+		catalogArgs := &bigquery.TableExternalCatalogTableOptionsArgs{}
+		if len(spec.ExternalCatalogTableOptions.Parameters) > 0 {
+			catalogArgs.Parameters = pulumi.ToStringMap(spec.ExternalCatalogTableOptions.Parameters)
+		}
+		if spec.ExternalCatalogTableOptions.ConnectionId != "" {
+			catalogArgs.ConnectionId = pulumi.StringPtr(spec.ExternalCatalogTableOptions.ConnectionId)
+		}
+		if spec.ExternalCatalogTableOptions.StorageDescriptor != nil {
+			descriptor := spec.ExternalCatalogTableOptions.StorageDescriptor
+			descriptorArgs := &bigquery.TableExternalCatalogTableOptionsStorageDescriptorArgs{}
+			if descriptor.LocationUri != "" {
+				descriptorArgs.LocationUri = pulumi.StringPtr(descriptor.LocationUri)
+			}
+			if descriptor.InputFormat != "" {
+				descriptorArgs.InputFormat = pulumi.StringPtr(descriptor.InputFormat)
+			}
+			if descriptor.OutputFormat != "" {
+				descriptorArgs.OutputFormat = pulumi.StringPtr(descriptor.OutputFormat)
+			}
+			if descriptor.SerdeInfo != nil {
+				serdeArgs := &bigquery.TableExternalCatalogTableOptionsStorageDescriptorSerdeInfoArgs{
+					SerializationLibrary: pulumi.String(descriptor.SerdeInfo.SerializationLibrary),
+				}
+				if descriptor.SerdeInfo.Name != "" {
+					serdeArgs.Name = pulumi.StringPtr(descriptor.SerdeInfo.Name)
+				}
+				if len(descriptor.SerdeInfo.Parameters) > 0 {
+					serdeArgs.Parameters = pulumi.ToStringMap(descriptor.SerdeInfo.Parameters)
+				}
+				descriptorArgs.SerdeInfo = serdeArgs
+			}
+			catalogArgs.StorageDescriptor = descriptorArgs
+		}
+		args.ExternalCatalogTableOptions = catalogArgs
+	}
+
+	createdTable, err := bigquery.NewTable(ctx, "bigquery-table", args,
+		pulumi.Provider(gcpProvider),
+		pulumi.DependsOn([]pulumi.Resource{createdProjectService}),
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to create bigquery table")
+	}
+
+	ctx.Export(OpTableId, createdTable.TableId)
+	ctx.Export(OpSelfLink, createdTable.SelfLink)
+	// Read from the created resource so the output is correct under the
+	// ambient-project fallback (the spec project may be empty).
+	ctx.Export(OpProject, createdTable.Project)
+	ctx.Export(OpDatasetId, createdTable.DatasetId)
+	ctx.Export(OpType, createdTable.Type)
+	ctx.Export(OpLocation, createdTable.Location)
+	ctx.Export(OpCreationTime, createdTable.CreationTime)
+	// The dotted {project}.{dataset}.{table} handle, pre-assembled from the
+	// created resource's attributes (correct under the ambient-project
+	// fallback) so consumers that address tables in SQL-style dotted form
+	// (Pub/Sub BigQuery delivery, query tooling) never do string assembly.
+	ctx.Export(OpQualifiedName, pulumi.Sprintf("%s.%s.%s",
+		createdTable.Project, createdTable.DatasetId, createdTable.TableId))
+
+	return nil
+}

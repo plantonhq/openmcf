@@ -1,0 +1,29 @@
+# GcpFirestoreIndex scenario: a two-field composite index on the
+# prerequisite database. project_id is deliberately omitted (ambient
+# project). Index build continues asynchronously after CREATE succeeds.
+apiVersion: gcp.planton.dev/v1
+kind: GcpFirestoreIndex
+metadata:
+  name: planton-oss-e2e-gcpfsidx-smoke
+  id: planton-oss-e2e-gcpfsidx-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpfirestoreindex
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  database:
+    valueFrom:
+      kind: GcpFirestoreDatabase
+      name: planton-oss-e2e-gcpfsdb-prereq
+      fieldPath: status.outputs.database_name
+  collection: e2e-orders
+  fields:
+    - fieldPath: customerId
+      order: ASCENDING
+    - fieldPath: createdAt
+      order: DESCENDING

@@ -1,67 +1,51 @@
-# GcpPubSubSubscription -- Terraform Module
+# GcpPubSubSubscription - Terraform Module
 
-This directory contains the Terraform implementation for the GcpPubSubSubscription component.
+This Terraform/OpenTofu module provisions a Pub/Sub subscription (`google_pubsub_subscription`) — the named message stream from one topic to one consumer. It is the Terraform-side implementation of the Planton `GcpPubSubSubscription` resource kind and has feature parity with the Pulumi module.
 
-## Module Structure
+## Overview
 
+The module covers all four delivery modes — pull (default), push with OIDC/no-wrapper, BigQuery (table resolved from a `GcpBigQueryTable` reference), and Cloud Storage with Avro — plus dead-lettering, retry backoff, expiration policy, exactly-once delivery, ordering, filtering, and the ordered JavaScript UDF transform pipeline.
+
+The module enables the Pub/Sub API with `disable_on_destroy=false` so a fresh project works first try and teardown never disables the API project-wide. An empty `project_id` falls back to the provider's default project, identically to the Pulumi module. User labels merge beneath the platform attribution labels (`planton-ai_*`), which win on key conflicts — identical label sets on both engines.
+
+## Usage with Planton CLI
+
+```shell
+planton tofu init --manifest ../hack/manifest.yaml --module-dir .
+planton tofu plan --manifest ../hack/manifest.yaml --module-dir .
+planton tofu apply --manifest ../hack/manifest.yaml --module-dir . --auto-approve
+planton tofu destroy --manifest ../hack/manifest.yaml --module-dir . --auto-approve
 ```
-provider.tf    -- Google provider configuration (~> 6.0)
-variables.tf   -- Input variables matching GcpPubSubSubscriptionSpec
-locals.tf      -- Derived values from spec
-main.tf        -- google_pubsub_subscription resource with dynamic blocks
-outputs.tf     -- Outputs matching GcpPubSubSubscriptionStackOutputs
-```
 
-## What It Creates
+Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../hack/manifest.yaml`.
 
-- `google_pubsub_subscription.this` -- A Pub/Sub subscription with support for
-  pull, push, BigQuery, and Cloud Storage delivery methods, plus dead-letter
-  handling, retry policy, expiration policy, filtering, message ordering, and
-  exactly-once delivery.
+## Module Layout
 
-## Inputs
+- `provider.tf` — google provider pin (`~> 6.0`; all fields GA on the released line)
+- `variables.tf` — the converter-contract `metadata`/`spec` variables
+- `locals.tf` — ambient-project resolution + the merged label map
+- `main.tf` — API enablement + the subscription resource
+- `outputs.tf` — stack outputs (must match `stack_outputs.proto`)
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `spec.project_id.value` | `string` | GCP project ID |
-| `spec.subscription_name` | `string` | Subscription name (3-255 chars, immutable) |
-| `spec.topic.value` | `string` | Source topic (fully qualified) |
-| `spec.ack_deadline_seconds` | `number` | Ack deadline: 10-600s |
-| `spec.message_retention_duration` | `string` | Backlog retention duration |
-| `spec.retain_acked_messages` | `bool` | Keep acked messages for replay |
-| `spec.expiration_policy` | `object` | Auto-delete inactive subscriptions |
-| `spec.filter` | `string` | Attribute filter (max 256 bytes) |
-| `spec.enable_message_ordering` | `bool` | FIFO by ordering key |
-| `spec.enable_exactly_once_delivery` | `bool` | Exactly-once guarantees |
-| `spec.dead_letter_policy` | `object` | Dead-letter topic and max attempts |
-| `spec.retry_policy` | `object` | Backoff between retries |
-| `spec.push_config` | `object` | Push delivery (HTTPS, OIDC, no_wrapper) |
-| `spec.bigquery_config` | `object` | BigQuery delivery |
-| `spec.cloud_storage_config` | `object` | Cloud Storage delivery |
-| `provider_config` | `object` | Optional GCP SA key |
+## Inputs (high level)
+
+| Variable | Description |
+|----------|-------------|
+| `spec.project_id` | GCP project (empty = provider default project) |
+| `spec.subscription_name` | Subscription resource name (ForceNew) |
+| `spec.topic` | Parent topic path (resolved from a GcpPubSubTopic reference; ForceNew) |
+| `spec.push_config` / `spec.bigquery_config` / `spec.cloud_storage_config` | At most one delivery mode (spec CEL enforces exclusivity); none = pull |
+| `spec.dead_letter_policy` / `spec.retry_policy` / `spec.expiration_policy` | Reliability levers |
+| `spec.labels` | User labels (merged beneath platform labels) |
+| `spec.message_transforms` | Ordered JavaScript UDF pipeline |
 
 ## Outputs
 
-| Output | Description |
-|--------|-------------|
-| `subscription_id` | Fully qualified ID (projects/{project}/subscriptions/{name}) |
-| `subscription_name` | Short subscription name |
+| Name | Description |
+|------|-------------|
+| `subscription_id` | The fully qualified subscription path (`projects/{project}/subscriptions/{name}`) |
+| `subscription_name` | The short subscription name |
 
-## Usage
+## Lifecycle Notes
 
-```bash
-terraform init
-terraform plan -var-file=terraform.tfvars.json
-terraform apply -var-file=terraform.tfvars.json
-```
-
-## Important Notes
-
-- **Subscription name is immutable.** Changing it triggers destroy and recreate.
-- **Filter is immutable.** Cannot be changed after creation.
-- **Delivery methods are mutually exclusive.** Only one of push_config,
-  bigquery_config, or cloud_storage_config can be set.
-- **Dead-letter IAM setup required.** The Pub/Sub service account needs
-  Subscriber on this subscription and Publisher on the dead-letter topic.
-- **Provider version `~> 6.0`.** Cloud Storage subscription features
-  (`max_messages`, `avro_config.use_topic_schema`) require Google provider v6.x.
+`subscription_name`, `topic`, `filter`, `enable_message_ordering`, and `project` are ForceNew — changing any of them replaces the subscription and its backlog. Delivery configs, deadlines, retention, dead-lettering, retries, expiration, transforms, and labels all update in place. For dead-lettering, the Pub/Sub service agent needs Subscriber on this subscription and Publisher on the dead-letter topic.

@@ -1,0 +1,14 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpVertexAiIndexEndpoint
+metadata:
+  name: test-index-endpoint
+spec:
+  projectId:
+    value: my-gcp-project
+  location: us-central1
+  displayName: Test Index Endpoint
+  description: Serving surface for the test vector index
+  publicEndpointEnabled: true
+  labels:
+    team: ml-platform
+    cost-center: research

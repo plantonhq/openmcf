@@ -1,12 +1,17 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKey
 metadata:
-  name: my-hsm-key
+  name: hsm-cmek-key
 spec:
   keyRingId:
-    value: "<key-ring-id>"  # e.g., projects/my-project/locations/us-central1/keyRings/compliance-keys
-  keyName: <your-key-name>  # e.g., hsm-cmek-key
-  rotationPeriod: "7776000s"  # 90 days
+    valueFrom:
+      kind: GcpKmsKeyRing
+      name: compliance-keys
+      fieldPath: status.outputs.key_ring_id
+  keyName: hsm-cmek-key # replace — permanent, never reusable within the ring
+  rotationPeriod: "7776000s" # 90 days
   versionTemplate:
     algorithm: GOOGLE_SYMMETRIC_ENCRYPTION
+    # HSM protection is immutable: compliance posture is fixed at
+    # creation, never silently downgraded later.
     protectionLevel: HSM

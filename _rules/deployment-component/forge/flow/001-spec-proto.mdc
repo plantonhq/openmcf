@@ -40,6 +40,27 @@ SUCCESS
 
 NOTES
 - Later rules will add validations, status/outputs, tests, and IaC. This rule purposefully keeps `spec.proto` minimal and unvalidated for quick iteration.
+- **Verify field availability against a RELEASED provider, not only the cloned
+  provider source.** A locally cloned Terraform provider repo typically sits on
+  `main`, which can be months ahead of the latest published release (and a field
+  can also exist in the released beta provider but not the released GA one, or
+  vice versa). A field modeled from the clone that the pinned/released provider
+  does not accept fails only at `terraform validate`/plan. Cheap ground truth
+  before modeling a borderline field:
+  ```bash
+  # in a scratch dir with just the required_providers block:
+  tofu init -input=false && tofu providers schema -json | \
+    python3 -c "import json,sys; s=json.load(sys.stdin); ..."  # inspect the resource's attributes/blocks
+  ```
+  Cheaper still: any SIBLING kind's already-initialized `iac/tf/` directory works —
+  `tofu providers schema -json` dumps the schema of EVERY resource the initialized
+  providers expose, not just the sibling's own, so a prior kind's `.terraform/`
+  answers the probe with zero setup (verify its `.terraform.lock.hcl` pins the
+  released line you are targeting). The same dump also settles the GA-vs-beta
+  provider choice for the module: diff the resource's blocks across the two
+  provider schemas instead of trusting the clone's beta markers.
+  If a field exists on main but not in any released provider, do not model it yet —
+  record it in `docs/README.md` as a coverage decision and pick it up when it ships.
 - Deterministic read/write responsibilities are fully delegated to the Python tools defined above to ensure repeatable file system effects.
 - When creating enums, follow these guidelines (and the reference component `spec.proto` files):
   - Nest enums inside messages where they're used
@@ -54,6 +75,14 @@ DEFAULT FIELD OPTIONS
 - Example: `optional string namespace = 1 [(dev.planton.shared.options.default) = "external-dns"];`
 - The `DEFAULT_REQUIRES_OPTIONAL` linter enforces this pattern at build time
 - See the reference component `spec.proto` files named in TOOLS for worked examples
+- **Use `optional` (presence tracking) whenever ZERO is a meaningful value distinct
+  from unset.** The catalog convention treats 0/"" on plain proto scalars as
+  "unset — let the cloud API default", and both IaC modules normalize accordingly.
+  For a field where an explicit 0 must reach the API (e.g. a capacity fraction
+  where 0 means "drain this backend", a count where 0 means "disable"), a plain
+  scalar makes the drain/disable intent indistinguishable from unset and both
+  engines will silently drop it. `optional` gives the modules a nil-vs-0 test
+  (`field != nil` in Go, null-vs-0 in the tfvars), so the explicit 0 survives.
 
 VERIFY FLAG SEMANTICS IN THE PROVIDER'S CRUD FUNCTIONS, NOT THE ARGUMENT NAME
 - A provider argument's NAME can suggest a much broader behavior than its real

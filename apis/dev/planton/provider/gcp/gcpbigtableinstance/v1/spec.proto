@@ -176,8 +176,9 @@ message GcpBigtableInstanceCluster {
 //     PRODUCTION. Use a single small cluster for development workloads.
 message GcpBigtableInstanceSpec {
   // GCP project where the Bigtable instance will be created.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
@@ -215,4 +216,9 @@ message GcpBigtableInstanceSpec {
   // regions. At least one cluster is required. Up to 8 clusters can be
   // configured across cloud regions for multi-region replication.
   repeated GcpBigtableInstanceCluster clusters = 6 [(buf.validate.field).repeated.min_items = 1];
+
+  // User-defined labels to organize and track the instance (instance-level
+  // only — GCP has no per-cluster labels). Merged beneath Planton's
+  // platform attribution labels (platform keys win on conflict).
+  map<string, string> labels = 7;
 }

@@ -767,16 +767,16 @@ const (
 	CloudResourceKind_AzureIpGroup  CloudResourceKind = 533
 	// 600–799: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
-	CloudResourceKind_GcpCloudCdn                   CloudResourceKind = 601
+	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 601
 	CloudResourceKind_GcpCloudFunction              CloudResourceKind = 602
 	CloudResourceKind_GcpCloudRun                   CloudResourceKind = 603
 	CloudResourceKind_GcpCloudSql                   CloudResourceKind = 604
 	CloudResourceKind_GcpDnsZone                    CloudResourceKind = 605
 	CloudResourceKind_GcpGcsBucket                  CloudResourceKind = 606
 	CloudResourceKind_GcpGkeCluster                 CloudResourceKind = 607
-	CloudResourceKind_GcpSecretsManager             CloudResourceKind = 608
+	CloudResourceKind_GcpIamCustomRole              CloudResourceKind = 608
 	CloudResourceKind_GcpProject                    CloudResourceKind = 609
-	CloudResourceKind_GcpVpc                        CloudResourceKind = 610
+	CloudResourceKind_GcpVpcNetwork                 CloudResourceKind = 610
 	CloudResourceKind_GcpSubnetwork                 CloudResourceKind = 611
 	CloudResourceKind_GcpRouterNat                  CloudResourceKind = 612
 	CloudResourceKind_GcpGkeNodePool                CloudResourceKind = 613
@@ -785,9 +785,17 @@ const (
 	CloudResourceKind_GcpCertManagerCert            CloudResourceKind = 616
 	CloudResourceKind_GcpComputeInstance            CloudResourceKind = 617
 	CloudResourceKind_GcpDnsRecord                  CloudResourceKind = 618
+	CloudResourceKind_GcpProjectIamMember           CloudResourceKind = 619
 	CloudResourceKind_GcpFirewallRule               CloudResourceKind = 620
 	CloudResourceKind_GcpGlobalAddress              CloudResourceKind = 621
 	CloudResourceKind_GcpCloudArmorPolicy           CloudResourceKind = 622
+	CloudResourceKind_GcpHealthCheck                CloudResourceKind = 623
+	CloudResourceKind_GcpBackendBucket              CloudResourceKind = 624
+	CloudResourceKind_GcpBackendService             CloudResourceKind = 625
+	CloudResourceKind_GcpRegionNetworkEndpointGroup CloudResourceKind = 626
+	CloudResourceKind_GcpUrlMap                     CloudResourceKind = 627
+	CloudResourceKind_GcpManagedSslCertificate      CloudResourceKind = 628
+	CloudResourceKind_GcpTargetHttpProxy            CloudResourceKind = 629
 	CloudResourceKind_GcpAlloydbCluster             CloudResourceKind = 630
 	CloudResourceKind_GcpRedisInstance              CloudResourceKind = 631
 	CloudResourceKind_GcpFirestoreDatabase          CloudResourceKind = 632
@@ -795,19 +803,57 @@ const (
 	CloudResourceKind_GcpSpannerDatabase            CloudResourceKind = 634
 	CloudResourceKind_GcpBigtableInstance           CloudResourceKind = 635
 	CloudResourceKind_GcpMemorystoreInstance        CloudResourceKind = 636
+	CloudResourceKind_GcpCloudSqlDatabase           CloudResourceKind = 637
+	CloudResourceKind_GcpCloudSqlUser               CloudResourceKind = 638
+	CloudResourceKind_GcpAlloydbInstance            CloudResourceKind = 639
+	CloudResourceKind_GcpAlloydbUser                CloudResourceKind = 640
+	CloudResourceKind_GcpSpannerBackupSchedule      CloudResourceKind = 641
+	CloudResourceKind_GcpBigtableTable              CloudResourceKind = 642
+	CloudResourceKind_GcpFirestoreBackupSchedule    CloudResourceKind = 643
+	CloudResourceKind_GcpFirestoreIndex             CloudResourceKind = 644
 	CloudResourceKind_GcpBigQueryDataset            CloudResourceKind = 650
 	CloudResourceKind_GcpDataprocCluster            CloudResourceKind = 651
-	CloudResourceKind_GcpDataprocVirtualCluster     CloudResourceKind = 652
+	CloudResourceKind_GcpDataprocAutoscalingPolicy  CloudResourceKind = 652
+	CloudResourceKind_GcpBigQueryTable              CloudResourceKind = 653
 	CloudResourceKind_GcpPubSubTopic                CloudResourceKind = 660
 	CloudResourceKind_GcpPubSubSubscription         CloudResourceKind = 661
 	CloudResourceKind_GcpCloudTasksQueue            CloudResourceKind = 662
 	CloudResourceKind_GcpCloudSchedulerJob          CloudResourceKind = 663
+	CloudResourceKind_GcpPubSubSchema               CloudResourceKind = 664
 	CloudResourceKind_GcpVertexAiNotebook           CloudResourceKind = 670
 	CloudResourceKind_GcpVertexAiEndpoint           CloudResourceKind = 671
-	CloudResourceKind_GcpCloudComposerEnvironment   CloudResourceKind = 680
-	CloudResourceKind_GcpKmsKeyRing                 CloudResourceKind = 690
-	CloudResourceKind_GcpKmsKey                     CloudResourceKind = 691
-	CloudResourceKind_GcpFilestoreInstance          CloudResourceKind = 700
+	CloudResourceKind_GcpVertexAiIndex              CloudResourceKind = 672
+	// Vector Search IndexEndpoint — distinct from the online-prediction
+	// GcpVertexAiEndpoint (671); different GCP resources, different kinds.
+	CloudResourceKind_GcpVertexAiIndexEndpoint               CloudResourceKind = 673
+	CloudResourceKind_GcpVertexAiDeployedIndex               CloudResourceKind = 674
+	CloudResourceKind_GcpCloudComposerEnvironment            CloudResourceKind = 680
+	CloudResourceKind_GcpCloudComposerUserWorkloadsSecret    CloudResourceKind = 681
+	CloudResourceKind_GcpCloudComposerUserWorkloadsConfigMap CloudResourceKind = 682
+	CloudResourceKind_GcpKmsKeyRing                          CloudResourceKind = 690
+	CloudResourceKind_GcpKmsKey                              CloudResourceKind = 691
+	CloudResourceKind_GcpKmsKeyIamMember                     CloudResourceKind = 692
+	CloudResourceKind_GcpFilestoreInstance                   CloudResourceKind = 700
+	// 701–709: IAM/identity family (overflow block; the 600–622
+	// foundation/security sub-band is fully allocated)
+	CloudResourceKind_GcpWorkloadIdentityPool         CloudResourceKind = 701
+	CloudResourceKind_GcpWorkloadIdentityPoolProvider CloudResourceKind = 702
+	CloudResourceKind_GcpServiceAccountIamMember      CloudResourceKind = 703
+	// 710–719: networking/load-balancer family (overflow block; the 623–629
+	// LB sub-band is fully allocated)
+	CloudResourceKind_GcpGlobalForwardingRule        CloudResourceKind = 710
+	CloudResourceKind_GcpSslPolicy                   CloudResourceKind = 711
+	CloudResourceKind_GcpSslCertificate              CloudResourceKind = 712
+	CloudResourceKind_GcpServiceNetworkingConnection CloudResourceKind = 713
+	CloudResourceKind_GcpAddress                     CloudResourceKind = 714
+	CloudResourceKind_GcpServiceConnectionPolicy     CloudResourceKind = 715
+	CloudResourceKind_GcpCertManagerDnsAuthorization CloudResourceKind = 716
+	// 720–729: GCP serverless overflow
+	CloudResourceKind_GcpCloudRunJob            CloudResourceKind = 720
+	CloudResourceKind_GcpServerlessVpcConnector CloudResourceKind = 721
+	// 730–739: GCP compute overflow (the 600–622 foundation sub-band that
+	// holds GcpComputeInstance is fully allocated)
+	CloudResourceKind_GcpComputeDisk CloudResourceKind = 730
 	// 800–999: Kubernetes resources
 	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 800
 	CloudResourceKind_KubernetesCronJob                     CloudResourceKind = 801
@@ -1310,16 +1356,16 @@ var (
 		532:  "AzureFirewall",
 		533:  "AzureIpGroup",
 		600:  "GcpArtifactRegistryRepo",
-		601:  "GcpCloudCdn",
+		601:  "GcpTargetHttpsProxy",
 		602:  "GcpCloudFunction",
 		603:  "GcpCloudRun",
 		604:  "GcpCloudSql",
 		605:  "GcpDnsZone",
 		606:  "GcpGcsBucket",
 		607:  "GcpGkeCluster",
-		608:  "GcpSecretsManager",
+		608:  "GcpIamCustomRole",
 		609:  "GcpProject",
-		610:  "GcpVpc",
+		610:  "GcpVpcNetwork",
 		611:  "GcpSubnetwork",
 		612:  "GcpRouterNat",
 		613:  "GcpGkeNodePool",
@@ -1328,9 +1374,17 @@ var (
 		616:  "GcpCertManagerCert",
 		617:  "GcpComputeInstance",
 		618:  "GcpDnsRecord",
+		619:  "GcpProjectIamMember",
 		620:  "GcpFirewallRule",
 		621:  "GcpGlobalAddress",
 		622:  "GcpCloudArmorPolicy",
+		623:  "GcpHealthCheck",
+		624:  "GcpBackendBucket",
+		625:  "GcpBackendService",
+		626:  "GcpRegionNetworkEndpointGroup",
+		627:  "GcpUrlMap",
+		628:  "GcpManagedSslCertificate",
+		629:  "GcpTargetHttpProxy",
 		630:  "GcpAlloydbCluster",
 		631:  "GcpRedisInstance",
 		632:  "GcpFirestoreDatabase",
@@ -1338,19 +1392,48 @@ var (
 		634:  "GcpSpannerDatabase",
 		635:  "GcpBigtableInstance",
 		636:  "GcpMemorystoreInstance",
+		637:  "GcpCloudSqlDatabase",
+		638:  "GcpCloudSqlUser",
+		639:  "GcpAlloydbInstance",
+		640:  "GcpAlloydbUser",
+		641:  "GcpSpannerBackupSchedule",
+		642:  "GcpBigtableTable",
+		643:  "GcpFirestoreBackupSchedule",
+		644:  "GcpFirestoreIndex",
 		650:  "GcpBigQueryDataset",
 		651:  "GcpDataprocCluster",
-		652:  "GcpDataprocVirtualCluster",
+		652:  "GcpDataprocAutoscalingPolicy",
+		653:  "GcpBigQueryTable",
 		660:  "GcpPubSubTopic",
 		661:  "GcpPubSubSubscription",
 		662:  "GcpCloudTasksQueue",
 		663:  "GcpCloudSchedulerJob",
+		664:  "GcpPubSubSchema",
 		670:  "GcpVertexAiNotebook",
 		671:  "GcpVertexAiEndpoint",
+		672:  "GcpVertexAiIndex",
+		673:  "GcpVertexAiIndexEndpoint",
+		674:  "GcpVertexAiDeployedIndex",
 		680:  "GcpCloudComposerEnvironment",
+		681:  "GcpCloudComposerUserWorkloadsSecret",
+		682:  "GcpCloudComposerUserWorkloadsConfigMap",
 		690:  "GcpKmsKeyRing",
 		691:  "GcpKmsKey",
+		692:  "GcpKmsKeyIamMember",
 		700:  "GcpFilestoreInstance",
+		701:  "GcpWorkloadIdentityPool",
+		702:  "GcpWorkloadIdentityPoolProvider",
+		703:  "GcpServiceAccountIamMember",
+		710:  "GcpGlobalForwardingRule",
+		711:  "GcpSslPolicy",
+		712:  "GcpSslCertificate",
+		713:  "GcpServiceNetworkingConnection",
+		714:  "GcpAddress",
+		715:  "GcpServiceConnectionPolicy",
+		716:  "GcpCertManagerDnsAuthorization",
+		720:  "GcpCloudRunJob",
+		721:  "GcpServerlessVpcConnector",
+		730:  "GcpComputeDisk",
 		800:  "KubernetesArgocd",
 		801:  "KubernetesCronJob",
 		802:  "KubernetesElasticsearch",
@@ -1838,16 +1921,16 @@ var (
 		"AzureFirewall":                                  532,
 		"AzureIpGroup":                                   533,
 		"GcpArtifactRegistryRepo":                        600,
-		"GcpCloudCdn":                                    601,
+		"GcpTargetHttpsProxy":                            601,
 		"GcpCloudFunction":                               602,
 		"GcpCloudRun":                                    603,
 		"GcpCloudSql":                                    604,
 		"GcpDnsZone":                                     605,
 		"GcpGcsBucket":                                   606,
 		"GcpGkeCluster":                                  607,
-		"GcpSecretsManager":                              608,
+		"GcpIamCustomRole":                               608,
 		"GcpProject":                                     609,
-		"GcpVpc":                                         610,
+		"GcpVpcNetwork":                                  610,
 		"GcpSubnetwork":                                  611,
 		"GcpRouterNat":                                   612,
 		"GcpGkeNodePool":                                 613,
@@ -1856,9 +1939,17 @@ var (
 		"GcpCertManagerCert":                             616,
 		"GcpComputeInstance":                             617,
 		"GcpDnsRecord":                                   618,
+		"GcpProjectIamMember":                            619,
 		"GcpFirewallRule":                                620,
 		"GcpGlobalAddress":                               621,
 		"GcpCloudArmorPolicy":                            622,
+		"GcpHealthCheck":                                 623,
+		"GcpBackendBucket":                               624,
+		"GcpBackendService":                              625,
+		"GcpRegionNetworkEndpointGroup":                  626,
+		"GcpUrlMap":                                      627,
+		"GcpManagedSslCertificate":                       628,
+		"GcpTargetHttpProxy":                             629,
 		"GcpAlloydbCluster":                              630,
 		"GcpRedisInstance":                               631,
 		"GcpFirestoreDatabase":                           632,
@@ -1866,19 +1957,48 @@ var (
 		"GcpSpannerDatabase":                             634,
 		"GcpBigtableInstance":                            635,
 		"GcpMemorystoreInstance":                         636,
+		"GcpCloudSqlDatabase":                            637,
+		"GcpCloudSqlUser":                                638,
+		"GcpAlloydbInstance":                             639,
+		"GcpAlloydbUser":                                 640,
+		"GcpSpannerBackupSchedule":                       641,
+		"GcpBigtableTable":                               642,
+		"GcpFirestoreBackupSchedule":                     643,
+		"GcpFirestoreIndex":                              644,
 		"GcpBigQueryDataset":                             650,
 		"GcpDataprocCluster":                             651,
-		"GcpDataprocVirtualCluster":                      652,
+		"GcpDataprocAutoscalingPolicy":                   652,
+		"GcpBigQueryTable":                               653,
 		"GcpPubSubTopic":                                 660,
 		"GcpPubSubSubscription":                          661,
 		"GcpCloudTasksQueue":                             662,
 		"GcpCloudSchedulerJob":                           663,
+		"GcpPubSubSchema":                                664,
 		"GcpVertexAiNotebook":                            670,
 		"GcpVertexAiEndpoint":                            671,
+		"GcpVertexAiIndex":                               672,
+		"GcpVertexAiIndexEndpoint":                       673,
+		"GcpVertexAiDeployedIndex":                       674,
 		"GcpCloudComposerEnvironment":                    680,
+		"GcpCloudComposerUserWorkloadsSecret":            681,
+		"GcpCloudComposerUserWorkloadsConfigMap":         682,
 		"GcpKmsKeyRing":                                  690,
 		"GcpKmsKey":                                      691,
+		"GcpKmsKeyIamMember":                             692,
 		"GcpFilestoreInstance":                           700,
+		"GcpWorkloadIdentityPool":                        701,
+		"GcpWorkloadIdentityPoolProvider":                702,
+		"GcpServiceAccountIamMember":                     703,
+		"GcpGlobalForwardingRule":                        710,
+		"GcpSslPolicy":                                   711,
+		"GcpSslCertificate":                              712,
+		"GcpServiceNetworkingConnection":                 713,
+		"GcpAddress":                                     714,
+		"GcpServiceConnectionPolicy":                     715,
+		"GcpCertManagerDnsAuthorization":                 716,
+		"GcpCloudRunJob":                                 720,
+		"GcpServerlessVpcConnector":                      721,
+		"GcpComputeDisk":                                 730,
 		"KubernetesArgocd":                               800,
 		"KubernetesCronJob":                              801,
 		"KubernetesElasticsearch":                        802,
@@ -2389,7 +2509,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xd8\xc3\x01\n" +
+	"\x02v1\x10\x01*\xbf\xd3\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2635,51 +2755,94 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x13AzureFirewallPolicy\x10\x92\x04\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazfwpol:\x02\x90\x03\x12B\n" +
 	"&AzureFirewallPolicyRuleCollectionGroup\x10\x93\x04\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazfwrcg:\x02\x92\x04\x12&\n" +
 	"\rAzureFirewall\x10\x94\x04\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azfw:\x02\x9b\x03\x12&\n" +
-	"\fAzureIpGroup\x10\x95\x04\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azipg:\x02\x90\x03\x12.\n" +
-	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x12\"\n" +
-	"\vGcpCloudCdn\x10\xd9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcdn\x12(\n" +
-	"\x10GcpCloudFunction\x10\xda\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\acldfunc\x12\"\n" +
-	"\vGcpCloudRun\x10\xdb\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06cldrun\x12\"\n" +
-	"\vGcpCloudSql\x10\xdc\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpsql\x12!\n" +
+	"\fAzureIpGroup\x10\x95\x04\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azipg:\x02\x90\x03\x122\n" +
+	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpart:\x02\xe6\x04\x127\n" +
+	"\x13GcpTargetHttpsProxy\x10\xd9\x04\x1a\x1d\xa2\xf7\x04\x19\b\x12\x10\x01\"\agcpthsp:\n" +
+	"\xf3\x04\xf4\x04\xc7\x05\xc8\x05\xe8\x04\x12,\n" +
+	"\x10GcpCloudFunction\x10\xda\x04\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\acldfunc:\x02\xd1\x05\x12\"\n" +
+	"\vGcpCloudRun\x10\xdb\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06cldrun\x12&\n" +
+	"\vGcpCloudSql\x10\xdc\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpsql:\x02\xc9\x05\x12%\n" +
 	"\n" +
-	"GcpDnsZone\x10\xdd\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpdns\x12#\n" +
-	"\fGcpGcsBucket\x10\xde\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcsbkt\x12#\n" +
-	"\rGcpGkeCluster\x10\xdf\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x03gke0\x01\x12'\n" +
-	"\x11GcpSecretsManager\x10\xe0\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpsm\x12#\n" +
+	"GcpDnsZone\x10\xdd\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpdns:\x02\xe2\x04\x12'\n" +
+	"\fGcpGcsBucket\x10\xde\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcsbkt:\x02\xe6\x04\x12)\n" +
+	"\rGcpGkeCluster\x10\xdf\x04\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\x03gke0\x01:\x04\xe2\x04\xe3\x04\x12(\n" +
+	"\x10GcpIamCustomRole\x10\xe0\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcprole\x12#\n" +
 	"\n" +
-	"GcpProject\x10\xe1\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\x06gcpprj0\x01\x12\x1f\n" +
-	"\x06GcpVpc\x10\xe2\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\x06gcpvpc0\x01\x12$\n" +
-	"\rGcpSubnetwork\x10\xe3\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpsnw\x12$\n" +
-	"\fGcpRouterNat\x10\xe4\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcprnat\x12$\n" +
-	"\x0eGcpGkeNodePool\x10\xe5\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gkenp\x12%\n" +
-	"\x11GcpServiceAccount\x10\xe6\x04\x1a\r\xa2\xf7\x04\t\b\x12\x10\x01\"\x03gsa\x124\n" +
-	"\x1dGcpGkeWorkloadIdentityBinding\x10\xe7\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gkewib\x12*\n" +
-	"\x12GcpCertManagerCert\x10\xe8\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpcert\x12(\n" +
-	"\x12GcpComputeInstance\x10\xe9\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpvm\x12$\n" +
-	"\fGcpDnsRecord\x10\xea\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpdrec\x12&\n" +
+	"GcpProject\x10\xe1\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\x06gcpprj0\x01\x12&\n" +
+	"\rGcpVpcNetwork\x10\xe2\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\x06gcpvpc0\x01\x12(\n" +
+	"\rGcpSubnetwork\x10\xe3\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpsnw:\x02\xe2\x04\x12*\n" +
+	"\fGcpRouterNat\x10\xe4\x04\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\agcprnat:\x04\xe2\x04\xca\x05\x12(\n" +
+	"\x0eGcpGkeNodePool\x10\xe5\x04\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\x05gkenp:\x02\xdf\x04\x12%\n" +
+	"\x11GcpServiceAccount\x10\xe6\x04\x1a\r\xa2\xf7\x04\t\b\x12\x10\x01\"\x03gsa\x128\n" +
+	"\x1dGcpGkeWorkloadIdentityBinding\x10\xe7\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gkewib:\x02\xe6\x04\x12.\n" +
+	"\x12GcpCertManagerCert\x10\xe8\x04\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpcert:\x02\xcc\x05\x122\n" +
+	"\x12GcpComputeInstance\x10\xe9\x04\x1a\x19\xa2\xf7\x04\x15\b\x12\x10\x01\"\x05gcpvm:\b\xe2\x04\xe3\x04\xe6\x04\xda\x05\x12(\n" +
+	"\fGcpDnsRecord\x10\xea\x04\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpdrec:\x02\xdd\x04\x120\n" +
+	"\x13GcpProjectIamMember\x10\xeb\x04\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcppim:\x04\xe6\x04\xe0\x04\x12&\n" +
 	"\x0fGcpFirewallRule\x10\xec\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpfwr\x12'\n" +
 	"\x10GcpGlobalAddress\x10\xed\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpgip\x12*\n" +
-	"\x13GcpCloudArmorPolicy\x10\xee\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcap\x12(\n" +
-	"\x11GcpAlloydbCluster\x10\xf6\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpadb\x12'\n" +
-	"\x10GcpRedisInstance\x10\xf7\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpred\x12+\n" +
+	"\x13GcpCloudArmorPolicy\x10\xee\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcap\x12$\n" +
+	"\x0eGcpHealthCheck\x10\xef\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcphc\x12*\n" +
+	"\x10GcpBackendBucket\x10\xf0\x04\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\x05gcpbb:\x02\xde\x04\x12-\n" +
+	"\x11GcpBackendService\x10\xf1\x04\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\x05gcpbs:\x04\xef\x04\xf2\x04\x125\n" +
+	"\x1dGcpRegionNetworkEndpointGroup\x10\xf2\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcprneg\x12#\n" +
+	"\tGcpUrlMap\x10\xf3\x04\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\x05gcpum:\x02\xf1\x04\x120\n" +
+	"\x18GcpManagedSslCertificate\x10\xf4\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpmssl\x12-\n" +
+	"\x12GcpTargetHttpProxy\x10\xf5\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpthp:\x02\xf3\x04\x12,\n" +
+	"\x11GcpAlloydbCluster\x10\xf6\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpadb:\x02\xc9\x05\x12+\n" +
+	"\x10GcpRedisInstance\x10\xf7\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpred:\x02\xc9\x05\x12+\n" +
 	"\x14GcpFirestoreDatabase\x10\xf8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpfst\x12)\n" +
-	"\x12GcpSpannerInstance\x10\xf9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpspn\x12*\n" +
-	"\x12GcpSpannerDatabase\x10\xfa\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpspdb\x12)\n" +
-	"\x13GcpBigtableInstance\x10\xfb\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpbt\x12-\n" +
-	"\x16GcpMemorystoreInstance\x10\xfc\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpmsi\x12*\n" +
-	"\x12GcpBigQueryDataset\x10\x8a\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpbqds\x12)\n" +
-	"\x12GcpDataprocCluster\x10\x8b\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpdpc\x120\n" +
-	"\x19GcpDataprocVirtualCluster\x10\x8c\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpdvc\x12%\n" +
-	"\x0eGcpPubSubTopic\x10\x94\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcppst\x12,\n" +
-	"\x15GcpPubSubSubscription\x10\x95\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcppss\x12(\n" +
-	"\x12GcpCloudTasksQueue\x10\x96\x05\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcptq\x12+\n" +
-	"\x14GcpCloudSchedulerJob\x10\x97\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcsj\x12*\n" +
-	"\x13GcpVertexAiNotebook\x10\x9e\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpvnb\x12*\n" +
-	"\x13GcpVertexAiEndpoint\x10\x9f\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpvep\x122\n" +
-	"\x1bGcpCloudComposerEnvironment\x10\xa8\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcce\x12#\n" +
-	"\rGcpKmsKeyRing\x10\xb2\x05\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpkr\x12 \n" +
-	"\tGcpKmsKey\x10\xb3\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpkms\x12+\n" +
-	"\x14GcpFilestoreInstance\x10\xbc\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpnfs\x12(\n" +
+	"\x12GcpSpannerInstance\x10\xf9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpspn\x12.\n" +
+	"\x12GcpSpannerDatabase\x10\xfa\x04\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpspdb:\x02\xf9\x04\x12)\n" +
+	"\x13GcpBigtableInstance\x10\xfb\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpbt\x121\n" +
+	"\x16GcpMemorystoreInstance\x10\xfc\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpmsi:\x02\xcb\x05\x120\n" +
+	"\x13GcpCloudSqlDatabase\x10\xfd\x04\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpsqldb:\x02\xdc\x04\x12-\n" +
+	"\x0fGcpCloudSqlUser\x10\xfe\x04\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\tgcpsqlusr:\x02\xdc\x04\x121\n" +
+	"\x12GcpAlloydbInstance\x10\xff\x04\x1a\x18\xa2\xf7\x04\x14\b\x12\x10\x01\"\n" +
+	"gcpadbinst:\x02\xf6\x04\x12,\n" +
+	"\x0eGcpAlloydbUser\x10\x80\x05\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\tgcpadbusr:\x02\xf6\x04\x125\n" +
+	"\x18GcpSpannerBackupSchedule\x10\x81\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpsbs:\x04\xf9\x04\xfa\x04\x12-\n" +
+	"\x10GcpBigtableTable\x10\x82\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpbttbl:\x02\xfb\x04\x127\n" +
+	"\x1aGcpFirestoreBackupSchedule\x10\x83\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpfstbs:\x02\xf8\x04\x12/\n" +
+	"\x11GcpFirestoreIndex\x10\x84\x05\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\tgcpfstidx:\x02\xf8\x04\x12*\n" +
+	"\x12GcpBigQueryDataset\x10\x8a\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpbqds\x125\n" +
+	"\x12GcpDataprocCluster\x10\x8b\x05\x1a\x1c\xa2\xf7\x04\x18\b\x12\x10\x01\"\x06gcpdpc:\n" +
+	"\xe2\x04\xe3\x04\xec\x04\xe6\x04\x8c\x05\x125\n" +
+	"\x1cGcpDataprocAutoscalingPolicy\x10\x8c\x05\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\bgcpdpasp\x12-\n" +
+	"\x10GcpBigQueryTable\x10\x8d\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpbqtbl:\x02\x8a\x05\x12)\n" +
+	"\x0eGcpPubSubTopic\x10\x94\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcppst:\x02\x98\x05\x120\n" +
+	"\x15GcpPubSubSubscription\x10\x95\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcppss:\x02\x94\x05\x12,\n" +
+	"\x12GcpCloudTasksQueue\x10\x96\x05\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\x05gcptq:\x02\xe6\x04\x121\n" +
+	"\x14GcpCloudSchedulerJob\x10\x97\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpcsj:\x04\x94\x05\xe6\x04\x12'\n" +
+	"\x0fGcpPubSubSchema\x10\x98\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcppsch\x122\n" +
+	"\x13GcpVertexAiNotebook\x10\x9e\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x10\x01\"\x06gcpvnb:\x06\xe2\x04\xe3\x04\xe6\x04\x12*\n" +
+	"\x13GcpVertexAiEndpoint\x10\x9f\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpvep\x12)\n" +
+	"\x10GcpVertexAiIndex\x10\xa0\x05\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\bgcpvaidx\x121\n" +
+	"\x18GcpVertexAiIndexEndpoint\x10\xa1\x05\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\bgcpvaiep\x127\n" +
+	"\x18GcpVertexAiDeployedIndex\x10\xa2\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x10\x01\"\bgcpvdidx:\x04\xa0\x05\xa1\x05\x12:\n" +
+	"\x1bGcpCloudComposerEnvironment\x10\xa8\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x10\x01\"\x06gcpcce:\x06\xe2\x04\xe3\x04\xe6\x04\x12?\n" +
+	"#GcpCloudComposerUserWorkloadsSecret\x10\xa9\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpcuws:\x02\xa8\x05\x12C\n" +
+	"&GcpCloudComposerUserWorkloadsConfigMap\x10\xaa\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpcuwcm:\x02\xa8\x05\x12#\n" +
+	"\rGcpKmsKeyRing\x10\xb2\x05\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpkr\x12$\n" +
+	"\tGcpKmsKey\x10\xb3\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpkms:\x02\xb2\x05\x121\n" +
+	"\x12GcpKmsKeyIamMember\x10\xb4\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x10\x01\"\x06gcpkim:\x06\xb2\x05\xb3\x05\xe6\x04\x12/\n" +
+	"\x14GcpFilestoreInstance\x10\xbc\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpnfs:\x02\xe2\x04\x12.\n" +
+	"\x17GcpWorkloadIdentityPool\x10\xbd\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpwip\x12;\n" +
+	"\x1fGcpWorkloadIdentityPoolProvider\x10\xbe\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpwipp:\x02\xbd\x05\x126\n" +
+	"\x1aGcpServiceAccountIamMember\x10\xbf\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpsaim:\x02\xe6\x04\x124\n" +
+	"\x17GcpGlobalForwardingRule\x10\xc6\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpgfr:\x04\xd9\x04\xed\x04\x12&\n" +
+	"\fGcpSslPolicy\x10\xc7\x05\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\tgcpsslpol\x12,\n" +
+	"\x11GcpSslCertificate\x10\xc8\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\n" +
+	"gcpsslcert\x12;\n" +
+	"\x1eGcpServiceNetworkingConnection\x10\xc9\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpsnc:\x04\xe2\x04\xed\x04\x12(\n" +
+	"\n" +
+	"GcpAddress\x10\xca\x05\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\agcpaddr:\x04\xe2\x04\xe3\x04\x127\n" +
+	"\x1aGcpServiceConnectionPolicy\x10\xcb\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpscp:\x04\xe2\x04\xe3\x04\x126\n" +
+	"\x1eGcpCertManagerDnsAuthorization\x10\xcc\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpcmda\x12(\n" +
+	"\x0eGcpCloudRunJob\x10\xd0\x05\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\tcldrunjob\x12:\n" +
+	"\x19GcpServerlessVpcConnector\x10\xd1\x05\x1a\x1a\xa2\xf7\x04\x16\b\x12\x10\x01\"\n" +
+	"gcpvpcconn:\x04\xe2\x04\xe3\x04\x12&\n" +
+	"\x0eGcpComputeDisk\x10\xda\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpdisk\x12(\n" +
 	"\x10KubernetesArgocd\x10\xa0\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x12)\n" +
 	"\x11KubernetesCronJob\x10\xa1\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8scron\x121\n" +
 	"\x17KubernetesElasticsearch\x10\xa2\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8ses:\x02\xb6\x06\x12&\n" +

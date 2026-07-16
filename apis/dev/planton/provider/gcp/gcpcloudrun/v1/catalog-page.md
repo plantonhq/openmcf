@@ -1,58 +1,51 @@
 # GCP Cloud Run
 
-Deploys a Google Cloud Run v2 service with configurable container resources, autoscaling, VPC egress, and optional custom domain mapping with DNS verification. The component supports environment variables, Secret Manager references, and configurable ingress controls.
+Deploys a Cloud Run service — a fully managed, request-serving container deployment that scales from zero to thousands of instances. One resource carries the whole story: the serving endpoint (ingress, invoker policy, traffic splitting) and the revision template (containers, volumes, scaling, networking) that every deploy stamps into a new immutable revision.
 
 ## What Gets Created
 
 When you deploy a GcpCloudRun resource, Planton provisions:
 
-- **Cloud Run v2 Service** — a `google_cloud_run_v2_service` with the specified container image, resource limits, scaling configuration, and ingress settings
-- **Domain Mapping** — created only when DNS is enabled, binds the first hostname in `dns.hostnames` to the Cloud Run service
-- **DNS TXT Record** — created only when DNS is enabled, a Cloud DNS record set in the specified managed zone for Google's domain ownership verification
+- **Cloud Run service** — a `google_cloud_run_v2_service` in the chosen region; the Cloud Run Admin API is enabled automatically so a fresh project works on the first deploy
+- **Containers** — the serving container plus any sidecars, with startup ordering, probes, Secret Manager environment variables, and volume mounts as configured
+- **Volumes** — Cloud SQL sockets, Secret Manager files, scratch space, GCS FUSE buckets, and NFS shares as configured
+- **Public-invoker grant** — when `allowUnauthenticated` is true, an IAM member granting `roles/run.invoker` to `allUsers`
+- **Platform attribution** — organization, environment, and resource labels applied on the service object
 
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** with the Cloud Run API enabled
-- **A container image** pushed to a registry accessible from the project (e.g., Artifact Registry, Container Registry)
-- **A Cloud DNS managed zone** if enabling custom domain mapping
-- **A VPC network and subnet** if configuring Direct VPC Egress
+- **A container image** in a registry the runtime identity can read ([GcpArtifactRegistryRepo](/docs/catalog/gcp/gcpartifactregistryrepo))
+- **A service account** ([GcpServiceAccount](/docs/catalog/gcp/gcpserviceaccount)) for production services — the Compute Engine default SA is used otherwise
+- **A VPC and subnetwork** ([GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork), [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork)) if using direct VPC egress
+- **Secret Manager secrets** already created if referencing them in env vars or volumes (the runtime identity needs `roles/secretmanager.secretAccessor`)
 
 ## Quick Start
 
-Create a file `cloudrun.yaml`:
+Create a file `service.yaml`:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpCloudRun
 metadata:
   name: my-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpCloudRun.my-api
 spec:
-  projectId: my-gcp-project
   region: us-central1
-  container:
-    image:
-      repo: us-docker.pkg.dev/my-gcp-project/registry/my-api
-      tag: "1.0.0"
-    cpu: 1
-    memory: 512
-    replicas:
-      min: 0
-      max: 3
+  containers:
+    - image: us-docker.pkg.dev/my-project/my-repo/api:1.0.0
+      ports:
+        containerPort: 8080
+  allowUnauthenticated: true
+  deletionProtection: false
 ```
 
 Deploy:
 
 ```shell
-planton apply -f cloudrun.yaml
+planton apply -f service.yaml
 ```
 
-This creates a publicly accessible Cloud Run service with 1 vCPU, 512 MiB memory, scaling from 0 to 3 instances, serving on port 8080.
+This creates a public, scale-to-zero HTTP service with Cloud Run's defaults (1 CPU / 512Mi, concurrency 80, 300s timeout) and prints its `https://….run.app` URL.
 
 ## Configuration Reference
 
@@ -60,214 +53,125 @@ This creates a publicly accessible Cloud Run service with 1 vCPU, 512 MiB memory
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `projectId` | `string` | GCP project ID where the service is created. Can reference a GcpProject resource via `valueFrom`. | Required |
-| `region` | `string` | GCP region for the service (e.g., `us-central1`). | Pattern: `^[a-z]+-[a-z]+[0-9]$` |
-| `container.image.repo` | `string` | Container image repository (e.g., `us-docker.pkg.dev/prj/registry/app`). | Minimum length: 1 |
-| `container.image.tag` | `string` | Container image tag (e.g., `1.0.0`). | Minimum length: 1 |
-| `container.cpu` | `int32` | vCPU units per instance. | Allowed values: `1`, `2`, `4`. Recommended default: `1` |
-| `container.memory` | `int32` | Memory in MiB per instance. | 128–32768. Recommended default: `512` |
-| `container.replicas` | `object` | Scaling bounds for the service. | Required |
-| `container.replicas.min` | `int32` | Minimum warm instances. Set to `0` for scale-to-zero. | >= 0. Recommended default: `0` |
-| `container.replicas.max` | `int32` | Maximum instances Cloud Run may scale to. | >= 0 |
+| `region` | `string` | Region the service is deployed in (e.g. `us-central1`). Immutable. | Required |
+| `containers` | `list` | The instance's containers; the first conventionally serves requests. | At least 1; each needs `image` |
 
-### Optional Fields
+### Service Identity & Metadata
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `serviceName` | `string` | `metadata.name` | Cloud Run service name on GCP. Must be lowercase alphanumeric with hyphens, max 63 characters. |
-| `serviceAccount` | `string` | Default Compute Engine SA | Service account email the service runs as. |
-| `container.port` | `int32` | `8080` | Container port that receives HTTP traffic. Range: 1–65535. |
-| `container.env.variables` | `map<string, string>` | `{}` | Plain environment variables injected as KEY=VALUE pairs. |
-| `container.env.secrets` | `map<string, string>` | `{}` | Secret Manager references injected as KEY=`projects/*/secrets/*:version`. |
-| `maxConcurrency` | `int32` | `80` | Maximum concurrent requests handled by one instance. Range: 1–1000. |
-| `timeoutSeconds` | `int32` | `300` | Request timeout in seconds. Range: 1–3600. |
-| `ingress` | `enum` | `INGRESS_TRAFFIC_ALL` | Ingress setting. `INGRESS_TRAFFIC_ALL`: public internet. `INGRESS_TRAFFIC_INTERNAL_ONLY`: internal only. `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER`: internal + Cloud Load Balancing. |
-| `allowUnauthenticated` | `bool` | `true` | When `true`, the service is publicly invokable without IAM authentication. |
-| `executionEnvironment` | `enum` | `EXECUTION_ENVIRONMENT_GEN2` | Execution environment. `EXECUTION_ENVIRONMENT_GEN1`: first generation. `EXECUTION_ENVIRONMENT_GEN2`: full Linux compatibility, slower cold starts. |
-| `deleteProtection` | `bool` | `false` | Prevents accidental deletion of the service when enabled. |
-| `vpcAccess.network` | `string` | — | VPC network name for Direct VPC Egress. Can reference a GcpVpc resource via `valueFrom`. |
-| `vpcAccess.subnet` | `string` | — | Subnet name for Direct VPC Egress. Can reference a GcpSubnetwork resource via `valueFrom`. |
-| `vpcAccess.egress` | `string` | — | Egress routing: `ALL_TRAFFIC` routes all egress through VPC, `PRIVATE_RANGES_ONLY` routes only private IP traffic. |
-| `dns.enabled` | `bool` | `false` | Enables custom domain mapping for the service. |
-| `dns.hostnames` | `string[]` | `[]` | Fully-qualified hostnames routed to the service. Must be unique. Required when `dns.enabled` is `true`. |
-| `dns.managedZone` | `string` | — | Cloud DNS managed zone for domain verification records. Required when `dns.enabled` is `true`. Can reference a GcpDnsZone resource via `valueFrom`. |
+| `projectId` | `StringValueOrRef` | provider default | GCP project. Can reference a GcpProject resource. |
+| `serviceName` | `string` | `metadata.name` | Service name in GCP (1–63 chars, lowercase). Immutable. |
+| `description` | `string` | — | Human-readable description shown in the console. |
+| `labels` | `map` | — | User labels (shared with billing); merged beneath platform attribution labels. |
+| `serviceAccount` | `StringValueOrRef` | Compute Engine default SA | Runtime identity. Reference a GcpServiceAccount's `email` output. |
+| `deletionProtection` | `bool` | `true` | A destroy fails until this is explicitly set false. |
 
-## Examples
+### Containers (`containers[]`)
 
-### Internal Microservice
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | `string` | auto | Container name; required for multi-container services (`dependsOn` refers to it). |
+| `image` | `string` | — | Container image URL. Resolved to a digest at revision creation. |
+| `command` / `args` | `string[]` | image defaults | Entrypoint and argument overrides. |
+| `env[].name` | `string` | — | Variable name. |
+| `env[].value` | `string` | — | Literal value (never place credentials here). |
+| `env[].valueFromSecret` | object | — | Secret Manager reference: `secret` + `version` (`latest` or a number). Exclusive with `value`. |
+| `ports.containerPort` | `int` | `8080` | The single serving port (one container per service may set it). |
+| `ports.name` | `string` | `http1` | `h2c` enables end-to-end HTTP/2 (required for gRPC streaming). |
+| `resources.cpu` | `string` | `1` | CPU limit: `1`, `2`, `4`, `8`, or fractional (`0.5`, `500m`). |
+| `resources.memory` | `string` | `512Mi` | Memory limit with unit suffix (`512Mi`, `2Gi`). Minimums scale with CPU. |
+| `resources.cpuIdle` | `bool` | `true` | `true` = request-based billing; `false` = instance-based (CPU always allocated — required for background work). |
+| `resources.startupCpuBoost` | `bool` | `false` | Extra CPU during startup; cuts cold-start latency for JIT runtimes. |
+| `volumeMounts[]` | list | — | `{name, mountPath}` pairs; Cloud SQL volumes must mount at `/cloudsql`. |
+| `workingDir` | `string` | image default | Working directory for the entrypoint. |
+| `startupProbe` | object | TCP on the port | Gates instance start: HTTP, TCP, or gRPC with delays/periods/thresholds. |
+| `livenessProbe` | object | — | Restarts unhealthy containers: HTTP or gRPC (Cloud Run rejects TCP liveness). |
+| `dependsOn` | `string[]` | — | Containers this one waits for — sidecar startup ordering. |
 
-A service accessible only from within GCP, with scale-to-zero disabled for low latency:
+### Volumes (`volumes[]` — exactly one source each)
 
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpCloudRun
-metadata:
-  name: order-svc
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpCloudRun.order-svc
-spec:
-  projectId: my-gcp-project
-  region: us-central1
-  container:
-    image:
-      repo: us-docker.pkg.dev/my-gcp-project/registry/order-svc
-      tag: "2.1.0"
-    cpu: 1
-    memory: 256
-    port: 3000
-    replicas:
-      min: 1
-      max: 5
-  ingress: INGRESS_TRAFFIC_INTERNAL_ONLY
-  allowUnauthenticated: false
-```
+| Source | Fields | Description |
+|--------|--------|-------------|
+| `cloudSqlInstance` | `instances[]` (refs → GcpCloudSql `connection_name`) | Managed Unix sockets under the mount path — no sidecar, no VPC needed. |
+| `secret` | `secret`, `defaultMode`, `items[]{path, version, mode}` | Secret Manager versions projected as files. |
+| `emptyDir` | `medium` (`MEMORY`/`DISK`), `sizeLimit` | Per-instance scratch space; MEMORY counts against the memory limit. |
+| `gcs` | `bucket` (ref → GcpGcsBucket), `readOnly` | Cloud Storage FUSE mount; requires GEN2. |
+| `nfs` | `server`, `path`, `readOnly` | NFS share (e.g. Filestore); requires GEN2 and VPC access. |
 
-### Service with Environment Variables and Secrets
+### Scaling & Runtime
 
-A service that connects to a database using environment variables and Secret Manager references:
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `scaling.minInstanceCount` | `int` | `0` | Warm instances per revision; 0 scales to zero, 1+ eliminates cold starts. |
+| `scaling.maxInstanceCount` | `int` | GCP default (100) | Per-revision instance cap — the cost/overload circuit breaker. |
+| `serviceScaling.scalingMode` | `string` | `AUTOMATIC` | `MANUAL` pins the total instance count regardless of traffic. |
+| `serviceScaling.manualInstanceCount` | `int` | — | Exact instance count in MANUAL mode. |
+| `serviceScaling.minInstanceCount` | `int` | — | Service-level minimum, distributed across serving revisions. |
+| `maxInstanceRequestConcurrency` | `int` | 80 (1 below 1 CPU) | Concurrent requests per instance (1–1000). |
+| `timeoutSeconds` | `int` | `300` | Request timeout (1–3600); also bounds instance startup. |
+| `executionEnvironment` | enum | GCP-selected | `GEN2` (full Linux, required for GCS/NFS) or `GEN1` (faster cold starts). |
+| `sessionAffinity` | `bool` | `false` | Best-effort same-client-same-instance routing. |
+| `revision` | `string` | auto-generated | Explicit next-revision name (must be prefixed with the service name) — enables declarative blue/green. |
+| `encryptionKey` | `StringValueOrRef` | Google-managed | CMEK crypto key for deployed images. Reference a GcpKmsKey's `key_id` output. |
 
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpCloudRun
-metadata:
-  name: web-app
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.GcpCloudRun.web-app
-spec:
-  projectId: my-gcp-project
-  region: us-east1
-  container:
-    image:
-      repo: us-docker.pkg.dev/my-gcp-project/registry/web-app
-      tag: "3.0.0"
-    cpu: 2
-    memory: 1024
-    replicas:
-      min: 1
-      max: 10
-    env:
-      variables:
-        NODE_ENV: production
-        LOG_LEVEL: info
-      secrets:
-        DATABASE_URL: projects/my-gcp-project/secrets/db-url:latest
-        API_KEY: projects/my-gcp-project/secrets/api-key:latest
-  maxConcurrency: 100
-  timeoutSeconds: 60
-```
+### Networking & Access
 
-### Production Service with VPC Egress and Custom Domain
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `vpcAccess.networkInterfaces[]` | list | — | Direct VPC egress: `network`/`subnetwork` references + firewall `tags`. Exclusive with `connector`. |
+| `vpcAccess.connector` | `StringValueOrRef` | — | Serverless VPC Access connector (the legacy egress mechanism). |
+| `vpcAccess.egress` | `string` | `PRIVATE_RANGES_ONLY` | `ALL_TRAFFIC` routes everything through the VPC. |
+| `ingress` | enum | `INGRESS_TRAFFIC_ALL` | `INTERNAL_ONLY` or `INTERNAL_LOAD_BALANCER` lock the run.app URL down. |
+| `allowUnauthenticated` | `bool` | `false` | Grants `roles/run.invoker` to `allUsers`. Exclusive with `invokerIamDisabled`. |
+| `invokerIamDisabled` | `bool` | `false` | Switches the IAM invoker check off entirely (org-policy alternative). |
+| `customAudiences` | `string[]` | — | Extra accepted token audiences for authenticated callers. |
 
-Full-featured production deployment with VPC connectivity, custom DNS, and deletion protection:
+### Traffic Splitting (`traffic[]`)
 
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpCloudRun
-metadata:
-  name: prod-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCloudRun.prod-api
-spec:
-  projectId: my-gcp-project
-  region: us-central1
-  serviceName: prod-api
-  serviceAccount: prod-api@my-gcp-project.iam.gserviceaccount.com
-  container:
-    image:
-      repo: us-docker.pkg.dev/my-gcp-project/registry/prod-api
-      tag: "5.2.1"
-    cpu: 4
-    memory: 4096
-    port: 8080
-    replicas:
-      min: 2
-      max: 20
-    env:
-      variables:
-        ENVIRONMENT: production
-      secrets:
-        DB_PASSWORD: projects/my-gcp-project/secrets/db-password:latest
-  maxConcurrency: 200
-  timeoutSeconds: 120
-  executionEnvironment: EXECUTION_ENVIRONMENT_GEN2
-  deleteProtection: true
-  vpcAccess:
-    network: my-vpc
-    subnet: my-subnet
-    egress: PRIVATE_RANGES_ONLY
-  dns:
-    enabled: true
-    hostnames:
-      - api.example.com
-    managedZone: example-com-zone
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | enum | `TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST` or `…_REVISION`. |
+| `revision` | `string` | Revision name for REVISION targets. |
+| `percent` | `int` | Share of traffic (all entries must sum to 100). |
+| `tag` | `string` | Stable `<tag>---<host>` preview URL for smoke-testing before traffic moves. |
 
-### Using Foreign Key References
+Empty `traffic` routes 100% to the latest ready revision.
 
-Reference other Planton-managed resources instead of hardcoding values:
+### GPU & Deploy Gates
 
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpCloudRun
-metadata:
-  name: ref-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCloudRun.ref-api
-spec:
-  projectId:
-    valueFrom:
-      kind: GcpProject
-      name: my-project
-      field: status.outputs.project_id
-  region: us-central1
-  container:
-    image:
-      repo: us-docker.pkg.dev/my-gcp-project/registry/ref-api
-      tag: "1.0.0"
-    cpu: 1
-    memory: 512
-    replicas:
-      min: 0
-      max: 5
-  vpcAccess:
-    network:
-      valueFrom:
-        kind: GcpVpc
-        name: my-vpc
-        field: status.outputs.network_name
-    subnet:
-      valueFrom:
-        kind: GcpSubnetwork
-        name: my-subnet
-        field: status.outputs.subnetwork_name
-    egress: PRIVATE_RANGES_ONLY
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `nodeSelector.accelerator` | `string` | GPU per instance (e.g. `nvidia-l4`); needs ≥4 CPU / 16Gi. |
+| `gpuZonalRedundancyDisabled` | `bool` | Single-zone GPU serving — cheaper capacity, zonal risk. |
+| `launchStage` | `string` | `BETA`/`ALPHA` declaration when using preview features. |
+| `binaryAuthorization` | object | `useDefault` XOR `policy` + `breakglassJustification` — attestation-gated deploys. |
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
+| Output | Description |
+|--------|-------------|
+| `url` | Canonical serving URL |
+| `service_name` | Service name in GCP — what serverless NEGs reference |
+| `revision` | Latest ready revision name |
+| `location` | Deployed region |
+| `uid` | Server-assigned unique identifier |
+| `urls` | Every URL serving the service |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `url` | `string` | Public or internal URL of the Cloud Run service (e.g., `https://my-api-abc123-uc.a.run.app`) |
-| `service_name` | `string` | Name of the Cloud Run service as it appears in GCP |
-| `revision` | `string` | Name of the latest ready revision deployed |
+## Common Patterns
+
+- **Public API** — one container, `allowUnauthenticated: true`, scale-to-zero (see the `01-public-api-service` preset)
+- **Private backend** — internal ingress, direct VPC egress, Cloud SQL volume, secret env, dedicated identity (see `02-private-vpc-service`)
+- **GPU inference** — `nodeSelector.accelerator`, instance-based billing, bounded max instances (see `03-gpu-inference`)
+- **Canary rollout** — pin `revision` names and split `traffic` 90/10 with a `canary` tag; promote by editing percents
+- **Custom domain** — compose a [GcpRegionNetworkEndpointGroup](/docs/catalog/gcp/gcpregionnetworkendpointgroup) → [GcpBackendService](/docs/catalog/gcp/gcpbackendservice) → [GcpUrlMap](/docs/catalog/gcp/gcpurlmap) → [GcpTargetHttpsProxy](/docs/catalog/gcp/gcptargethttpsproxy) → [GcpGlobalForwardingRule](/docs/catalog/gcp/gcpglobalforwardingrule) with [GcpDnsRecord](/docs/catalog/gcp/gcpdnsrecord)
 
 ## Related Components
 
-- [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project where the service is created
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network for Direct VPC Egress
-- [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — provides the subnet for Direct VPC Egress
-- [GcpCloudSql](/docs/catalog/gcp/gcpcloudsql) — commonly co-deployed as the database backend accessed via VPC
+- [GcpRegionNetworkEndpointGroup](/docs/catalog/gcp/gcpregionnetworkendpointgroup) — the bridge into the global HTTPS load balancer
+- [GcpCloudSql](/docs/catalog/gcp/gcpcloudsql) — databases mounted via Cloud SQL volumes
+- [GcpServiceAccount](/docs/catalog/gcp/gcpserviceaccount) — the runtime identity
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) / [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — direct VPC egress targets
+- [GcpGcsBucket](/docs/catalog/gcp/gcpgcsbucket) — GCS FUSE volume origins
+- [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) — CMEK image encryption
+- [GcpArtifactRegistryRepo](/docs/catalog/gcp/gcpartifactregistryrepo) — image storage

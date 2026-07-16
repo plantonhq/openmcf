@@ -31,11 +31,16 @@ type GcpVertexAiEndpointStackOutputs struct {
 	// reference without needing to read the full resource).
 	DisplayName string `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	// DNS of the dedicated endpoint. Populated only when
-	// dedicated_endpoint_enabled is true. Format:
-	// https://{endpointId}.{region}-{projectNumber}.prediction.vertexai.goog
+	// dedicated_endpoint_enabled is true. A bare hostname (no scheme), as the
+	// API returns it. Format:
+	// {endpointId}.{region}-{projectNumber}.prediction.vertexai.goog
 	DedicatedEndpointDns string `protobuf:"bytes,3,opt,name=dedicated_endpoint_dns,json=dedicatedEndpointDns,proto3" json:"dedicated_endpoint_dns,omitempty"`
 	// RFC3339 timestamp of when the endpoint was created.
-	CreateTime    string `protobuf:"bytes,4,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime string `protobuf:"bytes,4,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	// The numeric endpoint ID (the last path segment of endpoint_id) --
+	// explicit in the spec or derived from the resource identity. This is
+	// the value model-deployment tooling passes as the endpoint reference.
+	EndpointName  string `protobuf:"bytes,5,opt,name=endpoint_name,json=endpointName,proto3" json:"endpoint_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -98,18 +103,26 @@ func (x *GcpVertexAiEndpointStackOutputs) GetCreateTime() string {
 	return ""
 }
 
+func (x *GcpVertexAiEndpointStackOutputs) GetEndpointName() string {
+	if x != nil {
+		return x.EndpointName
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/gcp/gcpvertexaiendpoint/v1/stack_outputs.proto\x12/dev.planton.provider.gcp.gcpvertexaiendpoint.v1\"\xbc\x01\n" +
+	"Cdev/planton/provider/gcp/gcpvertexaiendpoint/v1/stack_outputs.proto\x12/dev.planton.provider.gcp.gcpvertexaiendpoint.v1\"\xe1\x01\n" +
 	"\x1fGcpVertexAiEndpointStackOutputs\x12\x1f\n" +
 	"\vendpoint_id\x18\x01 \x01(\tR\n" +
 	"endpointId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x124\n" +
 	"\x16dedicated_endpoint_dns\x18\x03 \x01(\tR\x14dedicatedEndpointDns\x12\x1f\n" +
 	"\vcreate_time\x18\x04 \x01(\tR\n" +
-	"createTimeB\x94\x03\n" +
+	"createTime\x12#\n" +
+	"\rendpoint_name\x18\x05 \x01(\tR\fendpointNameB\x94\x03\n" +
 	"3com.dev.planton.provider.gcp.gcpvertexaiendpoint.v1B\x11StackOutputsProtoP\x01Zggithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaiendpoint/v1;gcpvertexaiendpointv1\xa2\x02\x05DPPGG\xaa\x02/Dev.Planton.Provider.Gcp.Gcpvertexaiendpoint.V1\xca\x02/Dev\\Planton\\Provider\\Gcp\\Gcpvertexaiendpoint\\V1\xe2\x02;Dev\\Planton\\Provider\\Gcp\\Gcpvertexaiendpoint\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Gcp::Gcpvertexaiendpoint::V1b\x06proto3"
 
 var (

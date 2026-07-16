@@ -1,0 +1,197 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpworkloadidentitypoolprovider.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// GcpWorkloadIdentityPoolProviderSpec defines one external identity issuer
+// trusted by a Workload Identity Pool — the piece that turns a pool into a
+// working keyless-auth path. A pool holds many providers, one per issuer
+// (a GitHub org, an AWS account, a SAML IdP, an X.509 estate), each with its
+// own attribute mapping and trust conditions.
+//
+// The issuer type is an exclusive choice (aws | oidc | saml | x509) fixed at
+// design time; attribute_mapping translates the issuer's claims into Google
+// attributes, and attribute_condition gates which of the issuer's otherwise
+// valid credentials are accepted (e.g. only one repository, only one branch).
+//
+// Lifecycle note: like the pool, GCP soft-deletes providers for ~30 days and
+// blocks ID reuse while soft-deleted; a create against a soft-deleted ID
+// fails. Prefer disabling over deleting during rotation or investigation.
+message GcpWorkloadIdentityPoolProviderSpec {
+  // The pool this provider belongs to — the bare pool ID (the final component
+  // of the pool's resource name), not the full path.
+  // Reference a GcpWorkloadIdentityPool resource — its
+  // workload_identity_pool_id output is exactly this value.
+  // Immutable: a provider cannot move between pools.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workload_identity_pool_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpWorkloadIdentityPool,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workload_identity_pool_id"
+  ];
+
+  // The ID for the provider, which becomes the final component of its
+  // resource name. 4-32 characters of lowercase letters, digits, and hyphens;
+  // the prefix "gcp-" is reserved by Google. Immutable: changing it destroys
+  // and recreates the provider, invalidating tokens minted for the old
+  // audience.
+  string workload_identity_pool_provider_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z0-9-]{4,32}$",
+    (buf.validate.field).cel = {
+      id: "provider_id_no_gcp_prefix"
+      message: "the prefix 'gcp-' is reserved by Google — choose a provider ID that does not start with it"
+      expression: "!this.startsWith('gcp-')"
+    }
+  ];
+
+  // The GCP project that owns the pool (and therefore this provider).
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable: changing it destroys and recreates the provider.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Human-readable name shown in the GCP console (max 32 characters). Mutable.
+  string display_name = 4 [(buf.validate.field).string.max_len = 32];
+
+  // Which issuer this provider trusts and any operational notes — write it
+  // for the operator auditing trust boundaries later (max 256 characters).
+  // Mutable.
+  string description = 5 [(buf.validate.field).string.max_len = 256];
+
+  // Emergency kill switch: a disabled provider rejects new token exchanges
+  // (already-issued Google credentials remain valid until they expire).
+  // Prefer disabling over deleting — deletion starts the 30-day soft-delete
+  // clock and blocks ID reuse. Mutable.
+  bool disabled = 6;
+
+  // Maps claims from the issuer's credential to Google attributes. Keys are
+  // "google.subject" (required — the principal IAM authenticates),
+  // "google.groups", or custom "attribute.<name>" entries (max 50); values
+  // are CEL expressions over the credential's claims via the `assertion`
+  // keyword, e.g. {"google.subject": "assertion.sub",
+  // "attribute.repository": "assertion.repository"}.
+  // Mapped attributes are what IAM bindings can target:
+  // principalSet://iam.googleapis.com/<pool>/attribute.<name>/<value>.
+  // OIDC providers must define it explicitly; AWS, SAML, and X.509 providers
+  // fall back to sensible issuer-specific defaults when omitted.
+  map<string, string> attribute_mapping = 7;
+
+  // A CEL expression gating which otherwise valid credentials are accepted,
+  // over the `assertion`, `google`, and `attribute` keywords (max 4096
+  // characters), e.g. restricting a GitHub provider to one org:
+  // assertion.repository_owner == "my-org".
+  // Without a condition, ANY identity the issuer vouches for can federate —
+  // for multi-tenant issuers like GitHub Actions, always set one.
+  string attribute_condition = 8 [(buf.validate.field).string.max_len = 4096];
+
+  // The external issuer this provider trusts — exactly one type. The choice
+  // shapes token exchange, attribute defaults, and what belongs in
+  // attribute_condition.
+  oneof issuer {
+    option (buf.validate.oneof).required = true;
+
+    // Trust an Amazon Web Services account: workloads presenting AWS
+    // credentials from this account can federate.
+    GcpWorkloadIdentityPoolProviderAws aws = 9;
+
+    // Trust an OpenID Connect issuer — the workhorse for keyless CI/CD
+    // (GitHub Actions, GitLab CI, Kubernetes clusters, custom issuers).
+    GcpWorkloadIdentityPoolProviderOidc oidc = 10;
+
+    // Trust a SAML 2.0 identity provider, typically an enterprise IdP.
+    GcpWorkloadIdentityPoolProviderSaml saml = 11;
+
+    // Trust an X.509 certificate authority: clients presenting certificates
+    // that chain to the configured trust store can federate (certificate-based
+    // workload identity without any token issuer).
+    GcpWorkloadIdentityPoolProviderX509 x509 = 12;
+  }
+
+  option (buf.validate.message).cel = {
+    id: "oidc_requires_subject_mapping"
+    message: "OIDC providers must map google.subject in attribute_mapping (e.g. {\"google.subject\": \"assertion.sub\"}) — GCP rejects the provider without it"
+    expression: "!has(this.oidc) || 'google.subject' in this.attribute_mapping"
+  };
+}
+
+// An Amazon Web Services issuer.
+message GcpWorkloadIdentityPoolProviderAws {
+  // The 12-digit AWS account ID whose workloads may federate.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9]{12}$"
+  ];
+}
+
+// An OpenID Connect 1.0 issuer.
+message GcpWorkloadIdentityPoolProviderOidc {
+  // The OIDC issuer URL, e.g. https://token.actions.githubusercontent.com
+  // for GitHub Actions. Must match the `iss` claim of incoming tokens.
+  string issuer_uri = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uri = true
+  ];
+
+  // Acceptable `aud` (audience) values in incoming tokens; each at most 256
+  // characters, at most 10 entries. When empty, the audience must equal the
+  // provider's full canonical resource name (with or without the https:
+  // prefix) — the safest default, since tokens minted for anything else are
+  // rejected.
+  repeated string allowed_audiences = 2 [
+    (buf.validate.field).repeated.max_items = 10,
+    (buf.validate.field).repeated.items.string.max_len = 256
+  ];
+
+  // OIDC JWKS (public signing keys) in JSON format, for issuers whose keys
+  // cannot be fetched from the issuer_uri's .well-known discovery document
+  // (e.g. issuers behind a private network). Leave unset to use discovery —
+  // the normal path. These are public keys, not a secret.
+  string jwks_json = 3;
+}
+
+// A SAML 2.0 issuer.
+message GcpWorkloadIdentityPoolProviderSaml {
+  // The SAML identity provider's configuration metadata XML document, as
+  // exported by the IdP. Public IdP metadata (entity ID, SSO endpoints,
+  // signing certificates), not a secret.
+  string idp_metadata_xml = 1 [(buf.validate.field).required = true];
+}
+
+// An X.509 certificate-authority issuer.
+message GcpWorkloadIdentityPoolProviderX509 {
+  // The trust store validating incoming end-entity certificates. Exactly one
+  // trust store is supported per provider.
+  GcpWorkloadIdentityPoolProviderTrustStore trust_store = 1 [(buf.validate.field).required = true];
+}
+
+// The trust anchors (and optional intermediates) that incoming client
+// certificates must chain to.
+message GcpWorkloadIdentityPoolProviderTrustStore {
+  // Trust anchors: an incoming end-entity certificate must chain up to one of
+  // these.
+  repeated GcpWorkloadIdentityPoolProviderTrustAnchor trust_anchors = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Intermediate CA certificates available for building the chain from an
+  // end-entity certificate to a trust anchor.
+  repeated GcpWorkloadIdentityPoolProviderIntermediateCa intermediate_cas = 2;
+}
+
+// One PEM-encoded CA certificate acting as a trust anchor.
+message GcpWorkloadIdentityPoolProviderTrustAnchor {
+  // PEM certificate of the PKI used for validation. Must contain exactly one
+  // CA certificate (root or intermediate). Public key material, not a secret.
+  string pem_certificate = 1 [(buf.validate.field).required = true];
+}
+
+// One PEM-encoded intermediate CA certificate.
+message GcpWorkloadIdentityPoolProviderIntermediateCa {
+  // PEM certificate of the PKI used for validation. Must contain exactly one
+  // CA certificate (either root or intermediate cert). Public key material,
+  // not a secret.
+  string pem_certificate = 1 [(buf.validate.field).required = true];
+}

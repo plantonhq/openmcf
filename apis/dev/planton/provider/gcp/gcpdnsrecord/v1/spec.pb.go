@@ -24,122 +24,64 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Supported DNS record types for GCP Cloud DNS.
-type GcpDnsRecordSpec_RecordType int32
-
-const (
-	// Unspecified record type (invalid).
-	GcpDnsRecordSpec_record_type_unspecified GcpDnsRecordSpec_RecordType = 0
-	// IPv4 address record.
-	GcpDnsRecordSpec_A GcpDnsRecordSpec_RecordType = 1
-	// IPv6 address record.
-	GcpDnsRecordSpec_AAAA GcpDnsRecordSpec_RecordType = 2
-	// Canonical name (alias) record.
-	GcpDnsRecordSpec_CNAME GcpDnsRecordSpec_RecordType = 3
-	// Mail exchange record.
-	GcpDnsRecordSpec_MX GcpDnsRecordSpec_RecordType = 4
-	// Text record (SPF, DKIM, verification, etc.).
-	GcpDnsRecordSpec_TXT GcpDnsRecordSpec_RecordType = 5
-	// Service locator record.
-	GcpDnsRecordSpec_SRV GcpDnsRecordSpec_RecordType = 6
-	// Nameserver record.
-	GcpDnsRecordSpec_NS GcpDnsRecordSpec_RecordType = 7
-	// Pointer record (reverse DNS).
-	GcpDnsRecordSpec_PTR GcpDnsRecordSpec_RecordType = 8
-	// Certificate Authority Authorization record.
-	GcpDnsRecordSpec_CAA GcpDnsRecordSpec_RecordType = 9
-	// Start of Authority record.
-	GcpDnsRecordSpec_SOA GcpDnsRecordSpec_RecordType = 10
-)
-
-// Enum value maps for GcpDnsRecordSpec_RecordType.
-var (
-	GcpDnsRecordSpec_RecordType_name = map[int32]string{
-		0:  "record_type_unspecified",
-		1:  "A",
-		2:  "AAAA",
-		3:  "CNAME",
-		4:  "MX",
-		5:  "TXT",
-		6:  "SRV",
-		7:  "NS",
-		8:  "PTR",
-		9:  "CAA",
-		10: "SOA",
-	}
-	GcpDnsRecordSpec_RecordType_value = map[string]int32{
-		"record_type_unspecified": 0,
-		"A":                       1,
-		"AAAA":                    2,
-		"CNAME":                   3,
-		"MX":                      4,
-		"TXT":                     5,
-		"SRV":                     6,
-		"NS":                      7,
-		"PTR":                     8,
-		"CAA":                     9,
-		"SOA":                     10,
-	}
-)
-
-func (x GcpDnsRecordSpec_RecordType) Enum() *GcpDnsRecordSpec_RecordType {
-	p := new(GcpDnsRecordSpec_RecordType)
-	*p = x
-	return p
-}
-
-func (x GcpDnsRecordSpec_RecordType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (GcpDnsRecordSpec_RecordType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (GcpDnsRecordSpec_RecordType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_enumTypes[0]
-}
-
-func (x GcpDnsRecordSpec_RecordType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use GcpDnsRecordSpec_RecordType.Descriptor instead.
-func (GcpDnsRecordSpec_RecordType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDescGZIP(), []int{0, 0}
-}
-
-// GcpDnsRecordSpec defines the configuration for creating a DNS record in a Google Cloud DNS Managed Zone.
-// This component creates individual DNS records (A, AAAA, CNAME, MX, TXT, etc.) within an existing zone.
+// GcpDnsRecordSpec creates one DNS record set inside an existing Cloud DNS
+// managed zone. A record set is the unit Cloud DNS manages: one (name, type)
+// pair holding either a static list of values (round-robin) or exactly one
+// routing policy (weighted, geolocation, or failover).
+//
+// The record answers queries in one of two mutually exclusive ways:
+//   - values: static RRDATA returned to every resolver (the common case).
+//   - routing_policy: Cloud DNS steers each query by weight, caller
+//     geography, or primary/backup health — only one policy style per record.
 type GcpDnsRecordSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ID of the GCP project where the Managed Zone exists.
-	// This is used to locate the DNS zone where the record will be created.
+	// The GCP project that hosts the managed zone.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used (ambient credentials
+	// decide).
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	// The name of the Managed Zone where this DNS record will be created.
-	// This can be a direct value or a reference to a GcpDnsZone resource's output.
-	// Example: "example-zone" (the zone name, not the DNS name).
+	// The name of the managed zone this record lives in.
+	// This is the zone RESOURCE name (e.g. "prod-example-zone"), not the DNS
+	// name — Cloud DNS addresses zones by resource name.
+	// Can be a literal value or a reference to a GcpDnsZone resource.
 	ManagedZone *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=managed_zone,json=managedZone,proto3" json:"managed_zone,omitempty"`
-	// The DNS record type to create.
-	// Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA.
-	Type GcpDnsRecordSpec_RecordType `protobuf:"varint,3,opt,name=type,proto3,enum=dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec_RecordType" json:"type,omitempty"`
-	// The fully qualified domain name for this record.
-	// Must end with a trailing dot to indicate FQDN.
-	// Example: "www.example.com." or "api.example.com."
-	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	// The values/targets for the DNS record.
-	// For A records: IPv4 addresses (e.g., "192.0.2.1")
-	// For AAAA records: IPv6 addresses (e.g., "2001:db8::1")
-	// For CNAME records: target hostname with trailing dot (e.g., "target.example.com.")
-	// For MX records: mail server with priority (priority handled separately)
-	// For TXT records: text values (e.g., "v=spf1 include:_spf.google.com ~all")
-	// Multiple values create a round-robin record set.
-	Values []string `protobuf:"bytes,5,rep,name=values,proto3" json:"values,omitempty"`
-	// Time to live (TTL) for the DNS record in seconds.
-	// Determines how long resolvers should cache this record.
-	// Common values: 60 (1 min), 300 (5 min), 3600 (1 hour), 86400 (1 day).
-	// Default: 300 seconds (5 minutes).
-	TtlSeconds    *int32 `protobuf:"varint,6,opt,name=ttl_seconds,json=ttlSeconds,proto3,oneof" json:"ttl_seconds,omitempty"`
+	// The DNS record type, uppercase (e.g. "A", "AAAA", "CNAME", "MX", "TXT",
+	// "SRV", "NS", "PTR", "CAA", "SOA", "HTTPS", "SVCB", "DS", "DNSKEY",
+	// "TLSA", "SSHFP", "NAPTR"). Cloud DNS accepts any record type the API
+	// supports; the string is passed through as-is, so new types need no
+	// spec change.
+	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
+	// The fully qualified domain name this record set applies to.
+	// Must end with a trailing dot (e.g. "www.example.com.").
+	// A leading "*." creates a wildcard record; leading underscores support
+	// service labels such as "_dmarc" and "_acme-challenge".
+	// Can be a literal FQDN or a reference — compose validation records from
+	// GcpCertManagerDnsAuthorization's dns_record_name output.
+	Name *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	// Static values (RRDATA) for the record set — the meaning depends on type:
+	//
+	//	A: IPv4 addresses ("192.0.2.1")
+	//	AAAA: IPv6 addresses ("2001:db8::1")
+	//	CNAME: target hostname WITH trailing dot ("target.example.com.")
+	//	MX: "priority mailserver." ("10 mail.example.com.")
+	//	TXT: text values; values containing spaces need surrounding \" quotes,
+	//	     and single values longer than 255 characters (DKIM keys) must be
+	//	     split with "" between chunks.
+	//
+	// Multiple values answer as a round-robin set. Mutually exclusive with
+	// routing_policy. Each entry can be a literal or a reference — compose
+	// validation targets from GcpCertManagerDnsAuthorization's
+	// dns_record_data output.
+	Values []*v1.StringValueOrRef `protobuf:"bytes,5,rep,name=values,proto3" json:"values,omitempty"`
+	// Time to live in seconds — how long resolvers cache this record.
+	// Common values: 60 (fast failover), 300 (default), 3600, 86400; NS
+	// records conventionally use 172800 (2 days). Lower TTLs propagate
+	// changes faster at the cost of more query load.
+	TtlSeconds *int32 `protobuf:"varint,6,opt,name=ttl_seconds,json=ttlSeconds,proto3,oneof" json:"ttl_seconds,omitempty"`
+	// Query-steering policy — Cloud DNS answers each query based on weights,
+	// caller geography, or target health instead of returning static values.
+	// Mutually exclusive with values.
+	RoutingPolicy *GcpDnsRecordRoutingPolicy `protobuf:"bytes,7,opt,name=routing_policy,json=routingPolicy,proto3" json:"routing_policy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -188,21 +130,21 @@ func (x *GcpDnsRecordSpec) GetManagedZone() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *GcpDnsRecordSpec) GetType() GcpDnsRecordSpec_RecordType {
+func (x *GcpDnsRecordSpec) GetType() string {
 	if x != nil {
 		return x.Type
-	}
-	return GcpDnsRecordSpec_record_type_unspecified
-}
-
-func (x *GcpDnsRecordSpec) GetName() string {
-	if x != nil {
-		return x.Name
 	}
 	return ""
 }
 
-func (x *GcpDnsRecordSpec) GetValues() []string {
+func (x *GcpDnsRecordSpec) GetName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Name
+	}
+	return nil
+}
+
+func (x *GcpDnsRecordSpec) GetValues() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.Values
 	}
@@ -216,37 +158,544 @@ func (x *GcpDnsRecordSpec) GetTtlSeconds() int32 {
 	return 0
 }
 
+func (x *GcpDnsRecordSpec) GetRoutingPolicy() *GcpDnsRecordRoutingPolicy {
+	if x != nil {
+		return x.RoutingPolicy
+	}
+	return nil
+}
+
+// Routing policy for a record set. Exactly one policy style (wrr, geo, or
+// primary_backup) must be configured — Cloud DNS supports one style per
+// record set.
+type GcpDnsRecordRoutingPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Weighted round robin: traffic splits across entries in proportion to
+	// their weights. Useful for canary rollouts and A/B traffic splitting.
+	Wrr []*GcpDnsRecordWrrPolicyItem `protobuf:"bytes,1,rep,name=wrr,proto3" json:"wrr,omitempty"`
+	// Geolocation routing: each entry answers queries originating nearest to
+	// its location. Useful for latency-sensitive multi-region serving.
+	Geo []*GcpDnsRecordGeoPolicyItem `protobuf:"bytes,2,rep,name=geo,proto3" json:"geo,omitempty"`
+	// When true, geo queries are fenced: a location with unhealthy targets
+	// keeps answering (with the unhealthy answer) instead of failing over to
+	// the next-closest location. Applies to geo routing only.
+	EnableGeoFencing bool `protobuf:"varint,3,opt,name=enable_geo_fencing,json=enableGeoFencing,proto3" json:"enable_geo_fencing,omitempty"`
+	// Failover routing: queries are answered with the primary targets while
+	// any are healthy, then fall back to a regional geo policy.
+	PrimaryBackup *GcpDnsRecordPrimaryBackupPolicy `protobuf:"bytes,4,opt,name=primary_backup,json=primaryBackup,proto3" json:"primary_backup,omitempty"`
+	// Health check used for public-IP health checking of routing-policy
+	// targets. Can be a literal self-link or a reference to a GcpHealthCheck
+	// resource. Internal load balancer targets carry their own implicit
+	// health checking and do not need this.
+	HealthCheck   *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=health_check,json=healthCheck,proto3" json:"health_check,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpDnsRecordRoutingPolicy) Reset() {
+	*x = GcpDnsRecordRoutingPolicy{}
+	mi := &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpDnsRecordRoutingPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpDnsRecordRoutingPolicy) ProtoMessage() {}
+
+func (x *GcpDnsRecordRoutingPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpDnsRecordRoutingPolicy.ProtoReflect.Descriptor instead.
+func (*GcpDnsRecordRoutingPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GcpDnsRecordRoutingPolicy) GetWrr() []*GcpDnsRecordWrrPolicyItem {
+	if x != nil {
+		return x.Wrr
+	}
+	return nil
+}
+
+func (x *GcpDnsRecordRoutingPolicy) GetGeo() []*GcpDnsRecordGeoPolicyItem {
+	if x != nil {
+		return x.Geo
+	}
+	return nil
+}
+
+func (x *GcpDnsRecordRoutingPolicy) GetEnableGeoFencing() bool {
+	if x != nil {
+		return x.EnableGeoFencing
+	}
+	return false
+}
+
+func (x *GcpDnsRecordRoutingPolicy) GetPrimaryBackup() *GcpDnsRecordPrimaryBackupPolicy {
+	if x != nil {
+		return x.PrimaryBackup
+	}
+	return nil
+}
+
+func (x *GcpDnsRecordRoutingPolicy) GetHealthCheck() *v1.StringValueOrRef {
+	if x != nil {
+		return x.HealthCheck
+	}
+	return nil
+}
+
+// One weighted round-robin entry.
+type GcpDnsRecordWrrPolicyItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ratio of traffic routed to this entry, relative to the sum of all
+	// weights. A weight of 0 receives no traffic (useful for staging an
+	// entry before shifting traffic onto it) — declared optional so the
+	// explicit 0 is expressible while the field itself stays required.
+	Weight *float64 `protobuf:"fixed64,1,opt,name=weight,proto3,oneof" json:"weight,omitempty"`
+	// Static values (RRDATA) answered for this entry.
+	// If the zone has DNSSEC enabled, an entry may set only one of values or
+	// health_checked_targets; otherwise both may be combined.
+	Values []string `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
+	// Load-balancer targets health-checked for this entry (A/AAAA records
+	// only). Unhealthy targets are withdrawn from answers automatically.
+	HealthCheckedTargets *GcpDnsRecordHealthCheckedTargets `protobuf:"bytes,3,opt,name=health_checked_targets,json=healthCheckedTargets,proto3" json:"health_checked_targets,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *GcpDnsRecordWrrPolicyItem) Reset() {
+	*x = GcpDnsRecordWrrPolicyItem{}
+	mi := &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpDnsRecordWrrPolicyItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpDnsRecordWrrPolicyItem) ProtoMessage() {}
+
+func (x *GcpDnsRecordWrrPolicyItem) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpDnsRecordWrrPolicyItem.ProtoReflect.Descriptor instead.
+func (*GcpDnsRecordWrrPolicyItem) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GcpDnsRecordWrrPolicyItem) GetWeight() float64 {
+	if x != nil && x.Weight != nil {
+		return *x.Weight
+	}
+	return 0
+}
+
+func (x *GcpDnsRecordWrrPolicyItem) GetValues() []string {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
+func (x *GcpDnsRecordWrrPolicyItem) GetHealthCheckedTargets() *GcpDnsRecordHealthCheckedTargets {
+	if x != nil {
+		return x.HealthCheckedTargets
+	}
+	return nil
+}
+
+// One geolocation entry.
+type GcpDnsRecordGeoPolicyItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Google Cloud location name this entry serves (e.g. "us-east1",
+	// "europe-west3"). Queries are routed to the entry nearest the caller.
+	Location string `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
+	// Static values (RRDATA) answered for this location.
+	Values []string `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
+	// Load-balancer targets health-checked for this location (A/AAAA records
+	// only). Unhealthy targets are withdrawn from answers automatically.
+	HealthCheckedTargets *GcpDnsRecordHealthCheckedTargets `protobuf:"bytes,3,opt,name=health_checked_targets,json=healthCheckedTargets,proto3" json:"health_checked_targets,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *GcpDnsRecordGeoPolicyItem) Reset() {
+	*x = GcpDnsRecordGeoPolicyItem{}
+	mi := &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpDnsRecordGeoPolicyItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpDnsRecordGeoPolicyItem) ProtoMessage() {}
+
+func (x *GcpDnsRecordGeoPolicyItem) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpDnsRecordGeoPolicyItem.ProtoReflect.Descriptor instead.
+func (*GcpDnsRecordGeoPolicyItem) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GcpDnsRecordGeoPolicyItem) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+func (x *GcpDnsRecordGeoPolicyItem) GetValues() []string {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
+func (x *GcpDnsRecordGeoPolicyItem) GetHealthCheckedTargets() *GcpDnsRecordHealthCheckedTargets {
+	if x != nil {
+		return x.HealthCheckedTargets
+	}
+	return nil
+}
+
+// Failover policy: global primary targets with a regional geo backup.
+type GcpDnsRecordPrimaryBackupPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The global primary targets. Queries are answered from these while any
+	// target is healthy.
+	Primary *GcpDnsRecordHealthCheckedTargets `protobuf:"bytes,1,opt,name=primary,proto3" json:"primary,omitempty"`
+	// The regional failover policy used when no primary target is healthy.
+	BackupGeo []*GcpDnsRecordGeoPolicyItem `protobuf:"bytes,2,rep,name=backup_geo,json=backupGeo,proto3" json:"backup_geo,omitempty"`
+	// Ratio of traffic (0.0–1.0) trickled to the backup targets even while
+	// the primaries are healthy — keeps backup paths warm and verifiable.
+	TrickleRatio *float64 `protobuf:"fixed64,3,opt,name=trickle_ratio,json=trickleRatio,proto3,oneof" json:"trickle_ratio,omitempty"`
+	// When true, backup geo queries are fenced (see
+	// GcpDnsRecordRoutingPolicy.enable_geo_fencing).
+	EnableGeoFencingForBackups bool `protobuf:"varint,4,opt,name=enable_geo_fencing_for_backups,json=enableGeoFencingForBackups,proto3" json:"enable_geo_fencing_for_backups,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
+}
+
+func (x *GcpDnsRecordPrimaryBackupPolicy) Reset() {
+	*x = GcpDnsRecordPrimaryBackupPolicy{}
+	mi := &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpDnsRecordPrimaryBackupPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpDnsRecordPrimaryBackupPolicy) ProtoMessage() {}
+
+func (x *GcpDnsRecordPrimaryBackupPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpDnsRecordPrimaryBackupPolicy.ProtoReflect.Descriptor instead.
+func (*GcpDnsRecordPrimaryBackupPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GcpDnsRecordPrimaryBackupPolicy) GetPrimary() *GcpDnsRecordHealthCheckedTargets {
+	if x != nil {
+		return x.Primary
+	}
+	return nil
+}
+
+func (x *GcpDnsRecordPrimaryBackupPolicy) GetBackupGeo() []*GcpDnsRecordGeoPolicyItem {
+	if x != nil {
+		return x.BackupGeo
+	}
+	return nil
+}
+
+func (x *GcpDnsRecordPrimaryBackupPolicy) GetTrickleRatio() float64 {
+	if x != nil && x.TrickleRatio != nil {
+		return *x.TrickleRatio
+	}
+	return 0
+}
+
+func (x *GcpDnsRecordPrimaryBackupPolicy) GetEnableGeoFencingForBackups() bool {
+	if x != nil {
+		return x.EnableGeoFencingForBackups
+	}
+	return false
+}
+
+// Targets whose health determines whether they are answered.
+// At least one of internal_load_balancers or external_endpoints must be set.
+type GcpDnsRecordHealthCheckedTargets struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Internal load balancer frontends to health check. Cloud DNS reads the
+	// load balancer's own health signal — no separate health check resource
+	// is needed for these.
+	InternalLoadBalancers []*GcpDnsRecordInternalLoadBalancerTarget `protobuf:"bytes,1,rep,name=internal_load_balancers,json=internalLoadBalancers,proto3" json:"internal_load_balancers,omitempty"`
+	// Public internet IP addresses to health check. Requires the routing
+	// policy's health_check to be set.
+	ExternalEndpoints []string `protobuf:"bytes,2,rep,name=external_endpoints,json=externalEndpoints,proto3" json:"external_endpoints,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *GcpDnsRecordHealthCheckedTargets) Reset() {
+	*x = GcpDnsRecordHealthCheckedTargets{}
+	mi := &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpDnsRecordHealthCheckedTargets) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpDnsRecordHealthCheckedTargets) ProtoMessage() {}
+
+func (x *GcpDnsRecordHealthCheckedTargets) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpDnsRecordHealthCheckedTargets.ProtoReflect.Descriptor instead.
+func (*GcpDnsRecordHealthCheckedTargets) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GcpDnsRecordHealthCheckedTargets) GetInternalLoadBalancers() []*GcpDnsRecordInternalLoadBalancerTarget {
+	if x != nil {
+		return x.InternalLoadBalancers
+	}
+	return nil
+}
+
+func (x *GcpDnsRecordHealthCheckedTargets) GetExternalEndpoints() []string {
+	if x != nil {
+		return x.ExternalEndpoints
+	}
+	return nil
+}
+
+// One internal load balancer frontend target.
+type GcpDnsRecordInternalLoadBalancerTarget struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The frontend IP address of the load balancer.
+	// Can be a literal IP or a reference to a GcpAddress resource (the
+	// reserved internal VIP the forwarding rule serves on).
+	IpAddress *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=ip_address,json=ipAddress,proto3" json:"ip_address,omitempty"`
+	// The IP protocol the load balancer frontend is configured for.
+	// Case-sensitive: "tcp" or "udp".
+	IpProtocol string `protobuf:"bytes,2,opt,name=ip_protocol,json=ipProtocol,proto3" json:"ip_protocol,omitempty"`
+	// The type of load balancer. Case-sensitive: "regionalL4ilb",
+	// "regionalL7ilb", or "globalL7ilb". If omitted, Cloud DNS infers it.
+	LoadBalancerType string `protobuf:"bytes,3,opt,name=load_balancer_type,json=loadBalancerType,proto3" json:"load_balancer_type,omitempty"`
+	// The fully qualified self-link URL of the VPC network the load balancer
+	// belongs to (e.g. "https://www.googleapis.com/compute/v1/projects/{project}/global/networks/{network}").
+	// Can be a literal URL or a reference to a GcpVpcNetwork resource.
+	NetworkUrl *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=network_url,json=networkUrl,proto3" json:"network_url,omitempty"`
+	// The configured port of the load balancer frontend.
+	Port string `protobuf:"bytes,5,opt,name=port,proto3" json:"port,omitempty"`
+	// The ID of the project the load balancer belongs to — may differ from
+	// the record's project in Shared-VPC and cross-project topologies.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	Project *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=project,proto3" json:"project,omitempty"`
+	// The region of the load balancer. Required for regional load balancers,
+	// omitted for global ones.
+	Region        string `protobuf:"bytes,7,opt,name=region,proto3" json:"region,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpDnsRecordInternalLoadBalancerTarget) Reset() {
+	*x = GcpDnsRecordInternalLoadBalancerTarget{}
+	mi := &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpDnsRecordInternalLoadBalancerTarget) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpDnsRecordInternalLoadBalancerTarget) ProtoMessage() {}
+
+func (x *GcpDnsRecordInternalLoadBalancerTarget) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpDnsRecordInternalLoadBalancerTarget.ProtoReflect.Descriptor instead.
+func (*GcpDnsRecordInternalLoadBalancerTarget) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GcpDnsRecordInternalLoadBalancerTarget) GetIpAddress() *v1.StringValueOrRef {
+	if x != nil {
+		return x.IpAddress
+	}
+	return nil
+}
+
+func (x *GcpDnsRecordInternalLoadBalancerTarget) GetIpProtocol() string {
+	if x != nil {
+		return x.IpProtocol
+	}
+	return ""
+}
+
+func (x *GcpDnsRecordInternalLoadBalancerTarget) GetLoadBalancerType() string {
+	if x != nil {
+		return x.LoadBalancerType
+	}
+	return ""
+}
+
+func (x *GcpDnsRecordInternalLoadBalancerTarget) GetNetworkUrl() *v1.StringValueOrRef {
+	if x != nil {
+		return x.NetworkUrl
+	}
+	return nil
+}
+
+func (x *GcpDnsRecordInternalLoadBalancerTarget) GetPort() string {
+	if x != nil {
+		return x.Port
+	}
+	return ""
+}
+
+func (x *GcpDnsRecordInternalLoadBalancerTarget) GetProject() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Project
+	}
+	return nil
+}
+
+func (x *GcpDnsRecordInternalLoadBalancerTarget) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3dev/planton/provider/gcp/gcpdnsrecord/v1/spec.proto\x12(dev.planton.provider.gcp.gcpdnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xba\a\n" +
-	"\x10GcpDnsRecordSpec\x12{\n" +
+	"3dev/planton/provider/gcp/gcpdnsrecord/v1/spec.proto\x12(dev.planton.provider.gcp.gcpdnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe6\b\n" +
+	"\x10GcpDnsRecordSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12~\n" +
-	"\fmanaged_zone\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd\x04\x92\xd4a\x18status.outputs.zone_nameR\vmanagedZone\x12\xc6\x01\n" +
-	"\x04type\x18\x03 \x01(\x0e2E.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.RecordTypeBk\xbaHh\xba\x01]\n" +
-	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\xee\x01\n" +
-	"\x04name\x18\x04 \x01(\tB\xd9\x01\xbaH\xd5\x01\xba\x01\xce\x01\n" +
-	"\x0fname.valid_fqdn\x12Xname must be a valid DNS domain name ending with a trailing dot (e.g., www.example.com.)\x1aathis.endsWith('.') && this.matches('^(?:[*][.])?(?:[_a-z0-9](?:[_a-z0-9-]{0,61}[a-z0-9])?[.])+$')\xc8\x01\x01R\x04name\x12 \n" +
-	"\x06values\x18\x05 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06values\x128\n" +
-	"\vttl_seconds\x18\x06 \x01(\x05B\x12\xbaH\b\x1a\x06\x18\x80\xa3\x05(\x01\x8a\xa6\x1d\x03300H\x00R\n" +
-	"ttlSeconds\x88\x01\x01\"\x82\x01\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12~\n" +
+	"\fmanaged_zone\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd\x04\x92\xd4a\x18status.outputs.zone_nameR\vmanagedZone\x12.\n" +
+	"\x04type\x18\x03 \x01(\tB\x1a\xbaH\x17\xc8\x01\x01r\x122\x10^[A-Z0-9]{1,10}$R\x04type\x12N\n" +
+	"\x04name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12J\n" +
+	"\x06values\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x06values\x124\n" +
+	"\vttl_seconds\x18\x06 \x01(\x05B\x0e\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x03300H\x00R\n" +
+	"ttlSeconds\x88\x01\x01\x12j\n" +
+	"\x0erouting_policy\x18\a \x01(\v2C.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordRoutingPolicyR\rroutingPolicy:\xdc\x03\xbaH\xd8\x03\x1a\x8b\x01\n" +
+	"\x1espec.values_xor_routing_policy\x123exactly one of values or routing_policy must be set\x1a4(this.values.size() > 0) != has(this.routing_policy)\x1a\xc7\x02\n" +
+	"!spec.name_valid_fqdn_when_literal\x12zname must be a valid DNS domain name ending with a trailing dot when specified as a literal value (e.g., www.example.com.)\x1a\xa5\x01!has(this.name) || !has(this.name.value) || (this.name.value.endsWith('.') && this.name.value.matches('^(?:[*][.])?(?:[_a-z0-9](?:[_a-z0-9-]{0,61}[a-z0-9])?[.])+$'))B\x0e\n" +
+	"\f_ttl_seconds\"\xd7\x06\n" +
+	"\x19GcpDnsRecordRoutingPolicy\x12U\n" +
+	"\x03wrr\x18\x01 \x03(\v2C.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordWrrPolicyItemR\x03wrr\x12U\n" +
+	"\x03geo\x18\x02 \x03(\v2C.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordGeoPolicyItemR\x03geo\x12,\n" +
+	"\x12enable_geo_fencing\x18\x03 \x01(\bR\x10enableGeoFencing\x12p\n" +
+	"\x0eprimary_backup\x18\x04 \x01(\v2I.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordPrimaryBackupPolicyR\rprimaryBackup\x12x\n" +
+	"\fhealth_check\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xef\x04\x92\xd4a\x18status.outputs.self_linkR\vhealthCheck:\xf1\x02\xbaH\xed\x02\x1a\xc3\x01\n" +
+	" routing_policy.exactly_one_style\x126exactly one of wrr, geo, or primary_backup must be set\x1ag(this.wrr.size() > 0 ? 1 : 0) + (this.geo.size() > 0 ? 1 : 0) + (has(this.primary_backup) ? 1 : 0) == 1\x1a\xa4\x01\n" +
+	"'routing_policy.geo_fencing_requires_geo\x12Henable_geo_fencing applies only to geolocation routing (set geo entries)\x1a/!this.enable_geo_fencing || this.geo.size() > 0\"\xf1\x01\n" +
+	"\x19GcpDnsRecordWrrPolicyItem\x12.\n" +
+	"\x06weight\x18\x01 \x01(\x01B\x11\xbaH\x0e\xc8\x01\x01\x12\t)\x00\x00\x00\x00\x00\x00\x00\x00H\x00R\x06weight\x88\x01\x01\x12\x16\n" +
+	"\x06values\x18\x02 \x03(\tR\x06values\x12\x80\x01\n" +
+	"\x16health_checked_targets\x18\x03 \x01(\v2J.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordHealthCheckedTargetsR\x14healthCheckedTargetsB\t\n" +
+	"\a_weight\"\xda\x01\n" +
+	"\x19GcpDnsRecordGeoPolicyItem\x12\"\n" +
+	"\blocation\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12\x16\n" +
+	"\x06values\x18\x02 \x03(\tR\x06values\x12\x80\x01\n" +
+	"\x16health_checked_targets\x18\x03 \x01(\v2J.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordHealthCheckedTargetsR\x14healthCheckedTargets\"\x96\x03\n" +
+	"\x1fGcpDnsRecordPrimaryBackupPolicy\x12l\n" +
+	"\aprimary\x18\x01 \x01(\v2J.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordHealthCheckedTargetsB\x06\xbaH\x03\xc8\x01\x01R\aprimary\x12l\n" +
 	"\n" +
-	"RecordType\x12\x1b\n" +
-	"\x17record_type_unspecified\x10\x00\x12\x05\n" +
-	"\x01A\x10\x01\x12\b\n" +
-	"\x04AAAA\x10\x02\x12\t\n" +
-	"\x05CNAME\x10\x03\x12\x06\n" +
-	"\x02MX\x10\x04\x12\a\n" +
-	"\x03TXT\x10\x05\x12\a\n" +
-	"\x03SRV\x10\x06\x12\x06\n" +
-	"\x02NS\x10\a\x12\a\n" +
-	"\x03PTR\x10\b\x12\a\n" +
-	"\x03CAA\x10\t\x12\a\n" +
-	"\x03SOA\x10\n" +
-	"B\x0e\n" +
-	"\f_ttl_secondsB\xdb\x02\n" +
+	"backup_geo\x18\x02 \x03(\v2C.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordGeoPolicyItemB\b\xbaH\x05\x92\x01\x02\b\x01R\tbackupGeo\x12A\n" +
+	"\rtrickle_ratio\x18\x03 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00H\x00R\ftrickleRatio\x88\x01\x01\x12B\n" +
+	"\x1eenable_geo_fencing_for_backups\x18\x04 \x01(\bR\x1aenableGeoFencingForBackupsB\x10\n" +
+	"\x0e_trickle_ratio\"\xa5\x03\n" +
+	" GcpDnsRecordHealthCheckedTargets\x12\x88\x01\n" +
+	"\x17internal_load_balancers\x18\x01 \x03(\v2P.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordInternalLoadBalancerTargetR\x15internalLoadBalancers\x12-\n" +
+	"\x12external_endpoints\x18\x02 \x03(\tR\x11externalEndpoints:\xc6\x01\xbaH\xc2\x01\x1a\xbf\x01\n" +
+	"#health_checked_targets.at_least_one\x12Iat least one of internal_load_balancers or external_endpoints must be set\x1aMthis.internal_load_balancers.size() > 0 || this.external_endpoints.size() > 0\"\xf4\x05\n" +
+	"&GcpDnsRecordInternalLoadBalancerTarget\x12x\n" +
+	"\n" +
+	"ip_address\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xca\x05\x92\xd4a\x16status.outputs.addressR\tipAddress\x123\n" +
+	"\vip_protocol\x18\x02 \x01(\tB\x12\xbaH\x0f\xc8\x01\x01r\n" +
+	"R\x03tcpR\x03udpR\n" +
+	"ipProtocol\x12\xe7\x01\n" +
+	"\x12load_balancer_type\x18\x03 \x01(\tB\xb8\x01\xbaH\xb4\x01\xba\x01\xb0\x01\n" +
+	"\x18load_balancer_type.valid\x12Kload_balancer_type must be one of regionalL4ilb, regionalL7ilb, globalL7ilb\x1aGthis == '' || this in ['regionalL4ilb', 'regionalL7ilb', 'globalL7ilb']R\x10loadBalancerType\x12\x84\x01\n" +
+	"\vnetwork_url\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\n" +
+	"networkUrl\x12\x1a\n" +
+	"\x04port\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04port\x12v\n" +
+	"\aproject\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\aproject\x12\x16\n" +
+	"\x06region\x18\a \x01(\tR\x06regionB\xdb\x02\n" +
 	",com.dev.planton.provider.gcp.gcpdnsrecord.v1B\tSpecProtoP\x01ZYgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdnsrecord/v1;gcpdnsrecordv1\xa2\x02\x05DPPGG\xaa\x02(Dev.Planton.Provider.Gcp.Gcpdnsrecord.V1\xca\x02(Dev\\Planton\\Provider\\Gcp\\Gcpdnsrecord\\V1\xe2\x024Dev\\Planton\\Provider\\Gcp\\Gcpdnsrecord\\V1\\GPBMetadata\xea\x02-Dev::Planton::Provider::Gcp::Gcpdnsrecord::V1b\x06proto3"
 
 var (
@@ -261,22 +710,40 @@ func file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDescGZIP() []by
 	return file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_goTypes = []any{
-	(GcpDnsRecordSpec_RecordType)(0), // 0: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.RecordType
-	(*GcpDnsRecordSpec)(nil),         // 1: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec
-	(*v1.StringValueOrRef)(nil),      // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpDnsRecordSpec)(nil),                       // 0: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec
+	(*GcpDnsRecordRoutingPolicy)(nil),              // 1: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordRoutingPolicy
+	(*GcpDnsRecordWrrPolicyItem)(nil),              // 2: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordWrrPolicyItem
+	(*GcpDnsRecordGeoPolicyItem)(nil),              // 3: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordGeoPolicyItem
+	(*GcpDnsRecordPrimaryBackupPolicy)(nil),        // 4: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordPrimaryBackupPolicy
+	(*GcpDnsRecordHealthCheckedTargets)(nil),       // 5: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordHealthCheckedTargets
+	(*GcpDnsRecordInternalLoadBalancerTarget)(nil), // 6: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordInternalLoadBalancerTarget
+	(*v1.StringValueOrRef)(nil),                    // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 1: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.managed_zone:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0, // 2: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.type:type_name -> dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.RecordType
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	7,  // 0: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 1: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.managed_zone:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 2: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 3: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.values:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 4: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.routing_policy:type_name -> dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordRoutingPolicy
+	2,  // 5: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordRoutingPolicy.wrr:type_name -> dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordWrrPolicyItem
+	3,  // 6: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordRoutingPolicy.geo:type_name -> dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordGeoPolicyItem
+	4,  // 7: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordRoutingPolicy.primary_backup:type_name -> dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordPrimaryBackupPolicy
+	7,  // 8: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordRoutingPolicy.health_check:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 9: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordWrrPolicyItem.health_checked_targets:type_name -> dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordHealthCheckedTargets
+	5,  // 10: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordGeoPolicyItem.health_checked_targets:type_name -> dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordHealthCheckedTargets
+	5,  // 11: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordPrimaryBackupPolicy.primary:type_name -> dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordHealthCheckedTargets
+	3,  // 12: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordPrimaryBackupPolicy.backup_geo:type_name -> dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordGeoPolicyItem
+	6,  // 13: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordHealthCheckedTargets.internal_load_balancers:type_name -> dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordInternalLoadBalancerTarget
+	7,  // 14: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordInternalLoadBalancerTarget.ip_address:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 15: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordInternalLoadBalancerTarget.network_url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 16: dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordInternalLoadBalancerTarget.project:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_init() }
@@ -285,19 +752,20 @@ func file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_init() {
 		return
 	}
 	file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   1,
+			NumEnums:      0,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto = out.File

@@ -24,7 +24,7 @@
 #   (FK) AzureVirtualMachine.admin_password -- the wizard now renders the DD-006
 #        dual-mode "managed secret | reference AzureKeyVault" picker.
 #
-# These 12 fields ARE real secrets, deliberately deferred (not yet annotated) for
+# The fields below ARE real secrets, deliberately deferred (not yet annotated) for
 # one of two reasons, each to be closed in a follow-up:
 #   (C)  Service env-var secret maps. Governed by the env-resolution path and the
 #        still-open reference-only (allow_literals) decision; annotating here would
@@ -36,8 +36,6 @@
 gaps:
   # (C) service env-var secret maps
   - DigitalOceanFunction:spec.secret_environment_variables
-  - GcpCloudFunction:spec.service_config.secret_environment_variables
-  - GcpCloudRun:spec.container.env.secrets
   # (D) secret-holder kinds
   - KubernetesSecret:spec.basic_auth.password
   - KubernetesSecret:spec.docker_config_json.password

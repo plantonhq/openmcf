@@ -7,4 +7,6 @@ const (
 	OpMaxNodes          = "max_nodes"
 	OpCurrentNodeCount  = "current_node_count"
 	OpNodePoolId        = "node_pool_id"
+	OpLocation          = "location"
+	OpVersion           = "version"
 )

@@ -1,28 +1,35 @@
-# Preset: Production Enterprise
+# Production Enterprise
 
-**Tier**: ENTERPRISE (regional HA)
-**Use case**: Production workloads requiring high availability and security
+The production posture: a regional tier that survives zone failures,
+deletion protection as the destroy guard, private-services networking,
+and locked-down NFS exports.
 
-## What This Preset Provides
+## What this preset creates
 
-A production-grade Filestore instance with enterprise features:
+An ENTERPRISE instance in a region (not a zone — regional tiers take a
+region for `location`), exporting one share `data` that only RFC1918
+clients (`10.0.0.0/8`) can mount, with root squashed to the anonymous
+user. `deletionProtectionEnabled: true` means no teardown can destroy
+the instance until the flag is deliberately flipped false in a
+reviewable change. The VPC arrives as a reference to a `GcpVpcNetwork`
+resource, and `PRIVATE_SERVICE_ACCESS` rides the VPC's existing
+service-networking connection — the mode Shared VPC consumers require.
 
-- **ENTERPRISE tier**: regional high availability with automatic failover
-- **1 TiB capacity**: configurable starting point, increase as needed
-- **PRIVATE_SERVICE_ACCESS**: secure network connectivity via private services
-- **ROOT_SQUASH**: root users on clients mapped to anonymous UID for security
-- **Deletion protection**: prevents accidental destruction
-- **IP range restriction**: only 10.0.0.0/8 RFC1918 addresses can mount
+## Prerequisites
 
-## When to Use
+- A `GcpVpcNetwork` named `prod-vpc` (replace with yours, or set a
+  literal `value`).
+- An existing service-networking connection on that VPC —
+  `PRIVATE_SERVICE_ACCESS` uses it; this component does not create it.
 
-- Production applications requiring shared NFS storage
-- Workloads that cannot tolerate zone-level outages
-- Environments with strict security requirements
-- GKE clusters needing persistent shared volumes
+## Remix ideas
 
-## When NOT to Use
-
-- Development or testing (use dev-basic preset)
-- Cost-sensitive workloads (ENTERPRISE is the most expensive tier)
-- Workloads requiring < 1 TiB (consider GCS instead)
+- Add `kmsKeyName` (a `GcpKmsKey` reference) for CMEK-at-rest.
+- Add `protocol: NFS_V4_1` — supported on ENTERPRISE — where NFSv4.1
+  semantics or Kerberos matter.
+- Stand up a DR replica: create a second instance with
+  `initialReplication` whose `peerInstances` references this one (its
+  `instance_id` output is exactly the path the API wants). The replica
+  is the STANDBY; replication is fixed at create time.
+- Tighten `nfsExportOptions.ipRanges` to specific subnets, or add a
+  second READ_ONLY export for consumers that should never write.

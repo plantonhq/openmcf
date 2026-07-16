@@ -1,0 +1,40 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudRun
+metadata:
+  name: llm-inference
+spec:
+  region: us-central1 # GPU availability is regional — check nvidia-l4 coverage
+  containers:
+    - image: us-docker.pkg.dev/my-project/my-repo/inference:1.0.0 # replace with your model-serving image
+      ports:
+        containerPort: 8080
+      resources:
+        # Cloud Run GPU minimums: at least 4 CPU and 16Gi memory per instance.
+        cpu: "4"
+        memory: 16Gi
+        # Instance-based billing: the model must stay resident between
+        # requests, so CPU (and the GPU) stay allocated for the instance's
+        # whole lifetime.
+        cpuIdle: false
+      # Model load takes time — give startup a generous window so instances
+      # only receive traffic once the weights are in memory.
+      startupProbe:
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        failureThreshold: 30
+        httpGet:
+          path: /health
+  # One NVIDIA L4 per instance, GKE-driver-free: Cloud Run manages the GPU
+  # runtime.
+  nodeSelector:
+    accelerator: nvidia-l4
+  # Single-zone GPU serving: cheaper GPU capacity in exchange for zonal-
+  # failure risk — the common choice while a model is pre-production.
+  gpuZonalRedundancyDisabled: true
+  scaling:
+    minInstanceCount: 0 # GPUs are expensive — scale to zero when idle
+    maxInstanceCount: 4 # bound GPU spend explicitly
+  maxInstanceRequestConcurrency: 4 # inference is compute-bound; keep queues short
+  timeoutSeconds: 600 # long generations need more than the 300s default
+  allowUnauthenticated: false # inference endpoints stay IAM-authenticated
+  executionEnvironment: EXECUTION_ENVIRONMENT_GEN2

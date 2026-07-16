@@ -1,0 +1,28 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceConnectionPolicy
+metadata:
+  name: allowlisted-producer-policy
+spec:
+  location: us-central1
+
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: prod-vpc
+      fieldPath: status.outputs.network_id
+
+  serviceClass: gcp-memorystore
+
+  pscConfig:
+    subnetworks:
+      - valueFrom:
+          kind: GcpSubnetwork
+          name: prod-subnet
+          fieldPath: status.outputs.subnetwork_self_link
+
+    # Restrict which resource-hierarchy locations producer instances may
+    # live in. With this arm, only producers provisioned under the listed
+    # projects/folders/organizations can connect into this network.
+    producerInstanceLocation: CUSTOM_RESOURCE_HIERARCHY_LEVELS
+    allowedGoogleProducersResourceHierarchyLevels:
+      - organizations/123456789 # replace with your organization number

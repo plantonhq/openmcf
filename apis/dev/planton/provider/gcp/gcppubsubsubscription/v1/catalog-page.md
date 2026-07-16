@@ -55,9 +55,8 @@ This creates a pull subscription with default settings: 10-second ack deadline, 
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `projectId` | `string` | GCP project where the subscription will be created. Can reference GcpProject via `valueFrom`. | Required |
-| `subscriptionName` | `string` | Name of the Pub/Sub subscription. Immutable after creation. | 3–255 characters, starts with a letter, alphanumeric plus `-_. ~+%` |
-| `topic` | `string` | Topic from which this subscription receives messages. Immutable after creation. Can reference GcpPubSubTopic via `valueFrom`. | Required |
+| `subscriptionName` | `string` | Name of the Pub/Sub subscription. Immutable after creation. | 3–255 characters, starts with a letter, alphanumeric plus `-_. ~+%`; must not begin with the reserved `goog` prefix |
+| `topic` | `StringValueOrRef` | Topic from which this subscription receives messages. Immutable after creation. Can reference GcpPubSubTopic via `valueFrom`. | Required |
 
 ### Optional Fields
 
@@ -67,6 +66,8 @@ This creates a pull subscription with default settings: 10-second ack deadline, 
 | `messageRetentionDuration` | `string` | `"604800s"` | How long unacknowledged messages are retained. Also controls seek range when `retainAckedMessages` is true. Range: `"600s"` to `"2678400s"`. |
 | `retainAckedMessages` | `bool` | `false` | When true, acknowledged messages are retained in the backlog for the `messageRetentionDuration` window, enabling replay via seek. |
 | `expirationPolicy.ttl` | `string` | `"2678400s"` | Duration of inactivity before the subscription is automatically deleted. Minimum: `"86400s"`. Set to `""` for a subscription that never expires. |
+| `projectId` | `StringValueOrRef` | provider default project | GCP project where the subscription will be created. Can reference GcpProject via `valueFrom`. |
+| `labels` | `map<string,string>` | — | User labels for cost attribution and fleet queries, merged beneath the platform attribution labels (which win on key conflicts). |
 | `filter` | `string` | — | Attribute filter expression. Non-matching messages are auto-acknowledged. Max 256 bytes. Immutable after creation. |
 | `enableMessageOrdering` | `bool` | `false` | Delivers messages with the same ordering key in publish order. Immutable after creation. |
 | `enableExactlyOnceDelivery` | `bool` | `false` | Guarantees each message is not resent before its ack deadline expires. Does not prevent duplicates from the publisher. |
@@ -74,18 +75,18 @@ This creates a pull subscription with default settings: 10-second ack deadline, 
 | `deadLetterPolicy.maxDeliveryAttempts` | `int` | `5` | Number of delivery attempts before dead-lettering. Range: 5–100. |
 | `retryPolicy.minimumBackoff` | `string` | `"10s"` | Minimum delay between delivery retries after a NACK. Range: `"0s"` to `"600s"`. |
 | `retryPolicy.maximumBackoff` | `string` | `"600s"` | Maximum delay between delivery retries after a NACK. Range: `"0s"` to `"600s"`. |
-| `pushConfig.pushEndpoint` | `string` | — | HTTPS URL to which Pub/Sub pushes messages. Required when using push delivery. |
+| `pushConfig.pushEndpoint` | `StringValueOrRef` | — | HTTPS URL to which Pub/Sub pushes messages. Can reference GcpCloudRun via `valueFrom` (its `url` output) — the canonical serverless consumer wiring. Required when using push delivery. |
 | `pushConfig.attributes` | `map<string,string>` | — | Endpoint configuration attributes. Supports `x-goog-version` (`"v1beta1"` or `"v1"`). |
-| `pushConfig.oidcToken.serviceAccountEmail` | `string` | — | Service account used to generate OIDC tokens for authenticated push requests. |
+| `pushConfig.oidcToken.serviceAccountEmail` | `StringValueOrRef` | — | Service account used to generate OIDC tokens for authenticated push requests. Can reference GcpServiceAccount via `valueFrom`. |
 | `pushConfig.oidcToken.audience` | `string` | push endpoint URL | Audience claim for the OIDC token. |
 | `pushConfig.noWrapper.writeMetadata` | `bool` | `false` | When true, sends the raw message body without the Pub/Sub envelope and writes metadata as HTTP headers. |
-| `bigqueryConfig.table` | `string` | — | BigQuery table to write messages to. Format: `{project}.{dataset}.{table}`. Required when using BigQuery delivery. |
+| `bigqueryConfig.table` | `StringValueOrRef` | — | BigQuery table to write messages to. Format: `{project}.{dataset}.{table}`. Can reference GcpBigQueryTable via `valueFrom` (its `qualified_name` output). Required when using BigQuery delivery. |
 | `bigqueryConfig.useTopicSchema` | `bool` | `false` | Maps message fields to BigQuery columns using the topic schema. Mutually exclusive with `useTableSchema`. |
 | `bigqueryConfig.useTableSchema` | `bool` | `false` | Maps message fields to BigQuery columns using the table schema. Mutually exclusive with `useTopicSchema`. |
 | `bigqueryConfig.dropUnknownFields` | `bool` | `false` | Silently drops message fields not present in the BigQuery table schema. Requires `useTopicSchema` or `useTableSchema`. |
 | `bigqueryConfig.writeMetadata` | `bool` | `false` | Writes subscription name, messageId, publishTime, attributes, and orderingKey to additional BigQuery columns. |
-| `bigqueryConfig.serviceAccountEmail` | `string` | Pub/Sub service agent | Service account for BigQuery writes. |
-| `cloudStorageConfig.bucket` | `string` | — | Cloud Storage bucket name (without `gs://`). Required when using Cloud Storage delivery. Can reference GcpGcsBucket via `valueFrom`. |
+| `bigqueryConfig.serviceAccountEmail` | `StringValueOrRef` | Pub/Sub service agent | Service account for BigQuery writes. Can reference GcpServiceAccount via `valueFrom`. |
+| `cloudStorageConfig.bucket` | `StringValueOrRef` | — | Cloud Storage bucket name (without `gs://`). Required when using Cloud Storage delivery. Can reference GcpGcsBucket via `valueFrom`. |
 | `cloudStorageConfig.filenamePrefix` | `string` | — | Prefix for Cloud Storage object names. |
 | `cloudStorageConfig.filenameSuffix` | `string` | — | Suffix for Cloud Storage object names. Must not end in `/`. |
 | `cloudStorageConfig.filenameDatetimeFormat` | `string` | — | Datetime format string for Cloud Storage object names. |
@@ -94,7 +95,8 @@ This creates a pull subscription with default settings: 10-second ack deadline, 
 | `cloudStorageConfig.maxMessages` | `int` | — | Maximum messages per object. Minimum: 1000. |
 | `cloudStorageConfig.avroConfig.useTopicSchema` | `bool` | `false` | Serializes output in Avro format using the topic schema. |
 | `cloudStorageConfig.avroConfig.writeMetadata` | `bool` | `false` | Includes subscription metadata as additional Avro fields. |
-| `cloudStorageConfig.serviceAccountEmail` | `string` | Pub/Sub service agent | Service account for Cloud Storage writes. |
+| `cloudStorageConfig.serviceAccountEmail` | `StringValueOrRef` | Pub/Sub service agent | Service account for Cloud Storage writes. Can reference GcpServiceAccount via `valueFrom`. |
+| `messageTransforms[]` | `object` | — | Ordered JavaScript UDF pipeline applied to every message before delivery to this subscription. Each entry carries `javascriptUdf` (`functionName` + `code`) and an optional `disabled` staging flag. |
 
 ## Examples
 
@@ -120,9 +122,11 @@ spec:
     value: projects/my-gcp-project/topics/events-topic
   ackDeadlineSeconds: 30
   pushConfig:
-    pushEndpoint: https://my-service.example.com/pubsub/push
+    pushEndpoint:
+      value: https://my-service.example.com/pubsub/push
     oidcToken:
-      serviceAccountEmail: push-invoker@my-gcp-project.iam.gserviceaccount.com
+      serviceAccountEmail:
+        value: push-invoker@my-gcp-project.iam.gserviceaccount.com
       audience: https://my-service.example.com
 ```
 
@@ -148,7 +152,8 @@ spec:
     value: projects/my-gcp-project/topics/analytics-topic
   enableExactlyOnceDelivery: true
   bigqueryConfig:
-    table: my-gcp-project.analytics_dataset.events
+    table:
+      value: my-gcp-project.analytics_dataset.events
     useTopicSchema: true
     dropUnknownFields: true
     writeMetadata: true

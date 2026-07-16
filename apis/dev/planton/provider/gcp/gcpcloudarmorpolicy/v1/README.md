@@ -41,7 +41,7 @@ The policy type is immutable after creation.
 
 ## Default Rule Behavior
 
-Every Cloud Armor policy must have a rule at priority `2147483647` (the default rule). If you do not specify one, the IaC modules automatically add an "allow all" rule at that priority—matching the behavior of the GCP Terraform and Pulumi providers. This ensures unmatched traffic is allowed by default.
+Every Cloud Armor policy carries a default rule at priority `2147483647`. Creating a policy with NO rules lets the GCP API add a default "allow all" rule automatically; providing ANY rules requires the set to include that default explicitly — the spec enforces this before deploy, mirroring the API's own rejection.
 
 ## Quick Start
 
@@ -61,7 +61,7 @@ spec:
       match:
         versioned_expr: SRC_IPS_V1
         src_ip_ranges: ["*"]
-      description: Allow all traffic (default rule auto-added at 2147483647 if omitted)
+      description: Default rule - required whenever any rules are provided
 ```
 
 ## StringValueOrRef: projectId

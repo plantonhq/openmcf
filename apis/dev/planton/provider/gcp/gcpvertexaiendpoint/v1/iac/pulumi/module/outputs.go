@@ -5,4 +5,5 @@ const (
 	OpDisplayName          = "display_name"
 	OpDedicatedEndpointDns = "dedicated_endpoint_dns"
 	OpCreateTime           = "create_time"
+	OpEndpointName         = "endpoint_name"
 )

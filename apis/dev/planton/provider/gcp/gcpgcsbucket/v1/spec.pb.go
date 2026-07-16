@@ -23,148 +23,178 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Storage class options for GCS buckets
-type GcpGcsStorageClass int32
-
-const (
-	// Unspecified (defaults to STANDARD)
-	GcpGcsStorageClass_GCP_GCS_STORAGE_CLASS_UNSPECIFIED GcpGcsStorageClass = 0
-	// Standard storage for frequently accessed data (hot data)
-	// Cost: $0.020/GB/month in us-east1
-	GcpGcsStorageClass_STANDARD GcpGcsStorageClass = 1
-	// Nearline storage for infrequently accessed data (once per month)
-	// Cost: $0.010/GB/month + $0.01/GB retrieval
-	GcpGcsStorageClass_NEARLINE GcpGcsStorageClass = 2
-	// Coldline storage for rarely accessed data (once per quarter)
-	// Cost: $0.004/GB/month + $0.02/GB retrieval
-	GcpGcsStorageClass_COLDLINE GcpGcsStorageClass = 3
-	// Archive storage for long-term archival (once per year)
-	// Cost: $0.0012/GB/month + $0.05/GB retrieval
-	GcpGcsStorageClass_ARCHIVE GcpGcsStorageClass = 4
-)
-
-// Enum value maps for GcpGcsStorageClass.
-var (
-	GcpGcsStorageClass_name = map[int32]string{
-		0: "GCP_GCS_STORAGE_CLASS_UNSPECIFIED",
-		1: "STANDARD",
-		2: "NEARLINE",
-		3: "COLDLINE",
-		4: "ARCHIVE",
-	}
-	GcpGcsStorageClass_value = map[string]int32{
-		"GCP_GCS_STORAGE_CLASS_UNSPECIFIED": 0,
-		"STANDARD":                          1,
-		"NEARLINE":                          2,
-		"COLDLINE":                          3,
-		"ARCHIVE":                           4,
-	}
-)
-
-func (x GcpGcsStorageClass) Enum() *GcpGcsStorageClass {
-	p := new(GcpGcsStorageClass)
-	*p = x
-	return p
-}
-
-func (x GcpGcsStorageClass) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (GcpGcsStorageClass) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (GcpGcsStorageClass) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_enumTypes[0]
-}
-
-func (x GcpGcsStorageClass) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use GcpGcsStorageClass.Descriptor instead.
-func (GcpGcsStorageClass) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-// **GcpGcsBucketSpec** defines the configuration for creating a Google Cloud Storage (GCS) bucket.
-// This message specifies the parameters required to create and manage a GCS bucket within a specified GCP project
-// and location, with comprehensive support for access control, lifecycle management, encryption, and compliance features.
+// GcpGcsBucketSpec defines the configuration for a Google Cloud Storage
+// bucket — the durable object store behind static sites, data lakes, build
+// artifacts, backups, and every GCP service that stages data (Dataproc,
+// Cloud Functions sources, Composer DAGs, BigQuery external tables).
 //
-// Following the 80/20 configuration principle, essential settings (project, location, access model) are required,
-// while advanced features (versioning, lifecycle, encryption, CORS) are optional for specific use cases.
+// Important behavioral notes:
+//
+//   - bucket_name, location, project, custom placement, hierarchical
+//     namespace, and enable_object_retention are immutable — changing any
+//     of them destroys and recreates the bucket (and everything in it).
+//   - Deleting a non-empty bucket fails unless force_destroy is true, in
+//     which case every object (including noncurrent versions) is deleted
+//     first. force_destroy defaults to false — the safe posture for
+//     data-bearing buckets.
+//   - A locked retention policy is irreversible: once locked, the policy
+//     cannot be removed or shortened, and objects cannot be deleted until
+//     their retention period expires. Unlocking is impossible — GCP forces
+//     bucket re-creation.
+//   - Soft delete is on by default in GCP: deleted objects are retained
+//     (and billed) for 7 days unless soft_delete_policy sets a different
+//     duration or 0 to disable.
+//   - Access control is additive IAM: each iam_members entry grants one
+//     role to one member on this bucket and composes safely with grants
+//     made elsewhere. Authoritative bindings/policies (which clobber grants
+//     they don't list) are deliberately not modeled.
 type GcpGcsBucketSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ID of the GCP project where the storage bucket will be created.
-	// Can be a literal value or a reference to another resource (e.g., GcpProject).
-	// Required field.
-	GcpProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=gcp_project_id,json=gcpProjectId,proto3" json:"gcp_project_id,omitempty"`
-	// The location for the bucket. Can be a region (e.g., "us-east1"), dual-region (e.g., "NAM4"),
-	// or multi-region (e.g., "US", "EU", "ASIA").
-	// This field is immutable after bucket creation.
-	// Required field.
-	Location string `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
-	// Enable Uniform Bucket-Level Access (UBLA) for simplified IAM-only access control.
-	// When enabled, all access is controlled via IAM policies (no object ACLs).
-	// Recommended: true (modern security model).
-	// Defaults to true if not specified.
-	UniformBucketLevelAccessEnabled bool `protobuf:"varint,3,opt,name=uniform_bucket_level_access_enabled,json=uniformBucketLevelAccessEnabled,proto3" json:"uniform_bucket_level_access_enabled,omitempty"`
-	// Storage class for the bucket. Determines pricing and availability.
-	// Optional. Defaults to STANDARD if not specified.
-	StorageClass *GcpGcsStorageClass `protobuf:"varint,4,opt,name=storage_class,json=storageClass,proto3,enum=dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsStorageClass,oneof" json:"storage_class,omitempty"`
-	// Enable object versioning to protect against accidental deletion/overwrite.
-	// Versioning should be combined with lifecycle rules to prevent unbounded storage growth.
-	// Optional. Defaults to false.
-	VersioningEnabled bool `protobuf:"varint,5,opt,name=versioning_enabled,json=versioningEnabled,proto3" json:"versioning_enabled,omitempty"`
-	// Lifecycle rules for automatic object management (deletion, storage class transitions).
-	// Essential for cost optimization when versioning is enabled.
-	// Optional.
-	LifecycleRules []*GcpGcsLifecycleRule `protobuf:"bytes,6,rep,name=lifecycle_rules,json=lifecycleRules,proto3" json:"lifecycle_rules,omitempty"`
-	// IAM bindings for bucket-level access control.
-	// Each binding grants a specific role to a set of members.
-	// Required when UBLA is enabled for any public or service account access.
-	// Optional.
-	IamBindings []*GcpGcsIamBinding `protobuf:"bytes,7,rep,name=iam_bindings,json=iamBindings,proto3" json:"iam_bindings,omitempty"`
-	// Encryption configuration using Customer-Managed Encryption Keys (CMEK).
-	// Optional. If not specified, Google-managed encryption is used (default).
-	Encryption *GcpGcsEncryption `protobuf:"bytes,8,opt,name=encryption,proto3,oneof" json:"encryption,omitempty"`
-	// CORS rules for cross-origin browser access.
-	// Required for buckets accessed directly from web browsers (e.g., font hosting, direct uploads).
-	// Optional.
-	CorsRules []*GcpGcsCorsRule `protobuf:"bytes,9,rep,name=cors_rules,json=corsRules,proto3" json:"cors_rules,omitempty"`
-	// Website configuration for static website hosting.
-	// Note: For production websites, use Cloud CDN + Load Balancer instead for HTTPS support.
-	// Optional.
-	Website *GcpGcsWebsite `protobuf:"bytes,10,opt,name=website,proto3,oneof" json:"website,omitempty"`
-	// Retention policy for WORM (Write Once, Read Many) compliance.
-	// Once locked, objects cannot be deleted until retention period expires.
-	// Optional.
-	RetentionPolicy *GcpGcsRetentionPolicy `protobuf:"bytes,11,opt,name=retention_policy,json=retentionPolicy,proto3,oneof" json:"retention_policy,omitempty"`
-	// Enable requester pays mode. Requesters pay for data access and egress charges.
-	// Useful for public datasets where the bucket owner doesn't want to pay for all access costs.
-	// Optional. Defaults to false.
-	RequesterPays bool `protobuf:"varint,12,opt,name=requester_pays,json=requesterPays,proto3" json:"requester_pays,omitempty"`
-	// Logging configuration for legacy access logs.
-	// Note: Modern deployments should use Cloud Logging instead.
-	// Optional.
-	Logging *GcpGcsLogging `protobuf:"bytes,13,opt,name=logging,proto3,oneof" json:"logging,omitempty"`
-	// Public access prevention policy.
-	// Values: "inherited" (default), "enforced" (prevent all public access).
-	// Recommended: "enforced" for private buckets to prevent accidental public exposure.
-	// Optional.
-	PublicAccessPrevention string `protobuf:"bytes,14,opt,name=public_access_prevention,json=publicAccessPrevention,proto3" json:"public_access_prevention,omitempty"`
-	// Custom labels for the bucket (cost tracking, governance, compliance).
-	// These are merged with auto-generated labels (planton-resource-*).
-	// Optional.
-	GcpLabels map[string]string `protobuf:"bytes,15,rep,name=gcp_labels,json=gcpLabels,proto3" json:"gcp_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Name of the GCS bucket to create in GCP.
-	// Must be globally unique across all GCP projects.
-	// Must be 3-63 characters, lowercase letters, numbers, hyphens, or dots.
-	// Must start and end with a lowercase letter or number.
-	// Cannot contain consecutive dots or be formatted as an IP address.
-	// Example: "my-bucket-prod", "company-data-archive"
-	BucketName    string `protobuf:"bytes,16,opt,name=bucket_name,json=bucketName,proto3" json:"bucket_name,omitempty"`
+	// The GCP project that owns the bucket.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
+	// Immutable after creation.
+	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// Name of the GCS bucket. Globally unique across ALL of GCP (not just
+	// your project), 3-63 characters: lowercase letters, numbers, hyphens,
+	// dots; must start and end with a letter or number. Deliberately
+	// required: bucket names are a global namespace, so the name deserves an
+	// explicit, stable choice rather than a derived default.
+	// Immutable after creation.
+	BucketName string `protobuf:"bytes,2,opt,name=bucket_name,json=bucketName,proto3" json:"bucket_name,omitempty"`
+	// The location for the bucket: a region ("us-east1"), a predefined
+	// dual-region ("NAM4"), or a multi-region ("US", "EU", "ASIA"). For a
+	// custom dual-region, set a multi-region here (e.g. "US") plus
+	// custom_placement_config naming the two regions. Immutable after
+	// creation.
+	Location string `protobuf:"bytes,3,opt,name=location,proto3" json:"location,omitempty"`
+	// Default storage class for objects written without an explicit class.
+	// Values: "STANDARD" (default; hot data), "NEARLINE" (~monthly access),
+	// "COLDLINE" (~quarterly), "ARCHIVE" (~yearly, cheapest at-rest).
+	// Legacy classes ("MULTI_REGIONAL", "REGIONAL") remain valid API values
+	// for pre-existing buckets but should not be chosen for new ones.
+	// Prefer autoclass over hand-picking a cold class when access patterns
+	// are uncertain. Mutable in place (existing objects keep their class).
+	StorageClass string `protobuf:"bytes,4,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
+	// If true, deleting the bucket deletes all contained objects first
+	// (including noncurrent versions) — required to destroy any non-empty
+	// bucket. Defaults to false: destroying a bucket that still holds data
+	// fails instead of silently erasing it. Enable for ephemeral/derived
+	// data; leave off for anything precious.
+	ForceDestroy bool `protobuf:"varint,5,opt,name=force_destroy,json=forceDestroy,proto3" json:"force_destroy,omitempty"`
+	// Enable Uniform Bucket-Level Access (UBLA): all access is controlled by
+	// IAM alone and legacy object ACLs are disabled. Strongly recommended —
+	// and required for buckets with hierarchical namespace or managed
+	// folders. GCP's default is false (fine-grained ACLs), and UBLA can be
+	// permanently locked on by GCP 90 days after enablement.
+	UniformBucketLevelAccessEnabled bool `protobuf:"varint,6,opt,name=uniform_bucket_level_access_enabled,json=uniformBucketLevelAccessEnabled,proto3" json:"uniform_bucket_level_access_enabled,omitempty"`
+	// Public access prevention policy:
+	//
+	//	""          -- same as "inherited" (GCP default)
+	//	"inherited" -- inherit the org policy (public access possible unless
+	//	               the org forbids it)
+	//	"enforced"  -- no public access, ever, regardless of IAM grants
+	//
+	// Recommended: "enforced" for every bucket not deliberately public.
+	// Mutable in place.
+	PublicAccessPrevention string `protobuf:"bytes,7,opt,name=public_access_prevention,json=publicAccessPrevention,proto3" json:"public_access_prevention,omitempty"`
+	// Enable object versioning: overwrites and deletes keep the previous
+	// version as a noncurrent object. Pair with a lifecycle rule on
+	// num_newer_versions or days_since_noncurrent_time to bound storage
+	// growth. Cannot be combined with hierarchical namespace. Mutable.
+	VersioningEnabled bool `protobuf:"varint,8,opt,name=versioning_enabled,json=versioningEnabled,proto3" json:"versioning_enabled,omitempty"`
+	// Autoclass: GCS automatically transitions each object between storage
+	// classes based on its observed access pattern — the zero-tuning
+	// alternative to hand-written SetStorageClass lifecycle rules.
+	Autoclass *GcpGcsBucketAutoclass `protobuf:"bytes,9,opt,name=autoclass,proto3" json:"autoclass,omitempty"`
+	// Lifecycle rules for automatic object management (deletion, storage
+	// class transitions, aborting stale multipart uploads). Up to 100 rules;
+	// all conditions within a rule must match (logical AND).
+	LifecycleRules []*GcpGcsBucketLifecycleRule `protobuf:"bytes,10,rep,name=lifecycle_rules,json=lifecycleRules,proto3" json:"lifecycle_rules,omitempty"`
+	// Retention policy for WORM (write once, read many) compliance: objects
+	// cannot be deleted or replaced until they reach the retention age.
+	RetentionPolicy *GcpGcsBucketRetentionPolicy `protobuf:"bytes,11,opt,name=retention_policy,json=retentionPolicy,proto3" json:"retention_policy,omitempty"`
+	// How long deleted objects remain recoverable (and billed) before being
+	// permanently removed. GCP's default is 7 days (604800s) even when this
+	// block is omitted. Set 0 to disable soft delete entirely — common for
+	// high-churn scratch buckets where the 7-day tail is pure cost.
+	SoftDeletePolicy *GcpGcsBucketSoftDeletePolicy `protobuf:"bytes,12,opt,name=soft_delete_policy,json=softDeletePolicy,proto3" json:"soft_delete_policy,omitempty"`
+	// Default customer-managed encryption key (CMEK) for objects written
+	// without an explicit key. The GCS service agent needs
+	// roles/cloudkms.cryptoKeyEncrypterDecrypter on the key. If omitted,
+	// Google-managed encryption is used. Accepts the fully qualified crypto
+	// key path or a reference to a GcpKmsKey resource. Mutable in place
+	// (existing objects keep the key they were written with).
+	KmsKeyName *v1.StringValueOrRef `protobuf:"bytes,13,opt,name=kms_key_name,json=kmsKeyName,proto3" json:"kms_key_name,omitempty"`
+	// Requester pays: the caller's project (not the bucket owner) is billed
+	// for data access and egress. Useful for widely shared public datasets.
+	// Mutable in place.
+	RequesterPays bool `protobuf:"varint,14,opt,name=requester_pays,json=requesterPays,proto3" json:"requester_pays,omitempty"`
+	// Automatically place an event-based hold on every new object — the
+	// object cannot be deleted until the hold is released AND its retention
+	// period (measured from release) expires. For event-driven compliance
+	// like "retain 3 years after account closure". Mutable in place.
+	DefaultEventBasedHold bool `protobuf:"varint,15,opt,name=default_event_based_hold,json=defaultEventBasedHold,proto3" json:"default_event_based_hold,omitempty"`
+	// Enable per-object retention: individual objects can carry their own
+	// retention configuration, independent of the bucket-level policy.
+	// Can only be set at creation — immutable.
+	EnableObjectRetention bool `protobuf:"varint,16,opt,name=enable_object_retention,json=enableObjectRetention,proto3" json:"enable_object_retention,omitempty"`
+	// Static website serving configuration (main page and 404 page) for
+	// requests via the bucket's website endpoint or a load balancer backend
+	// bucket. For production HTTPS sites, front the bucket with the L7 load
+	// balancer family (GcpBackendBucket + URL map + HTTPS proxy).
+	Website *GcpGcsBucketWebsite `protobuf:"bytes,17,opt,name=website,proto3" json:"website,omitempty"`
+	// CORS rules for direct cross-origin browser access (fonts, direct
+	// uploads, XHR downloads). Not needed when all access goes through a
+	// load balancer or same-origin paths.
+	CorsRules []*GcpGcsBucketCorsRule `protobuf:"bytes,18,rep,name=cors_rules,json=corsRules,proto3" json:"cors_rules,omitempty"`
+	// Usage/access log delivery to another GCS bucket (classic storage
+	// access logs). Most observability needs are better served by Cloud
+	// Audit Logs; use this for legacy tooling that parses access-log files.
+	Logging *GcpGcsBucketLogging `protobuf:"bytes,19,opt,name=logging,proto3" json:"logging,omitempty"`
+	// Custom dual-region placement: exactly two regions (e.g. ["US-EAST1",
+	// "US-WEST1"]) that must belong to the multi-region set in `location`.
+	// Gives dual-region durability with region pinning. Immutable after
+	// creation.
+	CustomPlacementConfig *GcpGcsBucketCustomPlacementConfig `protobuf:"bytes,20,opt,name=custom_placement_config,json=customPlacementConfig,proto3" json:"custom_placement_config,omitempty"`
+	// Recovery point objective for dual- and multi-region buckets:
+	//
+	//	""            -- provider default ("DEFAULT")
+	//	"DEFAULT"     -- asynchronous replication with no SLA on lag
+	//	"ASYNC_TURBO" -- turbo replication (15-minute RPO SLA; dual-region
+	//	                 only, additional cost)
+	//
+	// Mutable in place.
+	Rpo string `protobuf:"bytes,21,opt,name=rpo,proto3" json:"rpo,omitempty"`
+	// Enable hierarchical namespace (HNS): the bucket gets real folder
+	// semantics with atomic folder renames — required for Hadoop/Spark-style
+	// workloads that rename directories. Requires uniform bucket-level
+	// access and cannot be combined with object versioning. Immutable —
+	// only settable at creation.
+	HierarchicalNamespaceEnabled bool `protobuf:"varint,22,opt,name=hierarchical_namespace_enabled,json=hierarchicalNamespaceEnabled,proto3" json:"hierarchical_namespace_enabled,omitempty"`
+	// User-defined labels attached to the bucket, for cost attribution and
+	// fleet queries. Merged with Planton's platform labels (which win on key
+	// conflicts). Mutable in place.
+	Labels map[string]string `protobuf:"bytes,23,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Additive IAM grants on this bucket. Each entry grants one role to one
+	// member and composes safely with grants made by other tools or charts —
+	// removal subtracts only that exact (role, member) pair.
+	//
+	// Common roles:
+	//
+	//	roles/storage.objectViewer  -- read objects
+	//	roles/storage.objectAdmin   -- full object control (no bucket admin)
+	//	roles/storage.admin         -- full bucket + object control
+	//
+	// Public access: grant roles/storage.objectViewer to "allUsers" (also
+	// requires public_access_prevention to be "inherited" and the org policy
+	// to allow it).
+	IamMembers []*GcpGcsBucketIamMember `protobuf:"bytes,24,rep,name=iam_members,json=iamMembers,proto3" json:"iam_members,omitempty"`
+	// Network-layer IP filtering: restrict which public CIDR ranges and
+	// which VPC networks may reach the bucket at all, before IAM is even
+	// evaluated. Defense-in-depth for data-exfiltration control — IAM
+	// decides WHO, the IP filter decides FROM WHERE. Mutable in place.
+	IpFilter      *GcpGcsBucketIpFilter `protobuf:"bytes,25,opt,name=ip_filter,json=ipFilter,proto3" json:"ip_filter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -199,107 +229,9 @@ func (*GcpGcsBucketSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *GcpGcsBucketSpec) GetGcpProjectId() *v1.StringValueOrRef {
+func (x *GcpGcsBucketSpec) GetProjectId() *v1.StringValueOrRef {
 	if x != nil {
-		return x.GcpProjectId
-	}
-	return nil
-}
-
-func (x *GcpGcsBucketSpec) GetLocation() string {
-	if x != nil {
-		return x.Location
-	}
-	return ""
-}
-
-func (x *GcpGcsBucketSpec) GetUniformBucketLevelAccessEnabled() bool {
-	if x != nil {
-		return x.UniformBucketLevelAccessEnabled
-	}
-	return false
-}
-
-func (x *GcpGcsBucketSpec) GetStorageClass() GcpGcsStorageClass {
-	if x != nil && x.StorageClass != nil {
-		return *x.StorageClass
-	}
-	return GcpGcsStorageClass_GCP_GCS_STORAGE_CLASS_UNSPECIFIED
-}
-
-func (x *GcpGcsBucketSpec) GetVersioningEnabled() bool {
-	if x != nil {
-		return x.VersioningEnabled
-	}
-	return false
-}
-
-func (x *GcpGcsBucketSpec) GetLifecycleRules() []*GcpGcsLifecycleRule {
-	if x != nil {
-		return x.LifecycleRules
-	}
-	return nil
-}
-
-func (x *GcpGcsBucketSpec) GetIamBindings() []*GcpGcsIamBinding {
-	if x != nil {
-		return x.IamBindings
-	}
-	return nil
-}
-
-func (x *GcpGcsBucketSpec) GetEncryption() *GcpGcsEncryption {
-	if x != nil {
-		return x.Encryption
-	}
-	return nil
-}
-
-func (x *GcpGcsBucketSpec) GetCorsRules() []*GcpGcsCorsRule {
-	if x != nil {
-		return x.CorsRules
-	}
-	return nil
-}
-
-func (x *GcpGcsBucketSpec) GetWebsite() *GcpGcsWebsite {
-	if x != nil {
-		return x.Website
-	}
-	return nil
-}
-
-func (x *GcpGcsBucketSpec) GetRetentionPolicy() *GcpGcsRetentionPolicy {
-	if x != nil {
-		return x.RetentionPolicy
-	}
-	return nil
-}
-
-func (x *GcpGcsBucketSpec) GetRequesterPays() bool {
-	if x != nil {
-		return x.RequesterPays
-	}
-	return false
-}
-
-func (x *GcpGcsBucketSpec) GetLogging() *GcpGcsLogging {
-	if x != nil {
-		return x.Logging
-	}
-	return nil
-}
-
-func (x *GcpGcsBucketSpec) GetPublicAccessPrevention() string {
-	if x != nil {
-		return x.PublicAccessPrevention
-	}
-	return ""
-}
-
-func (x *GcpGcsBucketSpec) GetGcpLabels() map[string]string {
-	if x != nil {
-		return x.GcpLabels
+		return x.ProjectId
 	}
 	return nil
 }
@@ -311,31 +243,202 @@ func (x *GcpGcsBucketSpec) GetBucketName() string {
 	return ""
 }
 
-// Lifecycle rule for automatic object management
-type GcpGcsLifecycleRule struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Action to take when conditions are met
-	Action *GcpGcsLifecycleAction `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
-	// Condition that triggers the action
-	Condition     *GcpGcsLifecycleCondition `protobuf:"bytes,2,opt,name=condition,proto3" json:"condition,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+func (x *GcpGcsBucketSpec) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
 }
 
-func (x *GcpGcsLifecycleRule) Reset() {
-	*x = GcpGcsLifecycleRule{}
+func (x *GcpGcsBucketSpec) GetStorageClass() string {
+	if x != nil {
+		return x.StorageClass
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketSpec) GetForceDestroy() bool {
+	if x != nil {
+		return x.ForceDestroy
+	}
+	return false
+}
+
+func (x *GcpGcsBucketSpec) GetUniformBucketLevelAccessEnabled() bool {
+	if x != nil {
+		return x.UniformBucketLevelAccessEnabled
+	}
+	return false
+}
+
+func (x *GcpGcsBucketSpec) GetPublicAccessPrevention() string {
+	if x != nil {
+		return x.PublicAccessPrevention
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketSpec) GetVersioningEnabled() bool {
+	if x != nil {
+		return x.VersioningEnabled
+	}
+	return false
+}
+
+func (x *GcpGcsBucketSpec) GetAutoclass() *GcpGcsBucketAutoclass {
+	if x != nil {
+		return x.Autoclass
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetLifecycleRules() []*GcpGcsBucketLifecycleRule {
+	if x != nil {
+		return x.LifecycleRules
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetRetentionPolicy() *GcpGcsBucketRetentionPolicy {
+	if x != nil {
+		return x.RetentionPolicy
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetSoftDeletePolicy() *GcpGcsBucketSoftDeletePolicy {
+	if x != nil {
+		return x.SoftDeletePolicy
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetKmsKeyName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KmsKeyName
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetRequesterPays() bool {
+	if x != nil {
+		return x.RequesterPays
+	}
+	return false
+}
+
+func (x *GcpGcsBucketSpec) GetDefaultEventBasedHold() bool {
+	if x != nil {
+		return x.DefaultEventBasedHold
+	}
+	return false
+}
+
+func (x *GcpGcsBucketSpec) GetEnableObjectRetention() bool {
+	if x != nil {
+		return x.EnableObjectRetention
+	}
+	return false
+}
+
+func (x *GcpGcsBucketSpec) GetWebsite() *GcpGcsBucketWebsite {
+	if x != nil {
+		return x.Website
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetCorsRules() []*GcpGcsBucketCorsRule {
+	if x != nil {
+		return x.CorsRules
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetLogging() *GcpGcsBucketLogging {
+	if x != nil {
+		return x.Logging
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetCustomPlacementConfig() *GcpGcsBucketCustomPlacementConfig {
+	if x != nil {
+		return x.CustomPlacementConfig
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetRpo() string {
+	if x != nil {
+		return x.Rpo
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketSpec) GetHierarchicalNamespaceEnabled() bool {
+	if x != nil {
+		return x.HierarchicalNamespaceEnabled
+	}
+	return false
+}
+
+func (x *GcpGcsBucketSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetIamMembers() []*GcpGcsBucketIamMember {
+	if x != nil {
+		return x.IamMembers
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetIpFilter() *GcpGcsBucketIpFilter {
+	if x != nil {
+		return x.IpFilter
+	}
+	return nil
+}
+
+// Autoclass configuration — automatic storage-class management per object.
+type GcpGcsBucketAutoclass struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Enable autoclass. Objects start in STANDARD and transition to colder
+	// classes as they go unread; a read promotes the object back to
+	// STANDARD. Toggling autoclass is allowed but restricted by GCP to
+	// once per 24 hours. An explicit false is expressible (it records the
+	// deliberate decision and lets a previously enabled bucket turn the
+	// feature off), so the field is deliberately not annotated required.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// The coldest class autoclass may transition objects into:
+	//
+	//	""         -- GCP default ("NEARLINE")
+	//	"NEARLINE" -- stop at NEARLINE
+	//	"ARCHIVE"  -- allow transitions all the way to ARCHIVE (also enables
+	//	              COLDLINE as an intermediate step)
+	TerminalStorageClass string `protobuf:"bytes,2,opt,name=terminal_storage_class,json=terminalStorageClass,proto3" json:"terminal_storage_class,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketAutoclass) Reset() {
+	*x = GcpGcsBucketAutoclass{}
 	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GcpGcsLifecycleRule) String() string {
+func (x *GcpGcsBucketAutoclass) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GcpGcsLifecycleRule) ProtoMessage() {}
+func (*GcpGcsBucketAutoclass) ProtoMessage() {}
 
-func (x *GcpGcsLifecycleRule) ProtoReflect() protoreflect.Message {
+func (x *GcpGcsBucketAutoclass) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -347,51 +450,115 @@ func (x *GcpGcsLifecycleRule) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GcpGcsLifecycleRule.ProtoReflect.Descriptor instead.
-func (*GcpGcsLifecycleRule) Descriptor() ([]byte, []int) {
+// Deprecated: Use GcpGcsBucketAutoclass.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketAutoclass) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GcpGcsLifecycleRule) GetAction() *GcpGcsLifecycleAction {
+func (x *GcpGcsBucketAutoclass) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *GcpGcsBucketAutoclass) GetTerminalStorageClass() string {
+	if x != nil {
+		return x.TerminalStorageClass
+	}
+	return ""
+}
+
+// One lifecycle rule: an action applied to objects matching a condition.
+type GcpGcsBucketLifecycleRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Action to take when the condition matches.
+	Action *GcpGcsBucketLifecycleAction `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
+	// Condition selecting the objects the action applies to. All specified
+	// criteria must match (logical AND).
+	Condition     *GcpGcsBucketLifecycleCondition `protobuf:"bytes,2,opt,name=condition,proto3" json:"condition,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketLifecycleRule) Reset() {
+	*x = GcpGcsBucketLifecycleRule{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketLifecycleRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketLifecycleRule) ProtoMessage() {}
+
+func (x *GcpGcsBucketLifecycleRule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketLifecycleRule.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketLifecycleRule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GcpGcsBucketLifecycleRule) GetAction() *GcpGcsBucketLifecycleAction {
 	if x != nil {
 		return x.Action
 	}
 	return nil
 }
 
-func (x *GcpGcsLifecycleRule) GetCondition() *GcpGcsLifecycleCondition {
+func (x *GcpGcsBucketLifecycleRule) GetCondition() *GcpGcsBucketLifecycleCondition {
 	if x != nil {
 		return x.Condition
 	}
 	return nil
 }
 
-// Lifecycle action (Delete or SetStorageClass)
-type GcpGcsLifecycleAction struct {
+// Lifecycle action.
+type GcpGcsBucketLifecycleAction struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Action type: "Delete" or "SetStorageClass"
+	// Action type:
+	//
+	//	"Delete"          -- delete the matching object (or its noncurrent
+	//	                     version when the condition targets versions)
+	//	"SetStorageClass" -- transition the object to storage_class
+	//	"AbortIncompleteMultipartUpload" -- abort multipart uploads older
+	//	                     than the condition's age (reclaims hidden
+	//	                     storage from abandoned uploads)
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	// Storage class to transition to (only for SetStorageClass action)
-	StorageClass  *GcpGcsStorageClass `protobuf:"varint,2,opt,name=storage_class,json=storageClass,proto3,enum=dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsStorageClass,oneof" json:"storage_class,omitempty"`
+	// Target storage class for SetStorageClass actions, e.g. "NEARLINE",
+	// "COLDLINE", "ARCHIVE".
+	StorageClass  string `protobuf:"bytes,2,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GcpGcsLifecycleAction) Reset() {
-	*x = GcpGcsLifecycleAction{}
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[2]
+func (x *GcpGcsBucketLifecycleAction) Reset() {
+	*x = GcpGcsBucketLifecycleAction{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GcpGcsLifecycleAction) String() string {
+func (x *GcpGcsBucketLifecycleAction) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GcpGcsLifecycleAction) ProtoMessage() {}
+func (*GcpGcsBucketLifecycleAction) ProtoMessage() {}
 
-func (x *GcpGcsLifecycleAction) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[2]
+func (x *GcpGcsBucketLifecycleAction) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -402,57 +569,85 @@ func (x *GcpGcsLifecycleAction) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GcpGcsLifecycleAction.ProtoReflect.Descriptor instead.
-func (*GcpGcsLifecycleAction) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{2}
+// Deprecated: Use GcpGcsBucketLifecycleAction.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketLifecycleAction) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *GcpGcsLifecycleAction) GetType() string {
+func (x *GcpGcsBucketLifecycleAction) GetType() string {
 	if x != nil {
 		return x.Type
 	}
 	return ""
 }
 
-func (x *GcpGcsLifecycleAction) GetStorageClass() GcpGcsStorageClass {
-	if x != nil && x.StorageClass != nil {
-		return *x.StorageClass
+func (x *GcpGcsBucketLifecycleAction) GetStorageClass() string {
+	if x != nil {
+		return x.StorageClass
 	}
-	return GcpGcsStorageClass_GCP_GCS_STORAGE_CLASS_UNSPECIFIED
+	return ""
 }
 
-// Lifecycle condition (when to trigger the action)
-type GcpGcsLifecycleCondition struct {
+// Lifecycle condition. Unset criteria are ignored; all set criteria must
+// match. Numeric criteria use explicit presence so a set 0 (a meaningful
+// value — e.g. age 0 matches every object) is distinguishable from unset.
+type GcpGcsBucketLifecycleCondition struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Age in days since object creation
-	AgeDays int32 `protobuf:"varint,1,opt,name=age_days,json=ageDays,proto3" json:"age_days,omitempty"`
-	// RFC 3339 date before which objects should match
+	// Minimum age of the object in days. A set 0 matches all objects.
+	AgeDays *int32 `protobuf:"varint,1,opt,name=age_days,json=ageDays,proto3,oneof" json:"age_days,omitempty"`
+	// Match objects created before this date (RFC 3339 date, "2026-01-01").
 	CreatedBefore string `protobuf:"bytes,2,opt,name=created_before,json=createdBefore,proto3" json:"created_before,omitempty"`
-	// Match objects that are live (current version) or noncurrent
-	IsLive bool `protobuf:"varint,3,opt,name=is_live,json=isLive,proto3" json:"is_live,omitempty"`
-	// Number of newer versions to keep (for version cleanup)
-	NumNewerVersions int32 `protobuf:"varint,4,opt,name=num_newer_versions,json=numNewerVersions,proto3" json:"num_newer_versions,omitempty"`
-	// Match only objects in these storage classes
-	MatchesStorageClass []GcpGcsStorageClass `protobuf:"varint,5,rep,packed,name=matches_storage_class,json=matchesStorageClass,proto3,enum=dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsStorageClass" json:"matches_storage_class,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Match by version state (requires versioning):
+	//
+	//	""        -- any state (default)
+	//	"LIVE"     -- only the current version
+	//	"ARCHIVED" -- only noncurrent versions
+	//	"ANY"      -- both
+	WithState string `protobuf:"bytes,3,opt,name=with_state,json=withState,proto3" json:"with_state,omitempty"`
+	// Match objects currently in any of these storage classes, e.g.
+	// ["STANDARD", "NEARLINE"]. Legacy classes ("MULTI_REGIONAL",
+	// "REGIONAL", "DURABLE_REDUCED_AVAILABILITY") are valid here for
+	// matching long-lived objects.
+	MatchesStorageClass []string `protobuf:"bytes,4,rep,name=matches_storage_class,json=matchesStorageClass,proto3" json:"matches_storage_class,omitempty"`
+	// Match objects whose name starts with any of these prefixes.
+	MatchesPrefix []string `protobuf:"bytes,5,rep,name=matches_prefix,json=matchesPrefix,proto3" json:"matches_prefix,omitempty"`
+	// Match objects whose name ends with any of these suffixes.
+	MatchesSuffix []string `protobuf:"bytes,6,rep,name=matches_suffix,json=matchesSuffix,proto3" json:"matches_suffix,omitempty"`
+	// Match noncurrent versions with at least this many newer versions —
+	// the standard "keep the last N versions" cleanup (requires versioning).
+	// A set 0 matches every noncurrent version.
+	NumNewerVersions *int32 `protobuf:"varint,7,opt,name=num_newer_versions,json=numNewerVersions,proto3,oneof" json:"num_newer_versions,omitempty"`
+	// Match noncurrent versions that became noncurrent at least this many
+	// days ago (requires versioning). A set 0 matches immediately.
+	DaysSinceNoncurrentTime *int32 `protobuf:"varint,8,opt,name=days_since_noncurrent_time,json=daysSinceNoncurrentTime,proto3,oneof" json:"days_since_noncurrent_time,omitempty"`
+	// Match noncurrent versions that became noncurrent before this date
+	// (RFC 3339 date; requires versioning).
+	NoncurrentTimeBefore string `protobuf:"bytes,9,opt,name=noncurrent_time_before,json=noncurrentTimeBefore,proto3" json:"noncurrent_time_before,omitempty"`
+	// Match objects whose Custom-Time metadata is at least this many days
+	// old. A set 0 matches any object with Custom-Time set.
+	DaysSinceCustomTime *int32 `protobuf:"varint,10,opt,name=days_since_custom_time,json=daysSinceCustomTime,proto3,oneof" json:"days_since_custom_time,omitempty"`
+	// Match objects whose Custom-Time metadata is before this date
+	// (RFC 3339 date).
+	CustomTimeBefore string `protobuf:"bytes,11,opt,name=custom_time_before,json=customTimeBefore,proto3" json:"custom_time_before,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
-func (x *GcpGcsLifecycleCondition) Reset() {
-	*x = GcpGcsLifecycleCondition{}
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[3]
+func (x *GcpGcsBucketLifecycleCondition) Reset() {
+	*x = GcpGcsBucketLifecycleCondition{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GcpGcsLifecycleCondition) String() string {
+func (x *GcpGcsBucketLifecycleCondition) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GcpGcsLifecycleCondition) ProtoMessage() {}
+func (*GcpGcsBucketLifecycleCondition) ProtoMessage() {}
 
-func (x *GcpGcsLifecycleCondition) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[3]
+func (x *GcpGcsBucketLifecycleCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -463,315 +658,119 @@ func (x *GcpGcsLifecycleCondition) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GcpGcsLifecycleCondition.ProtoReflect.Descriptor instead.
-func (*GcpGcsLifecycleCondition) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{3}
+// Deprecated: Use GcpGcsBucketLifecycleCondition.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketLifecycleCondition) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *GcpGcsLifecycleCondition) GetAgeDays() int32 {
-	if x != nil {
-		return x.AgeDays
+func (x *GcpGcsBucketLifecycleCondition) GetAgeDays() int32 {
+	if x != nil && x.AgeDays != nil {
+		return *x.AgeDays
 	}
 	return 0
 }
 
-func (x *GcpGcsLifecycleCondition) GetCreatedBefore() string {
+func (x *GcpGcsBucketLifecycleCondition) GetCreatedBefore() string {
 	if x != nil {
 		return x.CreatedBefore
 	}
 	return ""
 }
 
-func (x *GcpGcsLifecycleCondition) GetIsLive() bool {
+func (x *GcpGcsBucketLifecycleCondition) GetWithState() string {
 	if x != nil {
-		return x.IsLive
+		return x.WithState
 	}
-	return false
+	return ""
 }
 
-func (x *GcpGcsLifecycleCondition) GetNumNewerVersions() int32 {
-	if x != nil {
-		return x.NumNewerVersions
-	}
-	return 0
-}
-
-func (x *GcpGcsLifecycleCondition) GetMatchesStorageClass() []GcpGcsStorageClass {
+func (x *GcpGcsBucketLifecycleCondition) GetMatchesStorageClass() []string {
 	if x != nil {
 		return x.MatchesStorageClass
 	}
 	return nil
 }
 
-// IAM binding for bucket-level access control
-type GcpGcsIamBinding struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// IAM role to grant (e.g., "roles/storage.objectViewer", "roles/storage.objectAdmin")
-	Role string `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
-	// List of members to grant the role to
-	// Format: "user:email", "group:email", "serviceAccount:email", "allUsers", "allAuthenticatedUsers"
-	Members []string `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
-	// IAM condition expression (CEL syntax) for conditional access
-	// Optional. If not specified, binding applies unconditionally.
-	Condition     string `protobuf:"bytes,3,opt,name=condition,proto3" json:"condition,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GcpGcsIamBinding) Reset() {
-	*x = GcpGcsIamBinding{}
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GcpGcsIamBinding) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GcpGcsIamBinding) ProtoMessage() {}
-
-func (x *GcpGcsIamBinding) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[4]
+func (x *GcpGcsBucketLifecycleCondition) GetMatchesPrefix() []string {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GcpGcsIamBinding.ProtoReflect.Descriptor instead.
-func (*GcpGcsIamBinding) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *GcpGcsIamBinding) GetRole() string {
-	if x != nil {
-		return x.Role
-	}
-	return ""
-}
-
-func (x *GcpGcsIamBinding) GetMembers() []string {
-	if x != nil {
-		return x.Members
+		return x.MatchesPrefix
 	}
 	return nil
 }
 
-func (x *GcpGcsIamBinding) GetCondition() string {
+func (x *GcpGcsBucketLifecycleCondition) GetMatchesSuffix() []string {
 	if x != nil {
-		return x.Condition
-	}
-	return ""
-}
-
-// Customer-Managed Encryption Keys (CMEK) configuration
-type GcpGcsEncryption struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Cloud KMS key name for encryption
-	// Format: projects/PROJECT_ID/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY
-	KmsKeyName    string `protobuf:"bytes,1,opt,name=kms_key_name,json=kmsKeyName,proto3" json:"kms_key_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GcpGcsEncryption) Reset() {
-	*x = GcpGcsEncryption{}
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GcpGcsEncryption) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GcpGcsEncryption) ProtoMessage() {}
-
-func (x *GcpGcsEncryption) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GcpGcsEncryption.ProtoReflect.Descriptor instead.
-func (*GcpGcsEncryption) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *GcpGcsEncryption) GetKmsKeyName() string {
-	if x != nil {
-		return x.KmsKeyName
-	}
-	return ""
-}
-
-// CORS rule for cross-origin browser access
-type GcpGcsCorsRule struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// HTTP methods allowed for CORS requests
-	Methods []string `protobuf:"bytes,1,rep,name=methods,proto3" json:"methods,omitempty"`
-	// Origins allowed for CORS requests (e.g., "https://example.com")
-	Origins []string `protobuf:"bytes,2,rep,name=origins,proto3" json:"origins,omitempty"`
-	// Response headers that browsers can access
-	ResponseHeaders []string `protobuf:"bytes,3,rep,name=response_headers,json=responseHeaders,proto3" json:"response_headers,omitempty"`
-	// Maximum time (seconds) browsers can cache preflight responses
-	MaxAgeSeconds int32 `protobuf:"varint,4,opt,name=max_age_seconds,json=maxAgeSeconds,proto3" json:"max_age_seconds,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GcpGcsCorsRule) Reset() {
-	*x = GcpGcsCorsRule{}
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GcpGcsCorsRule) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GcpGcsCorsRule) ProtoMessage() {}
-
-func (x *GcpGcsCorsRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GcpGcsCorsRule.ProtoReflect.Descriptor instead.
-func (*GcpGcsCorsRule) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *GcpGcsCorsRule) GetMethods() []string {
-	if x != nil {
-		return x.Methods
+		return x.MatchesSuffix
 	}
 	return nil
 }
 
-func (x *GcpGcsCorsRule) GetOrigins() []string {
-	if x != nil {
-		return x.Origins
-	}
-	return nil
-}
-
-func (x *GcpGcsCorsRule) GetResponseHeaders() []string {
-	if x != nil {
-		return x.ResponseHeaders
-	}
-	return nil
-}
-
-func (x *GcpGcsCorsRule) GetMaxAgeSeconds() int32 {
-	if x != nil {
-		return x.MaxAgeSeconds
+func (x *GcpGcsBucketLifecycleCondition) GetNumNewerVersions() int32 {
+	if x != nil && x.NumNewerVersions != nil {
+		return *x.NumNewerVersions
 	}
 	return 0
 }
 
-// Static website hosting configuration
-type GcpGcsWebsite struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Main page suffix (e.g., "index.html")
-	MainPageSuffix string `protobuf:"bytes,1,opt,name=main_page_suffix,json=mainPageSuffix,proto3" json:"main_page_suffix,omitempty"`
-	// Custom 404 page (e.g., "404.html")
-	NotFoundPage  string `protobuf:"bytes,2,opt,name=not_found_page,json=notFoundPage,proto3" json:"not_found_page,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GcpGcsWebsite) Reset() {
-	*x = GcpGcsWebsite{}
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GcpGcsWebsite) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GcpGcsWebsite) ProtoMessage() {}
-
-func (x *GcpGcsWebsite) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+func (x *GcpGcsBucketLifecycleCondition) GetDaysSinceNoncurrentTime() int32 {
+	if x != nil && x.DaysSinceNoncurrentTime != nil {
+		return *x.DaysSinceNoncurrentTime
 	}
-	return mi.MessageOf(x)
+	return 0
 }
 
-// Deprecated: Use GcpGcsWebsite.ProtoReflect.Descriptor instead.
-func (*GcpGcsWebsite) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *GcpGcsWebsite) GetMainPageSuffix() string {
+func (x *GcpGcsBucketLifecycleCondition) GetNoncurrentTimeBefore() string {
 	if x != nil {
-		return x.MainPageSuffix
+		return x.NoncurrentTimeBefore
 	}
 	return ""
 }
 
-func (x *GcpGcsWebsite) GetNotFoundPage() string {
+func (x *GcpGcsBucketLifecycleCondition) GetDaysSinceCustomTime() int32 {
+	if x != nil && x.DaysSinceCustomTime != nil {
+		return *x.DaysSinceCustomTime
+	}
+	return 0
+}
+
+func (x *GcpGcsBucketLifecycleCondition) GetCustomTimeBefore() string {
 	if x != nil {
-		return x.NotFoundPage
+		return x.CustomTimeBefore
 	}
 	return ""
 }
 
-// Retention policy for WORM compliance
-type GcpGcsRetentionPolicy struct {
+// Retention policy for WORM compliance.
+type GcpGcsBucketRetentionPolicy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Minimum retention period in seconds
+	// Minimum object retention period in seconds (max ~100 years,
+	// 3155760000s). Objects cannot be deleted or overwritten until they are
+	// this old. Mutable while unlocked; can only be increased once locked.
 	RetentionPeriodSeconds int64 `protobuf:"varint,1,opt,name=retention_period_seconds,json=retentionPeriodSeconds,proto3" json:"retention_period_seconds,omitempty"`
-	// Lock the retention policy (irreversible operation!)
-	// Once locked, objects cannot be deleted until retention period expires.
-	// WARNING: This cannot be undone. Test thoroughly before locking.
+	// Lock the retention policy. IRREVERSIBLE: a locked policy can never be
+	// removed or shortened, and the bucket cannot be deleted until every
+	// object passes its retention period. Attempting to unlock forces bucket
+	// re-creation. Validate the policy against real workloads before locking.
 	IsLocked      bool `protobuf:"varint,2,opt,name=is_locked,json=isLocked,proto3" json:"is_locked,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GcpGcsRetentionPolicy) Reset() {
-	*x = GcpGcsRetentionPolicy{}
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[8]
+func (x *GcpGcsBucketRetentionPolicy) Reset() {
+	*x = GcpGcsBucketRetentionPolicy{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GcpGcsRetentionPolicy) String() string {
+func (x *GcpGcsBucketRetentionPolicy) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GcpGcsRetentionPolicy) ProtoMessage() {}
+func (*GcpGcsBucketRetentionPolicy) ProtoMessage() {}
 
-func (x *GcpGcsRetentionPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[8]
+func (x *GcpGcsBucketRetentionPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -782,50 +781,229 @@ func (x *GcpGcsRetentionPolicy) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GcpGcsRetentionPolicy.ProtoReflect.Descriptor instead.
-func (*GcpGcsRetentionPolicy) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{8}
+// Deprecated: Use GcpGcsBucketRetentionPolicy.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketRetentionPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *GcpGcsRetentionPolicy) GetRetentionPeriodSeconds() int64 {
+func (x *GcpGcsBucketRetentionPolicy) GetRetentionPeriodSeconds() int64 {
 	if x != nil {
 		return x.RetentionPeriodSeconds
 	}
 	return 0
 }
 
-func (x *GcpGcsRetentionPolicy) GetIsLocked() bool {
+func (x *GcpGcsBucketRetentionPolicy) GetIsLocked() bool {
 	if x != nil {
 		return x.IsLocked
 	}
 	return false
 }
 
-// Legacy access logging configuration
-type GcpGcsLogging struct {
+// Soft delete policy — recovery window for deleted objects.
+type GcpGcsBucketSoftDeletePolicy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Destination bucket for access logs
-	LogBucket string `protobuf:"bytes,1,opt,name=log_bucket,json=logBucket,proto3" json:"log_bucket,omitempty"`
-	// Prefix for log object names
+	// How long deleted objects remain recoverable, in seconds. GCP default
+	// is 604800 (7 days); 0 disables soft delete; otherwise the value must
+	// be between 7 and 90 days. Soft-deleted storage is billed at the
+	// object's storage class rate.
+	RetentionDurationSeconds *int64 `protobuf:"varint,1,opt,name=retention_duration_seconds,json=retentionDurationSeconds,proto3,oneof" json:"retention_duration_seconds,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketSoftDeletePolicy) Reset() {
+	*x = GcpGcsBucketSoftDeletePolicy{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketSoftDeletePolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketSoftDeletePolicy) ProtoMessage() {}
+
+func (x *GcpGcsBucketSoftDeletePolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketSoftDeletePolicy.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketSoftDeletePolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GcpGcsBucketSoftDeletePolicy) GetRetentionDurationSeconds() int64 {
+	if x != nil && x.RetentionDurationSeconds != nil {
+		return *x.RetentionDurationSeconds
+	}
+	return 0
+}
+
+// Static website serving configuration.
+type GcpGcsBucketWebsite struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Object served for directory requests, e.g. "index.html".
+	MainPageSuffix string `protobuf:"bytes,1,opt,name=main_page_suffix,json=mainPageSuffix,proto3" json:"main_page_suffix,omitempty"`
+	// Object served when the requested path does not exist, e.g. "404.html".
+	NotFoundPage  string `protobuf:"bytes,2,opt,name=not_found_page,json=notFoundPage,proto3" json:"not_found_page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketWebsite) Reset() {
+	*x = GcpGcsBucketWebsite{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketWebsite) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketWebsite) ProtoMessage() {}
+
+func (x *GcpGcsBucketWebsite) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketWebsite.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketWebsite) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GcpGcsBucketWebsite) GetMainPageSuffix() string {
+	if x != nil {
+		return x.MainPageSuffix
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketWebsite) GetNotFoundPage() string {
+	if x != nil {
+		return x.NotFoundPage
+	}
+	return ""
+}
+
+// One CORS rule for direct browser access.
+type GcpGcsBucketCorsRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Origins allowed to make cross-origin requests, e.g.
+	// "https://example.com". "*" allows any origin.
+	Origins []string `protobuf:"bytes,1,rep,name=origins,proto3" json:"origins,omitempty"`
+	// HTTP methods allowed, e.g. ["GET", "HEAD"]. "*" allows any method.
+	Methods []string `protobuf:"bytes,2,rep,name=methods,proto3" json:"methods,omitempty"`
+	// Response headers browsers are allowed to read.
+	ResponseHeaders []string `protobuf:"bytes,3,rep,name=response_headers,json=responseHeaders,proto3" json:"response_headers,omitempty"`
+	// How long (seconds) browsers may cache the preflight response.
+	MaxAgeSeconds int32 `protobuf:"varint,4,opt,name=max_age_seconds,json=maxAgeSeconds,proto3" json:"max_age_seconds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketCorsRule) Reset() {
+	*x = GcpGcsBucketCorsRule{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketCorsRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketCorsRule) ProtoMessage() {}
+
+func (x *GcpGcsBucketCorsRule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketCorsRule.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketCorsRule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GcpGcsBucketCorsRule) GetOrigins() []string {
+	if x != nil {
+		return x.Origins
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketCorsRule) GetMethods() []string {
+	if x != nil {
+		return x.Methods
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketCorsRule) GetResponseHeaders() []string {
+	if x != nil {
+		return x.ResponseHeaders
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketCorsRule) GetMaxAgeSeconds() int32 {
+	if x != nil {
+		return x.MaxAgeSeconds
+	}
+	return 0
+}
+
+// Access-log delivery configuration.
+type GcpGcsBucketLogging struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Destination bucket that receives the log objects. Accepts a literal
+	// bucket name or a reference to another GcpGcsBucket resource.
+	LogBucket *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=log_bucket,json=logBucket,proto3" json:"log_bucket,omitempty"`
+	// Prefix for log object names. Defaults to this bucket's name.
 	LogObjectPrefix string `protobuf:"bytes,2,opt,name=log_object_prefix,json=logObjectPrefix,proto3" json:"log_object_prefix,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
-func (x *GcpGcsLogging) Reset() {
-	*x = GcpGcsLogging{}
+func (x *GcpGcsBucketLogging) Reset() {
+	*x = GcpGcsBucketLogging{}
 	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GcpGcsLogging) String() string {
+func (x *GcpGcsBucketLogging) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GcpGcsLogging) ProtoMessage() {}
+func (*GcpGcsBucketLogging) ProtoMessage() {}
 
-func (x *GcpGcsLogging) ProtoReflect() protoreflect.Message {
+func (x *GcpGcsBucketLogging) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -837,21 +1015,406 @@ func (x *GcpGcsLogging) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GcpGcsLogging.ProtoReflect.Descriptor instead.
-func (*GcpGcsLogging) Descriptor() ([]byte, []int) {
+// Deprecated: Use GcpGcsBucketLogging.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketLogging) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *GcpGcsLogging) GetLogBucket() string {
+func (x *GcpGcsBucketLogging) GetLogBucket() *v1.StringValueOrRef {
 	if x != nil {
 		return x.LogBucket
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketLogging) GetLogObjectPrefix() string {
+	if x != nil {
+		return x.LogObjectPrefix
 	}
 	return ""
 }
 
-func (x *GcpGcsLogging) GetLogObjectPrefix() string {
+// Custom dual-region placement.
+type GcpGcsBucketCustomPlacementConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Exactly two regions forming the custom dual-region, e.g.
+	// ["US-EAST1", "US-WEST1"]. Both must belong to the multi-region set in
+	// `location`. Immutable after creation.
+	DataLocations []string `protobuf:"bytes,1,rep,name=data_locations,json=dataLocations,proto3" json:"data_locations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketCustomPlacementConfig) Reset() {
+	*x = GcpGcsBucketCustomPlacementConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketCustomPlacementConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketCustomPlacementConfig) ProtoMessage() {}
+
+func (x *GcpGcsBucketCustomPlacementConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[10]
 	if x != nil {
-		return x.LogObjectPrefix
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketCustomPlacementConfig.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketCustomPlacementConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GcpGcsBucketCustomPlacementConfig) GetDataLocations() []string {
+	if x != nil {
+		return x.DataLocations
+	}
+	return nil
+}
+
+// Network-layer IP filtering configuration for the bucket.
+type GcpGcsBucketIpFilter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The filter mode:
+	//
+	//	"Enabled"  -- only the listed sources may reach the bucket
+	//	"Disabled" -- filter retained but inactive (all sources allowed)
+	Mode string `protobuf:"bytes,1,opt,name=mode,proto3" json:"mode,omitempty"`
+	// Public internet sources allowed to access the bucket, as IPv4/IPv6
+	// CIDR ranges.
+	PublicNetworkSource *GcpGcsBucketIpFilterPublicNetworkSource `protobuf:"bytes,2,opt,name=public_network_source,json=publicNetworkSource,proto3" json:"public_network_source,omitempty"`
+	// VPC networks allowed to access the bucket, each with its own CIDR
+	// allowlist.
+	VpcNetworkSources []*GcpGcsBucketIpFilterVpcNetworkSource `protobuf:"bytes,3,rep,name=vpc_network_sources,json=vpcNetworkSources,proto3" json:"vpc_network_sources,omitempty"`
+	// Allow VPC network sources that belong to a different organization
+	// than the bucket.
+	AllowCrossOrgVpcs bool `protobuf:"varint,4,opt,name=allow_cross_org_vpcs,json=allowCrossOrgVpcs,proto3" json:"allow_cross_org_vpcs,omitempty"`
+	// Exempt Google service agents (the identities GCP services act as —
+	// e.g. the Storage transfer agent) from the IP filter, so managed
+	// integrations keep working when the filter is Enabled.
+	AllowAllServiceAgentAccess bool `protobuf:"varint,5,opt,name=allow_all_service_agent_access,json=allowAllServiceAgentAccess,proto3" json:"allow_all_service_agent_access,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketIpFilter) Reset() {
+	*x = GcpGcsBucketIpFilter{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketIpFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketIpFilter) ProtoMessage() {}
+
+func (x *GcpGcsBucketIpFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketIpFilter.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketIpFilter) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GcpGcsBucketIpFilter) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketIpFilter) GetPublicNetworkSource() *GcpGcsBucketIpFilterPublicNetworkSource {
+	if x != nil {
+		return x.PublicNetworkSource
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketIpFilter) GetVpcNetworkSources() []*GcpGcsBucketIpFilterVpcNetworkSource {
+	if x != nil {
+		return x.VpcNetworkSources
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketIpFilter) GetAllowCrossOrgVpcs() bool {
+	if x != nil {
+		return x.AllowCrossOrgVpcs
+	}
+	return false
+}
+
+func (x *GcpGcsBucketIpFilter) GetAllowAllServiceAgentAccess() bool {
+	if x != nil {
+		return x.AllowAllServiceAgentAccess
+	}
+	return false
+}
+
+// Public-internet source allowlist for the bucket IP filter.
+type GcpGcsBucketIpFilterPublicNetworkSource struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Public IPv4/IPv6 CIDR ranges allowed to access the bucket,
+	// e.g. "203.0.113.0/24".
+	AllowedIpCidrRanges []string `protobuf:"bytes,1,rep,name=allowed_ip_cidr_ranges,json=allowedIpCidrRanges,proto3" json:"allowed_ip_cidr_ranges,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketIpFilterPublicNetworkSource) Reset() {
+	*x = GcpGcsBucketIpFilterPublicNetworkSource{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketIpFilterPublicNetworkSource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketIpFilterPublicNetworkSource) ProtoMessage() {}
+
+func (x *GcpGcsBucketIpFilterPublicNetworkSource) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketIpFilterPublicNetworkSource.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketIpFilterPublicNetworkSource) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GcpGcsBucketIpFilterPublicNetworkSource) GetAllowedIpCidrRanges() []string {
+	if x != nil {
+		return x.AllowedIpCidrRanges
+	}
+	return nil
+}
+
+// One VPC network entry in the bucket IP filter allowlist.
+type GcpGcsBucketIpFilterVpcNetworkSource struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The VPC network, in the form projects/{project}/global/networks/{name}.
+	// Accepts a literal path or a reference to a GcpVpcNetwork resource
+	// (its network_id output is exactly this value).
+	Network *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
+	// IPv4/IPv6 CIDR ranges within this network allowed to access the
+	// bucket.
+	AllowedIpCidrRanges []string `protobuf:"bytes,2,rep,name=allowed_ip_cidr_ranges,json=allowedIpCidrRanges,proto3" json:"allowed_ip_cidr_ranges,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketIpFilterVpcNetworkSource) Reset() {
+	*x = GcpGcsBucketIpFilterVpcNetworkSource{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketIpFilterVpcNetworkSource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketIpFilterVpcNetworkSource) ProtoMessage() {}
+
+func (x *GcpGcsBucketIpFilterVpcNetworkSource) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketIpFilterVpcNetworkSource.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketIpFilterVpcNetworkSource) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GcpGcsBucketIpFilterVpcNetworkSource) GetNetwork() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Network
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketIpFilterVpcNetworkSource) GetAllowedIpCidrRanges() []string {
+	if x != nil {
+		return x.AllowedIpCidrRanges
+	}
+	return nil
+}
+
+// One additive IAM grant on the bucket: one role to one member.
+type GcpGcsBucketIamMember struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The role to grant, e.g. "roles/storage.objectViewer",
+	// "roles/storage.objectAdmin", "roles/storage.admin", or a custom
+	// role's fully-qualified name.
+	Role string `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	// The identity receiving the grant, in GCP IAM member format:
+	//
+	//	serviceAccount:<email>  -- a service account (the most common in IaC;
+	//	                           reference a GcpServiceAccount resource —
+	//	                           its `member` output is exactly this value)
+	//	user:<email> / group:<email> / domain:<domain>
+	//	allUsers / allAuthenticatedUsers -- public access (grant with care)
+	Member *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=member,proto3" json:"member,omitempty"`
+	// Optional IAM Condition restricting when this grant applies (e.g. only
+	// objects under a prefix, or before an expiry date). The condition is
+	// part of the grant's identity: the same role with and without a
+	// condition are two independent grants.
+	Condition     *GcpGcsBucketIamCondition `protobuf:"bytes,3,opt,name=condition,proto3" json:"condition,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketIamMember) Reset() {
+	*x = GcpGcsBucketIamMember{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketIamMember) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketIamMember) ProtoMessage() {}
+
+func (x *GcpGcsBucketIamMember) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketIamMember.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketIamMember) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GcpGcsBucketIamMember) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketIamMember) GetMember() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Member
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketIamMember) GetCondition() *GcpGcsBucketIamCondition {
+	if x != nil {
+		return x.Condition
+	}
+	return nil
+}
+
+// An IAM Condition — a CEL expression that must evaluate true for the grant
+// to apply. See https://cloud.google.com/iam/docs/conditions-overview.
+type GcpGcsBucketIamCondition struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Short human-readable title identifying the condition's intent,
+	// e.g. "reports-prefix-only".
+	Title string `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
+	// The CEL condition expression, e.g.
+	// resource.name.startsWith("projects/_/buckets/b/objects/reports/").
+	Expression string `protobuf:"bytes,2,opt,name=expression,proto3" json:"expression,omitempty"`
+	// Optional longer explanation of what the condition does.
+	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketIamCondition) Reset() {
+	*x = GcpGcsBucketIamCondition{}
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketIamCondition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketIamCondition) ProtoMessage() {}
+
+func (x *GcpGcsBucketIamCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketIamCondition.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketIamCondition) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GcpGcsBucketIamCondition) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketIamCondition) GetExpression() string {
+	if x != nil {
+		return x.Expression
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketIamCondition) GetDescription() string {
+	if x != nil {
+		return x.Description
 	}
 	return ""
 }
@@ -860,82 +1423,123 @@ var File_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto protoreflect.FileDe
 
 const file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3dev/planton/provider/gcp/gcpgcsbucket/v1/spec.proto\x12(dev.planton.provider.gcp.gcpgcsbucket.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf5\v\n" +
-	"\x10GcpGcsBucketSpec\x12\x82\x01\n" +
-	"\x0egcp_project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\fgcpProjectId\x12\"\n" +
-	"\blocation\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12L\n" +
-	"#uniform_bucket_level_access_enabled\x18\x03 \x01(\bR\x1funiformBucketLevelAccessEnabled\x12p\n" +
-	"\rstorage_class\x18\x04 \x01(\x0e2<.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsStorageClassB\b\xbaH\x05\x82\x01\x02\x10\x01H\x00R\fstorageClass\x88\x01\x01\x12-\n" +
-	"\x12versioning_enabled\x18\x05 \x01(\bR\x11versioningEnabled\x12f\n" +
-	"\x0flifecycle_rules\x18\x06 \x03(\v2=.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleRuleR\x0elifecycleRules\x12]\n" +
-	"\fiam_bindings\x18\a \x03(\v2:.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsIamBindingR\viamBindings\x12_\n" +
+	"3dev/planton/provider/gcp/gcpgcsbucket/v1/spec.proto\x12(dev.planton.provider.gcp.gcpgcsbucket.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xda\x14\n" +
+	"\x10GcpGcsBucketSpec\x12u\n" +
 	"\n" +
-	"encryption\x18\b \x01(\v2:.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsEncryptionH\x01R\n" +
-	"encryption\x88\x01\x01\x12W\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12P\n" +
+	"\vbucket_name\x18\x02 \x01(\tB/\xbaH,\xc8\x01\x01r'\x10\x03\x18?2!^[a-z0-9]([a-z0-9-._]*[a-z0-9])?$R\n" +
+	"bucketName\x12\"\n" +
+	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12#\n" +
+	"\rstorage_class\x18\x04 \x01(\tR\fstorageClass\x12#\n" +
+	"\rforce_destroy\x18\x05 \x01(\bR\fforceDestroy\x12L\n" +
+	"#uniform_bucket_level_access_enabled\x18\x06 \x01(\bR\x1funiformBucketLevelAccessEnabled\x12\xd2\x01\n" +
+	"\x18public_access_prevention\x18\a \x01(\tB\x97\x01\xbaH\x93\x01\xba\x01\x8f\x01\n" +
+	"\x1evalid_public_access_prevention\x12<public_access_prevention must be one of: inherited, enforced\x1a/this == '' || this in ['inherited', 'enforced']R\x16publicAccessPrevention\x12-\n" +
+	"\x12versioning_enabled\x18\b \x01(\bR\x11versioningEnabled\x12]\n" +
+	"\tautoclass\x18\t \x01(\v2?.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketAutoclassR\tautoclass\x12v\n" +
+	"\x0flifecycle_rules\x18\n" +
+	" \x03(\v2C.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLifecycleRuleB\b\xbaH\x05\x92\x01\x02\x10dR\x0elifecycleRules\x12p\n" +
+	"\x10retention_policy\x18\v \x01(\v2E.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketRetentionPolicyR\x0fretentionPolicy\x12t\n" +
+	"\x12soft_delete_policy\x18\f \x01(\v2F.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSoftDeletePolicyR\x10softDeletePolicy\x12t\n" +
+	"\fkms_key_name\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"kmsKeyName\x12%\n" +
+	"\x0erequester_pays\x18\x0e \x01(\bR\rrequesterPays\x127\n" +
+	"\x18default_event_based_hold\x18\x0f \x01(\bR\x15defaultEventBasedHold\x126\n" +
+	"\x17enable_object_retention\x18\x10 \x01(\bR\x15enableObjectRetention\x12W\n" +
+	"\awebsite\x18\x11 \x01(\v2=.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketWebsiteR\awebsite\x12]\n" +
 	"\n" +
-	"cors_rules\x18\t \x03(\v28.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsCorsRuleR\tcorsRules\x12V\n" +
-	"\awebsite\x18\n" +
-	" \x01(\v27.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsWebsiteH\x02R\awebsite\x88\x01\x01\x12o\n" +
-	"\x10retention_policy\x18\v \x01(\v2?.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsRetentionPolicyH\x03R\x0fretentionPolicy\x88\x01\x01\x12%\n" +
-	"\x0erequester_pays\x18\f \x01(\bR\rrequesterPays\x12V\n" +
-	"\alogging\x18\r \x01(\v27.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLoggingH\x04R\alogging\x88\x01\x01\x128\n" +
-	"\x18public_access_prevention\x18\x0e \x01(\tR\x16publicAccessPrevention\x12h\n" +
-	"\n" +
-	"gcp_labels\x18\x0f \x03(\v2I.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.GcpLabelsEntryR\tgcpLabels\x12P\n" +
-	"\vbucket_name\x18\x10 \x01(\tB/\xbaH,\xc8\x01\x01r'\x10\x03\x18?2!^[a-z0-9]([a-z0-9-._]*[a-z0-9])?$R\n" +
-	"bucketName\x1a<\n" +
-	"\x0eGcpLabelsEntry\x12\x10\n" +
+	"cors_rules\x18\x12 \x03(\v2>.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketCorsRuleR\tcorsRules\x12W\n" +
+	"\alogging\x18\x13 \x01(\v2=.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLoggingR\alogging\x12\x83\x01\n" +
+	"\x17custom_placement_config\x18\x14 \x01(\v2K.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketCustomPlacementConfigR\x15customPlacementConfig\x12\x7f\n" +
+	"\x03rpo\x18\x15 \x01(\tBm\xbaHj\xba\x01g\n" +
+	"\tvalid_rpo\x12(rpo must be one of: DEFAULT, ASYNC_TURBO\x1a0this == '' || this in ['DEFAULT', 'ASYNC_TURBO']R\x03rpo\x12D\n" +
+	"\x1ehierarchical_namespace_enabled\x18\x16 \x01(\bR\x1chierarchicalNamespaceEnabled\x12^\n" +
+	"\x06labels\x18\x17 \x03(\v2F.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.LabelsEntryR\x06labels\x12`\n" +
+	"\viam_members\x18\x18 \x03(\v2?.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIamMemberR\n" +
+	"iamMembers\x12[\n" +
+	"\tip_filter\x18\x19 \x01(\v2>.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIpFilterR\bipFilter\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
-	"\x0e_storage_classB\r\n" +
-	"\v_encryptionB\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb7\x02\xbaH\xb3\x02\x1a\xb0\x02\n" +
+	"0autoclass_conflicts_with_lifecycle_storage_class\x12rautoclass and SetStorageClass lifecycle rules both manage storage classes — enable only one transition mechanism\x1a\x87\x01!has(this.autoclass) || !this.autoclass.enabled || !this.lifecycle_rules.exists(r, has(r.action) && r.action.type == 'SetStorageClass')\"\xfa\x01\n" +
+	"\x15GcpGcsBucketAutoclass\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\xc6\x01\n" +
+	"\x16terminal_storage_class\x18\x02 \x01(\tB\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
+	"\x1cvalid_terminal_storage_class\x128terminal_storage_class must be one of: NEARLINE, ARCHIVE\x1a-this == '' || this in ['NEARLINE', 'ARCHIVE']R\x14terminalStorageClass\"\xf2\x01\n" +
+	"\x19GcpGcsBucketLifecycleRule\x12e\n" +
+	"\x06action\x18\x01 \x01(\v2E.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLifecycleActionB\x06\xbaH\x03\xc8\x01\x01R\x06action\x12n\n" +
+	"\tcondition\x18\x02 \x01(\v2H.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLifecycleConditionB\x06\xbaH\x03\xc8\x01\x01R\tcondition\"\xd5\x04\n" +
+	"\x1bGcpGcsBucketLifecycleAction\x12\xca\x01\n" +
+	"\x04type\x18\x01 \x01(\tB\xb5\x01\xbaH\xb1\x01\xba\x01\xaa\x01\n" +
+	"\x11valid_action_type\x12Ltype must be one of: Delete, SetStorageClass, AbortIncompleteMultipartUpload\x1aGthis in ['Delete', 'SetStorageClass', 'AbortIncompleteMultipartUpload']\xc8\x01\x01R\x04type\x12#\n" +
+	"\rstorage_class\x18\x02 \x01(\tR\fstorageClass:\xc3\x02\xbaH\xbf\x02\x1a\x9b\x01\n" +
+	"!set_storage_class_requires_target\x12:SetStorageClass actions must name the target storage_class\x1a:this.type != 'SetStorageClass' || this.storage_class != ''\x1a\x9e\x01\n" +
+	"(storage_class_only_for_set_storage_class\x126storage_class is only valid on SetStorageClass actions\x1a:this.storage_class == '' || this.type == 'SetStorageClass'\"\x9b\x06\n" +
+	"\x1eGcpGcsBucketLifecycleCondition\x12'\n" +
+	"\bage_days\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\aageDays\x88\x01\x01\x12%\n" +
+	"\x0ecreated_before\x18\x02 \x01(\tR\rcreatedBefore\x12\x9a\x01\n" +
 	"\n" +
-	"\b_websiteB\x13\n" +
-	"\x11_retention_policyB\n" +
-	"\n" +
-	"\b_logging\"\xe0\x01\n" +
-	"\x13GcpGcsLifecycleRule\x12_\n" +
-	"\x06action\x18\x01 \x01(\v2?.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleActionB\x06\xbaH\x03\xc8\x01\x01R\x06action\x12h\n" +
-	"\tcondition\x18\x02 \x01(\v2B.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleConditionB\x06\xbaH\x03\xc8\x01\x01R\tcondition\"\xb7\x01\n" +
-	"\x15GcpGcsLifecycleAction\x12\x1a\n" +
-	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12p\n" +
-	"\rstorage_class\x18\x02 \x01(\x0e2<.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsStorageClassB\b\xbaH\x05\x82\x01\x02\x10\x01H\x00R\fstorageClass\x88\x01\x01B\x10\n" +
-	"\x0e_storage_class\"\xa4\x02\n" +
-	"\x18GcpGcsLifecycleCondition\x12\x19\n" +
-	"\bage_days\x18\x01 \x01(\x05R\aageDays\x12%\n" +
-	"\x0ecreated_before\x18\x02 \x01(\tR\rcreatedBefore\x12\x17\n" +
-	"\ais_live\x18\x03 \x01(\bR\x06isLive\x12,\n" +
-	"\x12num_newer_versions\x18\x04 \x01(\x05R\x10numNewerVersions\x12\x7f\n" +
-	"\x15matches_storage_class\x18\x05 \x03(\x0e2<.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsStorageClassB\r\xbaH\n" +
-	"\x92\x01\a\"\x05\x82\x01\x02\x10\x01R\x13matchesStorageClass\"n\n" +
-	"\x10GcpGcsIamBinding\x12\x1a\n" +
-	"\x04role\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04role\x12 \n" +
-	"\amembers\x18\x02 \x03(\tB\x06\xbaH\x03\xc8\x01\x01R\amembers\x12\x1c\n" +
-	"\tcondition\x18\x03 \x01(\tR\tcondition\"<\n" +
-	"\x10GcpGcsEncryption\x12(\n" +
-	"\fkms_key_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"kmsKeyName\"\xa7\x01\n" +
-	"\x0eGcpGcsCorsRule\x12 \n" +
-	"\amethods\x18\x01 \x03(\tB\x06\xbaH\x03\xc8\x01\x01R\amethods\x12 \n" +
-	"\aorigins\x18\x02 \x03(\tB\x06\xbaH\x03\xc8\x01\x01R\aorigins\x12)\n" +
-	"\x10response_headers\x18\x03 \x03(\tR\x0fresponseHeaders\x12&\n" +
-	"\x0fmax_age_seconds\x18\x04 \x01(\x05R\rmaxAgeSeconds\"_\n" +
-	"\rGcpGcsWebsite\x12(\n" +
+	"with_state\x18\x03 \x01(\tB{\xbaHx\xba\x01u\n" +
+	"\x10valid_with_state\x12.with_state must be one of: LIVE, ARCHIVED, ANY\x1a1this == '' || this in ['LIVE', 'ARCHIVED', 'ANY']R\twithState\x122\n" +
+	"\x15matches_storage_class\x18\x04 \x03(\tR\x13matchesStorageClass\x12%\n" +
+	"\x0ematches_prefix\x18\x05 \x03(\tR\rmatchesPrefix\x12%\n" +
+	"\x0ematches_suffix\x18\x06 \x03(\tR\rmatchesSuffix\x12:\n" +
+	"\x12num_newer_versions\x18\a \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x01R\x10numNewerVersions\x88\x01\x01\x12I\n" +
+	"\x1adays_since_noncurrent_time\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x02R\x17daysSinceNoncurrentTime\x88\x01\x01\x124\n" +
+	"\x16noncurrent_time_before\x18\t \x01(\tR\x14noncurrentTimeBefore\x12A\n" +
+	"\x16days_since_custom_time\x18\n" +
+	" \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x03R\x13daysSinceCustomTime\x88\x01\x01\x12,\n" +
+	"\x12custom_time_before\x18\v \x01(\tR\x10customTimeBeforeB\v\n" +
+	"\t_age_daysB\x15\n" +
+	"\x13_num_newer_versionsB\x1d\n" +
+	"\x1b_days_since_noncurrent_timeB\x19\n" +
+	"\x17_days_since_custom_time\"\x86\x01\n" +
+	"\x1bGcpGcsBucketRetentionPolicy\x12J\n" +
+	"\x18retention_period_seconds\x18\x01 \x01(\x03B\x10\xbaH\r\xc8\x01\x01\"\b\x10\x80\xa7\xe4\xe0\v \x00R\x16retentionPeriodSeconds\x12\x1b\n" +
+	"\tis_locked\x18\x02 \x01(\bR\bisLocked\"\xbc\x02\n" +
+	"\x1cGcpGcsBucketSoftDeletePolicy\x12\xfc\x01\n" +
+	"\x1aretention_duration_seconds\x18\x01 \x01(\x03B\xb8\x01\xbaH\xb4\x01\xba\x01\xb0\x01\n" +
+	"\x1avalid_soft_delete_duration\x12`retention_duration_seconds must be 0 (disabled) or between 604800 (7 days) and 7776000 (90 days)\x1a0this == 0 || (this >= 604800 && this <= 7776000)H\x00R\x18retentionDurationSeconds\x88\x01\x01B\x1d\n" +
+	"\x1b_retention_duration_seconds\"e\n" +
+	"\x13GcpGcsBucketWebsite\x12(\n" +
 	"\x10main_page_suffix\x18\x01 \x01(\tR\x0emainPageSuffix\x12$\n" +
-	"\x0enot_found_page\x18\x02 \x01(\tR\fnotFoundPage\"v\n" +
-	"\x15GcpGcsRetentionPolicy\x12@\n" +
-	"\x18retention_period_seconds\x18\x01 \x01(\x03B\x06\xbaH\x03\xc8\x01\x01R\x16retentionPeriodSeconds\x12\x1b\n" +
-	"\tis_locked\x18\x02 \x01(\bR\bisLocked\"b\n" +
-	"\rGcpGcsLogging\x12%\n" +
+	"\x0enot_found_page\x18\x02 \x01(\tR\fnotFoundPage\"\xb6\x01\n" +
+	"\x14GcpGcsBucketCorsRule\x12 \n" +
+	"\aorigins\x18\x01 \x03(\tB\x06\xbaH\x03\xc8\x01\x01R\aorigins\x12 \n" +
+	"\amethods\x18\x02 \x03(\tB\x06\xbaH\x03\xc8\x01\x01R\amethods\x12)\n" +
+	"\x10response_headers\x18\x03 \x03(\tR\x0fresponseHeaders\x12/\n" +
+	"\x0fmax_age_seconds\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\rmaxAgeSeconds\"\xbd\x01\n" +
+	"\x13GcpGcsBucketLogging\x12z\n" +
 	"\n" +
-	"log_bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tlogBucket\x12*\n" +
-	"\x11log_object_prefix\x18\x02 \x01(\tR\x0flogObjectPrefix*r\n" +
-	"\x12GcpGcsStorageClass\x12%\n" +
-	"!GCP_GCS_STORAGE_CLASS_UNSPECIFIED\x10\x00\x12\f\n" +
-	"\bSTANDARD\x10\x01\x12\f\n" +
-	"\bNEARLINE\x10\x02\x12\f\n" +
-	"\bCOLDLINE\x10\x03\x12\v\n" +
-	"\aARCHIVE\x10\x04B\xdb\x02\n" +
+	"log_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\tlogBucket\x12*\n" +
+	"\x11log_object_prefix\x18\x02 \x01(\tR\x0flogObjectPrefix\"V\n" +
+	"!GcpGcsBucketCustomPlacementConfig\x121\n" +
+	"\x0edata_locations\x18\x01 \x03(\tB\n" +
+	"\xbaH\a\x92\x01\x04\b\x02\x10\x02R\rdataLocations\"\xfd\x05\n" +
+	"\x14GcpGcsBucketIpFilter\x12|\n" +
+	"\x04mode\x18\x01 \x01(\tBh\xbaHe\xba\x01_\n" +
+	"\x14valid_ip_filter_mode\x12&mode must be one of: Enabled, Disabled\x1a\x1fthis in ['Enabled', 'Disabled']\xc8\x01\x01R\x04mode\x12\x85\x01\n" +
+	"\x15public_network_source\x18\x02 \x01(\v2Q.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIpFilterPublicNetworkSourceR\x13publicNetworkSource\x12~\n" +
+	"\x13vpc_network_sources\x18\x03 \x03(\v2N.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIpFilterVpcNetworkSourceR\x11vpcNetworkSources\x12/\n" +
+	"\x14allow_cross_org_vpcs\x18\x04 \x01(\bR\x11allowCrossOrgVpcs\x12B\n" +
+	"\x1eallow_all_service_agent_access\x18\x05 \x01(\bR\x1aallowAllServiceAgentAccess:\xe9\x01\xbaH\xe5\x01\x1a\xe2\x01\n" +
+	"\x17enabled_requires_source\x12ean Enabled ip_filter needs public_network_source and/or vpc_network_sources to define allowed origins\x1a`this.mode != 'Enabled' || has(this.public_network_source) || this.vpc_network_sources.size() > 0\"h\n" +
+	"'GcpGcsBucketIpFilterPublicNetworkSource\x12=\n" +
+	"\x16allowed_ip_cidr_ranges\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x13allowedIpCidrRanges\"\xdd\x01\n" +
+	"$GcpGcsBucketIpFilterVpcNetworkSource\x12v\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_idR\anetwork\x12=\n" +
+	"\x16allowed_ip_cidr_ranges\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x13allowedIpCidrRanges\"\x87\x02\n" +
+	"\x15GcpGcsBucketIamMember\x12\x1a\n" +
+	"\x04role\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04role\x12p\n" +
+	"\x06member\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x15status.outputs.memberR\x06member\x12`\n" +
+	"\tcondition\x18\x03 \x01(\v2B.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIamConditionR\tcondition\"\x90\x01\n" +
+	"\x18GcpGcsBucketIamCondition\x12 \n" +
+	"\x05title\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x18dR\x05title\x12&\n" +
+	"\n" +
+	"expression\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"expression\x12*\n" +
+	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescriptionB\xdb\x02\n" +
 	",com.dev.planton.provider.gcp.gcpgcsbucket.v1B\tSpecProtoP\x01ZYgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgcsbucket/v1;gcpgcsbucketv1\xa2\x02\x05DPPGG\xaa\x02(Dev.Planton.Provider.Gcp.Gcpgcsbucket.V1\xca\x02(Dev\\Planton\\Provider\\Gcp\\Gcpgcsbucket\\V1\xe2\x024Dev\\Planton\\Provider\\Gcp\\Gcpgcsbucket\\V1\\GPBMetadata\xea\x02-Dev::Planton::Provider::Gcp::Gcpgcsbucket::V1b\x06proto3"
 
 var (
@@ -950,43 +1554,54 @@ func file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescGZIP() []by
 	return file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_goTypes = []any{
-	(GcpGcsStorageClass)(0),          // 0: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsStorageClass
-	(*GcpGcsBucketSpec)(nil),         // 1: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec
-	(*GcpGcsLifecycleRule)(nil),      // 2: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleRule
-	(*GcpGcsLifecycleAction)(nil),    // 3: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleAction
-	(*GcpGcsLifecycleCondition)(nil), // 4: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleCondition
-	(*GcpGcsIamBinding)(nil),         // 5: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsIamBinding
-	(*GcpGcsEncryption)(nil),         // 6: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsEncryption
-	(*GcpGcsCorsRule)(nil),           // 7: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsCorsRule
-	(*GcpGcsWebsite)(nil),            // 8: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsWebsite
-	(*GcpGcsRetentionPolicy)(nil),    // 9: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsRetentionPolicy
-	(*GcpGcsLogging)(nil),            // 10: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLogging
-	nil,                              // 11: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.GcpLabelsEntry
-	(*v1.StringValueOrRef)(nil),      // 12: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpGcsBucketSpec)(nil),                        // 0: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec
+	(*GcpGcsBucketAutoclass)(nil),                   // 1: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketAutoclass
+	(*GcpGcsBucketLifecycleRule)(nil),               // 2: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLifecycleRule
+	(*GcpGcsBucketLifecycleAction)(nil),             // 3: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLifecycleAction
+	(*GcpGcsBucketLifecycleCondition)(nil),          // 4: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLifecycleCondition
+	(*GcpGcsBucketRetentionPolicy)(nil),             // 5: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketRetentionPolicy
+	(*GcpGcsBucketSoftDeletePolicy)(nil),            // 6: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSoftDeletePolicy
+	(*GcpGcsBucketWebsite)(nil),                     // 7: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketWebsite
+	(*GcpGcsBucketCorsRule)(nil),                    // 8: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketCorsRule
+	(*GcpGcsBucketLogging)(nil),                     // 9: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLogging
+	(*GcpGcsBucketCustomPlacementConfig)(nil),       // 10: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketCustomPlacementConfig
+	(*GcpGcsBucketIpFilter)(nil),                    // 11: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIpFilter
+	(*GcpGcsBucketIpFilterPublicNetworkSource)(nil), // 12: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIpFilterPublicNetworkSource
+	(*GcpGcsBucketIpFilterVpcNetworkSource)(nil),    // 13: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIpFilterVpcNetworkSource
+	(*GcpGcsBucketIamMember)(nil),                   // 14: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIamMember
+	(*GcpGcsBucketIamCondition)(nil),                // 15: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIamCondition
+	nil,                                             // 16: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),                     // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_depIdxs = []int32{
-	12, // 0: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.gcp_project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0,  // 1: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.storage_class:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsStorageClass
-	2,  // 2: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.lifecycle_rules:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleRule
-	5,  // 3: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.iam_bindings:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsIamBinding
-	6,  // 4: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.encryption:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsEncryption
-	7,  // 5: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.cors_rules:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsCorsRule
-	8,  // 6: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.website:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsWebsite
-	9,  // 7: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.retention_policy:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsRetentionPolicy
-	10, // 8: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.logging:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLogging
-	11, // 9: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.gcp_labels:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.GcpLabelsEntry
-	3,  // 10: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleRule.action:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleAction
-	4,  // 11: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleRule.condition:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleCondition
-	0,  // 12: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleAction.storage_class:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsStorageClass
-	0,  // 13: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsLifecycleCondition.matches_storage_class:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsStorageClass
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	17, // 0: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.autoclass:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketAutoclass
+	2,  // 2: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.lifecycle_rules:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLifecycleRule
+	5,  // 3: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.retention_policy:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketRetentionPolicy
+	6,  // 4: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.soft_delete_policy:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSoftDeletePolicy
+	17, // 5: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 6: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.website:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketWebsite
+	8,  // 7: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.cors_rules:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketCorsRule
+	9,  // 8: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.logging:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLogging
+	10, // 9: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.custom_placement_config:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketCustomPlacementConfig
+	16, // 10: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.labels:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.LabelsEntry
+	14, // 11: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.iam_members:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIamMember
+	11, // 12: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSpec.ip_filter:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIpFilter
+	3,  // 13: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLifecycleRule.action:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLifecycleAction
+	4,  // 14: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLifecycleRule.condition:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLifecycleCondition
+	17, // 15: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLogging.log_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 16: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIpFilter.public_network_source:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIpFilterPublicNetworkSource
+	13, // 17: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIpFilter.vpc_network_sources:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIpFilterVpcNetworkSource
+	17, // 18: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIpFilterVpcNetworkSource.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 19: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIamMember.member:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 20: dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIamMember.condition:type_name -> dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIamCondition
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_init() }
@@ -994,21 +1609,20 @@ func file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_init() {
 	if File_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto != nil {
 		return
 	}
-	file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   11,
+			NumEnums:      0,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto = out.File

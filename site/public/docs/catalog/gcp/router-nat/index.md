@@ -8,24 +8,25 @@ componentName: "gcprouternat"
 
 # GCP Router NAT
 
-Deploys a GCP Cloud Router with a Cloud NAT gateway to provide outbound internet connectivity for private instances in a VPC. The component supports automatic or manual (static) IP allocation, per-subnet scoping, and configurable NAT translation logging.
+Deploys a GCP Cloud Router with a Cloud NAT gateway to provide managed egress for instances without external IPs — internet egress (public NAT) or NAT between private networks (private NAT). Supports auto-allocated or referenced static NAT IPs with connection draining, per-subnetwork scoping, port and timeout tuning, NAT rules, and translation logging.
 
 ## What Gets Created
 
 When you deploy a GcpRouterNat resource, Planton provisions:
 
+- **Compute Engine API enablement** — activates `compute.googleapis.com` on the target project so a fresh project works first try
 - **Cloud Router** — a regional `google_compute_router` attached to the specified VPC network
-- **Cloud NAT Gateway** — a `google_compute_router_nat` on the router, configured with the chosen IP allocation strategy, subnet coverage, and log settings
-- **Static External IP Addresses** — one `google_compute_address` per entry in `natIpNames`, created only when manual IP allocation is specified; omitted when using auto-allocation
+- **Cloud NAT Gateway** — a `google_compute_router_nat` on the router with the chosen allocation strategy, subnetwork coverage, tuning, rules, and log settings
+
+Static NAT IPs are referenced [GcpAddress](/docs/catalog/gcp/regional-address) reservations, never created by this component — each reservation is its own composable node whose `address` output carries the literal IP.
 
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** where the Cloud Router and NAT will be created
-- **An existing VPC network** (self-link or name) in the target project
-- **A target region** where private instances need outbound internet access
-- **Subnet self-links** if you want to restrict NAT to specific subnets (optional — omit to cover all subnets)
-- **Static IP names** if you need deterministic egress IPs for external allowlisting (optional — omit for auto-allocation)
+- **A GCP project** — referenced via `projectId` (or the provider's default project)
+- **An existing VPC network** — referenced via `vpcSelfLink` (typically a GcpVpcNetwork resource)
+- **GcpAddress reservations** (EXTERNAL, same region) for stable allowlistable egress IPs (optional — omit `natIps` for auto-allocation)
+- **GcpSubnetwork references** to restrict NAT coverage (optional — omit for all subnetworks in the region)
 
 ## Quick Start
 
@@ -36,17 +37,17 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpRouterNat
 metadata:
   name: my-nat
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpRouterNat.my-nat
 spec:
-  projectId: my-gcp-project-123
-  vpcSelfLink: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/networks/my-vpc
+  projectId:
+    value: my-gcp-project-123
+  routerName: egress-router
+  natName: egress-nat
   region: us-central1
-  routerName: my-router
-  natName: my-nat
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: my-vpc
+      fieldPath: status.outputs.network_self_link
 ```
 
 Deploy:
@@ -55,7 +56,7 @@ Deploy:
 planton apply -f router-nat.yaml
 ```
 
-This creates a Cloud Router and NAT gateway covering all subnets in `us-central1` with auto-allocated IPs and `ERRORS_ONLY` logging enabled by default.
+This creates a Cloud Router and NAT gateway covering all subnetworks in `us-central1` with auto-allocated IPs and `ERRORS_ONLY` logging.
 
 ## Configuration Reference
 
@@ -63,128 +64,163 @@ This creates a Cloud Router and NAT gateway covering all subnets in `us-central1
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project ID where the Cloud Router and NAT will be created. | Required. Can reference a GcpProject resource via `valueFrom`. |
-| `vpcSelfLink` | `StringValueOrRef` | Self-link or name of the target VPC network. | Required. Can reference a GcpVpc resource via `valueFrom`. |
-| `region` | `string` | GCP region for the Cloud Router and NAT. | Required |
-| `routerName` | `string` | Name of the Cloud Router to create. | Required. Must match `^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$` |
-| `natName` | `string` | Name of the NAT configuration on the Cloud Router. | Required. Must match `^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$` |
+| `routerName` | `string` | Name of the Cloud Router to create. | RFC 1035, 1-63 chars. Immutable. |
+| `natName` | `string` | Name of the NAT configuration on the router. | RFC 1035, 1-63 chars. Immutable. |
+| `region` | `string` | GCP region for the router and NAT. | Required. Immutable. |
+| `vpcSelfLink` | `StringValueOrRef` | The VPC network the router attaches to. | Required. Can reference a GcpVpcNetwork. Immutable. |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `subnetworkSelfLinks` | `StringValueOrRef[]` | `[]` (all subnets) | Specific subnets to enable NAT on. When empty, NAT covers all subnets in the region. |
-| `natIpNames` | `StringValueOrRef[]` | `[]` (auto-allocate) | Names for static external IP addresses to use for NAT. When empty, GCP auto-allocates IPs. When specified, one regional static address is created per entry. |
-| `logFilter` | `GcpRouterNatLogFilter` | `ERRORS_ONLY` | Log filter for NAT translation logging. Values: `DISABLED` (no logging), `ERRORS_ONLY` (log translation errors), `ALL` (log all translations). |
+| `projectId` | `StringValueOrRef` | provider default project | GCP project. Can reference a GcpProject. |
+| `type` | `string` | `PUBLIC` | `PUBLIC` (internet egress) or `PRIVATE` (NAT between Network Connectivity Center spokes). Immutable. |
+| `natIps` | `StringValueOrRef[]` | `[]` (auto-allocate) | GcpAddress reservations (by self link) for manual allocation — stable, allowlistable egress IPs. |
+| `drainNatIps` | `StringValueOrRef[]` | `[]` | IPs being drained out of service: existing connections continue, new ones stop. Must already be in `natIps`. |
+| `autoNetworkTier` | `string` | `PREMIUM` | Network tier for auto-allocated IPs. |
+| `sourceSubnetworkIpRangesToNat` | `string` | all subnetworks, all ranges | `ALL_SUBNETWORKS_ALL_IP_RANGES`, `ALL_SUBNETWORKS_ALL_PRIMARY_IP_RANGES`, or `LIST_OF_SUBNETWORKS`. |
+| `subnetworks` | `object[]` | `[]` | Per-subnetwork scoping: subnetwork ref + `sourceIpRangesToNat` + `secondaryIpRangeNames`. |
+| `minPortsPerVm` / `maxPortsPerVm` | `int32` | 64 (static) / — | Port floor and (with dynamic allocation) ceiling per VM; powers of two under dynamic allocation. |
+| `enableDynamicPortAllocation` | `bool` | `false` | Ports grow from min toward max on demand. Mutually exclusive with endpoint-independent mapping. |
+| `enableEndpointIndependentMapping` | `bool` | `false` | RFC 5128 endpoint-independent mapping for P2P/SIP workloads. |
+| `endpointTypes` | `string[]` | `ENDPOINT_TYPE_VM` | `ENDPOINT_TYPE_VM`, `ENDPOINT_TYPE_SWG`, or `ENDPOINT_TYPE_MANAGED_PROXY_LB` (exactly one). Immutable. |
+| `udpIdleTimeoutSec` / `icmpIdleTimeoutSec` / `tcpEstablishedIdleTimeoutSec` / `tcpTransitoryIdleTimeoutSec` / `tcpTimeWaitTimeoutSec` | `int32` | 30 / 30 / 1200 / 30 / 120 | Connection timeout tuning. |
+| `rules` | `object[]` | `[]` | NAT rules (`ruleNumber`, CEL `match`, `action` with dedicated IPs or ranges). Lower number wins. |
+| `logFilter` | `enum` | `ERRORS_ONLY` | `DISABLED`, `ERRORS_ONLY`, `TRANSLATIONS_ONLY`, or `ALL`. |
+| `routerAsn` | `uint32` | GCP-assigned | Private BGP ASN; only for routers that also serve BGP sessions. |
+| `routerKeepaliveInterval` | `int32` | 20 | BGP keepalive in seconds (20-60). |
 
 ## Examples
 
 ### All-Subnets NAT with Auto-Allocated IPs
 
-The most common configuration — provides outbound internet access for every subnet in the region with automatic IP management:
+The recommended default — outbound internet access for every subnetwork in the region with GCP managing the IP pool:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpRouterNat
 metadata:
   name: uscentral1-nat
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpRouterNat.uscentral1-nat
 spec:
-  projectId: my-gcp-project-123
-  vpcSelfLink: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/networks/my-vpc
-  region: us-central1
+  projectId:
+    value: my-gcp-project-123
   routerName: dev-uscentral1-router
   natName: dev-uscentral1-nat
+  region: us-central1
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: my-vpc
+      fieldPath: status.outputs.network_self_link
   logFilter: ERRORS_ONLY
 ```
 
-### NAT with Static IPs for Allowlisting
+### Static Egress IPs for Partner Allowlisting
 
-Use manual IP allocation when external partners need to allowlist your egress IPs:
+Manual allocation referencing GcpAddress reservations — the egress IPs are stable and third parties can allowlist them:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpRouterNat
 metadata:
   name: prod-nat
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpRouterNat.prod-nat
 spec:
-  projectId: my-gcp-project-123
-  vpcSelfLink: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/networks/prod-vpc
-  region: us-central1
+  projectId:
+    value: my-gcp-project-123
   routerName: prod-uscentral1-router
   natName: prod-uscentral1-nat
-  natIpNames:
-    - prod-nat-ip-0
-    - prod-nat-ip-1
+  region: us-central1
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: prod-vpc
+      fieldPath: status.outputs.network_self_link
+  natIps:
+    - valueFrom:
+        kind: GcpAddress
+        name: prod-egress-ip-a
+        fieldPath: status.outputs.self_link
+    - valueFrom:
+        kind: GcpAddress
+        name: prod-egress-ip-b
+        fieldPath: status.outputs.self_link
+  minPortsPerVm: 128
   logFilter: ERRORS_ONLY
 ```
 
-### Subnet-Scoped NAT with Full Logging
+### Subnetwork-Scoped NAT with Secondary-Range Selection
 
-Restrict NAT to specific subnets and enable full translation logging for security auditing:
+NAT only the GKE pod range of one subnetwork — the node range stays off the internet:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpRouterNat
 metadata:
-  name: audit-nat
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpRouterNat.audit-nat
+  name: gke-egress-nat
 spec:
-  projectId: my-gcp-project-123
-  vpcSelfLink: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/networks/prod-vpc
+  projectId:
+    value: my-gcp-project-123
+  routerName: gke-router
+  natName: gke-nat
   region: europe-west1
-  routerName: prod-euwest1-router
-  natName: prod-euwest1-nat
-  subnetworkSelfLinks:
-    - https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/regions/europe-west1/subnetworks/gke-nodes
-    - https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/regions/europe-west1/subnetworks/app-vms
-  natIpNames:
-    - prod-euwest1-nat-ip-0
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: prod-vpc
+      fieldPath: status.outputs.network_self_link
+  sourceSubnetworkIpRangesToNat: LIST_OF_SUBNETWORKS
+  subnetworks:
+    - subnetwork:
+        valueFrom:
+          kind: GcpSubnetwork
+          name: gke-nodes
+          fieldPath: status.outputs.subnetwork_self_link
+      sourceIpRangesToNat:
+        - LIST_OF_SECONDARY_IP_RANGES
+      secondaryIpRangeNames:
+        - pods
   logFilter: ALL
 ```
 
-### Using Foreign Key References
+### Dedicated NAT IP for One Partner (NAT Rules)
 
-Reference other Planton-managed resources instead of hardcoding values:
+Give traffic to a partner's endpoints a dedicated, separately allowlistable source IP while everything else uses the shared pool:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpRouterNat
 metadata:
-  name: ref-nat
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpRouterNat.ref-nat
+  name: partner-nat
 spec:
   projectId:
-    valueFrom:
-      kind: GcpProject
-      name: my-project
-      fieldPath: status.outputs.project_id
+    value: my-gcp-project-123
+  routerName: prod-router
+  natName: partner-nat
+  region: us-central1
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
-      name: my-vpc
+      kind: GcpVpcNetwork
+      name: prod-vpc
       fieldPath: status.outputs.network_self_link
-  region: us-central1
-  routerName: prod-uscentral1-router
-  natName: prod-uscentral1-nat
-  logFilter: ERRORS_ONLY
+  natIps:
+    - valueFrom:
+        kind: GcpAddress
+        name: shared-egress-ip
+        fieldPath: status.outputs.self_link
+    - valueFrom:
+        kind: GcpAddress
+        name: partner-egress-ip
+        fieldPath: status.outputs.self_link
+  rules:
+    - ruleNumber: 100
+      match: destination.ip == '203.0.113.10' || destination.ip == '203.0.113.11'
+      description: partner API egress pinned to a dedicated IP
+      action:
+        sourceNatActiveIps:
+          - valueFrom:
+              kind: GcpAddress
+              name: partner-egress-ip
+              fieldPath: status.outputs.self_link
 ```
 
 ## Stack Outputs
@@ -194,12 +230,13 @@ After deployment, the following outputs are available in `status.outputs`:
 | Output | Type | Description |
 |--------|------|-------------|
 | `name` | `string` | Name of the Cloud NAT gateway as created in GCP |
-| `routerSelfLink` | `string` | Self-link URL of the Cloud Router created for this NAT |
-| `natIpAddresses` | `string[]` | External IP addresses used by this NAT (auto-allocated or static) |
+| `router_self_link` | `string` | Self-link URL of the Cloud Router carrying this NAT |
+| `nat_ips` | `string[]` | Self links of the static IPs the NAT translates through (manual allocation only; empty for auto-allocation) |
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/vpc) — provides the VPC network that the Cloud Router attaches to
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the VPC network that the Cloud Router attaches to
+- [GcpAddress](/docs/catalog/gcp/regional-address) — EXTERNAL reservations referenced as stable NAT IPs
 - [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — subnets that can be scoped for NAT coverage
 - [GcpProject](/docs/catalog/gcp/project) — the GCP project where the router and NAT are created
 - [GcpGkeCluster](/docs/catalog/gcp/gke-cluster) — private GKE clusters that depend on Cloud NAT for outbound internet access

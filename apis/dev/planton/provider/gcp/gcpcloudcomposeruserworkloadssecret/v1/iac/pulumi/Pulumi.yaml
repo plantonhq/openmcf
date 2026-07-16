@@ -1,0 +1,4 @@
+name: gcpcloudcomposeruserworkloadssecret-pulumi-project
+runtime:
+  name: go
+description: Planton GcpCloudComposerUserWorkloadsSecret Pulumi module

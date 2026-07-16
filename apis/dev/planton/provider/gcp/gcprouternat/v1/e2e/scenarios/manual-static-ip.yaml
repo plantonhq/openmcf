@@ -1,0 +1,42 @@
+# Manual-allocation flagship: the NAT translates through a referenced
+# GcpAddress reservation (never an address it created itself) and is scoped
+# to the prerequisite subnetwork only — proving the reference wiring for
+# both the nat_ips ref list and the per-subnetwork scoping block live.
+apiVersion: gcp.planton.dev/v1
+kind: GcpRouterNat
+metadata:
+  name: planton-oss-e2e-gcprnat-manual
+  id: planton-oss-e2e-gcprnat-manual
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcprouternat
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  routerName: planton-oss-e2e-router-manual
+  natName: planton-oss-e2e-nat-manual
+  region: us-central1
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpc-prereq
+      fieldPath: status.outputs.network_self_link
+  natIps:
+    - valueFrom:
+        kind: GcpAddress
+        name: planton-oss-e2e-gcprnat-egress-ip
+        fieldPath: status.outputs.self_link
+  sourceSubnetworkIpRangesToNat: LIST_OF_SUBNETWORKS
+  subnetworks:
+    - subnetwork:
+        valueFrom:
+          kind: GcpSubnetwork
+          name: planton-oss-e2e-gcpsnw-smoke
+          fieldPath: status.outputs.subnetwork_self_link
+      sourceIpRangesToNat:
+        - PRIMARY_IP_RANGE
+  logFilter: ERRORS_ONLY

@@ -1,0 +1,137 @@
+# The database arm (cloudSqlEnabled=true): a private Cloud SQL Postgres
+# instance, the application database, and PASSWORDLESS access — the runtime
+# service account is the database user, authenticated through IAM. No
+# password exists in this chart, in the manifest, or in any state file.
+#
+# The instance takes a private IP inside the shared network, which must
+# already carry private services access (a landing-zone concern:
+# project-foundation deploys the reserved range + peering by default).
+# This chart deliberately does NOT create the peering — GCP allows exactly
+# one service-networking connection per network, so an application chart
+# creating its own would collide with the foundation's and with every
+# other application on the network.
+{% if values.cloudSqlEnabled | bool %}
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSql
+metadata:
+  name: "{{ values.service_name }}-db"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  instanceName: "{{ values.service_name }}-db"
+  region: "{{ values.region }}"
+  databaseEngine: POSTGRESQL
+  databaseVersion: "{{ values.db_version }}"
+  tier: "{{ values.db_tier }}"
+  edition: ENTERPRISE
+  availabilityType: "{{ values.db_availability_type }}"
+  disk:
+    type: PD_SSD
+    sizeGb: {{ values.db_disk_size_gb }}
+    autoResize: true
+  network:
+    # Private IP only — no public address exists to protect. The reference
+    # targets the shared network by its Planton resource name (an
+    # environment-level resource deployed by the landing zone, not by this
+    # chart).
+    privateNetwork:
+      valueFrom:
+        name: "{{ values.network_resource_name }}"
+    sslMode: ENCRYPTED_ONLY
+  # IAM database authentication is what makes the passwordless design work:
+  # the flag must be on before IAM-type users can be created.
+  databaseFlags:
+    cloudsql.iam_authentication: "on"
+  backup:
+    enabled: true
+    startTime: "03:00"
+    pointInTimeRecoveryEnabled: true
+    transactionLogRetentionDays: 7
+  maintenanceWindow:
+    day: 7 # Sunday
+    hour: 3
+    updateTrack: stable
+  insightsConfig:
+    queryInsightsEnabled: true
+  # Production data fails safe: destroy is refused until BOTH guards are
+  # deliberately lifted (the IaC-side flag and the API-side flag).
+  deletionProtection: true
+  deletionProtectionEnabled: true
+  retainBackupsOnDelete: true
+
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSqlDatabase
+metadata:
+  name: "{{ values.service_name }}-db-{{ values.db_name }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  instance:
+    valueFrom:
+      name: "{{ values.service_name }}-db"
+  databaseName: "{{ values.db_name }}"
+
+---
+# The runtime identity as a database user. For service accounts the user
+# name is the account's email — assembled from parameters because the
+# account is defined in this chart from the same parameters (identity.yaml
+# derives it as <service>-runtime@<project>.iam.gserviceaccount.com).
+# Postgres stores IAM service-account users truncated before the
+# ".gserviceaccount.com" suffix; clients authenticate with the stored form.
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSqlUser
+metadata:
+  name: "{{ values.service_name }}-db-iam-user"
+  # Cloud SQL validates that the IAM principal exists when the user is
+  # created, but nothing flows from the account into this manifest (the
+  # email is assembled, not referenced) — the explicit edge supplies the
+  # ordering a valueFrom would otherwise carry.
+  relationships:
+    - kind: GcpServiceAccount
+      name: "{{ values.service_name }}-runtime"
+      type: depends_on
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  instance:
+    valueFrom:
+      name: "{{ values.service_name }}-db"
+  userName: "{{ values.service_name }}-runtime@{{ values.gcp_project_id }}.iam.gserviceaccount.com"
+  type: CLOUD_IAM_SERVICE_ACCOUNT
+
+---
+# The two project roles IAM database authentication requires:
+# cloudsql.client to open connections (the socket volume rides it) and
+# cloudsql.instanceUser to log in as an IAM user. Additive grants — one
+# resource per role, so revoking one never disturbs the other. The member
+# references the account's member output, which also orders the grants
+# after the account exists.
+apiVersion: gcp.planton.dev/v1
+kind: GcpProjectIamMember
+metadata:
+  name: "{{ values.service_name }}-sql-client"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  role:
+    value: roles/cloudsql.client
+  member:
+    valueFrom:
+      name: "{{ values.service_name }}-runtime"
+
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpProjectIamMember
+metadata:
+  name: "{{ values.service_name }}-sql-instance-user"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  role:
+    value: roles/cloudsql.instanceUser
+  member:
+    valueFrom:
+      name: "{{ values.service_name }}-runtime"
+{% endif %}

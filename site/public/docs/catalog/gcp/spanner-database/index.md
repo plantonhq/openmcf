@@ -8,21 +8,21 @@ componentName: "gcpspannerdatabase"
 
 # GCP Spanner Database
 
-Deploys a Cloud Spanner database within an existing Spanner instance, with support for GoogleSQL and PostgreSQL dialects, initial DDL schema creation, CMEK encryption, and configurable point-in-time recovery.
+Deploys a Cloud Spanner database within an existing Spanner instance, with support for GoogleSQL and PostgreSQL dialects, initial DDL schema creation, single- and multi-region CMEK encryption, configurable point-in-time recovery, and two-level deletion guards.
 
 ## What Gets Created
 
 When you deploy a GcpSpannerDatabase resource, Planton provisions:
 
-- **Spanner Database** — a `google_spanner_database` resource in the specified instance with the chosen SQL dialect and version retention period
-- **Initial Schema** — created only when `ddl` is provided, DDL statements execute atomically with database creation
-- **CMEK Encryption** — configured only when `kmsKeyName` is provided, encrypts the database with a customer-managed KMS key
+- **Spanner Database** — a `google_spanner_database` in the specified instance with the chosen SQL dialect and version retention period; the Spanner API is enabled automatically
+- **Initial Schema** — when `ddl` is provided, statements execute atomically with database creation
+- **CMEK Encryption** — when `encryptionConfig` is provided, the database is encrypted with customer-managed KMS keys
 
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing Spanner instance** (deploy via GcpSpannerInstance first)
-- **A KMS key** in the same location as the Spanner instance if enabling CMEK encryption
+- **A KMS key** in the same location as the instance configuration when enabling CMEK (one key per region for multi-region instances); the Spanner service agent needs `roles/cloudkms.cryptoKeyEncrypterDecrypter` on it
 
 ## Quick Start
 
@@ -32,18 +32,13 @@ Create a file `spanner-database.yaml`:
 apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerDatabase
 metadata:
-  name: my-database
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpSpannerDatabase.my-database
+  name: orders-db
 spec:
-  projectId:
-    value: my-gcp-project-123
   instance:
-    value: my-spanner-instance
-  databaseName: my-database
+    valueFrom:
+      kind: GcpSpannerInstance
+      name: prod-spanner
+      fieldPath: status.outputs.instance_name
 ```
 
 Deploy:
@@ -52,7 +47,7 @@ Deploy:
 planton apply -f spanner-database.yaml
 ```
 
-This creates an empty Spanner database with the default GoogleSQL dialect and 1-hour version retention in the specified instance.
+This creates an empty database named `orders-db` with the default GoogleSQL dialect and 1-hour version retention, in the provider's default project.
 
 ## Configuration Reference
 
@@ -60,140 +55,81 @@ This creates an empty Spanner database with the default GoogleSQL dialect and 1-
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project ID. Must match the instance's project. Can reference a GcpProject resource via `valueFrom`. | Required |
-| `instance` | `StringValueOrRef` | Spanner instance name to create the database in. Can reference a GcpSpannerInstance resource via `valueFrom`. | Required |
-| `databaseName` | `string` | Unique database name within the instance. Immutable after creation. | Pattern: `^[a-z][a-z0-9_\-]*[a-z0-9]$`, 2-30 characters |
+| `instance` | `StringValueOrRef` | Spanner instance to create the database on. References a GcpSpannerInstance's `instance_name` output via `valueFrom`. Immutable. | Required |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `databaseDialect` | `string` | `GOOGLE_STANDARD_SQL` | SQL dialect. `GOOGLE_STANDARD_SQL` for full Spanner features or `POSTGRESQL` for PostgreSQL-compatible syntax. Immutable after creation. |
-| `versionRetentionPeriod` | `string` | `1h` | Point-in-time recovery window. Range: 1 hour to 7 days. Accepts formats: `1h`, `24h`, `1d`, `1440m`, `86400s`. |
-| `ddl` | `string[]` | `[]` | DDL statements executed atomically with creation. New statements can be appended after creation; modifying or removing existing statements forces recreation. |
-| `enableDropProtection` | `bool` | `false` | GCP API-level deletion protection. When `true`, prevents deletion of the database and its parent instance through any interface. |
-| `kmsKeyName` | `StringValueOrRef` | — | Fully qualified KMS key name for CMEK encryption. Must be in the same location as the instance. Immutable. Can reference a GcpKmsKey resource via `valueFrom`. |
-| `defaultTimeZone` | `string` | `America/Los_Angeles` | Default time zone for SQL functions like `CURRENT_TIMESTAMP()` and `FORMAT_TIMESTAMP()`. Must be a valid IANA time zone name. |
+| `projectId` | `StringValueOrRef` | provider default | GCP project owning the instance. Can reference a GcpProject. |
+| `databaseName` | `string` | `metadata.name` | Database name within the instance. Immutable. 2-30 chars, pattern `^[a-z][a-z0-9_\-]*[a-z0-9]$`. |
+| `databaseDialect` | `string` | `GOOGLE_STANDARD_SQL` | `GOOGLE_STANDARD_SQL` or `POSTGRESQL`. Immutable and permanent. |
+| `versionRetentionPeriod` | `string` | `1h` | Point-in-time recovery window, 1h-7d (e.g. `24h`, `3d`). Mutable. |
+| `ddl` | `list<string>` | — | Initial DDL executed atomically with creation. Append-only afterwards; editing an existing entry recreates the database. |
+| `enableDropProtection` | `bool` | `false` | GCP API-side lock: blocks deletion through ANY interface and blocks deletion of the parent instance. Mutable. |
+| `encryptionConfig.kmsKeyName` | `StringValueOrRef` | — | Regional CMEK key (references a GcpKmsKey `key_id`). Immutable. Exactly one of the two key shapes. |
+| `encryptionConfig.kmsKeyNames[]` | `list<StringValueOrRef>` | — | Multi-region CMEK: one key per region of the instance configuration. Immutable. |
+| `defaultTimeZone` | `string` | `America/Los_Angeles` | IANA time zone affecting time-zone-dependent SQL functions. |
+| `deletionProtection` | `bool` | `true` | IaC-side guard: both engines refuse to destroy the database while true. Set `false` explicitly before intentional teardown. |
 
 ## Examples
 
-### PostgreSQL Dialect with Extended Retention
-
-A PostgreSQL-compatible database with a 7-day point-in-time recovery window:
+### PostgreSQL-Dialect Database
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerDatabase
 metadata:
-  name: pg-analytics
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpSpannerDatabase.pg-analytics
+  name: analytics-db
 spec:
-  projectId:
-    value: my-gcp-project-123
   instance:
-    value: prod-spanner
-  databaseName: pg-analytics
+    valueFrom:
+      kind: GcpSpannerInstance
+      name: prod-spanner
+      fieldPath: status.outputs.instance_name
   databaseDialect: POSTGRESQL
   versionRetentionPeriod: "7d"
 ```
 
 ### Database with Initial Schema
 
-Create the database and its initial tables in a single atomic operation:
-
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerDatabase
 metadata:
-  name: users-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpSpannerDatabase.users-db
+  name: orders-db
 spec:
-  projectId:
-    value: my-gcp-project-123
-  instance:
-    value: prod-spanner
-  databaseName: users-db
-  ddl:
-    - |
-      CREATE TABLE Users (
-        UserId STRING(36) NOT NULL,
-        Email STRING(255) NOT NULL,
-        DisplayName STRING(100),
-        CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
-      ) PRIMARY KEY (UserId)
-    - |
-      CREATE UNIQUE INDEX UsersByEmail ON Users(Email)
-```
-
-### CMEK-Encrypted Production Database
-
-A protected database with customer-managed encryption and drop protection:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpSpannerDatabase
-metadata:
-  name: secure-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpSpannerDatabase.secure-db
-spec:
-  projectId:
-    value: my-gcp-project-123
-  instance:
-    value: prod-spanner
-  databaseName: secure-db
-  kmsKeyName:
-    value: projects/my-gcp-project-123/locations/us-central1/keyRings/spanner-ring/cryptoKeys/spanner-key
-  enableDropProtection: true
-  versionRetentionPeriod: "3d"
-  defaultTimeZone: UTC
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding values:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpSpannerDatabase
-metadata:
-  name: composed-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpSpannerDatabase.composed-db
-spec:
-  projectId:
-    valueFrom:
-      kind: GcpProject
-      name: my-project
-      field: status.outputs.project_id
   instance:
     valueFrom:
       kind: GcpSpannerInstance
       name: prod-spanner
-      field: status.outputs.instance_name
-  databaseName: composed-db
-  kmsKeyName:
+      fieldPath: status.outputs.instance_name
+  ddl:
+    - CREATE TABLE orders (order_id STRING(36) NOT NULL, created_at TIMESTAMP NOT NULL) PRIMARY KEY (order_id)
+    - CREATE INDEX orders_by_created ON orders(created_at)
+```
+
+### CMEK-Encrypted with Drop Protection
+
+```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpSpannerDatabase
+metadata:
+  name: payments-db
+spec:
+  instance:
     valueFrom:
-      kind: GcpKmsKey
-      name: spanner-key
-      field: status.outputs.key_id
-  databaseDialect: GOOGLE_STANDARD_SQL
-  versionRetentionPeriod: "7d"
+      kind: GcpSpannerInstance
+      name: prod-spanner
+      fieldPath: status.outputs.instance_name
+  encryptionConfig:
+    kmsKeyName:
+      valueFrom:
+        kind: GcpKmsKey
+        name: spanner-cmek
+        fieldPath: status.outputs.key_id
   enableDropProtection: true
+  versionRetentionPeriod: "3d"
 ```
 
 ## Stack Outputs
@@ -202,13 +138,13 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `database_id` | `string` | Fully qualified database path (`projects/{project}/instances/{instance}/databases/{database}`) |
-| `database_name` | `string` | Short database name as specified in `databaseName` |
-| `state` | `string` | Database state: `CREATING` during provisioning, `READY` when available for queries |
+| `database_id` | `string` | Fully qualified database ID (`projects/{project}/instances/{instance}/databases/{name}`) |
+| `database_name` | `string` | Short database name, referenced by GcpSpannerBackupSchedule |
+| `state` | `string` | Database state: `CREATING` or `READY` |
 
 ## Related Components
 
-- [GcpSpannerInstance](/docs/catalog/gcp/spanner-instance) — provides the compute instance that hosts this database
-- [GcpKmsKey](/docs/catalog/gcp/kms-key) — provides the encryption key for CMEK
-- [GcpKmsKeyRing](/docs/catalog/gcp/kms-key-ring) — provides the key ring containing the encryption key
-- [GcpProject](/docs/catalog/gcp/project) — provides the GCP project
+- [GcpSpannerInstance](/docs/catalog/gcp/spanner-instance) — the instance this database lives on
+- [GcpSpannerBackupSchedule](/docs/catalog/gcp/spanner-backup-schedule) — cron-driven full/incremental backups for this database
+- [GcpKmsKey](/docs/catalog/gcp/kms-key) — customer-managed encryption keys for CMEK
+- [GcpProject](/docs/catalog/gcp/project) — the project the instance lives in

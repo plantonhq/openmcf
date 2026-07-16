@@ -16,12 +16,17 @@ TOOLS
   -- copy the shape of its root `main.go` (`package main` -> load `<Kind>StackInput` -> call
   `module.Resources`), `Pulumi.yaml` (`name: <kindfolder>-pulumi-project`, `runtime: name: go`),
   and `Makefile`. NEVER add `options: binary: <anything>` under `runtime` in
-  `Pulumi.yaml` — not `main`, and not a project-named value like
-  `binary: aws-<kind>` that looks deliberate: it tells the engine to exec a
-  prebuilt executable instead of compiling the Go program, so any `pulumi up`
-  or `preview` from a clean checkout (including the E2E harness) fails with
-  "unable to find '<value>' executable". Source-compile mode (`runtime: name: go`
-  with no options) is the only correct shape.
+  `Pulumi.yaml` — not `main`, not a stale `./pulumi`, and not a project-named
+  value like `binary: aws-<kind>` that looks deliberate: it tells the engine to
+  exec a prebuilt executable instead of compiling the Go program, so any
+  `pulumi up` or `preview` from a clean checkout (including the E2E harness)
+  fails with "unable to find '<value>' executable". Source-compile mode
+  (`runtime: name: go` with no options) is the only correct shape — and the
+  `runtime: name: go` block itself is MANDATORY: a Pulumi.yaml with no
+  `runtime:` at all makes `pulumi up` succeed as a NO-OP — the deploy "passes"
+  in seconds, creates zero resources, and exports zero outputs, so the failure
+  surfaces only at resource verification. Always sanity-check a first deploy's
+  duration and resource count, not just its exit code.
 
 CRITICAL -- ENTRYPOINT LOCATION (DO NOT REGRESS)
 The entrypoint files MUST be written at the `iac/pulumi/` ROOT, never in a `main/` or

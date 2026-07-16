@@ -27,6 +27,35 @@ const (
 	gwCrdsMinimalRel = "apis/dev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1/e2e/scenarios/minimal.yaml"
 )
 
+func TestResolveDependencies_ConsumerScopedPrerequisiteWins(t *testing.T) {
+	repoRoot := t.TempDir()
+	consumerPrereq := writeManifest(t, repoRoot,
+		"apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1/e2e/prerequisites/gcpglobaladdress.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/gcp/gcpglobaladdress/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/gcp/gcpvpcnetwork/v1/e2e/prerequisite.yaml")
+
+	deps, err := ResolveDependencies(repoRoot, "gcp", "gcpservicenetworkingconnection", "")
+	if err != nil {
+		t.Fatalf("ResolveDependencies: %v", err)
+	}
+	if len(deps) != 2 {
+		t.Fatalf("expected 2 dependencies, got %d: %+v", len(deps), deps)
+	}
+	got := make([]string, len(deps))
+	for i, d := range deps {
+		got[i] = d.KindSlug
+	}
+	want := []string{"gcpvpcnetwork", "gcpglobaladdress"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("dependency order = %v, want %v", got, want)
+		}
+	}
+	if deps[1].ManifestPath != consumerPrereq {
+		t.Errorf("gcpglobaladdress manifest = %q, want consumer override %q", deps[1].ManifestPath, consumerPrereq)
+	}
+}
+
 func TestResolveDependencies_RegistryPrerequisite(t *testing.T) {
 	repoRoot := t.TempDir()
 	want := writeManifest(t, repoRoot, gwCrdsPrereqRel)
@@ -151,7 +180,12 @@ func TestSplitManifestDocuments_MultiDocumentSplits(t *testing.T) {
 // ephemeral backend's state disappears before teardown ("no stack named").
 func TestTeardownDependencies_AggregatesFailures(t *testing.T) {
 	origDestroy, origRemove := pulumiDestroyFn, pulumiRemoveStackFn
-	t.Cleanup(func() { pulumiDestroyFn, pulumiRemoveStackFn = origDestroy, origRemove })
+	origBackoff := dependencyDestroyBackoff
+	dependencyDestroyBackoff = 0 // retries must not sleep in unit tests
+	t.Cleanup(func() {
+		pulumiDestroyFn, pulumiRemoveStackFn = origDestroy, origRemove
+		dependencyDestroyBackoff = origBackoff
+	})
 
 	var destroyed []string
 	pulumiDestroyFn = func(moduleDir, stackName, backendURL, stackInputFilePath string) (*PulumiResult, error) {
@@ -180,8 +214,13 @@ func TestTeardownDependencies_AggregatesFailures(t *testing.T) {
 	if !strings.Contains(err.Error(), "stack-b") || !strings.Contains(err.Error(), "awssubnet") {
 		t.Errorf("aggregated error should identify the failed dependency and stack, got: %v", err)
 	}
-	// Reverse order, and the failure in the middle must not stop stack-a.
-	wantDestroyed := []string{"stack-c", "stack-b", "stack-a"}
+	// Reverse order, the failing destroy retried to its full budget, and the
+	// failure in the middle must not stop stack-a.
+	wantDestroyed := []string{"stack-c"}
+	for i := 0; i < dependencyDestroyAttempts; i++ {
+		wantDestroyed = append(wantDestroyed, "stack-b")
+	}
+	wantDestroyed = append(wantDestroyed, "stack-a")
 	if len(destroyed) != len(wantDestroyed) {
 		t.Fatalf("destroyed = %v, want %v", destroyed, wantDestroyed)
 	}

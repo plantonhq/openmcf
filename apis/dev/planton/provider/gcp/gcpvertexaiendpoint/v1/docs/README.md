@@ -1,4 +1,4 @@
-# GcpVertexAiEndpoint: Research & Design Document
+# GcpVertexAiEndpoint: Design Notes
 
 ## Service Overview
 
@@ -37,60 +37,65 @@ resource "google_vertex_ai_endpoint" "endpoint" {
 ```
 
 Key characteristics:
-- `name` is Required, numeric-only, max 10 digits (no leading zeros)
+- `name` is Required, numeric-only, max 10 digits (no leading zeros) -- the API never generates it
 - `network` and `private_service_connect_config` are mutually exclusive
 - `dedicated_endpoint_enabled` conflicts with PSC
 - Labels are supported (non-authoritative)
-- `encryption_spec` is ForceNew (immutable after creation)
-- Provider version: `~> 6.0` required
+- `encryption_spec`, `location`, `network`, and `name` are ForceNew (immutable after creation)
 
 ### Pulumi: `vertex.AiEndpoint`
 
 ```go
 endpoint, _ := vertex.NewAiEndpoint(ctx, "endpoint", &vertex.AiEndpointArgs{
+    Name:        pulumi.StringPtr("1234567890"),
     DisplayName: pulumi.String("My Endpoint"),
     Location:    pulumi.String("us-central1"),
 })
 ```
 
-Key characteristics:
-- `Name` is optional (auto-generated when omitted)
-- Same mutual exclusion rules as Terraform
-- Labels are supported
-- Package: `github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/vertex`
+Same schema and mutual-exclusion rules as Terraform. `Name` must always be sent explicitly: leaving it unset triggers engine auto-naming, which produces a non-numeric name the API rejects.
 
-## 80/20 Scoping Rationale
+## Feature Coverage
 
-### Included (Covers 95%+ of Use Cases)
+| Feature | Coverage |
+|---------|----------|
+| Display name + description | Full |
+| Location (region) | Full |
+| VPC peering via `network` | Full -- references GcpVpcNetwork |
+| Private Service Connect (allowlist + secure/IAM-authorized mode) | Full |
+| CMEK encryption | Full -- references GcpKmsKey |
+| Dedicated endpoint DNS | Full |
+| Request/response logging to BigQuery | Full |
+| User labels | Full -- merged beneath platform labels |
+| Endpoint name (optional, identity-derived when omitted) | Full |
 
-| Feature | Rationale |
-|---------|-----------|
-| Display name + description | Core identification |
-| Location (region) | Required for all endpoints |
-| VPC peering via `network` | Standard private networking |
-| Private Service Connect | Modern private networking |
-| CMEK encryption | Enterprise compliance |
-| Dedicated endpoint DNS | Production performance |
-| Framework GCP labels | Operational consistency |
-| Endpoint name (optional) | Import/migration scenarios |
+### Deliberate Exclusions (with reasons)
 
-### Excluded (Deferred to v2)
+| Provider surface | Reason |
+|------------------|--------|
+| `traffic_split` | A JSON map keyed by deployed-model IDs that only exist after models are deployed -- an operational step outside this component. Managing it from infrastructure state would clobber operational traffic changes and perma-diff against reality. Revisit if model deployment itself becomes a first-class kind. |
+| `region` | The provider carries both `location` (required) and `region` (optional) for the same axis. `region` is not vestigial -- the provider resolves the regional API host (`https://{region}-aiplatform.googleapis.com`) from it -- so both modules pin `region` to the spec's `location` internally. One honest spec field wins; the plumbing detail stays in the modules. |
+| `private_service_connect_config.psc_automation_configs` | Not in the released 6.x provider line (newer-line surface only). |
+| `model_deployment_monitoring_job` output | Only populated after model deployment; always empty from IaC. |
 
-| Feature | Rationale |
-|---------|-----------|
-| `traffic_split` | Model deployment is operational, not infrastructure |
-| `predict_request_response_logging_config` | Observability tuning, configured post-deployment |
-| `model_deployment_monitoring_job` | Only populated after model deployment |
-| `psc_automation_configs` | TF-only feature, not in Pulumi SDK |
-| `enable_secure_private_service_connect` | Pulumi-only, IAM-authorized PSC |
+## Endpoint Name Derivation
 
-### Design Decisions
+The API requires a numeric endpoint ID and never generates one. When the spec omits `endpoint_name`, both IaC modules derive the same stable ID from the resource's identity:
 
-1. **Flattened `encryption_spec`** to `kms_key_name` -- single field doesn't need a wrapper message
-2. **PSC as sub-message** (not flat bool) -- `project_allowlist` is essential for access control
-3. **`endpoint_name` exposed as optional** -- TF requires numeric name; auto-generated when omitted
-4. **No `model_deployment_monitoring_job` output** -- always empty from IaC; only populated after model deployment
-5. **`dedicated_endpoint_enabled` added** -- not in original plan but important for production ML serving
+1. Build the identity string `"{org}/{env}/{name}"` from resource metadata.
+2. Take the first 12 hex characters (48 bits) of its SHA-256 digest.
+3. Map into `[1000000000, 9999999999]` -- always 10 digits, never a leading zero.
+
+The derivation is implemented identically in the Terraform module (`locals.tf`) and the Pulumi module, so the same manifest yields the same endpoint ID on either engine, and re-applies never regenerate it. The resolved value is exported as the `endpoint_name` stack output.
+
+**Reservation caveat (live-verified):** GCP reserves a deleted endpoint's numeric ID -- creating an endpoint with a previously deleted ID fails with `409 ALREADY_EXISTS` even after the endpoint is fully gone (the GET returns 404). Deterministic derivation therefore means destroy-then-recreate of the *same resource identity* collides with its own ghost. This is the honest trade-off: stable IDs across engines and re-applies, at the cost of not being able to immediately recreate a destroyed endpoint under the same identity. The escape hatches are an explicit `endpoint_name` or a changed resource name.
+
+## Design Decisions
+
+1. **Flattened `encryption_spec`** to `kms_key_name` -- a single field doesn't need a wrapper message
+2. **PSC as sub-message** (not flat bool) -- `project_allowlist` and the secure-PSC flag are essential access-control levers
+3. **`endpoint_name` optional with identity-based derivation** -- the API demands a numeric ID; deriving it from resource identity keeps manifests clean while staying deterministic across engines
+4. **Request/response logging destination as a plain string** -- the `bq://` URI scheme has no matching stack output on the BigQuery kinds, so a reference shape would never resolve; the accepted URI forms are documented on the field
 
 ## Networking Deep Dive
 
@@ -109,18 +114,9 @@ The endpoint gets a private IP within the peered VPC. Requires:
 Modern approach using PSC service attachments. Benefits:
 - No VPC peering required
 - Fine-grained access control via `project_allowlist`
+- Optional IAM authorization on connections (`enable_secure_private_service_connect`)
 - Strongest network isolation
 - Cannot combine with `dedicated_endpoint_enabled`
-
-## Provider Feature Gaps
-
-| Feature | Terraform | Pulumi | Our Component |
-|---------|-----------|--------|---------------|
-| `name` (numeric ID) | Required | Optional | Optional (auto-generated) |
-| `psc_automation_configs` | Yes | No | Excluded |
-| `enable_secure_private_service_connect` | No | Yes | Excluded |
-| Labels | Yes | Yes | Yes (framework) |
-| CMEK | Yes | Yes | Yes |
 
 ## References
 

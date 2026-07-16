@@ -1,41 +1,35 @@
 locals {
-  # Derive a stable resource ID
-  resource_id = (
-    var.metadata.id != null && var.metadata.id != ""
-    ? var.metadata.id
-    : var.metadata.name
-  )
+  # Honor the spec contract: an empty project_id falls back to the provider's
+  # default project (ambient credentials decide).
+  project_id = var.spec.project_id != "" ? var.spec.project_id : null
 
-  # Base labels
   base_labels = {
-    "resource"      = "true"
-    "resource_id"   = local.resource_id
-    "resource_kind" = "gcp_dns_zone"
+    "planton-ai_resource" = "true"
+    "planton-ai_name"     = var.metadata.name
+    "planton-ai_kind"     = "gcpdnszone"
   }
 
-  # Organization label only if var.metadata.org is non-empty
+  id_label = (
+    var.metadata.id != null && var.metadata.id != ""
+  ) ? { "planton-ai_id" = var.metadata.id } : {}
+
   org_label = (
-  var.metadata.org != null && var.metadata.org != ""
-  ) ? { "organization" = var.metadata.org } : {}
+    var.metadata.org != null && var.metadata.org != ""
+  ) ? { "planton-ai_organization" = var.metadata.org } : {}
 
-  # Environment label only if var.metadata.env is non-empty
   env_label = (
-  var.metadata.env != null &&
-  try(var.metadata.env, "") != ""
-  ) ? { "environment" = var.metadata.env } : {}
+    var.metadata.env != null && var.metadata.env != ""
+  ) ? { "planton-ai_environment" = var.metadata.env } : {}
 
-  # Merge base, org, and environment labels
-  final_labels = merge(local.base_labels, local.org_label, local.env_label)
+  platform_labels = merge(local.base_labels, local.id_label, local.org_label, local.env_label)
+  labels          = merge(local.platform_labels, var.spec.labels)
 
-  # Convert domain name into a valid Managed Zone name by replacing dots with hyphens
   managed_zone_name = replace(var.metadata.name, ".", "-")
 
-  # dns_name must end with a dot
-  zone_dns_name = "${var.metadata.name}."
+  # When dns_name is omitted, derive from metadata.name (legacy behavior).
+  zone_dns_name = var.spec.dns_name != "" ? var.spec.dns_name : "${var.metadata.name}."
 
-  # Prepare IAM binding members (prefix each with "serviceAccount:")
-  iam_binding_members = [
-    for sa in var.spec.iam_service_accounts :
-    "serviceAccount:${sa}"
-  ]
+  description = var.spec.description != "" ? var.spec.description : "managed-zone for ${var.metadata.name}"
+
+  visibility = var.spec.visibility != "" ? var.spec.visibility : "public"
 }

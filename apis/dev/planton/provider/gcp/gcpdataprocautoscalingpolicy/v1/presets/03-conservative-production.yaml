@@ -1,0 +1,37 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpDataprocAutoscalingPolicy
+metadata:
+  name: conservative-production
+spec:
+  projectId:
+    value: my-gcp-project-123 # replace with your project ID
+  policyId: conservative-production
+  location: us-central1
+
+  # A generous on-demand base with headroom for steady growth.
+  workerConfig:
+    maxInstances: 20
+    minInstances: 5
+    weight: 2
+
+  # A modest spot burst arm, weighted below the primaries.
+  secondaryWorkerConfig:
+    maxInstances: 10
+    minInstances: 0
+    weight: 1
+
+  basicAlgorithm:
+    # Let the cluster settle for 5 minutes between scaling decisions.
+    cooldownPeriod: "300s"
+    yarnConfig:
+      # 2 hours for long-running production tasks to drain before a
+      # worker is removed.
+      gracefulDecommissionTimeout: "7200s"
+      # Small factors: add ~20% of the suggested capacity per
+      # evaluation, remove only ~10% — smooth, predictable scaling.
+      scaleUpFactor: 0.2
+      scaleDownFactor: 0.1
+      # Ignore recommendations that would change the cluster by less
+      # than 10% — no scaling noise from small fluctuations.
+      scaleUpMinWorkerFraction: 0.1
+      scaleDownMinWorkerFraction: 0.1

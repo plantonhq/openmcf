@@ -1,0 +1,88 @@
+params:
+  # ─── GCP placement ──────────────────────────────────────────────────────
+  - name: gcp_project_id
+    description: >
+      GCP project the job, its trigger, and the optional queue land in.
+    value: my-gcp-project
+
+  - name: region
+    description: >
+      Region for the Cloud Run Job, the Scheduler trigger, and the optional
+      queue. Scheduler invokes the job through the region's Cloud Run Admin
+      endpoint, so everything lives together.
+    value: us-central1
+
+  # ─── The workload ─────────────────────────────────────────────────────────
+  - name: workload_name
+    description: >
+      Name of the batch workload, and the prefix every derived resource
+      name builds on (runtime and trigger identities, the schedule, the
+      queue). 1-40 lowercase letters, digits, and hyphens.
+    value: nightly-etl
+
+  - name: image
+    description: >
+      Container image the job executes. The default is Google's public
+      hello image so the chart deploys before your batch code exists —
+      replace it with your image once CI pushes it. The job runs the
+      image's entrypoint to completion; exit 0 is success.
+    value: us-docker.pkg.dev/cloudrun/container/hello
+
+  - name: cpu
+    description: >
+      vCPUs per task ("1", "2", "4"). Batch work is usually
+      throughput-bound — size for the work, not for latency.
+    value: "1"
+
+  - name: memory
+    description: >
+      Memory per task (e.g. 512Mi, 2Gi). A task that exceeds it is
+      OOM-killed and counts as a failed attempt against task_max_retries.
+    value: 512Mi
+
+  - name: task_timeout_seconds
+    description: >
+      Per-task wall-clock limit in seconds before the attempt is killed
+      (up to 86400 = 24h). Set it above the honest worst case — a timeout
+      kill mid-batch is the most confusing failure mode a job can have.
+    value: "3600"
+
+  - name: task_max_retries
+    description: >
+      Retries per task within one execution before the execution is marked
+      failed. "0" is the right choice for non-idempotent work; raise it
+      only when the task is safe to re-run from the top.
+    value: "0"
+
+  # ─── The schedule ─────────────────────────────────────────────────────────
+  - name: schedule
+    description: >
+      Unix cron expression for when the job runs, evaluated in time_zone.
+      The default fires daily at 03:00.
+    value: "0 3 * * *"
+
+  - name: time_zone
+    description: >
+      IANA time zone the cron expression is evaluated in (e.g. Etc/UTC,
+      America/New_York). Zones with DST shift the wall-clock trigger with
+      the season — use Etc/UTC when the job must fire at fixed intervals.
+    value: Etc/UTC
+
+  # ─── Async dispatch queue ─────────────────────────────────────────────────
+  - name: queueEnabled
+    description: >
+      Also create a Cloud Tasks queue — the asynchronous half of the batch
+      layer: while Scheduler fires on the clock, the queue lets your
+      services enqueue work items that dispatch with managed rate limits
+      and per-task retries. Off by default; turn on when request-time work
+      needs to move out of the request path.
+    type: bool
+    value: false
+
+  - name: queue_name
+    description: >
+      Cloud-side name of the queue (only used with queueEnabled). Chosen
+      explicitly and deliberately permanent: the Cloud Tasks API reserves a
+      deleted queue's ID for up to 7 days, so renames are a week-long
+      operation.
+    value: background-jobs

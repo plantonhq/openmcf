@@ -41,7 +41,7 @@ This preset provisions a production-ready Memorystore instance in CLUSTER mode w
 | `<gcp-project-id>` | GCP project ID where the instance will be created | GCP Console or `GcpProject` outputs |
 | `<instance-name>` | Name for this Memorystore instance (4-63 chars, lowercase, hyphens) | Choose a descriptive name (e.g., `prod-cache`) |
 | `<gcp-region>` | GCP region for the instance (e.g., `us-central1`) | [GCP regions](https://cloud.google.com/about/locations) |
-| `<vpc-network-path>` | Full path of the VPC network (e.g., `projects/my-project/global/networks/prod-vpc`) | `GcpVpc` status outputs or GCP Console |
+| `<vpc-network-path>` | Full path of the VPC network (e.g., `projects/my-project/global/networks/prod-vpc`) | `GcpVpcNetwork` status outputs or GCP Console |
 
 ## Related Presets
 

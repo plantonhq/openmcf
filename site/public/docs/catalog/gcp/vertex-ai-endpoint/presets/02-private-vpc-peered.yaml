@@ -1,15 +1,29 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiEndpoint
 metadata:
-  name: example
+  name: internal-scoring
 spec:
-  projectId:
-    value: "${PROJECT_ID}"
   location: us-central1
-  displayName: Private ML Endpoint
-  description: VPC-peered endpoint with CMEK encryption
+  displayName: Internal Scoring
+  description: VPC-peered endpoint with CMEK encryption and dedicated DNS
+  labels:
+    team: risk
+  # The designed composition: reference the network node so the endpoint
+  # peers with it wherever it is deployed. The VPC must already have
+  # Private Services Access configured (GcpGlobalAddress +
+  # GcpServiceNetworkingConnection).
   network:
-    value: "projects/${PROJECT_NUMBER}/global/networks/${VPC_NAME}"
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: scoring-vpc
+      fieldPath: status.outputs.network_self_link
+  # CMEK: the endpoint and all sub-resources encrypted under a referenced
+  # key in the same region.
   kmsKeyName:
-    value: "projects/${PROJECT_ID}/locations/us-central1/keyRings/${KEY_RING}/cryptoKeys/${KEY_NAME}"
+    valueFrom:
+      kind: GcpKmsKey
+      name: scoring-key
+      fieldPath: status.outputs.key_id
+  # Isolated DNS name with better performance than the shared regional
+  # endpoint (incompatible with PSC).
   dedicatedEndpointEnabled: true

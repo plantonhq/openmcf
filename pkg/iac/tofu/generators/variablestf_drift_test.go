@@ -57,15 +57,15 @@ var migratedKinds = []string{
 	// RDS pair, migrated off the legacy hand-written contracts together.
 	"AwsRdsCluster",
 	"AwsRdsInstance",
-	// ElastiCache family (Session 013): RBAC kinds + three cache kinds, migrated
-	// off the legacy type = any contracts together.
+	// ElastiCache family: RBAC kinds + three cache kinds, migrated off the
+	// legacy type = any contracts together.
 	"AwsElasticacheUser",
 	"AwsElasticacheUserGroup",
 	"AwsRedisElasticache",
 	"AwsMemcachedElasticache",
 	"AwsServerlessElasticache",
-	// Aurora-shaped siblings (Session 014), migrated off the legacy
-	// hand-written contracts together.
+	// Aurora-shaped siblings, migrated off the legacy hand-written
+	// contracts together.
 	"AwsDocumentDb",
 	"AwsNeptuneCluster",
 	// Redshift, migrated off the legacy hand-written contract.

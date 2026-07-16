@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "General-Purpose Subnet"
     excerpt: "This preset creates a simple subnet for Compute Engine VMs, Cloud Run with VPC access, or other non-GKE workloads. No secondary IP ranges are defined since alias IPs are not needed outside of GKE."
+  - slug: "03-proxy-only"
+    rank: "03"
+    title: "Proxy-Only Subnet (Regional Managed Proxy)"
+    excerpt: "The address space GCP's Envoy-based regional load balancers allocate their proxies from. Every VPC region that hosts a regional (internal or external) Application Load Balancer must have exactly one..."
 ---
 
 # Subnetwork Presets

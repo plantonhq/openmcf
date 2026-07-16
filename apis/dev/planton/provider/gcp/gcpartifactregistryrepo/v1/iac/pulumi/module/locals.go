@@ -1,9 +1,9 @@
 package module
 
 import (
-	"strconv"
 	"strings"
 
+	gcpprovider "github.com/plantonhq/planton/apis/dev/planton/provider/gcp"
 	gcpartifactregistryrepov1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpartifactregistryrepo/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/gcp/gcplabelkeys"
@@ -11,34 +11,43 @@ import (
 )
 
 type Locals struct {
+	GcpProviderConfig       *gcpprovider.GcpProviderConfig
 	GcpArtifactRegistryRepo *gcpartifactregistryrepov1.GcpArtifactRegistryRepo
 	GcpLabels               map[string]string
+	RepositoryId            string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *gcpartifactregistryrepov1.GcpArtifactRegistryRepoStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, stackInput *gcpartifactregistryrepov1.GcpArtifactRegistryRepoStackInput) *Locals {
 	locals := &Locals{}
-
 	locals.GcpArtifactRegistryRepo = stackInput.Target
 
-	target := stackInput.Target
-
-	locals.GcpLabels = map[string]string{
-		gcplabelkeys.Resource:     strconv.FormatBool(true),
-		gcplabelkeys.ResourceName: target.Metadata.Name,
-		gcplabelkeys.ResourceKind: strings.ToLower(cloudresourcekind.CloudResourceKind_GcpArtifactRegistryRepo.String()),
+	// The repository ID falls back to metadata.name — one honest identity,
+	// never a format-derived suffix. Identical to the Terraform module.
+	locals.RepositoryId = locals.GcpArtifactRegistryRepo.Spec.RepositoryId
+	if locals.RepositoryId == "" {
+		locals.RepositoryId = locals.GcpArtifactRegistryRepo.Metadata.Name
 	}
 
-	if target.Metadata.Id != "" {
-		locals.GcpLabels[gcplabelkeys.ResourceId] = target.Metadata.Id
+	// User labels first so platform attribution labels win on key
+	// conflicts — identical merge order to the Terraform module.
+	locals.GcpLabels = map[string]string{}
+	for key, value := range locals.GcpArtifactRegistryRepo.Spec.Labels {
+		locals.GcpLabels[key] = value
+	}
+	locals.GcpLabels[gcplabelkeys.Resource] = "true"
+	locals.GcpLabels[gcplabelkeys.ResourceName] = locals.RepositoryId
+	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpArtifactRegistryRepo.String())
+
+	if locals.GcpArtifactRegistryRepo.Metadata.Org != "" {
+		locals.GcpLabels[gcplabelkeys.Organization] = locals.GcpArtifactRegistryRepo.Metadata.Org
+	}
+	if locals.GcpArtifactRegistryRepo.Metadata.Env != "" {
+		locals.GcpLabels[gcplabelkeys.Environment] = locals.GcpArtifactRegistryRepo.Metadata.Env
+	}
+	if locals.GcpArtifactRegistryRepo.Metadata.Id != "" {
+		locals.GcpLabels[gcplabelkeys.ResourceId] = locals.GcpArtifactRegistryRepo.Metadata.Id
 	}
 
-	if target.Metadata.Org != "" {
-		locals.GcpLabels[gcplabelkeys.Organization] = target.Metadata.Org
-	}
-
-	if target.Metadata.Env != "" {
-		locals.GcpLabels[gcplabelkeys.Environment] = target.Metadata.Env
-	}
-
+	locals.GcpProviderConfig = stackInput.ProviderConfig
 	return locals
 }

@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpcloudrun
+spec:
+  # The minimal scenario is a leaf public service (~3-5 minutes per engine).
+  #
+  # Direct VPC egress is deliberately NOT covered by a live scenario: GCP
+  # holds a serverless address reservation in the subnetwork for 1-2 HOURS
+  # after the service is destroyed (documented Cloud Run behavior), so an
+  # ephemeral create -> verify -> destroy cycle cannot tear its subnetwork
+  # down without orphaning it. The direct-VPC surface is offline-proven
+  # (spec tests + the hack manifest through `planton tofu plan`).
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

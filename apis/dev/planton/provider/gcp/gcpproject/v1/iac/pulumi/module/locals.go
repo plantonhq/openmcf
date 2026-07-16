@@ -1,7 +1,6 @@
 package module
 
 import (
-	"strconv"
 	"strings"
 
 	gcpprojectv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpproject/v1"
@@ -13,22 +12,40 @@ import (
 type Locals struct {
 	GcpProject *gcpprojectv1.GcpProject
 	GcpLabels  map[string]string
+
+	// DisplayName falls back to metadata.name — explicit conditional, so
+	// both engines derive the identical display name.
+	DisplayName string
+
+	// DeletionPolicy defaults to DELETE explicitly so destroy semantics are
+	// identical on both engines (the bridged provider would otherwise apply
+	// its own client-side default).
+	DeletionPolicy string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *gcpprojectv1.GcpProjectStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, stackInput *gcpprojectv1.GcpProjectStackInput) *Locals {
 	locals := &Locals{}
 	locals.GcpProject = stackInput.Target
 
 	target := stackInput.Target
 
-	// Start with user-provided labels from spec
-	locals.GcpLabels = make(map[string]string)
-	for k, v := range target.Spec.Labels {
-		locals.GcpLabels[k] = v
+	locals.DisplayName = target.Spec.DisplayName
+	if locals.DisplayName == "" {
+		locals.DisplayName = target.Metadata.Name
 	}
 
-	// Add Planton internal labels (these override user labels if there's a conflict)
-	locals.GcpLabels[gcplabelkeys.Resource] = strconv.FormatBool(true)
+	locals.DeletionPolicy = target.Spec.DeletionPolicy
+	if locals.DeletionPolicy == "" {
+		locals.DeletionPolicy = "DELETE"
+	}
+
+	// User labels first so platform attribution labels win on key
+	// conflicts — identical merge order to the Terraform module.
+	locals.GcpLabels = make(map[string]string)
+	for key, value := range target.Spec.Labels {
+		locals.GcpLabels[key] = value
+	}
+	locals.GcpLabels[gcplabelkeys.Resource] = "true"
 	locals.GcpLabels[gcplabelkeys.ResourceName] = target.Metadata.Name
 	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpProject.String())
 

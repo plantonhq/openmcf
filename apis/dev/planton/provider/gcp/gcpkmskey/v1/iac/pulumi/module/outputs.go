@@ -1,6 +1,8 @@
 package module
 
 const (
-	OpKeyId   = "key_id"
-	OpKeyName = "key_name"
+	OpKeyId              = "key_id"
+	OpKeyName            = "key_name"
+	OpPrimaryVersionName = "primary_version_name"
+	OpPrimaryState       = "primary_state"
 )

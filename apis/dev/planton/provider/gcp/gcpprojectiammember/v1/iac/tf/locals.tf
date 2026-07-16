@@ -1,0 +1,24 @@
+locals {
+  # Derive a stable resource ID
+  resource_id = (
+    var.metadata.id != null && var.metadata.id != ""
+    ? var.metadata.id
+    : var.metadata.name
+  )
+
+  # Honor the spec contract: an empty project_id falls back to the provider's
+  # default project. Unlike most GCP resources, google_project_iam_member
+  # REQUIRES an explicit project argument, so the fallback is made concrete by
+  # reading the provider's resolved project from google_client_config instead
+  # of passing null.
+  project_id = (
+    var.spec.project_id != ""
+    ? var.spec.project_id
+    : data.google_client_config.current.project
+  )
+}
+
+# The provider's own resolved configuration — the source of the default
+# project when spec.project_id is omitted.
+data "google_client_config" "current" {
+}

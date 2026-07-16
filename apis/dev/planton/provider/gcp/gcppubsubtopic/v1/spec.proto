@@ -24,9 +24,17 @@ message GcpPubSubTopicMessageStoragePolicy {
 // GcpPubSubTopicSchemaSettings defines schema validation settings for messages
 // published to the topic.
 message GcpPubSubTopicSchemaSettings {
-  // The fully qualified name of the Pub/Sub schema that messages must conform to.
-  // Format: projects/{project}/schemas/{schema}
-  string schema = 1 [(buf.validate.field).required = true];
+  // The Pub/Sub schema that published messages must conform to.
+  // Accepts a literal fully qualified path (projects/{project}/schemas/{schema})
+  // or a reference to a GcpPubSubSchema resource. If the schema is later
+  // deleted, the topic validates against the "_deleted-schema_" sentinel and
+  // publishes fail — destroy topics (or recreate them without validation)
+  // before destroying the schema they reference.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef schema = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpPubSubSchema,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.schema_id"
+  ];
 
   // The encoding of messages validated against the schema.
   // Valid values: "JSON" or "BINARY".
@@ -50,7 +58,12 @@ message GcpPubSubTopicIngestionAwsKinesis {
   string aws_role_arn = 3 [(buf.validate.field).required = true];
 
   // The GCP service account used for Federated Identity authentication with AWS.
-  string gcp_service_account = 4 [(buf.validate.field).required = true];
+  // Accepts a literal email or a reference to a GcpServiceAccount resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef gcp_service_account = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
 }
 
 // GcpPubSubTopicIngestionAwsMsk defines settings for ingesting data from
@@ -66,7 +79,12 @@ message GcpPubSubTopicIngestionAwsMsk {
   string aws_role_arn = 3 [(buf.validate.field).required = true];
 
   // The GCP service account used for Federated Identity authentication with AWS.
-  string gcp_service_account = 4 [(buf.validate.field).required = true];
+  // Accepts a literal email or a reference to a GcpServiceAccount resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef gcp_service_account = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
 }
 
 // GcpPubSubTopicIngestionAzureEventHubs defines settings for ingesting data from
@@ -91,7 +109,11 @@ message GcpPubSubTopicIngestionAzureEventHubs {
   string subscription_id = 6;
 
   // The GCP service account used for Federated Identity authentication with Azure.
-  string gcp_service_account = 7;
+  // Accepts a literal email or a reference to a GcpServiceAccount resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef gcp_service_account = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
 }
 
 // GcpPubSubTopicIngestionCloudStorageTextFormat defines the text format
@@ -115,6 +137,12 @@ message GcpPubSubTopicIngestionCloudStoragePubsubAvroFormat {}
 // GcpPubSubTopicIngestionCloudStorage defines settings for ingesting data from
 // a Google Cloud Storage bucket into this Pub/Sub topic.
 message GcpPubSubTopicIngestionCloudStorage {
+  option (buf.validate.message).cel = {
+    id: "exactly_one_input_format"
+    expression: "(has(this.avro_format) ? 1 : 0) + (has(this.pubsub_avro_format) ? 1 : 0) + (has(this.text_format) ? 1 : 0) == 1"
+    message: "choose exactly one input format for Cloud Storage ingestion: avro_format, pubsub_avro_format, or text_format"
+  };
+
   // The name of the Cloud Storage bucket to ingest from (without "gs://" prefix).
   // See: https://cloud.google.com/storage/docs/buckets#naming
   dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 1 [
@@ -161,8 +189,13 @@ message GcpPubSubTopicIngestionConfluentCloud {
   string identity_pool_id = 3 [(buf.validate.field).required = true];
 
   // The GCP service account used for Federated Identity authentication
-  // with Confluent Cloud.
-  string gcp_service_account = 4 [(buf.validate.field).required = true];
+  // with Confluent Cloud. Accepts a literal email or a reference to a
+  // GcpServiceAccount resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef gcp_service_account = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
 
   // The Confluent Cloud cluster ID. Optional.
   string cluster_id = 5;
@@ -212,6 +245,35 @@ message GcpPubSubTopicIngestionDataSourceSettings {
   GcpPubSubTopicIngestionPlatformLogsSettings platform_logs_settings = 6;
 }
 
+// GcpPubSubTopicMessageTransformJavascriptUdf defines a JavaScript
+// user-defined function transform. The function receives each message
+// (data + attributes) and returns the transformed message, or null/undefined
+// to filter the message out entirely.
+message GcpPubSubTopicMessageTransformJavascriptUdf {
+  // Name of the JavaScript function to invoke from the code below.
+  // Must be unique across all transforms on the resource.
+  string function_name = 1 [(buf.validate.field).required = true];
+
+  // The JavaScript source code defining the function. The function
+  // signature is (message, metadata) => message; return null or undefined
+  // to drop the message.
+  string code = 2 [(buf.validate.field).required = true];
+}
+
+// GcpPubSubTopicMessageTransform is one step in the topic's ordered
+// transform pipeline, applied to every published message before it is
+// stored. Use transforms to redact fields, normalize payloads, or filter
+// messages at the topic boundary instead of in every subscriber.
+message GcpPubSubTopicMessageTransform {
+  // A JavaScript user-defined function transform.
+  GcpPubSubTopicMessageTransformJavascriptUdf javascript_udf = 1 [(buf.validate.field).required = true];
+
+  // When true, this transform is kept in the pipeline definition but not
+  // applied — the staging lever for rolling a transform in or out without
+  // losing its position in the ordered list.
+  bool disabled = 2;
+}
+
 // GcpPubSubTopicSpec defines the configuration for a GCP Pub/Sub topic.
 //
 // A topic is a named resource to which messages are sent by publishers and
@@ -234,21 +296,28 @@ message GcpPubSubTopicIngestionDataSourceSettings {
 //     are rejected entirely.
 message GcpPubSubTopicSpec {
   // GCP project where the topic will be created.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
 
   // Name of the Pub/Sub topic.
   // Must be 3-255 characters, start with a letter, and contain only letters,
-  // numbers, hyphens, underscores, periods, tildes, plus signs, and percent signs.
-  // Immutable after creation.
+  // numbers, hyphens, underscores, periods, tildes, plus signs, and percent
+  // signs. Names beginning with "goog" are reserved by Google and rejected
+  // at create time. Immutable after creation.
   string topic_name = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 3,
     (buf.validate.field).string.max_len = 255,
-    (buf.validate.field).string.pattern = "^[a-zA-Z][a-zA-Z0-9\\-_\\.~+%]*$"
+    (buf.validate.field).string.pattern = "^[a-zA-Z][a-zA-Z0-9\\-_\\.~+%]*$",
+    (buf.validate.field).cel = {
+      id: "topic_name_goog_reserved"
+      expression: "!this.startsWith('goog')"
+      message: "topic names beginning with 'goog' are reserved by Google — choose a different name"
+    }
   ];
 
   // Cloud KMS key for encrypting messages at rest (CMEK).
@@ -281,4 +350,15 @@ message GcpPubSubTopicSpec {
   // Supports AWS Kinesis, AWS MSK, Azure Event Hubs, Cloud Storage, and
   // Confluent Cloud. Typically one data source is configured per topic.
   GcpPubSubTopicIngestionDataSourceSettings ingestion_data_source_settings = 7;
+
+  // User-defined labels attached to the topic, for cost attribution and
+  // fleet queries. Merged with Planton's platform labels (which win on
+  // key conflicts).
+  map<string, string> labels = 8;
+
+  // Ordered pipeline of transforms applied to every published message
+  // before it is stored — redact, normalize, or filter at the topic
+  // boundary instead of in every subscriber. Transforms run in list
+  // order; a transform returning null drops the message.
+  repeated GcpPubSubTopicMessageTransform message_transforms = 9;
 }

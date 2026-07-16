@@ -1,10 +1,16 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpFirestoreDatabase
 metadata:
-  name: test-firestore-db
+  name: my-test-firestore
 spec:
+  # GCP project for the database. Replace with your project ID.
   projectId:
-    value: "<gcp-project-id>"
-  locationId: nam5
-  databaseName: "(default)"
+    value: my-gcp-project-123
+
+  # A named database beside the project's "(default)" one.
+  databaseName: my-test-firestore
+  locationId: us-east1
   type: FIRESTORE_NATIVE
+
+  # Keep the database independent of any App Engine app lifecycle.
+  appEngineIntegrationMode: DISABLED

@@ -4,16 +4,39 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/compute"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func globalAddress(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
 	spec := locals.GcpGlobalAddress.Spec
 
+	// Enable the Compute Engine API first so a fresh project works on the
+	// first deploy. disable_on_destroy stays false: tearing down one address
+	// must never disable the API for everything else in the project.
+	serviceArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("compute.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
+	}
+	if spec.ProjectId.GetValue() != "" {
+		serviceArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+	createdProjectService, err := projects.NewService(ctx,
+		"globaladdress-compute.googleapis.com", serviceArgs, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to enable compute.googleapis.com api")
+	}
+
 	args := &compute.GlobalAddressArgs{
-		Name:    pulumi.String(spec.AddressName),
-		Project: pulumi.String(spec.ProjectId.GetValue()),
-		Labels:  pulumi.ToStringMap(locals.GcpLabels),
+		Name:   pulumi.String(spec.AddressName),
+		Labels: pulumi.ToStringMap(locals.GcpLabels),
+	}
+
+	// An empty project falls back to the provider's default project — the
+	// ambient-project contract every GCP kind honors.
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.String(spec.ProjectId.GetValue())
 	}
 
 	// Address type: EXTERNAL (default) or INTERNAL.
@@ -47,7 +70,8 @@ func globalAddress(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 		args.PrefixLength = pulumi.IntPtr(int(*spec.PrefixLength))
 	}
 
-	createdAddress, err := compute.NewGlobalAddress(ctx, "global-address", args, pulumi.Provider(gcpProvider))
+	createdAddress, err := compute.NewGlobalAddress(ctx, "global-address", args,
+		pulumi.Provider(gcpProvider), pulumi.DependsOn([]pulumi.Resource{createdProjectService}))
 	if err != nil {
 		return errors.Wrap(err, "failed to create global address")
 	}
@@ -55,6 +79,7 @@ func globalAddress(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 	ctx.Export(OpAddress, createdAddress.Address)
 	ctx.Export(OpSelfLink, createdAddress.SelfLink)
 	ctx.Export(OpCreationTimestamp, createdAddress.CreationTimestamp)
+	ctx.Export(OpName, createdAddress.Name)
 
 	return nil
 }

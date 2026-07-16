@@ -1,0 +1,23 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudFunction
+metadata:
+  name: hello-api
+spec:
+  region: us-central1
+  buildConfig:
+    runtime: nodejs22
+    entryPoint: helloHttp
+    source:
+      storageSource:
+        bucket:
+          value: my-source-bucket # or reference a GcpGcsBucket resource
+        object: functions/hello-api-v1.0.0.zip # version per release; a new object name rolls the deploy
+  serviceConfig:
+    availableMemory: 256M
+    timeoutSeconds: 60
+    scaling:
+      minInstanceCount: 0 # scale to zero at idle
+      maxInstanceCount: 100
+    allowUnauthenticated: true # public endpoint; drop for IAM-gated APIs
+  trigger:
+    triggerType: HTTP

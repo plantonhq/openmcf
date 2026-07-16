@@ -11,7 +11,7 @@ This component bundles an AlloyDB cluster with its primary instance. A cluster w
 ## Key Features
 
 - **Cluster + primary instance** — One component provisions both; no cluster without compute
-- **Networking** — VPC peering via Private Service Access (VPC must have Private Service Access configured)
+- **Networking** — Private Service Access (VPC peering) or Private Service Connect (PSC); exactly one connectivity mode
 - **CMEK encryption** — Customer-managed keys at cluster, automated backup, and continuous backup levels
 - **Automated backups** — Quantity-based or time-based retention, optional weekly schedule
 - **Continuous backup** — Point-in-time recovery (PITR) with configurable recovery window (1–35 days)
@@ -24,9 +24,14 @@ This component bundles an AlloyDB cluster with its primary instance. A cluster w
 | `projectId` | Yes | GCP project ID |
 | `clusterName` | Yes | Cluster name (lowercase, letters, numbers, hyphens; 2–63 chars) |
 | `location` | Yes | GCP region (e.g., `us-central1`) |
-| `network` | Yes | VPC network self-link (must have Private Service Access) |
-| `databaseVersion` | No | `POSTGRES_14`, `POSTGRES_15`, or `POSTGRES_16`; defaults to latest |
+| `network` | One of | VPC network self-link for Private Service Access (requires PSA on the VPC) |
+| `pscConfig.pscEnabled` | One of | When `true`, cluster uses PSC instead of PSA (`network` must be unset) |
 | `primaryInstance` | Yes | Primary instance config (instanceId, cpuCount or machineType, availabilityType) |
+| `clusterType` | No | `PRIMARY` (default) or `SECONDARY` for cross-region DR |
+| `secondaryConfig.primaryClusterName` | When SECONDARY | Full resource name of the primary cluster |
+| `annotations` | No | Unstructured metadata map on the cluster |
+| `subscriptionType` | No | `STANDARD` (default) or `TRIAL` |
+| `skipAwaitMajorVersionUpgrade` | No | When `true`, version upgrades return without waiting for completion |
 
 ## Primary Instance Options
 
@@ -51,10 +56,6 @@ Each can use a different KMS key for compliance and key lifecycle management.
 The following cannot be changed after creation; changing them requires recreating the cluster:
 
 - `clusterName`, `location`, `network`, `kmsKeyName`, `primaryInstance.instanceId`
-
-## Deletion Protection
-
-`deletionProtection` defaults to `true`. Set to `false` before destroying a cluster that contains data.
 
 ## Examples
 

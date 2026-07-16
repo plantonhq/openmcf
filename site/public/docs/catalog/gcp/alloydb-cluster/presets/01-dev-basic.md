@@ -1,6 +1,6 @@
 ---
 title: "Dev Basic"
-description: "Minimal development cluster for local development, CI/CD pipelines, and prototyping. Uses 2 CPUs, ZONAL availability, no CMEK, and deletion protection disabled for easy teardown."
+description: "Minimal development cluster for local development, CI/CD pipelines, and prototyping. Uses 2 CPUs, ZONAL availability, no CMEK for easy teardown."
 type: "preset"
 rank: "01"
 presetSlug: "01-dev-basic"
@@ -13,7 +13,7 @@ order: 1
 
 # Dev Basic
 
-Minimal development cluster for local development, CI/CD pipelines, and prototyping. Uses 2 CPUs, ZONAL availability, no CMEK, and deletion protection disabled for easy teardown.
+Minimal development cluster for local development, CI/CD pipelines, and prototyping. Uses 2 CPUs, ZONAL availability, no CMEK for easy teardown.
 
 ## Description
 
@@ -31,7 +31,6 @@ This preset provisions a minimal AlloyDB cluster suitable for development and te
 - **2 CPUs** — Smallest viable primary instance size; GCP selects the machine family automatically
 - **ZONAL availability** — Single-zone deployment; lower cost, single zone of failure
 - **No CMEK** — Data encrypted with Google-managed keys
-- **deletion_protection: false** — Cluster can be destroyed without explicit override
 - **Default backups** — GCP applies its default automated backup policy (enabled, daily, 14-day retention) when not specified
 - **Default continuous backup** — 14-day PITR window when not specified
 - **No initial user** — Access must be configured via AlloyDB Auth Proxy with IAM or manually after provisioning

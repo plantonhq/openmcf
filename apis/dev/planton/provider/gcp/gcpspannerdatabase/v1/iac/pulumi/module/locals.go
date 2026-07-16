@@ -12,11 +12,18 @@ import (
 type Locals struct {
 	GcpProviderConfig  *gcpprovider.GcpProviderConfig
 	GcpSpannerDatabase *gcpspannerdatabasev1.GcpSpannerDatabase
+	DatabaseName       string
 }
 
 func initializeLocals(_ *pulumi.Context, stackInput *gcpspannerdatabasev1.GcpSpannerDatabaseStackInput) *Locals {
 	locals := &Locals{}
 	locals.GcpSpannerDatabase = stackInput.Target
+
+	locals.DatabaseName = locals.GcpSpannerDatabase.Spec.DatabaseName
+	if locals.DatabaseName == "" {
+		locals.DatabaseName = locals.GcpSpannerDatabase.Metadata.Name
+	}
+
 	locals.GcpProviderConfig = stackInput.ProviderConfig
 	return locals
 }

@@ -1,0 +1,12 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpServerlessVpcConnector
+metadata:
+  name: svc-egress
+spec:
+  region: us-central1
+  network:
+    value: my-vpc # or reference a GcpVpcNetwork resource
+  ipCidrRange: 10.8.0.0/28 # any unused /28 in the network
+  machineType: e2-micro
+  minInstances: 2
+  maxInstances: 4

@@ -1,0 +1,4 @@
+name: gcpsslcertificate-pulumi-project
+runtime:
+  name: go
+description: Planton GcpSslCertificate Pulumi module

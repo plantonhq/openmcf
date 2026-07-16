@@ -41,6 +41,48 @@ matching `pulumi/module/*.go`), confirm both sides agree on:
 - **Resource naming basis.** Both engines name the created objects (operator CRs, pod
   annotations, secret names) off the SAME field -- `metadata.name` is the established
   basis. Don't introduce a parallel `metadata.id`-based name on one side.
+- **Reference resolution source.** Both engines consume the same resolved spec
+  references (`StringValueOrRef` fields arrive as plain strings). Never substitute a
+  provider data-source lookup on one side for a spec field the other side reads -- the
+  two resolution paths can disagree (a wildcard-location cluster lookup vs the spec's
+  location reference), and the ignored spec field becomes dead config on one engine
+  only, which is a spec-feature-coverage defect.
+- **Bridged-provider-only client-side flags.** The Pulumi provider can bridge a
+  NEWER upstream line than the released GA provider the Terraform module pins. A
+  client-side safety flag that exists only on that newer line (e.g. a
+  deletion-protection flag that defaults TRUE) silently changes one engine's
+  lifecycle behavior -- typically blocking destroy on Pulumi while Terraform
+  destroys cleanly. When the released GA schema has no such attribute, explicitly
+  neutralize it in the Pulumi module with a comment explaining why; never let a
+  bridged-only default decide destroy semantics on one engine.
+- **Bridged-provider attribute value format.** The same computed attribute can come
+  back in DIFFERENT string forms on the two engines: the bridged Pulumi provider may
+  return a fully qualified resource path (e.g. `projects/{p}/instanceConfigs/{name}`)
+  where the released Terraform provider stores the plain name the spec passed in.
+  Exporting the raw attribute as a stack output then breaks output parity — and any
+  API caller or verifier consuming the output — on one engine only, invisibly to every
+  offline gate. Decide the output contract from the spec's vocabulary (usually the
+  plain name), normalize the divergent engine with a comment, and prove with a live
+  run on BOTH engines, not just `validate-outputs` (which checks shape, not value).
+- **Cross-resource addressing.** Both engines consume the spec's resolved reference
+  fields (`StringValueOrRef` arrives as a plain string) to address a parent or sibling
+  resource. Never re-discover a parent on one engine via a provider data-source lookup
+  (e.g. a wildcard-location search by name) while the other reads the spec field -- the
+  two resolution paths diverge the moment names collide across locations or projects,
+  and the data-source path silently ignores the spec contract.
+- **Optional-output exports in the Pulumi module.** Two failure modes surface only at
+  live deploy (never at `go build`, never in `pulumi preview`'s early phase):
+  (1) an `ApplyT` callback whose input type mismatches the bridged field's
+  optionality — many bridged computed attributes are `*string`/`*int` even when they
+  feel always-present, and a `func(v string)` callback panics at runtime
+  ("applier's first input parameter must be assignable from *string"); and
+  (2) chaining lazy accessors through a possibly-empty nested list
+  (`.NetworkInterfaces.Index(0).AccessConfigs().Index(0)...`) — the index panics
+  the whole program when the list is empty (e.g. a private VM with no access
+  config). Export optional nested outputs with ONE struct-slice `ApplyT` carrying
+  explicit `len(...)`/nil guards that degrade to `""`, and mirror the same
+  empty-value contract in the Terraform module with `try(..., "")` so both engines
+  export identical values for the absent case.
 - **Labels.** Same keys and values. The resource-identity labels are the
   `kuberneteslabelkeys` set (`planton.ai/resource`, `planton.ai/name`, `planton.ai/kind`,
   `planton.ai/id`, `planton.ai/organization`, `planton.ai/environment`); the kind value

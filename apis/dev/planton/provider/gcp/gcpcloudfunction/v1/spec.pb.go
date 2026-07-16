@@ -24,15 +24,64 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// GcpCloudFunctionBuildUpdatePolicy controls when the runtime base image
+// picks up updates.
+type GcpCloudFunctionBuildUpdatePolicy int32
+
+const (
+	// Runtime security updates apply automatically (the API default).
+	GcpCloudFunctionBuildUpdatePolicy_AUTOMATIC GcpCloudFunctionBuildUpdatePolicy = 0
+	// The runtime version is pinned at deploy time; updates arrive only on
+	// the next deploy.
+	GcpCloudFunctionBuildUpdatePolicy_ON_DEPLOY GcpCloudFunctionBuildUpdatePolicy = 1
+)
+
+// Enum value maps for GcpCloudFunctionBuildUpdatePolicy.
+var (
+	GcpCloudFunctionBuildUpdatePolicy_name = map[int32]string{
+		0: "AUTOMATIC",
+		1: "ON_DEPLOY",
+	}
+	GcpCloudFunctionBuildUpdatePolicy_value = map[string]int32{
+		"AUTOMATIC": 0,
+		"ON_DEPLOY": 1,
+	}
+)
+
+func (x GcpCloudFunctionBuildUpdatePolicy) Enum() *GcpCloudFunctionBuildUpdatePolicy {
+	p := new(GcpCloudFunctionBuildUpdatePolicy)
+	*p = x
+	return p
+}
+
+func (x GcpCloudFunctionBuildUpdatePolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GcpCloudFunctionBuildUpdatePolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (GcpCloudFunctionBuildUpdatePolicy) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[0]
+}
+
+func (x GcpCloudFunctionBuildUpdatePolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GcpCloudFunctionBuildUpdatePolicy.Descriptor instead.
+func (GcpCloudFunctionBuildUpdatePolicy) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{0}
+}
+
 // GcpCloudFunctionTriggerType defines how the function is invoked.
 type GcpCloudFunctionTriggerType int32
 
 const (
-	// HTTP trigger: Function is invoked via HTTPS requests.
-	// The function receives HTTP request/response objects and returns HTTP responses.
+	// Invoked via HTTPS requests at the function's URL.
 	GcpCloudFunctionTriggerType_HTTP GcpCloudFunctionTriggerType = 0
-	// Event trigger: Function is invoked when a cloud event occurs.
-	// Events are delivered via Eventarc in CloudEvents format.
+	// Invoked when a CloudEvent is delivered by Eventarc.
 	GcpCloudFunctionTriggerType_EVENT_TRIGGER GcpCloudFunctionTriggerType = 1
 )
 
@@ -59,11 +108,11 @@ func (x GcpCloudFunctionTriggerType) String() string {
 }
 
 func (GcpCloudFunctionTriggerType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[0].Descriptor()
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[1].Descriptor()
 }
 
 func (GcpCloudFunctionTriggerType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[0]
+	return &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[1]
 }
 
 func (x GcpCloudFunctionTriggerType) Number() protoreflect.EnumNumber {
@@ -72,19 +121,21 @@ func (x GcpCloudFunctionTriggerType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GcpCloudFunctionTriggerType.Descriptor instead.
 func (GcpCloudFunctionTriggerType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{0}
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
 // GcpCloudFunctionIngressSetting controls network ingress to the function.
 type GcpCloudFunctionIngressSetting int32
 
 const (
-	// Allow all traffic (default): Function is accessible from the public internet.
+	// Reachable from the public internet (invocation still subject to IAM).
 	GcpCloudFunctionIngressSetting_ALLOW_ALL GcpCloudFunctionIngressSetting = 0
-	// Allow only internal traffic: Function is accessible only from within the
-	// VPC network or from other GCP services in the same project.
+	// Reachable only from within the project's VPC networks and internal
+	// GCP services.
 	GcpCloudFunctionIngressSetting_ALLOW_INTERNAL_ONLY GcpCloudFunctionIngressSetting = 1
-	// Allow only internal traffic and traffic from Cloud Load Balancing.
+	// Reachable from internal sources and through Cloud Load Balancing —
+	// the setting for functions fronted by an external Application Load
+	// Balancer.
 	GcpCloudFunctionIngressSetting_ALLOW_INTERNAL_AND_GCLB GcpCloudFunctionIngressSetting = 2
 )
 
@@ -113,11 +164,11 @@ func (x GcpCloudFunctionIngressSetting) String() string {
 }
 
 func (GcpCloudFunctionIngressSetting) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[1].Descriptor()
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[2].Descriptor()
 }
 
 func (GcpCloudFunctionIngressSetting) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[1]
+	return &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[2]
 }
 
 func (x GcpCloudFunctionIngressSetting) Number() protoreflect.EnumNumber {
@@ -126,18 +177,19 @@ func (x GcpCloudFunctionIngressSetting) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GcpCloudFunctionIngressSetting.Descriptor instead.
 func (GcpCloudFunctionIngressSetting) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-// GcpCloudFunctionVpcEgressSetting controls which traffic is routed through VPC connector.
+// GcpCloudFunctionVpcEgressSetting controls which egress uses the VPC
+// connector.
 type GcpCloudFunctionVpcEgressSetting int32
 
 const (
-	// Route only private IP ranges (RFC 1918) through the VPC connector.
-	// Public internet traffic uses normal egress path.
+	// Only RFC1918/private destinations route through the connector; public
+	// egress keeps the normal path.
 	GcpCloudFunctionVpcEgressSetting_PRIVATE_RANGES_ONLY GcpCloudFunctionVpcEgressSetting = 0
-	// Route all outbound traffic through the VPC connector.
-	// Enables static egress IPs via Cloud NAT.
+	// All outbound traffic routes through the connector — enables static
+	// egress IPs via Cloud NAT.
 	GcpCloudFunctionVpcEgressSetting_ALL_TRAFFIC GcpCloudFunctionVpcEgressSetting = 1
 )
 
@@ -164,11 +216,11 @@ func (x GcpCloudFunctionVpcEgressSetting) String() string {
 }
 
 func (GcpCloudFunctionVpcEgressSetting) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[2].Descriptor()
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[3].Descriptor()
 }
 
 func (GcpCloudFunctionVpcEgressSetting) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[2]
+	return &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[3]
 }
 
 func (x GcpCloudFunctionVpcEgressSetting) Number() protoreflect.EnumNumber {
@@ -177,17 +229,18 @@ func (x GcpCloudFunctionVpcEgressSetting) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GcpCloudFunctionVpcEgressSetting.Descriptor instead.
 func (GcpCloudFunctionVpcEgressSetting) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-// GcpCloudFunctionRetryPolicy defines retry behavior for event-driven functions.
+// GcpCloudFunctionRetryPolicy defines redelivery behavior for
+// event-driven functions.
 type GcpCloudFunctionRetryPolicy int32
 
 const (
-	// Do not retry failed invocations (at-most-once delivery).
+	// Deliver at most once; failed invocations are not retried.
 	GcpCloudFunctionRetryPolicy_RETRY_POLICY_DO_NOT_RETRY GcpCloudFunctionRetryPolicy = 0
-	// Retry failed invocations with exponential backoff (at-least-once delivery).
-	// Function code must be idempotent to handle duplicate events.
+	// Redeliver with exponential backoff (at-least-once) — handlers must be
+	// idempotent.
 	GcpCloudFunctionRetryPolicy_RETRY_POLICY_RETRY GcpCloudFunctionRetryPolicy = 1
 )
 
@@ -214,11 +267,11 @@ func (x GcpCloudFunctionRetryPolicy) String() string {
 }
 
 func (GcpCloudFunctionRetryPolicy) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[3].Descriptor()
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[4].Descriptor()
 }
 
 func (GcpCloudFunctionRetryPolicy) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[3]
+	return &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes[4]
 }
 
 func (x GcpCloudFunctionRetryPolicy) Number() protoreflect.EnumNumber {
@@ -227,32 +280,56 @@ func (x GcpCloudFunctionRetryPolicy) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GcpCloudFunctionRetryPolicy.Descriptor instead.
 func (GcpCloudFunctionRetryPolicy) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-// **GcpCloudFunctionSpec** defines the configuration for deploying a Google Cloud Function (Gen 2).
-// Gen 2 functions are built on Cloud Run and Eventarc, providing superior performance, scalability,
-// and event handling capabilities compared to Gen 1. This spec follows the 80/20 principle:
-// it exposes the essential configuration that 80% of production deployments need.
+// GcpCloudFunctionSpec defines a Cloud Functions (Gen 2) function
+// (`google_cloudfunctions2_function`) — source-based serverless compute
+// built on Cloud Run and Eventarc. You ship a source archive; Cloud Build
+// containerizes it with buildpacks and Cloud Run serves it, so every Gen 2
+// function is backed by a real Cloud Run service (the
+// `cloud_run_service_id` output).
+//
+// The spec mirrors the API's two-config split: build_config owns HOW the
+// source becomes a container (runtime, entry point, source location, build
+// identity), service_config owns HOW it runs (resources, environment,
+// secrets, networking, scaling, invocation policy). The trigger decides
+// what invokes it — HTTPS requests, or a CloudEvent delivered by Eventarc.
+//
+// Private VPC resources (Cloud SQL private IP, Memorystore) are reached
+// through a Serverless VPC Access connector (GcpServerlessVpcConnector),
+// attached by reference via service_config.vpc_connector.
 type GcpCloudFunctionSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// GCP project ID where the Cloud Function will be created.
-	// Supports either a literal value or a reference to another resource's output.
-	// Example literal: {value: "my-gcp-project-123"}
-	// Example reference: {value_from: {kind: GcpProject, name: "main-project", field_path: "status.outputs.project_id"}}
+	// The GCP project the function is created in. Accepts a literal project
+	// ID or a reference to a GcpProject resource. If omitted, the provider's
+	// default project is used.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	// Region where the function is deployed, for example "us-central1" or "europe-west1".
+	// Region the function is deployed in, e.g. "us-central1". Immutable.
 	Region string `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
-	// Name of the Cloud Function. If not specified, defaults to metadata.name.
-	// Must be 1-63 characters, start with a letter, and contain only lowercase letters,
-	// numbers, and hyphens.
+	// Name of the function in GCP. Immutable. If not specified, defaults to
+	// metadata.name. Must be 1-63 characters: lowercase letters, digits, and
+	// hyphens; starting with a letter.
 	FunctionName string `protobuf:"bytes,3,opt,name=function_name,json=functionName,proto3" json:"function_name,omitempty"`
-	// Build configuration for the function (runtime, entry point, source code).
-	BuildConfig *GcpCloudFunctionBuildConfig `protobuf:"bytes,4,opt,name=build_config,json=buildConfig,proto3" json:"build_config,omitempty"`
-	// Service configuration (compute resources, networking, environment, scaling).
-	ServiceConfig *GcpCloudFunctionServiceConfig `protobuf:"bytes,5,opt,name=service_config,json=serviceConfig,proto3" json:"service_config,omitempty"`
-	// Trigger configuration. If not specified, defaults to HTTP trigger.
-	Trigger       *GcpCloudFunctionTrigger `protobuf:"bytes,6,opt,name=trigger,proto3" json:"trigger,omitempty"`
+	// Human-readable description of what the function does.
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	// Labels applied to the function object. User labels are merged beneath
+	// Planton's attribution labels and shared with Google's billing system.
+	Labels map[string]string `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Cloud KMS key encrypting the function's resources (CMEK) — the
+	// container image and source artifacts. The Cloud Functions and Artifact
+	// Registry service agents must hold cryptoKeyEncrypterDecrypter on it,
+	// and CMEK deployments require a customer-managed docker_repository.
+	// Accepts a full crypto-key path or a reference to a GcpKmsKey resource.
+	KmsKeyName *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=kms_key_name,json=kmsKeyName,proto3" json:"kms_key_name,omitempty"`
+	// How the source becomes a runnable container: runtime, entry point,
+	// source location, and build identity. Required.
+	BuildConfig *GcpCloudFunctionBuildConfig `protobuf:"bytes,7,opt,name=build_config,json=buildConfig,proto3" json:"build_config,omitempty"`
+	// How the function runs: compute resources, environment, secrets,
+	// networking, scaling, and invocation policy.
+	ServiceConfig *GcpCloudFunctionServiceConfig `protobuf:"bytes,8,opt,name=service_config,json=serviceConfig,proto3" json:"service_config,omitempty"`
+	// What invokes the function. If not specified, defaults to HTTP.
+	Trigger       *GcpCloudFunctionTrigger `protobuf:"bytes,9,opt,name=trigger,proto3" json:"trigger,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -308,6 +385,27 @@ func (x *GcpCloudFunctionSpec) GetFunctionName() string {
 	return ""
 }
 
+func (x *GcpCloudFunctionSpec) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GcpCloudFunctionSpec) GetKmsKeyName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KmsKeyName
+	}
+	return nil
+}
+
 func (x *GcpCloudFunctionSpec) GetBuildConfig() *GcpCloudFunctionBuildConfig {
 	if x != nil {
 		return x.BuildConfig
@@ -329,24 +427,49 @@ func (x *GcpCloudFunctionSpec) GetTrigger() *GcpCloudFunctionTrigger {
 	return nil
 }
 
-// GcpCloudFunctionBuildConfig defines how the function is built from source code.
+// GcpCloudFunctionBuildConfig defines how Cloud Build turns the source
+// archive into the container Cloud Run serves.
 type GcpCloudFunctionBuildConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Runtime environment for the function. Must be a supported Gen 2 runtime.
-	// Examples: "python311", "python312", "nodejs20", "nodejs22", "go121", "go122",
-	// "java17", "java21", "dotnet6", "dotnet8", "ruby32", "php82".
-	// Only current, non-deprecated runtimes should be used in production.
+	// Runtime the function executes in, e.g. "python312", "nodejs22",
+	// "go123", "java21". Any current Gen 2 runtime GCP publishes is valid —
+	// run `gcloud functions runtimes list` for the live set; deprecated
+	// runtimes are rejected by the API at deploy time.
 	Runtime string `protobuf:"bytes,1,opt,name=runtime,proto3" json:"runtime,omitempty"`
-	// Name of the function in source code that will be executed (the entry point).
-	// For example: "hello_http" in Python, "helloHttp" in Node.js.
+	// Name of the function in source code that will be executed (the entry
+	// point). For example: "hello_http" in Python, "helloHttp" in Node.js.
 	EntryPoint string `protobuf:"bytes,2,opt,name=entry_point,json=entryPoint,proto3" json:"entry_point,omitempty"`
-	// Source code location in Google Cloud Storage.
+	// Where the source code lives. Required.
 	Source *GcpCloudFunctionSource `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
-	// Environment variables set at build time. These are available during the build
-	// process (e.g., for customizing buildpack behavior).
+	// Environment variables available at build time (e.g. buildpack knobs
+	// like GOOGLE_ENTRYPOINT). Not injected into the runtime — use
+	// service_config.environment_variables for that.
 	BuildEnvironmentVariables map[string]string `protobuf:"bytes,4,rep,name=build_environment_variables,json=buildEnvironmentVariables,proto3" json:"build_environment_variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// Service account Cloud Build runs the build as — the identity that
+	// reads the source and pushes the image. FULLY-QUALIFIED resource name
+	// (projects/{project}/serviceAccounts/{email}), not a bare email.
+	// Accepts a literal or a reference to a GcpServiceAccount resource. If
+	// omitted, GCP uses its default build identity.
+	ServiceAccount *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=service_account,json=serviceAccount,proto3" json:"service_account,omitempty"`
+	// Cloud Build Custom Worker Pool that builds the function — for builds
+	// that must run inside a private network perimeter. Format:
+	// projects/{project}/locations/{region}/workerPools/{name}.
+	WorkerPool string `protobuf:"bytes,6,opt,name=worker_pool,json=workerPool,proto3" json:"worker_pool,omitempty"`
+	// User-managed Artifact Registry repository the built container is
+	// stored in, optionally CMEK-protected (required when kms_key_name is
+	// set). FULLY-QUALIFIED path
+	// (projects/{project}/locations/{location}/repositories/{name}).
+	// Accepts a literal path or a reference to a GcpArtifactRegistryRepo
+	// resource (its repository_path output is exactly this value). If
+	// omitted, GCP manages a default repository.
+	DockerRepository *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=docker_repository,json=dockerRepository,proto3" json:"docker_repository,omitempty"`
+	// How the runtime base image is patched. AUTOMATIC (the API default when
+	// unset) applies security updates continuously; ON_DEPLOY pins the
+	// runtime version at deploy time so instances never change under you
+	// between deploys.
+	UpdatePolicy  GcpCloudFunctionBuildUpdatePolicy `protobuf:"varint,8,opt,name=update_policy,json=updatePolicy,proto3,enum=dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildUpdatePolicy" json:"update_policy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpCloudFunctionBuildConfig) Reset() {
@@ -407,21 +530,46 @@ func (x *GcpCloudFunctionBuildConfig) GetBuildEnvironmentVariables() map[string]
 	return nil
 }
 
-// GcpCloudFunctionSource specifies where the source code is stored.
-// Gen 2 Cloud Functions require source code in a GCS bucket (Cloud Source Repositories
-// was deprecated for new customers in June 2024).
+func (x *GcpCloudFunctionBuildConfig) GetServiceAccount() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ServiceAccount
+	}
+	return nil
+}
+
+func (x *GcpCloudFunctionBuildConfig) GetWorkerPool() string {
+	if x != nil {
+		return x.WorkerPool
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionBuildConfig) GetDockerRepository() *v1.StringValueOrRef {
+	if x != nil {
+		return x.DockerRepository
+	}
+	return nil
+}
+
+func (x *GcpCloudFunctionBuildConfig) GetUpdatePolicy() GcpCloudFunctionBuildUpdatePolicy {
+	if x != nil {
+		return x.UpdatePolicy
+	}
+	return GcpCloudFunctionBuildUpdatePolicy_AUTOMATIC
+}
+
+// GcpCloudFunctionSource specifies where the source code lives: a GCS
+// archive (the standard path) or a Cloud Source Repositories revision.
+// Exactly one.
 type GcpCloudFunctionSource struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// GCS bucket name containing the source code archive.
-	// The bucket must be in the same project or accessible to the Cloud Build service account.
-	Bucket string `protobuf:"bytes,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
-	// Object name (path) of the source code archive in the bucket.
-	// Should be a .zip file containing the function code and dependencies.
-	// Example: "functions/my-function-v1.2.3.zip"
-	Object string `protobuf:"bytes,2,opt,name=object,proto3" json:"object,omitempty"`
-	// Optional: Generation number of the object. If specified, the function will use
-	// this specific version of the object. If not specified, uses the latest version.
-	Generation    *int64 `protobuf:"varint,3,opt,name=generation,proto3,oneof" json:"generation,omitempty"`
+	// Source archive in Google Cloud Storage — a .zip of the function code
+	// and dependency manifest. The standard path for CI/CD-shipped source.
+	StorageSource *GcpCloudFunctionStorageSource `protobuf:"bytes,1,opt,name=storage_source,json=storageSource,proto3" json:"storage_source,omitempty"`
+	// Source in Cloud Source Repositories. Note GCP deprecated CSR for new
+	// customers in June 2024 — existing repositories keep working, but new
+	// integrations should ship archives to GCS instead.
+	RepoSource    *GcpCloudFunctionRepoSource `protobuf:"bytes,2,opt,name=repo_source,json=repoSource,proto3" json:"repo_source,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -456,78 +604,269 @@ func (*GcpCloudFunctionSource) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *GcpCloudFunctionSource) GetBucket() string {
+func (x *GcpCloudFunctionSource) GetStorageSource() *GcpCloudFunctionStorageSource {
+	if x != nil {
+		return x.StorageSource
+	}
+	return nil
+}
+
+func (x *GcpCloudFunctionSource) GetRepoSource() *GcpCloudFunctionRepoSource {
+	if x != nil {
+		return x.RepoSource
+	}
+	return nil
+}
+
+// GcpCloudFunctionStorageSource points at a source .zip in GCS.
+type GcpCloudFunctionStorageSource struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// GCS bucket holding the source archive. The build service account needs
+	// read access. Accepts a literal bucket name or a reference to a
+	// GcpGcsBucket resource.
+	Bucket *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	// Object name (path) of the source archive in the bucket, e.g.
+	// "functions/my-function-v1.2.3.zip". Version the object name per
+	// release — a changed object name is what makes the deploy roll.
+	Object string `protobuf:"bytes,2,opt,name=object,proto3" json:"object,omitempty"`
+	// Generation number of the object to pin an exact object version even
+	// if the path is overwritten. If unset, the current generation is used.
+	Generation    *int64 `protobuf:"varint,3,opt,name=generation,proto3,oneof" json:"generation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudFunctionStorageSource) Reset() {
+	*x = GcpCloudFunctionStorageSource{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudFunctionStorageSource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudFunctionStorageSource) ProtoMessage() {}
+
+func (x *GcpCloudFunctionStorageSource) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudFunctionStorageSource.ProtoReflect.Descriptor instead.
+func (*GcpCloudFunctionStorageSource) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GcpCloudFunctionStorageSource) GetBucket() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Bucket
 	}
-	return ""
+	return nil
 }
 
-func (x *GcpCloudFunctionSource) GetObject() string {
+func (x *GcpCloudFunctionStorageSource) GetObject() string {
 	if x != nil {
 		return x.Object
 	}
 	return ""
 }
 
-func (x *GcpCloudFunctionSource) GetGeneration() int64 {
+func (x *GcpCloudFunctionStorageSource) GetGeneration() int64 {
 	if x != nil && x.Generation != nil {
 		return *x.Generation
 	}
 	return 0
 }
 
-// GcpCloudFunctionServiceConfig defines runtime configuration: compute resources,
-// networking, environment, secrets, and scaling behavior.
+// GcpCloudFunctionRepoSource points at a Cloud Source Repositories
+// revision — exactly one of branch, tag, or commit.
+type GcpCloudFunctionRepoSource struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the Cloud Source Repository, e.g. "my-repo".
+	RepoName string `protobuf:"bytes,1,opt,name=repo_name,json=repoName,proto3" json:"repo_name,omitempty"`
+	// Branch to build from (the branch's current HEAD at deploy time).
+	BranchName string `protobuf:"bytes,2,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
+	// Tag to build from.
+	TagName string `protobuf:"bytes,3,opt,name=tag_name,json=tagName,proto3" json:"tag_name,omitempty"`
+	// Exact commit to build from — the only fully reproducible pin.
+	CommitSha string `protobuf:"bytes,4,opt,name=commit_sha,json=commitSha,proto3" json:"commit_sha,omitempty"`
+	// Directory within the repository containing the function source. If
+	// unset, the repository root is used.
+	Dir string `protobuf:"bytes,5,opt,name=dir,proto3" json:"dir,omitempty"`
+	// Invert the revision match: build from revisions that do NOT match
+	// the configured branch/tag regex.
+	InvertRegex bool `protobuf:"varint,6,opt,name=invert_regex,json=invertRegex,proto3" json:"invert_regex,omitempty"`
+	// Project that owns the repository, when it lives outside the
+	// function's project. Immutable.
+	ProjectId     string `protobuf:"bytes,7,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudFunctionRepoSource) Reset() {
+	*x = GcpCloudFunctionRepoSource{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudFunctionRepoSource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudFunctionRepoSource) ProtoMessage() {}
+
+func (x *GcpCloudFunctionRepoSource) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudFunctionRepoSource.ProtoReflect.Descriptor instead.
+func (*GcpCloudFunctionRepoSource) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GcpCloudFunctionRepoSource) GetRepoName() string {
+	if x != nil {
+		return x.RepoName
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionRepoSource) GetBranchName() string {
+	if x != nil {
+		return x.BranchName
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionRepoSource) GetTagName() string {
+	if x != nil {
+		return x.TagName
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionRepoSource) GetCommitSha() string {
+	if x != nil {
+		return x.CommitSha
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionRepoSource) GetDir() string {
+	if x != nil {
+		return x.Dir
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionRepoSource) GetInvertRegex() bool {
+	if x != nil {
+		return x.InvertRegex
+	}
+	return false
+}
+
+func (x *GcpCloudFunctionRepoSource) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+// GcpCloudFunctionServiceConfig defines how the function runs: the
+// Cloud Run service behind it — resources, environment, secrets,
+// networking, scaling, and invocation policy.
 type GcpCloudFunctionServiceConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Service account email that the function runs as. This is the identity the function
-	// uses when calling other GCP services. Should follow least-privilege principle.
-	// If not specified, uses the default Compute Engine service account (not recommended
-	// for production due to overly broad permissions).
-	ServiceAccountEmail string `protobuf:"bytes,1,opt,name=service_account_email,json=serviceAccountEmail,proto3" json:"service_account_email,omitempty"`
-	// Memory allocated to each function instance in megabytes.
-	// Valid values: 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768.
-	// Higher memory allocation also increases CPU allocation.
-	AvailableMemoryMb int32 `protobuf:"varint,2,opt,name=available_memory_mb,json=availableMemoryMb,proto3" json:"available_memory_mb,omitempty"`
-	// Timeout for function execution in seconds.
-	// Gen 2 HTTP functions support up to 3600 seconds (60 minutes).
-	// Event-driven functions typically use shorter timeouts.
-	TimeoutSeconds int32 `protobuf:"varint,3,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
-	// Maximum number of concurrent requests that each function instance can handle.
-	// Gen 2 supports up to 1000 concurrent requests per instance.
-	// Higher concurrency reduces the number of instances needed, improving efficiency.
-	MaxInstanceRequestConcurrency int32 `protobuf:"varint,4,opt,name=max_instance_request_concurrency,json=maxInstanceRequestConcurrency,proto3" json:"max_instance_request_concurrency,omitempty"`
-	// Environment variables injected into the function runtime as plain-text KEY=VALUE pairs.
-	// Use for non-sensitive configuration. For sensitive values, use secret_environment_variables.
-	EnvironmentVariables map[string]string `protobuf:"bytes,5,rep,name=environment_variables,json=environmentVariables,proto3" json:"environment_variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Secret Manager references injected as environment variables.
-	// Format: KEY=secret_name where secret_name is the Secret Manager secret ID.
-	// The version "latest" is used automatically unless specified otherwise in the secret name.
-	SecretEnvironmentVariables map[string]string `protobuf:"bytes,6,rep,name=secret_environment_variables,json=secretEnvironmentVariables,proto3" json:"secret_environment_variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// VPC connector for accessing resources in a VPC network (e.g., Cloud SQL, Memorystore).
-	// Format: "projects/{project}/locations/{region}/connectors/{connector-name}".
-	// The connector must exist before deploying the function.
-	VpcConnector string `protobuf:"bytes,7,opt,name=vpc_connector,json=vpcConnector,proto3" json:"vpc_connector,omitempty"`
-	// Egress settings for VPC connectivity.
-	// Determines which traffic is routed through the VPC connector.
-	VpcConnectorEgressSettings GcpCloudFunctionVpcEgressSetting `protobuf:"varint,8,opt,name=vpc_connector_egress_settings,json=vpcConnectorEgressSettings,proto3,enum=dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionVpcEgressSetting" json:"vpc_connector_egress_settings,omitempty"`
-	// Ingress settings control who can invoke the function.
-	// Use ALLOW_INTERNAL_ONLY for private functions accessible only within the VPC/project.
-	IngressSettings GcpCloudFunctionIngressSetting `protobuf:"varint,9,opt,name=ingress_settings,json=ingressSettings,proto3,enum=dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionIngressSetting" json:"ingress_settings,omitempty"`
-	// Scaling configuration: minimum and maximum number of function instances.
-	Scaling *GcpCloudFunctionScalingConfig `protobuf:"bytes,10,opt,name=scaling,proto3" json:"scaling,omitempty"`
-	// If true, makes the function publicly invokable by unauthenticated users.
-	// Grants the Cloud Run Invoker role to allUsers.
-	// For private functions, set to false and explicitly grant invoker role to specific identities.
-	AllowUnauthenticated bool `protobuf:"varint,11,opt,name=allow_unauthenticated,json=allowUnauthenticated,proto3" json:"allow_unauthenticated,omitempty"`
+	// Email of the IAM service account the function runs as — the identity
+	// whose permissions the code exercises when calling other GCP APIs.
+	// Accepts a literal email or a reference to a GcpServiceAccount
+	// resource. If omitted, the project's Compute Engine default service
+	// account is used — fine for experiments, too broad for production.
+	ServiceAccountEmail *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=service_account_email,json=serviceAccountEmail,proto3" json:"service_account_email,omitempty"`
+	// Memory available to each instance, as a quantity string: "256M",
+	// "512M", "1Gi", "16Gi". CPU scales with memory unless available_cpu is
+	// set explicitly. If unset, GCP defaults to 256M.
+	AvailableMemory string `protobuf:"bytes,2,opt,name=available_memory,json=availableMemory,proto3" json:"available_memory,omitempty"`
+	// CPUs available to each instance, e.g. "1", "2", "0.5". If unset, GCP
+	// derives CPU from memory. Concurrency above 1 requires at least 1 CPU.
+	AvailableCpu string `protobuf:"bytes,3,opt,name=available_cpu,json=availableCpu,proto3" json:"available_cpu,omitempty"`
+	// Per-request timeout in seconds. HTTP functions support up to 3600
+	// (60 minutes); event-driven functions are capped at 540 by Eventarc's
+	// delivery timeout. If unset, GCP defaults to 60.
+	TimeoutSeconds int32 `protobuf:"varint,4,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
+	// Concurrent requests each instance handles (1-1000). GCP defaults to 1
+	// — every request gets its own instance, safe for any runtime. Raising
+	// it cuts instance count and cold starts for I/O-bound code, but needs
+	// at least 1 CPU and thread-safe code.
+	MaxInstanceRequestConcurrency int32 `protobuf:"varint,5,opt,name=max_instance_request_concurrency,json=maxInstanceRequestConcurrency,proto3" json:"max_instance_request_concurrency,omitempty"`
+	// Environment variables injected into the runtime as plain-text
+	// KEY=VALUE pairs. Configuration only — never place credentials here;
+	// use secret_environment_variables so material stays in Secret Manager.
+	EnvironmentVariables map[string]string `protobuf:"bytes,6,rep,name=environment_variables,json=environmentVariables,proto3" json:"environment_variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Secret Manager references injected as environment variables. The
+	// material never appears in the spec — each entry names a secret and
+	// version resolved at instance start. The runtime service account needs
+	// roles/secretmanager.secretAccessor on each secret.
+	SecretEnvironmentVariables []*GcpCloudFunctionSecretEnvVar `protobuf:"bytes,7,rep,name=secret_environment_variables,json=secretEnvironmentVariables,proto3" json:"secret_environment_variables,omitempty"`
+	// Secret Manager secret versions projected as files under a mount path
+	// — for consumers that read credentials from disk (certificates, config
+	// files). Same accessor-role requirement as secret env vars.
+	SecretVolumes []*GcpCloudFunctionSecretVolume `protobuf:"bytes,8,rep,name=secret_volumes,json=secretVolumes,proto3" json:"secret_volumes,omitempty"`
+	// Serverless VPC Access connector routing the function's egress into a
+	// VPC — how the function reaches private IPs (Cloud SQL private IP,
+	// Memorystore, internal load balancers). Accepts the connector's full
+	// resource name (projects/*/locations/*/connectors/*) or a reference to
+	// a GcpServerlessVpcConnector resource.
+	VpcConnector *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=vpc_connector,json=vpcConnector,proto3" json:"vpc_connector,omitempty"`
+	// Which egress traffic uses the connector: only RFC1918/private
+	// destinations (the default; public egress keeps the normal path), or
+	// everything (enables static egress IPs via Cloud NAT).
+	VpcConnectorEgressSettings GcpCloudFunctionVpcEgressSetting `protobuf:"varint,10,opt,name=vpc_connector_egress_settings,json=vpcConnectorEgressSettings,proto3,enum=dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionVpcEgressSetting" json:"vpc_connector_egress_settings,omitempty"`
+	// Who can reach the function's endpoint at the network level. Use
+	// ALLOW_INTERNAL_ONLY for private functions, ALLOW_INTERNAL_AND_GCLB
+	// when fronting with an external Application Load Balancer.
+	IngressSettings GcpCloudFunctionIngressSetting `protobuf:"varint,11,opt,name=ingress_settings,json=ingressSettings,proto3,enum=dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionIngressSetting" json:"ingress_settings,omitempty"`
+	// Instance scaling bounds.
+	Scaling *GcpCloudFunctionScalingConfig `protobuf:"bytes,12,opt,name=scaling,proto3" json:"scaling,omitempty"`
+	// Whether 100% of traffic goes to the latest revision as soon as it is
+	// ready (the API default, true). Set false to hold traffic on the
+	// previous revision — the lever for manual canary/rollback via the
+	// underlying Cloud Run service.
+	AllTrafficOnLatestRevision *bool `protobuf:"varint,13,opt,name=all_traffic_on_latest_revision,json=allTrafficOnLatestRevision,proto3,oneof" json:"all_traffic_on_latest_revision,omitempty"`
+	// Binary Authorization policy checked before instances start, e.g.
+	// "default" or "projects/{project}/platforms/gae/policies/{policy}".
+	BinaryAuthorizationPolicy string `protobuf:"bytes,14,opt,name=binary_authorization_policy,json=binaryAuthorizationPolicy,proto3" json:"binary_authorization_policy,omitempty"`
+	// Makes the function publicly invokable by unauthenticated callers by
+	// granting run.invoker to allUsers on the underlying Cloud Run service.
+	// Leave false for private functions and grant invoker to specific
+	// identities instead.
+	AllowUnauthenticated bool `protobuf:"varint,15,opt,name=allow_unauthenticated,json=allowUnauthenticated,proto3" json:"allow_unauthenticated,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
 
 func (x *GcpCloudFunctionServiceConfig) Reset() {
 	*x = GcpCloudFunctionServiceConfig{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -539,7 +878,7 @@ func (x *GcpCloudFunctionServiceConfig) String() string {
 func (*GcpCloudFunctionServiceConfig) ProtoMessage() {}
 
 func (x *GcpCloudFunctionServiceConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -552,21 +891,28 @@ func (x *GcpCloudFunctionServiceConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudFunctionServiceConfig.ProtoReflect.Descriptor instead.
 func (*GcpCloudFunctionServiceConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *GcpCloudFunctionServiceConfig) GetServiceAccountEmail() string {
+func (x *GcpCloudFunctionServiceConfig) GetServiceAccountEmail() *v1.StringValueOrRef {
 	if x != nil {
 		return x.ServiceAccountEmail
+	}
+	return nil
+}
+
+func (x *GcpCloudFunctionServiceConfig) GetAvailableMemory() string {
+	if x != nil {
+		return x.AvailableMemory
 	}
 	return ""
 }
 
-func (x *GcpCloudFunctionServiceConfig) GetAvailableMemoryMb() int32 {
+func (x *GcpCloudFunctionServiceConfig) GetAvailableCpu() string {
 	if x != nil {
-		return x.AvailableMemoryMb
+		return x.AvailableCpu
 	}
-	return 0
+	return ""
 }
 
 func (x *GcpCloudFunctionServiceConfig) GetTimeoutSeconds() int32 {
@@ -590,18 +936,25 @@ func (x *GcpCloudFunctionServiceConfig) GetEnvironmentVariables() map[string]str
 	return nil
 }
 
-func (x *GcpCloudFunctionServiceConfig) GetSecretEnvironmentVariables() map[string]string {
+func (x *GcpCloudFunctionServiceConfig) GetSecretEnvironmentVariables() []*GcpCloudFunctionSecretEnvVar {
 	if x != nil {
 		return x.SecretEnvironmentVariables
 	}
 	return nil
 }
 
-func (x *GcpCloudFunctionServiceConfig) GetVpcConnector() string {
+func (x *GcpCloudFunctionServiceConfig) GetSecretVolumes() []*GcpCloudFunctionSecretVolume {
+	if x != nil {
+		return x.SecretVolumes
+	}
+	return nil
+}
+
+func (x *GcpCloudFunctionServiceConfig) GetVpcConnector() *v1.StringValueOrRef {
 	if x != nil {
 		return x.VpcConnector
 	}
-	return ""
+	return nil
 }
 
 func (x *GcpCloudFunctionServiceConfig) GetVpcConnectorEgressSettings() GcpCloudFunctionVpcEgressSetting {
@@ -625,6 +978,20 @@ func (x *GcpCloudFunctionServiceConfig) GetScaling() *GcpCloudFunctionScalingCon
 	return nil
 }
 
+func (x *GcpCloudFunctionServiceConfig) GetAllTrafficOnLatestRevision() bool {
+	if x != nil && x.AllTrafficOnLatestRevision != nil {
+		return *x.AllTrafficOnLatestRevision
+	}
+	return false
+}
+
+func (x *GcpCloudFunctionServiceConfig) GetBinaryAuthorizationPolicy() string {
+	if x != nil {
+		return x.BinaryAuthorizationPolicy
+	}
+	return ""
+}
+
 func (x *GcpCloudFunctionServiceConfig) GetAllowUnauthenticated() bool {
 	if x != nil {
 		return x.AllowUnauthenticated
@@ -632,15 +999,222 @@ func (x *GcpCloudFunctionServiceConfig) GetAllowUnauthenticated() bool {
 	return false
 }
 
-// GcpCloudFunctionScalingConfig defines auto-scaling behavior: min/max instances.
+// GcpCloudFunctionSecretEnvVar resolves one Secret Manager secret version
+// into one environment variable at instance start.
+type GcpCloudFunctionSecretEnvVar struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Environment variable name, e.g. "DATABASE_PASSWORD".
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// The secret: a short name for a secret in the function's project
+	// ("my-secret"). Cross-project secrets set project_id.
+	Secret string `protobuf:"bytes,2,opt,name=secret,proto3" json:"secret,omitempty"`
+	// Secret version to resolve: a version number or "latest" — the common
+	// choice, at the cost of new instances silently picking up rotations.
+	Version string `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
+	// Project the secret lives in, when it is not the function's project.
+	ProjectId     string `protobuf:"bytes,4,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudFunctionSecretEnvVar) Reset() {
+	*x = GcpCloudFunctionSecretEnvVar{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudFunctionSecretEnvVar) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudFunctionSecretEnvVar) ProtoMessage() {}
+
+func (x *GcpCloudFunctionSecretEnvVar) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudFunctionSecretEnvVar.ProtoReflect.Descriptor instead.
+func (*GcpCloudFunctionSecretEnvVar) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GcpCloudFunctionSecretEnvVar) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionSecretEnvVar) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionSecretEnvVar) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionSecretEnvVar) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+// GcpCloudFunctionSecretVolume projects Secret Manager secret versions as
+// files under a mount path.
+type GcpCloudFunctionSecretVolume struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Absolute path the volume is mounted at, e.g. "/etc/secrets". Each
+	// configured version appears as a file under it.
+	MountPath string `protobuf:"bytes,1,opt,name=mount_path,json=mountPath,proto3" json:"mount_path,omitempty"`
+	// The secret: a short name for a secret in the function's project.
+	// Cross-project secrets set project_id.
+	Secret string `protobuf:"bytes,2,opt,name=secret,proto3" json:"secret,omitempty"`
+	// Project the secret lives in, when it is not the function's project.
+	ProjectId string `protobuf:"bytes,3,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// Which versions land at which relative paths. If empty, the "latest"
+	// version is projected at a file named after the secret.
+	Versions      []*GcpCloudFunctionSecretVolumeVersion `protobuf:"bytes,4,rep,name=versions,proto3" json:"versions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudFunctionSecretVolume) Reset() {
+	*x = GcpCloudFunctionSecretVolume{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudFunctionSecretVolume) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudFunctionSecretVolume) ProtoMessage() {}
+
+func (x *GcpCloudFunctionSecretVolume) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudFunctionSecretVolume.ProtoReflect.Descriptor instead.
+func (*GcpCloudFunctionSecretVolume) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GcpCloudFunctionSecretVolume) GetMountPath() string {
+	if x != nil {
+		return x.MountPath
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionSecretVolume) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionSecretVolume) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionSecretVolume) GetVersions() []*GcpCloudFunctionSecretVolumeVersion {
+	if x != nil {
+		return x.Versions
+	}
+	return nil
+}
+
+// GcpCloudFunctionSecretVolumeVersion maps one secret version to one file.
+type GcpCloudFunctionSecretVolumeVersion struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Secret version to project: a version number or "latest".
+	Version string `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
+	// Relative path of the file under the volume's mount path.
+	Path          string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudFunctionSecretVolumeVersion) Reset() {
+	*x = GcpCloudFunctionSecretVolumeVersion{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudFunctionSecretVolumeVersion) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudFunctionSecretVolumeVersion) ProtoMessage() {}
+
+func (x *GcpCloudFunctionSecretVolumeVersion) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudFunctionSecretVolumeVersion.ProtoReflect.Descriptor instead.
+func (*GcpCloudFunctionSecretVolumeVersion) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GcpCloudFunctionSecretVolumeVersion) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *GcpCloudFunctionSecretVolumeVersion) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+// GcpCloudFunctionScalingConfig defines instance scaling bounds.
 type GcpCloudFunctionScalingConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Minimum number of instances to keep warm. Setting min_instance_count > 0
-	// eliminates cold starts but incurs cost for idle compute.
-	// Use for latency-sensitive, production workloads.
+	// Minimum instances kept warm. Above 0 eliminates cold starts at idle
+	// compute cost — for latency-sensitive production endpoints.
 	MinInstanceCount int32 `protobuf:"varint,1,opt,name=min_instance_count,json=minInstanceCount,proto3" json:"min_instance_count,omitempty"`
-	// Maximum number of instances. Controls cost and concurrency.
-	// Set to limit maximum scale-out and prevent runaway costs.
+	// Maximum instances the function scales to — the cost and downstream-
+	// pressure ceiling (a runaway event storm stops here).
 	MaxInstanceCount int32 `protobuf:"varint,2,opt,name=max_instance_count,json=maxInstanceCount,proto3" json:"max_instance_count,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -648,7 +1222,7 @@ type GcpCloudFunctionScalingConfig struct {
 
 func (x *GcpCloudFunctionScalingConfig) Reset() {
 	*x = GcpCloudFunctionScalingConfig{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -660,7 +1234,7 @@ func (x *GcpCloudFunctionScalingConfig) String() string {
 func (*GcpCloudFunctionScalingConfig) ProtoMessage() {}
 
 func (x *GcpCloudFunctionScalingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -673,7 +1247,7 @@ func (x *GcpCloudFunctionScalingConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudFunctionScalingConfig.ProtoReflect.Descriptor instead.
 func (*GcpCloudFunctionScalingConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GcpCloudFunctionScalingConfig) GetMinInstanceCount() int32 {
@@ -690,12 +1264,14 @@ func (x *GcpCloudFunctionScalingConfig) GetMaxInstanceCount() int32 {
 	return 0
 }
 
-// GcpCloudFunctionTrigger defines what invokes the function: HTTP requests or cloud events.
+// GcpCloudFunctionTrigger defines what invokes the function: HTTPS
+// requests or a CloudEvent delivered by Eventarc.
 type GcpCloudFunctionTrigger struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Type of trigger. Defaults to HTTP if not specified.
 	TriggerType GcpCloudFunctionTriggerType `protobuf:"varint,1,opt,name=trigger_type,json=triggerType,proto3,enum=dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTriggerType" json:"trigger_type,omitempty"`
-	// Event trigger configuration. Required if trigger_type is EVENT_TRIGGER.
+	// Event trigger configuration. Required when trigger_type is
+	// EVENT_TRIGGER.
 	EventTrigger  *GcpCloudFunctionEventTrigger `protobuf:"bytes,2,opt,name=event_trigger,json=eventTrigger,proto3" json:"event_trigger,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -703,7 +1279,7 @@ type GcpCloudFunctionTrigger struct {
 
 func (x *GcpCloudFunctionTrigger) Reset() {
 	*x = GcpCloudFunctionTrigger{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -715,7 +1291,7 @@ func (x *GcpCloudFunctionTrigger) String() string {
 func (*GcpCloudFunctionTrigger) ProtoMessage() {}
 
 func (x *GcpCloudFunctionTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -728,7 +1304,7 @@ func (x *GcpCloudFunctionTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudFunctionTrigger.ProtoReflect.Descriptor instead.
 func (*GcpCloudFunctionTrigger) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GcpCloudFunctionTrigger) GetTriggerType() GcpCloudFunctionTriggerType {
@@ -745,40 +1321,44 @@ func (x *GcpCloudFunctionTrigger) GetEventTrigger() *GcpCloudFunctionEventTrigge
 	return nil
 }
 
-// GcpCloudFunctionEventTrigger defines event-driven triggers (Pub/Sub, Storage, Firestore, etc.).
+// GcpCloudFunctionEventTrigger wires the function to a CloudEvent source
+// through Eventarc (Pub/Sub, Storage, Firestore, audit logs, ...).
 type GcpCloudFunctionEventTrigger struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Event type that triggers the function. Uses CloudEvents format.
-	// Common examples:
+	// Event type that triggers the function, in CloudEvents format:
 	// - "google.cloud.pubsub.topic.v1.messagePublished" (Pub/Sub)
-	// - "google.cloud.storage.object.v1.finalized" (Storage object created)
-	// - "google.cloud.storage.object.v1.deleted" (Storage object deleted)
-	// - "google.cloud.firestore.document.v1.written" (Firestore document write)
+	// - "google.cloud.storage.object.v1.finalized" (object created)
+	// - "google.cloud.storage.object.v1.deleted" (object deleted)
+	// - "google.cloud.firestore.document.v1.written" (document write)
 	EventType string `protobuf:"bytes,1,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
-	// Pub/Sub topic resource name for Pub/Sub triggers.
-	// Format: "projects/{project}/topics/{topic-name}".
-	// Required for Pub/Sub event types.
-	PubsubTopic string `protobuf:"bytes,2,opt,name=pubsub_topic,json=pubsubTopic,proto3" json:"pubsub_topic,omitempty"`
-	// Event filters. Used to filter events based on attributes.
-	// For Storage triggers, filter by bucket: attribute="bucket" value="my-bucket".
-	// For Firestore triggers, filter by document path pattern.
+	// Pub/Sub topic for messagePublished triggers. Accepts the full
+	// resource name (projects/{project}/topics/{name}) or a reference to a
+	// GcpPubSubTopic resource.
+	PubsubTopic *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=pubsub_topic,json=pubsubTopic,proto3" json:"pubsub_topic,omitempty"`
+	// Event filters narrowing which events invoke the function. For Storage
+	// triggers, filter by bucket: attribute="bucket" value="my-bucket". For
+	// Firestore, filter by document path pattern.
 	EventFilters []*GcpCloudFunctionEventFilter `protobuf:"bytes,3,rep,name=event_filters,json=eventFilters,proto3" json:"event_filters,omitempty"`
-	// Region where the event trigger listens for events. Should typically match
-	// the function region for optimal performance and data locality.
+	// Region the trigger listens in. Storage/audit-log sources fire in the
+	// bucket's region (multi-region sources use "us"/"eu"); if unset, GCP
+	// uses the function's region.
 	TriggerRegion string `protobuf:"bytes,4,opt,name=trigger_region,json=triggerRegion,proto3" json:"trigger_region,omitempty"`
-	// Retry policy for event delivery. If RETRY_POLICY_RETRY, failed invocations
-	// are automatically retried. If RETRY_POLICY_DO_NOT_RETRY, events are delivered once.
+	// Retry policy for failed deliveries. RETRY_POLICY_RETRY redelivers
+	// with exponential backoff (at-least-once — handlers must be
+	// idempotent); RETRY_POLICY_DO_NOT_RETRY delivers at most once.
 	RetryPolicy GcpCloudFunctionRetryPolicy `protobuf:"varint,5,opt,name=retry_policy,json=retryPolicy,proto3,enum=dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionRetryPolicy" json:"retry_policy,omitempty"`
-	// Service account used by Eventarc to invoke the function.
-	// If not specified, uses the default Eventarc service account.
-	ServiceAccountEmail string `protobuf:"bytes,6,opt,name=service_account_email,json=serviceAccountEmail,proto3" json:"service_account_email,omitempty"`
+	// Email of the service account Eventarc uses to invoke the function —
+	// it needs run.invoker on the underlying service. Accepts a literal
+	// email or a reference to a GcpServiceAccount resource. If omitted, the
+	// default compute service account is used.
+	ServiceAccountEmail *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=service_account_email,json=serviceAccountEmail,proto3" json:"service_account_email,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
 
 func (x *GcpCloudFunctionEventTrigger) Reset() {
 	*x = GcpCloudFunctionEventTrigger{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -790,7 +1370,7 @@ func (x *GcpCloudFunctionEventTrigger) String() string {
 func (*GcpCloudFunctionEventTrigger) ProtoMessage() {}
 
 func (x *GcpCloudFunctionEventTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -803,7 +1383,7 @@ func (x *GcpCloudFunctionEventTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudFunctionEventTrigger.ProtoReflect.Descriptor instead.
 func (*GcpCloudFunctionEventTrigger) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GcpCloudFunctionEventTrigger) GetEventType() string {
@@ -813,11 +1393,11 @@ func (x *GcpCloudFunctionEventTrigger) GetEventType() string {
 	return ""
 }
 
-func (x *GcpCloudFunctionEventTrigger) GetPubsubTopic() string {
+func (x *GcpCloudFunctionEventTrigger) GetPubsubTopic() *v1.StringValueOrRef {
 	if x != nil {
 		return x.PubsubTopic
 	}
-	return ""
+	return nil
 }
 
 func (x *GcpCloudFunctionEventTrigger) GetEventFilters() []*GcpCloudFunctionEventFilter {
@@ -841,22 +1421,23 @@ func (x *GcpCloudFunctionEventTrigger) GetRetryPolicy() GcpCloudFunctionRetryPol
 	return GcpCloudFunctionRetryPolicy_RETRY_POLICY_DO_NOT_RETRY
 }
 
-func (x *GcpCloudFunctionEventTrigger) GetServiceAccountEmail() string {
+func (x *GcpCloudFunctionEventTrigger) GetServiceAccountEmail() *v1.StringValueOrRef {
 	if x != nil {
 		return x.ServiceAccountEmail
 	}
-	return ""
+	return nil
 }
 
-// GcpCloudFunctionEventFilter filters events based on attribute values.
+// GcpCloudFunctionEventFilter filters events by attribute value.
 type GcpCloudFunctionEventFilter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Attribute name to filter on (e.g., "bucket" for Storage events).
+	// Attribute to filter on (e.g. "bucket" for Storage events).
 	Attribute string `protobuf:"bytes,1,opt,name=attribute,proto3" json:"attribute,omitempty"`
-	// Value to match. Supports wildcards (*) for pattern matching.
+	// Value to match.
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	// Optional: Operator for matching. Defaults to exact match.
-	// Supports "match-path-pattern" for Firestore document path patterns.
+	// Matching operator. Unset means exact match; "match-path-pattern"
+	// (the only other value GCP accepts) enables path-pattern wildcards for
+	// Firestore/audit-log filters.
 	Operator      *string `protobuf:"bytes,3,opt,name=operator,proto3,oneof" json:"operator,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -864,7 +1445,7 @@ type GcpCloudFunctionEventFilter struct {
 
 func (x *GcpCloudFunctionEventFilter) Reset() {
 	*x = GcpCloudFunctionEventFilter{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -876,7 +1457,7 @@ func (x *GcpCloudFunctionEventFilter) String() string {
 func (*GcpCloudFunctionEventFilter) ProtoMessage() {}
 
 func (x *GcpCloudFunctionEventFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -889,7 +1470,7 @@ func (x *GcpCloudFunctionEventFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudFunctionEventFilter.ProtoReflect.Descriptor instead.
 func (*GcpCloudFunctionEventFilter) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GcpCloudFunctionEventFilter) GetAttribute() string {
@@ -917,76 +1498,133 @@ var File_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto protoreflect.Fi
 
 const file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7dev/planton/provider/gcp/gcpcloudfunction/v1/spec.proto\x12,dev.planton.provider.gcp.gcpcloudfunction.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xea\x04\n" +
-	"\x14GcpCloudFunctionSpec\x12{\n" +
+	"7dev/planton/provider/gcp/gcpcloudfunction/v1/spec.proto\x12,dev.planton.provider.gcp.gcpcloudfunction.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa0\a\n" +
+	"\x14GcpCloudFunctionSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x126\n" +
-	"\x06region\x18\x02 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x14^[a-z]+-[a-z]+[0-9]$R\x06region\x12R\n" +
-	"\rfunction_name\x18\x03 \x01(\tB-\xbaH*\xd8\x01\x01r%\x18?2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\ffunctionName\x12t\n" +
-	"\fbuild_config\x18\x04 \x01(\v2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfigB\x06\xbaH\x03\xc8\x01\x01R\vbuildConfig\x12r\n" +
-	"\x0eservice_config\x18\x05 \x01(\v2K.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfigR\rserviceConfig\x12_\n" +
-	"\atrigger\x18\x06 \x01(\v2E.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTriggerR\atrigger\"\xb6\x04\n" +
-	"\x1bGcpCloudFunctionBuildConfig\x12\x87\x01\n" +
-	"\aruntime\x18\x01 \x01(\tBm\xbaHj\xc8\x01\x01re2c^(python3(10|11|12|13)|nodejs(20|22)|go1(21|22|23)|java(17|21)|dotnet(6|8)|ruby(32|33)|php(82|83))$R\aruntime\x12.\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
+	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12R\n" +
+	"\rfunction_name\x18\x03 \x01(\tB-\xbaH*\xd8\x01\x01r%\x18?2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\ffunctionName\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12f\n" +
+	"\x06labels\x18\x05 \x03(\v2N.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.LabelsEntryR\x06labels\x12t\n" +
+	"\fkms_key_name\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"kmsKeyName\x12t\n" +
+	"\fbuild_config\x18\a \x01(\v2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfigB\x06\xbaH\x03\xc8\x01\x01R\vbuildConfig\x12r\n" +
+	"\x0eservice_config\x18\b \x01(\v2K.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfigR\rserviceConfig\x12_\n" +
+	"\atrigger\x18\t \x01(\v2E.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTriggerR\atrigger\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x91\a\n" +
+	"\x1bGcpCloudFunctionBuildConfig\x126\n" +
+	"\aruntime\x18\x01 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14\x18 2\x10^[a-z][a-z0-9]*$R\aruntime\x12.\n" +
 	"\ventry_point\x18\x02 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\n" +
 	"entryPoint\x12d\n" +
 	"\x06source\x18\x03 \x01(\v2D.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSourceB\x06\xbaH\x03\xc8\x01\x01R\x06source\x12\xa8\x01\n" +
-	"\x1bbuild_environment_variables\x18\x04 \x03(\v2h.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.BuildEnvironmentVariablesEntryR\x19buildEnvironmentVariables\x1aL\n" +
+	"\x1bbuild_environment_variables\x18\x04 \x03(\v2h.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.BuildEnvironmentVariablesEntryR\x19buildEnvironmentVariables\x12y\n" +
+	"\x0fservice_account\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xe6\x04\x92\xd4a\x13status.outputs.nameR\x0eserviceAccount\x12\x1f\n" +
+	"\vworker_pool\x18\x06 \x01(\tR\n" +
+	"workerPool\x12\x88\x01\n" +
+	"\x11docker_repository\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xd8\x04\x92\xd4a\x1estatus.outputs.repository_pathR\x10dockerRepository\x12\x83\x01\n" +
+	"\rupdate_policy\x18\b \x01(\x0e2O.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildUpdatePolicyB\r\x92\xa6\x1d\tAUTOMATICR\fupdatePolicy\x1aL\n" +
 	"\x1eBuildEnvironmentVariablesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb7\x01\n" +
-	"\x16GcpCloudFunctionSource\x12E\n" +
-	"\x06bucket\x18\x01 \x01(\tB-\xbaH*\xc8\x01\x01r%2#^[a-z0-9][a-z0-9._-]{1,61}[a-z0-9]$R\x06bucket\x12\"\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd3\x03\n" +
+	"\x16GcpCloudFunctionSource\x12r\n" +
+	"\x0estorage_source\x18\x01 \x01(\v2K.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionStorageSourceR\rstorageSource\x12i\n" +
+	"\vrepo_source\x18\x02 \x01(\v2H.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionRepoSourceR\n" +
+	"repoSource:\xd9\x01\xbaH\xd5\x01\x1a\xd2\x01\n" +
+	"\x12source.exactly_one\x12qchoose exactly one source: storageSource (a GCS zip archive) or repoSource (a Cloud Source Repositories revision)\x1aI(has(this.storage_source) ? 1 : 0) + (has(this.repo_source) ? 1 : 0) == 1\"\xec\x01\n" +
+	"\x1dGcpCloudFunctionStorageSource\x12s\n" +
+	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\"\n" +
 	"\x06object\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06object\x12#\n" +
 	"\n" +
 	"generation\x18\x03 \x01(\x03H\x00R\n" +
 	"generation\x88\x01\x01B\r\n" +
-	"\v_generation\"\xe5\v\n" +
-	"\x1dGcpCloudFunctionServiceConfig\x12p\n" +
-	"\x15service_account_email\x18\x01 \x01(\tB<\xbaH9\xd8\x01\x01r422^[a-z0-9-]+@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$R\x13serviceAccountEmail\x12Y\n" +
-	"\x13available_memory_mb\x18\x02 \x01(\x05B)\xbaH\x1f\x1a\x1d0\x80\x010\x80\x020\x80\x040\x80\b0\x80\x100\x80 0\x80@0\x80\x80\x010\x80\x80\x02\x92\xa6\x1d\x03256R\x11availableMemoryMb\x129\n" +
-	"\x0ftimeout_seconds\x18\x03 \x01(\x05B\x10\xbaH\a\x1a\x05\x18\x90\x1c(\x01\x92\xa6\x1d\x0260R\x0etimeoutSeconds\x12Y\n" +
-	" max_instance_request_concurrency\x18\x04 \x01(\x05B\x10\xbaH\a\x1a\x05\x18\xe8\a(\x01\x92\xa6\x1d\x0280R\x1dmaxInstanceRequestConcurrency\x12\x9a\x01\n" +
-	"\x15environment_variables\x18\x05 \x03(\v2e.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.EnvironmentVariablesEntryR\x14environmentVariables\x12\xad\x01\n" +
-	"\x1csecret_environment_variables\x18\x06 \x03(\v2k.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.SecretEnvironmentVariablesEntryR\x1asecretEnvironmentVariables\x12\x9e\x01\n" +
-	"\rvpc_connector\x18\a \x01(\tBy\xbaHv\xd8\x01\x01rq2o^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/locations/[a-z]+-[a-z]+[0-9]/connectors/[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\fvpcConnector\x12\xaa\x01\n" +
-	"\x1dvpc_connector_egress_settings\x18\b \x01(\x0e2N.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionVpcEgressSettingB\x17\x92\xa6\x1d\x13PRIVATE_RANGES_ONLYR\x1avpcConnectorEgressSettings\x12\x86\x01\n" +
-	"\x10ingress_settings\x18\t \x01(\x0e2L.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionIngressSettingB\r\x92\xa6\x1d\tALLOW_ALLR\x0fingressSettings\x12e\n" +
-	"\ascaling\x18\n" +
-	" \x01(\v2K.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionScalingConfigR\ascaling\x12>\n" +
-	"\x15allow_unauthenticated\x18\v \x01(\bB\t\x92\xa6\x1d\x05falseR\x14allowUnauthenticated\x1aG\n" +
+	"\v_generation\"\xd4\x03\n" +
+	"\x1aGcpCloudFunctionRepoSource\x12'\n" +
+	"\trepo_name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\brepoName\x12\x1f\n" +
+	"\vbranch_name\x18\x02 \x01(\tR\n" +
+	"branchName\x12\x19\n" +
+	"\btag_name\x18\x03 \x01(\tR\atagName\x12\x1d\n" +
+	"\n" +
+	"commit_sha\x18\x04 \x01(\tR\tcommitSha\x12\x10\n" +
+	"\x03dir\x18\x05 \x01(\tR\x03dir\x12!\n" +
+	"\finvert_regex\x18\x06 \x01(\bR\vinvertRegex\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\a \x01(\tR\tprojectId:\xdd\x01\xbaH\xd9\x01\x1a\xd6\x01\n" +
+	" repo_source.exactly_one_revision\x12Ipin the source to exactly one revision: branchName, tagName, or commitSha\x1ag(this.branch_name != '' ? 1 : 0) + (this.tag_name != '' ? 1 : 0) + (this.commit_sha != '' ? 1 : 0) == 1\"\xdd\r\n" +
+	"\x1dGcpCloudFunctionServiceConfig\x12\x85\x01\n" +
+	"\x15service_account_email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\x12^\n" +
+	"\x10available_memory\x18\x02 \x01(\tB3\xbaH(\xd8\x01\x01r#2!^[0-9]+(\\.[0-9]+)?(k|M|G|Mi|Gi)?$\x92\xa6\x1d\x04256MR\x0favailableMemory\x12B\n" +
+	"\ravailable_cpu\x18\x03 \x01(\tB\x1d\xbaH\x1a\xd8\x01\x01r\x152\x13^[0-9]+(\\.[0-9]+)?$R\favailableCpu\x12<\n" +
+	"\x0ftimeout_seconds\x18\x04 \x01(\x05B\x13\xbaH\n" +
+	"\xd8\x01\x01\x1a\x05\x18\x90\x1c(\x01\x92\xa6\x1d\x0260R\x0etimeoutSeconds\x12[\n" +
+	" max_instance_request_concurrency\x18\x05 \x01(\x05B\x12\xbaH\n" +
+	"\xd8\x01\x01\x1a\x05\x18\xe8\a(\x01\x92\xa6\x1d\x011R\x1dmaxInstanceRequestConcurrency\x12\x9a\x01\n" +
+	"\x15environment_variables\x18\x06 \x03(\v2e.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.EnvironmentVariablesEntryR\x14environmentVariables\x12\x8c\x01\n" +
+	"\x1csecret_environment_variables\x18\a \x03(\v2J.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSecretEnvVarR\x1asecretEnvironmentVariables\x12q\n" +
+	"\x0esecret_volumes\x18\b \x03(\v2J.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSecretVolumeR\rsecretVolumes\x12z\n" +
+	"\rvpc_connector\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd1\x05\x92\xd4a\x18status.outputs.self_linkR\fvpcConnector\x12\xaa\x01\n" +
+	"\x1dvpc_connector_egress_settings\x18\n" +
+	" \x01(\x0e2N.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionVpcEgressSettingB\x17\x92\xa6\x1d\x13PRIVATE_RANGES_ONLYR\x1avpcConnectorEgressSettings\x12\x86\x01\n" +
+	"\x10ingress_settings\x18\v \x01(\x0e2L.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionIngressSettingB\r\x92\xa6\x1d\tALLOW_ALLR\x0fingressSettings\x12e\n" +
+	"\ascaling\x18\f \x01(\v2K.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionScalingConfigR\ascaling\x12Q\n" +
+	"\x1eall_traffic_on_latest_revision\x18\r \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x1aallTrafficOnLatestRevision\x88\x01\x01\x12>\n" +
+	"\x1bbinary_authorization_policy\x18\x0e \x01(\tR\x19binaryAuthorizationPolicy\x12>\n" +
+	"\x15allow_unauthenticated\x18\x0f \x01(\bB\t\x92\xa6\x1d\x05falseR\x14allowUnauthenticated\x1aG\n" +
 	"\x19EnvironmentVariablesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aM\n" +
-	"\x1fSecretEnvironmentVariablesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb6\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B!\n" +
+	"\x1f_all_traffic_on_latest_revision\"\xa5\x02\n" +
+	"\x1cGcpCloudFunctionSecretEnvVar\x124\n" +
+	"\x03key\x18\x01 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1a2\x18^[A-Za-z_][A-Za-z0-9_]*$R\x03key\x12\x89\x01\n" +
+	"\x06secret\x18\x02 \x01(\tBq\xbaH\a\xc8\x01\x01r\x02\x10\x01\xaa\xa6\x1dcSecret Manager secret NAME/identifier only — the secret material itself never appears in the specR\x06secret\x12$\n" +
+	"\aversion\x18\x03 \x01(\tB\n" +
+	"\x92\xa6\x1d\x06latestR\aversion\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x04 \x01(\tR\tprojectId\"\xe3\x02\n" +
+	"\x1cGcpCloudFunctionSecretVolume\x12)\n" +
+	"\n" +
+	"mount_path\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tmountPath\x12\x89\x01\n" +
+	"\x06secret\x18\x02 \x01(\tBq\xbaH\a\xc8\x01\x01r\x02\x10\x01\xaa\xa6\x1dcSecret Manager secret NAME/identifier only — the secret material itself never appears in the specR\x06secret\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x03 \x01(\tR\tprojectId\x12m\n" +
+	"\bversions\x18\x04 \x03(\v2Q.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSecretVolumeVersionR\bversions\"k\n" +
+	"#GcpCloudFunctionSecretVolumeVersion\x12$\n" +
+	"\aversion\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\aversion\x12\x1e\n" +
+	"\x04path\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04path\"\x9f\x02\n" +
 	"\x1dGcpCloudFunctionScalingConfig\x12<\n" +
 	"\x12min_instance_count\x18\x01 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18d(\x00\x92\xa6\x1d\x010R\x10minInstanceCount\x12?\n" +
-	"\x12max_instance_count\x18\x02 \x01(\x05B\x11\xbaH\a\x1a\x05\x18\xb8\x17(\x01\x92\xa6\x1d\x03100R\x10maxInstanceCount:\x95\x01\xbaH\x91\x01\x1a\x8e\x01\n" +
-	"\x13scaling.min-lte-max\x12Cmin_instance_count must be less than or equal to max_instance_count\x1a2this.min_instance_count <= this.max_instance_count\"\x9d\x03\n" +
+	"\x12max_instance_count\x18\x02 \x01(\x05B\x11\xbaH\a\x1a\x05\x18\xb8\x17(\x01\x92\xa6\x1d\x03100R\x10maxInstanceCount:\x7f\xbaH|\x1az\n" +
+	"\x13scaling.min_lte_max\x12/minInstanceCount cannot exceed maxInstanceCount\x1a2this.min_instance_count <= this.max_instance_count\"\xb3\x03\n" +
 	"\x17GcpCloudFunctionTrigger\x12v\n" +
 	"\ftrigger_type\x18\x01 \x01(\x0e2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTriggerTypeB\b\x92\xa6\x1d\x04HTTPR\vtriggerType\x12o\n" +
-	"\revent_trigger\x18\x02 \x01(\v2J.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTriggerR\feventTrigger:\x98\x01\xbaH\x94\x01\x1a\x91\x01\n" +
-	"\x1etrigger.event-trigger-required\x12<event_trigger must be set when trigger_type is EVENT_TRIGGER\x1a1this.trigger_type != 1 || has(this.event_trigger)\"\x8d\x05\n" +
+	"\revent_trigger\x18\x02 \x01(\v2J.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTriggerR\feventTrigger:\xae\x01\xbaH\xaa\x01\x1a\xa7\x01\n" +
+	"\x1etrigger.event_trigger_required\x12Ran EVENT_TRIGGER function needs the eventTrigger block (eventType and its filters)\x1a1this.trigger_type != 1 || has(this.event_trigger)\"\x93\x05\n" +
 	"\x1cGcpCloudFunctionEventTrigger\x12)\n" +
 	"\n" +
 	"event_type\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\teventType\x12\x8a\x01\n" +
-	"\fpubsub_topic\x18\x02 \x01(\tBg\xbaHd\xd8\x01\x01r_2]^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/topics/[a-zA-Z]([a-zA-Z0-9-_.~+%]{0,253}[a-zA-Z0-9])?$R\vpubsubTopic\x12n\n" +
-	"\revent_filters\x18\x03 \x03(\v2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventFilterR\feventFilters\x12E\n" +
-	"\x0etrigger_region\x18\x04 \x01(\tB\x1e\xbaH\x1b\xd8\x01\x01r\x162\x14^[a-z]+-[a-z]+[0-9]$R\rtriggerRegion\x12\x8b\x01\n" +
-	"\fretry_policy\x18\x05 \x01(\x0e2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionRetryPolicyB\x1d\x92\xa6\x1d\x19RETRY_POLICY_DO_NOT_RETRYR\vretryPolicy\x12p\n" +
-	"\x15service_account_email\x18\x06 \x01(\tB<\xbaH9\xd8\x01\x01r422^[a-z0-9-]+@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$R\x13serviceAccountEmail\"\x97\x01\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\teventType\x12w\n" +
+	"\fpubsub_topic\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\x94\x05\x92\xd4a\x17status.outputs.topic_idR\vpubsubTopic\x12n\n" +
+	"\revent_filters\x18\x03 \x03(\v2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventFilterR\feventFilters\x12I\n" +
+	"\x0etrigger_region\x18\x04 \x01(\tB\"\xbaH\x1f\xd8\x01\x01r\x1a2\x18^[a-z]+(-[a-z]+[0-9]+)?$R\rtriggerRegion\x12\x8b\x01\n" +
+	"\fretry_policy\x18\x05 \x01(\x0e2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionRetryPolicyB\x1d\x92\xa6\x1d\x19RETRY_POLICY_DO_NOT_RETRYR\vretryPolicy\x12\x85\x01\n" +
+	"\x15service_account_email\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\"\x97\x01\n" +
 	"\x1bGcpCloudFunctionEventFilter\x12(\n" +
 	"\tattribute\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tattribute\x12 \n" +
 	"\x05value\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05value\x12\x1f\n" +
 	"\boperator\x18\x03 \x01(\tH\x00R\boperator\x88\x01\x01B\v\n" +
-	"\t_operator*:\n" +
+	"\t_operator*A\n" +
+	"!GcpCloudFunctionBuildUpdatePolicy\x12\r\n" +
+	"\tAUTOMATIC\x10\x00\x12\r\n" +
+	"\tON_DEPLOY\x10\x01*:\n" +
 	"\x1bGcpCloudFunctionTriggerType\x12\b\n" +
 	"\x04HTTP\x10\x00\x12\x11\n" +
 	"\rEVENT_TRIGGER\x10\x01*e\n" +
@@ -1014,47 +1652,67 @@ func file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescGZIP() 
 	return file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_goTypes = []any{
-	(GcpCloudFunctionTriggerType)(0),      // 0: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTriggerType
-	(GcpCloudFunctionIngressSetting)(0),   // 1: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionIngressSetting
-	(GcpCloudFunctionVpcEgressSetting)(0), // 2: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionVpcEgressSetting
-	(GcpCloudFunctionRetryPolicy)(0),      // 3: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionRetryPolicy
-	(*GcpCloudFunctionSpec)(nil),          // 4: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec
-	(*GcpCloudFunctionBuildConfig)(nil),   // 5: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig
-	(*GcpCloudFunctionSource)(nil),        // 6: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSource
-	(*GcpCloudFunctionServiceConfig)(nil), // 7: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig
-	(*GcpCloudFunctionScalingConfig)(nil), // 8: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionScalingConfig
-	(*GcpCloudFunctionTrigger)(nil),       // 9: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTrigger
-	(*GcpCloudFunctionEventTrigger)(nil),  // 10: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTrigger
-	(*GcpCloudFunctionEventFilter)(nil),   // 11: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventFilter
-	nil,                                   // 12: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.BuildEnvironmentVariablesEntry
-	nil,                                   // 13: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.EnvironmentVariablesEntry
-	nil,                                   // 14: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.SecretEnvironmentVariablesEntry
-	(*v1.StringValueOrRef)(nil),           // 15: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(GcpCloudFunctionBuildUpdatePolicy)(0),      // 0: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildUpdatePolicy
+	(GcpCloudFunctionTriggerType)(0),            // 1: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTriggerType
+	(GcpCloudFunctionIngressSetting)(0),         // 2: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionIngressSetting
+	(GcpCloudFunctionVpcEgressSetting)(0),       // 3: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionVpcEgressSetting
+	(GcpCloudFunctionRetryPolicy)(0),            // 4: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionRetryPolicy
+	(*GcpCloudFunctionSpec)(nil),                // 5: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec
+	(*GcpCloudFunctionBuildConfig)(nil),         // 6: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig
+	(*GcpCloudFunctionSource)(nil),              // 7: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSource
+	(*GcpCloudFunctionStorageSource)(nil),       // 8: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionStorageSource
+	(*GcpCloudFunctionRepoSource)(nil),          // 9: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionRepoSource
+	(*GcpCloudFunctionServiceConfig)(nil),       // 10: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig
+	(*GcpCloudFunctionSecretEnvVar)(nil),        // 11: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSecretEnvVar
+	(*GcpCloudFunctionSecretVolume)(nil),        // 12: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSecretVolume
+	(*GcpCloudFunctionSecretVolumeVersion)(nil), // 13: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSecretVolumeVersion
+	(*GcpCloudFunctionScalingConfig)(nil),       // 14: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionScalingConfig
+	(*GcpCloudFunctionTrigger)(nil),             // 15: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTrigger
+	(*GcpCloudFunctionEventTrigger)(nil),        // 16: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTrigger
+	(*GcpCloudFunctionEventFilter)(nil),         // 17: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventFilter
+	nil,                                         // 18: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.LabelsEntry
+	nil,                                         // 19: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.BuildEnvironmentVariablesEntry
+	nil,                                         // 20: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.EnvironmentVariablesEntry
+	(*v1.StringValueOrRef)(nil),                 // 21: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_depIdxs = []int32{
-	15, // 0: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 1: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.build_config:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig
-	7,  // 2: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.service_config:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig
-	9,  // 3: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.trigger:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTrigger
-	6,  // 4: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.source:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSource
-	12, // 5: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.build_environment_variables:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.BuildEnvironmentVariablesEntry
-	13, // 6: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.environment_variables:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.EnvironmentVariablesEntry
-	14, // 7: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.secret_environment_variables:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.SecretEnvironmentVariablesEntry
-	2,  // 8: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.vpc_connector_egress_settings:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionVpcEgressSetting
-	1,  // 9: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.ingress_settings:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionIngressSetting
-	8,  // 10: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.scaling:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionScalingConfig
-	0,  // 11: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTrigger.trigger_type:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTriggerType
-	10, // 12: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTrigger.event_trigger:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTrigger
-	11, // 13: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTrigger.event_filters:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventFilter
-	3,  // 14: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTrigger.retry_policy:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionRetryPolicy
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	21, // 0: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 1: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.labels:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.LabelsEntry
+	21, // 2: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 3: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.build_config:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig
+	10, // 4: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.service_config:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig
+	15, // 5: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.trigger:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTrigger
+	7,  // 6: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.source:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSource
+	19, // 7: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.build_environment_variables:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.BuildEnvironmentVariablesEntry
+	21, // 8: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // 9: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.docker_repository:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 10: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.update_policy:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildUpdatePolicy
+	8,  // 11: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSource.storage_source:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionStorageSource
+	9,  // 12: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSource.repo_source:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionRepoSource
+	21, // 13: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionStorageSource.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // 14: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 15: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.environment_variables:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.EnvironmentVariablesEntry
+	11, // 16: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.secret_environment_variables:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSecretEnvVar
+	12, // 17: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.secret_volumes:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSecretVolume
+	21, // 18: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.vpc_connector:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 19: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.vpc_connector_egress_settings:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionVpcEgressSetting
+	2,  // 20: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.ingress_settings:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionIngressSetting
+	14, // 21: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.scaling:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionScalingConfig
+	13, // 22: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSecretVolume.versions:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSecretVolumeVersion
+	1,  // 23: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTrigger.trigger_type:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTriggerType
+	16, // 24: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTrigger.event_trigger:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTrigger
+	21, // 25: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTrigger.pubsub_topic:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 26: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTrigger.event_filters:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventFilter
+	4,  // 27: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTrigger.retry_policy:type_name -> dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionRetryPolicy
+	21, // 28: dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTrigger.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // [29:29] is the sub-list for method output_type
+	29, // [29:29] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_init() }
@@ -1062,15 +1720,16 @@ func file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_init() {
 	if File_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto != nil {
 		return
 	}
-	file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
-	file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc)),
-			NumEnums:      4,
-			NumMessages:   11,
+			NumEnums:      5,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

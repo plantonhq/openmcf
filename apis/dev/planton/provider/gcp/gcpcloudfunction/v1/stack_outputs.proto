@@ -34,4 +34,19 @@ message GcpCloudFunctionStackOutputs {
   // Only populated for functions with EVENT_TRIGGER type.
   // Format: "projects/{project}/locations/{region}/triggers/{trigger-name}"
   string eventarc_trigger_id = 6;
+
+  // The bare function name (the last segment of function_id) — the
+  // composition key serverless network endpoint groups and gcloud
+  // commands reference the function by.
+  string name = 7;
+
+  // The URI of the underlying Cloud Run service serving the function —
+  // the *.run.app endpoint. Populated for every Gen 2 function.
+  string uri = 8;
+
+  // The environment the function runs in (e.g. "GEN_2").
+  string environment = 9;
+
+  // Timestamp of the last update to the function, in RFC 3339 format.
+  string update_time = 10;
 }

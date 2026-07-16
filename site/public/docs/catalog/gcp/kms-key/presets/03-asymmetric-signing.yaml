@@ -1,11 +1,16 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKey
 metadata:
-  name: my-signing-key
+  name: artifact-signing-key
 spec:
   keyRingId:
-    value: "<key-ring-id>"  # e.g., projects/my-project/locations/us-central1/keyRings/signing-keys
-  keyName: <your-key-name>  # e.g., artifact-signing-key
+    valueFrom:
+      kind: GcpKmsKeyRing
+      name: signing-keys
+      fieldPath: status.outputs.key_ring_id
+  keyName: artifact-signing-key # replace — permanent, never reusable within the ring
+  # Asymmetric keys never auto-rotate: signature verifiers pin specific
+  # key versions, so rotation is a deliberate, coordinated act.
   purpose: ASYMMETRIC_SIGN
   versionTemplate:
     algorithm: EC_SIGN_P256_SHA256

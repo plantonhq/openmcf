@@ -8,5 +8,4 @@ terraform {
 }
 
 provider "google" {
-  credentials = var.provider_config.service_account_key != "" ? var.provider_config.service_account_key : null
 }

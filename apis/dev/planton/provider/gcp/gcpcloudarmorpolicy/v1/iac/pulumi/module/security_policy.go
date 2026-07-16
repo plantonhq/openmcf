@@ -8,13 +8,21 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func securityPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
+func securityPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider, projectService pulumi.Resource) error {
 	spec := locals.GcpCloudArmorPolicy.Spec
 
+	// PARITY: no Labels are sent — google_compute_security_policy has no
+	// labels attribute on the released `google ~> 6.0` line the Terraform
+	// module pins, so setting them here would be intent only one engine
+	// honors. Same for advanced_options_config.request_body_inspection_size.
 	args := &compute.SecurityPolicyArgs{
-		Name:    pulumi.String(locals.PolicyName),
-		Project: pulumi.StringPtr(spec.ProjectId.GetValue()),
-		Labels:  pulumi.ToStringMap(locals.GcpLabels),
+		Name: pulumi.String(locals.PolicyName),
+	}
+
+	// Empty project falls back to the provider's default project — the same
+	// ambient contract the Terraform module honors.
+	if locals.ProjectId != "" {
+		args.Project = pulumi.StringPtr(locals.ProjectId)
 	}
 
 	if spec.Description != "" {
@@ -25,7 +33,8 @@ func securityPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provid
 		args.Type = pulumi.StringPtr(spec.Type)
 	}
 
-	// Adaptive Protection configuration.
+	// Adaptive Protection (CAAP): Layer 7 DDoS detection with optional
+	// per-granularity detection/auto-deploy threshold overrides.
 	if spec.AdaptiveProtectionConfig != nil {
 		apc := spec.AdaptiveProtectionConfig
 		l7Args := &compute.SecurityPolicyAdaptiveProtectionConfigLayer7DdosDefenseConfigArgs{
@@ -33,6 +42,9 @@ func securityPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provid
 		}
 		if apc.RuleVisibility != "" {
 			l7Args.RuleVisibility = pulumi.StringPtr(apc.RuleVisibility)
+		}
+		if len(apc.ThresholdConfigs) > 0 {
+			l7Args.ThresholdConfigs = mapThresholdConfigs(apc.ThresholdConfigs)
 		}
 		args.AdaptiveProtectionConfig = &compute.SecurityPolicyAdaptiveProtectionConfigArgs{
 			Layer7DdosDefenseConfig: l7Args,
@@ -52,10 +64,19 @@ func securityPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provid
 		if len(aoc.UserIpRequestHeaders) > 0 {
 			advArgs.UserIpRequestHeaders = toPulumiStringArray(aoc.UserIpRequestHeaders)
 		}
-		if aoc.RequestBodyInspectionSize != "" {
-			advArgs.RequestBodyInspectionSize = pulumi.StringPtr(aoc.RequestBodyInspectionSize)
+		if aoc.JsonCustomConfig != nil {
+			advArgs.JsonCustomConfig = &compute.SecurityPolicyAdvancedOptionsConfigJsonCustomConfigArgs{
+				ContentTypes: toPulumiStringArray(aoc.JsonCustomConfig.ContentTypes),
+			}
 		}
 		args.AdvancedOptionsConfig = advArgs
+	}
+
+	// Policy-level reCAPTCHA site key for GOOGLE_RECAPTCHA redirect rules.
+	if spec.RecaptchaOptionsConfig != nil {
+		args.RecaptchaOptionsConfig = &compute.SecurityPolicyRecaptchaOptionsConfigArgs{
+			RedirectSiteKey: pulumi.String(spec.RecaptchaOptionsConfig.RedirectSiteKey),
+		}
 	}
 
 	// Map rules.
@@ -63,7 +84,9 @@ func securityPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provid
 		args.Rules = mapRules(spec.Rules)
 	}
 
-	createdPolicy, err := compute.NewSecurityPolicy(ctx, "security-policy", args, pulumi.Provider(gcpProvider))
+	createdPolicy, err := compute.NewSecurityPolicy(ctx, "security-policy", args,
+		pulumi.Provider(gcpProvider),
+		pulumi.DependsOn([]pulumi.Resource{projectService}))
 	if err != nil {
 		return errors.Wrap(err, "failed to create security policy")
 	}
@@ -123,6 +146,55 @@ func mapRules(rules []*gcpcloudarmorpolicyv1.GcpCloudArmorRule) compute.Security
 	return result
 }
 
+// mapThresholdConfigs converts adaptive-protection threshold overrides.
+func mapThresholdConfigs(configs []*gcpcloudarmorpolicyv1.GcpCloudArmorThresholdConfig) compute.SecurityPolicyAdaptiveProtectionConfigLayer7DdosDefenseConfigThresholdConfigArray {
+	var result compute.SecurityPolicyAdaptiveProtectionConfigLayer7DdosDefenseConfigThresholdConfigArray
+	for _, config := range configs {
+		configArgs := &compute.SecurityPolicyAdaptiveProtectionConfigLayer7DdosDefenseConfigThresholdConfigArgs{
+			Name: pulumi.String(config.Name),
+		}
+		if config.AutoDeployConfidenceThreshold != nil {
+			configArgs.AutoDeployConfidenceThreshold = pulumi.Float64Ptr(config.GetAutoDeployConfidenceThreshold())
+		}
+		if config.AutoDeployImpactedBaselineThreshold != nil {
+			configArgs.AutoDeployImpactedBaselineThreshold = pulumi.Float64Ptr(config.GetAutoDeployImpactedBaselineThreshold())
+		}
+		if config.AutoDeployLoadThreshold != nil {
+			configArgs.AutoDeployLoadThreshold = pulumi.Float64Ptr(config.GetAutoDeployLoadThreshold())
+		}
+		if config.AutoDeployExpirationSec != nil {
+			configArgs.AutoDeployExpirationSec = pulumi.IntPtr(int(config.GetAutoDeployExpirationSec()))
+		}
+		if config.DetectionAbsoluteQps != nil {
+			configArgs.DetectionAbsoluteQps = pulumi.Float64Ptr(config.GetDetectionAbsoluteQps())
+		}
+		if config.DetectionLoadThreshold != nil {
+			configArgs.DetectionLoadThreshold = pulumi.Float64Ptr(config.GetDetectionLoadThreshold())
+		}
+		if config.DetectionRelativeToBaselineQps != nil {
+			configArgs.DetectionRelativeToBaselineQps = pulumi.Float64Ptr(config.GetDetectionRelativeToBaselineQps())
+		}
+		if len(config.TrafficGranularityConfigs) > 0 {
+			var granularities compute.SecurityPolicyAdaptiveProtectionConfigLayer7DdosDefenseConfigThresholdConfigTrafficGranularityConfigArray
+			for _, granularity := range config.TrafficGranularityConfigs {
+				granularityArgs := &compute.SecurityPolicyAdaptiveProtectionConfigLayer7DdosDefenseConfigThresholdConfigTrafficGranularityConfigArgs{
+					Type: pulumi.String(granularity.Type),
+				}
+				if granularity.Value != "" {
+					granularityArgs.Value = pulumi.StringPtr(granularity.Value)
+				}
+				if granularity.EnableEachUniqueValue {
+					granularityArgs.EnableEachUniqueValue = pulumi.BoolPtr(true)
+				}
+				granularities = append(granularities, granularityArgs)
+			}
+			configArgs.TrafficGranularityConfigs = granularities
+		}
+		result = append(result, configArgs)
+	}
+	return result
+}
+
 // mapMatch reconstructs the nested match structure from flattened spec fields.
 func mapMatch(match *gcpcloudarmorpolicyv1.GcpCloudArmorRuleMatch) compute.SecurityPolicyRuleMatchArgs {
 	args := compute.SecurityPolicyRuleMatchArgs{}
@@ -137,6 +209,20 @@ func mapMatch(match *gcpcloudarmorpolicyv1.GcpCloudArmorRuleMatch) compute.Secur
 	if match.Expression != "" {
 		args.Expr = &compute.SecurityPolicyRuleMatchExprArgs{
 			Expression: pulumi.String(match.Expression),
+		}
+	}
+
+	// reCAPTCHA site-key options for expressions evaluating reCAPTCHA tokens.
+	if match.ExprOptions != nil {
+		recaptchaArgs := &compute.SecurityPolicyRuleMatchExprOptionsRecaptchaOptionsArgs{}
+		if len(match.ExprOptions.ActionTokenSiteKeys) > 0 {
+			recaptchaArgs.ActionTokenSiteKeys = toPulumiStringArray(match.ExprOptions.ActionTokenSiteKeys)
+		}
+		if len(match.ExprOptions.SessionTokenSiteKeys) > 0 {
+			recaptchaArgs.SessionTokenSiteKeys = toPulumiStringArray(match.ExprOptions.SessionTokenSiteKeys)
+		}
+		args.ExprOptions = &compute.SecurityPolicyRuleMatchExprOptionsArgs{
+			RecaptchaOptions: recaptchaArgs,
 		}
 	}
 
@@ -160,6 +246,22 @@ func mapRateLimitOptions(opts *gcpcloudarmorpolicyv1.GcpCloudArmorRateLimitOptio
 
 	if opts.EnforceOnKeyName != "" {
 		args.EnforceOnKeyName = pulumi.StringPtr(opts.EnforceOnKeyName)
+	}
+
+	// Composite rate-limit key: component values concatenate to form the
+	// key requests are counted against.
+	if len(opts.EnforceOnKeyConfigs) > 0 {
+		var keyConfigs compute.SecurityPolicyRuleRateLimitOptionsEnforceOnKeyConfigArray
+		for _, keyConfig := range opts.EnforceOnKeyConfigs {
+			keyConfigArgs := &compute.SecurityPolicyRuleRateLimitOptionsEnforceOnKeyConfigArgs{
+				EnforceOnKeyType: pulumi.StringPtr(keyConfig.EnforceOnKeyType),
+			}
+			if keyConfig.EnforceOnKeyName != "" {
+				keyConfigArgs.EnforceOnKeyName = pulumi.StringPtr(keyConfig.EnforceOnKeyName)
+			}
+			keyConfigs = append(keyConfigs, keyConfigArgs)
+		}
+		args.EnforceOnKeyConfigs = keyConfigs
 	}
 
 	if opts.BanThreshold != nil {

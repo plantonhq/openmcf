@@ -1,11 +1,35 @@
-variable "spec" {
-  description = "GcpCloudTasksQueue spec"
+variable "metadata" {
+  description = "Metadata for the resource, including name and labels"
   type = object({
-    project_id    = object({ value = string })
-    queue_name    = string
-    location      = string
-    desired_state = optional(string, "")
+    name    = string,
+    id      = optional(string),
+    org     = optional(string),
+    env     = optional(string),
+    labels  = optional(map(string)),
+    tags    = optional(list(string)),
+    version = optional(object({ id = string, message = string }))
+  })
+}
 
+variable "spec" {
+  description = "Specification for the GCP Cloud Tasks queue"
+  type = object({
+    # StringValueOrRef fields arrive from the proto→tfvars converter as
+    # plain strings (already resolved), never as object({value}). If
+    # project_id is empty, the provider's default project is used
+    # (see locals.tf).
+    project_id = optional(string, "")
+
+    # Queue name (the GCP resource name). Immutable (ForceNew) — and a
+    # deleted queue's ID is reserved by the Cloud Tasks API for up to
+    # 7 days, so treat names as long-lived.
+    queue_name = string
+
+    # Location (region). Immutable (ForceNew).
+    location = string
+
+    # Queue-level HTTP task settings: method/header/URI overrides and the
+    # OAuth-XOR-OIDC authorization pair applied to every HTTP task.
     http_target = optional(object({
       http_method = optional(string, "")
 
@@ -15,15 +39,19 @@ variable "spec" {
       })), [])
 
       oauth_token = optional(object({
-        service_account_email = object({ value = string })
+        # Resolved from a GcpServiceAccount reference to the SA email.
+        service_account_email = string
         scope                 = optional(string, "")
       }), null)
 
       oidc_token = optional(object({
-        service_account_email = object({ value = string })
+        # Resolved from a GcpServiceAccount reference to the SA email.
+        service_account_email = string
         audience              = optional(string, "")
       }), null)
 
+      # Flattened in the spec: path/query_params map onto the provider's
+      # nested path_override/query_override blocks (see main.tf).
       uri_override = optional(object({
         scheme       = optional(string, "")
         host         = optional(string, "")
@@ -34,8 +62,15 @@ variable "spec" {
       }), null)
     }), null)
 
+    # Routing override for App Engine tasks only; ignored for HTTP tasks.
+    app_engine_routing_override = optional(object({
+      service  = optional(string, "")
+      version  = optional(string, "")
+      instance = optional(string, "")
+    }), null)
+
     rate_limits = optional(object({
-      max_dispatches_per_second  = optional(number, 0)
+      max_dispatches_per_second = optional(number, 0)
       max_concurrent_dispatches = optional(number, 0)
     }), null)
 
@@ -51,12 +86,14 @@ variable "spec" {
       sampling_ratio = number
     }), null)
   })
-}
 
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = optional(string, "")
-  })
-  default = { service_account_key = "" }
+  validation {
+    condition     = var.spec.queue_name != ""
+    error_message = "queue_name is required."
+  }
+
+  validation {
+    condition     = var.spec.location != ""
+    error_message = "location is required."
+  }
 }

@@ -1,13 +1,51 @@
+# Enable the AlloyDB API so a fresh project can host clusters.
+# disable_on_destroy is false: tearing down one cluster must never disable
+# the API for everything else in the project.
+resource "google_project_service" "alloydb_api" {
+  project = local.project_id
+  service = "alloydb.googleapis.com"
+
+  disable_dependent_services = true
+  disable_on_destroy         = false
+}
+
 resource "google_alloydb_cluster" "cluster" {
   cluster_id = var.spec.cluster_name
   location   = var.spec.location
-  project    = var.spec.project_id
+  project    = local.project_id
   labels     = local.labels
 
-  network_config {
-    network = var.spec.network
-    allocated_ip_range = var.spec.allocated_ip_range != "" ? var.spec.allocated_ip_range : null
+  # A deletion-protection attribute does not exist for AlloyDB on the
+  # released google provider line — protection is enforced at plan level.
+  skip_await_major_version_upgrade = var.spec.skip_await_major_version_upgrade
+
+  dynamic "network_config" {
+    for_each = var.spec.network != "" ? [1] : []
+    content {
+      network            = var.spec.network
+      allocated_ip_range = var.spec.allocated_ip_range != "" ? var.spec.allocated_ip_range : null
+    }
   }
+
+  dynamic "psc_config" {
+    # try() guards the null object: HCL's && does not short-circuit.
+    for_each = try(var.spec.psc_config.psc_enabled, false) ? [1] : []
+    content {
+      psc_enabled = true
+    }
+  }
+
+  cluster_type = var.spec.cluster_type != "" ? var.spec.cluster_type : null
+
+  dynamic "secondary_config" {
+    for_each = var.spec.secondary_config != null ? [var.spec.secondary_config] : []
+    content {
+      primary_cluster_name = secondary_config.value.primary_cluster_name
+    }
+  }
+
+  annotations       = length(var.spec.annotations) > 0 ? var.spec.annotations : null
+  subscription_type = var.spec.subscription_type != "" ? var.spec.subscription_type : null
 
   database_version = var.spec.database_version != "" ? var.spec.database_version : null
   display_name     = var.spec.display_name != "" ? var.spec.display_name : null
@@ -94,6 +132,8 @@ resource "google_alloydb_cluster" "cluster" {
       }
     }
   }
+
+  depends_on = [google_project_service.alloydb_api]
 }
 
 resource "google_alloydb_instance" "primary" {
@@ -102,7 +142,7 @@ resource "google_alloydb_instance" "primary" {
   instance_type = "PRIMARY"
   labels        = local.labels
 
-  depends_on = [google_alloydb_cluster.cluster]
+  depends_on = [google_alloydb_cluster.cluster, google_project_service.alloydb_api]
 
   dynamic "machine_config" {
     for_each = var.spec.primary_instance.cpu_count > 0 || var.spec.primary_instance.machine_type != "" ? [1] : []

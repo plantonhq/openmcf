@@ -8,6 +8,9 @@ import (
 	awsiamrolev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiamrole/v1"
 	awsnlbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsnlb/v1"
 	awssubnetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssubnet/v1"
+	gcpbackendservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendservice/v1"
+	gcptargethttpsproxyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpsproxy/v1"
+	gcpurlmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpurlmap/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/internal/manifest"
 )
@@ -277,5 +280,164 @@ func TestResolveManifestRefs_MissingOutputErrors(t *testing.T) {
 
 	if _, err := ResolveManifestRefs(manifestPath, depOutputs); err == nil {
 		t.Fatal("expected an error when the prerequisite output is missing, got nil")
+	}
+}
+
+const backendServiceNegManifest = `apiVersion: gcp.planton.dev/v1
+kind: GcpBackendService
+metadata:
+  name: neg-backend
+spec:
+  protocol: HTTP
+  loadBalancingScheme: EXTERNAL_MANAGED
+  backends:
+    - group:
+        valueFrom:
+          kind: GcpRegionNetworkEndpointGroup
+          name: my-neg
+          fieldPath: status.outputs.self_link
+      balancingMode: RATE
+      maxRate: 100
+`
+
+const urlMapExplicitKindManifest = `apiVersion: gcp.planton.dev/v1
+kind: GcpUrlMap
+metadata:
+  name: my-url-map
+spec:
+  defaultService:
+    valueFrom:
+      kind: GcpBackendService
+      name: my-backend
+      fieldPath: status.outputs.self_link
+`
+
+func TestResolveManifestRefs_ResolvesNestedBackendGroupByExplicitKind(t *testing.T) {
+	manifestPath := writeTempManifest(t, backendServiceNegManifest)
+
+	depOutputs := DependencyOutputs{
+		cloudresourcekind.CloudResourceKind_GcpRegionNetworkEndpointGroup: {
+			"my-neg": {
+				"self_link": "https://www.googleapis.com/compute/v1/projects/p/regions/r/networkEndpointGroups/n",
+			},
+		},
+	}
+
+	resolvedPath, err := ResolveManifestRefs(manifestPath, depOutputs)
+	if err != nil {
+		t.Fatalf("ResolveManifestRefs failed: %v", err)
+	}
+
+	obj, err := manifest.LoadManifest(resolvedPath)
+	if err != nil {
+		t.Fatalf("failed to load resolved manifest: %v", err)
+	}
+	bs, ok := obj.(*gcpbackendservicev1.GcpBackendService)
+	if !ok {
+		t.Fatalf("resolved manifest is not a GcpBackendService: %T", obj)
+	}
+	if len(bs.GetSpec().GetBackends()) != 1 {
+		t.Fatalf("expected 1 backend, got %d", len(bs.GetSpec().GetBackends()))
+	}
+	got := bs.GetSpec().GetBackends()[0].GetGroup().GetValue()
+	want := "https://www.googleapis.com/compute/v1/projects/p/regions/r/networkEndpointGroups/n"
+	if got != want {
+		t.Errorf("backends[0].group = %q, want %q", got, want)
+	}
+}
+
+const httpsProxyRepeatedRefManifest = `apiVersion: gcp.planton.dev/v1
+kind: GcpTargetHttpsProxy
+metadata:
+  name: my-https-proxy
+spec:
+  urlMap:
+    valueFrom:
+      kind: GcpUrlMap
+      name: my-url-map
+      fieldPath: status.outputs.self_link
+  sslCertificates:
+    - valueFrom:
+        kind: GcpManagedSslCertificate
+        name: my-cert
+        fieldPath: status.outputs.self_link
+`
+
+// A REPEATED StringValueOrRef field (e.g. a target HTTPS proxy's
+// ssl_certificates) must resolve each element in place — the field descriptor
+// is a list, so it must never be read as a singular message.
+func TestResolveManifestRefs_ResolvesRepeatedRefElements(t *testing.T) {
+	manifestPath := writeTempManifest(t, httpsProxyRepeatedRefManifest)
+
+	depOutputs := DependencyOutputs{
+		cloudresourcekind.CloudResourceKind_GcpUrlMap: {
+			"my-url-map": {
+				"self_link": "https://www.googleapis.com/compute/v1/projects/p/global/urlMaps/um",
+			},
+		},
+		cloudresourcekind.CloudResourceKind_GcpManagedSslCertificate: {
+			"my-cert": {
+				"self_link": "https://www.googleapis.com/compute/v1/projects/p/global/sslCertificates/cert",
+			},
+		},
+	}
+
+	resolvedPath, err := ResolveManifestRefs(manifestPath, depOutputs)
+	if err != nil {
+		t.Fatalf("ResolveManifestRefs failed: %v", err)
+	}
+
+	obj, err := manifest.LoadManifest(resolvedPath)
+	if err != nil {
+		t.Fatalf("failed to load resolved manifest: %v", err)
+	}
+	proxy, ok := obj.(*gcptargethttpsproxyv1.GcpTargetHttpsProxy)
+	if !ok {
+		t.Fatalf("resolved manifest is not a GcpTargetHttpsProxy: %T", obj)
+	}
+	if got, want := proxy.GetSpec().GetUrlMap().GetValue(), "https://www.googleapis.com/compute/v1/projects/p/global/urlMaps/um"; got != want {
+		t.Errorf("url_map = %q, want %q", got, want)
+	}
+	if len(proxy.GetSpec().GetSslCertificates()) != 1 {
+		t.Fatalf("expected 1 ssl certificate, got %d", len(proxy.GetSpec().GetSslCertificates()))
+	}
+	got := proxy.GetSpec().GetSslCertificates()[0].GetValue()
+	want := "https://www.googleapis.com/compute/v1/projects/p/global/sslCertificates/cert"
+	if got != want {
+		t.Errorf("ssl_certificates[0] = %q, want %q", got, want)
+	}
+	if proxy.GetSpec().GetSslCertificates()[0].GetValueFrom() != nil {
+		t.Error("ssl_certificates[0] should be a literal after resolution, but value_from is still set")
+	}
+}
+
+func TestResolveManifestRefs_ResolvesExplicitValueFromKindWithoutDefaultKind(t *testing.T) {
+	manifestPath := writeTempManifest(t, urlMapExplicitKindManifest)
+
+	depOutputs := DependencyOutputs{
+		cloudresourcekind.CloudResourceKind_GcpBackendService: {
+			"my-backend": {
+				"self_link": "https://www.googleapis.com/compute/v1/projects/p/global/backendServices/bs",
+			},
+		},
+	}
+
+	resolvedPath, err := ResolveManifestRefs(manifestPath, depOutputs)
+	if err != nil {
+		t.Fatalf("ResolveManifestRefs failed: %v", err)
+	}
+
+	obj, err := manifest.LoadManifest(resolvedPath)
+	if err != nil {
+		t.Fatalf("failed to load resolved manifest: %v", err)
+	}
+	um, ok := obj.(*gcpurlmapv1.GcpUrlMap)
+	if !ok {
+		t.Fatalf("resolved manifest is not a GcpUrlMap: %T", obj)
+	}
+	got := um.GetSpec().GetDefaultService().GetValue()
+	want := "https://www.googleapis.com/compute/v1/projects/p/global/backendServices/bs"
+	if got != want {
+		t.Errorf("default_service = %q, want %q", got, want)
 	}
 }

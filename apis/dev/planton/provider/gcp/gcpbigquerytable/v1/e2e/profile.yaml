@@ -1,0 +1,15 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpbigquerytable
+spec:
+  # Composed scenarios on the GcpBigQueryDataset prerequisite: a day-partitioned
+  # clustered native table and a literal-SELECT view (no base-table dependency).
+  # deletionProtection is false so ephemeral DESTROY can run. CMEK and external
+  # GCS arms are excluded live (org-level KMS grant / staged object data).
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15

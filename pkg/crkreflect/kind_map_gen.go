@@ -327,48 +327,85 @@ import (
 	digitaloceanloadbalancerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/digitalocean/digitaloceanloadbalancer/v1"
 	digitaloceanvolumev1 "github.com/plantonhq/planton/apis/dev/planton/provider/digitalocean/digitaloceanvolume/v1"
 	digitaloceanvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/digitalocean/digitaloceanvpc/v1"
+	gcpaddressv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpaddress/v1"
 	gcpalloydbclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpalloydbcluster/v1"
+	gcpalloydbinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpalloydbinstance/v1"
+	gcpalloydbuserv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpalloydbuser/v1"
 	gcpartifactregistryrepov1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpartifactregistryrepo/v1"
+	gcpbackendbucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendbucket/v1"
+	gcpbackendservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendservice/v1"
 	gcpbigquerydatasetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigquerydataset/v1"
+	gcpbigquerytablev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigquerytable/v1"
 	gcpbigtableinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigtableinstance/v1"
+	gcpbigtabletablev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigtabletable/v1"
 	gcpcertmanagercertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagercert/v1"
+	gcpcertmanagerdnsauthorizationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagerdnsauthorization/v1"
 	gcpcloudarmorpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudarmorpolicy/v1"
-	gcpcloudcdnv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudcdn/v1"
 	gcpcloudcomposerenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudcomposerenvironment/v1"
+	gcpcloudcomposeruserworkloadsconfigmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudcomposeruserworkloadsconfigmap/v1"
+	gcpcloudcomposeruserworkloadssecretv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudcomposeruserworkloadssecret/v1"
 	gcpcloudfunctionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudfunction/v1"
 	gcpcloudrunv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudrun/v1"
+	gcpcloudrunjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudrunjob/v1"
 	gcpcloudschedulerjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudschedulerjob/v1"
 	gcpcloudsqlv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudsql/v1"
+	gcpcloudsqldatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudsqldatabase/v1"
+	gcpcloudsqluserv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudsqluser/v1"
 	gcpcloudtasksqueuev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudtasksqueue/v1"
+	gcpcomputediskv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcomputedisk/v1"
 	gcpcomputeinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcomputeinstance/v1"
+	gcpdataprocautoscalingpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdataprocautoscalingpolicy/v1"
 	gcpdataprocclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdataproccluster/v1"
-	gcpdataprocvirtualclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdataprocvirtualcluster/v1"
 	gcpdnsrecordv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdnsrecord/v1"
 	gcpdnszonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdnszone/v1"
 	gcpfilestoreinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfilestoreinstance/v1"
+	gcpfirestorebackupschedulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfirestorebackupschedule/v1"
 	gcpfirestoredatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfirestoredatabase/v1"
+	gcpfirestoreindexv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfirestoreindex/v1"
 	gcpfirewallrulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfirewallrule/v1"
 	gcpgcsbucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgcsbucket/v1"
 	gcpgkeclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkecluster/v1"
 	gcpgkenodepoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkenodepool/v1"
 	gcpgkeworkloadidentitybindingv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkeworkloadidentitybinding/v1"
 	gcpglobaladdressv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpglobaladdress/v1"
+	gcpglobalforwardingrulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpglobalforwardingrule/v1"
+	gcphealthcheckv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcphealthcheck/v1"
+	gcpiamcustomrolev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpiamcustomrole/v1"
 	gcpkmskeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskey/v1"
+	gcpkmskeyiammemberv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskeyiammember/v1"
 	gcpkmskeyringv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskeyring/v1"
+	gcpmanagedsslcertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpmanagedsslcertificate/v1"
 	gcpmemorystoreinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpmemorystoreinstance/v1"
 	gcpprojectv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpproject/v1"
+	gcpprojectiammemberv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpprojectiammember/v1"
+	gcppubsubschemav1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcppubsubschema/v1"
 	gcppubsubsubscriptionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcppubsubsubscription/v1"
 	gcppubsubtopicv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcppubsubtopic/v1"
 	gcpredisinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpredisinstance/v1"
+	gcpregionnetworkendpointgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpregionnetworkendpointgroup/v1"
 	gcprouternatv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcprouternat/v1"
-	gcpsecretsmanagerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsecretsmanager/v1"
+	gcpserverlessvpcconnectorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserverlessvpcconnector/v1"
 	gcpserviceaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccount/v1"
+	gcpserviceaccountiammemberv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccountiammember/v1"
+	gcpserviceconnectionpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceconnectionpolicy/v1"
+	gcpservicenetworkingconnectionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1"
+	gcpspannerbackupschedulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerbackupschedule/v1"
 	gcpspannerdatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerdatabase/v1"
 	gcpspannerinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerinstance/v1"
+	gcpsslcertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsslcertificate/v1"
+	gcpsslpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsslpolicy/v1"
 	gcpsubnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsubnetwork/v1"
+	gcptargethttpproxyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpproxy/v1"
+	gcptargethttpsproxyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpsproxy/v1"
+	gcpurlmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpurlmap/v1"
+	gcpvertexaideployedindexv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaideployedindex/v1"
 	gcpvertexaiendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaiendpoint/v1"
+	gcpvertexaiindexv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaiindex/v1"
+	gcpvertexaiindexendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaiindexendpoint/v1"
 	gcpvertexainotebookv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexainotebook/v1"
-	gcpvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvpc/v1"
+	gcpvpcnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvpcnetwork/v1"
+	gcpworkloadidentitypoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpworkloadidentitypool/v1"
+	gcpworkloadidentitypoolproviderv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpworkloadidentitypoolprovider/v1"
 	hetznercloudcertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznercloudcertificate/v1"
 	hetznerclouddnszonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznerclouddnszone/v1"
 	hetznercloudfirewallv1 "github.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznercloudfirewall/v1"
@@ -897,48 +934,85 @@ var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Mess
 }
 
 var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_GcpAlloydbCluster:             &gcpalloydbclusterv1.GcpAlloydbCluster{},
-	cloudresourcekind.CloudResourceKind_GcpArtifactRegistryRepo:       &gcpartifactregistryrepov1.GcpArtifactRegistryRepo{},
-	cloudresourcekind.CloudResourceKind_GcpBigQueryDataset:            &gcpbigquerydatasetv1.GcpBigQueryDataset{},
-	cloudresourcekind.CloudResourceKind_GcpBigtableInstance:           &gcpbigtableinstancev1.GcpBigtableInstance{},
-	cloudresourcekind.CloudResourceKind_GcpCertManagerCert:            &gcpcertmanagercertv1.GcpCertManagerCert{},
-	cloudresourcekind.CloudResourceKind_GcpCloudArmorPolicy:           &gcpcloudarmorpolicyv1.GcpCloudArmorPolicy{},
-	cloudresourcekind.CloudResourceKind_GcpCloudCdn:                   &gcpcloudcdnv1.GcpCloudCdn{},
-	cloudresourcekind.CloudResourceKind_GcpCloudComposerEnvironment:   &gcpcloudcomposerenvironmentv1.GcpCloudComposerEnvironment{},
-	cloudresourcekind.CloudResourceKind_GcpCloudFunction:              &gcpcloudfunctionv1.GcpCloudFunction{},
-	cloudresourcekind.CloudResourceKind_GcpCloudRun:                   &gcpcloudrunv1.GcpCloudRun{},
-	cloudresourcekind.CloudResourceKind_GcpCloudSchedulerJob:          &gcpcloudschedulerjobv1.GcpCloudSchedulerJob{},
-	cloudresourcekind.CloudResourceKind_GcpCloudSql:                   &gcpcloudsqlv1.GcpCloudSql{},
-	cloudresourcekind.CloudResourceKind_GcpCloudTasksQueue:            &gcpcloudtasksqueuev1.GcpCloudTasksQueue{},
-	cloudresourcekind.CloudResourceKind_GcpComputeInstance:            &gcpcomputeinstancev1.GcpComputeInstance{},
-	cloudresourcekind.CloudResourceKind_GcpDataprocCluster:            &gcpdataprocclusterv1.GcpDataprocCluster{},
-	cloudresourcekind.CloudResourceKind_GcpDataprocVirtualCluster:     &gcpdataprocvirtualclusterv1.GcpDataprocVirtualCluster{},
-	cloudresourcekind.CloudResourceKind_GcpDnsRecord:                  &gcpdnsrecordv1.GcpDnsRecord{},
-	cloudresourcekind.CloudResourceKind_GcpDnsZone:                    &gcpdnszonev1.GcpDnsZone{},
-	cloudresourcekind.CloudResourceKind_GcpFilestoreInstance:          &gcpfilestoreinstancev1.GcpFilestoreInstance{},
-	cloudresourcekind.CloudResourceKind_GcpFirestoreDatabase:          &gcpfirestoredatabasev1.GcpFirestoreDatabase{},
-	cloudresourcekind.CloudResourceKind_GcpFirewallRule:               &gcpfirewallrulev1.GcpFirewallRule{},
-	cloudresourcekind.CloudResourceKind_GcpGcsBucket:                  &gcpgcsbucketv1.GcpGcsBucket{},
-	cloudresourcekind.CloudResourceKind_GcpGkeCluster:                 &gcpgkeclusterv1.GcpGkeCluster{},
-	cloudresourcekind.CloudResourceKind_GcpGkeNodePool:                &gcpgkenodepoolv1.GcpGkeNodePool{},
-	cloudresourcekind.CloudResourceKind_GcpGkeWorkloadIdentityBinding: &gcpgkeworkloadidentitybindingv1.GcpGkeWorkloadIdentityBinding{},
-	cloudresourcekind.CloudResourceKind_GcpGlobalAddress:              &gcpglobaladdressv1.GcpGlobalAddress{},
-	cloudresourcekind.CloudResourceKind_GcpKmsKey:                     &gcpkmskeyv1.GcpKmsKey{},
-	cloudresourcekind.CloudResourceKind_GcpKmsKeyRing:                 &gcpkmskeyringv1.GcpKmsKeyRing{},
-	cloudresourcekind.CloudResourceKind_GcpMemorystoreInstance:        &gcpmemorystoreinstancev1.GcpMemorystoreInstance{},
-	cloudresourcekind.CloudResourceKind_GcpProject:                    &gcpprojectv1.GcpProject{},
-	cloudresourcekind.CloudResourceKind_GcpPubSubSubscription:         &gcppubsubsubscriptionv1.GcpPubSubSubscription{},
-	cloudresourcekind.CloudResourceKind_GcpPubSubTopic:                &gcppubsubtopicv1.GcpPubSubTopic{},
-	cloudresourcekind.CloudResourceKind_GcpRedisInstance:              &gcpredisinstancev1.GcpRedisInstance{},
-	cloudresourcekind.CloudResourceKind_GcpRouterNat:                  &gcprouternatv1.GcpRouterNat{},
-	cloudresourcekind.CloudResourceKind_GcpSecretsManager:             &gcpsecretsmanagerv1.GcpSecretsManager{},
-	cloudresourcekind.CloudResourceKind_GcpServiceAccount:             &gcpserviceaccountv1.GcpServiceAccount{},
-	cloudresourcekind.CloudResourceKind_GcpSpannerDatabase:            &gcpspannerdatabasev1.GcpSpannerDatabase{},
-	cloudresourcekind.CloudResourceKind_GcpSpannerInstance:            &gcpspannerinstancev1.GcpSpannerInstance{},
-	cloudresourcekind.CloudResourceKind_GcpSubnetwork:                 &gcpsubnetworkv1.GcpSubnetwork{},
-	cloudresourcekind.CloudResourceKind_GcpVertexAiEndpoint:           &gcpvertexaiendpointv1.GcpVertexAiEndpoint{},
-	cloudresourcekind.CloudResourceKind_GcpVertexAiNotebook:           &gcpvertexainotebookv1.GcpVertexAiNotebook{},
-	cloudresourcekind.CloudResourceKind_GcpVpc:                        &gcpvpcv1.GcpVpc{},
+	cloudresourcekind.CloudResourceKind_GcpAddress:                             &gcpaddressv1.GcpAddress{},
+	cloudresourcekind.CloudResourceKind_GcpAlloydbCluster:                      &gcpalloydbclusterv1.GcpAlloydbCluster{},
+	cloudresourcekind.CloudResourceKind_GcpAlloydbInstance:                     &gcpalloydbinstancev1.GcpAlloydbInstance{},
+	cloudresourcekind.CloudResourceKind_GcpAlloydbUser:                         &gcpalloydbuserv1.GcpAlloydbUser{},
+	cloudresourcekind.CloudResourceKind_GcpArtifactRegistryRepo:                &gcpartifactregistryrepov1.GcpArtifactRegistryRepo{},
+	cloudresourcekind.CloudResourceKind_GcpBackendBucket:                       &gcpbackendbucketv1.GcpBackendBucket{},
+	cloudresourcekind.CloudResourceKind_GcpBackendService:                      &gcpbackendservicev1.GcpBackendService{},
+	cloudresourcekind.CloudResourceKind_GcpBigQueryDataset:                     &gcpbigquerydatasetv1.GcpBigQueryDataset{},
+	cloudresourcekind.CloudResourceKind_GcpBigQueryTable:                       &gcpbigquerytablev1.GcpBigQueryTable{},
+	cloudresourcekind.CloudResourceKind_GcpBigtableInstance:                    &gcpbigtableinstancev1.GcpBigtableInstance{},
+	cloudresourcekind.CloudResourceKind_GcpBigtableTable:                       &gcpbigtabletablev1.GcpBigtableTable{},
+	cloudresourcekind.CloudResourceKind_GcpCertManagerCert:                     &gcpcertmanagercertv1.GcpCertManagerCert{},
+	cloudresourcekind.CloudResourceKind_GcpCertManagerDnsAuthorization:         &gcpcertmanagerdnsauthorizationv1.GcpCertManagerDnsAuthorization{},
+	cloudresourcekind.CloudResourceKind_GcpCloudArmorPolicy:                    &gcpcloudarmorpolicyv1.GcpCloudArmorPolicy{},
+	cloudresourcekind.CloudResourceKind_GcpCloudComposerEnvironment:            &gcpcloudcomposerenvironmentv1.GcpCloudComposerEnvironment{},
+	cloudresourcekind.CloudResourceKind_GcpCloudComposerUserWorkloadsConfigMap: &gcpcloudcomposeruserworkloadsconfigmapv1.GcpCloudComposerUserWorkloadsConfigMap{},
+	cloudresourcekind.CloudResourceKind_GcpCloudComposerUserWorkloadsSecret:    &gcpcloudcomposeruserworkloadssecretv1.GcpCloudComposerUserWorkloadsSecret{},
+	cloudresourcekind.CloudResourceKind_GcpCloudFunction:                       &gcpcloudfunctionv1.GcpCloudFunction{},
+	cloudresourcekind.CloudResourceKind_GcpCloudRun:                            &gcpcloudrunv1.GcpCloudRun{},
+	cloudresourcekind.CloudResourceKind_GcpCloudRunJob:                         &gcpcloudrunjobv1.GcpCloudRunJob{},
+	cloudresourcekind.CloudResourceKind_GcpCloudSchedulerJob:                   &gcpcloudschedulerjobv1.GcpCloudSchedulerJob{},
+	cloudresourcekind.CloudResourceKind_GcpCloudSql:                            &gcpcloudsqlv1.GcpCloudSql{},
+	cloudresourcekind.CloudResourceKind_GcpCloudSqlDatabase:                    &gcpcloudsqldatabasev1.GcpCloudSqlDatabase{},
+	cloudresourcekind.CloudResourceKind_GcpCloudSqlUser:                        &gcpcloudsqluserv1.GcpCloudSqlUser{},
+	cloudresourcekind.CloudResourceKind_GcpCloudTasksQueue:                     &gcpcloudtasksqueuev1.GcpCloudTasksQueue{},
+	cloudresourcekind.CloudResourceKind_GcpComputeDisk:                         &gcpcomputediskv1.GcpComputeDisk{},
+	cloudresourcekind.CloudResourceKind_GcpComputeInstance:                     &gcpcomputeinstancev1.GcpComputeInstance{},
+	cloudresourcekind.CloudResourceKind_GcpDataprocAutoscalingPolicy:           &gcpdataprocautoscalingpolicyv1.GcpDataprocAutoscalingPolicy{},
+	cloudresourcekind.CloudResourceKind_GcpDataprocCluster:                     &gcpdataprocclusterv1.GcpDataprocCluster{},
+	cloudresourcekind.CloudResourceKind_GcpDnsRecord:                           &gcpdnsrecordv1.GcpDnsRecord{},
+	cloudresourcekind.CloudResourceKind_GcpDnsZone:                             &gcpdnszonev1.GcpDnsZone{},
+	cloudresourcekind.CloudResourceKind_GcpFilestoreInstance:                   &gcpfilestoreinstancev1.GcpFilestoreInstance{},
+	cloudresourcekind.CloudResourceKind_GcpFirestoreBackupSchedule:             &gcpfirestorebackupschedulev1.GcpFirestoreBackupSchedule{},
+	cloudresourcekind.CloudResourceKind_GcpFirestoreDatabase:                   &gcpfirestoredatabasev1.GcpFirestoreDatabase{},
+	cloudresourcekind.CloudResourceKind_GcpFirestoreIndex:                      &gcpfirestoreindexv1.GcpFirestoreIndex{},
+	cloudresourcekind.CloudResourceKind_GcpFirewallRule:                        &gcpfirewallrulev1.GcpFirewallRule{},
+	cloudresourcekind.CloudResourceKind_GcpGcsBucket:                           &gcpgcsbucketv1.GcpGcsBucket{},
+	cloudresourcekind.CloudResourceKind_GcpGkeCluster:                          &gcpgkeclusterv1.GcpGkeCluster{},
+	cloudresourcekind.CloudResourceKind_GcpGkeNodePool:                         &gcpgkenodepoolv1.GcpGkeNodePool{},
+	cloudresourcekind.CloudResourceKind_GcpGkeWorkloadIdentityBinding:          &gcpgkeworkloadidentitybindingv1.GcpGkeWorkloadIdentityBinding{},
+	cloudresourcekind.CloudResourceKind_GcpGlobalAddress:                       &gcpglobaladdressv1.GcpGlobalAddress{},
+	cloudresourcekind.CloudResourceKind_GcpGlobalForwardingRule:                &gcpglobalforwardingrulev1.GcpGlobalForwardingRule{},
+	cloudresourcekind.CloudResourceKind_GcpHealthCheck:                         &gcphealthcheckv1.GcpHealthCheck{},
+	cloudresourcekind.CloudResourceKind_GcpIamCustomRole:                       &gcpiamcustomrolev1.GcpIamCustomRole{},
+	cloudresourcekind.CloudResourceKind_GcpKmsKey:                              &gcpkmskeyv1.GcpKmsKey{},
+	cloudresourcekind.CloudResourceKind_GcpKmsKeyIamMember:                     &gcpkmskeyiammemberv1.GcpKmsKeyIamMember{},
+	cloudresourcekind.CloudResourceKind_GcpKmsKeyRing:                          &gcpkmskeyringv1.GcpKmsKeyRing{},
+	cloudresourcekind.CloudResourceKind_GcpManagedSslCertificate:               &gcpmanagedsslcertificatev1.GcpManagedSslCertificate{},
+	cloudresourcekind.CloudResourceKind_GcpMemorystoreInstance:                 &gcpmemorystoreinstancev1.GcpMemorystoreInstance{},
+	cloudresourcekind.CloudResourceKind_GcpProject:                             &gcpprojectv1.GcpProject{},
+	cloudresourcekind.CloudResourceKind_GcpProjectIamMember:                    &gcpprojectiammemberv1.GcpProjectIamMember{},
+	cloudresourcekind.CloudResourceKind_GcpPubSubSchema:                        &gcppubsubschemav1.GcpPubSubSchema{},
+	cloudresourcekind.CloudResourceKind_GcpPubSubSubscription:                  &gcppubsubsubscriptionv1.GcpPubSubSubscription{},
+	cloudresourcekind.CloudResourceKind_GcpPubSubTopic:                         &gcppubsubtopicv1.GcpPubSubTopic{},
+	cloudresourcekind.CloudResourceKind_GcpRedisInstance:                       &gcpredisinstancev1.GcpRedisInstance{},
+	cloudresourcekind.CloudResourceKind_GcpRegionNetworkEndpointGroup:          &gcpregionnetworkendpointgroupv1.GcpRegionNetworkEndpointGroup{},
+	cloudresourcekind.CloudResourceKind_GcpRouterNat:                           &gcprouternatv1.GcpRouterNat{},
+	cloudresourcekind.CloudResourceKind_GcpServerlessVpcConnector:              &gcpserverlessvpcconnectorv1.GcpServerlessVpcConnector{},
+	cloudresourcekind.CloudResourceKind_GcpServiceAccount:                      &gcpserviceaccountv1.GcpServiceAccount{},
+	cloudresourcekind.CloudResourceKind_GcpServiceAccountIamMember:             &gcpserviceaccountiammemberv1.GcpServiceAccountIamMember{},
+	cloudresourcekind.CloudResourceKind_GcpServiceConnectionPolicy:             &gcpserviceconnectionpolicyv1.GcpServiceConnectionPolicy{},
+	cloudresourcekind.CloudResourceKind_GcpServiceNetworkingConnection:         &gcpservicenetworkingconnectionv1.GcpServiceNetworkingConnection{},
+	cloudresourcekind.CloudResourceKind_GcpSpannerBackupSchedule:               &gcpspannerbackupschedulev1.GcpSpannerBackupSchedule{},
+	cloudresourcekind.CloudResourceKind_GcpSpannerDatabase:                     &gcpspannerdatabasev1.GcpSpannerDatabase{},
+	cloudresourcekind.CloudResourceKind_GcpSpannerInstance:                     &gcpspannerinstancev1.GcpSpannerInstance{},
+	cloudresourcekind.CloudResourceKind_GcpSslCertificate:                      &gcpsslcertificatev1.GcpSslCertificate{},
+	cloudresourcekind.CloudResourceKind_GcpSslPolicy:                           &gcpsslpolicyv1.GcpSslPolicy{},
+	cloudresourcekind.CloudResourceKind_GcpSubnetwork:                          &gcpsubnetworkv1.GcpSubnetwork{},
+	cloudresourcekind.CloudResourceKind_GcpTargetHttpProxy:                     &gcptargethttpproxyv1.GcpTargetHttpProxy{},
+	cloudresourcekind.CloudResourceKind_GcpTargetHttpsProxy:                    &gcptargethttpsproxyv1.GcpTargetHttpsProxy{},
+	cloudresourcekind.CloudResourceKind_GcpUrlMap:                              &gcpurlmapv1.GcpUrlMap{},
+	cloudresourcekind.CloudResourceKind_GcpVertexAiDeployedIndex:               &gcpvertexaideployedindexv1.GcpVertexAiDeployedIndex{},
+	cloudresourcekind.CloudResourceKind_GcpVertexAiEndpoint:                    &gcpvertexaiendpointv1.GcpVertexAiEndpoint{},
+	cloudresourcekind.CloudResourceKind_GcpVertexAiIndex:                       &gcpvertexaiindexv1.GcpVertexAiIndex{},
+	cloudresourcekind.CloudResourceKind_GcpVertexAiIndexEndpoint:               &gcpvertexaiindexendpointv1.GcpVertexAiIndexEndpoint{},
+	cloudresourcekind.CloudResourceKind_GcpVertexAiNotebook:                    &gcpvertexainotebookv1.GcpVertexAiNotebook{},
+	cloudresourcekind.CloudResourceKind_GcpVpcNetwork:                          &gcpvpcnetworkv1.GcpVpcNetwork{},
+	cloudresourcekind.CloudResourceKind_GcpWorkloadIdentityPool:                &gcpworkloadidentitypoolv1.GcpWorkloadIdentityPool{},
+	cloudresourcekind.CloudResourceKind_GcpWorkloadIdentityPoolProvider:        &gcpworkloadidentitypoolproviderv1.GcpWorkloadIdentityPoolProvider{},
 }
 
 var ProviderHetznerCloudMap = map[cloudresourcekind.CloudResourceKind]proto.Message{

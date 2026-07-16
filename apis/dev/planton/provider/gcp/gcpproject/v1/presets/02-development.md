@@ -1,29 +1,30 @@
 # Development Project
 
-This preset creates a lightweight GCP project for development and testing. It enables the `addSuffix` flag to append a random suffix to the project ID, preventing collisions when multiple developers create dev projects from the same template. Only the essential compute, container, and IAM APIs are enabled.
+This preset creates a lightweight project for development environments:
+billing linked, a minimal API set, and the default DELETE deletion policy
+so teardown is one command.
 
 ## When to Use
 
-- Development or staging environments with shorter lifecycles
-- Individual developer sandboxes where project IDs may collide
-- Cost-conscious environments that don't need the full API surface
+- Per-team or per-feature development projects
+- Sandboxes that are created and destroyed regularly
 
 ## Key Configuration Choices
 
-- **Random suffix** (`addSuffix: true`) -- ensures uniqueness across multiple dev deployments
-- **No deletion protection** -- dev projects should be easy to tear down
-- **No owner member** -- IAM managed separately or inherited from folder
-- **3 core APIs only** -- compute, container, and IAM (add more as needed)
-- **Default network disabled** -- security hardening applies to all environments
+- **Default deletion policy (DELETE)** — destroy shuts the project down
+  (30-day recovery window applies).
+- **Unique IDs are yours to choose** — project IDs are globally unique and
+  reserved for ~30 days after deletion; bake uniqueness into the ID
+  itself (team, ticket, or sequence suffix).
+- **Minimal API set** — components enable the APIs they need on their own.
 
 ## Placeholders to Replace
 
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<your-project-id>` | Base project ID (suffix will be appended) | Choose a descriptive base name |
-| `<your-folder-id>` | Numeric folder ID for dev projects | GCP Resource Manager console |
-| `<AAAAAA-BBBBBB-CCCCCC>` | Billing account ID | GCP Billing console |
+The sample values for `projectId`, `parentId`, and `billingAccountId` are
+realistic placeholders for pattern-validated fields — replace them with
+your own.
 
 ## Related Presets
 
-- **01-standard-production** -- Use for production projects with full API surface and deletion protection
+- **01-standard-production** — hardened foundation project with destroy
+  protection

@@ -1,64 +1,52 @@
 # GcpBigQueryDataset -- Terraform Module
 
-This directory contains the Terraform implementation for the GcpBigQueryDataset component.
+This directory contains the Terraform/OpenTofu implementation for the
+GcpBigQueryDataset component.
 
 ## Module Structure
 
 ```
-provider.tf    -- Google provider configuration
+provider.tf    -- Google provider on the ~> 6.0 line
 variables.tf   -- Input variables matching GcpBigQueryDatasetSpec
-locals.tf      -- Derived values from spec
-main.tf        -- google_bigquery_dataset resource with dynamic access blocks
+locals.tf      -- Ambient-project fallback, null-mapping, label merge
+main.tf        -- BigQuery API enablement + google_bigquery_dataset resource
 outputs.tf     -- Outputs matching GcpBigQueryDatasetStackOutputs
 ```
 
 ## What It Creates
 
-- `google_bigquery_dataset.this` -- A BigQuery dataset with location, access control,
-  encryption, and lifecycle configuration
+- `google_project_service.bigquery_api` -- enables `bigquery.googleapis.com`
+  so a fresh project works first try (`disable_on_destroy = false`)
+- `google_bigquery_dataset.this` -- the dataset with location, authoritative
+  access control, CMEK, lifecycle defaults, federation, and catalog interop
 
-## Inputs
+## Behavioral Notes
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `spec.project_id.value` | `string` | GCP project ID |
-| `spec.dataset_id` | `string` | Dataset identifier |
-| `spec.location` | `string` | Geographic location |
-| `spec.friendly_name` | `string` | Display name |
-| `spec.description` | `string` | Dataset description |
-| `spec.default_table_expiration_ms` | `number` | Table auto-expiration (ms) |
-| `spec.default_partition_expiration_ms` | `number` | Partition auto-expiration (ms) |
-| `spec.max_time_travel_hours` | `number` | Time travel window (48-168) |
-| `spec.is_case_insensitive` | `bool` | Case-insensitive names |
-| `spec.default_collation` | `string` | Default string collation |
-| `spec.storage_billing_model` | `string` | LOGICAL or PHYSICAL |
-| `spec.delete_contents_on_destroy` | `bool` | Delete tables on destroy |
-| `spec.kms_key_name.value` | `string` | CMEK key name |
-| `spec.access` | `list(object)` | Access control entries |
-| `provider_config.service_account_key_base64` | `string` | Optional GCP SA key |
+- `StringValueOrRef` fields (`project_id`, `kms_key_name`) arrive from the
+  proto→tfvars converter as plain resolved strings.
+- An empty `project_id` falls back to the provider's default project
+  (`GOOGLE_PROJECT` / `GOOGLE_CLOUD_PROJECT` / ADC chain).
+- User labels from `spec.labels` merge beneath Planton's `planton-ai_*`
+  platform labels — identical order to the Pulumi module.
+- Zero/empty optional scalars map to `null` so the API applies its own
+  server-side defaults (168h time travel, LOGICAL billing).
+- The spec's CEL rules guarantee every access entry's shape (exactly one
+  identity; role only on principal grants) before this module runs.
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `dataset_id` | Short dataset ID |
+| `dataset_id` | Short dataset ID referenced by SQL and downstream tables |
 | `self_link` | Fully qualified dataset URI |
-| `project` | GCP project containing the dataset |
-| `creation_time` | Creation timestamp (ms since epoch) |
+| `project` | Containing project (resolved under the ambient fallback) |
+| `creation_time` | Creation time in ms since epoch |
+| `location` | Dataset location |
+| `etag` | Entity tag (changes on every metadata modification) |
 
-## Usage
+## Local Development
 
-```bash
-terraform init
-terraform plan -var-file=terraform.tfvars.json
-terraform apply -var-file=terraform.tfvars.json
+```shell
+tofu init
+planton tofu plan --manifest ../hack/manifest.yaml
 ```
-
-## Important Notes
-
-- **Access is authoritative.** The `access` dynamic block controls all access entries.
-  Entries not in the spec will be removed by BigQuery.
-- **Dataset ID restrictions.** Only letters, numbers, and underscores are allowed.
-  No hyphens, dots, or spaces.
-- **Location is immutable.** Changing location triggers destroy and recreate.
-- **Labels are managed by Planton framework.** Framework labels are applied automatically.

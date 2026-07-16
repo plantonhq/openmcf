@@ -1,0 +1,22 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpArtifactRegistryRepo
+metadata:
+  name: test-artifact-repo
+spec:
+  location: us-central1
+  format: DOCKER
+  description: container images for the test service
+  dockerConfig:
+    immutableTags: true
+  cleanupPolicies:
+    - id: delete-old-untagged
+      action: DELETE
+      condition:
+        olderThan: "2592000s"
+        tagState: UNTAGGED
+    - id: keep-last-10
+      action: KEEP
+      mostRecentVersions:
+        keepCount: 10
+  labels:
+    team: platform

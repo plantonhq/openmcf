@@ -1,85 +1,119 @@
-# Overview
+# GCP Service Account
 
-The GCP Service Account API resource provides a consistent and streamlined interface for creating and managing Google
-Cloud service accounts, their optional JSON keys, and IAM role bindings within Google Cloud Platform. By abstracting
-the complexities of service account provisioning and permission management, this resource allows you to define identity
-and access configurations effortlessly while ensuring consistency and compliance across different environments.
+Deploys a Google Cloud service account (`google_service_account`) — the identity that workloads (GKE pods, Cloud Run services, Cloud Functions, Compute instances, CI/CD pipelines) authenticate as — with optional key creation and additive project- or organization-level role grants.
 
-## Why We Created This API Resource
+## What Gets Created
 
-Managing GCP service accounts involves coordinating multiple steps: creating the account, optionally generating keys,
-and binding IAM roles at project or organization levels. This can become complex when dealing with multiple environments
-and requires careful security practices. To simplify this process and promote secure, standardized patterns, we
-developed this API resource. It enables you to:
+When you deploy a GcpServiceAccount resource, Planton provisions:
 
-- **Simplify Service Account Management**: Easily create and configure service accounts without dealing with low-level
-  GCP IAM configurations or multiple `gcloud` commands.
-- **Ensure Consistency**: Maintain uniform service account configurations across different environments and applications.
-- **Enhance Security**: Default to keyless authentication patterns while supporting key generation only when explicitly
-  needed, following modern cloud security best practices.
-- **Improve Productivity**: Reduce the time and effort required to manage service accounts and their permissions,
-  allowing you to focus on application development and deployment.
-- **Enable GitOps Workflows**: Define service accounts declaratively in version-controlled manifests that work with both
-  Pulumi and Terraform backends.
+- **Service Account** — a `google_service_account` in the specified project
+- **JSON Key** (optional, off by default) — a `google_service_account_key` when `createKey` is true
+- **Project role grants** (optional) — one additive `google_project_iam_member` per role in `projectIamRoles`
+- **Organization role grants** (optional) — one additive `google_organization_iam_member` per role in `orgIamRoles`
 
-## Key Features
+## Prerequisites
 
-### Environment Integration
+- **GCP credentials** configured via environment variables or Planton provider config
+- **An existing GCP project** — referenced via `projectId`
+- **IAM permissions** — `roles/iam.serviceAccountAdmin` on the target project; `roles/resourcemanager.projectIamAdmin` if granting project roles; org-level IAM admin if granting org roles
 
-- **Environment Info**: Integrates seamlessly with Planton's environment management system to deploy service
-  account configurations within specific environments.
-- **Stack Job Settings**: Supports custom stack-update settings for infrastructure-as-code deployments.
-- **Multi-Backend Support**: The same manifest works with both Pulumi and Terraform backends, providing flexibility in
-  tool choice.
+## Quick Start
 
-### Service Account Creation
+Create a file `service-account.yaml`:
 
-- **Account Provisioning**: Creates a GCP service account with a specified `serviceAccountId` in the target GCP project.
-- **Display Name**: Automatically uses the metadata name as the display name for easy identification in the GCP Console.
-- **Project Scoping**: Specify the target `projectId` where the service account should be created, or use the provider's
-  default project.
+```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceAccount
+metadata:
+  name: my-app-identity
+spec:
+  serviceAccountId: my-app-prod
+  projectId:
+    value: my-gcp-project-123
+  displayName: My App (production)
+  description: Runtime identity for the my-app Cloud Run service
+  projectIamRoles:
+    - roles/logging.logWriter
+    - roles/monitoring.metricWriter
+```
 
-### Optional Key Generation
+Deploy:
 
-- **Keyless by Default**: The `createKey` field defaults to `false`, encouraging modern keyless authentication patterns
-  using Workload Identity, attached service accounts, or federated identity.
-- **Legacy Support**: When `createKey` is set to `true`, generates a JSON private key for scenarios requiring
-  traditional key-based authentication.
-- **Secure Key Handling**: Generated keys are base64-encoded in stack outputs and should be stored in secure secret
-  management systems.
+```shell
+planton apply -f service-account.yaml
+```
 
-### IAM Role Management
+This creates `my-app-prod@my-gcp-project-123.iam.gserviceaccount.com` with two additive role grants and no key (keyless is the default).
 
-- **Project-Level Roles**: Grant IAM roles scoped to the service account's project via the `projectIamRoles` field.
-  Supports any valid GCP IAM role (e.g., `roles/logging.logWriter`, `roles/storage.admin`).
-- **Organization-Level Roles**: When `orgId` is provided, grant IAM roles at the organization level via the
-  `orgIamRoles` field, enabling cross-project permissions.
-- **Declarative Bindings**: All role bindings are managed declaratively, ensuring permissions match the desired state
-  defined in the manifest.
+## Configuration Reference
 
-### Validation and Compliance
+### Required Fields
 
-- **Input Validation**: Implements strict validation rules to ensure service account configurations meet GCP
-  requirements:
-    - **Account ID Validation**: Enforces `serviceAccountId` length between 6-30 characters, matching GCP naming rules.
-    - **Required Fields**: Ensures essential fields like `serviceAccountId` are always provided.
-    - **Org Role Validation**: Prevents configuration of `orgIamRoles` without a corresponding `orgId`.
-- **Proto-Defined Schema**: Uses Protocol Buffers with buf.validate rules to provide compile-time type safety and
-  runtime validation.
+| Field | Type | Description | Validation |
+|-------|------|-------------|------------|
+| `serviceAccountId` | `string` | Short account ID forming the email `<id>@<project>.iam.gserviceaccount.com`. Immutable — changing it recreates the account and invalidates every reference to the old email. | 6-30 chars; lowercase letters, digits, hyphens; starts with a letter; cannot end with a hyphen |
 
-## Benefits
+### Optional Fields
 
-- **Simplified Deployment**: Abstracts the complexities of GCP service account creation, key management, and IAM
-  bindings into a single, easy-to-use API.
-- **Security by Default**: Encourages keyless authentication patterns by making key creation opt-in rather than
-  automatic, reducing the risk of credential leaks.
-- **Consistency**: Ensures all service accounts adhere to organizational standards and best practices across
-  environments.
-- **Scalability**: Allows for efficient management of service account configurations as your infrastructure grows,
-  supporting both project-level and organization-level permissions.
-- **Auditability**: Declarative YAML manifests stored in Git provide a complete audit trail of service account
-  configurations and permission changes.
-- **Flexibility**: Supports both modern keyless patterns (recommended) and traditional key-based authentication (when
-  necessary) without compromising on best practices.
-- **Tool Agnostic**: The same manifest deploys with either Pulumi or Terraform, preventing vendor lock-in and supporting
-  gradual IaC tool migrations.
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `projectId` | `StringValueOrRef` | provider default project | Project in which the account is created. Can reference a GcpProject. Immutable. |
+| `displayName` | `string` | metadata name | Human-readable identity shown in the GCP console. Mutable. |
+| `description` | `string` | `""` | What this identity is for (max 256 bytes). Mutable. |
+| `disabled` | `bool` | `false` | Disabled accounts keep their IAM bindings but cannot authenticate — a kill switch for incident response or staged decommissioning. Mutable. |
+| `createKey` | `bool` | `false` | Create a user-managed JSON key, exported as the sensitive `key_base64` output. Prefer keyless patterns. |
+| `projectIamRoles` | `list(string)` | `[]` | Roles granted at the project scope (additive member grants). |
+| `orgId` | `string` | `""` | Numeric organization ID; required when `orgIamRoles` is set. |
+| `orgIamRoles` | `list(string)` | `[]` | Roles granted at the organization scope (additive; affects every project under the org — grant sparingly). |
+
+### Role lists vs first-class grants
+
+The role lists are a convenience for the common "identity plus its obvious roles" case. For grants that deserve to be visible, independently-owned nodes in the resource graph — custom roles, conditional grants, grants owned by a different chart — use [GcpProjectIamMember](/docs/catalog/gcp/gcpprojectiammember), which references this account's `member` output directly.
+
+## Stack Outputs
+
+After deployment, the following outputs are available in `status.outputs`:
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `email` | `string` | The service account email — the handle workload configs attach identity by |
+| `member` | `string` | Ready-made IAM member string (`serviceAccount:<email>`) — feed directly into IAM grants |
+| `unique_id` | `string` | Stable numeric ID, never reused across delete/recreate |
+| `name` | `string` | Fully-qualified resource name (`projects/<project>/serviceAccounts/<email>`) |
+| `key_base64` | `string` | Base64-encoded JSON private key (only when `createKey` is true; sensitive) |
+
+## Deployment Methods
+
+Planton supports two deployment methods:
+
+### Pulumi (Go)
+
+See [`iac/pulumi/README.md`](iac/pulumi/README.md) for Pulumi-specific deployment instructions.
+
+### Terraform
+
+See [`iac/tf/README.md`](iac/tf/README.md) for Terraform-specific deployment instructions.
+
+## Important Notes
+
+- **Keyless by default**: no user-managed key is created unless `createKey` is set. Prefer Workload Identity (GKE), attached service accounts (Cloud Run/Compute), or Workload Identity Federation (external CI/CD) — a JSON key is a long-lived credential that must be rotated and protected.
+- **Immutability**: `serviceAccountId` and `projectId` are ForceNew. `displayName`, `description`, and `disabled` update in place (GCP flips disabled state via dedicated Enable/Disable API calls, handled transparently).
+- **Additive grants**: all role grants use member-level (additive) semantics — they never clobber other members' bindings on the same role.
+- **Email reuse caution**: deleting and recreating an account produces the same email but a different `unique_id`; IAM bindings referencing the old account do not transfer.
+
+## Related Components
+
+- [GcpProjectIamMember](/docs/catalog/gcp/gcpprojectiammember) — first-class additive grant referencing this account's `member` output
+- [GcpIamCustomRole](/docs/catalog/gcp/gcpiamcustomrole) — least-privilege role definitions to grant to this account
+- [GcpProject](/docs/catalog/gcp/gcpproject) — provides the project the account lives in
+- [GcpGkeWorkloadIdentityBinding](/docs/catalog/gcp/gcpgkeworkloadidentitybinding) — binds a Kubernetes service account to this identity for keyless GKE workloads
+
+## Additional Resources
+
+- [Service Accounts Overview](https://cloud.google.com/iam/docs/service-account-overview)
+- [Best Practices for Using Service Accounts](https://cloud.google.com/iam/docs/best-practices-service-accounts)
+- [Migrating Away from Service Account Keys](https://cloud.google.com/iam/docs/migrate-from-service-account-keys)
+
+## Support
+
+For issues, questions, or contributions, please refer to the Planton documentation or open an issue in the repository.

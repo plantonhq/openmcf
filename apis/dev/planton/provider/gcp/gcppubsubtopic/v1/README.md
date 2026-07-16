@@ -15,14 +15,15 @@ Use GcpPubSubTopic when you need:
 - **Cloud Storage ingestion** to stream object data into Pub/Sub messages
 - **Customer-managed encryption** (CMEK) for topics handling sensitive or regulated data
 - **Regional message storage guarantees** with configurable in-transit enforcement
-- **Schema validation** to enforce message contracts at publish time
+- **Schema validation** to enforce message contracts at publish time (compose with `GcpPubSubSchema`)
+- **Publish-side transforms** to redact, normalize, or filter messages at the topic boundary
 
 ## Prerequisites
 
-- A GCP project with the Pub/Sub API enabled
+- A GCP project (the Pub/Sub API is enabled automatically by both modules)
 - Appropriate IAM permissions (`roles/pubsub.admin` or `roles/pubsub.editor`)
 - For CMEK: an existing KMS key with `roles/cloudkms.cryptoKeyEncrypterDecrypter` granted to the Pub/Sub service account
-- For schema validation: a Pub/Sub schema resource already created in the project
+- For schema validation: a `GcpPubSubSchema` resource to reference
 
 ## Quick Start
 
@@ -32,8 +33,6 @@ kind: GcpPubSubTopic
 metadata:
   name: my-topic
 spec:
-  projectId:
-    value: "my-gcp-project"
   topicName: order-events
 ```
 
@@ -44,23 +43,25 @@ retention -- subscribers control their own retention via subscriptions.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `projectId` | StringValueOrRef | Yes | GCP project ID |
-| `topicName` | string | Yes | Topic name (3-255 chars, starts with letter, immutable) |
-| `kmsKeyName` | StringValueOrRef | No | CMEK encryption key (full resource name) |
+| `projectId` | StringValueOrRef | No | GCP project ID (omitted = provider default project); reference `GcpProject` |
+| `topicName` | string | Yes | Topic name (3-255 chars, starts with letter, no reserved `goog` prefix, immutable) |
+| `kmsKeyName` | StringValueOrRef | No | CMEK encryption key; reference `GcpKmsKey` |
 | `messageRetentionDuration` | string | No | Retain messages for this duration (600s-2678400s) |
+| `labels` | map | No | User labels, merged beneath the platform attribution labels |
 | `messageStoragePolicy` | object | No | Regional storage constraints |
 | `messageStoragePolicy.allowedPersistenceRegions` | list | Yes* | GCP regions for message storage (* required when policy is set) |
 | `messageStoragePolicy.enforceInTransit` | bool | No | Reject publishes from non-allowed regions |
 | `schemaSettings` | object | No | Schema validation settings |
-| `schemaSettings.schema` | string | Yes* | Schema resource name (* required when schemaSettings is set) |
+| `schemaSettings.schema` | StringValueOrRef | Yes* | Schema to validate against; reference `GcpPubSubSchema` (* required when schemaSettings is set) |
 | `schemaSettings.encoding` | string | No | Message encoding: JSON or BINARY |
 | `ingestionDataSourceSettings` | object | No | External data source ingestion |
-| `ingestionDataSourceSettings.awsKinesis` | object | No | AWS Kinesis Data Streams ingestion |
-| `ingestionDataSourceSettings.awsMsk` | object | No | AWS MSK (Kafka) ingestion |
-| `ingestionDataSourceSettings.azureEventHubs` | object | No | Azure Event Hubs ingestion |
-| `ingestionDataSourceSettings.cloudStorage` | object | No | GCS bucket ingestion |
-| `ingestionDataSourceSettings.confluentCloud` | object | No | Confluent Cloud ingestion |
+| `ingestionDataSourceSettings.awsKinesis` | object | No | AWS Kinesis Data Streams ingestion (`gcpServiceAccount` references `GcpServiceAccount`) |
+| `ingestionDataSourceSettings.awsMsk` | object | No | AWS MSK (Kafka) ingestion (`gcpServiceAccount` references `GcpServiceAccount`) |
+| `ingestionDataSourceSettings.azureEventHubs` | object | No | Azure Event Hubs ingestion (`gcpServiceAccount` references `GcpServiceAccount`) |
+| `ingestionDataSourceSettings.cloudStorage` | object | No | GCS bucket ingestion (`bucket` references `GcpGcsBucket`) |
+| `ingestionDataSourceSettings.confluentCloud` | object | No | Confluent Cloud ingestion (`gcpServiceAccount` references `GcpServiceAccount`) |
 | `ingestionDataSourceSettings.platformLogsSettings` | object | No | Ingestion pipeline logging |
+| `messageTransforms` | list | No | Ordered JavaScript UDF pipeline applied to every published message |
 
 ## Important Notes
 
@@ -80,9 +81,32 @@ replay via subscription seek operations.
 ingestion data source (Kinesis, MSK, Event Hubs, Cloud Storage, or Confluent
 Cloud) per topic.
 
+**Transforms run in list order.** Each JavaScript UDF receives the message and
+returns the transformed message (or null/undefined to drop it); a `disabled`
+transform keeps its position in the pipeline without being applied.
+
+### Deliberately not modeled (recorded reasons)
+
+- **`tags` (resource-manager tags)** — absent from the released `google ~> 6.x`
+  line (present only on the provider's unreleased line); revisit when the
+  catalog's provider line carries it.
+- **`message_transforms.ai_inference` (Vertex AI transform arm)** — absent from
+  the released `google ~> 6.x` line; only the JavaScript UDF arm is released.
+- **`deletion_policy`** — a client-side lever that conflicts with
+  Planton-managed destroy (catalog-wide skip; also absent from the released
+  6.x line).
+- **`schema_settings.first_revision_id`/`last_revision_id` (revision pinning)** —
+  absent from the released `google ~> 6.x` line; topics validate against all
+  available schema revisions.
+- **Per-topic IAM (`google_pubsub_topic_iam_*`)** — resource-scoped IAM stays
+  out of the catalog pending concrete pull (the additive project-level grant,
+  `GcpProjectIamMember`, covers the real cases).
+
 ## Related Components
 
 - [GcpPubSubSubscription](../gcppubsubsubscription/v1/) -- Subscriptions that consume from this topic
+- [GcpPubSubSchema](../gcppubsubschema/v1/) -- Message contract referenced by `schemaSettings.schema`
 - [GcpKmsKey](../gcpkmskey/v1/) -- CMEK encryption key for topic encryption
 - [GcpProject](../gcpproject/v1/) -- Parent GCP project
 - [GcpGcsBucket](../gcpgcsbucket/v1/) -- Source bucket for Cloud Storage ingestion
+- [GcpServiceAccount](../gcpserviceaccount/v1/) -- Federated identity for cross-cloud ingestion

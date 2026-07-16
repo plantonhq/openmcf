@@ -4,11 +4,38 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/bigtable"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// bigtableInstance provisions the Bigtable instance: the logical
+// container, served by one or more clusters (physical replicas, each in
+// its own zone). Multi-cluster instances replicate automatically; the
+// client library routes and fails over transparently.
+//
+// Per-cluster immutability is enforced server-side: zone, storageType,
+// kmsKeyName, and nodeScalingFactor cannot change on an existing
+// clusterId. numNodes and autoscaling bounds resize in place.
 func bigtableInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
 	spec := locals.GcpBigtableInstance.Spec
+
+	// Enable the Bigtable Admin API — the control plane instance and
+	// table management run through. disable_on_destroy stays false:
+	// tearing down one instance must never disable the API for
+	// everything else in the project.
+	adminApiArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("bigtableadmin.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
+	}
+	if spec.ProjectId.GetValue() != "" {
+		adminApiArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+	createdAdminApi, err := projects.NewService(ctx,
+		"bt-bigtableadmin.googleapis.com", adminApiArgs, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to enable bigtableadmin.googleapis.com api")
+	}
 
 	// Build cluster configurations from the spec.
 	clusters := bigtable.InstanceClusterArray{}
@@ -53,13 +80,28 @@ func bigtableInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Prov
 		clusters = append(clusters, clusterArgs)
 	}
 
+	// Terraform-side deletion guard (spec default TRUE): always sent
+	// explicitly so destroy behavior is identical on both engines — a
+	// manifest that never mentions deletion protection must behave the
+	// same everywhere.
+	deletionProtection := true
+	if spec.DeletionProtection != nil {
+		deletionProtection = spec.GetDeletionProtection()
+	}
+
 	args := &bigtable.InstanceArgs{
 		Name:               pulumi.String(spec.InstanceName),
-		Project:            pulumi.StringPtr(spec.ProjectId.GetValue()),
 		Labels:             pulumi.ToStringMap(locals.GcpLabels),
 		Clusters:           clusters,
-		DeletionProtection: pulumi.BoolPtr(spec.GetDeletionProtection()),
+		DeletionProtection: pulumi.BoolPtr(deletionProtection),
 		ForceDestroy:       pulumi.BoolPtr(spec.ForceDestroy),
+	}
+
+	// Honor the spec contract: an empty project_id falls back to the
+	// provider's default project (omit the arg entirely; an empty string
+	// would be sent verbatim and rejected).
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
 	}
 
 	// Display name (optional, GCP defaults to instance name).
@@ -67,7 +109,9 @@ func bigtableInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Prov
 		args.DisplayName = pulumi.StringPtr(spec.DisplayName)
 	}
 
-	createdInstance, err := bigtable.NewInstance(ctx, "bigtable-instance", args, pulumi.Provider(gcpProvider))
+	createdInstance, err := bigtable.NewInstance(ctx, "bigtable-instance", args,
+		pulumi.Provider(gcpProvider),
+		pulumi.DependsOn([]pulumi.Resource{createdAdminApi}))
 	if err != nil {
 		return errors.Wrap(err, "failed to create bigtable instance")
 	}

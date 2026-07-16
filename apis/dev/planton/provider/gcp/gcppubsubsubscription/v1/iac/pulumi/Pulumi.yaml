@@ -1,0 +1,4 @@
+name: gcppubsubsubscription-pulumi-project
+runtime:
+  name: go
+description: Planton GcpPubSubSubscription Pulumi module

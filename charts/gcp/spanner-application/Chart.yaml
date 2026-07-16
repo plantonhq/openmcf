@@ -5,8 +5,8 @@ metadata:
 spec:
   selector:
     kind: platform
-  description: Production-ready Cloud Spanner deployment with instance, database, dedicated service account, and optional VPC networking. Supports both Google Standard SQL and PostgreSQL dialects with configurable node capacity.
-  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/provider/gcp/gcpspannerinstance/v1/assets/logo.svg
+  description: The Cloud Spanner backend for an application that cannot lose data or go down for maintenance — a provisioned instance sized by processing units (or managed autoscaling), a database with point-in-time recovery, and an explicit cron-driven backup schedule with real retention. The pieces every Spanner production checklist asks for, already wired in the right order and guarded against accidental deletion.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/gcp/gcpspannerinstance/v1/logo.svg
   isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/gcp/spanner-application

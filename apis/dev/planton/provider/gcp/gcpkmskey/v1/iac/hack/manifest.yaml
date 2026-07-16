@@ -7,3 +7,5 @@ spec:
     value: "projects/test-project/locations/us-central1/keyRings/test-key-ring"
   keyName: test-encrypt-key
   rotationPeriod: "7776000s"
+  labels:
+    team: platform

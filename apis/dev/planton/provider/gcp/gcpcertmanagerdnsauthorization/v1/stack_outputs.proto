@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpcertmanagerdnsauthorization.v1;
+
+// Outputs produced after provisioning a Certificate Manager DNS
+// authorization.
+message GcpCertManagerDnsAuthorizationStackOutputs {
+  // Fully-qualified resource ID of the authorization
+  // (projects/{project}/locations/{location}/dnsAuthorizations/{name}).
+  // This is the exact value a GcpCertManagerCert's dns_authorizations list
+  // consumes — the composition key of the certificate family.
+  string authorization_id = 1;
+
+  // Name of the authorization as it exists in GCP.
+  string authorization_name = 2;
+
+  // The authorized domain (covers the domain and its wildcard).
+  string domain = 3;
+
+  // The DNS validation record Cloud DNS must serve — compose these three
+  // fields into a GcpDnsRecord to complete domain validation:
+  // the record's fully-qualified name (e.g. "_acme-challenge.example.com.").
+  string dns_record_name = 4;
+
+  // The validation record's type (always "CNAME" today).
+  string dns_record_type = 5;
+
+  // The validation record's data — the value the CNAME must point at.
+  string dns_record_data = 6;
+}

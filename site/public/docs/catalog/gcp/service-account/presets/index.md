@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "CI/CD Pipeline Service Account"
     excerpt: "This preset creates a GCP service account with a JSON key for CI/CD pipelines (GitHub Actions, GitLab CI, Jenkins). It has permissions to push container images, deploy to GKE, and deploy Cloud Run..."
+  - slug: "03-identity-with-first-class-grants"
+    rank: "03"
+    title: "Pure Identity with First-Class Grants"
+    excerpt: "This preset creates the service account as a pure identity node with no inline role lists. Every grant lives as its own GcpProjectIamMember resource referencing this account's `member` output — the..."
 ---
 
 # Service Account Presets

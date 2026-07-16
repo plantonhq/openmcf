@@ -1,0 +1,4 @@
+name: gcpurlmap-pulumi-project
+runtime:
+  name: go
+description: Planton GcpUrlMap Pulumi module

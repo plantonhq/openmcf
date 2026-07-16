@@ -1,0 +1,28 @@
+# Consumer-scoped GcpSubnetwork install profile for the Composer
+# environment chain: the primary range the environment's GKE nodes live
+# in. Composer's VPC-native pods/services ranges are GKE-carved (no
+# named secondary ranges needed for the E2E shape).
+apiVersion: gcp.planton.dev/v1
+kind: GcpSubnetwork
+metadata:
+  name: planton-oss-e2e-gcpsnw-cce-prereq
+  id: planton-oss-e2e-gcpsnw-cce-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpsubnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
+      fieldPath: status.outputs.network_self_link
+  subnetworkName: e2e-cce-subnet-${E2E_RUN_ID}
+  region: us-central1
+  ipCidrRange: 10.11.1.0/24
+  description: Ephemeral /24 for the GcpCloudComposerEnvironment E2E chain; safe to delete

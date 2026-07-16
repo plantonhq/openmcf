@@ -135,7 +135,7 @@ func ResolveDependencies(repoRoot, componentProvider, component, scenarioManifes
 	var deps []Dependency
 	for _, p := range prereqs {
 		slug := strings.ToLower(p.String())
-		manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, slug)
+		manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, component, slug)
 		if err != nil {
 			return nil, err
 		}
@@ -166,7 +166,7 @@ func ResolveDependencies(repoRoot, componentProvider, component, scenarioManifes
 		}
 		for _, p := range pre {
 			pSlug := strings.ToLower(p.String())
-			manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, pSlug)
+			manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, component, pSlug)
 			if err != nil {
 				return nil, err
 			}
@@ -207,7 +207,7 @@ func expandPrerequisiteGraph(repoRoot, componentProvider, component string, root
 		inStack[k] = true
 
 		edges := append([]cloudresourcekind.CloudResourceKind{}, crkreflect.Prerequisites(k)...)
-		manifestDeclared, err := installManifestPrerequisites(repoRoot, componentProvider, k)
+		manifestDeclared, err := installManifestPrerequisites(repoRoot, componentProvider, component, k)
 		if err != nil {
 			return err
 		}
@@ -243,9 +243,12 @@ func expandPrerequisiteGraph(repoRoot, componentProvider, component string, root
 // swallowing it here never hides a failure. An annotation naming an unknown
 // kind, however, errors immediately -- silently skipping it would deploy the
 // manifest without a fixture it relies on.
-func installManifestPrerequisites(repoRoot, componentProvider string, k cloudresourcekind.CloudResourceKind) ([]cloudresourcekind.CloudResourceKind, error) {
+func installManifestPrerequisites(repoRoot, componentProvider, consumer string, k cloudresourcekind.CloudResourceKind) ([]cloudresourcekind.CloudResourceKind, error) {
 	slug := strings.ToLower(k.String())
-	manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, slug)
+	// The consumer scoping matters here too: annotations are read from the
+	// manifest that will actually deploy, which may be a consumer-scoped
+	// override rather than the kind's published profile.
+	manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, consumer, slug)
 	if err != nil {
 		return nil, nil
 	}
@@ -291,11 +294,25 @@ func installManifestPrerequisites(repoRoot, componentProvider string, k cloudres
 	return kinds, nil
 }
 
-// prerequisiteManifestPath returns the manifest used to install a prerequisite:
-// its published prerequisite.yaml if present, else its minimal scenario. Errors if
-// neither exists, so a missing install profile fails loudly rather than silently
-// skipping a required dependency.
-func prerequisiteManifestPath(repoRoot, componentProvider, slug string) (string, error) {
+// prerequisiteManifestPath returns the manifest used to install a prerequisite,
+// in order of preference:
+//   - <consumer>/v1/e2e/prerequisites/<dep>.yaml — a consumer-scoped override,
+//     for when the same prerequisite kind needs a different install shape for
+//     different consumers (e.g. GcpGlobalAddress as an EXTERNAL VIP for a
+//     forwarding rule vs an INTERNAL VPC_PEERING range for a service
+//     networking connection);
+//   - <dep>/v1/e2e/prerequisite.yaml — the dependency's published install profile;
+//   - <dep>/v1/e2e/scenarios/minimal.yaml — fallback to its minimal scenario.
+//
+// Errors if none exist, so a missing install profile fails loudly rather than
+// silently skipping a required dependency.
+func prerequisiteManifestPath(repoRoot, componentProvider, consumer, slug string) (string, error) {
+	if consumer != "" {
+		consumerPrereq := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", componentProvider, consumer, "v1", "e2e", "prerequisites", slug+".yaml")
+		if pathExists(consumerPrereq) {
+			return consumerPrereq, nil
+		}
+	}
 	base := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", componentProvider, slug, "v1", "e2e")
 	prereq := filepath.Join(base, "prerequisite.yaml")
 	if pathExists(prereq) {
@@ -305,7 +322,7 @@ func prerequisiteManifestPath(repoRoot, componentProvider, slug string) (string,
 	if pathExists(minimal) {
 		return minimal, nil
 	}
-	return "", errors.Errorf("no install manifest for prerequisite %q: expected %s or %s", slug, prereq, minimal)
+	return "", errors.Errorf("no install manifest for prerequisite %q (consumer %q): expected %s or %s (or a consumer-scoped prerequisites/%s.yaml)", slug, consumer, prereq, minimal, slug)
 }
 
 // DeployDependencies resolves and deploys all prerequisite deployments for a
@@ -342,6 +359,16 @@ func DeployDependencies(ctx context.Context, repoRoot, componentProvider, compon
 		}
 		for docIndex, docPath := range docPaths {
 			docDep := Dependency{KindSlug: dep.KindSlug, ManifestPath: docPath}
+
+			// Prerequisites redeploy for every engine run, so their manifests need
+			// the same per-run unique-id expansion as the scenario under test (same
+			// token, same run id — a dependent's ${E2E_RUN_ID}-suffixed reference
+			// lines up with the prerequisite it points at).
+			expandedManifestPath, err := ExpandManifestTokens(docDep.ManifestPath, runID)
+			if err != nil {
+				return deployed, errors.Wrapf(err, "failed to expand manifest tokens for dependency %q", dep.KindSlug)
+			}
+			docDep.ManifestPath = expandedManifestPath
 
 			resolvedManifestPath, err := ResolveManifestRefs(docDep.ManifestPath, accumulated)
 			if err != nil {
@@ -445,22 +472,57 @@ var (
 	pulumiRemoveStackFn = PulumiRemoveStack
 )
 
+// Dependency destroys retry because some producer-side cleanups are
+// asynchronous: deleting a Cloud SQL instance completes minutes before the
+// service producer releases its hold on the service networking connection,
+// and until then the connection destroy fails with "Producer services are
+// still using this connection". Skipping past that failure is worse than an
+// orphan: the framework would then force-delete the VPC, stranding a
+// producer-side connection record that poisons the NEXT scenario's
+// same-named prerequisite chain (its connection create silently attaches to
+// the stale record and no peering ever materializes).
+//
+// The budget is deliberately bounded at ~6 minutes: async releases that GCP
+// documents in HOURS (e.g. the serverless address reservation a direct-VPC
+// Cloud Run service leaves in its subnetwork for 1-2 hours after deletion)
+// can never be covered by retrying, and scenarios whose teardown depends on
+// such a release must be excluded from live E2E instead (see the E2E
+// coverage policy).
+const dependencyDestroyAttempts = 6
+
+// dependencyDestroyBackoff is a variable (not a const) purely so teardown
+// unit tests can zero it; production code never changes it.
+var dependencyDestroyBackoff = 60 * time.Second
+
 // TeardownDependencies destroys deployed dependencies in reverse order and
-// returns the aggregated failures. Teardown is best-effort in the sense that
-// one dependency's failure never stops the remaining teardowns (stopping early
-// would leak everything deployed before it) -- but every failure is collected
-// and returned so the caller FAILS the run. A destroy that cannot run (for
-// example because the ephemeral backend state disappeared before teardown)
-// means real cloud resources may still exist; reporting success would leave
-// them leaking silently, invisible until someone audits the account.
+// returns the aggregated failures. Each destroy retries with backoff (see
+// dependencyDestroyAttempts) before being declared failed. Teardown is
+// best-effort in the sense that one dependency's failure never stops the
+// remaining teardowns (stopping early would leak everything deployed before
+// it) -- but every failure is collected and returned so the caller FAILS the
+// run. A destroy that cannot run (for example because the ephemeral backend
+// state disappeared before teardown) means real cloud resources may still
+// exist; reporting success would leave them leaking silently, invisible
+// until someone audits the account.
 func TeardownDependencies(deployed []DependencyState) error {
 	var failures []error
 	for i := len(deployed) - 1; i >= 0; i-- {
 		dep := deployed[i]
 		fmt.Printf("  [deps] Destroying dependency %s...\n", dep.Dependency.KindSlug)
 
-		if _, err := pulumiDestroyFn(dep.ModuleDir, dep.StackName, dep.BackendURL, dep.StackInputPath); err != nil {
-			failures = append(failures, errors.Wrapf(err, "dependency %s (stack %s) destroy failed", dep.Dependency.KindSlug, dep.StackName))
+		var destroyErr error
+		for attempt := 1; attempt <= dependencyDestroyAttempts; attempt++ {
+			if _, destroyErr = pulumiDestroyFn(dep.ModuleDir, dep.StackName, dep.BackendURL, dep.StackInputPath); destroyErr == nil {
+				break
+			}
+			if attempt < dependencyDestroyAttempts {
+				fmt.Printf("  [deps] dependency %s destroy attempt %d/%d failed (waiting %s): %v\n",
+					dep.Dependency.KindSlug, attempt, dependencyDestroyAttempts, dependencyDestroyBackoff, destroyErr)
+				time.Sleep(dependencyDestroyBackoff)
+			}
+		}
+		if destroyErr != nil {
+			failures = append(failures, errors.Wrapf(destroyErr, "dependency %s (stack %s) destroy failed after %d attempts", dep.Dependency.KindSlug, dep.StackName, dependencyDestroyAttempts))
 			continue
 		}
 		if err := pulumiRemoveStackFn(dep.ModuleDir, dep.StackName, dep.BackendURL); err != nil {

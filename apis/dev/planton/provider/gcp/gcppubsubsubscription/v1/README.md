@@ -51,6 +51,8 @@ Use GcpPubSubSubscription when you need to:
 | `enable_message_ordering` | Deliver in publish order by ordering key |
 | `enable_exactly_once_delivery` | Guarantee exactly-once within ack deadline |
 | `filter` | Attribute-based message filtering (immutable) |
+| `labels` | User labels, merged beneath the platform attribution labels |
+| `message_transforms` | Ordered JavaScript UDF pipeline applied before delivery to this subscription |
 
 ### Reliability
 
@@ -62,9 +64,10 @@ Use GcpPubSubSubscription when you need to:
 
 ## Important Behavioral Notes
 
-- **Immutable fields**: `subscription_name`, `filter`, and `enable_message_ordering`
-  cannot be changed after creation. Modifying them requires destroying and recreating
-  the subscription.
+- **Immutable fields**: `subscription_name`, `topic`, `filter`, and
+  `enable_message_ordering` cannot be changed after creation. Modifying them requires
+  destroying and recreating the subscription (and its backlog). Subscription names
+  beginning with the reserved `goog` prefix are rejected pre-deploy.
 
 - **Delivery method exclusivity**: Only one of `push_config`, `bigquery_config`, or
   `cloud_storage_config` can be set. Setting more than one is a validation error.
@@ -77,17 +80,36 @@ Use GcpPubSubSubscription when you need to:
 - **Exactly-once delivery** guarantees a message is not resent before its ack deadline
   expires. It does not prevent duplicates from the publisher side.
 
+### Deliberately not modeled (recorded reasons)
+
+- **`tags` (resource-manager tags)** — absent from the released `google ~> 6.x`
+  line (present only on the provider's unreleased line); revisit when the
+  catalog's provider line carries it.
+- **`message_transforms.ai_inference` (Vertex AI transform arm)** — absent from
+  the released `google ~> 6.x` line; only the JavaScript UDF arm is released.
+- **`deletion_policy`** — a client-side lever that conflicts with
+  Planton-managed destroy (catalog-wide skip; also absent from the released
+  6.x line).
+- **Per-subscription IAM (`google_pubsub_subscription_iam_*`)** —
+  resource-scoped IAM stays out of the catalog pending concrete pull (the
+  additive project-level grant, `GcpProjectIamMember`, covers the real cases).
+
 ## Dependencies
 
 | Dependency | Field | Required |
 |-----------|-------|----------|
 | GcpPubSubTopic | `topic` | Yes |
-| GcpProject | `project_id` | Yes |
+| GcpProject | `project_id` | No (omitted = provider default project) |
 | GcpPubSubTopic | `dead_letter_policy.dead_letter_topic` | No |
 | GcpGcsBucket | `cloud_storage_config.bucket` | No |
+| GcpBigQueryTable | `bigquery_config.table` | No |
+| GcpServiceAccount | `push_config.oidc_token.service_account_email`, `bigquery_config.service_account_email`, `cloud_storage_config.service_account_email` | No |
 
 ## Related Resources
 
 - [GcpPubSubTopic](/docs/catalog/gcp/pubsub-topic) -- Source topic for this subscription
-- [GcpGcsBucket](/docs/catalog/gcp/gcs-bucket) -- Target bucket for Cloud Storage delivery
+- [GcpPubSubSchema](/docs/catalog/gcp/pubsub-schema) -- Drives BigQuery/Avro layout via the topic's schema
+- [GcpBigQueryTable](/docs/catalog/gcp/bigquery-table) -- Target table for BigQuery delivery
+- [GcpGcsBucket](/docs/catalog/gcp/cloud-storage-bucket) -- Target bucket for Cloud Storage delivery
+- [GcpServiceAccount](/docs/catalog/gcp/service-account) -- Writer/invoker identities for push, BigQuery, and Cloud Storage delivery
 - [GcpProject](/docs/catalog/gcp/project) -- Parent GCP project

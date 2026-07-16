@@ -25,6 +25,13 @@ var _ = ginkgo.Describe("GcpPubSubTopicSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
+	// Helper for StringValueOrRef with a literal value.
+	svr := func(v string) *foreignkeyv1.StringValueOrRef {
+		return &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: v},
+		}
+	}
+
 	// Helper to build a minimal valid GcpPubSubTopic.
 	minimal := func() *GcpPubSubTopic {
 		return &GcpPubSubTopic{
@@ -134,7 +141,7 @@ var _ = ginkgo.Describe("GcpPubSubTopicSpec", func() {
 	ginkgo.It("should accept spec with schema settings (JSON encoding)", func() {
 		msg := minimal()
 		msg.Spec.SchemaSettings = &GcpPubSubTopicSchemaSettings{
-			Schema:   "projects/my-project/schemas/my-schema",
+			Schema:   svr("projects/my-project/schemas/my-schema"),
 			Encoding: "JSON",
 		}
 		err := validator.Validate(msg)
@@ -144,7 +151,7 @@ var _ = ginkgo.Describe("GcpPubSubTopicSpec", func() {
 	ginkgo.It("should accept spec with schema settings (BINARY encoding)", func() {
 		msg := minimal()
 		msg.Spec.SchemaSettings = &GcpPubSubTopicSchemaSettings{
-			Schema:   "projects/my-project/schemas/my-schema",
+			Schema:   svr("projects/my-project/schemas/my-schema"),
 			Encoding: "BINARY",
 		}
 		err := validator.Validate(msg)
@@ -154,7 +161,7 @@ var _ = ginkgo.Describe("GcpPubSubTopicSpec", func() {
 	ginkgo.It("should accept spec with schema settings (encoding omitted)", func() {
 		msg := minimal()
 		msg.Spec.SchemaSettings = &GcpPubSubTopicSchemaSettings{
-			Schema: "projects/my-project/schemas/my-schema",
+			Schema: svr("projects/my-project/schemas/my-schema"),
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -202,7 +209,7 @@ var _ = ginkgo.Describe("GcpPubSubTopicSpec", func() {
 				StreamArn:         "arn:aws:kinesis:us-east-1:123456789012:stream/my-stream",
 				ConsumerArn:       "arn:aws:kinesis:us-east-1:123456789012:stream/my-stream/consumer/my-consumer:1234567890",
 				AwsRoleArn:        "arn:aws:iam::123456789012:role/pubsub-kinesis-role",
-				GcpServiceAccount: "kinesis-ingestion@my-project.iam.gserviceaccount.com",
+				GcpServiceAccount: svr("kinesis-ingestion@my-project.iam.gserviceaccount.com"),
 			},
 		}
 		err := validator.Validate(msg)
@@ -216,7 +223,7 @@ var _ = ginkgo.Describe("GcpPubSubTopicSpec", func() {
 				BootstrapServer:   "pkc-12345.us-central1.gcp.confluent.cloud:9092",
 				Topic:             "my-confluent-topic",
 				IdentityPoolId:    "projects/123456/locations/global/workloadIdentityPools/confluent-pool/providers/confluent-provider",
-				GcpServiceAccount: "confluent-ingestion@my-project.iam.gserviceaccount.com",
+				GcpServiceAccount: svr("confluent-ingestion@my-project.iam.gserviceaccount.com"),
 				ClusterId:         "lkc-12345",
 			},
 		}
@@ -256,8 +263,54 @@ var _ = ginkgo.Describe("GcpPubSubTopicSpec", func() {
 			EnforceInTransit:          true,
 		}
 		msg.Spec.SchemaSettings = &GcpPubSubTopicSchemaSettings{
-			Schema:   "projects/p/schemas/s",
+			Schema:   svr("projects/p/schemas/s"),
 			Encoding: "JSON",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept user labels", func() {
+		msg := minimal()
+		msg.Spec.Labels = map[string]string{
+			"team":        "payments",
+			"cost-center": "cc-1234",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a topic name containing goog when not a prefix", func() {
+		msg := minimal()
+		msg.Spec.TopicName = "my-google-events"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a message transform (javascript udf)", func() {
+		msg := minimal()
+		msg.Spec.MessageTransforms = []*GcpPubSubTopicMessageTransform{
+			{
+				JavascriptUdf: &GcpPubSubTopicMessageTransformJavascriptUdf{
+					FunctionName: "redactSsn",
+					Code:         "function redactSsn(message, metadata) { return message; }",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a disabled message transform", func() {
+		msg := minimal()
+		msg.Spec.MessageTransforms = []*GcpPubSubTopicMessageTransform{
+			{
+				JavascriptUdf: &GcpPubSubTopicMessageTransformJavascriptUdf{
+					FunctionName: "normalize",
+					Code:         "function normalize(message, metadata) { return message; }",
+				},
+				Disabled: true,
+			},
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -265,11 +318,11 @@ var _ = ginkgo.Describe("GcpPubSubTopicSpec", func() {
 
 	// ──────────────── Negative Cases ────────────────
 
-	ginkgo.It("should reject when project_id is missing", func() {
+	ginkgo.It("should accept an omitted project_id (ambient project)", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject when topic_name is empty", func() {
@@ -328,11 +381,53 @@ var _ = ginkgo.Describe("GcpPubSubTopicSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should reject a topic name with the reserved goog prefix", func() {
+		msg := minimal()
+		msg.Spec.TopicName = "goog-events"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
 	ginkgo.It("should reject invalid schema encoding", func() {
 		msg := minimal()
 		msg.Spec.SchemaSettings = &GcpPubSubTopicSchemaSettings{
-			Schema:   "projects/p/schemas/s",
+			Schema:   svr("projects/p/schemas/s"),
 			Encoding: "XML",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a message transform missing function_name", func() {
+		msg := minimal()
+		msg.Spec.MessageTransforms = []*GcpPubSubTopicMessageTransform{
+			{
+				JavascriptUdf: &GcpPubSubTopicMessageTransformJavascriptUdf{
+					Code: "function f(message, metadata) { return message; }",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a message transform missing code", func() {
+		msg := minimal()
+		msg.Spec.MessageTransforms = []*GcpPubSubTopicMessageTransform{
+			{
+				JavascriptUdf: &GcpPubSubTopicMessageTransformJavascriptUdf{
+					FunctionName: "f",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a message transform missing javascript_udf", func() {
+		msg := minimal()
+		msg.Spec.MessageTransforms = []*GcpPubSubTopicMessageTransform{
+			{Disabled: true},
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
@@ -356,6 +451,30 @@ var _ = ginkgo.Describe("GcpPubSubTopicSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should reject Cloud Storage ingestion with no input format", func() {
+		msg := minimal()
+		msg.Spec.IngestionDataSourceSettings = &GcpPubSubTopicIngestionDataSourceSettings{
+			CloudStorage: &GcpPubSubTopicIngestionCloudStorage{
+				Bucket: svr("my-bucket"),
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject Cloud Storage ingestion with two input formats", func() {
+		msg := minimal()
+		msg.Spec.IngestionDataSourceSettings = &GcpPubSubTopicIngestionDataSourceSettings{
+			CloudStorage: &GcpPubSubTopicIngestionCloudStorage{
+				Bucket:     svr("my-bucket"),
+				AvroFormat: &GcpPubSubTopicIngestionCloudStorageAvroFormat{},
+				TextFormat: &GcpPubSubTopicIngestionCloudStorageTextFormat{},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
 	ginkgo.It("should reject Cloud Storage ingestion without bucket", func() {
 		msg := minimal()
 		msg.Spec.IngestionDataSourceSettings = &GcpPubSubTopicIngestionDataSourceSettings{
@@ -373,7 +492,7 @@ var _ = ginkgo.Describe("GcpPubSubTopicSpec", func() {
 			AwsKinesis: &GcpPubSubTopicIngestionAwsKinesis{
 				ConsumerArn:       "arn:aws:kinesis:us-east-1:123456789012:stream/s/consumer/c:1234567890",
 				AwsRoleArn:        "arn:aws:iam::123456789012:role/r",
-				GcpServiceAccount: "sa@project.iam.gserviceaccount.com",
+				GcpServiceAccount: svr("sa@project.iam.gserviceaccount.com"),
 			},
 		}
 		err := validator.Validate(msg)
@@ -386,7 +505,7 @@ var _ = ginkgo.Describe("GcpPubSubTopicSpec", func() {
 			ConfluentCloud: &GcpPubSubTopicIngestionConfluentCloud{
 				Topic:             "my-topic",
 				IdentityPoolId:    "pool-id",
-				GcpServiceAccount: "sa@project.iam.gserviceaccount.com",
+				GcpServiceAccount: svr("sa@project.iam.gserviceaccount.com"),
 			},
 		}
 		err := validator.Validate(msg)

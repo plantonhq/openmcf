@@ -1,0 +1,21 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpSslCertificate
+metadata:
+  name: regional-alb-cert
+spec:
+  projectId:
+    value: "<gcp-project-id>"
+  # Regional certificates serve regional external and internal ALB proxies
+  # and must live in the proxy's own region.
+  region: us-central1
+  description: Self-managed certificate for the regional internal ALB
+  # Sample PEM bodies shown truncated — replace BOTH blocks with your real
+  # chain and matching unencrypted key.
+  certificate: |
+    -----BEGIN CERTIFICATE-----
+    MIIDNDCCAhygAwIBAgIUYIKLPDuIarXycSz6rx3SRFmvf1s...replace-with-your-chain
+    -----END CERTIFICATE-----
+  privateKey: |
+    -----BEGIN PRIVATE KEY-----
+    MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoI...replace-with-your-key
+    -----END PRIVATE KEY-----

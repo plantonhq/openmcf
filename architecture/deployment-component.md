@@ -247,7 +247,6 @@ apis/dev/planton/provider/gcp/gcpcertmanagercert/v1/
     │   ├── Pulumi.yaml
     │   ├── Makefile
     │   ├── README.md
-    │   ├── overview.md
     │   └── module/
     │       ├── main.go
     │       ├── locals.go
@@ -539,7 +538,6 @@ func TestGcpCertManagerCertSpec_Validation(t *testing.T) {
   - `install-pulumi-plugins` - Installs required Pulumi provider plugins
   - `test` - Runs the module against test manifests
 - [ ] **README.md** - Pulumi-specific usage guide
-- [ ] **overview.md** - Module architecture and design decisions
 
 **Integration:**
 - [ ] **Compiles Successfully** - `make build` completes without errors
@@ -751,12 +749,6 @@ variable "alternate_domain_names" {
   - How to pass credentials
   - Example deployment commands
   - Troubleshooting tips
-
-- [ ] **overview.md** - Module architecture:
-  - High-level architecture diagram (text/ASCII)
-  - Key design decisions
-  - Resource relationships
-  - Data flow
 
 #### 8.3 Terraform Supporting Files
 

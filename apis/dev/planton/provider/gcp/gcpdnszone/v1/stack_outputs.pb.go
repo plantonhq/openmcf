@@ -21,14 +21,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// gcp-dns-zone stack-outputs
+// GcpDnsZoneStackOutputs captures values returned after provisioning a
+// Cloud DNS managed zone.
 type GcpDnsZoneStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// hosted-zone id
+	// Numeric identifier the Cloud DNS API assigns to the managed zone.
 	ZoneId string `protobuf:"bytes,1,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
-	// hosted-zone name
+	// Name of the managed zone resource in GCP — the handle GcpDnsRecord
+	// references when creating record sets in this zone.
 	ZoneName string `protobuf:"bytes,2,opt,name=zone_name,json=zoneName,proto3" json:"zone_name,omitempty"`
-	// The list of nameservers for the Managed Zone created for the DNS Domain.
+	// Nameservers Cloud DNS assigned to the zone. For public zones, configure
+	// these at the domain registrar to delegate the domain.
 	Nameservers   []string `protobuf:"bytes,3,rep,name=nameservers,proto3" json:"nameservers,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

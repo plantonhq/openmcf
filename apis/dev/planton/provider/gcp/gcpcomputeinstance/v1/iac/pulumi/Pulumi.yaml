@@ -1,6 +1,4 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
+name: gcpcomputeinstance-pulumi-project
 runtime:
   name: go
-#  options:
-#    binary: ./debug.sh
+description: Planton GcpComputeInstance Pulumi module

@@ -7,33 +7,39 @@ import (
 
 type Locals struct {
 	GcpDnsRecord *gcpdnsrecordv1.GcpDnsRecord
-	ProjectId    string
-	ManagedZone  string
-	RecordType   string
-	Name         string
-	Values       []string
-	TtlSeconds   int
+
+	// ProjectId is empty when the manifest omits it — the provider's default
+	// project then applies (the same ambient contract the Terraform module
+	// honors by passing null).
+	ProjectId string
+
+	ManagedZone string
+	RecordType  string
+	Name        string
+	Values      []string
+	TtlSeconds  int
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *gcpdnsrecordv1.GcpDnsRecordStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, stackInput *gcpdnsrecordv1.GcpDnsRecordStackInput) *Locals {
 	locals := &Locals{}
 
 	locals.GcpDnsRecord = stackInput.Target
 
 	target := stackInput.Target
 
-	// Extract project ID from StringValueOrRef
 	locals.ProjectId = target.Spec.ProjectId.GetValue()
-
-	// Extract managed zone from StringValueOrRef
 	locals.ManagedZone = target.Spec.ManagedZone.GetValue()
-	locals.RecordType = target.Spec.Type.String()
-	locals.Name = target.Spec.Name
-	locals.Values = target.Spec.Values
+	locals.RecordType = target.Spec.Type
+	locals.Name = target.Spec.Name.GetValue()
+	for _, v := range target.Spec.Values {
+		locals.Values = append(locals.Values, v.GetValue())
+	}
 
-	// Get TTL with default of 300 if not set
-	locals.TtlSeconds = int(target.Spec.GetTtlSeconds())
-	if locals.TtlSeconds == 0 {
+	// TTL defaults to 300 when unset. An explicit 0 is preserved (optional
+	// field presence distinguishes "unset" from "no caching").
+	if target.Spec.TtlSeconds != nil {
+		locals.TtlSeconds = int(target.Spec.GetTtlSeconds())
+	} else {
 		locals.TtlSeconds = 300
 	}
 

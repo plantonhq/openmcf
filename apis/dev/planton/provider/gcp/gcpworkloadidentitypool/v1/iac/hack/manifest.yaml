@@ -1,0 +1,26 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpWorkloadIdentityPool
+metadata:
+  name: my-sample-workload-identity-pool
+spec:
+  # Pool ID (4-32 chars; lowercase letters, digits, hyphens; the "gcp-"
+  # prefix is reserved). Becomes the final component of the resource name:
+  # projects/<number>/locations/global/workloadIdentityPools/<pool_id>
+  workloadIdentityPoolId: github-actions
+
+  # GCP project that owns this pool.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Name shown in the GCP console
+  displayName: GitHub Actions
+
+  # What this pool federates and who owns it
+  description: Keyless federation for the engineering org's CI pipelines
+
+  # Kill switch — a disabled pool rejects all token exchanges (default false)
+  disabled: false
+
+  # Operating mode (default FEDERATION_ONLY; immutable)
+  mode: FEDERATION_ONLY

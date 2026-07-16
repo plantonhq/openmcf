@@ -1,0 +1,65 @@
+# The index (storage side) and the embeddings bucket that feeds it.
+# Vector Search separates what stores vectors (the index) from what
+# answers queries (the endpoint + deployed index in serving.yaml) — this
+# file owns the storage half.
+---
+# Batch-format embedding files live here: the initial backfill for a new
+# index and the corpus of record a pipeline can rebuild from. Streaming
+# upserts go straight to the index API; this bucket is the durable,
+# re-indexable copy. (An index's contents URI is a plain gs:// string by
+# GCP's contract — compose the path from this bucket's name, e.g.
+# gs://<bucket>/embeddings/.)
+apiVersion: gcp.planton.dev/v1
+kind: GcpGcsBucket
+metadata:
+  name: "{{ values.embeddings_bucket_name }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  bucketName: "{{ values.embeddings_bucket_name }}"
+  location: "{{ values.region }}"
+  # All access through IAM only; embeddings can never be public.
+  uniformBucketLevelAccessEnabled: true
+  publicAccessPrevention: enforced
+  lifecycleRules:
+    # Abandoned multipart uploads hold invisible storage forever unless
+    # a rule reclaims them.
+    - action:
+        type: AbortIncompleteMultipartUpload
+      condition:
+        ageDays: 7
+  # force_destroy stays at its default (false): embeddings are
+  # re-computable but not free — a re-embed of a large corpus costs real
+  # model inference. Empty the bucket deliberately.
+
+---
+# The index — the vector store itself. STREAM_UPDATE is the RAG regime:
+# document changes upsert through the API and are queryable within
+# seconds, instead of waiting on batch rebuilds. The update method and
+# the entire geometry block are immutable — an index is rebuilt, never
+# reshaped.
+apiVersion: gcp.planton.dev/v1
+kind: GcpVertexAiIndex
+metadata:
+  name: "{{ values.corpus_name }}-index"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  location: "{{ values.region }}"
+  displayName: "{{ values.corpus_name }}"
+  indexUpdateMethod: STREAM_UPDATE
+  config:
+    # Must equal the embedding model's output size exactly — a mismatch
+    # fails at upsert time, not at deploy time.
+    dimensions: {{ values.dimensions }}
+    # Candidates fetched by approximate search before exact reordering —
+    # required whenever tree-AH is used.
+    approximateNeighborsCount: {{ values.approximate_neighbors_count }}
+    # Unit-normalized vectors + dot-product ranking behaves like cosine
+    # similarity — the standard pairing for text embeddings.
+    distanceMeasureType: DOT_PRODUCT_DISTANCE
+    featureNormType: UNIT_L2_NORM
+    # Empty tree-AH block: GCP's default tuning (1000 embeddings per
+    # leaf, 10% of leaves searched per query) — the right starting point
+    # until recall measurements say otherwise.
+    treeAhConfig: {}

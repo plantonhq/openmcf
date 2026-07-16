@@ -20,8 +20,11 @@ This preset creates a standard DNS A record pointing a domain name to an IPv4 ad
 |---|---|---|
 | `<gcp-project-id>` | GCP project ID | `GcpProject` outputs |
 | `<dns-zone-name>` | Name of the Cloud DNS managed zone | `GcpDnsZone` status outputs |
-| `<subdomain.example.com.>` | FQDN with trailing dot (e.g., `api.example.com.`) | Your DNS naming scheme |
 | `<ipv4-address>` | Target IPv4 address (e.g., `34.120.0.1`) | Load balancer or VM external IP |
+
+The sample FQDN `app.example.com.` is a realistic placeholder for the
+pattern-validated `name` field — replace it with your hostname, keeping the
+trailing dot.
 
 ## Related Presets
 

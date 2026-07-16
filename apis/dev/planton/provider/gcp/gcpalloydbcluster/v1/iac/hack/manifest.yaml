@@ -13,7 +13,6 @@ spec:
     value: projects/my-gcp-project/global/networks/default
   databaseVersion: POSTGRES_15
   displayName: Test AlloyDB Cluster
-  deletionProtection: false
   primaryInstance:
     instanceId: test-primary
     cpuCount: 2

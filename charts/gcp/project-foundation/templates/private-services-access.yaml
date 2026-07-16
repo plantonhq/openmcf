@@ -1,0 +1,69 @@
+# Private services access (privateServicesAccessEnabled=true).
+#
+# Two nodes: an internal range reservation, and the VPC peering that hands
+# it to Google's service producers. This pair is what lets Cloud SQL,
+# AlloyDB, Memorystore, and Filestore give out PRIVATE IPs inside this VPC —
+# without it, "private IP" managed services simply cannot be created here.
+# It ships in the foundation because the range must be carved out of the
+# address plan BEFORE other ranges grow around it; the reservation itself
+# costs nothing.
+{% if values.privateServicesAccessEnabled | bool %}
+---
+# The reserved range Google's producers allocate service subnets from. Sized
+# by psa_prefix_length (default /16): producers carve a subnet per instance
+# and cannot use fragmented leftovers, so generous beats clever. GCP chooses
+# the actual CIDR automatically from free space in the VPC — pinning one is
+# only needed when coordinating with on-prem address plans.
+apiVersion: gcp.planton.dev/v1
+kind: GcpGlobalAddress
+metadata:
+  name: "{{ values.network_name }}-psa-range"
+spec:
+{% if values.createProject | bool %}
+  projectId:
+    valueFrom:
+      name: "{{ values.gcp_project_id }}"
+{% else %}
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+{% endif %}
+  addressName: "{{ values.network_name }}-psa-range"
+  addressType: INTERNAL
+  purpose: VPC_PEERING
+  prefixLength: {{ values.psa_prefix_length }}
+  network:
+    valueFrom:
+      name: "{{ values.network_name }}"
+  description: Reserved range for private services access (Cloud SQL, AlloyDB, Memorystore, Filestore)
+
+---
+# The peering itself. One connection exists per (network, service) pair —
+# GCP rejects a second — so when producers eventually exhaust the range,
+# grow capacity by reserving another GcpGlobalAddress and APPENDING it to
+# reservedPeeringRanges on THIS resource, never by creating a new
+# connection. Teardown ordering: destroy the managed-service instances that
+# use private IP before destroying this connection; GCP refuses while
+# producers still hold subnets in the range.
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceNetworkingConnection
+metadata:
+  name: "{{ values.network_name }}-psa"
+spec:
+{% if values.createProject | bool %}
+  projectId:
+    valueFrom:
+      name: "{{ values.gcp_project_id }}"
+{% else %}
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+{% endif %}
+  network:
+    valueFrom:
+      name: "{{ values.network_name }}"
+  # servicenetworking.googleapis.com (the spec default, explicit here) is
+  # the producer behind all of Google's PSA-based managed services.
+  service: servicenetworking.googleapis.com
+  reservedPeeringRanges:
+    - valueFrom:
+        name: "{{ values.network_name }}-psa-range"
+{% endif %}

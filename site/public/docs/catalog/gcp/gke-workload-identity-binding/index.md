@@ -65,7 +65,13 @@ This grants the `cert-manager` Kubernetes ServiceAccount in the `cert-manager` n
 
 ### Optional Fields
 
-This component has no optional fields. All spec fields are required.
+| Field | Type | Description |
+|-------|------|-------------|
+| `condition` | `object` | IAM Condition restricting when the grant applies: `title` (required, ≤ 100 chars), `expression` (required, CEL), `description` (≤ 256 chars). A condition is part of the grant's identity — the same grant with and without a condition are two independent bindings. |
+
+`ksaNamespace` is validated as an RFC 1123 label and `ksaName` as an RFC 1123 DNS subdomain (Kubernetes naming rules), so a typo'd principal is rejected before deploy.
+
+The Kubernetes half of the handshake — the `iam.gke.io/gcp-service-account: <gsa-email>` annotation on the KSA — belongs to the workload's own deployment; this component owns only the GCP-side grant.
 
 ## Examples
 

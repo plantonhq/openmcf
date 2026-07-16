@@ -17,3 +17,8 @@ output "create_time" {
   description = "RFC3339 timestamp of when the endpoint was created"
   value       = google_vertex_ai_endpoint.this.create_time
 }
+
+output "endpoint_name" {
+  description = "The numeric endpoint ID (explicit or identity-derived) — the value model-deployment tooling passes as the endpoint reference"
+  value       = google_vertex_ai_endpoint.this.name
+}

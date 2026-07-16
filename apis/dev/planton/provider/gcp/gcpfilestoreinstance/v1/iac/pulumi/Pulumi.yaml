@@ -1,6 +1,4 @@
-name: gcp-filestore-instance
+name: gcpfilestoreinstance-pulumi-project
 runtime:
   name: go
-  options:
-    binary: ./pulumi
 description: Planton GcpFilestoreInstance Pulumi module

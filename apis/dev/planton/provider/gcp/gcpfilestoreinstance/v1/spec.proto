@@ -80,7 +80,13 @@ message GcpFilestoreInstanceFileShare {
   // NFS export options controlling client access to the file share.
   // Maximum 10 export options per file share.
   // If empty, all clients are allowed with READ_WRITE access and NO_ROOT_SQUASH.
-  repeated GcpFilestoreInstanceNfsExportOption nfs_export_options = 3;
+  repeated GcpFilestoreInstanceNfsExportOption nfs_export_options = 3 [(buf.validate.field).repeated.max_items = 10];
+
+  // Restore this file share from an existing Filestore backup, in the
+  // format projects/{project}/locations/{location}/backups/{backup}.
+  // The share's capacity must be at least the backup's source capacity.
+  // Create-time only.
+  string source_backup = 4;
 }
 
 // GcpFilestoreInstanceNetworkConfig defines the VPC network configuration
@@ -89,12 +95,15 @@ message GcpFilestoreInstanceFileShare {
 // The network configuration is immutable after creation. Changing it requires
 // replacing the instance.
 message GcpFilestoreInstanceNetworkConfig {
-  // VPC network to which the Filestore instance is connected.
+  // VPC network to which the Filestore instance is connected, as the
+  // network NAME (e.g. "prod-vpc") — the Filestore API rejects self-link
+  // URLs for same-project networks, so the reference resolves the
+  // GcpVpcNetwork's plain name output.
   // Immutable after creation.
   dev.planton.shared.foreignkey.v1.StringValueOrRef network = 1 [
     (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpc,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_name"
   ];
 
   // Network connection mode.
@@ -114,6 +123,22 @@ message GcpFilestoreInstanceNetworkConfig {
   // If not specified, GCP automatically selects an unused range.
   // Immutable after creation.
   string reserved_ip_range = 3;
+
+  // IP address versions the instance serves. Values: "MODE_IPV4",
+  // "MODE_IPV6". When empty, ["MODE_IPV4"] is used — the standard NFS
+  // posture. Immutable after creation.
+  repeated string modes = 4 [(buf.validate.field).repeated = {
+    max_items: 2
+    unique: true
+    items: {
+      string: {
+        in: [
+          "MODE_IPV4",
+          "MODE_IPV6"
+        ]
+      }
+    }
+  }];
 }
 
 // GcpFilestoreInstanceFixedIops configures a fixed IOPS provisioning model
@@ -190,23 +215,24 @@ message GcpFilestoreInstancePerformanceConfig {
 //
 //   - NFS export options can be updated after creation.
 message GcpFilestoreInstanceSpec {
-  // GCP project where the Filestore instance will be created.
+  // The GCP project where the Filestore instance is created.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable after creation.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
 
   // Name of the Filestore instance. This becomes the GCP resource name.
   // Must start with a lowercase letter, contain only lowercase letters, numbers,
-  // and hyphens, and be 1-63 characters long.
-  // Immutable after creation.
-  string instance_name = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^[a-z][a-z0-9-]{0,61}[a-z0-9]$",
-    (buf.validate.field).string.min_len = 2,
-    (buf.validate.field).string.max_len = 63
-  ];
+  // and hyphens, and be 2-63 characters long. When omitted, metadata.name
+  // is used. Immutable after creation.
+  string instance_name = 2 [(buf.validate.field).cel = {
+    id: "instance_name_format"
+    expression: "this == '' || this.matches('^[a-z][a-z0-9-]{0,61}[a-z0-9]$')"
+    message: "instance_name must be 2-63 characters of lowercase letters, numbers, and hyphens, starting with a letter and ending with a letter or number"
+  }];
 
   // Location where the instance will be deployed.
   // For BASIC_HDD, BASIC_SSD, STANDARD, PREMIUM, HIGH_SCALE_SSD, and ZONAL
@@ -279,4 +305,43 @@ message GcpFilestoreInstanceSpec {
   // Available on ZONAL, REGIONAL, and ENTERPRISE tiers.
   // If not specified, the instance uses the default performance for its tier.
   GcpFilestoreInstancePerformanceConfig performance_config = 12;
+
+  // Cross-instance replication established at create time: this instance
+  // becomes the STANDBY replica of an existing ACTIVE peer (the common
+  // DR posture). Create-time only.
+  GcpFilestoreInstanceInitialReplication initial_replication = 13;
+
+  // User labels merged with Planton attribution labels (which win on key
+  // conflicts). Keys and values must match GCP label constraints.
+  map<string, string> labels = 14;
+
+  // Resource Manager tags bound to the instance for org-policy and IAM
+  // conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
+  // Create-time only.
+  map<string, string> tags = 15;
+}
+
+// GcpFilestoreInstanceInitialReplication configures create-time
+// cross-instance replication. Backups cannot be taken from a STANDBY
+// replica, and the peer relationship is fixed at create time.
+message GcpFilestoreInstanceInitialReplication {
+  // Replication role of THIS instance:
+  //   ""        -- same as "STANDBY" (GCP default; this instance receives
+  //                replication from the peer)
+  //   "STANDBY" -- this instance is the read-only replica
+  //   "ACTIVE"  -- this instance is the replication source
+  string role = 1 [(buf.validate.field).cel = {
+    id: "valid_replication_role"
+    expression: "this == '' || this in ['ACTIVE', 'STANDBY']"
+    message: "replication role must be ACTIVE or STANDBY"
+  }];
+
+  // Peer Filestore instances in the replication relationship, each as a
+  // reference to a GcpFilestoreInstance (or a literal full resource path
+  // projects/{project}/locations/{location}/instances/{instance}).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef peer_instances = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpFilestoreInstance,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.instance_id"
+  ];
 }

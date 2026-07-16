@@ -1,0 +1,28 @@
+# Consumer-scoped GcpSubnetwork install profile for the internal GCE endpoint
+# address chain. The subnetwork kind's published minimal scenario carries
+# secondary ranges and flow logs; this slimmer shape is enough for an internal
+# address reservation that only needs a primary CIDR and a network reference.
+apiVersion: gcp.planton.dev/v1
+kind: GcpSubnetwork
+metadata:
+  name: planton-oss-e2e-gcpsnw-addr-prereq
+  id: planton-oss-e2e-gcpsnw-addr-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpsubnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpc-prereq
+      fieldPath: status.outputs.network_self_link
+  subnetworkName: planton-oss-e2e-addr-subnet
+  region: us-central1
+  ipCidrRange: 10.220.0.0/24
+  description: Ephemeral subnet for the GcpAddress internal E2E chain; safe to delete

@@ -1,0 +1,26 @@
+# GcpWorkloadIdentityPool install profile used as a prerequisite by composed
+# components (e.g. GcpWorkloadIdentityPoolProvider). The E2E harness deploys
+# this pool first (via its Pulumi module), captures its outputs, and resolves
+# the dependent's pool reference (status.outputs.workload_identity_pool_id)
+# against them. The pool ID differs from the smoke scenario's (different
+# prefix, same ${E2E_RUN_ID} suffix) so a prerequisite deploy never collides
+# with a concurrently-running gcpworkloadidentitypool scenario — and carries
+# the run-id token because soft-deleted pool IDs cannot be reused for ~30 days.
+apiVersion: gcp.planton.dev/v1
+kind: GcpWorkloadIdentityPool
+metadata:
+  name: planton-oss-e2e-gcpwip-prereq
+  id: planton-oss-e2e-gcpwip-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpworkloadidentitypool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  workloadIdentityPoolId: e2e-prq-${E2E_RUN_ID}
+  displayName: Planton E2E Prerequisite Pool
+  description: Ephemeral pool deployed as an E2E prerequisite; safe to delete

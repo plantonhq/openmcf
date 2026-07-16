@@ -50,6 +50,8 @@ const (
 type GcpFirestoreDatabaseSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project where the Firestore database will be created.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Location of the Firestore database. This determines where data is stored
 	// and affects latency and availability. Immutable after creation.
@@ -135,9 +137,17 @@ type GcpFirestoreDatabaseSpec struct {
 	// Format: projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
 	//
 	// If not set, Google-managed encryption is used (default).
-	KmsKeyName    *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=kms_key_name,json=kmsKeyName,proto3" json:"kms_key_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	KmsKeyName *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=kms_key_name,json=kmsKeyName,proto3" json:"kms_key_name,omitempty"`
+	// App Engine integration mode. ENABLED couples the database's
+	// lifecycle to the project's App Engine application (a legacy
+	// coupling: disabling the App Engine app disables the database with
+	// it). DISABLED keeps the database independent — the right choice for
+	// everything that is not a legacy App Engine deployment.
+	//
+	// If not set, GCP applies its default.
+	AppEngineIntegrationMode string `protobuf:"bytes,10,opt,name=app_engine_integration_mode,json=appEngineIntegrationMode,proto3" json:"app_engine_integration_mode,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *GcpFirestoreDatabaseSpec) Reset() {
@@ -233,14 +243,21 @@ func (x *GcpFirestoreDatabaseSpec) GetKmsKeyName() *v1.StringValueOrRef {
 	return nil
 }
 
+func (x *GcpFirestoreDatabaseSpec) GetAppEngineIntegrationMode() string {
+	if x != nil {
+		return x.AppEngineIntegrationMode
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpfirestoredatabase_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpfirestoredatabase_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	";dev/planton/provider/gcp/gcpfirestoredatabase/v1/spec.proto\x120dev.planton.provider.gcp.gcpfirestoredatabase.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x8e\x10\n" +
-	"\x18GcpFirestoreDatabaseSpec\x12{\n" +
+	";dev/planton/provider/gcp/gcpfirestoredatabase/v1/spec.proto\x120dev.planton.provider.gcp.gcpfirestoredatabase.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe4\x11\n" +
+	"\x18GcpFirestoreDatabaseSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12'\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12'\n" +
 	"\vlocation_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"locationId\x12\xaa\x02\n" +
 	"\rdatabase_name\x18\x03 \x01(\tB\x84\x02\xbaH\x80\x02\xba\x01\xf9\x01\n" +
@@ -256,7 +273,10 @@ const file_dev_planton_provider_gcp_gcpfirestoredatabase_v1_spec_proto_rawDesc =
 	"\x10database_edition\x18\b \x01(\tB\x89\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +
 	"\x1cdatabase_edition_valid_value\x12/database_edition must be STANDARD or ENTERPRISE\x1a0this == '' || this in ['STANDARD', 'ENTERPRISE']R\x0fdatabaseEdition\x12t\n" +
 	"\fkms_key_name\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
-	"kmsKeyName:\xd8\x01\xbaH\xd4\x01\x1a\xd1\x01\n" +
+	"kmsKeyName\x12\xd9\x01\n" +
+	"\x1bapp_engine_integration_mode\x18\n" +
+	" \x01(\tB\x99\x01\xbaH\x95\x01\xba\x01\x91\x01\n" +
+	"'app_engine_integration_mode_valid_value\x127app_engine_integration_mode must be ENABLED or DISABLED\x1a-this == '' || this in ['ENABLED', 'DISABLED']R\x18appEngineIntegrationMode:\xd8\x01\xbaH\xd4\x01\x1a\xd1\x01\n" +
 	"$enterprise_requires_firestore_native\x12@database_edition ENTERPRISE requires type to be FIRESTORE_NATIVE\x1agthis.database_edition == '' || this.database_edition != 'ENTERPRISE' || this.type == 'FIRESTORE_NATIVE'B\x1a\n" +
 	"\x18_delete_protection_stateB\x93\x03\n" +
 	"4com.dev.planton.provider.gcp.gcpfirestoredatabase.v1B\tSpecProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfirestoredatabase/v1;gcpfirestoredatabasev1\xa2\x02\x05DPPGG\xaa\x020Dev.Planton.Provider.Gcp.Gcpfirestoredatabase.V1\xca\x020Dev\\Planton\\Provider\\Gcp\\Gcpfirestoredatabase\\V1\xe2\x02<Dev\\Planton\\Provider\\Gcp\\Gcpfirestoredatabase\\V1\\GPBMetadata\xea\x025Dev::Planton::Provider::Gcp::Gcpfirestoredatabase::V1b\x06proto3"

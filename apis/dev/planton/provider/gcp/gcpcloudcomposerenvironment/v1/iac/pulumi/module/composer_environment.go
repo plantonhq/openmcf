@@ -4,12 +4,40 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/composer"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// composerEnvironment provisions a Cloud Composer environment (managed Airflow).
+// composerEnvironment provisions a Cloud Composer environment (managed
+// Airflow). Composer assembles a GKE cluster, Cloud SQL metadata
+// database, web server, and DAG bucket behind this one resource —
+// creation takes 25-45 minutes.
+//
+// Mutability: environment name, region, node networking, encryption,
+// and the private environment configuration are immutable (recreate on
+// change). Workloads sizing, environment size, resilience mode,
+// software configuration, maintenance window, web-server access
+// control, and labels update in place.
 func composerEnvironment(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
 	spec := locals.GcpCloudComposerEnvironment.Spec
+
+	// Enable the Cloud Composer API — the control plane that owns the
+	// environment. disable_on_destroy stays false: tearing down one
+	// environment must never disable the API for everything else in the
+	// project.
+	composerApiArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("composer.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
+	}
+	if spec.ProjectId.GetValue() != "" {
+		composerApiArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+	createdComposerApi, err := projects.NewService(ctx,
+		"cce-composer.googleapis.com", composerApiArgs, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to enable composer.googleapis.com api")
+	}
 
 	// Determine environment name: explicit spec field, else metadata name.
 	envName := spec.EnvironmentName
@@ -53,6 +81,30 @@ func composerEnvironment(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.P
 			nodeConfigArgs.ComposerInternalIpv4CidrBlock = pulumi.StringPtr(nc.ComposerInternalIpv4CidrBlock)
 			hasNodeConfig = true
 		}
+		if nc.EnableIpMasqAgent {
+			nodeConfigArgs.EnableIpMasqAgent = pulumi.BoolPtr(true)
+			hasNodeConfig = true
+		}
+
+		// VPC-native range assignment: a named secondary range on the
+		// subnetwork XOR a CIDR for GKE to carve, per range.
+		if nc.IpAllocationPolicy != nil {
+			ipAllocArgs := &composer.EnvironmentConfigNodeConfigIpAllocationPolicyArgs{}
+			if nc.IpAllocationPolicy.ClusterSecondaryRangeName != "" {
+				ipAllocArgs.ClusterSecondaryRangeName = pulumi.StringPtr(nc.IpAllocationPolicy.ClusterSecondaryRangeName)
+			}
+			if nc.IpAllocationPolicy.ClusterIpv4CidrBlock != "" {
+				ipAllocArgs.ClusterIpv4CidrBlock = pulumi.StringPtr(nc.IpAllocationPolicy.ClusterIpv4CidrBlock)
+			}
+			if nc.IpAllocationPolicy.ServicesSecondaryRangeName != "" {
+				ipAllocArgs.ServicesSecondaryRangeName = pulumi.StringPtr(nc.IpAllocationPolicy.ServicesSecondaryRangeName)
+			}
+			if nc.IpAllocationPolicy.ServicesIpv4CidrBlock != "" {
+				ipAllocArgs.ServicesIpv4CidrBlock = pulumi.StringPtr(nc.IpAllocationPolicy.ServicesIpv4CidrBlock)
+			}
+			nodeConfigArgs.IpAllocationPolicy = ipAllocArgs
+			hasNodeConfig = true
+		}
 
 		if hasNodeConfig {
 			configArgs.NodeConfig = nodeConfigArgs
@@ -85,6 +137,14 @@ func composerEnvironment(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.P
 		}
 		if sc.WebServerPluginsMode != "" {
 			softwareConfigArgs.WebServerPluginsMode = pulumi.StringPtr(sc.WebServerPluginsMode)
+			hasSoftwareConfig = true
+		}
+
+		// Automatic dataset lineage reporting into Dataplex.
+		if sc.CloudDataLineageIntegration != nil {
+			softwareConfigArgs.CloudDataLineageIntegration = &composer.EnvironmentConfigSoftwareConfigCloudDataLineageIntegrationArgs{
+				Enabled: pulumi.Bool(sc.CloudDataLineageIntegration.Enabled),
+			}
 			hasSoftwareConfig = true
 		}
 
@@ -295,6 +355,61 @@ func composerEnvironment(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.P
 		hasConfig = true
 	}
 
+	// -- Master authorized networks (GKE control-plane allowlist) ----------
+
+	if spec.MasterAuthorizedNetworksConfig != nil {
+		masterAuthArgs := &composer.EnvironmentConfigMasterAuthorizedNetworksConfigArgs{
+			Enabled: pulumi.Bool(spec.MasterAuthorizedNetworksConfig.Enabled),
+		}
+		if len(spec.MasterAuthorizedNetworksConfig.CidrBlocks) > 0 {
+			var cidrBlocks composer.EnvironmentConfigMasterAuthorizedNetworksConfigCidrBlockArray
+			for _, block := range spec.MasterAuthorizedNetworksConfig.CidrBlocks {
+				blockArgs := &composer.EnvironmentConfigMasterAuthorizedNetworksConfigCidrBlockArgs{
+					CidrBlock: pulumi.String(block.CidrBlock),
+				}
+				if block.DisplayName != "" {
+					blockArgs.DisplayName = pulumi.StringPtr(block.DisplayName)
+				}
+				cidrBlocks = append(cidrBlocks, blockArgs)
+			}
+			masterAuthArgs.CidrBlocks = cidrBlocks
+		}
+		configArgs.MasterAuthorizedNetworksConfig = masterAuthArgs
+		hasConfig = true
+	}
+
+	// -- Data retention (task logs + Airflow metadata) ----------------------
+
+	if spec.DataRetentionConfig != nil {
+		retentionArgs := &composer.EnvironmentConfigDataRetentionConfigArgs{}
+		hasRetention := false
+
+		if spec.DataRetentionConfig.TaskLogsStorageMode != "" {
+			retentionArgs.TaskLogsRetentionConfigs = composer.EnvironmentConfigDataRetentionConfigTaskLogsRetentionConfigArray{
+				&composer.EnvironmentConfigDataRetentionConfigTaskLogsRetentionConfigArgs{
+					StorageMode: pulumi.StringPtr(spec.DataRetentionConfig.TaskLogsStorageMode),
+				},
+			}
+			hasRetention = true
+		}
+
+		if spec.DataRetentionConfig.AirflowMetadataRetentionMode != "" {
+			metadataArgs := &composer.EnvironmentConfigDataRetentionConfigAirflowMetadataRetentionConfigArgs{
+				RetentionMode: pulumi.StringPtr(spec.DataRetentionConfig.AirflowMetadataRetentionMode),
+			}
+			if spec.DataRetentionConfig.AirflowMetadataRetentionDays > 0 {
+				metadataArgs.RetentionDays = pulumi.IntPtr(int(spec.DataRetentionConfig.AirflowMetadataRetentionDays))
+			}
+			retentionArgs.AirflowMetadataRetentionConfigs = composer.EnvironmentConfigDataRetentionConfigAirflowMetadataRetentionConfigArray{metadataArgs}
+			hasRetention = true
+		}
+
+		if hasRetention {
+			configArgs.DataRetentionConfig = retentionArgs
+			hasConfig = true
+		}
+	}
+
 	// -- Composer 3 private environment flags -----------------------------
 
 	if spec.EnablePrivateEnvironment {
@@ -309,17 +424,32 @@ func composerEnvironment(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.P
 	// -- Create the Composer environment ----------------------------------
 
 	args := &composer.EnvironmentArgs{
-		Name:    pulumi.StringPtr(envName),
-		Region:  pulumi.StringPtr(spec.Region),
-		Project: pulumi.StringPtr(spec.ProjectId.GetValue()),
-		Labels:  pulumi.ToStringMap(locals.GcpLabels),
+		Name:   pulumi.StringPtr(envName),
+		Region: pulumi.StringPtr(spec.Region),
+		Labels: pulumi.ToStringMap(locals.GcpLabels),
+	}
+
+	// Honor the spec contract: an empty project_id falls back to the
+	// provider's default project (omitting the argument lets the provider
+	// resolve its own project).
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
+	}
+
+	// Existing bucket for DAGs/plugins/data instead of the auto-created one.
+	if spec.StorageBucket.GetValue() != "" {
+		args.StorageConfig = &composer.EnvironmentStorageConfigArgs{
+			Bucket: pulumi.String(spec.StorageBucket.GetValue()),
+		}
 	}
 
 	if hasConfig {
 		args.Config = configArgs
 	}
 
-	createdEnv, err := composer.NewEnvironment(ctx, "composer-environment", args, pulumi.Provider(gcpProvider))
+	createdEnv, err := composer.NewEnvironment(ctx, "composer-environment", args,
+		pulumi.Provider(gcpProvider),
+		pulumi.DependsOn([]pulumi.Resource{createdComposerApi}))
 	if err != nil {
 		return errors.Wrap(err, "failed to create cloud composer environment")
 	}

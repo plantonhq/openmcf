@@ -21,13 +21,30 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// GcpServiceAccountStackOutputs surfaces key attributes of the newly created service account
+// GcpServiceAccountStackOutputs surfaces the identity handles of the created
+// service account — everything a downstream resource could need to reference it.
 type GcpServiceAccountStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// service-account email
+	// The service account email: <service_account_id>@<project>.iam.gserviceaccount.com.
+	// The most common reference handle — workload configs (GKE, Cloud Run, Cloud
+	// Functions, Compute) attach the identity by email.
 	Email string `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
-	// base64 encoded key of the service account
-	KeyBase64     string `protobuf:"bytes,2,opt,name=key_base64,json=keyBase64,proto3" json:"key_base64,omitempty"`
+	// The IAM member string for this service account: "serviceAccount:<email>".
+	// Feed this directly into IAM grants (GcpProjectIamMember's member field) —
+	// it is the exact format GCP IAM policies expect, so no string assembly is needed.
+	Member string `protobuf:"bytes,2,opt,name=member,proto3" json:"member,omitempty"`
+	// The stable, unique numeric ID GCP assigns to the service account.
+	// Unlike the email, it is never reused if the account is deleted and recreated —
+	// use it where a tamper-proof identity reference matters (e.g. audit tooling).
+	UniqueId string `protobuf:"bytes,3,opt,name=unique_id,json=uniqueId,proto3" json:"unique_id,omitempty"`
+	// The fully-qualified resource name: projects/<project>/serviceAccounts/<email>.
+	// Used by APIs that address the service account as a resource (key management,
+	// IAM policy on the service account itself, Workload Identity bindings).
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	// Base64-encoded JSON private key, populated only when spec.create_key is true.
+	// This is a live, long-lived credential — the engines mark it secret in state;
+	// handle it like a password and prefer keyless patterns entirely.
+	KeyBase64     string `protobuf:"bytes,5,opt,name=key_base64,json=keyBase64,proto3" json:"key_base64,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -69,6 +86,27 @@ func (x *GcpServiceAccountStackOutputs) GetEmail() string {
 	return ""
 }
 
+func (x *GcpServiceAccountStackOutputs) GetMember() string {
+	if x != nil {
+		return x.Member
+	}
+	return ""
+}
+
+func (x *GcpServiceAccountStackOutputs) GetUniqueId() string {
+	if x != nil {
+		return x.UniqueId
+	}
+	return ""
+}
+
+func (x *GcpServiceAccountStackOutputs) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 func (x *GcpServiceAccountStackOutputs) GetKeyBase64() string {
 	if x != nil {
 		return x.KeyBase64
@@ -80,11 +118,14 @@ var File_dev_planton_provider_gcp_gcpserviceaccount_v1_stack_outputs_proto proto
 
 const file_dev_planton_provider_gcp_gcpserviceaccount_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/gcp/gcpserviceaccount/v1/stack_outputs.proto\x12-dev.planton.provider.gcp.gcpserviceaccount.v1\"T\n" +
+	"Adev/planton/provider/gcp/gcpserviceaccount/v1/stack_outputs.proto\x12-dev.planton.provider.gcp.gcpserviceaccount.v1\"\x9d\x01\n" +
 	"\x1dGcpServiceAccountStackOutputs\x12\x14\n" +
-	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1d\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\x12\x16\n" +
+	"\x06member\x18\x02 \x01(\tR\x06member\x12\x1b\n" +
+	"\tunique_id\x18\x03 \x01(\tR\buniqueId\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
-	"key_base64\x18\x02 \x01(\tR\tkeyBase64B\x86\x03\n" +
+	"key_base64\x18\x05 \x01(\tR\tkeyBase64B\x86\x03\n" +
 	"1com.dev.planton.provider.gcp.gcpserviceaccount.v1B\x11StackOutputsProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccount/v1;gcpserviceaccountv1\xa2\x02\x05DPPGG\xaa\x02-Dev.Planton.Provider.Gcp.Gcpserviceaccount.V1\xca\x02-Dev\\Planton\\Provider\\Gcp\\Gcpserviceaccount\\V1\xe2\x029Dev\\Planton\\Provider\\Gcp\\Gcpserviceaccount\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Gcp::Gcpserviceaccount::V1b\x06proto3"
 
 var (

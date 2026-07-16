@@ -62,9 +62,14 @@ message GcpPubSubSubscriptionRetryPolicy {
 // for push deliveries. Pub/Sub generates a signed JWT and attaches it as an
 // Authorization header in each HTTP request to the push endpoint.
 message GcpPubSubSubscriptionPushConfigOidcToken {
-  // Service account email used to generate the OIDC token.
+  // Service account used to generate the OIDC token. Accepts a literal
+  // email or a reference to a GcpServiceAccount resource.
   // The caller must have iam.serviceAccounts.actAs permission on this account.
-  string service_account_email = 1 [(buf.validate.field).required = true];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account_email = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
 
   // Audience claim for the OIDC token. Identifies the intended recipient.
   // Defaults to the push endpoint URL if not specified.
@@ -88,7 +93,17 @@ message GcpPubSubSubscriptionPushConfigNoWrapper {
 // If none of the three delivery configs are set, the subscription uses pull delivery.
 message GcpPubSubSubscriptionPushConfig {
   // URL to which Pub/Sub pushes messages. Must use HTTPS.
-  string push_endpoint = 1 [(buf.validate.field).required = true];
+  // Accepts a literal URL or a reference to a GcpCloudRun service — pushing to
+  // a Cloud Run service in the same environment is the canonical serverless
+  // consumer pattern, and the service URL contains a generated suffix that can
+  // only be known by reading the deployed service's output. Pair a Cloud Run
+  // push endpoint with oidc_token (the service account must hold run.invoker)
+  // unless the service allows unauthenticated invocations.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef push_endpoint = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpCloudRun,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.url"
+  ];
 
   // Endpoint configuration attributes. The supported attribute is "x-goog-version"
   // which controls the push message format ("v1beta1" or "v1").
@@ -108,7 +123,13 @@ message GcpPubSubSubscriptionPushConfig {
 message GcpPubSubSubscriptionBigQueryConfig {
   // The BigQuery table to write messages to.
   // Format: {project_id}.{dataset_id}.{table_id}
-  string table = 1 [(buf.validate.field).required = true];
+  // Accepts a literal or a reference to a GcpBigQueryTable resource (its
+  // qualified_name output is exactly this dotted form).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef table = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpBigQueryTable,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.qualified_name"
+  ];
 
   // When true, use the Pub/Sub topic's schema to map message fields to BigQuery columns.
   // Only one of use_topic_schema and use_table_schema can be true.
@@ -127,9 +148,13 @@ message GcpPubSubSubscriptionBigQueryConfig {
   // orderingKey are written to additional columns in the BigQuery table.
   bool write_metadata = 5;
 
-  // Service account to use for writing to BigQuery. Defaults to the Pub/Sub
-  // service agent if not specified.
-  string service_account_email = 6;
+  // Service account to use for writing to BigQuery. Accepts a literal
+  // email or a reference to a GcpServiceAccount resource. Defaults to the
+  // Pub/Sub service agent if not specified.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account_email = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
 }
 
 // GcpPubSubSubscriptionCloudStorageConfigAvroConfig configures Avro format
@@ -183,9 +208,43 @@ message GcpPubSubSubscriptionCloudStorageConfig {
   // If not set, messages are written in their raw format.
   GcpPubSubSubscriptionCloudStorageConfigAvroConfig avro_config = 8;
 
-  // Service account to use for writing to Cloud Storage. Defaults to the Pub/Sub
-  // service agent if not specified.
-  string service_account_email = 9;
+  // Service account to use for writing to Cloud Storage. Accepts a literal
+  // email or a reference to a GcpServiceAccount resource. Defaults to the
+  // Pub/Sub service agent if not specified.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account_email = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+}
+
+// GcpPubSubSubscriptionMessageTransformJavascriptUdf defines a JavaScript
+// user-defined function transform. The function receives each message
+// (data + attributes) and returns the transformed message, or null/undefined
+// to filter the message out entirely.
+message GcpPubSubSubscriptionMessageTransformJavascriptUdf {
+  // Name of the JavaScript function to invoke from the code below.
+  // Must be unique across all transforms on the resource.
+  string function_name = 1 [(buf.validate.field).required = true];
+
+  // The JavaScript source code defining the function. The function
+  // signature is (message, metadata) => message; return null or undefined
+  // to drop the message.
+  string code = 2 [(buf.validate.field).required = true];
+}
+
+// GcpPubSubSubscriptionMessageTransform is one step in the subscription's
+// ordered transform pipeline, applied to every message before delivery.
+// Use transforms to reshape payloads for one consumer without touching the
+// topic's canonical form (topic-level transforms change what ALL
+// subscriptions see; subscription-level transforms are per-consumer).
+message GcpPubSubSubscriptionMessageTransform {
+  // A JavaScript user-defined function transform.
+  GcpPubSubSubscriptionMessageTransformJavascriptUdf javascript_udf = 1 [(buf.validate.field).required = true];
+
+  // When true, this transform is kept in the pipeline definition but not
+  // applied — the staging lever for rolling a transform in or out without
+  // losing its position in the ordered list.
+  bool disabled = 2;
 }
 
 // GcpPubSubSubscriptionSpec defines the configuration for a GCP Pub/Sub subscription.
@@ -227,21 +286,28 @@ message GcpPubSubSubscriptionSpec {
   };
 
   // GCP project where the subscription will be created.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
 
   // Name of the Pub/Sub subscription.
   // Must be 3-255 characters, start with a letter, and contain only letters,
-  // numbers, hyphens, underscores, periods, tildes, plus signs, and percent signs.
-  // Immutable after creation.
+  // numbers, hyphens, underscores, periods, tildes, plus signs, and percent
+  // signs. Names beginning with "goog" are reserved by Google and rejected
+  // at create time. Immutable after creation.
   string subscription_name = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 3,
     (buf.validate.field).string.max_len = 255,
-    (buf.validate.field).string.pattern = "^[a-zA-Z][a-zA-Z0-9\\-_\\.~+%]*$"
+    (buf.validate.field).string.pattern = "^[a-zA-Z][a-zA-Z0-9\\-_\\.~+%]*$",
+    (buf.validate.field).cel = {
+      id: "subscription_name_goog_reserved"
+      expression: "!this.startsWith('goog')"
+      message: "subscription names beginning with 'goog' are reserved by Google — choose a different name"
+    }
   ];
 
   // The topic from which this subscription receives messages.
@@ -316,4 +382,16 @@ message GcpPubSubSubscriptionSpec {
   // Cloud Storage objects in batches. Mutually exclusive with push_config and
   // bigquery_config.
   GcpPubSubSubscriptionCloudStorageConfig cloud_storage_config = 15;
+
+  // User-defined labels attached to the subscription, for cost attribution
+  // and fleet queries. Merged with Planton's platform labels (which win on
+  // key conflicts).
+  map<string, string> labels = 16;
+
+  // Ordered pipeline of transforms applied to every message before
+  // delivery to this subscription — reshape payloads for this consumer
+  // without changing what other subscriptions on the topic see.
+  // Transforms run in list order; a transform returning null drops the
+  // message.
+  repeated GcpPubSubSubscriptionMessageTransform message_transforms = 17;
 }

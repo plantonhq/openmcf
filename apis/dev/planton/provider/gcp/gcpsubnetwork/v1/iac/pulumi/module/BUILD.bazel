@@ -11,10 +11,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsubnetwork/v1/iac/pulumi/module",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/dev/planton/provider/gcp",
         "//apis/dev/planton/provider/gcp/gcpsubnetwork/v1:gcpsubnetwork",
-        "//apis/dev/planton/shared/cloudresourcekind",
-        "//pkg/iac/pulumi/pulumimodule/provider/gcp/gcplabelkeys",
         "//pkg/iac/pulumi/pulumimodule/provider/gcp/pulumigoogleprovider",
         "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_gcp_sdk_v9//go/gcp",

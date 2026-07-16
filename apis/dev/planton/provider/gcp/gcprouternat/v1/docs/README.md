@@ -122,11 +122,11 @@ spec:
 
 **Verdict:** Excellent for platform engineering teams building Kubernetes-centric infrastructure platforms, particularly if you're already using Crossplane or Config Connector for other GCP resources. For most teams, Terraform/Pulumi's direct API approach is simpler and faster.
 
-## The 80/20 Configuration Principle
+## What Matters in Production
 
-Cloud Router NAT exposes dozens of configuration parameters, but the vast majority of production deployments use a small subset. Here's what actually matters:
+Cloud Router NAT exposes dozens of configuration parameters. A handful decide the architecture; the rest are tuning levers you reach for when a workload demands it. Here's what actually matters:
 
-### Essential Configuration (80% of Use Cases)
+### The Essential Decisions
 
 **1. Region and VPC Context**
 
@@ -159,7 +159,7 @@ Cloud NAT can log:
 
 **Recommendation**: Enable `ERRORS_ONLY` logging in production. The overhead is minimal, and it's invaluable when debugging connectivity issues.
 
-### Advanced Configuration (20% of Use Cases)
+### The Advanced Levers
 
 **Port Allocation**
 
@@ -169,7 +169,7 @@ By default, each VM gets 64 source ports allocated. This is sufficient for most 
 
 **Endpoint-Independent Mapping**
 
-Enabled by default for public NAT. It allows reusing a source port for connections to different destinations, conserving ports. Rarely disabled except in specialized security contexts.
+Maps the same internal ip:port to the same NAT ip:port regardless of destination (RFC 5128) — required by some peer-to-peer and SIP workloads. Off by default, and mutually exclusive with dynamic port allocation: choose one strategy per gateway.
 
 **Custom Timeouts**
 
@@ -177,7 +177,15 @@ TCP established connections default to 1,200 seconds idle timeout, UDP to 30 sec
 
 **NAT Rules**
 
-Advanced feature for routing specific destination IP ranges through specific NAT IPs. Very rarely used—most deployments have uniform egress requirements.
+Route traffic matching a CEL expression (evaluated against destination attributes) through dedicated NAT IPs or ranges. The canonical use: one partner requires a dedicated, separately allowlistable source IP while everything else shares the pool. Lower rule numbers win when multiple rules match.
+
+**Connection Draining**
+
+Moving an IP from the active set to the drain set lets established connections finish while new connections stop using it — the zero-downtime path for rotating an egress IP out of service. An IP must already be in the active set before it can be drained, and a brand-new NAT cannot have drain entries.
+
+**Private NAT**
+
+Beyond internet egress, Cloud NAT can translate between private networks attached as Network Connectivity Center spokes (`type: PRIVATE`). No external IPs are involved — translation draws from subnetwork ranges purposed for private NAT, which is what lets two spokes with overlapping CIDRs still communicate.
 
 ## Production Patterns and Integration
 
@@ -217,37 +225,17 @@ For a typical deployment with 20 VMs and 100 GB monthly egress, total NAT costs 
 
 ## Planton's Approach
 
-Planton's `GcpRouterNat` API follows the 80/20 principle, exposing the configuration that matters while using sensible defaults for the rest:
+Planton's `GcpRouterNat` models the full NAT surface as one composable node — the router and its NAT provisioned together (the overwhelmingly common one-NAT-per-router shape), with every production lever first-class in the spec:
 
-```protobuf
-message GcpRouterNatSpec {
-  // VPC network reference (required)
-  StringValueOrRef vpc_self_link = 1;
-  
-  // Region for the Cloud Router and NAT (required)
-  string region = 2;
-  
-  // Optional: Specific subnets to NAT (empty = all subnets)
-  repeated StringValueOrRef subnetwork_self_links = 3;
-  
-  // Optional: Static external IPs (empty = auto-allocate)
-  repeated StringValueOrRef nat_ip_names = 4;
-}
-```
+- **Where**: the VPC (a reference to a `GcpVpcNetwork` node) and the region — the required, immutable context.
+- **What**: subnetwork coverage, from region-wide (the future-proof default) down to individual secondary ranges of individual subnetworks (referenced `GcpSubnetwork` nodes) — the shape that NATs a GKE pod range without exposing the node range.
+- **How**: IP allocation. Empty means auto-allocation (GCP owns the pool). Listing `GcpAddress` references means manual allocation with stable, allowlistable egress IPs — the addresses are their own nodes with their own lifecycle, referenced by the NAT and never created inside it, so the literal IPs live on those nodes' outputs and survive NAT reconfiguration. Drain entries rotate an IP out of service without dropping established connections.
+- **How much**: port floors and ceilings, dynamic port allocation (mutually exclusive with endpoint-independent mapping — enforced at validation time, before anything reaches GCP), and all five connection timeouts.
+- **For whom**: the endpoint type (VMs, Secure Web Gateway, or regional managed-proxy load balancers) and public vs. private NAT, including NAT rules that pin matching traffic to dedicated IPs (public) or ranges (private).
 
-This minimal schema captures the decisions that users actually need to make:
+Validation catches what GCP would reject at deploy time — the dynamic-ports/endpoint-independent-mapping conflict, power-of-two port counts, private NAT carrying external IPs, drain entries without a manual set — before a plan ever runs. Logging defaults to `ERRORS_ONLY`, the production minimum that detects port exhaustion without log-volume costs.
 
-- **Where**: VPC and region (required context)
-- **What**: Which subnets to cover (defaults to all)
-- **How**: Auto or manual IP allocation (defaults to auto)
-
-Behind the scenes, Planton's implementation applies production-ready defaults:
-- Logging enabled at `ERRORS_ONLY` level
-- Coverage of all IP ranges (primary and secondary) for listed subnets
-- Default port allocation (64 per VM, sufficient for most workloads)
-- Endpoint-independent mapping enabled
-
-This design reflects a core philosophy: **the API should make the common case trivial and the complex case possible**. Users who need advanced features like dynamic port allocation or custom NAT rules can access them through the underlying IaC modules, but they're not cluttering the core API that 80% of users interact with.
+The router's own BGP surface is deliberately limited to the ASN and keepalive interval: NAT-only routers never need more, and interface- and peer-level BGP (Interconnect/VPN) is a different concern that deserves its own component if demand appears.
 
 ## Comparative Landscape
 
@@ -271,5 +259,5 @@ Cloud Router NAT represents a maturity milestone in cloud networking: the shift 
 
 The deployment method you choose matters less than having **any** infrastructure-as-code approach. Whether you use Terraform, Pulumi, or Kubernetes CRDs, the key is making your NAT configuration declarative, version-controlled, and reproducible. The days of clicking through consoles to provision network infrastructure should be behind us.
 
-Planton's approach distills Cloud Router NAT configuration to its essence: specify where (VPC and region), what (which subnets), and how (IP allocation), then get out of your way with sensible defaults. The result is infrastructure that's both simple to provision and production-ready—exactly what multi-cloud deployment demands.
+Planton's approach makes the common case trivial — VPC, region, and two names produce a production-ready gateway — while keeping the full surface first-class: referenced static IPs with connection draining, secondary-range-level subnetwork scoping, port and timeout tuning, NAT rules, and private NAT are all in the spec, validated before anything reaches GCP, and composed from real, independently-owned address and subnetwork nodes.
 

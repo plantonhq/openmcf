@@ -1,176 +1,81 @@
 # GCP Subnetwork
 
-Deploys a GCP VPC subnetwork in a specified region with a primary CIDR range, optional secondary IP ranges for alias IPs (commonly used by GKE for Pod and Service CIDRs), and optional Private Google Access. The module also enables the Compute Engine API on the target project automatically.
+Creates a subnetwork in a custom-mode VPC — the regional address space workloads live in: a primary IPv4 range, secondary ranges for alias IPs (GKE pods and services), optional IPv6 dual-stack, special-purpose roles (proxy-only subnets for regional load balancers, Private Service Connect), and VPC Flow Logs.
 
 ## What Gets Created
 
 When you deploy a GcpSubnetwork resource, Planton provisions:
 
-- **Compute Engine API enablement** — a `google_project_service` resource that ensures `compute.googleapis.com` is active in the target project
-- **Subnetwork** — a `google_compute_subnetwork` resource in the specified region and VPC, configured with the primary CIDR, secondary ranges, and Private Google Access setting
+- **Compute Engine API enablement** — ensures `compute.googleapis.com` is active in the target project (never disabled on destroy)
+- **Subnetwork** — a `google_compute_subnetwork` in the specified region and VPC with all configured ranges, purpose, IPv6, and logging
 
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **An existing GCP project** where the subnetwork will be created
-- **An existing VPC network** in custom subnet mode (the VPC's self-link is required)
-- **A non-overlapping primary CIDR range** that does not conflict with other subnets in the same VPC
+- **An existing custom-mode VPC** — referenced via `vpcSelfLink`
+- **IAM permissions** — `roles/compute.networkAdmin` on the target project
 
 ## Quick Start
 
-Create a file `subnet.yaml`:
-
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpSubnetwork
 metadata:
-  name: my-subnet
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpSubnetwork.my-subnet
+  name: app-subnet
 spec:
-  projectId: my-gcp-project
-  vpcSelfLink: https://www.googleapis.com/compute/v1/projects/my-gcp-project/global/networks/my-vpc
+  projectId:
+    value: my-gcp-project-123
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: my-vpc
+      fieldPath: status.outputs.network_self_link
+  subnetworkName: app-subnet
   region: us-central1
-  ipCidrRange: "10.0.0.0/24"
-  subnetworkName: my-subnet
+  ipCidrRange: 10.10.0.0/20
+  privateIpGoogleAccess: true
 ```
-
-Deploy:
 
 ```shell
-planton apply -f subnet.yaml
+planton apply -f subnetwork.yaml
 ```
-
-This creates a subnetwork named `my-subnet` in `us-central1` with a `/24` primary CIDR range.
 
 ## Configuration Reference
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `projectId` | `string` | GCP project ID where the subnetwork is created. Supports `valueFrom` referencing a GcpProject resource. | Required |
-| `vpcSelfLink` | `string` | Self-link of the parent VPC network. Supports `valueFrom` referencing a GcpVpc resource. | Required |
-| `region` | `string` | GCP region for the subnetwork (e.g. `us-central1`). Cannot be changed after creation. | Required; must match `^[a-z]([-a-z0-9]*[a-z0-9])?$` |
-| `ipCidrRange` | `string` | Primary IPv4 CIDR range for the subnetwork (e.g. `10.0.0.0/24`). Must be unique within the VPC. | Required; must match IPv4 CIDR format |
-| `subnetworkName` | `string` | Name of the subnetwork resource in GCP. | Required; 1-63 chars, lowercase letters/numbers/hyphens, must start with a letter and end with a letter or number |
-
-### Optional Fields
-
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `secondaryIpRanges` | `object[]` | `[]` | Secondary IP ranges for alias IPs. Each entry requires `rangeName` and `ipCidrRange`. Commonly used for GKE Pod and Service CIDRs. |
-| `secondaryIpRanges[].rangeName` | `string` | — | Name for the secondary range. 1-63 chars, lowercase letters/numbers/hyphens. |
-| `secondaryIpRanges[].ipCidrRange` | `string` | — | IPv4 CIDR for the secondary range. Must not overlap with other ranges in the VPC. |
-| `privateIpGoogleAccess` | `bool` | `false` | When `true`, VMs without external IPs in this subnetwork can reach Google APIs and services over internal networking. |
-
-## Examples
-
-### Subnetwork with Private Google Access
-
-A subnetwork that allows VMs without external IPs to access Google APIs:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpSubnetwork
-metadata:
-  name: private-subnet
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpSubnetwork.private-subnet
-spec:
-  projectId: my-gcp-project
-  vpcSelfLink: https://www.googleapis.com/compute/v1/projects/my-gcp-project/global/networks/my-vpc
-  region: us-east1
-  ipCidrRange: "10.10.0.0/20"
-  subnetworkName: private-subnet
-  privateIpGoogleAccess: true
-```
-
-### GKE-Ready Subnetwork with Secondary Ranges
-
-A subnetwork configured with secondary IP ranges for GKE Pod and Service CIDRs:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpSubnetwork
-metadata:
-  name: gke-subnet
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpSubnetwork.gke-subnet
-spec:
-  projectId: my-gcp-project
-  vpcSelfLink: https://www.googleapis.com/compute/v1/projects/my-gcp-project/global/networks/prod-vpc
-  region: us-central1
-  ipCidrRange: "10.0.0.0/20"
-  subnetworkName: gke-nodes
-  privateIpGoogleAccess: true
-  secondaryIpRanges:
-    - rangeName: gke-pods
-      ipCidrRange: "10.4.0.0/14"
-    - rangeName: gke-services
-      ipCidrRange: "10.8.0.0/20"
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding IDs:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpSubnetwork
-metadata:
-  name: ref-subnet
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpSubnetwork.ref-subnet
-spec:
-  projectId:
-    valueFrom:
-      kind: GcpProject
-      name: my-project
-      field: status.outputs.project_id
-  vpcSelfLink:
-    valueFrom:
-      kind: GcpVpc
-      name: prod-vpc
-      field: status.outputs.network_self_link
-  region: europe-west1
-  ipCidrRange: "10.20.0.0/20"
-  subnetworkName: ref-subnet
-  privateIpGoogleAccess: true
-  secondaryIpRanges:
-    - rangeName: pods
-      ipCidrRange: "10.24.0.0/14"
-    - rangeName: services
-      ipCidrRange: "10.28.0.0/20"
-```
+| `vpcSelfLink` | `StringValueOrRef` | — | Required. The parent VPC. Can reference a GcpVpcNetwork. Immutable. |
+| `subnetworkName` | `string` | — | Required. Name in GCP (RFC1035). Immutable. |
+| `region` | `string` | — | Required. Region of the subnet. Immutable. |
+| `ipCidrRange` | `string` | — | Primary IPv4 CIDR. Required except for IPv6-only subnets. Expandable in place; never shrinkable. |
+| `projectId` | `StringValueOrRef` | provider default | Project that owns the subnet. Immutable. |
+| `purpose` | `string` | `PRIVATE` | `PRIVATE`, `REGIONAL_MANAGED_PROXY` (proxy-only), `GLOBAL_MANAGED_PROXY`, `PRIVATE_SERVICE_CONNECT`, `PEER_MIGRATION`, `PRIVATE_NAT`. |
+| `role` | `string` | — | `ACTIVE` / `BACKUP` on proxy-only subnets. |
+| `secondaryIpRanges` | `list` | `[]` | Named alias-IP ranges — how GKE gets pod/service IPs. |
+| `privateIpGoogleAccess` | `bool` | `false` | Internal access to Google APIs for VMs without external IPs. |
+| `privateIpv6GoogleAccess` | `string` | GCP default | IPv6 counterpart of the above. |
+| `stackType` | `string` | `IPV4_ONLY` | `IPV4_ONLY`, `IPV4_IPV6`, `IPV6_ONLY`. |
+| `ipv6AccessType` | `string` | — | `EXTERNAL` or `INTERNAL`; required for IPv6-carrying stack types. Immutable. |
+| `allowSubnetCidrRoutesOverlap` | `bool` | `false` | Permit deliberate CIDR overlap with routes outside the VPC. |
+| `sendSecondaryIpRangeIfEmpty` | `bool` | `false` | Safety latch: whether an empty range list removes existing secondary ranges. |
+| `logConfig` | object | off | VPC Flow Logs: aggregation interval, sampling, metadata scope, CEL filter. |
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `subnetworkSelfLink` | `string` | Self-link URL of the created subnetwork, used to reference this subnet from GKE clusters and other resources |
-| `region` | `string` | GCP region where the subnetwork was created |
-| `ipCidrRange` | `string` | Primary IPv4 CIDR of the subnetwork |
-| `secondaryRanges` | `object[]` | List of secondary ranges created, each containing `rangeName` and `ipCidrRange` |
+| Output | Description |
+|--------|-------------|
+| `subnetwork_self_link` | Self-link — the value GKE clusters, instances, and other consumers reference |
+| `subnetwork_name` | Name in GCP (referenced by by-name consumers like Cloud Run Direct VPC egress) |
+| `region` / `ip_cidr_range` | Placement and primary range |
+| `secondary_ranges` | Names + CIDRs of secondary ranges (GKE selects them by name) |
+| `gateway_address` | IPv4 address of the subnet's default gateway |
+| `subnetwork_id` | Server-assigned numeric ID |
+| `internal_ipv6_prefix` / `external_ipv6_prefix` | Allocated IPv6 prefixes (empty without IPv6) |
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the parent VPC network for this subnetwork
-- [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — consumes subnetwork and secondary ranges for node, Pod, and Service networking
-- [GcpRouterNat](/docs/catalog/gcp/gcprouternat) — provides NAT gateway for subnetworks without external IPs
-- [GcpProject](/docs/catalog/gcp/gcpproject) — manages the GCP project that hosts the subnetwork
-- [GcpComputeInstance](/docs/catalog/gcp/gcpcomputeinstance) — VMs deployed into this subnetwork
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the parent VPC network
+- [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — consumes the subnet and secondary ranges for node, pod, and service networking
+- [GcpRouterNat](/docs/catalog/gcp/gcprouternat) — outbound internet for private-only subnets
+- [GcpProject](/docs/catalog/gcp/gcpproject) — manages the GCP project that hosts the subnet
+- [GcpComputeInstance](/docs/catalog/gcp/gcpcomputeinstance) — VMs deployed into this subnet

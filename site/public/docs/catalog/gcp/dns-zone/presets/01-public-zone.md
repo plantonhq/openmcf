@@ -1,6 +1,6 @@
 ---
 title: "Public DNS Zone"
-description: "This preset creates a Cloud DNS managed zone with IAM permissions granted to service accounts for cert-manager and external-dns. DNS records are managed separately via `GcpDnsRecord` resources,..."
+description: "Creates a public Cloud DNS managed zone for an internet-facing domain. DNS records are composed separately via [GcpDnsRecord](/docs/catalog/gcp/gcpdnsrecord)."
 type: "preset"
 rank: "01"
 presetSlug: "01-public-zone"
@@ -13,24 +13,31 @@ order: 1
 
 # Public DNS Zone
 
-This preset creates a Cloud DNS managed zone with IAM permissions granted to service accounts for cert-manager and external-dns. DNS records are managed separately via `GcpDnsRecord` resources, keeping the zone definition clean and composable.
+Creates a public Cloud DNS managed zone for an internet-facing domain. DNS records are composed separately via [GcpDnsRecord](/docs/catalog/gcp/gcpdnsrecord).
 
 ## When to Use
 
-- Hosting a public DNS zone for your domain on Google Cloud DNS
-- Environments where cert-manager needs DNS01 challenge access for TLS certificates
-- Environments where external-dns automatically manages DNS records from Kubernetes ingresses
+- New public domains that need authoritative nameservers from Google Cloud DNS
+- Foundation zones for cert-manager, external-dns, or manual GcpDnsRecord resources
 
 ## Key Configuration Choices
 
-- **Zone-only** -- no inline DNS records; records are managed via standalone `GcpDnsRecord` resources
-- **IAM for automation** (`iamServiceAccounts`) -- grants DNS record management permissions to cert-manager and external-dns service accounts
-- **Zone name derived from metadata** -- the `metadata.name` is used as the zone name (must match your domain in kebab-case)
+- **visibility: public** — zone is exposed to the internet; configure returned nameservers at your registrar
+- **dns_name omitted** — defaults to `metadata.name` + `.` (e.g. `example.com.`)
 
 ## Placeholders to Replace
 
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<gcp-project-id>` | GCP project ID | `GcpProject` outputs |
-| `<cert-manager-sa-email>` | Service account email for cert-manager | `GcpServiceAccount` outputs or GKE Workload Identity setup |
-| `<external-dns-sa-email>` | Service account email for external-dns | `GcpServiceAccount` outputs or GKE Workload Identity setup |
+| Placeholder | Description |
+|---|---|
+| `my-gcp-project-123` | GCP project ID |
+| `example.com` | Your domain (metadata.name) |
+
+## Related Presets
+
+- **02-private-vpc** — internal service discovery on a VPC
+- **03-private-dnssec** — public zone with DNSSEC enabled
+
+## Related Components
+
+- [GcpDnsRecord](/docs/catalog/gcp/gcpdnsrecord) — individual DNS records in this zone
+- [GcpProject](/docs/catalog/gcp/gcpproject) — project that owns the zone

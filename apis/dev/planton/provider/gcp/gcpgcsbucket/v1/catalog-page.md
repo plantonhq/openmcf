@@ -1,124 +1,30 @@
-# GCP GCS Bucket
+# GCP Cloud Storage Bucket
 
-Deploys a Google Cloud Storage bucket with full control over storage class, access model, lifecycle management, encryption, CORS, static website hosting, and IAM bindings. The bucket is created in the specified GCP project and location with Uniform Bucket-Level Access enabled by default.
+Creates a Google Cloud Storage bucket — the durable object store behind static sites, data lakes, build artifacts, and backups — with the full lifecycle surface (versioning, lifecycle rules, Autoclass, soft delete, WORM retention), placement control up to custom dual-regions with turbo replication, and additive per-bucket IAM grants.
 
 ## What Gets Created
 
-When you deploy a GcpGcsBucket resource, Planton provisions:
-
-- **GCS Bucket** — a Cloud Storage bucket in the specified project and location, with labels, storage class, and access settings applied
-- **Versioning Configuration** — enabled on the bucket when `versioningEnabled` is `true`
-- **Lifecycle Rules** — one lifecycle rule per entry in `lifecycleRules`, supporting automatic deletion and storage class transitions
-- **Encryption Configuration** — Customer-Managed Encryption Key (CMEK) applied when `encryption.kmsKeyName` is set
-- **CORS Rules** — cross-origin access rules applied when `corsRules` is non-empty
-- **Website Configuration** — static website hosting settings applied when `website` is provided
-- **Retention Policy** — WORM-compliant retention policy applied when `retentionPolicy` is provided
-- **Logging Configuration** — legacy access logging directed to a target bucket when `logging` is provided
-- **IAM Bindings** — one `BucketIAMBinding` per entry in `iamBindings`, granting specified roles to specified members on the bucket
+- The Cloud Storage API is enabled on the project (never disabled on destroy)
+- A `google_storage_bucket` carrying your labels merged beneath Planton's attribution labels (`planton-ai_resource`, `planton-ai_name`, `planton-ai_kind`, plus org/env/id when set)
+- One `google_storage_bucket_iam_member` per `iamMembers` entry — additive grants that compose safely with grants made elsewhere
 
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** where the bucket will be created
-- **A globally unique bucket name** — must be 3-63 characters, lowercase letters, numbers, hyphens, or dots
-- **A Cloud KMS key** if using customer-managed encryption (optional)
+- **IAM permissions** — `roles/storage.admin` on the target project
+- For CMEK: a `GcpKmsKey` the GCS service agent can use
 
 ## Quick Start
 
-Create a file `gcs-bucket.yaml`:
+Create a file `bucket.yaml`:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpGcsBucket
 metadata:
-  name: my-app-data
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpGcsBucket.my-app-data
+  name: app-data
 spec:
-  gcpProjectId: my-gcp-project-123
-  bucketName: my-app-data-dev
-  location: us-east1
-```
-
-Deploy:
-
-```shell
-planton apply -f gcs-bucket.yaml
-```
-
-This creates a standard-class GCS bucket with Uniform Bucket-Level Access in `us-east1`.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `gcpProjectId` | `string` or `valueFrom` | The GCP project ID where the bucket is created. Can be a literal value or a reference to a GcpProject resource. | Required |
-| `location` | `string` | Region, dual-region, or multi-region for the bucket (e.g., `us-east1`, `US`, `EU`). Immutable after creation. | Required |
-| `bucketName` | `string` | Globally unique name for the GCS bucket. Lowercase letters, numbers, hyphens, dots. | Required, 3-63 chars, pattern `^[a-z0-9]([a-z0-9-._]*[a-z0-9])?$` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `uniformBucketLevelAccessEnabled` | `bool` | `false` | Enable Uniform Bucket-Level Access for IAM-only access control. Recommended `true`. |
-| `storageClass` | `GcpGcsStorageClass` | `STANDARD` | Storage class for the bucket. One of: `STANDARD`, `NEARLINE`, `COLDLINE`, `ARCHIVE`. |
-| `versioningEnabled` | `bool` | `false` | Enable object versioning to protect against accidental deletion or overwrite. |
-| `lifecycleRules` | `GcpGcsLifecycleRule[]` | `[]` | Lifecycle rules for automatic object deletion or storage class transitions. |
-| `lifecycleRules[].action.type` | `string` | — | Action type: `Delete` or `SetStorageClass`. |
-| `lifecycleRules[].action.storageClass` | `GcpGcsStorageClass` | — | Target storage class (only for `SetStorageClass` action). |
-| `lifecycleRules[].condition.ageDays` | `int32` | `0` | Age in days since object creation. |
-| `lifecycleRules[].condition.createdBefore` | `string` | `""` | RFC 3339 date. Objects created before this date match. |
-| `lifecycleRules[].condition.isLive` | `bool` | `false` | Match live (current version) objects. |
-| `lifecycleRules[].condition.numNewerVersions` | `int32` | `0` | Number of newer versions to retain. |
-| `lifecycleRules[].condition.matchesStorageClass` | `GcpGcsStorageClass[]` | `[]` | Match only objects in these storage classes. |
-| `iamBindings` | `GcpGcsIamBinding[]` | `[]` | IAM bindings for bucket-level access control. |
-| `iamBindings[].role` | `string` | — | IAM role to grant (e.g., `roles/storage.objectViewer`). |
-| `iamBindings[].members` | `string[]` | — | Members to grant the role to. Format: `user:email`, `group:email`, `serviceAccount:email`, `allUsers`. |
-| `iamBindings[].condition` | `string` | `""` | CEL condition expression for conditional access. |
-| `encryption` | `GcpGcsEncryption` | `null` | CMEK encryption configuration. If omitted, Google-managed encryption is used. |
-| `encryption.kmsKeyName` | `string` | — | Cloud KMS key name. Format: `projects/PROJECT/locations/LOC/keyRings/RING/cryptoKeys/KEY`. |
-| `corsRules` | `GcpGcsCorsRule[]` | `[]` | CORS rules for cross-origin browser access. |
-| `corsRules[].methods` | `string[]` | — | HTTP methods allowed (e.g., `GET`, `PUT`). |
-| `corsRules[].origins` | `string[]` | — | Allowed origins (e.g., `https://example.com`). |
-| `corsRules[].responseHeaders` | `string[]` | `[]` | Response headers browsers can access. |
-| `corsRules[].maxAgeSeconds` | `int32` | `0` | Max time (seconds) browsers can cache preflight responses. |
-| `website` | `GcpGcsWebsite` | `null` | Static website hosting configuration. |
-| `website.mainPageSuffix` | `string` | `""` | Main page suffix (e.g., `index.html`). |
-| `website.notFoundPage` | `string` | `""` | Custom 404 page (e.g., `404.html`). |
-| `retentionPolicy` | `GcpGcsRetentionPolicy` | `null` | WORM-compliant retention policy. |
-| `retentionPolicy.retentionPeriodSeconds` | `int64` | — | Minimum retention period in seconds. |
-| `retentionPolicy.isLocked` | `bool` | `false` | Lock the retention policy (irreversible). |
-| `requesterPays` | `bool` | `false` | Enable requester-pays mode. Requesters pay for data access and egress. |
-| `logging` | `GcpGcsLogging` | `null` | Legacy access logging configuration. |
-| `logging.logBucket` | `string` | — | Destination bucket for access logs. |
-| `logging.logObjectPrefix` | `string` | `""` | Prefix for log object names. |
-| `publicAccessPrevention` | `string` | `""` | Public access prevention policy. Values: `inherited` (default), `enforced`. |
-| `gcpLabels` | `map<string, string>` | `{}` | Custom labels for cost tracking and governance. Merged with auto-generated labels. |
-
-## Examples
-
-### Private Bucket with Versioning and Lifecycle Cleanup
-
-A bucket with versioning enabled and a lifecycle rule that deletes noncurrent object versions older than 30 days:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpGcsBucket
-metadata:
-  name: app-backups
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpGcsBucket.app-backups
-spec:
-  gcpProjectId: my-gcp-project-123
-  bucketName: my-app-backups-dev
+  bucketName: acme-app-data-prod
   location: us-central1
   uniformBucketLevelAccessEnabled: true
   publicAccessPrevention: enforced
@@ -127,146 +33,63 @@ spec:
     - action:
         type: Delete
       condition:
-        ageDays: 30
-        isLive: false
+        withState: ARCHIVED
+        numNewerVersions: 3
 ```
 
-### Static Website Hosting with CORS
+Deploy:
 
-A bucket configured to serve a static website with CORS rules for browser-based access:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpGcsBucket
-metadata:
-  name: marketing-site
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpGcsBucket.marketing-site
-spec:
-  gcpProjectId: my-gcp-project-123
-  bucketName: marketing-site-prod
-  location: US
-  uniformBucketLevelAccessEnabled: true
-  website:
-    mainPageSuffix: index.html
-    notFoundPage: 404.html
-  corsRules:
-    - methods:
-        - GET
-        - HEAD
-      origins:
-        - https://example.com
-      responseHeaders:
-        - Content-Type
-      maxAgeSeconds: 3600
-  iamBindings:
-    - role: roles/storage.objectViewer
-      members:
-        - allUsers
+```shell
+planton apply -f bucket.yaml
 ```
 
-### Full-Featured Bucket with Encryption, Lifecycle Tiers, and IAM
+This creates a private, versioned bucket whose version history stays bounded — and which no IAM grant can ever expose publicly.
 
-A production bucket with CMEK encryption, tiered lifecycle transitions, versioning, retention, custom labels, and service account access:
+## Configuration Reference
 
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpGcsBucket
-metadata:
-  name: prod-data-lake
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpGcsBucket.prod-data-lake
-spec:
-  gcpProjectId: my-gcp-project-123
-  bucketName: prod-data-lake
-  location: us-east1
-  storageClass: STANDARD
-  uniformBucketLevelAccessEnabled: true
-  publicAccessPrevention: enforced
-  versioningEnabled: true
-  encryption:
-    kmsKeyName: projects/my-gcp-project-123/locations/us-east1/keyRings/data-ring/cryptoKeys/bucket-key
-  retentionPolicy:
-    retentionPeriodSeconds: 2592000
-    isLocked: false
-  lifecycleRules:
-    - action:
-        type: SetStorageClass
-        storageClass: NEARLINE
-      condition:
-        ageDays: 30
-        matchesStorageClass:
-          - STANDARD
-    - action:
-        type: SetStorageClass
-        storageClass: COLDLINE
-      condition:
-        ageDays: 90
-        matchesStorageClass:
-          - NEARLINE
-    - action:
-        type: Delete
-      condition:
-        ageDays: 365
-        isLive: false
-  iamBindings:
-    - role: roles/storage.objectAdmin
-      members:
-        - serviceAccount:data-pipeline@my-gcp-project-123.iam.gserviceaccount.com
-    - role: roles/storage.objectViewer
-      members:
-        - serviceAccount:analytics-reader@my-gcp-project-123.iam.gserviceaccount.com
-        - group:data-team@example.com
-  logging:
-    logBucket: audit-logs-bucket
-    logObjectPrefix: prod-data-lake/
-  gcpLabels:
-    team: data-engineering
-    cost-center: analytics
-```
-
-### Using a Foreign Key Reference for Project ID
-
-Reference an Planton-managed GcpProject instead of hardcoding the project ID:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpGcsBucket
-metadata:
-  name: shared-assets
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpGcsBucket.shared-assets
-spec:
-  gcpProjectId:
-    valueFrom:
-      kind: GcpProject
-      name: my-project
-      fieldPath: status.outputs.project_id
-  bucketName: shared-assets-prod
-  location: us-east1
-  uniformBucketLevelAccessEnabled: true
-```
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `projectId` | StringValueOrRef | No | Owning project; empty uses the provider default. Immutable |
+| `bucketName` | string | Yes | Globally unique bucket name. Immutable |
+| `location` | string | Yes | Region, dual-region, or multi-region. Immutable |
+| `storageClass` | string | No | `STANDARD` (default), `NEARLINE`, `COLDLINE`, `ARCHIVE` |
+| `forceDestroy` | bool | No | Delete all objects on destroy (default false) |
+| `uniformBucketLevelAccessEnabled` | bool | No | IAM-only access control (recommended) |
+| `publicAccessPrevention` | string | No | `inherited` (default) or `enforced` |
+| `versioningEnabled` | bool | No | Keep noncurrent versions |
+| `autoclass` | object | No | Automatic storage classes (`enabled`, `terminalStorageClass`) |
+| `lifecycleRules[]` | list | No | Delete / SetStorageClass / AbortIncompleteMultipartUpload over rich conditions |
+| `retentionPolicy` | object | No | WORM retention (+ irreversible `isLocked`) |
+| `softDeletePolicy.retentionDurationSeconds` | int | No | 0 (off) or 7–90 days; omitted follows GCP's 7-day default |
+| `kmsKeyName` | StringValueOrRef | No | Default CMEK key (reference a `GcpKmsKey`) |
+| `requesterPays` | bool | No | Callers pay for access/egress |
+| `defaultEventBasedHold` | bool | No | Auto-hold every new object |
+| `enableObjectRetention` | bool | No | Per-object retention (create-time only) |
+| `website` | object | No | `mainPageSuffix` + `notFoundPage` |
+| `corsRules[]` | list | No | Browser cross-origin access |
+| `logging` | object | No | Access-log delivery to another bucket |
+| `customPlacementConfig.dataLocations` | list | No | Exactly two regions (custom dual-region). Immutable |
+| `rpo` | string | No | `DEFAULT` or `ASYNC_TURBO` |
+| `hierarchicalNamespaceEnabled` | bool | No | Folder semantics (create-time only) |
+| `labels` | map | No | User labels (merged beneath platform labels) |
+| `iamMembers[]` | list | No | Additive grants: `role` + `member` (+ optional IAM `condition`) |
+| `ipFilter` | object | No | Network-layer allowlist: public CIDR ranges and/or VPC networks (reference `GcpVpcNetwork`), evaluated before IAM |
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
+| Output | Description |
+|--------|-------------|
+| `bucket_id` | Bucket ID (equals the bucket name) — what consumers reference |
+| `bucket_name` | Bucket name |
+| `url` | `gs://<name>` |
+| `self_link` | API self link |
+| `location` | Location as reported by GCS |
+| `project_number` | Numeric owning project |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `bucket_id` | `string` | The ID of the created GCS bucket |
+## Related Resources
 
-## Related Components
-
-- [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project where the bucket is created
-- [GcpServiceAccount](/docs/catalog/gcp/gcpserviceaccount) — creates service accounts that can be added to `iamBindings` members
-- [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — workloads running in GKE clusters commonly read from and write to GCS buckets
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — network configuration for private connectivity to GCS via Private Google Access
+- **GcpBackendBucket** — serve this bucket through the L7 load balancer (CDN, HTTPS)
+- **GcpCloudFunction / GcpCloudRun / GcpCloudRunJob** — function sources and GCS volumes
+- **GcpDataprocCluster / GcpCloudComposerEnvironment** — staging, temp, and DAG buckets
+- **GcpPubSubTopic / GcpPubSubSubscription** — Cloud Storage ingestion and delivery
+- **GcpKmsKey** — CMEK protection via `kmsKeyName`

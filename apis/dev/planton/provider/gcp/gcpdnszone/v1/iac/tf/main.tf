@@ -1,48 +1,94 @@
-# Create the Google Cloud DNS Managed Zone
-# This is a public DNS zone that will be authoritative for the specified domain
+# Enable the Cloud DNS API so a fresh project can host managed zones.
+# disable_on_destroy is false: tearing down one zone must never disable
+# the API for everything else in the project.
+resource "google_project_service" "dns_api" {
+  project = local.project_id
+  service = "dns.googleapis.com"
+
+  disable_dependent_services = true
+  disable_on_destroy         = false
+}
+
+# A Cloud DNS managed zone — the zone shell only. Individual DNS records
+# belong in the separate GcpDnsRecord kind.
 resource "google_dns_managed_zone" "managed_zone" {
   name        = local.managed_zone_name
-  project     = var.spec.project_id.value
-  description = "managed-zone for ${var.metadata.name}"
+  project     = local.project_id
+  description = local.description
   dns_name    = local.zone_dns_name
-  visibility  = "public"
-}
+  visibility  = local.visibility
+  labels      = length(local.labels) > 0 ? local.labels : null
 
-# Grant DNS management permissions to specified service accounts
-# This is typically used to grant permissions to Kubernetes workload identities
-# such as cert-manager (for DNS-01 ACME challenges) and external-dns (for Ingress automation)
-# 
-# Note: This currently uses project-level IAM binding (roles/dns.admin) which grants
-# access to all zones in the project. This is a temporary workaround until per-zone
-# IAM bindings become available in the Google provider.
-# See: https://cloud.google.com/dns/docs/zones/iam-per-resource-zones
-resource "google_project_iam_binding" "dns_admin" {
-  count   = length(local.iam_binding_members) > 0 ? 1 : 0
-  project = var.spec.project_id.value
-  role    = "roles/dns.admin"
-  members = local.iam_binding_members
+  force_destroy = var.spec.force_destroy
 
-  depends_on = [
-    google_dns_managed_zone.managed_zone
-  ]
-}
+  depends_on = [google_project_service.dns_api]
 
-# Create DNS records within the managed zone
-# These are static, foundational records managed by Infrastructure-as-Code
-# Dynamic application records (for Kubernetes Ingresses) should be managed by external-dns
-# Temporary ACME challenge records should be managed by cert-manager
-# This follows the "split state" pattern where different lifecycle owners manage different records
-resource "google_dns_record_set" "records" {
-  for_each = { for idx, rec in var.spec.records : idx => rec }
+  dynamic "dnssec_config" {
+    for_each = var.spec.dnssec_config != null ? [var.spec.dnssec_config] : []
+    content {
+      state         = dnssec_config.value.state != "" ? dnssec_config.value.state : null
+      non_existence = dnssec_config.value.non_existence != "" ? dnssec_config.value.non_existence : null
 
-  managed_zone = google_dns_managed_zone.managed_zone.name
-  project      = var.spec.project_id.value
-  name         = each.value.name
-  type         = each.value.record_type
-  ttl          = each.value.ttl_seconds
-  rrdatas      = each.value.values
+      dynamic "default_key_specs" {
+        for_each = dnssec_config.value.default_key_specs
+        content {
+          algorithm  = default_key_specs.value.algorithm != "" ? default_key_specs.value.algorithm : null
+          key_length = default_key_specs.value.key_length > 0 ? default_key_specs.value.key_length : null
+          key_type   = default_key_specs.value.key_type != "" ? default_key_specs.value.key_type : null
+        }
+      }
+    }
+  }
 
-  depends_on = [
-    google_dns_managed_zone.managed_zone
-  ]
+  dynamic "private_visibility_config" {
+    for_each = var.spec.private_visibility_config != null ? [var.spec.private_visibility_config] : []
+    content {
+      dynamic "networks" {
+        for_each = private_visibility_config.value.networks
+        content {
+          network_url = networks.value.network_url
+        }
+      }
+
+      dynamic "gke_clusters" {
+        for_each = private_visibility_config.value.gke_clusters
+        content {
+          gke_cluster_name = gke_clusters.value.gke_cluster_name
+        }
+      }
+    }
+  }
+
+  dynamic "forwarding_config" {
+    # try() guards the null object: HCL's && does not short-circuit.
+    for_each = (
+      length(try(var.spec.forwarding_config.target_name_servers, [])) > 0
+    ) ? [var.spec.forwarding_config] : []
+    content {
+      dynamic "target_name_servers" {
+        for_each = forwarding_config.value.target_name_servers
+        content {
+          ipv4_address    = target_name_servers.value.ipv4_address != "" ? target_name_servers.value.ipv4_address : null
+          domain_name     = target_name_servers.value.domain_name != "" ? target_name_servers.value.domain_name : null
+          forwarding_path = target_name_servers.value.forwarding_path != "" ? target_name_servers.value.forwarding_path : null
+        }
+      }
+    }
+  }
+
+  dynamic "peering_config" {
+    for_each = var.spec.peering_config != null ? [var.spec.peering_config] : []
+    content {
+      target_network {
+        network_url = peering_config.value.target_network
+      }
+    }
+  }
+
+  dynamic "cloud_logging_config" {
+    for_each = var.spec.cloud_logging_config != null ? [var.spec.cloud_logging_config] : []
+    content {
+      enable_logging = cloud_logging_config.value.enable_logging
+    }
+  }
 }

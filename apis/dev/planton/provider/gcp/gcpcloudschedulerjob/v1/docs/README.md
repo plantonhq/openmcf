@@ -1,4 +1,4 @@
-# GcpCloudSchedulerJob: Research & Design Documentation
+# GcpCloudSchedulerJob: Design Documentation
 
 ## Service Overview
 
@@ -35,9 +35,9 @@ Google Cloud Scheduler is a fully managed, enterprise-grade cron job service. It
 
 **Recommendation**: For new deployments, HTTP target with OIDC authentication is the modern pattern. Pub/Sub is ideal for event-driven architectures. App Engine target is for legacy workloads.
 
-## 80/20 Scoping Rationale
+## Scope: Included and Excluded Surfaces
 
-### What We Include (Covers 95%+ of Use Cases)
+### Included (the full released-provider floor)
 
 1. **All three target types** (HTTP, Pub/Sub, App Engine) -- core scheduling functionality
 2. **OIDC and OAuth authentication** on HTTP target -- essential for secure Cloud Run/Functions invocation
@@ -47,14 +47,14 @@ Google Cloud Scheduler is a fully managed, enterprise-grade cron job service. It
 6. **Custom headers and body** -- enables real-world API integrations
 7. **Attempt deadline** -- timeout control for long-running targets
 
-### What We Exclude (Niche, Deferred to v2)
+### Excluded (with reasons)
 
 | Feature | Why Excluded |
 |---------|-------------|
 | **`deadline` field** | Deprecated alias for `attempt_deadline` |
-| **Inline schema validation** | GCP validates cron expressions, timezones, and URLs at API level |
-| **Job management operations** | Pause/resume/run-now are operational, not infrastructure definition |
-| **Cross-project targets** | Rare; requires complex IAM; add if demanded |
+| **Inline schema validation of cron/timezone/URL strings** | GCP validates cron expressions, timezones, and URLs at API level |
+| **Job management operations** | Pause/resume/run-now are runtime operations, not infrastructure definition (initial `paused` posture IS modeled) |
+| **Cross-project targets** | Rare; requires complex IAM; add on concrete demand |
 
 ## GCP API Constraints
 
@@ -64,20 +64,26 @@ Google Cloud Scheduler is a fully managed, enterprise-grade cron job service. It
 - `project` -- Project cannot be changed (ForceNew in Terraform)
 
 ### Labels
-Cloud Scheduler jobs **do not support GCP labels**. This is a GCP API limitation, not an Planton decision.
+Cloud Scheduler jobs **do not support GCP labels**. This is a GCP API limitation, not a Planton decision. Neither engine stamps attribution labels, identically.
+
+### Project Resolution
+`project_id` is optional: when omitted, the job is created in the provider's default project (the ambient-project contract shared across the GCP catalog). Set it -- as a literal or a `GcpProject` reference -- to target another project.
+
+### Naming
+`job_name` is optional: when empty, the job takes its name from `metadata.name`. Both engines perform the identical fallback.
 
 ### State Management
-- `state` is **computed-only** (read from API, not settable)
+- `state` is **computed-only** (read from API, exported as a stack output)
 - `paused` is the input mechanism: `true` creates the job paused, `false` (default) creates it enabled
-- Terraform manages pause/resume via separate API endpoints (POST `:pause` / `:resume`)
+- The provider manages pause/resume via separate API endpoints (POST `:pause` / `:resume`)
 
 ### Target Mutual Exclusion
-Exactly one of `http_target`, `pubsub_target`, or `app_engine_http_target` must be specified. The GCP API enforces this, and we additionally validate at the proto level with CEL.
+Exactly one of `http_target`, `pubsub_target`, or `app_engine_http_target` must be specified. The GCP API enforces this, and the spec additionally validates it at the proto level with CEL -- rejecting misconfiguration before any cloud call.
 
 ### Authentication
 - **OAuth token**: For calling Google APIs (*.googleapis.com). Generates an OAuth2 access token.
 - **OIDC token**: For calling Cloud Run, Cloud Functions, or custom endpoints. Generates a JWT.
-- Mutually exclusive within a single HTTP target.
+- Mutually exclusive within a single HTTP target (CEL-enforced pre-deploy).
 
 ### Body Encoding
 The `body` field on HTTP and App Engine targets, and the `data` field on Pub/Sub targets, must be **base64-encoded**. This matches the GCP API and both Terraform/Pulumi providers.
@@ -96,20 +102,12 @@ Four `StringValueOrRef` fields enable infra-chart composability:
 | `project_id` | GcpProject | `status.outputs.project_id` | Project reference |
 | `http_target.oauth_token.service_account_email` | GcpServiceAccount | `status.outputs.email` | OAuth identity |
 | `http_target.oidc_token.service_account_email` | GcpServiceAccount | `status.outputs.email` | OIDC identity |
-| `pubsub_target.topic_name` | GcpPubSubTopic | `status.outputs.topic_id` | Pub/Sub topic reference |
+| `pubsub_target.topic_name` | GcpPubSubTopic | `status.outputs.topic_id` | Pub/Sub topic reference (fully qualified path) |
 
-## Corrections from T01 Plan
+## Cross-Engine Parity Notes
 
-| Change | Rationale |
-|--------|-----------|
-| Added `job_name` | Consistent with R01-R17 naming pattern; GCP requires explicit name |
-| Added `paused` boolean | Maps to TF `paused` field; operational control for ENABLED/PAUSED state |
-| `region` -> `location` | Consistency with R17 (GcpCloudTasksQueue) |
-| `body` fields documented as base64 | Both TF and Pulumi expect base64-encoded body |
-| `pubsub_target.topic_name` as StringValueOrRef | Infra-chart composability with GcpPubSubTopic |
-| OAuth/OIDC `service_account_email` as StringValueOrRef | Infra-chart composability with GcpServiceAccount |
-| No GCP labels | Cloud Scheduler jobs don't support labels (GCP API limitation) |
-| `app_engine_http_target` included | Core target type -- 1 of 3 fundamental scheduling targets |
+- The Pulumi engine's bridged provider carries a client-side `deletion_policy` flag the released Terraform line does not have; the Pulumi module pins it to `DELETE` so destroy behaves identically on both engines.
+- Both engines enable `cloudscheduler.googleapis.com` before creating the job, so a fresh project works first try.
 
 ## Infra Chart Composition
 
@@ -120,7 +118,7 @@ GcpCloudSchedulerJob composes naturally with:
 - **GcpCloudFunction** + **GcpServiceAccount**: Scheduler triggers Cloud Functions via HTTP
 - **GcpBigQueryDataset**: Scheduler triggers ETL jobs that populate BigQuery
 
-Typical infra chart pattern (serverless-api-backend):
+Typical composition pattern:
 ```
 GcpProject -> GcpServiceAccount -> GcpCloudRun + GcpCloudSchedulerJob(HTTP+OIDC)
 ```

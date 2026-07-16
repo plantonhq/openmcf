@@ -1,0 +1,20 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceAccountIamMember
+metadata:
+  name: my-runtime-sa-act-as
+spec:
+  serviceAccountId:
+    # The RUNTIME account a deployed workload will run as.
+    valueFrom:
+      kind: GcpServiceAccount
+      name: <runtime-service-account-resource-name>
+      fieldPath: status.outputs.name
+  role:
+    value: roles/iam.serviceAccountUser
+  member:
+    # The DEPLOYER identity that attaches the runtime account to workloads
+    # (a CI pipeline's account, or a human operator via user:<email>).
+    valueFrom:
+      kind: GcpServiceAccount
+      name: <deployer-service-account-resource-name>
+      fieldPath: status.outputs.member

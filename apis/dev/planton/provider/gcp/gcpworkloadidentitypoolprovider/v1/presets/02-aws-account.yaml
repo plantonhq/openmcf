@@ -1,0 +1,19 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpWorkloadIdentityPoolProvider
+metadata:
+  name: aws-account-federation
+spec:
+  workloadIdentityPoolId:
+    valueFrom:
+      kind: GcpWorkloadIdentityPool
+      name: ci-federation-pool # replace with your pool resource's name
+      fieldPath: status.outputs.workload_identity_pool_id
+  workloadIdentityPoolProviderId: aws-prod-account # replace: 4-32 chars; lowercase letters, digits, hyphens
+  displayName: AWS Production Account
+  description: Trusts workloads running in the production AWS account
+  # AWS providers have a sensible default mapping (google.subject from the
+  # caller ARN plus attribute.aws_role); omit attributeMapping unless you need
+  # custom attributes. This condition narrows trust to one IAM role.
+  attributeCondition: attribute.aws_role == "arn:aws:sts::123456789012:assumed-role/<role-name>"
+  aws:
+    accountId: "123456789012" # replace with your 12-digit AWS account ID

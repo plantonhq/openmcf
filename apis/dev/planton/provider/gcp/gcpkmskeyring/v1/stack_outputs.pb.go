@@ -26,12 +26,17 @@ type GcpKmsKeyRingStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Fully qualified key ring resource path.
 	// Format: projects/{project}/locations/{location}/keyRings/{name}
-	// This is the primary identifier used by GcpKmsCryptoKey and other downstream
+	// This is the primary identifier used by GcpKmsKey and other downstream
 	// resources that need to reference this key ring.
 	KeyRingId string `protobuf:"bytes,1,opt,name=key_ring_id,json=keyRingId,proto3" json:"key_ring_id,omitempty"`
-	// The short name of the key ring (same as the spec's key_ring_name input).
-	// Useful for display, logging, and human-readable references.
-	KeyRingName   string `protobuf:"bytes,2,opt,name=key_ring_name,json=keyRingName,proto3" json:"key_ring_name,omitempty"`
+	// The short name of the key ring (the last segment of key_ring_id).
+	// Useful for display, logging, and consumers that take the bare ring name
+	// alongside a separately supplied project and location.
+	KeyRingName string `protobuf:"bytes,2,opt,name=key_ring_name,json=keyRingName,proto3" json:"key_ring_name,omitempty"`
+	// The location the key ring resides in (region, multi-region, or
+	// "global"), exactly as GCP resolved it. Consumers that take a bare ring
+	// name plus a location compose from key_ring_name + this field.
+	Location      string `protobuf:"bytes,3,opt,name=location,proto3" json:"location,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -80,14 +85,22 @@ func (x *GcpKmsKeyRingStackOutputs) GetKeyRingName() string {
 	return ""
 }
 
+func (x *GcpKmsKeyRingStackOutputs) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpkmskeyring_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpkmskeyring_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/gcp/gcpkmskeyring/v1/stack_outputs.proto\x12)dev.planton.provider.gcp.gcpkmskeyring.v1\"_\n" +
+	"=dev/planton/provider/gcp/gcpkmskeyring/v1/stack_outputs.proto\x12)dev.planton.provider.gcp.gcpkmskeyring.v1\"{\n" +
 	"\x19GcpKmsKeyRingStackOutputs\x12\x1e\n" +
 	"\vkey_ring_id\x18\x01 \x01(\tR\tkeyRingId\x12\"\n" +
-	"\rkey_ring_name\x18\x02 \x01(\tR\vkeyRingNameB\xea\x02\n" +
+	"\rkey_ring_name\x18\x02 \x01(\tR\vkeyRingName\x12\x1a\n" +
+	"\blocation\x18\x03 \x01(\tR\blocationB\xea\x02\n" +
 	"-com.dev.planton.provider.gcp.gcpkmskeyring.v1B\x11StackOutputsProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskeyring/v1;gcpkmskeyringv1\xa2\x02\x05DPPGG\xaa\x02)Dev.Planton.Provider.Gcp.Gcpkmskeyring.V1\xca\x02)Dev\\Planton\\Provider\\Gcp\\Gcpkmskeyring\\V1\xe2\x025Dev\\Planton\\Provider\\Gcp\\Gcpkmskeyring\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Gcp::Gcpkmskeyring::V1b\x06proto3"
 
 var (

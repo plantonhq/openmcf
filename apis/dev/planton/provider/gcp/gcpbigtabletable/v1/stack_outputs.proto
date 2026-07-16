@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpbigtabletable.v1;
+
+// Outputs produced after provisioning a Cloud Bigtable table.
+message GcpBigtableTableStackOutputs {
+  // Fully qualified table resource path
+  // (projects/{project}/instances/{instance}/tables/{table}).
+  // The canonical identifier for Admin API calls and IAM bindings.
+  string table_id = 1;
+
+  // Short table name — what Bigtable client libraries open, together
+  // with the project and instance.
+  string table_name = 2;
+
+  // Short name of the instance the table lives in — confirms the parent
+  // without chasing the reference chain.
+  string instance_name = 3;
+}

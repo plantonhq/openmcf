@@ -17,9 +17,15 @@ func firewall(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) er
 	args := &compute.FirewallArgs{
 		Name:      pulumi.String(spec.RuleName),
 		Network:   pulumi.String(spec.Network.GetValue()),
-		Project:   pulumi.String(spec.ProjectId.GetValue()),
 		Direction: pulumi.String(spec.Direction),
 		Disabled:  pulumi.BoolPtr(spec.Disabled),
+	}
+
+	// Honor the spec contract: an empty project_id falls back to the
+	// provider's default project (omitting the argument lets the provider
+	// resolve its own project).
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.String(spec.ProjectId.GetValue())
 	}
 
 	// Priority (default applied by Planton middleware, always present).

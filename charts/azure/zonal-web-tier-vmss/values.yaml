@@ -8,7 +8,7 @@ params:
   - name: instances
     description: The fleet size. Three instances across three zones is the honest zonal floor -- a zone outage removes one instance, not the tier
     value: 3
-    type: int
+    type: number
 
   - name: vm_sku
     description: "The instance size. Standard_D2s_v3 (2 vCPU / 8 GiB) is the general-purpose production floor; B-series burstables cost less for dev but carry zonal-capacity caveats in some regions and no sustained-CPU guarantee"
@@ -46,4 +46,4 @@ params:
   - name: log_retention_days
     description: Log Analytics workspace retention in days
     value: 30
-    type: int
+    type: number

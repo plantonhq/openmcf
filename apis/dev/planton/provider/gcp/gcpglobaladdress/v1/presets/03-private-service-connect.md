@@ -23,7 +23,7 @@ This preset reserves a global internal IP address for a Private Service Connect 
 |---|---|---|
 | `<gcp-project-id>` | GCP project ID where the address will be reserved | GCP Console or `GcpProject` outputs |
 | `<your-address-name>` | Name for this address resource (1-63 chars, lowercase, hyphens) | Choose a descriptive name (e.g., `psc-endpoint-ip`) |
-| `<vpc-network-name-or-self-link>` | VPC network name (e.g., `prod-vpc`) or full self-link | `GcpVpc` status outputs |
+| `<vpc-network-name-or-self-link>` | VPC network name (e.g., `prod-vpc`) or full self-link | `GcpVpcNetwork` status outputs |
 
 ## Related Presets
 

@@ -23,20 +23,24 @@ This preset creates a Cloud Router with a NAT gateway that covers all subnets in
 
 ## Key Configuration Choices
 
-- **All subnets covered** -- `subnetworkSelfLinks` is empty, so NAT applies to every subnet in the region
-- **Auto-allocated IPs** -- `natIpNames` is empty, so GCP automatically provisions and manages external IPs
-- **Error-only logging** (`logFilter: ERRORS_ONLY`) -- logs port exhaustion and connection failures without the volume of full translation logging
+- **All subnets covered** — `subnetworks` is empty, so NAT applies to every subnetwork in the region, primary and secondary ranges
+- **Auto-allocated IPs** — `natIps` is empty, so GCP provisions and scales the external IP pool itself; the IPs can change over time, so use the static-IP preset when third parties allowlist your egress
+- **VPC by reference** — `vpcSelfLink` resolves the `GcpVpcNetwork` node's self link
+- **Error-only logging** (`logFilter: ERRORS_ONLY`) — logs port exhaustion and connection failures without the volume of full translation logging
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 |---|---|---|
-| `<gcp-project-id>` | GCP project ID | GCP Console or `GcpProject` outputs |
-| `<vpc-network-self-link>` | Self-link of the VPC network | `GcpVpc` status outputs |
-| `<gcp-region>` | GCP region matching your subnets (e.g., `us-central1`) | Your deployment region |
-| `<your-router-name>` | Name for the Cloud Router (1-63 chars, lowercase) | Choose a descriptive name (e.g., `prod-router`) |
-| `<your-nat-name>` | Name for the NAT configuration (1-63 chars, lowercase) | Choose a descriptive name (e.g., `prod-nat`) |
+| `my-gcp-project-123` | GCP project ID | GCP Console or `GcpProject` outputs |
+| `my-app-vpc` | Your `GcpVpcNetwork` resource name | Your VPC manifest |
 
 ## Related Presets
 
-- **02-static-ip-specific-subnets** -- Use when you need stable egress IPs for partner allowlisting or compliance
+- **02-static-ip-allowlisting** — stable egress IPs for partner allowlisting or compliance
+- **03-private-nat** — NAT between VPC networks (Network Connectivity Center spokes)
+
+## Related Components
+
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network the router attaches to
+- [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — scope NAT to specific subnetworks when needed

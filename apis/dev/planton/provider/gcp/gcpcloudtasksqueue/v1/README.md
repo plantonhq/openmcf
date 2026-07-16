@@ -20,7 +20,7 @@ Use `GcpCloudTasksQueue` when you need:
 - A managed task queue with configurable dispatch rate limits
 - Queue-level HTTP target authentication (OIDC/OAuth) for Cloud Run or Cloud Functions
 - Retry policies with exponential backoff for unreliable downstream services
-- Operational control (pause/resume) over task dispatch
+- Queue-pinned routing for App Engine tasks
 
 **Not suitable for:**
 
@@ -32,9 +32,9 @@ Use `GcpCloudTasksQueue` when you need:
 
 ### Queue Identity
 
-- **`queue_name`** -- Immutable name for the queue (RFC 1035 compliant, 1-63 chars)
+- **`queue_name`** -- Immutable name for the queue (RFC 1035 compliant, 1-63 chars). Deliberately explicit: a deleted queue's ID is reserved by the API for up to 7 days.
 - **`location`** -- GCP region (e.g., `us-central1`). Immutable after creation.
-- **`project_id`** -- GCP project (supports `valueFrom` for infra-chart composition)
+- **`project_id`** -- GCP project (supports `valueFrom` for infra-chart composition). Optional: when omitted, the provider's default project is used.
 
 ### HTTP Target (Queue-Level)
 
@@ -62,16 +62,16 @@ Note: `max_burst_size` is computed by GCP from `max_dispatches_per_second` and c
 - **`max_doublings`** -- Exponential backoff doublings before linear increase
 - **`max_retry_duration`** -- Maximum total retry time
 
-### Operational Control
+### App Engine Routing Override
 
-- **`desired_state`** -- `RUNNING` (default) or `PAUSED`. Paused queues accept new tasks but do not dispatch them.
+- **`app_engine_routing_override`** -- Pins every App Engine task in the queue to a specific service/version/instance, instead of relying on each task's own routing. Only relevant for queues dispatching App Engine tasks.
 
 ## Important Notes
 
 - Cloud Tasks queues do **NOT** support GCP labels.
-- Queue name and location are **immutable** after creation.
+- Queue name and location are **immutable** after creation, and a deleted queue's ID is reserved for up to 7 days.
 - This component manages the queue only. Individual tasks are created by your application code using the Cloud Tasks API.
-- App Engine routing override is not supported by this component (legacy feature).
+- Pause/resume is a runtime operation (`gcloud tasks queues pause|resume`), not part of this declarative surface.
 
 ## Outputs
 
@@ -79,4 +79,4 @@ Note: `max_burst_size` is computed by GCP from `max_dispatches_per_second` and c
 |--------|-------------|
 | `queue_id` | Fully qualified queue path: `projects/{project}/locations/{location}/queues/{name}` |
 | `queue_name` | Short queue name |
-| `state` | Current queue state: RUNNING, PAUSED, or DISABLED (Pulumi only) |
+| `max_burst_size` | Effective max burst size computed by GCP from the dispatch rate |

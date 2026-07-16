@@ -15,6 +15,7 @@ type Locals struct {
 	GcpVertexAiEndpoint *gcpvertexaiendpointv1.GcpVertexAiEndpoint
 	GcpLabels           map[string]string
 	DisplayName         string
+	EndpointName        string
 }
 
 func initializeLocals(_ *pulumi.Context, stackInput *gcpvertexaiendpointv1.GcpVertexAiEndpointStackInput) *Locals {
@@ -24,11 +25,29 @@ func initializeLocals(_ *pulumi.Context, stackInput *gcpvertexaiendpointv1.GcpVe
 
 	locals.DisplayName = locals.GcpVertexAiEndpoint.Spec.DisplayName
 
-	locals.GcpLabels = map[string]string{
-		gcplabelkeys.Resource:     "true",
-		gcplabelkeys.ResourceName: strings.ToLower(locals.GcpVertexAiEndpoint.Metadata.Name),
-		gcplabelkeys.ResourceKind: strings.ToLower(cloudresourcekind.CloudResourceKind_GcpVertexAiEndpoint.String()),
+	// Vertex AI requires the endpoint's name to be numeric and the API will
+	// not generate one — when the spec omits endpoint_name, derive a stable
+	// ID from the resource identity (identical derivation in the Terraform
+	// module, so the same manifest yields the same endpoint ID on either
+	// engine).
+	locals.EndpointName = locals.GcpVertexAiEndpoint.Spec.EndpointName
+	if locals.EndpointName == "" {
+		locals.EndpointName = deriveEndpointName(
+			locals.GcpVertexAiEndpoint.Metadata.Org,
+			locals.GcpVertexAiEndpoint.Metadata.Env,
+			locals.GcpVertexAiEndpoint.Metadata.Name,
+		)
 	}
+
+	// User labels first so platform attribution labels win on key
+	// conflicts — identical merge order to the Terraform module.
+	locals.GcpLabels = map[string]string{}
+	for key, value := range locals.GcpVertexAiEndpoint.Spec.Labels {
+		locals.GcpLabels[key] = value
+	}
+	locals.GcpLabels[gcplabelkeys.Resource] = "true"
+	locals.GcpLabels[gcplabelkeys.ResourceName] = strings.ToLower(locals.GcpVertexAiEndpoint.Metadata.Name)
+	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpVertexAiEndpoint.String())
 
 	if locals.GcpVertexAiEndpoint.Metadata.Org != "" {
 		locals.GcpLabels[gcplabelkeys.Organization] = locals.GcpVertexAiEndpoint.Metadata.Org

@@ -1,0 +1,4 @@
+name: gcpcloudsqluser-pulumi-project
+runtime:
+  name: go
+description: Planton GcpCloudSqlUser Pulumi module

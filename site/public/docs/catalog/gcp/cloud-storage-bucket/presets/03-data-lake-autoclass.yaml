@@ -1,0 +1,52 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpGcsBucket
+metadata:
+  name: data-lake
+spec:
+  bucketName: acme-data-lake-prod # replace — globally unique across ALL of GCP
+  # Custom dual-region: dual-region durability with region pinning for
+  # analytics engines running in either region.
+  location: US
+  customPlacementConfig:
+    dataLocations:
+      - US-EAST1
+      - US-WEST1
+  uniformBucketLevelAccessEnabled: true
+  publicAccessPrevention: enforced
+  # Autoclass moves each object between storage classes on observed access
+  # — no hand-tuned lifecycle transitions, all the way to ARCHIVE.
+  autoclass:
+    enabled: true
+    terminalStorageClass: ARCHIVE
+  lifecycleRules:
+    # Abandoned multipart uploads hold invisible storage — reclaim weekly.
+    - action:
+        type: AbortIncompleteMultipartUpload
+      condition:
+        ageDays: 7
+    # Temporary/intermediate outputs are deleted after 30 days.
+    - action:
+        type: Delete
+      condition:
+        ageDays: 30
+        matchesPrefix:
+          - tmp/
+  iamMembers:
+    # The pipeline service account owns objects (reference your
+    # GcpServiceAccount resource).
+    - role: roles/storage.objectAdmin
+      member:
+        valueFrom:
+          kind: GcpServiceAccount
+          name: data-pipeline
+          fieldPath: status.outputs.member
+    # Analysts read everything under reports/ only — an IAM condition
+    # scopes the grant to the prefix.
+    - role: roles/storage.objectViewer
+      member:
+        value: group:analysts@example.com # replace with your reader group
+      condition:
+        title: reports-prefix-only
+        expression: resource.name.startsWith("projects/_/buckets/acme-data-lake-prod/objects/reports/")
+  labels:
+    team: data # replace with your cost-attribution labels

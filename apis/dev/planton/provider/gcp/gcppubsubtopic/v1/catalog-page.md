@@ -1,23 +1,25 @@
 # GCP Pub/Sub Topic
 
-Deploys a Google Cloud Pub/Sub topic with optional CMEK encryption, message retention, regional storage policies, schema validation, and cross-cloud ingestion from AWS Kinesis, AWS MSK, Azure Event Hubs, Cloud Storage, or Confluent Cloud. The topic is labeled automatically from resource metadata.
+Deploys a Google Cloud Pub/Sub topic with optional CMEK encryption, message retention, regional storage policies, schema validation (composed with GcpPubSubSchema), publish-side message transforms, and cross-cloud ingestion from AWS Kinesis, AWS MSK, Azure Event Hubs, Cloud Storage, or Confluent Cloud. User labels merge beneath the platform attribution labels.
 
 ## What Gets Created
 
 When you deploy a GcpPubSubTopic resource, Planton provisions:
 
-- **Pub/Sub Topic** — a `google_pubsub_topic` resource in the specified GCP project, with GCP labels derived from `metadata.org`, `metadata.env`, and `metadata.id`
+- **Pub/Sub Topic** — a `google_pubsub_topic` resource in the specified GCP project (or the provider's default project when `projectId` is omitted), carrying user labels merged beneath platform labels derived from `metadata.org`, `metadata.env`, and `metadata.id`
+- **Pub/Sub API enablement** — `pubsub.googleapis.com` is enabled in-project so a fresh project works first try (never disabled on destroy)
 - **CMEK Encryption** — configured only when `kmsKeyName` is provided, encrypts messages at rest using a customer-managed Cloud KMS key
 - **Message Storage Policy** — applied only when `messageStoragePolicy` is provided, restricts message persistence to the listed GCP regions and optionally enforces in-transit guarantees
-- **Schema Validation** — configured only when `schemaSettings` is provided, validates every published message against the referenced Pub/Sub schema
+- **Schema Validation** — configured only when `schemaSettings` is provided, validates every published message against the referenced `GcpPubSubSchema`
+- **Message Transforms** — configured only when `messageTransforms` is provided, runs an ordered JavaScript UDF pipeline on every published message
 - **Ingestion Pipeline** — configured only when `ingestionDataSourceSettings` is provided, streams data from an external source (AWS Kinesis, AWS MSK, Azure Event Hubs, Cloud Storage, or Confluent Cloud) into the topic
 
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** with the Pub/Sub API enabled
+- **A GCP project** (the Pub/Sub API is enabled automatically)
 - **A Cloud KMS key** if enabling CMEK encryption (the Pub/Sub service account needs `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key)
-- **A Pub/Sub schema** if enabling schema validation
+- **A `GcpPubSubSchema` resource** if enabling schema validation
 - **Cross-cloud IAM roles** if configuring ingestion from AWS or Azure sources
 
 ## Quick Start
@@ -54,18 +56,19 @@ This creates a Pub/Sub topic named `my-topic` in the specified GCP project with 
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project where the topic will be created. Can reference a GcpProject resource via `valueFrom`. | Required |
-| `topicName` | `string` | Name of the Pub/Sub topic. Immutable after creation. | 3–255 characters, must start with a letter, allows letters, numbers, hyphens, underscores, periods, tildes, `+`, `%` |
+| `topicName` | `string` | Name of the Pub/Sub topic. Immutable after creation. | 3–255 characters, must start with a letter, allows letters, numbers, hyphens, underscores, periods, tildes, `+`, `%`; must not begin with the reserved `goog` prefix |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
+| `projectId` | `StringValueOrRef` | provider default project | GCP project where the topic will be created. Can reference a GcpProject resource via `valueFrom`. |
 | `kmsKeyName` | `StringValueOrRef` | — | Cloud KMS key for encrypting messages at rest (CMEK). Format: `projects/{project}/locations/{location}/keyRings/{keyRing}/cryptoKeys/{key}`. Can reference a GcpKmsKey resource via `valueFrom`. |
+| `labels` | `map<string,string>` | — | User labels for cost attribution and fleet queries, merged beneath the platform attribution labels (which win on key conflicts). |
 | `messageRetentionDuration` | `string` | — | Duration to retain published messages on the topic. Format: duration string (e.g., `"604800s"` for 7 days). Range: `600s` to `2678400s`. When unset, retention is controlled by individual subscriptions. |
 | `messageStoragePolicy.allowedPersistenceRegions` | `string[]` | — | GCP region IDs where messages may be stored. Messages from non-allowed regions are routed to an allowed region. Minimum 1 item when the policy is set. |
 | `messageStoragePolicy.enforceInTransit` | `bool` | `false` | When `true`, publish calls from non-allowed regions are rejected and subscriptions in non-allowed regions fail. |
-| `schemaSettings.schema` | `string` | — | Fully qualified Pub/Sub schema name. Format: `projects/{project}/schemas/{schema}`. Required when `schemaSettings` is set. |
+| `schemaSettings.schema` | `StringValueOrRef` | — | The Pub/Sub schema messages must conform to. Can reference a GcpPubSubSchema resource via `valueFrom` (resolves to `projects/{project}/schemas/{schema}`). Required when `schemaSettings` is set. |
 | `schemaSettings.encoding` | `string` | — | Message encoding validated against the schema. Valid values: `"JSON"` or `"BINARY"`. |
 | `ingestionDataSourceSettings.awsKinesis` | `object` | — | Ingest from Amazon Kinesis Data Streams. Requires `streamArn`, `consumerArn`, `awsRoleArn`, and `gcpServiceAccount`. |
 | `ingestionDataSourceSettings.awsMsk` | `object` | — | Ingest from Amazon MSK. Requires `clusterArn`, `topic`, `awsRoleArn`, and `gcpServiceAccount`. |
@@ -73,6 +76,9 @@ This creates a Pub/Sub topic named `my-topic` in the specified GCP project with 
 | `ingestionDataSourceSettings.cloudStorage` | `object` | — | Ingest from a GCS bucket. Requires `bucket` (StringValueOrRef, can reference GcpGcsBucket). Optional: `matchGlob`, `minimumObjectCreateTime`, and one of `textFormat`, `avroFormat`, or `pubsubAvroFormat`. |
 | `ingestionDataSourceSettings.confluentCloud` | `object` | — | Ingest from Confluent Cloud. Requires `bootstrapServer`, `topic`, `identityPoolId`, and `gcpServiceAccount`. Optional: `clusterId`. |
 | `ingestionDataSourceSettings.platformLogsSettings.severity` | `string` | — | Minimum severity for ingestion platform logs. Valid values: `"DISABLED"`, `"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"`. |
+| `messageTransforms[]` | `object` | — | Ordered JavaScript UDF pipeline applied to every published message. Each entry carries `javascriptUdf` (`functionName` + `code`) and an optional `disabled` staging flag. |
+
+All ingestion `gcpServiceAccount` fields are `StringValueOrRef` and can reference a `GcpServiceAccount` resource via `valueFrom`.
 
 ## Examples
 
@@ -122,7 +128,11 @@ spec:
   kmsKeyName:
     value: projects/my-gcp-project/locations/us-central1/keyRings/my-ring/cryptoKeys/my-key
   schemaSettings:
-    schema: projects/my-gcp-project/schemas/event-schema
+    schema:
+      valueFrom:
+        kind: GcpPubSubSchema
+        name: event-schema
+        fieldPath: status.outputs.schema_id
     encoding: JSON
 ```
 
@@ -194,6 +204,8 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
+- [GcpPubSubSchema](/docs/catalog/gcp/gcppubsubschema) — the message contract referenced by `schemaSettings.schema`
 - [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) — provides a customer-managed encryption key for CMEK
 - [GcpGcsBucket](/docs/catalog/gcp/gcpgcsbucket) — source bucket for Cloud Storage ingestion
+- [GcpServiceAccount](/docs/catalog/gcp/gcpserviceaccount) — federated identity for cross-cloud ingestion
 - [GcpPubSubSubscription](/docs/catalog/gcp/gcppubsubsubscription) — creates a subscription attached to this topic

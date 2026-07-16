@@ -1,26 +1,62 @@
 # =============================================================================
-# InfraCharts Build & Publish
+# InfraCharts Validate, Build & Publish
 # =============================================================================
 # Discovers all charts (provider/chart-name directories containing values.yaml)
-# and validates/publishes them with `planton chart`.
+# and validates/publishes them.
 #
 # Usage (run from this charts/ directory):
-#   make build          Build (validate) all charts (default)
+#   make validate       Validate all charts OFFLINE (renders with default
+#                       values and validates every manifest and reference
+#                       against the protos in this working tree — no control
+#                       plane needed)
+#   make build          Build (validate) all charts through the platform
 #   make build-verbose  Build all charts with full output on failure
 #   make publish        Publish all charts to the Planton platform
 #
-# IMPORTANT: `planton chart build` and `planton chart publish` are provided by
-# the Planton *Platform* CLI -- the `InfraChart` kind is a platform API. The
-# `chart validate` subcommand -- the offline render/protovalidate/ref-integrity
-# gate, also enforced in CI via lint.charts -- is defined once in this repo and
-# mounted by BOTH binaries (the standalone open-source CLI and the Platform
-# CLI). Keep this Makefile scoped to charts/ and out of the repo's build graph.
+# Two `planton` binaries are in play:
+#   - `make validate` uses the `chart validate` command — the offline
+#     render/protovalidate/ref-integrity gate, defined once in this repo,
+#     mounted by BOTH binaries (the open-source CLI and the Platform CLI),
+#     and also enforced in CI via lint.charts. This target builds the CLI
+#     from the working tree so validation always matches the protos you are
+#     editing. Override with VALIDATE_BIN=/path/to/planton to skip the build.
+#   - `make build` / `make publish` use the Planton *Platform* CLI: the
+#     `InfraChart` kind is a platform API, and server-side chart build renders
+#     and validates through the live control plane — the authoritative gate
+#     before publishing.
 # =============================================================================
 
 CHARTS := $(shell find . -mindepth 2 -name values.yaml -not -path '*/build/*' \
             | sed 's|/values.yaml||' | sed 's|^\./||' | sort)
 
 .DEFAULT_GOAL := build
+
+VALIDATE_BIN ?= /tmp/planton-chart-validate
+
+.PHONY: validate
+validate:
+	@if [ "$(VALIDATE_BIN)" = "/tmp/planton-chart-validate" ]; then \
+	  echo "building planton CLI from the working tree..."; \
+	  (cd .. && go build -o $(VALIDATE_BIN) .) || exit 1; \
+	fi; \
+	passed=0; failed=0; failures=""; i=0; \
+	total=$(words $(CHARTS)); \
+	for chart in $(CHARTS); do \
+	  i=$$((i+1)); \
+	  if $(VALIDATE_BIN) chart validate "$$chart" >/dev/null 2>&1; then \
+	    passed=$$((passed+1)); \
+	    printf "[%d/%d] ✔ %s\n" "$$i" "$$total" "$$chart"; \
+	  else \
+	    failed=$$((failed+1)); \
+	    failures="$$failures  $$chart\n"; \
+	    printf "[%d/%d] ✘ %s\n" "$$i" "$$total" "$$chart"; \
+	  fi; \
+	done; \
+	echo ""; \
+	echo "Validate complete: $$passed passed, $$failed failed out of $$total charts"; \
+	if [ $$failed -gt 0 ]; then \
+	  echo ""; echo "Failed charts (re-run '$(VALIDATE_BIN) chart validate <chart>' for details):"; printf "$$failures"; exit 1; \
+	fi
 
 .PHONY: build
 build:

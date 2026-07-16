@@ -11,11 +11,11 @@ presets:
   - slug: "01-standard-production"
     rank: "01"
     title: "Standard Production Project"
-    excerpt: "This preset creates a GCP project under a resource hierarchy folder with essential APIs pre-enabled, the default network disabled, and deletion protection turned on. It covers the core services..."
+    excerpt: "This preset creates a production-grade project under a folder: billing linked, the default network suppressed, a hardening baseline of APIs pre-enabled, and destroy blocked by `deletionPolicy:..."
   - slug: "02-development"
     rank: "02"
     title: "Development Project"
-    excerpt: "This preset creates a lightweight GCP project for development and testing. It enables the `addSuffix` flag to append a random suffix to the project ID, preventing collisions when multiple developers..."
+    excerpt: "This preset creates a lightweight project for development environments: billing linked, a minimal API set, and the default DELETE deletion policy so teardown is one command."
 ---
 
 # Project Presets

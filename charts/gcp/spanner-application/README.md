@@ -1,122 +1,103 @@
 # GCP Spanner Application
 
-Provisions a production-ready Cloud Spanner deployment with a Spanner instance, database, dedicated service account, and optional VPC networking for the application environment.
+Spanner removes the two failure classes relational teams plan around —
+lost commits and maintenance windows — but only if the pieces around the
+database are actually set up: capacity that matches the topology, a
+point-in-time-recovery window wide enough to notice a mistake, and a
+backup policy that exists somewhere a reviewer can see it. This chart
+deploys that whole posture as one unit: a provisioned instance (fixed
+processing units or managed autoscaling), a drop-protected database with
+PITR, and an explicit cron-driven backup schedule — with GCP's invisible
+instance-level default schedule deliberately turned off so the one in
+your manifests is the only backup policy in force.
 
-Cloud Spanner is a fully managed, globally distributed, strongly consistent relational database. This chart sets up the database tier along with the IAM identity your application needs to connect, so you can focus on building your application rather than wiring infrastructure.
+## What it deploys
+
+| Resource | Kind | Purpose | Condition |
+|----------|------|---------|-----------|
+| Spanner instance | `GcpSpannerInstance` | The compute-and-replication envelope (regional or multi-region) | always |
+| Application database | `GcpSpannerDatabase` | Drop-protected database with point-in-time recovery | always |
+| Backup schedule | `GcpSpannerBackupSchedule` | Daily FULL backups with 31-day retention (both tunable) | always |
 
 ## Architecture
 
-```
-                    ┌──────────────────┐
-                    │  GcpServiceAccount│
-                    │  (spanner-app-sa) │
-                    │  roles/spanner.   │
-                    │  databaseUser     │
-                    └──────────────────┘
+```mermaid
+flowchart TB
+    Instance["GcpSpannerInstance <instance>"]
+    Database["GcpSpannerDatabase <instance>-<db>"]
+    Schedule["GcpSpannerBackupSchedule <instance>-<db>-backups"]
 
-┌──────────────────────────────────────────┐
-│              Spanner                      │
-│                                          │
-│  ┌──────────────────┐                    │
-│  │ GcpSpannerInstance│                    │
-│  │  (1+ nodes)      │                    │
-│  └────────┬─────────┘                    │
-│           │                              │
-│           ▼                              │
-│  ┌──────────────────┐                    │
-│  │ GcpSpannerDatabase│                    │
-│  │  (GoogleSQL/PG)  │                    │
-│  └──────────────────┘                    │
-└──────────────────────────────────────────┘
-
-┌──────────────────────────────────────────┐
-│      Optional: Networking                 │
-│                                          │
-│  ┌──────────────────┐                    │
-│  │    GcpVpc        │                    │
-│  └────────┬─────────┘                    │
-│           │                              │
-│           ▼                              │
-│  ┌──────────────────┐                    │
-│  │ GcpFirewallRule   │                    │
-│  │  (allow-internal) │                    │
-│  └──────────────────┘                    │
-└──────────────────────────────────────────┘
+    Database -->|instance| Instance
+    Schedule -->|instance| Instance
+    Schedule -->|database| Database
 ```
 
-## Dependency Graph
-
-```
-Layer 0 (parallel):  GcpVpc, GcpServiceAccount, GcpSpannerInstance
-Layer 1 (depends):   GcpFirewallRule (← VPC), GcpSpannerDatabase (← SpannerInstance)
-```
-
-## Included Cloud Resources
-
-| Resource | Kind | Group | Purpose |
-|----------|------|-------|---------|
-| VPC Network | `GcpVpc` | network | Application networking (optional) |
-| Firewall Rule | `GcpFirewallRule` | network | Allow internal traffic (optional) |
-| Service Account | `GcpServiceAccount` | identity | Application identity with Spanner access |
-| Spanner Instance | `GcpSpannerInstance` | database | Compute capacity for Spanner databases |
-| Spanner Database | `GcpSpannerDatabase` | database | The application database |
+Ordering falls out of the references: the database deploys after the
+instance, and the backup schedule after both. Capacity is the chart's
+one structural toggle — `autoscalingEnabled` swaps the instance's fixed
+`processingUnits` for Spanner's managed autoscaler bounded by the node
+limits (the two are mutually exclusive by GCP's own contract).
 
 ## Parameters
 
-| Parameter | Description | Default | Required |
-|-----------|-------------|---------|----------|
-| `gcp_project_id` | GCP project ID | `my-gcp-project` | Yes |
-| `instance_name` | Spanner instance name (6-30 chars) | `my-spanner-instance` | Yes |
-| `display_name` | Human-readable instance name | `My Spanner Instance` | Yes |
-| `instance_config` | Geographic placement (e.g., `regional-us-central1`) | `regional-us-central1` | Yes |
-| `num_nodes` | Node count (each ~10K QPS reads) | `1` | Yes |
-| `edition` | STANDARD, ENTERPRISE, or ENTERPRISE_PLUS | (empty = default) | No |
-| `database_name` | Database name (2-30 chars) | `my-database` | Yes |
-| `database_dialect` | GOOGLE_STANDARD_SQL or POSTGRESQL | `GOOGLE_STANDARD_SQL` | Yes |
-| `enable_drop_protection` | API-level deletion protection | `false` | No |
-| `service_account_id` | Service account for the application | `spanner-app-sa` | Yes |
-| `networkingEnabled` | Create VPC and firewall | `true` | No |
-| `vpc_name` | VPC network name | `spanner-app-vpc` | No |
+| Parameter | Default | When to change |
+|-----------|---------|----------------|
+| `gcp_project_id` | `my-gcp-project` | Always — the project everything lives in. |
+| `instance_name` | `app-spanner` | Always — immutable, and the prefix every resource name builds on. |
+| `spanner_config` | `regional-us-central1` | The topology decision: regional (99.99%) vs multi-region (99.999%). Immutable. |
+| `edition` | `ENTERPRISE` | STANDARD for cost-sensitive regional workloads; upgrades apply in place. |
+| `processing_units` | `100` | Scale with load (1000 = 1 node; below 1000 in steps of 100). Ignored under autoscaling. |
+| `autoscalingEnabled` | `false` | On when load is spiky enough that hand-tuning capacity becomes a chore. |
+| `autoscaling_min_nodes` | `1` | The guaranteed capacity floor under autoscaling. |
+| `autoscaling_max_nodes` | `3` | The cost ceiling under autoscaling. |
+| `database_name` | `app` | The application database. Immutable. |
+| `database_dialect` | `GOOGLE_STANDARD_SQL` | POSTGRESQL for teams porting Postgres apps/drivers. Immutable. |
+| `version_retention_period` | `3d` | The PITR window (1h–7d). Widen before you need it. |
+| `backup_cron` | `0 2 * * *` | Daily at 02:00 UTC; Spanner also accepts 12-hourly, weekly, monthly. |
+| `backup_retention` | `2678400s` (31d) | Up to 366 days (`31622400s`). |
 
-## What Gets Created
+## After deployment
 
-### Always Created
-- **Spanner Instance**: Allocated compute capacity in the specified region/multi-region
-- **Spanner Database**: Application database with chosen SQL dialect
-- **Service Account**: Granted `roles/spanner.databaseUser` for read/write access to all databases in the project
+1. **Apply your schema through migrations.** Spanner DDL is append-only
+   after creation, and this chart deliberately does not template DDL —
+   run your migration tool (or `gcloud spanner databases ddl update`)
+   against `<instance>/<database>` as the first deploy step of your
+   application.
+2. **Point the application at the database** using the standard client
+   libraries with database path
+   `projects/<project>/instances/<instance>/databases/<database>` —
+   Spanner clients authenticate with IAM, so grant your workload identity
+   `roles/spanner.databaseUser` on the project (or tighter, per database).
+3. **Verify the backup schedule took effect** after the first cron fire:
+   `gcloud spanner backups list --instance=<instance>` — the first backup
+   appears within one cadence of deploy.
+4. **Watch CPU utilization** (console or Cloud Monitoring
+   `spanner.googleapis.com/instance/cpu/utilization`): scale
+   `processing_units` (or switch to autoscaling) when high-priority CPU
+   sustains above 65% regional / 45% multi-region.
 
-### Conditionally Created (networkingEnabled: true)
-- **VPC Network**: Custom-mode VPC for the application environment
-- **Firewall Rule**: Allows all internal traffic (10.0.0.0/8) for application-to-application communication
+## Day-2 notes
 
-## Usage Notes
-
-### Connecting Your Application
-
-The service account created by this chart has `roles/spanner.databaseUser`, which provides read/write access to Spanner databases. Your application should authenticate using this service account:
-
-```go
-// Go example
-client, err := spanner.NewClient(ctx, "projects/my-project/instances/my-instance/databases/my-db")
-```
-
-### Spanner Networking
-
-Cloud Spanner is a fully managed service — it does not require VPC peering or private networking to function. Applications connect via the Spanner client libraries using IAM authentication. The optional VPC in this chart provides networking for your **application compute** (GCE instances, GKE pods, Cloud Run services), not for Spanner itself.
-
-For private connectivity to Spanner (avoiding public internet), enable [Private Google Access](https://cloud.google.com/vpc/docs/private-google-access) on the subnet where your application runs.
-
-### Scaling
-
-- **1 node** = ~10,000 QPS reads or ~2,000 QPS writes
-- For production workloads, consider using `autoscaling_config` instead of fixed `num_nodes` — modify the Spanner Instance resource directly after chart deployment
-
-### Adding CMEK Encryption
-
-To encrypt the database with a Customer-Managed Encryption Key, deploy a [GcpKmsKeyRing](https://github.com/plantonhq/planton) and [GcpKmsKey](https://github.com/plantonhq/planton) in the same region as the Spanner instance, then set `kmsKeyName` on the Spanner Database resource.
-
-## Important Notes
-
-- `instance_name`, `instance_config`, `database_name`, and `database_dialect` are **immutable** after creation. Changing them requires recreating the resource.
-- The service account receives `roles/spanner.databaseUser` at the **project** level, giving it access to all Spanner databases in the project. For finer-grained access, modify the service account IAM bindings after deployment.
-- Automatic backups are enabled by default on the instance (`defaultBackupScheduleType: AUTOMATIC`).
+- **Safe in place:** `processing_units`, the autoscaling bounds, edition
+  upgrades, `version_retention_period`, backup cron and retention,
+  drop/deletion protection flags.
+- **Immutable by GCP:** the instance name and config (topology), the
+  database name and dialect. These are the decisions to review before
+  the first deploy, not after.
+- **Two delete locks are on by design.** The database carries both GCP's
+  drop protection and the IaC-side deletion guard; the instance refuses
+  destroy while backups exist (`force_destroy` stays false). Tearing the
+  stack down is a deliberate three-step: lift the flags, delete backups,
+  destroy.
+- **PITR and backups cover different windows.** The retention period
+  rewinds the live database seconds-precisely inside its window (up to
+  7 days); the backup schedule covers everything older, up to 366 days.
+  Sizing one never substitutes for the other.
+- **INCREMENTAL backups** halve the storage cost of frequent backups on
+  ENTERPRISE and ENTERPRISE_PLUS editions, but each restore replays a
+  chain; this chart ships FULL because a standalone restorable artifact
+  is the safer default. Change `backupType` in the template if backup
+  windows dominate your costs.
+- **Multi-region configs change the autoscaling math** — the instance
+  template pins the CPU target at 65% (regional guidance); lower it to
+  45% when `spanner_config` is a multi-region config.

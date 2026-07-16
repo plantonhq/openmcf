@@ -1,10 +1,12 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerDatabase
 metadata:
-  name: my-database
+  name: orders-db
 spec:
-  projectId:
-    value: "<gcp-project-id>"
+  # project_id omitted: falls back to the provider's default project.
   instance:
-    value: "<spanner-instance-name>"
-  databaseName: <database-name>
+    valueFrom:
+      kind: GcpSpannerInstance
+      name: prod-spanner # replace with your instance resource name
+      fieldPath: status.outputs.instance_name
+  versionRetentionPeriod: "24h"

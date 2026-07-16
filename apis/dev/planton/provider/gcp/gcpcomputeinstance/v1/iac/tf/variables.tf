@@ -12,157 +12,166 @@ variable "metadata" {
 }
 
 variable "spec" {
-  description = "Specification for GCP Compute Instance"
+  description = "Specification for the Compute Engine instance"
   type = object({
+    # StringValueOrRef fields arrive from the proto→tfvars converter as
+    # plain strings (already resolved), never as object({value}).
+    # Empty falls back to the provider's default project.
+    project_id = optional(string, "")
 
-    # GCP project ID where the Compute Instance will be created.
-    # Supports StringValueOrRef: either { value = "..." } or { value_from = { kind = "...", name = "...", field_path = "..." } }
-    project_id = object({
-      value      = optional(string)
-      value_from = optional(object({
-        kind       = optional(string)
-        env        = optional(string)
-        name       = string
-        field_path = optional(string)
-      }))
-    })
+    # Instance name; empty falls back to metadata.name. Immutable.
+    instance_name = optional(string, "")
 
-    # Zone where the instance will be deployed, for example "us-central1-a".
+    # Zone, e.g. "us-central1-a". Immutable.
     zone = string
 
-    # Machine type for the instance, for example "e2-medium", "n1-standard-1".
+    # Machine type. Mutable via stop/update/start.
     machine_type = string
 
-    # Boot disk configuration for the instance.
+    description = optional(string, "")
+
+    # Custom FQDN hostname. Immutable.
+    hostname = optional(string, "")
+
+    # Boot disk. Exactly one source (image / source_snapshot /
+    # source_disk) — enforced pre-deploy by the spec's CEL.
     boot_disk = object({
-      # Source image for the boot disk.
-      image = string
-
-      # Size of the boot disk in GB.
-      size_gb = optional(number, 10)
-
-      # Type of the boot disk (pd-standard, pd-ssd, pd-balanced).
-      type = optional(string, "pd-standard")
-
-      # Whether to auto-delete the boot disk when the instance is deleted.
-      auto_delete = optional(bool, true)
+      image           = optional(string, "")
+      source_snapshot = optional(string, "")
+      source_disk     = optional(string, "")
+      size_gb         = optional(number)
+      type            = optional(string, "")
+      auto_delete     = optional(bool)
+      device_name     = optional(string, "")
+      kms_key         = optional(string, "")
+      disk_labels     = optional(map(string), {})
+      # Hyperdisk tuning; null for pd-* types.
+      provisioned_iops       = optional(number)
+      provisioned_throughput = optional(number)
+      architecture           = optional(string, "")
+      # Confidential-mode boot disk (hyperdisk SKUs; requires kms_key).
+      enable_confidential_compute = optional(bool, false)
+      resource_policies           = optional(list(string), [])
+      storage_pool                = optional(string, "")
     })
 
-    # Network interface configurations for the instance.
-    network_interfaces = list(object({
-      # VPC network for this interface.
-      # Supports StringValueOrRef.
-      network = optional(object({
-        value      = optional(string)
-        value_from = optional(object({
-          kind       = optional(string)
-          env        = optional(string)
-          name       = string
-          field_path = optional(string)
-        }))
-      }))
-
-      # Subnetwork for this interface.
-      # Supports StringValueOrRef.
-      subnetwork = optional(object({
-        value      = optional(string)
-        value_from = optional(object({
-          kind       = optional(string)
-          env        = optional(string)
-          name       = string
-          field_path = optional(string)
-        }))
-      }))
-
-      # Access configurations for external IPs.
-      access_configs = optional(list(object({
-        # Static NAT IP address.
-        nat_ip = optional(string)
-
-        # Network tier (PREMIUM or STANDARD).
-        network_tier = optional(string)
-      })), [])
-
-      # Alias IP ranges for this interface.
-      alias_ip_ranges = optional(list(object({
-        ip_cidr_range         = string
-        subnetwork_range_name = optional(string)
-      })), [])
-    }))
-
-    # Additional attached disks.
+    # Existing GcpComputeDisk attachments (source is the resolved disk
+    # name/self link).
     attached_disks = optional(list(object({
-      # Source disk self-link or name.
-      source = string
-
-      # Device name for the disk.
-      device_name = optional(string)
-
-      # Mode of the disk (READ_WRITE or READ_ONLY).
-      mode = optional(string, "READ_WRITE")
+      source      = string
+      device_name = optional(string, "")
+      mode        = optional(string, "")
+      kms_key     = optional(string, "")
     })), [])
 
-    # Service account configuration.
+    # Ephemeral local SSDs. Create-time only.
+    scratch_disks = optional(list(object({
+      interface   = string
+      size_gb     = optional(number)
+      device_name = optional(string, "")
+    })), [])
+
+    # Network interfaces (at least one).
+    network_interfaces = list(object({
+      network            = optional(string, "")
+      subnetwork         = optional(string, "")
+      subnetwork_project = optional(string, "")
+      # Static internal IP (resolved GcpAddress or literal IP).
+      network_ip = optional(string, "")
+      # At most one; presence grants an external IPv4.
+      access_configs = optional(list(object({
+        nat_ip                 = optional(string, "")
+        network_tier           = optional(string, "")
+        public_ptr_domain_name = optional(string, "")
+      })), [])
+      # At most one; presence grants external IPv6 (dual-stack subnets).
+      ipv6_access_configs = optional(list(object({
+        network_tier           = string
+        public_ptr_domain_name = optional(string, "")
+      })), [])
+      stack_type  = optional(string, "")
+      nic_type    = optional(string, "")
+      queue_count = optional(number)
+      alias_ip_ranges = optional(list(object({
+        ip_cidr_range         = string
+        subnetwork_range_name = optional(string, "")
+      })), [])
+    }))
+
+    # VM identity. scopes required when the block is present.
     service_account = optional(object({
-      # Email of the service account.
-      # Supports StringValueOrRef: either { value = "..." } or { value_from = { kind = "...", name = "...", field_path = "..." } }
-      email = optional(object({
-        value      = optional(string)
-        value_from = optional(object({
-          kind       = optional(string)
-          env        = optional(string)
-          name       = string
-          field_path = optional(string)
-        }))
-      }))
+      email  = optional(string, "")
+      scopes = list(string)
+    }), null)
 
-      # List of OAuth scopes.
-      scopes = optional(list(string), ["https://www.googleapis.com/auth/cloud-platform"])
-    }))
-
-    # Whether the instance should be preemptible.
-    preemptible = optional(bool, false)
-
-    # Whether the instance should be a Spot VM.
-    spot = optional(bool, false)
-
-    # Whether to enable deletion protection.
-    deletion_protection = optional(bool, false)
-
-    # Custom metadata key-value pairs.
-    metadata = optional(map(string), {})
-
-    # Labels to apply to the instance.
-    labels = optional(map(string), {})
-
-    # Network tags for firewall rules.
-    tags = optional(list(string), [])
-
-    # SSH keys for accessing the instance.
-    ssh_keys = optional(list(string), [])
-
-    # Startup script to run when the instance boots.
-    startup_script = optional(string)
-
-    # Whether to allow stopping the instance for update operations.
-    allow_stopping_for_update = optional(bool, true)
-
-    # Scheduling configuration.
+    # Provisioning model, maintenance, lifetime limits, sole-tenancy.
     scheduling = optional(object({
-      # Whether the instance is preemptible.
-      preemptible = optional(bool, false)
+      provisioning_model          = optional(string, "")
+      automatic_restart           = optional(bool)
+      on_host_maintenance         = optional(string, "")
+      instance_termination_action = optional(string, "")
+      max_run_duration_seconds    = optional(number)
+      termination_time            = optional(string, "")
+      discard_local_ssds_on_stop  = optional(bool)
+      availability_domain         = optional(number)
+      min_node_cpus               = optional(number)
+      node_affinities = optional(list(object({
+        key      = string
+        operator = string
+        values   = list(string)
+      })), [])
+      local_ssd_recovery_timeout_seconds = optional(number)
+    }), null)
 
-      # Automatic restart policy on failure.
-      automatic_restart = optional(bool, true)
+    shielded_instance_config = optional(object({
+      enable_secure_boot          = optional(bool)
+      enable_vtpm                 = optional(bool)
+      enable_integrity_monitoring = optional(bool)
+    }), null)
 
-      # Behavior when host maintenance occurs (MIGRATE or TERMINATE).
-      on_host_maintenance = optional(string, "MIGRATE")
+    confidential_instance_config = optional(object({
+      confidential_instance_type = string
+    }), null)
 
-      # Provisioning model (STANDARD or SPOT).
-      provisioning_model = optional(string)
+    advanced_machine_features = optional(object({
+      enable_nested_virtualization = optional(bool)
+      threads_per_core             = optional(number)
+      visible_core_count           = optional(number)
+      enable_uefi_networking       = optional(bool)
+      performance_monitoring_unit  = optional(string, "")
+      turbo_mode                   = optional(string, "")
+    }), null)
 
-      # Instance termination action for Spot VMs (STOP or DELETE).
-      instance_termination_action = optional(string)
-    }))
+    guest_accelerators = optional(list(object({
+      type  = string
+      count = number
+    })), [])
+
+    reservation_affinity = optional(object({
+      type = string
+      specific_reservation = optional(object({
+        key    = string
+        values = list(string)
+      }), null)
+    }), null)
+
+    total_egress_bandwidth_tier = optional(string, "")
+
+    metadata       = optional(map(string), {})
+    startup_script = optional(string, "")
+    ssh_keys       = optional(list(string), [])
+
+    labels                = optional(map(string), {})
+    tags                  = optional(list(string), [])
+    resource_manager_tags = optional(map(string), {})
+    resource_policies     = optional(list(string), [])
+
+    min_cpu_platform           = optional(string, "")
+    can_ip_forward             = optional(bool, false)
+    enable_display             = optional(bool, false)
+    deletion_protection        = optional(bool, false)
+    desired_status             = optional(string, "")
+    allow_stopping_for_update  = optional(bool)
+    key_revocation_action_type = optional(string, "")
   })
 }

@@ -36,7 +36,14 @@ type GcpBigQueryDatasetStackOutputs struct {
 	// or wiring into downstream resources that need explicit project references.
 	Project string `protobuf:"bytes,3,opt,name=project,proto3" json:"project,omitempty"`
 	// The creation time of the dataset in milliseconds since epoch.
-	CreationTime  int64 `protobuf:"varint,4,opt,name=creation_time,json=creationTime,proto3" json:"creation_time,omitempty"`
+	CreationTime int64 `protobuf:"varint,4,opt,name=creation_time,json=creationTime,proto3" json:"creation_time,omitempty"`
+	// Geographic location of the dataset (e.g. "US", "europe-west1").
+	// Every table a query joins must share this location, so downstream
+	// resources read it to co-locate.
+	Location string `protobuf:"bytes,5,opt,name=location,proto3" json:"location,omitempty"`
+	// The dataset's current entity tag, changing on every metadata
+	// modification. Useful for optimistic-concurrency API callers.
+	Etag          string `protobuf:"bytes,6,opt,name=etag,proto3" json:"etag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -99,17 +106,33 @@ func (x *GcpBigQueryDatasetStackOutputs) GetCreationTime() int64 {
 	return 0
 }
 
+func (x *GcpBigQueryDatasetStackOutputs) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+func (x *GcpBigQueryDatasetStackOutputs) GetEtag() string {
+	if x != nil {
+		return x.Etag
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpbigquerydataset_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpbigquerydataset_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/gcp/gcpbigquerydataset/v1/stack_outputs.proto\x12.dev.planton.provider.gcp.gcpbigquerydataset.v1\"\x9b\x01\n" +
+	"Bdev/planton/provider/gcp/gcpbigquerydataset/v1/stack_outputs.proto\x12.dev.planton.provider.gcp.gcpbigquerydataset.v1\"\xcb\x01\n" +
 	"\x1eGcpBigQueryDatasetStackOutputs\x12\x1d\n" +
 	"\n" +
 	"dataset_id\x18\x01 \x01(\tR\tdatasetId\x12\x1b\n" +
 	"\tself_link\x18\x02 \x01(\tR\bselfLink\x12\x18\n" +
 	"\aproject\x18\x03 \x01(\tR\aproject\x12#\n" +
-	"\rcreation_time\x18\x04 \x01(\x03R\fcreationTimeB\x8d\x03\n" +
+	"\rcreation_time\x18\x04 \x01(\x03R\fcreationTime\x12\x1a\n" +
+	"\blocation\x18\x05 \x01(\tR\blocation\x12\x12\n" +
+	"\x04etag\x18\x06 \x01(\tR\x04etagB\x8d\x03\n" +
 	"2com.dev.planton.provider.gcp.gcpbigquerydataset.v1B\x11StackOutputsProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigquerydataset/v1;gcpbigquerydatasetv1\xa2\x02\x05DPPGG\xaa\x02.Dev.Planton.Provider.Gcp.Gcpbigquerydataset.V1\xca\x02.Dev\\Planton\\Provider\\Gcp\\Gcpbigquerydataset\\V1\xe2\x02:Dev\\Planton\\Provider\\Gcp\\Gcpbigquerydataset\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Gcp::Gcpbigquerydataset::V1b\x06proto3"
 
 var (

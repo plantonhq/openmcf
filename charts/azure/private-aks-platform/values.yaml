@@ -49,12 +49,12 @@ params:
   - name: system_pool_min_nodes
     description: Autoscaler floor for the system pool (at least 1 -- the system pool can never scale to zero)
     value: 1
-    type: int
+    type: number
 
   - name: system_pool_max_nodes
     description: Autoscaler ceiling for the system pool
     value: 3
-    type: int
+    type: number
 
   - name: workload_pool_vm_size
     description: VM size for the workload node pool -- pick for the applications' shape (Standard_E-series for memory-heavy, N-series for GPU)
@@ -63,12 +63,12 @@ params:
   - name: workload_pool_min_nodes
     description: Autoscaler floor for the workload pool (0 parks the pool when nothing is scheduled)
     value: 1
-    type: int
+    type: number
 
   - name: workload_pool_max_nodes
     description: Autoscaler ceiling for the workload pool
     value: 5
-    type: int
+    type: number
 
   - name: workload_pool_spot_enabled
     description: Run the workload pool on SPOT capacity -- 30-90% cheaper but evictable at any time, for fault-tolerant or batch workloads only. Spot nodes carry the scalesetpriority taint automatically, so workloads must tolerate it to schedule there
@@ -112,4 +112,4 @@ params:
   - name: log_retention_days
     description: Days of control-plane logs and application telemetry retained in the Log Analytics workspace (30-730). Raise for compliance regimes that audit cluster operations
     value: 30
-    type: int
+    type: number

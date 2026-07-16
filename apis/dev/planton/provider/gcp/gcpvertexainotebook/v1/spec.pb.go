@@ -235,7 +235,7 @@ type GcpVertexAiNotebookNetworkInterface struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// VPC network for the instance.
 	// Can be a literal value (VPC name or self_link) or a reference to
-	// a GcpVpc resource.
+	// a GcpVpcNetwork resource.
 	Network *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
 	// Subnetwork for the instance.
 	// Can be a literal value (subnet name or self_link) or a reference to
@@ -245,7 +245,20 @@ type GcpVertexAiNotebookNetworkInterface struct {
 	// Valid values: VIRTIO_NET, GVNIC.
 	// GVNIC provides higher bandwidth and lower latency.
 	// If not specified, defaults to VIRTIO_NET.
-	NicType       string `protobuf:"bytes,3,opt,name=nic_type,json=nicType,proto3" json:"nic_type,omitempty"`
+	NicType string `protobuf:"bytes,3,opt,name=nic_type,json=nicType,proto3" json:"nic_type,omitempty"`
+	// Static external IP address for the instance (ONE_TO_ONE_NAT access
+	// config). The address must be an unused static external IP in the
+	// same region as the instance's zone. Reference a GcpAddress resource
+	// to reserve and pin the IP as a first-class node, or pass a literal
+	// IP address.
+	//
+	// If omitted (and public IP is not disabled), GCP assigns an ephemeral
+	// external IP from a shared pool -- the IP changes across stop/start
+	// cycles. Pin a static address when firewall allowlists or DNS records
+	// depend on the instance's IP.
+	//
+	// Cannot be combined with disable_public_ip. Immutable after creation.
+	ExternalIp    *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=external_ip,json=externalIp,proto3" json:"external_ip,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -301,21 +314,159 @@ func (x *GcpVertexAiNotebookNetworkInterface) GetNicType() string {
 	return ""
 }
 
+func (x *GcpVertexAiNotebookNetworkInterface) GetExternalIp() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ExternalIp
+	}
+	return nil
+}
+
+// GcpVertexAiNotebookConfidentialInstanceConfig enables Confidential
+// Computing for the notebook VM: guest memory is encrypted in use with
+// AMD SEV (Secure Encrypted Virtualization), protecting data even from
+// the host hypervisor. Requires an AMD-based machine type that supports
+// SEV (e.g., the n2d family). Immutable after creation.
+type GcpVertexAiNotebookConfidentialInstanceConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Confidential computing technology for the instance.
+	// The only supported value is SEV (AMD Secure Encrypted Virtualization).
+	// If not specified, defaults to SEV.
+	ConfidentialInstanceType string `protobuf:"bytes,1,opt,name=confidential_instance_type,json=confidentialInstanceType,proto3" json:"confidential_instance_type,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *GcpVertexAiNotebookConfidentialInstanceConfig) Reset() {
+	*x = GcpVertexAiNotebookConfidentialInstanceConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpVertexAiNotebookConfidentialInstanceConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpVertexAiNotebookConfidentialInstanceConfig) ProtoMessage() {}
+
+func (x *GcpVertexAiNotebookConfidentialInstanceConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpVertexAiNotebookConfidentialInstanceConfig.ProtoReflect.Descriptor instead.
+func (*GcpVertexAiNotebookConfidentialInstanceConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GcpVertexAiNotebookConfidentialInstanceConfig) GetConfidentialInstanceType() string {
+	if x != nil {
+		return x.ConfidentialInstanceType
+	}
+	return ""
+}
+
+// GcpVertexAiNotebookReservationAffinity controls which Compute Engine
+// capacity reservations the notebook VM may consume. Organizations that
+// pre-purchase GPU or high-demand CPU capacity use reservations to
+// guarantee availability; this block points the notebook at that
+// capacity. Immutable after creation.
+type GcpVertexAiNotebookReservationAffinity struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How the instance consumes reservations:
+	//   - RESERVATION_ANY (default): consume any matching open reservation.
+	//   - RESERVATION_SPECIFIC: consume only the reservation named in
+	//     key/values.
+	//   - RESERVATION_NONE: never consume reserved capacity (on-demand only).
+	ConsumeReservationType string `protobuf:"bytes,1,opt,name=consume_reservation_type,json=consumeReservationType,proto3" json:"consume_reservation_type,omitempty"`
+	// Corresponds to the label key of a reservation resource. To target a
+	// SPECIFIC_RESERVATION by name, use "compute.googleapis.com/reservation-name"
+	// as the key. Only valid with RESERVATION_SPECIFIC.
+	Key string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	// Corresponds to the label values of a reservation resource -- for the
+	// reservation-name key, the reservation's name. Only valid with
+	// RESERVATION_SPECIFIC.
+	Values        []string `protobuf:"bytes,3,rep,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpVertexAiNotebookReservationAffinity) Reset() {
+	*x = GcpVertexAiNotebookReservationAffinity{}
+	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpVertexAiNotebookReservationAffinity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpVertexAiNotebookReservationAffinity) ProtoMessage() {}
+
+func (x *GcpVertexAiNotebookReservationAffinity) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpVertexAiNotebookReservationAffinity.ProtoReflect.Descriptor instead.
+func (*GcpVertexAiNotebookReservationAffinity) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GcpVertexAiNotebookReservationAffinity) GetConsumeReservationType() string {
+	if x != nil {
+		return x.ConsumeReservationType
+	}
+	return ""
+}
+
+func (x *GcpVertexAiNotebookReservationAffinity) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *GcpVertexAiNotebookReservationAffinity) GetValues() []string {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
 // GcpVertexAiNotebookVmImage defines a Compute Engine VM image to use
-// as the notebook environment. This is the most common configuration --
-// GCP provides pre-built deep learning VM images with popular ML frameworks
-// (TensorFlow, PyTorch, JAX) and JupyterLab pre-installed.
+// as the notebook environment. When this message is omitted entirely,
+// the Workbench service provisions its default (latest) Workbench image
+// with JupyterLab and the common ML stack pre-installed -- the
+// recommended shape for most notebooks.
 //
 // Mutually exclusive with GcpVertexAiNotebookContainerImage.
 type GcpVertexAiNotebookVmImage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Google Cloud project that the VM image belongs to.
-	// Defaults to "deeplearning-platform-release" for GCP's pre-built
-	// deep learning images.
+	// GCP's own Workbench images live in "cloud-notebooks-managed".
+	// (The legacy deep-learning-VM notebook families under
+	// "deeplearning-platform-release" have been retired by GCP and no
+	// longer resolve.)
 	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
 	// VM image family. The newest image in this family will be used.
-	// Example families: "common-cpu-notebooks", "tf-latest-gpu",
-	// "pytorch-latest-gpu", "r-latest-cpu-experimental".
+	// GCP's maintained family for Workbench instances is
+	// "workbench-instances" (in the "cloud-notebooks-managed" project).
 	// Mutually exclusive with name (within this message).
 	Family string `protobuf:"bytes,2,opt,name=family,proto3" json:"family,omitempty"`
 	// Specific VM image name. Use this instead of family when you need
@@ -328,7 +479,7 @@ type GcpVertexAiNotebookVmImage struct {
 
 func (x *GcpVertexAiNotebookVmImage) Reset() {
 	*x = GcpVertexAiNotebookVmImage{}
-	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -340,7 +491,7 @@ func (x *GcpVertexAiNotebookVmImage) String() string {
 func (*GcpVertexAiNotebookVmImage) ProtoMessage() {}
 
 func (x *GcpVertexAiNotebookVmImage) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -353,7 +504,7 @@ func (x *GcpVertexAiNotebookVmImage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpVertexAiNotebookVmImage.ProtoReflect.Descriptor instead.
 func (*GcpVertexAiNotebookVmImage) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GcpVertexAiNotebookVmImage) GetProject() string {
@@ -396,7 +547,7 @@ type GcpVertexAiNotebookContainerImage struct {
 
 func (x *GcpVertexAiNotebookContainerImage) Reset() {
 	*x = GcpVertexAiNotebookContainerImage{}
-	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -408,7 +559,7 @@ func (x *GcpVertexAiNotebookContainerImage) String() string {
 func (*GcpVertexAiNotebookContainerImage) ProtoMessage() {}
 
 func (x *GcpVertexAiNotebookContainerImage) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -421,7 +572,7 @@ func (x *GcpVertexAiNotebookContainerImage) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GcpVertexAiNotebookContainerImage.ProtoReflect.Descriptor instead.
 func (*GcpVertexAiNotebookContainerImage) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GcpVertexAiNotebookContainerImage) GetRepository() string {
@@ -461,7 +612,7 @@ type GcpVertexAiNotebookShieldedInstanceConfig struct {
 
 func (x *GcpVertexAiNotebookShieldedInstanceConfig) Reset() {
 	*x = GcpVertexAiNotebookShieldedInstanceConfig{}
-	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -473,7 +624,7 @@ func (x *GcpVertexAiNotebookShieldedInstanceConfig) String() string {
 func (*GcpVertexAiNotebookShieldedInstanceConfig) ProtoMessage() {}
 
 func (x *GcpVertexAiNotebookShieldedInstanceConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -486,7 +637,7 @@ func (x *GcpVertexAiNotebookShieldedInstanceConfig) ProtoReflect() protoreflect.
 
 // Deprecated: Use GcpVertexAiNotebookShieldedInstanceConfig.ProtoReflect.Descriptor instead.
 func (*GcpVertexAiNotebookShieldedInstanceConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GcpVertexAiNotebookShieldedInstanceConfig) GetEnableSecureBoot() bool {
@@ -529,16 +680,17 @@ func (x *GcpVertexAiNotebookShieldedInstanceConfig) GetEnableIntegrityMonitoring
 //   - Exactly one of vm_image or container_image may be specified. If
 //     neither is specified, GCP uses the default deep learning VM image.
 //
-//   - GCP labels are supported and applied automatically by the framework.
-//
 //   - GPU accelerators require compatible machine types (e.g., n1-standard-*
 //     for NVIDIA_TESLA_T4). See GCP documentation for compatibility matrix.
 //
-//   - Network configuration, service account, tags, and disk encryption
-//     settings are immutable after creation (ForceNew).
+//   - Network configuration, service account, tags, confidential computing,
+//     reservation affinity, and disk encryption settings are immutable
+//     after creation (ForceNew).
 type GcpVertexAiNotebookSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project where the notebook instance will be created.
+	// If omitted, the instance is created in the provider's default
+	// project (from the credential or ambient configuration).
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// GCP zone where the notebook instance will be created (e.g., "us-central1-a").
 	// Immutable after creation.
@@ -569,63 +721,88 @@ type GcpVertexAiNotebookSpec struct {
 	// Custom metadata key-value pairs for the instance.
 	// Some keys trigger special behaviors (e.g., install-monitoring-agent).
 	Metadata map[string]string `protobuf:"bytes,8,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// User-defined labels to organize the instance (cost attribution,
+	// team ownership, environment tagging). Keys and values must follow
+	// GCP label rules: lowercase letters, digits, underscores, and dashes,
+	// at most 63 characters. Merged with the platform's attribution labels;
+	// on key conflicts the platform labels win. Mutable in place.
+	Labels map[string]string `protobuf:"bytes,9,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Boot disk configuration for the notebook instance.
 	// If not specified, GCP provisions a 150 GB PD_SSD boot disk with
 	// Google-managed encryption.
-	BootDisk *GcpVertexAiNotebookBootDisk `protobuf:"bytes,9,opt,name=boot_disk,json=bootDisk,proto3" json:"boot_disk,omitempty"`
+	BootDisk *GcpVertexAiNotebookBootDisk `protobuf:"bytes,10,opt,name=boot_disk,json=bootDisk,proto3" json:"boot_disk,omitempty"`
 	// Data disk configuration for the notebook instance.
 	// GCP supports exactly one data disk per Workbench instance.
 	// If not specified, GCP provisions a 100 GB data disk with
 	// Google-managed encryption.
-	DataDisk *GcpVertexAiNotebookDataDisk `protobuf:"bytes,10,opt,name=data_disk,json=dataDisk,proto3" json:"data_disk,omitempty"`
+	DataDisk *GcpVertexAiNotebookDataDisk `protobuf:"bytes,11,opt,name=data_disk,json=dataDisk,proto3" json:"data_disk,omitempty"`
 	// GPU accelerator configuration for the notebook instance.
 	// GCP supports one accelerator configuration per instance.
 	// Requires compatible machine types (e.g., n1-standard-* for Tesla GPUs).
-	AcceleratorConfig *GcpVertexAiNotebookAcceleratorConfig `protobuf:"bytes,11,opt,name=accelerator_config,json=acceleratorConfig,proto3" json:"accelerator_config,omitempty"`
+	AcceleratorConfig *GcpVertexAiNotebookAcceleratorConfig `protobuf:"bytes,12,opt,name=accelerator_config,json=acceleratorConfig,proto3" json:"accelerator_config,omitempty"`
 	// Network interface configuration for the notebook instance.
 	// GCP supports one network interface per instance.
 	// If not specified, the instance uses the default VPC network.
 	// Immutable after creation.
-	NetworkInterface *GcpVertexAiNotebookNetworkInterface `protobuf:"bytes,12,opt,name=network_interface,json=networkInterface,proto3" json:"network_interface,omitempty"`
+	NetworkInterface *GcpVertexAiNotebookNetworkInterface `protobuf:"bytes,13,opt,name=network_interface,json=networkInterface,proto3" json:"network_interface,omitempty"`
 	// If true, no external IP is assigned to the instance.
 	// Use this for instances that should only be accessible through
 	// the Vertex AI proxy or a VPN/Cloud IAP tunnel.
 	// Immutable after creation.
-	DisablePublicIp bool `protobuf:"varint,13,opt,name=disable_public_ip,json=disablePublicIp,proto3" json:"disable_public_ip,omitempty"`
+	DisablePublicIp bool `protobuf:"varint,14,opt,name=disable_public_ip,json=disablePublicIp,proto3" json:"disable_public_ip,omitempty"`
 	// If true, enable IP forwarding on the instance. Useful for
 	// instances acting as network gateways. Default false.
 	// Immutable after creation.
-	EnableIpForwarding bool `protobuf:"varint,14,opt,name=enable_ip_forwarding,json=enableIpForwarding,proto3" json:"enable_ip_forwarding,omitempty"`
+	EnableIpForwarding bool `protobuf:"varint,15,opt,name=enable_ip_forwarding,json=enableIpForwarding,proto3" json:"enable_ip_forwarding,omitempty"`
 	// Service account email for the notebook VM identity.
 	// The VM uses this service account to access GCP resources
 	// (BigQuery, GCS, Vertex AI, etc.). Scopes are fixed to
 	// "https://www.googleapis.com/auth/cloud-platform".
 	// Immutable after creation.
-	ServiceAccount *v1.StringValueOrRef `protobuf:"bytes,15,opt,name=service_account,json=serviceAccount,proto3" json:"service_account,omitempty"`
+	ServiceAccount *v1.StringValueOrRef `protobuf:"bytes,16,opt,name=service_account,json=serviceAccount,proto3" json:"service_account,omitempty"`
 	// Compute Engine network tags for firewall rules.
 	// Immutable after creation.
-	Tags []string `protobuf:"bytes,16,rep,name=tags,proto3" json:"tags,omitempty"`
+	Tags []string `protobuf:"bytes,17,rep,name=tags,proto3" json:"tags,omitempty"`
 	// VM image configuration for the notebook environment.
 	// Uses pre-built deep learning VM images from GCP with popular
 	// ML frameworks (TensorFlow, PyTorch, JAX) and JupyterLab.
 	// Mutually exclusive with container_image.
 	// Immutable after creation.
-	VmImage *GcpVertexAiNotebookVmImage `protobuf:"bytes,17,opt,name=vm_image,json=vmImage,proto3" json:"vm_image,omitempty"`
+	VmImage *GcpVertexAiNotebookVmImage `protobuf:"bytes,18,opt,name=vm_image,json=vmImage,proto3" json:"vm_image,omitempty"`
 	// Container image configuration for a custom notebook environment.
 	// Use this when pre-built VM images don't meet your needs.
 	// Mutually exclusive with vm_image.
-	ContainerImage *GcpVertexAiNotebookContainerImage `protobuf:"bytes,18,opt,name=container_image,json=containerImage,proto3" json:"container_image,omitempty"`
+	ContainerImage *GcpVertexAiNotebookContainerImage `protobuf:"bytes,19,opt,name=container_image,json=containerImage,proto3" json:"container_image,omitempty"`
 	// Shielded VM configuration for enhanced security.
 	// Shielded VMs protect against rootkits and bootkits with
 	// Secure Boot, vTPM, and integrity monitoring.
-	ShieldedInstanceConfig *GcpVertexAiNotebookShieldedInstanceConfig `protobuf:"bytes,19,opt,name=shielded_instance_config,json=shieldedInstanceConfig,proto3" json:"shielded_instance_config,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	ShieldedInstanceConfig *GcpVertexAiNotebookShieldedInstanceConfig `protobuf:"bytes,20,opt,name=shielded_instance_config,json=shieldedInstanceConfig,proto3" json:"shielded_instance_config,omitempty"`
+	// Confidential Computing configuration. When set, guest memory is
+	// encrypted in use with AMD SEV -- data stays protected even from the
+	// host hypervisor. Requires an SEV-capable AMD machine type (e.g., the
+	// n2d family). Immutable after creation.
+	ConfidentialInstanceConfig *GcpVertexAiNotebookConfidentialInstanceConfig `protobuf:"bytes,21,opt,name=confidential_instance_config,json=confidentialInstanceConfig,proto3" json:"confidential_instance_config,omitempty"`
+	// Compute Engine reservation affinity. Points the notebook VM at
+	// pre-purchased capacity reservations -- the way organizations
+	// guarantee GPU availability for ML workloads. Immutable after creation.
+	ReservationAffinity *GcpVertexAiNotebookReservationAffinity `protobuf:"bytes,22,opt,name=reservation_affinity,json=reservationAffinity,proto3" json:"reservation_affinity,omitempty"`
+	// Enable managed end-user credentials (EUC) for the instance. With
+	// managed EUC, JupyterLab runs as the accessing user's own Google
+	// identity rather than the VM's service account, so notebook code sees
+	// the user's IAM permissions (single-user auditability). Mutable in place.
+	EnableManagedEuc bool `protobuf:"varint,23,opt,name=enable_managed_euc,json=enableManagedEuc,proto3" json:"enable_managed_euc,omitempty"`
+	// Allow access to the notebook through a third-party identity provider
+	// configured on the organization (workforce identity federation).
+	// Leave false when all users authenticate with Google identities.
+	// Mutable in place.
+	EnableThirdPartyIdentity bool `protobuf:"varint,24,opt,name=enable_third_party_identity,json=enableThirdPartyIdentity,proto3" json:"enable_third_party_identity,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *GcpVertexAiNotebookSpec) Reset() {
 	*x = GcpVertexAiNotebookSpec{}
-	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -637,7 +814,7 @@ func (x *GcpVertexAiNotebookSpec) String() string {
 func (*GcpVertexAiNotebookSpec) ProtoMessage() {}
 
 func (x *GcpVertexAiNotebookSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -650,7 +827,7 @@ func (x *GcpVertexAiNotebookSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpVertexAiNotebookSpec.ProtoReflect.Descriptor instead.
 func (*GcpVertexAiNotebookSpec) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GcpVertexAiNotebookSpec) GetProjectId() *v1.StringValueOrRef {
@@ -705,6 +882,13 @@ func (x *GcpVertexAiNotebookSpec) GetDisableProxyAccess() bool {
 func (x *GcpVertexAiNotebookSpec) GetMetadata() map[string]string {
 	if x != nil {
 		return x.Metadata
+	}
+	return nil
+}
+
+func (x *GcpVertexAiNotebookSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
 	}
 	return nil
 }
@@ -786,6 +970,34 @@ func (x *GcpVertexAiNotebookSpec) GetShieldedInstanceConfig() *GcpVertexAiNotebo
 	return nil
 }
 
+func (x *GcpVertexAiNotebookSpec) GetConfidentialInstanceConfig() *GcpVertexAiNotebookConfidentialInstanceConfig {
+	if x != nil {
+		return x.ConfidentialInstanceConfig
+	}
+	return nil
+}
+
+func (x *GcpVertexAiNotebookSpec) GetReservationAffinity() *GcpVertexAiNotebookReservationAffinity {
+	if x != nil {
+		return x.ReservationAffinity
+	}
+	return nil
+}
+
+func (x *GcpVertexAiNotebookSpec) GetEnableManagedEuc() bool {
+	if x != nil {
+		return x.EnableManagedEuc
+	}
+	return false
+}
+
+func (x *GcpVertexAiNotebookSpec) GetEnableThirdPartyIdentity() bool {
+	if x != nil {
+		return x.EnableThirdPartyIdentity
+	}
+	return false
+}
+
 var File_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDesc = "" +
@@ -810,12 +1022,23 @@ const file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDesc = 
 	"\x16valid_accelerator_type\x12[type must be a valid accelerator type (e.g., NVIDIA_TESLA_T4, NVIDIA_L4, NVIDIA_TESLA_A100)\x1a\xe3\x01this == '' || this in ['NVIDIA_TESLA_P100', 'NVIDIA_TESLA_V100', 'NVIDIA_TESLA_P4', 'NVIDIA_TESLA_T4', 'NVIDIA_TESLA_A100', 'NVIDIA_A100_80GB', 'NVIDIA_L4', 'NVIDIA_TESLA_T4_VWS', 'NVIDIA_TESLA_P100_VWS', 'NVIDIA_TESLA_P4_VWS']R\x04type\x12\x81\x01\n" +
 	"\n" +
 	"core_count\x18\x02 \x01(\x05Bb\xbaH_\xba\x01\\\n" +
-	"\x1cvalid_accelerator_core_count\x12%core_count must be a positive integer\x1a\x15this == 0 || this > 0R\tcoreCount\"\xa7\x03\n" +
+	"\x1cvalid_accelerator_core_count\x12%core_count must be a positive integer\x1a\x15this == 0 || this > 0R\tcoreCount\"\x9d\x04\n" +
 	"#GcpVertexAiNotebookNetworkInterface\x12w\n" +
 	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12x\n" +
 	"\x06subnet\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\x06subnet\x12\x8c\x01\n" +
 	"\bnic_type\x18\x03 \x01(\tBq\xbaHn\xba\x01k\n" +
-	"\x0evalid_nic_type\x12*nic_type must be one of: VIRTIO_NET, GVNIC\x1a-this == '' || this in ['VIRTIO_NET', 'GVNIC']R\anicType\"b\n" +
+	"\x0evalid_nic_type\x12*nic_type must be one of: VIRTIO_NET, GVNIC\x1a-this == '' || this in ['VIRTIO_NET', 'GVNIC']R\anicType\x12t\n" +
+	"\vexternal_ip\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xca\x05\x92\xd4a\x16status.outputs.addressR\n" +
+	"externalIp\"\x8d\x02\n" +
+	"-GcpVertexAiNotebookConfidentialInstanceConfig\x12\xdb\x01\n" +
+	"\x1aconfidential_instance_type\x18\x01 \x01(\tB\x9c\x01\xbaH\x98\x01\xba\x01\x94\x01\n" +
+	" valid_confidential_instance_type\x12Sconfidential_instance_type must be SEV (the only supported confidential technology)\x1a\x1bthis == '' || this == 'SEV'R\x18confidentialInstanceType\"\xe3\x04\n" +
+	"&GcpVertexAiNotebookReservationAffinity\x12\x9c\x02\n" +
+	"\x18consume_reservation_type\x18\x01 \x01(\tB\xe1\x01\xbaH\xdd\x01\xba\x01\xd9\x01\n" +
+	"\x1evalid_consume_reservation_type\x12`consume_reservation_type must be one of: RESERVATION_NONE, RESERVATION_ANY, RESERVATION_SPECIFIC\x1aUthis == '' || this in ['RESERVATION_NONE', 'RESERVATION_ANY', 'RESERVATION_SPECIFIC']R\x16consumeReservationType\x12\x10\n" +
+	"\x03key\x18\x02 \x01(\tR\x03key\x12\x16\n" +
+	"\x06values\x18\x03 \x03(\tR\x06values:\xef\x01\xbaH\xeb\x01\x1a\xe8\x01\n" +
+	"(specific_reservation_requires_key_values\x12Tkey and values may only be set when consume_reservation_type is RESERVATION_SPECIFIC\x1afthis.consume_reservation_type == 'RESERVATION_SPECIFIC' || (this.key == '' && this.values.size() == 0)\"b\n" +
 	"\x1aGcpVertexAiNotebookVmImage\x12\x18\n" +
 	"\aproject\x18\x01 \x01(\tR\aproject\x12\x16\n" +
 	"\x06family\x18\x02 \x01(\tR\x06family\x12\x12\n" +
@@ -829,11 +1052,11 @@ const file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDesc = 
 	"\x12enable_secure_boot\x18\x01 \x01(\bR\x10enableSecureBoot\x12\x1f\n" +
 	"\venable_vtpm\x18\x02 \x01(\bR\n" +
 	"enableVtpm\x12>\n" +
-	"\x1benable_integrity_monitoring\x18\x03 \x01(\bR\x19enableIntegrityMonitoring\"\x9a\x11\n" +
-	"\x17GcpVertexAiNotebookSpec\x12{\n" +
+	"\x1benable_integrity_monitoring\x18\x03 \x01(\bR\x19enableIntegrityMonitoring\"\xbd\x17\n" +
+	"\x17GcpVertexAiNotebookSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12@\n" +
-	"\blocation\x18\x02 \x01(\tB$\xbaH!\xc8\x01\x01r\x1c2\x1a^[a-z]+-[a-z]+[0-9]-[a-z]$R\blocation\x12-\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12A\n" +
+	"\blocation\x18\x02 \x01(\tB%\xbaH\"\xc8\x01\x01r\x1d2\x1b^[a-z]+-[a-z]+[0-9]+-[a-z]$R\blocation\x12-\n" +
 	"\fmachine_type\x18\x03 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vmachineType\x12\xf4\x01\n" +
 	"\rinstance_name\x18\x04 \x01(\tB\xce\x01\xbaH\xca\x01\xba\x01\xc6\x01\n" +
@@ -842,23 +1065,32 @@ const file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDesc = 
 	"\rdesired_state\x18\x06 \x01(\tBw\xbaHt\xba\x01q\n" +
 	"\x13valid_desired_state\x12-desired_state must be one of: ACTIVE, STOPPED\x1a+this == '' || this in ['ACTIVE', 'STOPPED']R\fdesiredState\x120\n" +
 	"\x14disable_proxy_access\x18\a \x01(\bR\x12disableProxyAccess\x12r\n" +
-	"\bmetadata\x18\b \x03(\v2V.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.MetadataEntryR\bmetadata\x12i\n" +
-	"\tboot_disk\x18\t \x01(\v2L.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookBootDiskR\bbootDisk\x12i\n" +
-	"\tdata_disk\x18\n" +
-	" \x01(\v2L.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookDataDiskR\bdataDisk\x12\x84\x01\n" +
-	"\x12accelerator_config\x18\v \x01(\v2U.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookAcceleratorConfigR\x11acceleratorConfig\x12\x81\x01\n" +
-	"\x11network_interface\x18\f \x01(\v2T.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookNetworkInterfaceR\x10networkInterface\x12*\n" +
-	"\x11disable_public_ip\x18\r \x01(\bR\x0fdisablePublicIp\x120\n" +
-	"\x14enable_ip_forwarding\x18\x0e \x01(\bR\x12enableIpForwarding\x12z\n" +
-	"\x0fservice_account\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12\x12\n" +
-	"\x04tags\x18\x10 \x03(\tR\x04tags\x12f\n" +
-	"\bvm_image\x18\x11 \x01(\v2K.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookVmImageR\avmImage\x12{\n" +
-	"\x0fcontainer_image\x18\x12 \x01(\v2R.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookContainerImageR\x0econtainerImage\x12\x94\x01\n" +
-	"\x18shielded_instance_config\x18\x13 \x01(\v2Z.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookShieldedInstanceConfigR\x16shieldedInstanceConfig\x1a;\n" +
+	"\bmetadata\x18\b \x03(\v2V.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.MetadataEntryR\bmetadata\x12l\n" +
+	"\x06labels\x18\t \x03(\v2T.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.LabelsEntryR\x06labels\x12i\n" +
+	"\tboot_disk\x18\n" +
+	" \x01(\v2L.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookBootDiskR\bbootDisk\x12i\n" +
+	"\tdata_disk\x18\v \x01(\v2L.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookDataDiskR\bdataDisk\x12\x84\x01\n" +
+	"\x12accelerator_config\x18\f \x01(\v2U.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookAcceleratorConfigR\x11acceleratorConfig\x12\x81\x01\n" +
+	"\x11network_interface\x18\r \x01(\v2T.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookNetworkInterfaceR\x10networkInterface\x12*\n" +
+	"\x11disable_public_ip\x18\x0e \x01(\bR\x0fdisablePublicIp\x120\n" +
+	"\x14enable_ip_forwarding\x18\x0f \x01(\bR\x12enableIpForwarding\x12z\n" +
+	"\x0fservice_account\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12\x12\n" +
+	"\x04tags\x18\x11 \x03(\tR\x04tags\x12f\n" +
+	"\bvm_image\x18\x12 \x01(\v2K.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookVmImageR\avmImage\x12{\n" +
+	"\x0fcontainer_image\x18\x13 \x01(\v2R.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookContainerImageR\x0econtainerImage\x12\x94\x01\n" +
+	"\x18shielded_instance_config\x18\x14 \x01(\v2Z.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookShieldedInstanceConfigR\x16shieldedInstanceConfig\x12\xa0\x01\n" +
+	"\x1cconfidential_instance_config\x18\x15 \x01(\v2^.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookConfidentialInstanceConfigR\x1aconfidentialInstanceConfig\x12\x8a\x01\n" +
+	"\x14reservation_affinity\x18\x16 \x01(\v2W.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookReservationAffinityR\x13reservationAffinity\x12,\n" +
+	"\x12enable_managed_euc\x18\x17 \x01(\bR\x10enableManagedEuc\x12=\n" +
+	"\x1benable_third_party_identity\x18\x18 \x01(\bR\x18enableThirdPartyIdentity\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa3\x01\xbaH\x9f\x01\x1a\x9c\x01\n" +
-	")vm_image_container_image_mutual_exclusion\x12<only one of vm_image or container_image can be set, not both\x1a1!has(this.vm_image) || !has(this.container_image)B\x8c\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x85\x03\xbaH\x81\x03\x1a\x9c\x01\n" +
+	")vm_image_container_image_mutual_exclusion\x12<only one of vm_image or container_image can be set, not both\x1a1!has(this.vm_image) || !has(this.container_image)\x1a\xdf\x01\n" +
+	",external_ip_conflicts_with_disable_public_ip\x12Jnetwork_interface.external_ip cannot be set when disable_public_ip is true\x1ac!this.disable_public_ip || !has(this.network_interface) || !has(this.network_interface.external_ip)B\x8c\x03\n" +
 	"3com.dev.planton.provider.gcp.gcpvertexainotebook.v1B\tSpecProtoP\x01Zggithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexainotebook/v1;gcpvertexainotebookv1\xa2\x02\x05DPPGG\xaa\x02/Dev.Planton.Provider.Gcp.Gcpvertexainotebook.V1\xca\x02/Dev\\Planton\\Provider\\Gcp\\Gcpvertexainotebook\\V1\xe2\x02;Dev\\Planton\\Provider\\Gcp\\Gcpvertexainotebook\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Gcp::Gcpvertexainotebook::V1b\x06proto3"
 
 var (
@@ -873,39 +1105,46 @@ func file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDescGZIP
 	return file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_goTypes = []any{
-	(*GcpVertexAiNotebookBootDisk)(nil),               // 0: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookBootDisk
-	(*GcpVertexAiNotebookDataDisk)(nil),               // 1: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookDataDisk
-	(*GcpVertexAiNotebookAcceleratorConfig)(nil),      // 2: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookAcceleratorConfig
-	(*GcpVertexAiNotebookNetworkInterface)(nil),       // 3: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookNetworkInterface
-	(*GcpVertexAiNotebookVmImage)(nil),                // 4: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookVmImage
-	(*GcpVertexAiNotebookContainerImage)(nil),         // 5: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookContainerImage
-	(*GcpVertexAiNotebookShieldedInstanceConfig)(nil), // 6: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookShieldedInstanceConfig
-	(*GcpVertexAiNotebookSpec)(nil),                   // 7: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec
-	nil,                                               // 8: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.MetadataEntry
-	(*v1.StringValueOrRef)(nil),                       // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpVertexAiNotebookBootDisk)(nil),                   // 0: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookBootDisk
+	(*GcpVertexAiNotebookDataDisk)(nil),                   // 1: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookDataDisk
+	(*GcpVertexAiNotebookAcceleratorConfig)(nil),          // 2: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookAcceleratorConfig
+	(*GcpVertexAiNotebookNetworkInterface)(nil),           // 3: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookNetworkInterface
+	(*GcpVertexAiNotebookConfidentialInstanceConfig)(nil), // 4: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookConfidentialInstanceConfig
+	(*GcpVertexAiNotebookReservationAffinity)(nil),        // 5: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookReservationAffinity
+	(*GcpVertexAiNotebookVmImage)(nil),                    // 6: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookVmImage
+	(*GcpVertexAiNotebookContainerImage)(nil),             // 7: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookContainerImage
+	(*GcpVertexAiNotebookShieldedInstanceConfig)(nil),     // 8: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookShieldedInstanceConfig
+	(*GcpVertexAiNotebookSpec)(nil),                       // 9: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec
+	nil,                                                   // 10: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.MetadataEntry
+	nil,                                                   // 11: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),                           // 12: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_depIdxs = []int32{
-	9,  // 0: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookBootDisk.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 1: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookDataDisk.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 2: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookNetworkInterface.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 3: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookNetworkInterface.subnet:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 4: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 5: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.metadata:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.MetadataEntry
-	0,  // 6: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.boot_disk:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookBootDisk
-	1,  // 7: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.data_disk:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookDataDisk
-	2,  // 8: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.accelerator_config:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookAcceleratorConfig
-	3,  // 9: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.network_interface:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookNetworkInterface
-	9,  // 10: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 11: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.vm_image:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookVmImage
-	5,  // 12: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.container_image:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookContainerImage
-	6,  // 13: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.shielded_instance_config:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookShieldedInstanceConfig
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	12, // 0: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookBootDisk.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 1: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookDataDisk.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 2: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookNetworkInterface.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 3: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookNetworkInterface.subnet:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 4: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookNetworkInterface.external_ip:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 5: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 6: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.metadata:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.MetadataEntry
+	11, // 7: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.labels:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.LabelsEntry
+	0,  // 8: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.boot_disk:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookBootDisk
+	1,  // 9: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.data_disk:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookDataDisk
+	2,  // 10: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.accelerator_config:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookAcceleratorConfig
+	3,  // 11: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.network_interface:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookNetworkInterface
+	12, // 12: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 13: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.vm_image:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookVmImage
+	7,  // 14: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.container_image:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookContainerImage
+	8,  // 15: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.shielded_instance_config:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookShieldedInstanceConfig
+	4,  // 16: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.confidential_instance_config:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookConfidentialInstanceConfig
+	5,  // 17: dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpec.reservation_affinity:type_name -> dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookReservationAffinity
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_init() }
@@ -919,7 +1158,7 @@ func file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

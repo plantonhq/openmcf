@@ -1,0 +1,44 @@
+# GcpArtifactRegistryRepo scenario: a standard Docker repository with
+# immutable tags, both cleanup-policy arms (DELETE + KEEP), and an
+# additive IAM member resolved live from the GcpServiceAccount
+# prerequisite. project_id is deliberately omitted (ambient project).
+apiVersion: gcp.planton.dev/v1
+kind: GcpArtifactRegistryRepo
+metadata:
+  name: planton-oss-e2e-gcpart-std
+  id: planton-oss-e2e-gcpart-std
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpartifactregistryrepo
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  repositoryId: e2e-ar-std-${E2E_RUN_ID}
+  location: us-central1
+  format: DOCKER
+  description: e2e standard docker repository
+  dockerConfig:
+    immutableTags: true
+  cleanupPolicies:
+    - id: delete-old-untagged
+      action: DELETE
+      condition:
+        olderThan: "2592000s"
+        tagState: UNTAGGED
+    - id: keep-last-5
+      action: KEEP
+      mostRecentVersions:
+        keepCount: 5
+  iamMembers:
+    - role: roles/artifactregistry.reader
+      member:
+        valueFrom:
+          kind: GcpServiceAccount
+          name: planton-oss-e2e-gsa-prereq
+          fieldPath: status.outputs.member
+  labels:
+    e2e-suite: gcp

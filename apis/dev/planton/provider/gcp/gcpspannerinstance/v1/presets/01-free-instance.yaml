@@ -1,11 +1,10 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerInstance
 metadata:
-  name: my-dev-spanner
+  name: dev-spanner
 spec:
-  projectId:
-    value: "<gcp-project-id>"
-  instanceName: <instance-name>
+  # project_id omitted: falls back to the provider's default project.
+  # Replace with a projectId value or valueFrom ref to target another project.
   config: regional-us-central1
-  displayName: <display-name>
+  displayName: Dev Spanner
   instanceType: FREE_INSTANCE

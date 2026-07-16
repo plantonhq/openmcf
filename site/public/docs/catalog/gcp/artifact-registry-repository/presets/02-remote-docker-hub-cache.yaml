@@ -1,0 +1,24 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpArtifactRegistryRepo
+metadata:
+  name: dockerhub-cache
+spec:
+  location: us-central1 # replace — co-locate with the clusters that pull through it
+  format: DOCKER
+  mode: REMOTE_REPOSITORY
+  description: pull-through cache of Docker Hub
+  remoteRepositoryConfig:
+    dockerPublicRepository: DOCKER_HUB
+    # Optional: authenticate to Docker Hub for higher rate limits. The
+    # password lives in Secret Manager — only its version PATH goes here.
+    # upstreamCredentials:
+    #   username: my-dockerhub-user
+    #   passwordSecretVersion: projects/my-project/secrets/dockerhub-token/versions/latest
+  cleanupPolicies:
+    # A cache needs no history: drop anything not pulled again in 30 days.
+    - id: expire-cache
+      action: DELETE
+      condition:
+        olderThan: "2592000s"
+  labels:
+    team: platform # replace with your cost-attribution labels

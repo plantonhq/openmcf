@@ -25,7 +25,7 @@ patterns.
 1. **Four delivery methods, mutually exclusive**: Push, BigQuery, Cloud Storage, or
    pull (default). Only one can be active. This is enforced at the API level.
 
-2. **Immutable fields**: `name`, `filter`, `enable_message_ordering`, and `tags` are
+2. **Immutable fields**: `name`, `topic`, `filter`, and `enable_message_ordering` are
    ForceNew -- changing them requires destroying and recreating the subscription.
 
 3. **Ack deadline drives redelivery**: Messages not acknowledged within the deadline
@@ -36,9 +36,9 @@ patterns.
    Subscriber permission on the subscription and Publisher permission on the
    dead-letter topic.
 
-## What This Component Covers (80/20 Scoping)
+## What This Component Covers (90/10 Scoping)
 
-### Included (High-Value, Widely Used)
+### Included
 
 | Feature | Rationale |
 |---------|-----------|
@@ -53,13 +53,17 @@ patterns.
 | Message ordering | FIFO delivery by ordering key |
 | Exactly-once delivery | Deduplication guarantees |
 | Filter | Attribute-based routing |
+| User labels | Cost attribution and fleet queries, merged beneath platform labels |
+| Message transforms | Ordered JavaScript UDF pipeline for per-consumer payload reshaping |
 
-### Excluded (Niche or Emerging)
+### Excluded (recorded reasons)
 
 | Feature | Reason |
 |---------|--------|
-| `message_transforms` | JavaScript UDF transforms -- newer, niche feature. Users needing this can use raw Terraform/Pulumi directly. |
-| `tags` | Resource manager tags are immutable and niche. Framework labels handle the common use case. |
+| `tags` (resource-manager tags) | Absent from the released `google ~> 6.x` line (unreleased-line only); revisit when the catalog's provider line carries it. |
+| `message_transforms.ai_inference` | The Vertex AI transform arm is absent from the released `google ~> 6.x` line; only the JavaScript UDF arm is released and modeled. |
+| `deletion_policy` | Client-side lever that conflicts with Planton-managed destroy (catalog-wide skip; also absent from the released 6.x line). |
+| IAM trios (`google_pubsub_subscription_iam_*`) | Resource-scoped IAM stays out pending concrete pull; the additive project-level grant (GcpProjectIamMember) covers the real cases. |
 
 ## Delivery Method Comparison
 

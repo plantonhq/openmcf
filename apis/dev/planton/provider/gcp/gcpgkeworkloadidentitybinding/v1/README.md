@@ -1,31 +1,57 @@
 # GCP GKE Workload Identity Binding
 
-Atomically bind a Kubernetes Service Account (KSA) to a Google Service Account (GSA) to enable secure, keyless authentication for GKE workloads accessing Google Cloud APIs.
+Grants a Kubernetes ServiceAccount (KSA) the right to impersonate a Google
+Service Account (GSA) — the GCP half of GKE Workload Identity, and the
+keyless alternative to exported service account keys.
 
 ## Purpose
 
-GKE Workload Identity is the **recommended way** for applications running in GKE to authenticate to Google Cloud services—eliminating the need for distributable service account keys. However, provisioning a Workload Identity binding manually is error-prone and requires a precise "dual-write" operation across two systems (GCP IAM and Kubernetes).
+GKE Workload Identity is the recommended way for applications running in GKE
+to authenticate to Google Cloud services: pods mint short-lived tokens as a
+GSA instead of mounting a distributable key file. The GCP side of the
+handshake is one precise IAM grant — `roles/iam.workloadIdentityUser` on the
+GSA, to the principal
+`serviceAccount:{project}.svc.id.goog[{namespace}/{ksa}]`.
 
-This component provides a **pattern-level abstraction** that:
+This component owns exactly that grant, and constructs the brittle principal
+string from simple validated inputs — a typo'd principal is impossible by
+construction, and namespace/name are validated against Kubernetes naming
+rules before anything deploys.
 
-1. **Atomically manages the dual-write**: Synchronizes the IAM policy binding on the GSA with the annotation on the KSA
-2. **Constructs the brittle principal string automatically**: Builds `serviceAccount:{project}.svc.id.goog[{namespace}/{ksa}]` from simple inputs
-3. **Prevents common failure modes**: Eliminates typos in the principal identifier and synchronization issues between IAM and Kubernetes
+## What This Component Does — and Does Not — Manage
+
+- **Managed here (GCP side):** the additive IAM grant on the GSA. Additive
+  means it merges into the GSA's IAM policy without touching any other
+  principal's bindings, and removal subtracts only this exact grant.
+- **Not managed here (Kubernetes side):** the
+  `iam.gke.io/gcp-service-account: <gsa-email>` annotation on the KSA. The
+  annotation lives on the Kubernetes object and belongs to the workload's
+  own deployment (its chart or manifest) — the same place the KSA itself is
+  created. The `service_account_email` output of this component is exactly
+  the value that annotation needs.
 
 ## Features
 
-- ✅ **Zero-credential architecture**: No service account keys to rotate or leak
-- ✅ **Pod-level IAM identity**: Each workload can have distinct GCP permissions
-- ✅ **Simplified provisioning**: One resource definition instead of two synchronized resources
-- ✅ **Atomic updates**: Changes to bindings are applied consistently
-- ✅ **Clear audit trail**: Cloud Audit Logs show exactly which KSA impersonated which GSA
+- **Zero-credential architecture**: no service account keys to rotate or
+  leak
+- **Pod-level IAM identity**: each workload can have distinct GCP
+  permissions
+- **Constructed principal**: the `{project}.svc.id.goog[{ns}/{ksa}]` string
+  is derived from validated parts, never hand-typed
+- **Optional IAM condition**: time-box or scope the grant with a CEL
+  condition
+- **Clear audit trail**: Cloud Audit Logs show exactly which KSA
+  impersonated which GSA
 
 ## Prerequisites
 
-- GKE cluster with Workload Identity enabled
+- GKE cluster with Workload Identity enabled (the cluster project's
+  implicit pool is `<project>.svc.id.goog`)
 - Node pools configured with `workloadMetadataConfig.mode = GKE_METADATA`
-- A Google Service Account (GSA) with the necessary IAM roles for your workload
-- A Kubernetes Service Account (KSA) that your pods will use
+- A Google Service Account (GSA) with the IAM roles your workload needs
+- A Kubernetes ServiceAccount (KSA) that your pods use, annotated with
+  `iam.gke.io/gcp-service-account: <gsa-email>` by the workload's own
+  deployment
 
 ## Basic Example
 
@@ -35,201 +61,44 @@ kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: cert-manager-dns-binding
 spec:
-  projectId: "prod-project-123"
-  serviceAccountEmail: "dns01-solver@prod-project-123.iam.gserviceaccount.com"
-  ksaNamespace: "cert-manager"
-  ksaName: "cert-manager"
+  projectId:
+    value: prod-project-123
+  serviceAccountEmail:
+    valueFrom:
+      kind: GcpServiceAccount
+      name: dns01-solver
+      fieldPath: status.outputs.email
+  ksaNamespace: cert-manager
+  ksaName: cert-manager
 ```
 
-This binding allows pods using the `cert-manager` ServiceAccount in the `cert-manager` namespace to impersonate the `dns01-solver@...` Google Service Account.
-
-## What Happens Behind the Scenes
-
-When you create this resource, Planton:
-
-1. **Creates an IAM policy binding** on the GSA:
-   ```
-   roles/iam.workloadIdentityUser → serviceAccount:prod-project-123.svc.id.goog[cert-manager/cert-manager]
-   ```
-
-2. **Annotates the Kubernetes ServiceAccount** (if it exists):
-   ```yaml
-   metadata:
-     annotations:
-       iam.gke.io/gcp-service-account: "dns01-solver@prod-project-123.iam.gserviceaccount.com"
-   ```
-
-You never construct the complex principal string manually, and you never worry about synchronization issues.
+This grant allows pods using the `cert-manager` ServiceAccount in the
+`cert-manager` namespace to impersonate the referenced GSA.
 
 ## Common Use Cases
 
-### cert-manager with Cloud DNS
+- **cert-manager with Cloud DNS**: bind cert-manager to a GSA holding
+  `roles/dns.admin` to solve DNS-01 ACME challenges.
+- **external-dns**: bind external-dns to a GSA that manages zone records.
+- **Application workloads**: bind an app's KSA to a GSA holding exactly the
+  roles the app needs (Cloud SQL client, GCS object access, Pub/Sub
+  publisher) — one binding per KSA-GSA pair.
 
-Bind cert-manager to a GSA with `roles/dns.admin` to solve DNS-01 ACME challenges:
+## Cross-Project Bindings
 
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpGkeWorkloadIdentityBinding
-metadata:
-  name: cert-manager-dns-binding
-spec:
-  projectId: "prod-project"
-  serviceAccountEmail: "dns01-solver@prod-project.iam.gserviceaccount.com"
-  ksaNamespace: "cert-manager"
-  ksaName: "cert-manager"
-```
+The GSA may live in a different project than the GKE cluster. `projectId`
+is always the CLUSTER's project (it names the workload-identity pool); the
+GSA's own project is inferred from its email.
 
-### Application Accessing Cloud Storage
-
-Bind your app to a GSA with `roles/storage.objectViewer`:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpGkeWorkloadIdentityBinding
-metadata:
-  name: app-gcs-binding
-spec:
-  projectId: "prod-project"
-  serviceAccountEmail: "my-app-gsa@prod-project.iam.gserviceaccount.com"
-  ksaNamespace: "my-app"
-  ksaName: "my-app-ksa"
-```
-
-### ExternalDNS with Cloud DNS
-
-Bind external-dns to a GSA with `roles/dns.admin`:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpGkeWorkloadIdentityBinding
-metadata:
-  name: external-dns-binding
-spec:
-  projectId: "prod-project"
-  serviceAccountEmail: "external-dns@prod-project.iam.gserviceaccount.com"
-  ksaNamespace: "external-dns"
-  ksaName: "external-dns"
-```
-
-## Security Best Practices
-
-### One GSA Per Application
-
-Never share a Google Service Account between different applications. Each app should have its own GSA with only the IAM roles it needs:
-
-- **cert-manager**: `roles/dns.admin` (to solve DNS-01 challenges)
-- **external-dns**: `roles/dns.admin` (to manage DNS records)
-- **billing-api**: `roles/storage.objectViewer` (to read a specific bucket)
-
-The role for the binding itself is always `roles/iam.workloadIdentityUser`.
-
-### Namespace Isolation
-
-Workload Identity provides perfect identity isolation at the namespace level. The principal identifier explicitly includes the namespace:
-
-```
-serviceAccount:{project}.svc.id.goog[{namespace}/{ksa-name}]
-```
-
-A KSA named `default` in `namespace-a` cannot be confused with an identically named KSA in `namespace-b`.
-
-### Multi-Cluster Considerations
-
-**Critical security consideration**: The Workload Identity Pool (`{project}.svc.id.goog`) is a **per-project resource, not per-cluster**.
-
-All GKE clusters in the same GCP project share a single trust domain. GCP IAM cannot distinguish between identically named KSAs from different clusters.
-
-**Best practice**: Use separate GCP projects for each environment (dev, staging, prod) to create fully isolated Workload Identity Pools.
-
-## Troubleshooting
-
-### Permission Denied Errors
-
-1. **Check the KSA annotation**:
-   ```bash
-   kubectl get serviceaccount <ksa-name> -n <namespace> -o yaml
-   ```
-   Look for: `iam.gke.io/gcp-service-account: "<gsa-email>"`
-
-2. **Check the IAM binding**:
-   ```bash
-   gcloud iam service-accounts get-iam-policy <gsa-email>
-   ```
-   Look for a member like: `serviceAccount:{project}.svc.id.goog[{namespace}/{ksa}]` with role `roles/iam.workloadIdentityUser`
-
-3. **Check node pool configuration**:
-   ```bash
-   gcloud container node-pools describe <node-pool> --cluster <cluster>
-   ```
-   Verify: `workloadMetadataConfig.mode: GKE_METADATA`
-
-### Testing the Binding
-
-Deploy a test pod to verify authentication:
-
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: workload-identity-test
-  namespace: <your-namespace>
-spec:
-  serviceAccountName: <your-ksa>
-  containers:
-  - name: test-sdk
-    image: google/cloud-sdk:slim
-    command: ["sleep", "3600"]
-```
-
-Then run:
-
-```bash
-kubectl exec -it workload-identity-test -n <namespace> -- gcloud auth list
-```
-
-**Success**: Shows the GSA email (`...iam.gserviceaccount.com`)  
-**Failure**: Shows the Compute Engine default service account (Workload Identity not enabled on node pool)
-
-## API Reference
-
-### Spec Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `projectId` | string | Yes | GCP project hosting the GKE cluster |
-| `serviceAccountEmail` | string | Yes | Email of the Google Service Account to impersonate |
-| `ksaNamespace` | string | Yes | Kubernetes namespace of the ServiceAccount |
-| `ksaName` | string | Yes | Name of the Kubernetes ServiceAccount |
-
-### Stack Outputs
-
-After creation, the following outputs are available:
+## Stack Outputs
 
 | Output | Description |
 |--------|-------------|
-| `member` | The IAM member string added to the policy |
-| `service_account_email` | The bound GSA email (echoed from spec) |
+| `member` | The constructed workload-identity principal added to the GSA's policy |
+| `service_account_email` | The bound GSA email — the value the KSA annotation needs |
 
-## Related Documentation
+## Related Components
 
-- **[Deep Dive Research](docs/README.md)**: Comprehensive guide on Workload Identity levels, failure modes, and design decisions
-- **[Examples](examples.md)**: Additional copy-paste ready examples for various scenarios
-- **[Pulumi Module](iac/pulumi/README.md)**: Pulumi-specific deployment guide
-- **[Terraform Module](iac/tf/README.md)**: Terraform-specific deployment guide
-
-## Why This Component Exists
-
-Existing IaC tools (Terraform, Pulumi, Config Connector, Crossplane) all provide **low-level primitives** that mirror the manual provisioning process. They force operators to:
-
-- Manage two separate resources (IAM binding + KSA annotation)
-- Manually construct the brittle principal string
-- Debug synchronization issues
-- Handle the four common failure modes
-
-This component provides a **pattern-level abstraction** that matches user intent: "Bind this KSA to this GSA." The complexity is handled internally.
-
-## Support
-
-For issues, questions, or contributions, see the main [Planton documentation](https://planton.dev).
-
-
+- **GcpServiceAccount** — creates the GSA this binding targets
+- **GcpGkeCluster** — the cluster whose project hosts the identity pool
+- **GcpProjectIamMember** — grants the GSA its project-level roles

@@ -39,7 +39,7 @@ params:
   - name: storage_mb
     description: "Storage in MB from Azure's fixed ladder: 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304... Storage can grow but never shrink; auto-grow is on, so this is the starting rung"
     value: 65536
-    type: int
+    type: number
 
   # ─── Availability and durability ─────────────────────────────────────────────
   - name: ha_enabled
@@ -50,7 +50,7 @@ params:
   - name: backup_retention_days
     description: The point-in-time-restore window in days (7-35). Fourteen covers "we noticed the bad deploy a week later" without archive-grade cost
     value: 14
-    type: int
+    type: number
 
   - name: geo_redundant_backup_enabled
     description: Replicate backups to the paired region for cross-region disaster recovery. Fixed at creation; adds backup storage cost and (with CMK) requires a geo-backup key configured directly on the server resource
@@ -77,4 +77,4 @@ params:
   - name: log_retention_days
     description: Log Analytics workspace retention in days
     value: 30
-    type: int
+    type: number

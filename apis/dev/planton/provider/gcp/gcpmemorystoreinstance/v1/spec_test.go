@@ -333,18 +333,173 @@ var _ = ginkgo.Describe("GcpMemorystoreInstanceSpec", func() {
 			StartHour: 4,
 			Retention: "3024000s",
 		}
-		msg.Spec.DeletionProtectionEnabled = true
+		deletionProtection := true
+		msg.Spec.DeletionProtectionEnabled = &deletionProtection
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept user labels", func() {
+		msg := minimal()
+		msg.Spec.Labels = map[string]string{"team": "platform", "tier": "cache"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a DR PRIMARY listing its secondaries", func() {
+		msg := minimal()
+		msg.Spec.CrossInstanceReplicationConfig = &GcpMemorystoreInstanceCrossInstanceReplicationConfig{
+			InstanceRole: "PRIMARY",
+			SecondaryInstances: []*GcpMemorystoreInstanceSecondaryInstance{
+				{Instance: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+						Value: "projects/my-gcp-project/locations/us-east1/instances/my-cache-dr",
+					},
+				}},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a DR SECONDARY pointing at its primary", func() {
+		msg := minimal()
+		msg.Spec.CrossInstanceReplicationConfig = &GcpMemorystoreInstanceCrossInstanceReplicationConfig{
+			InstanceRole: "SECONDARY",
+			PrimaryInstance: &GcpMemorystoreInstancePrimaryInstance{
+				Instance: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+						Value: "projects/my-gcp-project/locations/us-central1/instances/my-cache-01",
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept role NONE with no replication references", func() {
+		msg := minimal()
+		msg.Spec.CrossInstanceReplicationConfig = &GcpMemorystoreInstanceCrossInstanceReplicationConfig{
+			InstanceRole: "NONE",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept seeding from GCS RDB files", func() {
+		msg := minimal()
+		msg.Spec.GcsSource = &GcpMemorystoreInstanceGcsSource{
+			Uris: []string{"gs://my-bucket/dumps/cache.rdb"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept seeding from a managed backup", func() {
+		msg := minimal()
+		msg.Spec.ManagedBackupSource = &GcpMemorystoreInstanceManagedBackupSource{
+			Backup: "projects/my-gcp-project/locations/us-central1/backupCollections/col-1/backups/b-1",
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
 	// ──────────────── Negative Cases ────────────────
 
-	ginkgo.It("should reject when project_id is missing", func() {
+	ginkgo.It("should reject a SECONDARY without a primary_instance reference", func() {
+		msg := minimal()
+		msg.Spec.CrossInstanceReplicationConfig = &GcpMemorystoreInstanceCrossInstanceReplicationConfig{
+			InstanceRole: "SECONDARY",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("primary"))
+	})
+
+	ginkgo.It("should reject a primary_instance reference on a PRIMARY", func() {
+		msg := minimal()
+		msg.Spec.CrossInstanceReplicationConfig = &GcpMemorystoreInstanceCrossInstanceReplicationConfig{
+			InstanceRole: "PRIMARY",
+			PrimaryInstance: &GcpMemorystoreInstancePrimaryInstance{
+				Instance: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "projects/p/locations/l/instances/i"},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject secondary_instances on a SECONDARY", func() {
+		msg := minimal()
+		msg.Spec.CrossInstanceReplicationConfig = &GcpMemorystoreInstanceCrossInstanceReplicationConfig{
+			InstanceRole: "SECONDARY",
+			PrimaryInstance: &GcpMemorystoreInstancePrimaryInstance{
+				Instance: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "projects/p/locations/l/instances/i"},
+				},
+			},
+			SecondaryInstances: []*GcpMemorystoreInstanceSecondaryInstance{
+				{Instance: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "projects/p/locations/l2/instances/i2"},
+				}},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid replication instance_role", func() {
+		msg := minimal()
+		msg.Spec.CrossInstanceReplicationConfig = &GcpMemorystoreInstanceCrossInstanceReplicationConfig{
+			InstanceRole: "REPLICA",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject both seed sources set together", func() {
+		msg := minimal()
+		msg.Spec.GcsSource = &GcpMemorystoreInstanceGcsSource{
+			Uris: []string{"gs://my-bucket/dumps/cache.rdb"},
+		}
+		msg.Spec.ManagedBackupSource = &GcpMemorystoreInstanceManagedBackupSource{
+			Backup: "projects/p/locations/l/backupCollections/c/backups/b",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("mutually exclusive"))
+	})
+
+	ginkgo.It("should reject a non-gs:// seed URI", func() {
+		msg := minimal()
+		msg.Spec.GcsSource = &GcpMemorystoreInstanceGcsSource{
+			Uris: []string{"s3://wrong-cloud/dump.rdb"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an empty seed URI list", func() {
+		msg := minimal()
+		msg.Spec.GcsSource = &GcpMemorystoreInstanceGcsSource{}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a zone where a region is expected", func() {
+		msg := minimal()
+		msg.Spec.Location = "us-central1-a"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept an omitted project_id (ambient-project contract)", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject when instance_name is empty", func() {
@@ -562,7 +717,7 @@ var _ = ginkgo.Describe("GcpMemorystoreInstanceSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject PSC connection without project_id", func() {
+	ginkgo.It("should accept a PSC connection without project_id (rides the effective project)", func() {
 		msg := minimal()
 		msg.Spec.PscAutoConnections = []*GcpMemorystoreInstancePscAutoConnection{
 			{
@@ -572,7 +727,7 @@ var _ = ginkgo.Describe("GcpMemorystoreInstanceSpec", func() {
 			},
 		}
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject when metadata is missing", func() {

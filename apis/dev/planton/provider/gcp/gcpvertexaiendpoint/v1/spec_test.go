@@ -175,11 +175,69 @@ var _ = ginkgo.Describe("GcpVertexAiEndpointSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	// ──────────────── Negative Cases ────────────────
+	ginkgo.It("should accept spec with user labels", func() {
+		msg := minimal()
+		msg.Spec.Labels = map[string]string{"team": "ml-platform", "cost-center": "research"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
 
-	ginkgo.It("should reject spec with missing project_id", func() {
+	ginkgo.It("should accept spec with secure PSC enabled", func() {
+		msg := minimal()
+		msg.Spec.PrivateServiceConnectConfig = &GcpVertexAiEndpointPrivateServiceConnectConfig{
+			ProjectAllowlist:                  []string{"project-a"},
+			EnableSecurePrivateServiceConnect: true,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept spec with request/response logging config", func() {
+		msg := minimal()
+		msg.Spec.RequestResponseLoggingConfig = &GcpVertexAiEndpointRequestResponseLoggingConfig{
+			Enabled:                true,
+			SamplingRate:           0.25,
+			BigqueryDestinationUri: "bq://my-project.ml_logging.endpoint_requests",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept logging config with sampling_rate at the 1.0 boundary", func() {
+		msg := minimal()
+		msg.Spec.RequestResponseLoggingConfig = &GcpVertexAiEndpointRequestResponseLoggingConfig{
+			Enabled:      true,
+			SamplingRate: 1.0,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept spec without project_id (ambient project)", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Negative Cases ────────────────
+
+	ginkgo.It("should reject logging sampling_rate above 1.0", func() {
+		msg := minimal()
+		msg.Spec.RequestResponseLoggingConfig = &GcpVertexAiEndpointRequestResponseLoggingConfig{
+			Enabled:      true,
+			SamplingRate: 1.5,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject logging sampling_rate below 0", func() {
+		msg := minimal()
+		msg.Spec.RequestResponseLoggingConfig = &GcpVertexAiEndpointRequestResponseLoggingConfig{
+			Enabled:      true,
+			SamplingRate: -0.1,
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})

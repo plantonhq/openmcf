@@ -1,0 +1,30 @@
+# GcpSpannerDatabase scenario: a database with initial DDL on the
+# prerequisite instance. The harness resolves the instance reference from
+# the prerequisite's instance_name output. deletionProtection must be
+# false so the ephemeral DESTROY can run (production keeps the default
+# TRUE); project_id is deliberately omitted (ambient project).
+apiVersion: gcp.planton.dev/v1
+kind: GcpSpannerDatabase
+metadata:
+  name: planton-oss-e2e-gcpspdb-smoke
+  id: planton-oss-e2e-gcpspdb-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpspannerdatabase
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  instance:
+    valueFrom:
+      kind: GcpSpannerInstance
+      name: planton-oss-e2e-gcpspn-prereq
+      fieldPath: status.outputs.instance_name
+  databaseName: e2e_app
+  versionRetentionPeriod: "24h"
+  ddl:
+    - CREATE TABLE e2e_orders (order_id STRING(36) NOT NULL, created_at TIMESTAMP NOT NULL) PRIMARY KEY (order_id)
+  deletionProtection: false

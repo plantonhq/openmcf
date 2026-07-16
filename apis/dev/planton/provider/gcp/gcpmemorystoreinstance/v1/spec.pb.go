@@ -9,6 +9,7 @@ package gcpmemorystoreinstancev1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -27,17 +28,26 @@ const (
 // auto-created endpoint that connects the Memorystore instance to a consumer
 // VPC network. GCP creates and manages the PSC forwarding rules automatically.
 //
+// The connectivity automation only acts when a GcpServiceConnectionPolicy
+// for the gcp-memorystore service class already exists on the network in
+// the instance's region — deploy the policy before the instance.
+//
 // At least one PSC connection is needed for applications to reach the instance.
 // Multiple connections can be defined for cross-project or multi-VPC access.
 // PSC connections are immutable after instance creation.
 type GcpMemorystoreInstancePscAutoConnection struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Consumer VPC network where the PSC endpoint will be created.
-	// Format: projects/{project_id}/global/networks/{network_id}
+	// The API requires the relative resource path
+	// (projects/{project_id}/global/networks/{network_id}) — full https://
+	// self-link URLs are rejected, so the reference resolves to the
+	// GcpVpcNetwork's network_id output, which is already in that form.
 	Network *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
 	// Consumer project ID where the PSC endpoint will be created.
 	// Usually the same project as the Memorystore instance, but can differ
-	// for cross-project connectivity.
+	// for cross-project connectivity. If omitted, both engines resolve the
+	// provider's effective project — the endpoint lands next to the
+	// instance, which is the common case.
 	ProjectId     *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -428,7 +438,8 @@ func (x *GcpMemorystoreInstanceMaintenancePolicy) GetWeeklyMaintenanceWindow() *
 
 // GcpMemorystoreInstanceAutomatedBackupConfig configures scheduled backups
 // for the Memorystore instance. Backups are stored in a managed backup
-// collection and can be used to restore data.
+// collection and can be used to restore data (see managed_backup_source
+// on the spec for seeding a new instance from one).
 type GcpMemorystoreInstanceAutomatedBackupConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Hour of day (0-23, UTC) when the daily backup starts.
@@ -485,6 +496,276 @@ func (x *GcpMemorystoreInstanceAutomatedBackupConfig) GetRetention() string {
 	return ""
 }
 
+// GcpMemorystoreInstancePrimaryInstance identifies the primary in a
+// cross-instance replication pair, as seen from a SECONDARY.
+type GcpMemorystoreInstancePrimaryInstance struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Full resource path of the primary instance
+	// (projects/{project}/locations/{location}/instances/{instance}).
+	// A reference resolves to another GcpMemorystoreInstance's name output.
+	Instance      *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=instance,proto3" json:"instance,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpMemorystoreInstancePrimaryInstance) Reset() {
+	*x = GcpMemorystoreInstancePrimaryInstance{}
+	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpMemorystoreInstancePrimaryInstance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpMemorystoreInstancePrimaryInstance) ProtoMessage() {}
+
+func (x *GcpMemorystoreInstancePrimaryInstance) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpMemorystoreInstancePrimaryInstance.ProtoReflect.Descriptor instead.
+func (*GcpMemorystoreInstancePrimaryInstance) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GcpMemorystoreInstancePrimaryInstance) GetInstance() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Instance
+	}
+	return nil
+}
+
+// GcpMemorystoreInstanceSecondaryInstance identifies one secondary in a
+// cross-instance replication topology, as seen from the PRIMARY.
+type GcpMemorystoreInstanceSecondaryInstance struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Full resource path of the secondary instance
+	// (projects/{project}/locations/{location}/instances/{instance}).
+	// A reference resolves to another GcpMemorystoreInstance's name output.
+	Instance      *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=instance,proto3" json:"instance,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpMemorystoreInstanceSecondaryInstance) Reset() {
+	*x = GcpMemorystoreInstanceSecondaryInstance{}
+	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpMemorystoreInstanceSecondaryInstance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpMemorystoreInstanceSecondaryInstance) ProtoMessage() {}
+
+func (x *GcpMemorystoreInstanceSecondaryInstance) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpMemorystoreInstanceSecondaryInstance.ProtoReflect.Descriptor instead.
+func (*GcpMemorystoreInstanceSecondaryInstance) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GcpMemorystoreInstanceSecondaryInstance) GetInstance() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Instance
+	}
+	return nil
+}
+
+// GcpMemorystoreInstanceCrossInstanceReplicationConfig configures
+// cross-region disaster recovery: a SECONDARY instance continuously
+// replicates from a PRIMARY in another region.
+//
+// Deploy the primary first (role PRIMARY, listing its secondaries), then
+// each secondary (role SECONDARY, pointing at the primary). A secondary
+// is read-only until promoted. Roles are exchanged via an in-place
+// update during a planned switchover.
+type GcpMemorystoreInstanceCrossInstanceReplicationConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// This instance's role in the replication topology.
+	// NONE: not participating in cross-instance replication.
+	// PRIMARY: serves writes; replicates to the listed secondaries.
+	// SECONDARY: read-only replica of primary_instance.
+	InstanceRole string `protobuf:"bytes,1,opt,name=instance_role,json=instanceRole,proto3" json:"instance_role,omitempty"`
+	// The primary this instance replicates from. Required when
+	// instance_role is SECONDARY; must be unset otherwise.
+	PrimaryInstance *GcpMemorystoreInstancePrimaryInstance `protobuf:"bytes,2,opt,name=primary_instance,json=primaryInstance,proto3" json:"primary_instance,omitempty"`
+	// The secondaries replicating from this instance. Set when
+	// instance_role is PRIMARY; must be empty otherwise.
+	SecondaryInstances []*GcpMemorystoreInstanceSecondaryInstance `protobuf:"bytes,3,rep,name=secondary_instances,json=secondaryInstances,proto3" json:"secondary_instances,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *GcpMemorystoreInstanceCrossInstanceReplicationConfig) Reset() {
+	*x = GcpMemorystoreInstanceCrossInstanceReplicationConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpMemorystoreInstanceCrossInstanceReplicationConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpMemorystoreInstanceCrossInstanceReplicationConfig) ProtoMessage() {}
+
+func (x *GcpMemorystoreInstanceCrossInstanceReplicationConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpMemorystoreInstanceCrossInstanceReplicationConfig.ProtoReflect.Descriptor instead.
+func (*GcpMemorystoreInstanceCrossInstanceReplicationConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GcpMemorystoreInstanceCrossInstanceReplicationConfig) GetInstanceRole() string {
+	if x != nil {
+		return x.InstanceRole
+	}
+	return ""
+}
+
+func (x *GcpMemorystoreInstanceCrossInstanceReplicationConfig) GetPrimaryInstance() *GcpMemorystoreInstancePrimaryInstance {
+	if x != nil {
+		return x.PrimaryInstance
+	}
+	return nil
+}
+
+func (x *GcpMemorystoreInstanceCrossInstanceReplicationConfig) GetSecondaryInstances() []*GcpMemorystoreInstanceSecondaryInstance {
+	if x != nil {
+		return x.SecondaryInstances
+	}
+	return nil
+}
+
+// GcpMemorystoreInstanceGcsSource seeds the new instance's data from RDB
+// files in Cloud Storage at creation time.
+type GcpMemorystoreInstanceGcsSource struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Cloud Storage URIs of RDB files to import (gs://bucket/path.rdb).
+	// The Memorystore service agent needs read access to the objects.
+	Uris          []string `protobuf:"bytes,1,rep,name=uris,proto3" json:"uris,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpMemorystoreInstanceGcsSource) Reset() {
+	*x = GcpMemorystoreInstanceGcsSource{}
+	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpMemorystoreInstanceGcsSource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpMemorystoreInstanceGcsSource) ProtoMessage() {}
+
+func (x *GcpMemorystoreInstanceGcsSource) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpMemorystoreInstanceGcsSource.ProtoReflect.Descriptor instead.
+func (*GcpMemorystoreInstanceGcsSource) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GcpMemorystoreInstanceGcsSource) GetUris() []string {
+	if x != nil {
+		return x.Uris
+	}
+	return nil
+}
+
+// GcpMemorystoreInstanceManagedBackupSource seeds the new instance's data
+// from an existing managed backup at creation time.
+type GcpMemorystoreInstanceManagedBackupSource struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Full resource path of the backup to restore from
+	// (projects/{project}/locations/{location}/backupCollections/{collection}/backups/{backup}).
+	Backup        string `protobuf:"bytes,1,opt,name=backup,proto3" json:"backup,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpMemorystoreInstanceManagedBackupSource) Reset() {
+	*x = GcpMemorystoreInstanceManagedBackupSource{}
+	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpMemorystoreInstanceManagedBackupSource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpMemorystoreInstanceManagedBackupSource) ProtoMessage() {}
+
+func (x *GcpMemorystoreInstanceManagedBackupSource) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpMemorystoreInstanceManagedBackupSource.ProtoReflect.Descriptor instead.
+func (*GcpMemorystoreInstanceManagedBackupSource) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GcpMemorystoreInstanceManagedBackupSource) GetBackup() string {
+	if x != nil {
+		return x.Backup
+	}
+	return ""
+}
+
 // GcpMemorystoreInstanceSpec defines the configuration for a Google Cloud
 // Memorystore instance.
 //
@@ -496,22 +777,26 @@ func (x *GcpMemorystoreInstanceAutomatedBackupConfig) GetRetention() string {
 // Unlike the legacy Memorystore for Redis API (modeled as GcpRedisInstance),
 // this new-generation API offers:
 //   - Native sharding via configurable shard_count
-//   - Predefined node types (SHARED_CORE_NANO through HIGHMEM_XLARGE)
+//   - Predefined node types (SHARED_CORE_NANO through HIGHMEM_2XLARGE)
 //   - Private Service Connect (PSC) networking instead of VPC peering
 //   - Both RDB and AOF persistence modes
 //   - Automated backups with configurable retention
+//   - Cross-region replication for disaster recovery
 //   - CLUSTER and CLUSTER_DISABLED (standalone) modes
 //
 // Important behavioral notes:
 //
 //   - The instance_name, location, mode, authorization_mode,
-//     transit_encryption_mode, kms_key, zone_distribution_config, and
-//     psc_auto_connections fields are immutable after creation.
-//     Changing them requires replacing the instance.
+//     transit_encryption_mode, kms_key, zone_distribution_config,
+//     psc_auto_connections, and the seed sources (gcs_source /
+//     managed_backup_source) are immutable after creation. Changing them
+//     requires replacing the instance.
 //
-//   - PSC networking is the only connectivity option. The instance is not
-//     directly reachable via VPC peering. Applications connect through
-//     PSC endpoints auto-created in the consumer VPC.
+//   - PSC networking is the only connectivity option, and it is driven by
+//     service connectivity automation: a GcpServiceConnectionPolicy for
+//     the gcp-memorystore service class must exist on the network in this
+//     region BEFORE the instance is created, or creation fails with a
+//     connectivity error.
 //
 //   - Node memory is determined by the node_type, not by an explicit
 //     memory_size_gb field. The actual memory per node is reported in
@@ -519,6 +804,8 @@ func (x *GcpMemorystoreInstanceAutomatedBackupConfig) GetRetention() string {
 type GcpMemorystoreInstanceSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project where the Memorystore instance will be created.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Name of the Memorystore instance. This becomes the GCP resource name.
 	// Must start with a lowercase letter, contain only lowercase letters,
@@ -566,6 +853,11 @@ type GcpMemorystoreInstanceSpec struct {
 	// Each entry creates a PSC endpoint in the specified consumer VPC,
 	// allowing applications in that VPC to reach the instance.
 	//
+	// A GcpServiceConnectionPolicy for the gcp-memorystore service class
+	// must exist on each network in this region before the instance is
+	// created — the connectivity automation refuses to place endpoints
+	// without it.
+	//
 	// At least one PSC connection is recommended for the instance to be
 	// reachable. Multiple connections enable cross-project or multi-VPC access.
 	// Immutable after creation.
@@ -598,17 +890,35 @@ type GcpMemorystoreInstanceSpec struct {
 	// When configured, GCP takes daily backups at the specified hour
 	// and retains them for the specified duration.
 	AutomatedBackupConfig *GcpMemorystoreInstanceAutomatedBackupConfig `protobuf:"bytes,17,opt,name=automated_backup_config,json=automatedBackupConfig,proto3" json:"automated_backup_config,omitempty"`
-	// Whether deletion protection is enabled. When true, the instance
-	// cannot be deleted without first disabling this flag.
-	// GCP defaults to true for new instances.
-	DeletionProtectionEnabled bool `protobuf:"varint,18,opt,name=deletion_protection_enabled,json=deletionProtectionEnabled,proto3" json:"deletion_protection_enabled,omitempty"`
+	// Cross-region replication for disaster recovery: make this instance a
+	// PRIMARY replicating to secondaries in other regions, or a SECONDARY
+	// continuously replicating from a primary. Omit (or role NONE) for a
+	// standalone instance.
+	CrossInstanceReplicationConfig *GcpMemorystoreInstanceCrossInstanceReplicationConfig `protobuf:"bytes,18,opt,name=cross_instance_replication_config,json=crossInstanceReplicationConfig,proto3" json:"cross_instance_replication_config,omitempty"`
+	// Seed the new instance's data from RDB files in Cloud Storage at
+	// creation time. Mutually exclusive with managed_backup_source.
+	// Immutable: seeding only happens at creation.
+	GcsSource *GcpMemorystoreInstanceGcsSource `protobuf:"bytes,19,opt,name=gcs_source,json=gcsSource,proto3" json:"gcs_source,omitempty"`
+	// Seed the new instance's data from an existing managed backup at
+	// creation time. Mutually exclusive with gcs_source.
+	// Immutable: seeding only happens at creation.
+	ManagedBackupSource *GcpMemorystoreInstanceManagedBackupSource `protobuf:"bytes,20,opt,name=managed_backup_source,json=managedBackupSource,proto3" json:"managed_backup_source,omitempty"`
+	// User-defined labels to organize and track the instance. Merged
+	// beneath Planton's platform attribution labels (platform keys win on
+	// conflict).
+	Labels map[string]string `protobuf:"bytes,21,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Whether deletion protection is enabled. When true (the default —
+	// matching GCP's safety posture), destroying the instance fails until
+	// this is explicitly set to false. Both IaC engines send the value
+	// explicitly so destroy behavior is identical regardless of engine.
+	DeletionProtectionEnabled *bool `protobuf:"varint,22,opt,name=deletion_protection_enabled,json=deletionProtectionEnabled,proto3,oneof" json:"deletion_protection_enabled,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *GcpMemorystoreInstanceSpec) Reset() {
 	*x = GcpMemorystoreInstanceSpec{}
-	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -620,7 +930,7 @@ func (x *GcpMemorystoreInstanceSpec) String() string {
 func (*GcpMemorystoreInstanceSpec) ProtoMessage() {}
 
 func (x *GcpMemorystoreInstanceSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -633,7 +943,7 @@ func (x *GcpMemorystoreInstanceSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpMemorystoreInstanceSpec.ProtoReflect.Descriptor instead.
 func (*GcpMemorystoreInstanceSpec) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GcpMemorystoreInstanceSpec) GetProjectId() *v1.StringValueOrRef {
@@ -755,9 +1065,37 @@ func (x *GcpMemorystoreInstanceSpec) GetAutomatedBackupConfig() *GcpMemorystoreI
 	return nil
 }
 
-func (x *GcpMemorystoreInstanceSpec) GetDeletionProtectionEnabled() bool {
+func (x *GcpMemorystoreInstanceSpec) GetCrossInstanceReplicationConfig() *GcpMemorystoreInstanceCrossInstanceReplicationConfig {
 	if x != nil {
-		return x.DeletionProtectionEnabled
+		return x.CrossInstanceReplicationConfig
+	}
+	return nil
+}
+
+func (x *GcpMemorystoreInstanceSpec) GetGcsSource() *GcpMemorystoreInstanceGcsSource {
+	if x != nil {
+		return x.GcsSource
+	}
+	return nil
+}
+
+func (x *GcpMemorystoreInstanceSpec) GetManagedBackupSource() *GcpMemorystoreInstanceManagedBackupSource {
+	if x != nil {
+		return x.ManagedBackupSource
+	}
+	return nil
+}
+
+func (x *GcpMemorystoreInstanceSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GcpMemorystoreInstanceSpec) GetDeletionProtectionEnabled() bool {
+	if x != nil && x.DeletionProtectionEnabled != nil {
+		return *x.DeletionProtectionEnabled
 	}
 	return false
 }
@@ -766,11 +1104,11 @@ var File_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto protorefl
 
 const file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/gcp/gcpmemorystoreinstance/v1/spec.proto\x122dev.planton.provider.gcp.gcpmemorystoreinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa5\x02\n" +
-	"'GcpMemorystoreInstancePscAutoConnection\x12}\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12{\n" +
+	"=dev/planton/provider/gcp/gcpmemorystoreinstance/v1/spec.proto\x122dev.planton.provider.gcp.gcpmemorystoreinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x98\x02\n" +
+	"'GcpMemorystoreInstancePscAutoConnection\x12v\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_idR\anetwork\x12u\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\"\xc8\x01\n" +
+	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\"\xc8\x01\n" +
 	"\x1fGcpMemorystoreInstanceRdbConfig\x12n\n" +
 	"\x13rdb_snapshot_period\x18\x01 \x01(\tB>\xbaH;\xc8\x01\x01r6R\bONE_HOURR\tSIX_HOURSR\fTWELVE_HOURSR\x11TWENTY_FOUR_HOURSR\x11rdbSnapshotPeriod\x125\n" +
 	"\x17rdb_snapshot_start_time\x18\x02 \x01(\tR\x14rdbSnapshotStartTime\"h\n" +
@@ -797,12 +1135,28 @@ const file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDesc
 	"+GcpMemorystoreInstanceAutomatedBackupConfig\x12(\n" +
 	"\n" +
 	"start_hour\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00R\tstartHour\x121\n" +
-	"\tretention\x18\x02 \x01(\tB\x13\xbaH\x10\xc8\x01\x01r\v2\t^[0-9]+s$R\tretention\"\xc2\x12\n" +
-	"\x1aGcpMemorystoreInstanceSpec\x12{\n" +
+	"\tretention\x18\x02 \x01(\tB\x13\xbaH\x10\xc8\x01\x01r\v2\t^[0-9]+s$R\tretention\"\x9b\x01\n" +
+	"%GcpMemorystoreInstancePrimaryInstance\x12r\n" +
+	"\binstance\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xfc\x04\x92\xd4a\x13status.outputs.nameR\binstance\"\x9d\x01\n" +
+	"'GcpMemorystoreInstanceSecondaryInstance\x12r\n" +
+	"\binstance\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xfc\x04\x92\xd4a\x13status.outputs.nameR\binstance\"\x9b\a\n" +
+	"4GcpMemorystoreInstanceCrossInstanceReplicationConfig\x12G\n" +
+	"\rinstance_role\x18\x01 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1aR\x04NONER\aPRIMARYR\tSECONDARYR\finstanceRole\x12\x84\x01\n" +
+	"\x10primary_instance\x18\x02 \x01(\v2Y.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePrimaryInstanceR\x0fprimaryInstance\x12\x8c\x01\n" +
+	"\x13secondary_instances\x18\x03 \x03(\v2[.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSecondaryInstanceR\x12secondaryInstances:\x83\x04\xbaH\xff\x03\x1a\xac\x01\n" +
+	"#secondary_requires_primary_instance\x12Da SECONDARY instance must reference its primary via primary_instance\x1a?this.instance_role != 'SECONDARY' || has(this.primary_instance)\x1a\xa5\x01\n" +
+	"#primary_instance_only_for_secondary\x12<primary_instance is only set when instance_role is SECONDARY\x1a@this.instance_role == 'SECONDARY' || !has(this.primary_instance)\x1a\xa5\x01\n" +
+	"\x1csecondaries_only_for_primary\x12=secondary_instances is only set when instance_role is PRIMARY\x1aFthis.instance_role == 'PRIMARY' || size(this.secondary_instances) == 0\"\xaa\x01\n" +
+	"\x1fGcpMemorystoreInstanceGcsSource\x12\x86\x01\n" +
+	"\x04uris\x18\x01 \x03(\tBr\xbaHo\x92\x01l\b\x01\"h\xba\x01e\n" +
+	"\x0egcs_uri_format\x129each URI must be a Cloud Storage path starting with gs://\x1a\x18this.startsWith('gs://')R\x04uris\"K\n" +
+	")GcpMemorystoreInstanceManagedBackupSource\x12\x1e\n" +
+	"\x06backup\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06backup\"\xa8\x19\n" +
+	"\x1aGcpMemorystoreInstanceSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
-	"\rinstance_name\x18\x02 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x04\x18?2\x1e^[a-z][a-z0-9-]{2,61}[a-z0-9]$R\finstanceName\x12\"\n" +
-	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12+\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
+	"\rinstance_name\x18\x02 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x04\x18?2\x1e^[a-z][a-z0-9-]{2,61}[a-z0-9]$R\finstanceName\x12;\n" +
+	"\blocation\x18\x03 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\blocation\x12+\n" +
 	"\vshard_count\x18\x04 \x01(\x05B\n" +
 	"\xbaH\a\xc8\x01\x01\x1a\x02(\x01R\n" +
 	"shardCount\x12\x8d\x01\n" +
@@ -823,11 +1177,21 @@ const file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDesc
 	"\x12persistence_config\x18\x0e \x01(\v2[.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePersistenceConfigR\x11persistenceConfig\x12\x9a\x01\n" +
 	"\x18zone_distribution_config\x18\x0f \x01(\v2`.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceZoneDistributionConfigR\x16zoneDistributionConfig\x12\x8a\x01\n" +
 	"\x12maintenance_policy\x18\x10 \x01(\v2[.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceMaintenancePolicyR\x11maintenancePolicy\x12\x97\x01\n" +
-	"\x17automated_backup_config\x18\x11 \x01(\v2_.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceAutomatedBackupConfigR\x15automatedBackupConfig\x12>\n" +
-	"\x1bdeletion_protection_enabled\x18\x12 \x01(\bR\x19deletionProtectionEnabled\x1a@\n" +
+	"\x17automated_backup_config\x18\x11 \x01(\v2_.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceAutomatedBackupConfigR\x15automatedBackupConfig\x12\xb3\x01\n" +
+	"!cross_instance_replication_config\x18\x12 \x01(\v2h.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceCrossInstanceReplicationConfigR\x1ecrossInstanceReplicationConfig\x12r\n" +
+	"\n" +
+	"gcs_source\x18\x13 \x01(\v2S.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceGcsSourceR\tgcsSource\x12\x91\x01\n" +
+	"\x15managed_backup_source\x18\x14 \x01(\v2].dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceManagedBackupSourceR\x13managedBackupSource\x12r\n" +
+	"\x06labels\x18\x15 \x03(\v2Z.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.LabelsEntryR\x06labels\x12M\n" +
+	"\x1bdeletion_protection_enabled\x18\x16 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x19deletionProtectionEnabled\x88\x01\x01\x1a@\n" +
 	"\x12EngineConfigsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xa1\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb4\x01\xbaH\xb0\x01\x1a\xad\x01\n" +
+	"\x17at_most_one_seed_source\x12Vgcs_source and managed_backup_source are mutually exclusive — choose one seed source\x1a:!(has(this.gcs_source) && has(this.managed_backup_source))B\x1e\n" +
+	"\x1c_deletion_protection_enabledB\xa1\x03\n" +
 	"6com.dev.planton.provider.gcp.gcpmemorystoreinstance.v1B\tSpecProtoP\x01Zmgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpmemorystoreinstance/v1;gcpmemorystoreinstancev1\xa2\x02\x05DPPGG\xaa\x022Dev.Planton.Provider.Gcp.Gcpmemorystoreinstance.V1\xca\x022Dev\\Planton\\Provider\\Gcp\\Gcpmemorystoreinstance\\V1\xe2\x02>Dev\\Planton\\Provider\\Gcp\\Gcpmemorystoreinstance\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Gcp::Gcpmemorystoreinstance::V1b\x06proto3"
 
 var (
@@ -842,39 +1206,53 @@ func file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDescG
 	return file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_goTypes = []any{
-	(*GcpMemorystoreInstancePscAutoConnection)(nil),      // 0: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePscAutoConnection
-	(*GcpMemorystoreInstanceRdbConfig)(nil),              // 1: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceRdbConfig
-	(*GcpMemorystoreInstanceAofConfig)(nil),              // 2: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceAofConfig
-	(*GcpMemorystoreInstancePersistenceConfig)(nil),      // 3: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePersistenceConfig
-	(*GcpMemorystoreInstanceZoneDistributionConfig)(nil), // 4: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceZoneDistributionConfig
-	(*GcpMemorystoreInstanceMaintenanceWindow)(nil),      // 5: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceMaintenanceWindow
-	(*GcpMemorystoreInstanceMaintenancePolicy)(nil),      // 6: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceMaintenancePolicy
-	(*GcpMemorystoreInstanceAutomatedBackupConfig)(nil),  // 7: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceAutomatedBackupConfig
-	(*GcpMemorystoreInstanceSpec)(nil),                   // 8: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec
-	nil,                                                  // 9: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.EngineConfigsEntry
-	(*v1.StringValueOrRef)(nil),                          // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpMemorystoreInstancePscAutoConnection)(nil),              // 0: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePscAutoConnection
+	(*GcpMemorystoreInstanceRdbConfig)(nil),                      // 1: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceRdbConfig
+	(*GcpMemorystoreInstanceAofConfig)(nil),                      // 2: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceAofConfig
+	(*GcpMemorystoreInstancePersistenceConfig)(nil),              // 3: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePersistenceConfig
+	(*GcpMemorystoreInstanceZoneDistributionConfig)(nil),         // 4: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceZoneDistributionConfig
+	(*GcpMemorystoreInstanceMaintenanceWindow)(nil),              // 5: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceMaintenanceWindow
+	(*GcpMemorystoreInstanceMaintenancePolicy)(nil),              // 6: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceMaintenancePolicy
+	(*GcpMemorystoreInstanceAutomatedBackupConfig)(nil),          // 7: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceAutomatedBackupConfig
+	(*GcpMemorystoreInstancePrimaryInstance)(nil),                // 8: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePrimaryInstance
+	(*GcpMemorystoreInstanceSecondaryInstance)(nil),              // 9: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSecondaryInstance
+	(*GcpMemorystoreInstanceCrossInstanceReplicationConfig)(nil), // 10: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceCrossInstanceReplicationConfig
+	(*GcpMemorystoreInstanceGcsSource)(nil),                      // 11: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceGcsSource
+	(*GcpMemorystoreInstanceManagedBackupSource)(nil),            // 12: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceManagedBackupSource
+	(*GcpMemorystoreInstanceSpec)(nil),                           // 13: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec
+	nil,                                                          // 14: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.EngineConfigsEntry
+	nil,                                                          // 15: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),                                  // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_depIdxs = []int32{
-	10, // 0: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePscAutoConnection.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 1: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePscAutoConnection.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 0: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePscAutoConnection.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 1: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePscAutoConnection.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 2: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePersistenceConfig.rdb_config:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceRdbConfig
 	2,  // 3: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePersistenceConfig.aof_config:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceAofConfig
 	5,  // 4: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceMaintenancePolicy.weekly_maintenance_window:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceMaintenanceWindow
-	10, // 5: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 6: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.engine_configs:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.EngineConfigsEntry
-	0,  // 7: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.psc_auto_connections:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePscAutoConnection
-	10, // 8: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 9: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.persistence_config:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePersistenceConfig
-	4,  // 10: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.zone_distribution_config:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceZoneDistributionConfig
-	6,  // 11: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.maintenance_policy:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceMaintenancePolicy
-	7,  // 12: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.automated_backup_config:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceAutomatedBackupConfig
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	16, // 5: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePrimaryInstance.instance:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 6: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSecondaryInstance.instance:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 7: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceCrossInstanceReplicationConfig.primary_instance:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePrimaryInstance
+	9,  // 8: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceCrossInstanceReplicationConfig.secondary_instances:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSecondaryInstance
+	16, // 9: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 10: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.engine_configs:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.EngineConfigsEntry
+	0,  // 11: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.psc_auto_connections:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePscAutoConnection
+	16, // 12: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 13: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.persistence_config:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePersistenceConfig
+	4,  // 14: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.zone_distribution_config:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceZoneDistributionConfig
+	6,  // 15: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.maintenance_policy:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceMaintenancePolicy
+	7,  // 16: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.automated_backup_config:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceAutomatedBackupConfig
+	10, // 17: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.cross_instance_replication_config:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceCrossInstanceReplicationConfig
+	11, // 18: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.gcs_source:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceGcsSource
+	12, // 19: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.managed_backup_source:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceManagedBackupSource
+	15, // 20: dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.labels:type_name -> dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceSpec.LabelsEntry
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_init() }
@@ -882,13 +1260,14 @@ func file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_init() {
 	if File_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

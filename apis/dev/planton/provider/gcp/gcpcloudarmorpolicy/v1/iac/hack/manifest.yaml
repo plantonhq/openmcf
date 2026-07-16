@@ -14,7 +14,6 @@ spec:
   advancedOptionsConfig:
     jsonParsing: STANDARD
     logLevel: VERBOSE
-    requestBodyInspectionSize: 32KB
   rules:
     - action: allow
       priority: 100

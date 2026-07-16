@@ -1,9 +1,10 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKeyRing
 metadata:
-  name: my-regional-key-ring
+  name: prod-encryption
 spec:
-  projectId:
-    value: "<gcp-project-id>"
-  keyRingName: <your-key-ring-name>  # e.g., prod-encryption
-  location: us-central1  # change to your workload region
+  # projectId is omitted: the ring is created in the provider connection's
+  # default project. Set it explicitly (or reference a GcpProject) to
+  # target another project.
+  keyRingName: prod-encryption # replace with your ring name — permanent, never reusable in this project+location
+  location: us-central1 # replace with your workload region

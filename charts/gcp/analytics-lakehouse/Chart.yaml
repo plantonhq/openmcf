@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: GCP Analytics Lakehouse
+spec:
+  selector:
+    kind: platform
+  description: The analytics foundation in one deploy — a BigQuery warehouse dataset, a lifecycle-managed data lake bucket beside it, and zero-code streaming ingestion where every event published to Pub/Sub lands as a day-partitioned BigQuery row within seconds. An optional Dataproc arm adds an autoscaling Spark cluster with its own staging buckets and least-privilege identity, private-IP-only inside your existing network. Analysts get SQL over the full event history minutes after deploy; the batch tier arrives later with one toggle.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/gcp/gcpbigquerydataset/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/gcp/analytics-lakehouse
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/gcp/analytics-lakehouse/README.md

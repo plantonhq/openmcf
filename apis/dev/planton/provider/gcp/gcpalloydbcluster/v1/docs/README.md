@@ -88,12 +88,16 @@ AlloyDB uses Private Service Access for connectivity:
 
 **Prerequisites:**
 
-- The VPC must have Private Service Access configured (typically via `private_services_access` on a GcpVpc component)
+- The VPC must have Private Service Access configured (compose a `GcpGlobalAddress` VPC_PEERING range with a `GcpServiceNetworkingConnection` on the VPC)
 - The allocated IP range must not overlap with existing subnets
 
-### 3.2 Why PSC Is Deferred
+### 3.2 Private Service Connect (PSC)
 
-Private Service Connect (PSC) is an alternative connectivity model used by newer GCP services (e.g., Memorystore new-gen). AlloyDB currently uses Private Service Access. PSC support for AlloyDB may be added in future GCP releases; we defer PSC support until the AlloyDB API supports it.
+Alternatively, set `pscConfig.pscEnabled: true` with no `network`. The cluster is reachable only through PSC endpoints. PSA and PSC are mutually exclusive — exactly one connectivity mode is required.
+
+### 3.3 Connectivity Validation
+
+The spec enforces PSA-XOR-PSC at validation time: set `network` for Private Service Access or enable `pscConfig.pscEnabled`, not both and not neither.
 
 ---
 
@@ -177,9 +181,8 @@ Only one of `cpu_count` or `machine_type` may be set. `cpu_count` is recommended
 ## 7. Best Practices for Production Deployments
 
 1. **Use REGIONAL availability** — Multi-zone for automatic failover; ZONAL only for dev/test
-2. **Enable deletion protection** — `deletion_protection: true` by default; keep it for production
-3. **CMEK for compliance** — Use `kms_key_name` when HIPAA, PCI-DSS, or FedRAMP requires customer-managed keys
-4. **Configure maintenance window** — Avoid peak hours; use `maintenance_window` with day and start hour
+2. **CMEK for compliance** — Use `kms_key_name` when HIPAA, PCI-DSS, or FedRAMP requires customer-managed keys
+3. **Configure maintenance window** — Avoid peak hours; use `maintenance_window` with day and start hour
 5. **Use SSL** — `sslMode: ENCRYPTED_ONLY` for production
 6. **Require connectors** — `requireConnectors: true` enforces AlloyDB Auth Proxy or Language Connectors for IAM-based auth
 7. **Continuous backup** — Enable with appropriate `recovery_window_days` (e.g., 14–21) for PITR
@@ -303,15 +306,15 @@ Query insights help diagnose slow queries and performance issues. Enable in prod
 
 ---
 
-## 15. Deletion Protection
+## 15. Recorded Skips (evidence-based)
 
-`deletion_protection` defaults to `true`. Before destroying a cluster:
-
-1. Set `deletion_protection: false` in the spec
-2. Apply the change
-3. Then destroy the cluster
-
-This prevents accidental deletion of production data.
+- **Cluster-level deletion protection** — the released google provider has no
+  such attribute for `google_alloydb_cluster` (unreleased-main only); modeling
+  it would create a safety posture one engine cannot honor.
+- **Restore-from-backup / point-in-time sources** — day-2 restore operations,
+  not steady-state configuration; restores create new clusters out-of-band.
+- **Managed connection pooling (instance)** — not exposed by the released
+  provider for AlloyDB instances.
 
 ---
 
@@ -320,14 +323,14 @@ This prevents accidental deletion of production data.
 ### Pattern 1: VPC + Cluster (Minimal)
 
 ```
-GcpVpc (with private_services_access)
+GcpVpcNetwork + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
 └── GcpAlloydbCluster (references network via valueFrom)
 ```
 
 ### Pattern 2: VPC + KMS + Cluster (Enterprise)
 
 ```
-GcpVpc (with private_services_access)
+GcpVpcNetwork + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
 ├── GcpKmsKeyRing
 │   └── GcpKmsKey (cluster key)
 │   └── GcpKmsKey (backup key)
@@ -338,7 +341,7 @@ GcpVpc (with private_services_access)
 ### Pattern 3: Multi-Cluster (Multi-Tenant)
 
 ```
-GcpVpc (with private_services_access)
+GcpVpcNetwork + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
 ├── GcpAlloydbCluster "tenant-a"
 ├── GcpAlloydbCluster "tenant-b"
 └── GcpAlloydbCluster "tenant-c"

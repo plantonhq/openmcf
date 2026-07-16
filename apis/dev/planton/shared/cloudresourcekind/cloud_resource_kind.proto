@@ -1999,16 +1999,25 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpart"
+    prerequisites: [GcpServiceAccount]
   }];
-  GcpCloudCdn = 601 [(kind_meta) = {
+  GcpTargetHttpsProxy = 601 [(kind_meta) = {
     provider: gcp
     version: v1
-    id_prefix: "gcpcdn"
+    id_prefix: "gcpthsp"
+    prerequisites: [
+      GcpUrlMap,
+      GcpManagedSslCertificate,
+      GcpSslPolicy,
+      GcpSslCertificate,
+      GcpCertManagerCert
+    ]
   }];
   GcpCloudFunction = 602 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "cldfunc"
+    prerequisites: [GcpServerlessVpcConnector]
   }];
   GcpCloudRun = 603 [(kind_meta) = {
     provider: gcp
@@ -2019,27 +2028,34 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpsql"
+    prerequisites: [GcpServiceNetworkingConnection]
   }];
   GcpDnsZone = 605 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpdns"
+    prerequisites: [GcpVpcNetwork]
   }];
   GcpGcsBucket = 606 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcsbkt"
+    prerequisites: [GcpServiceAccount]
   }];
   GcpGkeCluster = 607 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gke"
     container_kind: true
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork
+    ]
   }];
-  GcpSecretsManager = 608 [(kind_meta) = {
+  GcpIamCustomRole = 608 [(kind_meta) = {
     provider: gcp
     version: v1
-    id_prefix: "gcpsm"
+    id_prefix: "gcprole"
   }];
   GcpProject = 609 [(kind_meta) = {
     provider: gcp
@@ -2047,7 +2063,7 @@ enum CloudResourceKind {
     id_prefix: "gcpprj"
     container_kind: true
   }];
-  GcpVpc = 610 [(kind_meta) = {
+  GcpVpcNetwork = 610 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpvpc"
@@ -2057,16 +2073,22 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpsnw"
+    prerequisites: [GcpVpcNetwork]
   }];
   GcpRouterNat = 612 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcprnat"
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpAddress
+    ]
   }];
   GcpGkeNodePool = 613 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gkenp"
+    prerequisites: [GcpGkeCluster]
   }];
   GcpServiceAccount = 614 [(kind_meta) = {
     provider: gcp
@@ -2077,21 +2099,39 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gkewib"
+    prerequisites: [GcpServiceAccount]
   }];
   GcpCertManagerCert = 616 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpcert"
+    prerequisites: [GcpCertManagerDnsAuthorization]
   }];
   GcpComputeInstance = 617 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpvm"
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork,
+      GcpServiceAccount,
+      GcpComputeDisk
+    ]
   }];
   GcpDnsRecord = 618 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpdrec"
+    prerequisites: [GcpDnsZone]
+  }];
+  GcpProjectIamMember = 619 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcppim"
+    prerequisites: [
+      GcpServiceAccount,
+      GcpIamCustomRole
+    ]
   }];
   GcpFirewallRule = 620 [(kind_meta) = {
     provider: gcp
@@ -2108,15 +2148,59 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpcap"
   }];
+  GcpHealthCheck = 623 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcphc"
+  }];
+  GcpBackendBucket = 624 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpbb"
+    prerequisites: [GcpGcsBucket]
+  }];
+  GcpBackendService = 625 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpbs"
+    prerequisites: [
+      GcpHealthCheck,
+      GcpRegionNetworkEndpointGroup
+    ]
+  }];
+  GcpRegionNetworkEndpointGroup = 626 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcprneg"
+  }];
+  GcpUrlMap = 627 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpum"
+    prerequisites: [GcpBackendService]
+  }];
+  GcpManagedSslCertificate = 628 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpmssl"
+  }];
+  GcpTargetHttpProxy = 629 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpthp"
+    prerequisites: [GcpUrlMap]
+  }];
   GcpAlloydbCluster = 630 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpadb"
+    prerequisites: [GcpServiceNetworkingConnection]
   }];
   GcpRedisInstance = 631 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpred"
+    prerequisites: [GcpServiceNetworkingConnection]
   }];
   GcpFirestoreDatabase = 632 [(kind_meta) = {
     provider: gcp
@@ -2132,6 +2216,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpspdb"
+    prerequisites: [GcpSpannerInstance]
   }];
   GcpBigtableInstance = 635 [(kind_meta) = {
     provider: gcp
@@ -2142,6 +2227,58 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpmsi"
+    prerequisites: [GcpServiceConnectionPolicy]
+  }];
+  GcpCloudSqlDatabase = 637 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsqldb"
+    prerequisites: [GcpCloudSql]
+  }];
+  GcpCloudSqlUser = 638 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsqlusr"
+    prerequisites: [GcpCloudSql]
+  }];
+  GcpAlloydbInstance = 639 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpadbinst"
+    prerequisites: [GcpAlloydbCluster]
+  }];
+  GcpAlloydbUser = 640 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpadbusr"
+    prerequisites: [GcpAlloydbCluster]
+  }];
+  GcpSpannerBackupSchedule = 641 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsbs"
+    prerequisites: [
+      GcpSpannerInstance,
+      GcpSpannerDatabase
+    ]
+  }];
+  GcpBigtableTable = 642 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpbttbl"
+    prerequisites: [GcpBigtableInstance]
+  }];
+  GcpFirestoreBackupSchedule = 643 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpfstbs"
+    prerequisites: [GcpFirestoreDatabase]
+  }];
+  GcpFirestoreIndex = 644 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpfstidx"
+    prerequisites: [GcpFirestoreDatabase]
   }];
   GcpBigQueryDataset = 650 [(kind_meta) = {
     provider: gcp
@@ -2152,46 +2289,134 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpdpc"
+    // Dataproc's minimum composition on a custom VPC: a subnetwork, a VM
+    // runtime identity holding roles/dataproc.worker (hardened projects
+    // grant the default compute service account nothing), and an
+    // intra-cluster firewall rule (custom VPCs have no default rules, and
+    // multi-node clusters refuse to start when VM-to-VM traffic is
+    // blocked).
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork,
+      GcpFirewallRule,
+      GcpServiceAccount,
+      GcpDataprocAutoscalingPolicy
+    ]
   }];
-  GcpDataprocVirtualCluster = 652 [(kind_meta) = {
+  GcpDataprocAutoscalingPolicy = 652 [(kind_meta) = {
     provider: gcp
     version: v1
-    id_prefix: "gcpdvc"
+    id_prefix: "gcpdpasp"
+  }];
+  GcpBigQueryTable = 653 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpbqtbl"
+    prerequisites: [GcpBigQueryDataset]
   }];
   GcpPubSubTopic = 660 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcppst"
+    // The schema is optional in the spec, but schema-validated topics are
+    // the composition the kind is designed around — installing the schema
+    // first lets the topic's schema reference resolve.
+    prerequisites: [GcpPubSubSchema]
   }];
   GcpPubSubSubscription = 661 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcppss"
+    prerequisites: [GcpPubSubTopic]
   }];
   GcpCloudTasksQueue = 662 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcptq"
+    // Queue-level HTTP task authentication (OIDC/OAuth tokens) dispatches as
+    // a service account — the designed composition for secure targets.
+    prerequisites: [GcpServiceAccount]
   }];
   GcpCloudSchedulerJob = 663 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpcsj"
+    // The pubsub target publishes to a topic, and HTTP targets authenticate
+    // as a service account (OIDC/OAuth) — the designed compositions.
+    prerequisites: [
+      GcpPubSubTopic,
+      GcpServiceAccount
+    ]
+  }];
+  GcpPubSubSchema = 664 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcppsch"
   }];
   GcpVertexAiNotebook = 670 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpvnb"
+    // The notebook VM composes into a network (VPC + subnetwork) and runs
+    // as a service account — the minimum production-shaped composition.
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork,
+      GcpServiceAccount
+    ]
   }];
   GcpVertexAiEndpoint = 671 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpvep"
   }];
+  GcpVertexAiIndex = 672 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpvaidx"
+  }];
+  // Vector Search IndexEndpoint — distinct from the online-prediction
+  // GcpVertexAiEndpoint (671); different GCP resources, different kinds.
+  GcpVertexAiIndexEndpoint = 673 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpvaiep"
+  }];
+  GcpVertexAiDeployedIndex = 674 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpvdidx"
+    // The deployment joins an index onto an index endpoint — both must
+    // exist before anything can be deployed.
+    prerequisites: [
+      GcpVertexAiIndex,
+      GcpVertexAiIndexEndpoint
+    ]
+  }];
   GcpCloudComposerEnvironment = 680 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpcce"
+    // Composer 3 requires an explicitly specified workloads service
+    // account holding roles/composer.worker — the identity is part of
+    // the environment's minimum composition.
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork,
+      GcpServiceAccount
+    ]
+  }];
+  GcpCloudComposerUserWorkloadsSecret = 681 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpcuws"
+    prerequisites: [GcpCloudComposerEnvironment]
+  }];
+  GcpCloudComposerUserWorkloadsConfigMap = 682 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpcuwcm"
+    prerequisites: [GcpCloudComposerEnvironment]
   }];
   GcpKmsKeyRing = 690 [(kind_meta) = {
     provider: gcp
@@ -2202,11 +2427,119 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpkms"
+    prerequisites: [GcpKmsKeyRing]
+  }];
+  GcpKmsKeyIamMember = 692 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpkim"
+    prerequisites: [
+      GcpKmsKeyRing,
+      GcpKmsKey,
+      GcpServiceAccount
+    ]
   }];
   GcpFilestoreInstance = 700 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpnfs"
+    prerequisites: [GcpVpcNetwork]
+  }];
+  // 701–709: IAM/identity family (overflow block; the 600–622
+  // foundation/security sub-band is fully allocated)
+  GcpWorkloadIdentityPool = 701 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpwip"
+  }];
+  GcpWorkloadIdentityPoolProvider = 702 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpwipp"
+    prerequisites: [GcpWorkloadIdentityPool]
+  }];
+  GcpServiceAccountIamMember = 703 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsaim"
+    prerequisites: [GcpServiceAccount]
+  }];
+  // 710–719: networking/load-balancer family (overflow block; the 623–629
+  // LB sub-band is fully allocated)
+  GcpGlobalForwardingRule = 710 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpgfr"
+    prerequisites: [
+      GcpTargetHttpsProxy,
+      GcpGlobalAddress
+    ]
+  }];
+  GcpSslPolicy = 711 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsslpol"
+  }];
+  GcpSslCertificate = 712 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsslcert"
+  }];
+  GcpServiceNetworkingConnection = 713 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsnc"
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpGlobalAddress
+    ]
+  }];
+  GcpAddress = 714 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpaddr"
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork
+    ]
+  }];
+  GcpServiceConnectionPolicy = 715 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpscp"
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork
+    ]
+  }];
+  GcpCertManagerDnsAuthorization = 716 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpcmda"
+  }];
+
+  // 720–729: GCP serverless overflow
+  GcpCloudRunJob = 720 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "cldrunjob"
+  }];
+  GcpServerlessVpcConnector = 721 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpvpcconn"
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork
+    ]
+  }];
+
+  // 730–739: GCP compute overflow (the 600–622 foundation sub-band that
+  // holds GcpComputeInstance is fully allocated)
+  GcpComputeDisk = 730 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpdisk"
   }];
 
   // 800–999: Kubernetes resources

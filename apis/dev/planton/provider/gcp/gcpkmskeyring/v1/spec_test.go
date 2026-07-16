@@ -107,14 +107,21 @@ var _ = ginkgo.Describe("GcpKmsKeyRingSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	// ──────────────── Negative Cases ────────────────
+	ginkgo.It("should accept a multi-digit region location", func() {
+		msg := minimal()
+		msg.Spec.Location = "europe-west12"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
 
-	ginkgo.It("should reject when project_id is missing", func() {
+	ginkgo.It("should accept an omitted project_id (ambient provider project)", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
+
+	// ──────────────── Negative Cases ────────────────
 
 	ginkgo.It("should reject when key_ring_name is empty", func() {
 		msg := minimal()

@@ -179,7 +179,7 @@ In Kubernetes environments, teams use **external-dns**—a controller that watch
 
 This separation allows infrastructure teams to manage zones and static records with Terraform while allowing external-dns or cert-manager to manage dynamic application records within the same zone. The systems coexist peacefully because each manages its own distinct set of resources.
 
-**Planton's API design reflects this principle.** The `GcpDnsZone` resource provisions the zone and static records (defined in the spec). Dynamic records managed by external-dns are handled outside of the IaC lifecycle, as they should be.
+**Planton's API design reflects this principle.** The `GcpDnsZone` resource provisions the zone only. DNS records are modeled as the separate `GcpDnsRecord` kind. Dynamic records managed by external-dns are handled outside of the IaC lifecycle, as they should be.
 
 ---
 
@@ -345,23 +345,17 @@ The `GcpDnsZone` API resource in Planton is designed around the principle that *
 
 ### Core Design Decisions
 
-1. **Separate Zone and Record Lifecycle:** The `GcpDnsZoneSpec` includes a `records` field for static, foundational DNS records (like MX, TXT, and NS). Dynamic application records are expected to be managed by external-dns, not by the IaC layer. This respects the "split state" pattern.
+1. **Zone-Only Lifecycle:** `GcpDnsZone` provisions the managed zone shell. Individual records belong in `GcpDnsRecord`. This respects the "split state" pattern and avoids conflicts with external-dns and cert-manager.
 
-2. **IAM Service Account Integration:** The `iam_service_accounts` field allows platform administrators to grant DNS management permissions to workload identities like cert-manager and external-dns. This is provisioned as part of the zone lifecycle, ensuring that automation tools have the access they need from day one.
+2. **No Project-Level IAM Bindings:** DNS automation IAM (for cert-manager, external-dns) is granted separately with least-privilege roles — not via an authoritative `roles/dns.admin` project binding embedded in the zone stack.
 
-3. **Simplified Record Definitions:** DNS records are defined with four essential fields:
-   - `record_type` (A, CNAME, TXT, MX, NS, etc.)
-   - `name` (the FQDN, e.g., `www.example.com.`)
-   - `values` (the record data, e.g., IP addresses)
-   - `ttl_seconds` (with a sensible default of 60 seconds)
+3. **Full Managed-Zone Surface:** Public and private standard zones, forwarding zones, peering zones, DNSSEC, query logging, and VPC/GKE visibility bindings map to `google_dns_managed_zone`.
 
-   Advanced routing policies (geolocation, failover, weighted round-robin) are intentionally omitted from the core API because they represent the "20%" use case. Teams that need these capabilities can manage them through direct Terraform resources or Config Connector CRDs.
-
-4. **Public Zones Only (for Now):** The current API focuses on **public zones**, which are the most common use case. Private zones for VPC-internal service discovery and advanced zone types (forwarding zones, peering zones) are intentionally scoped out of the initial API. These features may be added in future versions based on user demand.
+4. **Composable Foreign Keys:** VPC networks resolve from `GcpVpcNetwork.network_self_link`; GKE clusters from `GcpGkeCluster.cluster_id`.
 
 ### Example Configuration
 
-Here's a typical `GcpDnsZone` resource that provisions a public zone with DNSSEC (assumed enabled by default in the underlying Pulumi/Terraform module), grants permissions to cert-manager, and defines foundational DNS records:
+Public zone with DNSSEC (records added via GcpDnsRecord):
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
@@ -369,33 +363,32 @@ kind: GcpDnsZone
 metadata:
   name: example-com
 spec:
-  project_id: my-gcp-project
-  iam_service_accounts:
-  - cert-manager@my-gcp-project.iam.gserviceaccount.com
-  records:
-  - record_type: A
-    name: example.com.
-    values:
-    - 104.198.14.52
-    ttl_seconds: 300
-  - record_type: CNAME
-    name: www.example.com.
-    values:
-    - example.com.
-    ttl_seconds: 300
-  - record_type: TXT
-    name: example.com.
-    values:
-    - google-site-verification=abc123xyz789
-    ttl_seconds: 3600
-  - record_type: MX
-    name: example.com.
-    values:
-    - 10 mail.example.com.
-    ttl_seconds: 3600
+  projectId:
+    value: my-gcp-project
+  dnsName: example.com.
+  dnssecConfig:
+    state: on
 ```
 
-This configuration is **declarative**, **version-controlled**, and **production-ready**. The underlying Pulumi module (or Terraform module, depending on the stack runner) provisions the Cloud DNS managed zone, enables DNSSEC, creates the specified records, and grants the cert-manager service account the permissions it needs to solve DNS-01 challenges.
+Private zone visible to a VPC:
+
+```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpDnsZone
+metadata:
+  name: internal.example.com
+spec:
+  projectId:
+    value: my-gcp-project
+  visibility: private
+  privateVisibilityConfig:
+    networks:
+      - networkUrl:
+          valueFrom:
+            kind: GcpVpcNetwork
+            name: app-vpc
+            fieldPath: status.outputs.network_self_link
+```
 
 ---
 
@@ -409,7 +402,7 @@ Managing DNS in Google Cloud has evolved from manual console operations to fully
 
 3. **Ecosystem Integration:** DNS is not a standalone service. It's deeply integrated with Kubernetes for service discovery, with cert-manager for certificate automation, and with hybrid-cloud architectures for cross-network resolution.
 
-Planton's `GcpDnsZone` API embodies these principles by providing a **minimal, production-grade interface** for the 80% use case—provisioning public DNS zones, enabling DNSSEC by default, defining foundational records, and granting IAM permissions to automation tools—while leaving advanced features (routing policies, private zones, forwarding zones) to be managed through direct Terraform or Config Connector when needed.
+Planton's `GcpDnsZone` API embodies these principles by providing a **zone-only, composable interface** — public and private managed zones with DNSSEC, visibility bindings, forwarding, and peering — while DNS records live in `GcpDnsRecord` and automation IAM is managed separately.
 
 This is DNS management designed for modern cloud-native platforms: declarative, automated, and secure by default.
 

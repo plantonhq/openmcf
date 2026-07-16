@@ -1,57 +1,53 @@
-# GcpPubSubTopic -- Terraform Module
+# GcpPubSubTopic - Terraform Module
 
-This directory contains the Terraform implementation for the GcpPubSubTopic component.
+This Terraform/OpenTofu module provisions a Pub/Sub topic (`google_pubsub_topic`) — the named channel publishers send to. It is the Terraform-side implementation of the Planton `GcpPubSubTopic` resource kind and has feature parity with the Pulumi module.
 
-## Module Structure
+## Overview
 
+The module covers the full released topic surface: CMEK encryption, topic-level message retention, regional storage policy with in-transit enforcement, schema validation (via a `GcpPubSubSchema` reference), all five ingestion data sources (Kinesis, MSK, Azure Event Hubs, Cloud Storage, Confluent Cloud) with platform logging, and the ordered JavaScript UDF transform pipeline.
+
+The module enables the Pub/Sub API with `disable_on_destroy=false` so a fresh project works first try and teardown never disables the API project-wide. An empty `project_id` falls back to the provider's default project, identically to the Pulumi module. User labels merge beneath the platform attribution labels (`planton-ai_*`), which win on key conflicts — identical label sets on both engines.
+
+## Usage with Planton CLI
+
+```shell
+planton tofu init --manifest ../hack/manifest.yaml --module-dir .
+planton tofu plan --manifest ../hack/manifest.yaml --module-dir .
+planton tofu apply --manifest ../hack/manifest.yaml --module-dir . --auto-approve
+planton tofu destroy --manifest ../hack/manifest.yaml --module-dir . --auto-approve
 ```
-provider.tf    -- Google provider configuration
-variables.tf   -- Input variables matching GcpPubSubTopicSpec
-locals.tf      -- Derived values from spec
-main.tf        -- google_pubsub_topic resource with dynamic blocks
-outputs.tf     -- Outputs matching GcpPubSubTopicStackOutputs
-```
 
-## What It Creates
+Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../hack/manifest.yaml`.
 
-- `google_pubsub_topic.this` -- A Pub/Sub topic with optional CMEK encryption,
-  message retention, regional storage policy, schema validation, and data
-  ingestion from external sources.
+## Module Layout
 
-## Inputs
+- `provider.tf` — google provider pin (`~> 6.0`; all fields GA on the released line)
+- `variables.tf` — the converter-contract `metadata`/`spec` variables
+- `locals.tf` — ambient-project resolution + the merged label map
+- `main.tf` — API enablement + the topic resource
+- `outputs.tf` — stack outputs (must match `stack_outputs.proto`)
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `spec.project_id.value` | `string` | GCP project ID |
-| `spec.topic_name` | `string` | Topic name (3-255 chars) |
-| `spec.kms_key_name.value` | `string` | CMEK key name (optional) |
-| `spec.message_retention_duration` | `string` | Retention duration, e.g. "604800s" |
-| `spec.message_storage_policy` | `object` | Regional storage constraints |
-| `spec.schema_settings` | `object` | Schema validation settings |
-| `spec.ingestion_data_source_settings` | `object` | External source ingestion |
-| `provider_config.service_account_key_base64` | `string` | Optional GCP SA key |
+## Inputs (high level)
+
+| Variable | Description |
+|----------|-------------|
+| `spec.project_id` | GCP project (empty = provider default project) |
+| `spec.topic_name` | Topic resource name (ForceNew) |
+| `spec.kms_key_name` | CMEK key path (resolved from a GcpKmsKey reference) |
+| `spec.message_retention_duration` | Topic-level retention window |
+| `spec.labels` | User labels (merged beneath platform labels) |
+| `spec.message_storage_policy` | Region pinning + in-transit enforcement |
+| `spec.schema_settings` | Schema validation (schema resolved from a GcpPubSubSchema reference) |
+| `spec.ingestion_data_source_settings` | One of five external ingestion sources |
+| `spec.message_transforms` | Ordered JavaScript UDF pipeline |
 
 ## Outputs
 
-| Output | Description |
-|--------|-------------|
-| `topic_id` | Fully qualified topic ID (projects/{project}/topics/{name}) |
-| `topic_name` | Short topic name |
+| Name | Description |
+|------|-------------|
+| `topic_id` | The fully qualified topic path (`projects/{project}/topics/{name}`) — what subscriptions, event triggers, and Scheduler targets consume |
+| `topic_name` | The short topic name |
 
-## Usage
+## Lifecycle Notes
 
-```bash
-terraform init
-terraform plan -var-file=terraform.tfvars.json
-terraform apply -var-file=terraform.tfvars.json
-```
-
-## Important Notes
-
-- **Topic name is immutable.** Changing `topic_name` triggers destroy and recreate.
-- **Labels are managed by Planton framework.** Framework labels are applied automatically.
-- **Ingestion sources** are mutually exclusive in practice (one source per topic),
-  though the API does not enforce this at the schema level.
-- **CMEK requires IAM setup.** The Pub/Sub service account
-  (`service-{PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com`) must have
-  `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the specified key.
+`topic_name` and `project` are ForceNew — renaming replaces the topic and orphans its subscriptions, so treat names as permanent. Everything else (CMEK key, retention, storage policy, schema settings, ingestion, transforms, labels) updates in place. For CMEK, grant the Pub/Sub service agent `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key before deploying, or publishes fail.

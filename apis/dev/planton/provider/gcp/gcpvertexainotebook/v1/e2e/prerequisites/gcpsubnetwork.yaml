@@ -1,0 +1,26 @@
+# Consumer-scoped GcpSubnetwork install profile for the notebook chain.
+# Subnetwork names carry ${E2E_RUN_ID} for the same collision-avoidance
+# contract as the parent VPC prerequisite.
+apiVersion: gcp.planton.dev/v1
+kind: GcpSubnetwork
+metadata:
+  name: planton-oss-e2e-gcpsubnetwork-prereq
+  id: planton-oss-e2e-gcpsubnetwork-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpsubnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  subnetworkName: planton-oss-e2e-notebook-snw-${E2E_RUN_ID}
+  region: us-central1
+  ipCidrRange: 10.20.0.0/24
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
+      fieldPath: status.outputs.network_self_link

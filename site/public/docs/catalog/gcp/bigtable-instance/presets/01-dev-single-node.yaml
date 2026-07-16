@@ -3,10 +3,12 @@ kind: GcpBigtableInstance
 metadata:
   name: my-dev-bigtable
 spec:
-  projectId:
-    value: "<gcp-project-id>"
-  instanceName: <instance-name>
+  instanceName: my-dev-bigtable
+  # Dev instances tear down freely.
   deletionProtection: false
   clusters:
-    - clusterId: <cluster-id>
-      zone: <gcp-zone>
+    # One single-node SSD cluster — the smallest footprint that behaves
+    # like production (same API, same client libraries).
+    - clusterId: my-dev-bigtable-c1
+      zone: us-central1-a
+      numNodes: 1

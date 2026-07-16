@@ -17,23 +17,23 @@ params:
   - name: soft_delete_days
     description: "The blob and container soft-delete recycle-bin window in days (1-365). This IS the lake's accidental-deletion story: blob versioning and point-in-time restore do not exist on hierarchical-namespace accounts"
     value: 14
-    type: int
+    type: number
 
   # ─── Lifecycle economics ─────────────────────────────────────────────────────
   - name: raw_cool_after_days
     description: Days after last modification before raw-zone data tiers to COOL storage. Raw landings are written once and read during processing -- after that they are history that should not bill at hot rates
     value: 30
-    type: int
+    type: number
 
   - name: raw_archive_after_days
     description: Days after last modification before raw-zone data tiers to ARCHIVE (offline; rehydration takes hours and costs per GB). The compliance tail of the raw zone at roughly a tenth of cool pricing
     value: 90
-    type: int
+    type: number
 
   - name: sandbox_ttl_days
     description: Days after last modification before sandbox-zone data is DELETED. The sandbox is scratch space for exploration -- an expiry keeps experiments from silently becoming permanent infrastructure
     value: 30
-    type: int
+    type: number
 
   # ─── Encryption ──────────────────────────────────────────────────────────────
   - name: cmk_enabled
@@ -45,4 +45,4 @@ params:
   - name: log_retention_days
     description: Log Analytics retention in days for the data-access audit trail (who read, wrote, and deleted what)
     value: 30
-    type: int
+    type: number

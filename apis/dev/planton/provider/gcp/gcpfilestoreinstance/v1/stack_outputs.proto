@@ -21,4 +21,11 @@ message GcpFilestoreInstanceStackOutputs {
 
   // Timestamp when the instance was created (RFC3339 format).
   string create_time = 5;
+
+  // The /29 CIDR block reserved for this instance on its VPC network, as
+  // resolved by GCP (also populated when the spec left it to GCP to pick).
+  string reserved_ip_range = 6;
+
+  // Server-specified ETag guarding against conflicting concurrent updates.
+  string etag = 7;
 }

@@ -6,69 +6,161 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
-// GcpCertManagerCertSpec defines the fields needed to provision a public SSL certificate
-// via Google Certificate Manager or Google-managed SSL certificates for Load Balancers,
-// using DNS validation with Google Cloud DNS.
+// GcpCertManagerCertSpec creates one Certificate Manager certificate — the
+// modern certificate resource external Application Load Balancers consume
+// via a target HTTPS proxy's certificate_manager_certificates list or a
+// certificate map.
+//
+// Exactly one of two arms must be configured:
+//
+//   - **managed**: Google provisions and RENEWS the certificate
+//     automatically for the listed domains. Domain control is proven
+//     either through DNS authorizations (first-class
+//     GcpCertManagerDnsAuthorization resources — required for wildcard
+//     domains and for issuing before traffic is serving), through a
+//     private-PKI issuance config, or — when neither is set — through
+//     load-balancer authorization (GCP validates via the serving load
+//     balancer itself once traffic reaches it).
+//
+//   - **self_managed**: you upload a PEM certificate chain and its private
+//     key. Renewal before expiry is your responsibility; rotation is a
+//     spec update with the new material.
+//
+// (The classic compute certificates are separate kinds:
+// GcpManagedSslCertificate for Google-managed classic certificates and
+// GcpSslCertificate for self-managed classic certificates.)
 message GcpCertManagerCertSpec {
-  // gcp_project_id is the ID of the GCP project where the certificate will be created.
-  // This is a required field.
-  string gcp_project_id = 1 [(buf.validate.field).required = true];
+  option (buf.validate.message).cel = {
+    id: "spec.exactly_one_arm"
+    message: "exactly one of managed or self_managed must be set"
+    expression: "has(this.managed) != has(this.self_managed)"
+  };
 
-  // primary_domain_name is a required field representing the main (apex or wildcard) domain name.
-  // Examples include "example.com" or "*.example.com" (wildcard).
-  // This domain will be set as the primary domain in the GCP certificate.
-  //
-  // The pattern enforces a domain-like structure, allowing an optional wildcard prefix.
-  // The string is mandatory, so users must always supply a primary domain.
-  string primary_domain_name = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string = {pattern: "^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,})$"}
+  option (buf.validate.message).cel = {
+    id: "spec.all_regions_is_global"
+    message: "scope ALL_REGIONS is only valid for global certificates (leave location empty or 'global')"
+    expression: "this.scope != 'ALL_REGIONS' || this.location == '' || this.location == 'global'"
+  };
+
+  // The GCP project to create the certificate in.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
 
-  // alternate_domain_names is an optional list of Subject Alternative Names (SANs) for the certificate.
-  // Each entry must follow the same pattern as primary_domain_name and cannot contain duplicates.
-  // Primary domain should not be added to this list.
-  repeated string alternate_domain_names = 3 [
-    (buf.validate.field).repeated.unique = true,
-    (buf.validate.field).repeated.items = {
-      string: {pattern: "^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,})$"}
-    }
-  ];
+  // Name of the certificate in GCP. Must be 1-64 characters: start with a
+  // letter, then letters, digits, hyphens, or underscores. Certificate
+  // names must be unique per location. Immutable.
+  // If not specified, defaults to metadata.name.
+  string cert_name = 2 [(buf.validate.field).cel = {
+    id: "cert_name.valid"
+    message: "cert_name must be 1-64 characters, start with a letter, and contain only letters, digits, hyphens, or underscores"
+    expression: "this == '' || this.matches('^[a-zA-Z][a-zA-Z0-9_-]{0,63}$')"
+  }];
 
-  // cloud_dns_zone_id is the identifier of a Cloud DNS managed zone used for
-  // automatic DNS validation record creation. When set, the module creates CNAME
-  // validation records directly in this Cloud DNS zone. When omitted, the module
-  // still creates DNS authorizations but skips record insertion — the required
-  // validation records are exported as stack outputs (dns_validation_records) so
-  // they can be inserted manually into any DNS provider (e.g. AWS Route 53).
-  dev.planton.shared.foreignkey.v1.StringValueOrRef cloud_dns_zone_id = 4 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpDnsZone,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_name"
-  ];
+  // Human-readable description of the certificate.
+  string description = 3;
 
-  // certificate_type indicates which type of certificate to create.
-  // MANAGED uses Google Certificate Manager (newer, more flexible).
-  // LOAD_BALANCER uses Google-managed SSL certificates (classic, for load balancers).
-  // By default, MANAGED is used.
-  optional CertificateType certificate_type = 5 [(dev.planton.shared.options.default) = "MANAGED"];
+  // The Certificate Manager location. Defaults to "global" — the correct
+  // choice for classic external HTTPS load balancers. Regional
+  // certificates serve regional load balancers only. Immutable.
+  string location = 4;
 
-  // validation_method indicates how the certificate verifies domain ownership.
-  // By default, DNS validation is used.
-  optional string validation_method = 6 [
-    (dev.planton.shared.options.default) = "DNS",
-    (buf.validate.field).string = {
-      in: ["DNS"]
-    }
-  ];
+  // Where the certificate is served from. Immutable.
+  //   DEFAULT: core Google data centers (choose this if unsure).
+  //   EDGE_CACHE: Edge Points of Presence (Media CDN).
+  //   ALL_REGIONS: every GCP region (global certificates only —
+  //     cross-region internal Application Load Balancers).
+  //   CLIENT_AUTH: presented BY the load balancer to the backend when
+  //     backend mTLS is configured.
+  string scope = 5 [(buf.validate.field).cel = {
+    id: "scope.valid"
+    message: "scope must be DEFAULT, EDGE_CACHE, ALL_REGIONS, or CLIENT_AUTH"
+    expression: "this == '' || this in ['DEFAULT', 'EDGE_CACHE', 'ALL_REGIONS', 'CLIENT_AUTH']"
+  }];
+
+  // Google-managed arm: provisioned and renewed automatically.
+  GcpCertManagerCertManaged managed = 6;
+
+  // Self-managed arm: bring-your-own PEM certificate and key.
+  GcpCertManagerCertSelfManaged self_managed = 7;
+
+  // User labels merged onto the certificate beneath the platform's
+  // attribution labels (platform keys win on conflicts).
+  // Keys/values: lowercase letters, digits, underscores, hyphens.
+  map<string, string> labels = 8;
 }
 
-// CertificateType defines the type of certificate to create in GCP.
-enum CertificateType {
-  // MANAGED creates a certificate using Google Certificate Manager.
-  // This is the newer, more feature-rich option.
-  MANAGED = 0;
+// Configuration for a Google-managed certificate.
+message GcpCertManagerCertManaged {
+  option (buf.validate.message).cel = {
+    id: "managed.auth_mode_exclusive"
+    message: "dns_authorizations and issuance_config are mutually exclusive (omit both for load-balancer authorization)"
+    expression: "this.dns_authorizations.size() == 0 || this.issuance_config == ''"
+  };
 
-  // LOAD_BALANCER creates a Google-managed SSL certificate.
-  // This is the classic option, typically used with load balancers.
-  LOAD_BALANCER = 1;
+  option (buf.validate.message).cel = {
+    id: "managed.wildcards_need_dns_auth"
+    message: "wildcard domains require dns_authorizations (load-balancer authorization cannot validate wildcards)"
+    expression: "!this.domains.exists(d, d.startsWith('*.')) || this.dns_authorizations.size() > 0 || this.issuance_config != ''"
+  };
+
+  // The domains this certificate covers (e.g. "example.com",
+  // "*.example.com"). Wildcards are supported only with DNS authorizations
+  // or an issuance config. Immutable.
+  repeated string domains = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      cel: {
+        id: "domain.valid"
+        message: "each domain must be a bare or wildcard domain name (no trailing dot), e.g. example.com or *.example.com"
+        expression: "this.matches('^([*][.])?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z]{2,}$')"
+      }
+    }
+  }];
+
+  // DNS authorizations proving control of the domains — one per distinct
+  // domain (an authorization covers its domain and that domain's
+  // wildcard). Each entry is the authorization's fully-qualified resource
+  // ID; reference GcpCertManagerDnsAuthorization resources.
+  // Omit (with no issuance_config) for load-balancer authorization.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef dns_authorizations = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpCertManagerDnsAuthorization,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.authorization_id"
+  ];
+
+  // Private-PKI issuance: the CertificateIssuanceConfig resource name
+  // (projects/*/locations/*/certificateIssuanceConfigs/*) that signs
+  // certificates from your own CA instead of a public one.
+  // Mutually exclusive with dns_authorizations.
+  string issuance_config = 3;
+}
+
+// Configuration for a self-managed (uploaded) certificate.
+message GcpCertManagerCertSelfManaged {
+  // The certificate chain in PEM form: leaf certificate first, followed by
+  // any intermediates. Certificate material is public — only the key is
+  // secret. Updating the pair in place rotates the certificate.
+  string pem_certificate = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "pem_certificate.framing"
+      message: "pem_certificate must be a PEM CERTIFICATE block (did you swap the certificate and private key?)"
+      expression: "this.contains('BEGIN CERTIFICATE')"
+    }
+  ];
+
+  // The leaf certificate's private key in PEM form. Secret material —
+  // never logged, masked in outputs.
+  string pem_private_key = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "pem_private_key.framing"
+      message: "pem_private_key must be a PEM PRIVATE KEY block (did you swap the certificate and private key?)"
+      expression: "this.contains('PRIVATE KEY')"
+    },
+    (dev.planton.shared.options.sensitive) = true
+  ];
 }

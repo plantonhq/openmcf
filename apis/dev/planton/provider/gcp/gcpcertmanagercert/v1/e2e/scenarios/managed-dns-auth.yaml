@@ -1,0 +1,29 @@
+# GcpCertManagerCert composed chain: managed cert referencing the chained
+# DNS authorization. Verifier asserts PROVISIONING posture, not ACTIVE.
+apiVersion: gcp.planton.dev/v1
+kind: GcpCertManagerCert
+metadata:
+  name: planton-oss-e2e-cert-managed
+  id: planton-oss-e2e-cert-managed
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcertmanagercert
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  certName: planton-oss-e2e-cert-${E2E_RUN_ID}
+  description: Ephemeral managed certificate for Planton OSS E2E
+  managed:
+    domains:
+      - e2e-${E2E_RUN_ID}.example.com
+    dnsAuthorizations:
+      - valueFrom:
+          kind: GcpCertManagerDnsAuthorization
+          name: planton-oss-e2e-cmda-cert-prereq
+          fieldPath: status.outputs.authorization_id
+  labels:
+    e2e-suite: gcp

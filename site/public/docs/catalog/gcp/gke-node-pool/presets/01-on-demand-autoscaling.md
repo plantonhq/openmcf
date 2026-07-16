@@ -1,6 +1,6 @@
 ---
-title: "On-Demand Autoscaling Node Pool"
-description: "This preset creates a GKE node pool with on-demand (non-preemptible) VMs, SSD boot disks, and cluster autoscaler enabled. It scales between 1 and 5 nodes per zone with balanced distribution, making..."
+title: "On-Demand Autoscaling Pool"
+description: "This preset creates the workhorse node pool most clusters run first: on-demand VMs, per-zone autoscaling, surge upgrades with zero capacity dip, a dedicated node service account, and secure boot on."
 type: "preset"
 rank: "01"
 presetSlug: "01-on-demand-autoscaling"
@@ -11,35 +11,37 @@ icon: "package"
 order: 1
 ---
 
-# On-Demand Autoscaling Node Pool
+# On-Demand Autoscaling Pool
 
-This preset creates a GKE node pool with on-demand (non-preemptible) VMs, SSD boot disks, and cluster autoscaler enabled. It scales between 1 and 5 nodes per zone with balanced distribution, making it the standard choice for production workloads.
+This preset creates the workhorse node pool most clusters run first: on-demand VMs, per-zone autoscaling, surge upgrades with zero capacity dip, a dedicated node service account, and secure boot on.
 
 ## When to Use
 
-- Production GKE workloads that need reliable, non-interruptible compute
-- General-purpose node pools for web services, APIs, and background workers
-- Environments where autoscaling is preferred over fixed capacity
+- The primary pool for production services that must always have capacity
+- Steady-state workloads where Spot preemption is unacceptable
+- The first pool added after creating a Standard GKE cluster
 
 ## Key Configuration Choices
 
-- **e2-standard-4** (`machineType`) -- 4 vCPU, 16 GB RAM; cost-effective for most workloads
-- **SSD boot disk** (`diskType: pd-ssd`) -- faster I/O for container image loading and ephemeral storage
-- **100 GB disk** (`diskSizeGb: 100`) -- sufficient for container images and local storage
-- **COS_CONTAINERD** (`imageType`) -- Container-Optimized OS, the GCP-recommended node image
-- **Autoscaling 1-5** -- minimum 1 node per zone (always-on capacity), maximum 5 per zone
-- **BALANCED location policy** -- distributes nodes evenly across zones for availability
-- **Auto-upgrade and auto-repair** -- enabled by default (not disabled)
+- **Cluster by reference** — `clusterName` and `location` resolve from the cluster's outputs, so the pool addresses its parent exactly as GKE named it
+- **Per-zone autoscaling 1-5** — a regional cluster in three zones runs 3-15 nodes; `BALANCED` keeps zones evenly sized
+- **`n2-standard-4` on `pd-balanced`** — a real general-purpose shape; the `e2-medium` default is sandbox-sized
+- **Surge upgrades (`maxSurge: 1, maxUnavailable: 0`)** — upgrades never reduce serving capacity
+- **Dedicated service account + secure boot** — least-privilege node identity; workload permissions come from Workload Identity
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 |---|---|---|
-| `<gcp-project-id>` | GCP project ID hosting the GKE cluster | `GcpProject` outputs |
-| `<gke-cluster-name>` | Name of the parent GKE cluster | `GcpGkeCluster` metadata name |
-| `<gcp-region>` | Location of the GKE cluster (e.g., `us-central1`) | `GcpGkeCluster` spec location |
-| `<your-node-pool-name>` | Name for this node pool (1-40 chars, lowercase) | Choose a descriptive name (e.g., `general`) |
+| `my-gke-cluster` | Your `GcpGkeCluster` resource name | Your cluster manifest |
+| `gke-nodes` | Your `GcpServiceAccount` resource name | Your service account manifest |
 
 ## Related Presets
 
-- **02-spot-cost-optimized** -- Use for non-critical workloads where cost savings outweigh availability guarantees
+- **02-spot-cost-optimized** — scale-to-zero Spot capacity for fault-tolerant batch
+- **03-gpu-accelerated** — GPU nodes for ML workloads
+
+## Related Components
+
+- [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — the control plane this pool attaches to
+- [GcpServiceAccount](/docs/catalog/gcp/gcpserviceaccount) — the node identity

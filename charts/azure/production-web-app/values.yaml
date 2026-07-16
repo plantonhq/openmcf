@@ -77,4 +77,4 @@ params:
   - name: log_retention_days
     description: Log Analytics workspace retention in days
     value: 30
-    type: int
+    type: number

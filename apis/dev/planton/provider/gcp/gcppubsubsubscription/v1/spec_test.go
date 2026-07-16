@@ -25,6 +25,13 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
+	// Helper for StringValueOrRef with a literal value.
+	svr := func(v string) *foreignkeyv1.StringValueOrRef {
+		return &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: v},
+		}
+	}
+
 	// Helper to build a minimal valid GcpPubSubSubscription.
 	minimal := func() *GcpPubSubSubscription {
 		return &GcpPubSubSubscription{
@@ -156,10 +163,23 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should accept spec with push_config and OIDC token", func() {
 		msg := minimal()
 		msg.Spec.PushConfig = &GcpPubSubSubscriptionPushConfig{
-			PushEndpoint: "https://example.com/push",
+			PushEndpoint: svr("https://example.com/push"),
 			OidcToken: &GcpPubSubSubscriptionPushConfigOidcToken{
-				ServiceAccountEmail: "push-sa@my-gcp-project.iam.gserviceaccount.com",
+				ServiceAccountEmail: svr("push-sa@my-gcp-project.iam.gserviceaccount.com"),
 				Audience:            "https://example.com",
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept spec with push_config endpoint as a reference", func() {
+		msg := minimal()
+		msg.Spec.PushConfig = &GcpPubSubSubscriptionPushConfig{
+			PushEndpoint: &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+					ValueFrom: &foreignkeyv1.ValueFromRef{Name: "consumer-service"},
+				},
 			},
 		}
 		err := validator.Validate(msg)
@@ -169,7 +189,7 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should accept spec with push_config and no_wrapper", func() {
 		msg := minimal()
 		msg.Spec.PushConfig = &GcpPubSubSubscriptionPushConfig{
-			PushEndpoint: "https://example.com/webhook",
+			PushEndpoint: svr("https://example.com/webhook"),
 			NoWrapper: &GcpPubSubSubscriptionPushConfigNoWrapper{
 				WriteMetadata: true,
 			},
@@ -181,7 +201,7 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should accept spec with bigquery_config using topic schema", func() {
 		msg := minimal()
 		msg.Spec.BigqueryConfig = &GcpPubSubSubscriptionBigQueryConfig{
-			Table:          "my-project.my_dataset.my_table",
+			Table:          svr("my-project.my_dataset.my_table"),
 			UseTopicSchema: true,
 			WriteMetadata:  true,
 		}
@@ -192,7 +212,7 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should accept spec with bigquery_config using table schema", func() {
 		msg := minimal()
 		msg.Spec.BigqueryConfig = &GcpPubSubSubscriptionBigQueryConfig{
-			Table:             "my-project.my_dataset.my_table",
+			Table:             svr("my-project.my_dataset.my_table"),
 			UseTableSchema:    true,
 			DropUnknownFields: true,
 		}
@@ -311,11 +331,86 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should accept user labels", func() {
+		msg := minimal()
+		msg.Spec.Labels = map[string]string{
+			"team":        "payments",
+			"cost-center": "cc-1234",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a subscription name containing goog when not a prefix", func() {
+		msg := minimal()
+		msg.Spec.SubscriptionName = "my-google-events-sub"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a message transform (javascript udf)", func() {
+		msg := minimal()
+		msg.Spec.MessageTransforms = []*GcpPubSubSubscriptionMessageTransform{
+			{
+				JavascriptUdf: &GcpPubSubSubscriptionMessageTransformJavascriptUdf{
+					FunctionName: "reshapeForConsumer",
+					Code:         "function reshapeForConsumer(message, metadata) { return message; }",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a disabled message transform", func() {
+		msg := minimal()
+		msg.Spec.MessageTransforms = []*GcpPubSubSubscriptionMessageTransform{
+			{
+				JavascriptUdf: &GcpPubSubSubscriptionMessageTransformJavascriptUdf{
+					FunctionName: "normalize",
+					Code:         "function normalize(message, metadata) { return message; }",
+				},
+				Disabled: true,
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
 	// ──────────────── Negative Cases ────────────────
 
-	ginkgo.It("should reject when project_id is missing", func() {
+	ginkgo.It("should accept an omitted project_id (ambient project)", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a subscription name with the reserved goog prefix", func() {
+		msg := minimal()
+		msg.Spec.SubscriptionName = "goog-events-sub"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a message transform missing function_name", func() {
+		msg := minimal()
+		msg.Spec.MessageTransforms = []*GcpPubSubSubscriptionMessageTransform{
+			{
+				JavascriptUdf: &GcpPubSubSubscriptionMessageTransformJavascriptUdf{
+					Code: "function f(message, metadata) { return message; }",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a message transform missing javascript_udf", func() {
+		msg := minimal()
+		msg.Spec.MessageTransforms = []*GcpPubSubSubscriptionMessageTransform{
+			{Disabled: true},
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
@@ -435,7 +530,7 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should reject push_config with OIDC token missing service_account_email", func() {
 		msg := minimal()
 		msg.Spec.PushConfig = &GcpPubSubSubscriptionPushConfig{
-			PushEndpoint: "https://example.com/push",
+			PushEndpoint: svr("https://example.com/push"),
 			OidcToken: &GcpPubSubSubscriptionPushConfigOidcToken{
 				Audience: "https://example.com",
 			},
@@ -456,7 +551,7 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should reject bigquery_config with both use_topic_schema and use_table_schema", func() {
 		msg := minimal()
 		msg.Spec.BigqueryConfig = &GcpPubSubSubscriptionBigQueryConfig{
-			Table:          "my-project.dataset.table",
+			Table:          svr("my-project.dataset.table"),
 			UseTopicSchema: true,
 			UseTableSchema: true,
 		}
@@ -476,10 +571,10 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should reject push_config and bigquery_config both set (mutual exclusion)", func() {
 		msg := minimal()
 		msg.Spec.PushConfig = &GcpPubSubSubscriptionPushConfig{
-			PushEndpoint: "https://example.com/push",
+			PushEndpoint: svr("https://example.com/push"),
 		}
 		msg.Spec.BigqueryConfig = &GcpPubSubSubscriptionBigQueryConfig{
-			Table: "project.dataset.table",
+			Table: svr("project.dataset.table"),
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
@@ -488,7 +583,7 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should reject push_config and cloud_storage_config both set (mutual exclusion)", func() {
 		msg := minimal()
 		msg.Spec.PushConfig = &GcpPubSubSubscriptionPushConfig{
-			PushEndpoint: "https://example.com/push",
+			PushEndpoint: svr("https://example.com/push"),
 		}
 		msg.Spec.CloudStorageConfig = &GcpPubSubSubscriptionCloudStorageConfig{
 			Bucket: &foreignkeyv1.StringValueOrRef{
@@ -504,7 +599,7 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should reject bigquery_config and cloud_storage_config both set (mutual exclusion)", func() {
 		msg := minimal()
 		msg.Spec.BigqueryConfig = &GcpPubSubSubscriptionBigQueryConfig{
-			Table: "project.dataset.table",
+			Table: svr("project.dataset.table"),
 		}
 		msg.Spec.CloudStorageConfig = &GcpPubSubSubscriptionCloudStorageConfig{
 			Bucket: &foreignkeyv1.StringValueOrRef{

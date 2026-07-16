@@ -1,52 +1,56 @@
 # Production Private
 
-A production-grade Cloud Composer environment with private networking, high resilience, and scaled workloads. Designed for production Airflow workloads requiring network isolation and high availability.
+A production-grade Cloud Composer environment with private networking,
+multi-zone resilience, VPC-native ranges, control-plane allowlisting,
+and scaled workloads.
 
 ## When to Use
 
-- Production data pipelines requiring network isolation
-- Workloads that need high availability and resilience
-- Environments where private endpoint access is required
-- Multi-zone deployments for disaster recovery
-- Compliance requirements for private networking
+- Production pipelines that must not expose a public Airflow endpoint
+- Workloads requiring high availability across zones
+- Networks with pre-planned secondary ranges for GKE pods and services
+- Compliance requirements for private-only access
 
-## Key Configuration Choices
+## Key Configuration
 
-- **ENVIRONMENT_SIZE_MEDIUM**: Balanced infrastructure capacity for production workloads
-- **HIGH_RESILIENCE**: Multi-zone redundancy for increased availability
-- **VPC peering with private endpoint**: Network isolation with private IP access only
-- **Scaled workloads**: 2 schedulers, 2 triggerers, 2-6 workers for production capacity
-- **Weekend maintenance window**: Scheduled maintenance on weekends to minimize impact
-- **Dedicated service account**: Custom service account for fine-grained IAM control
+- **ENVIRONMENT_SIZE_MEDIUM + HIGH_RESILIENCE** — balanced capacity with
+  multi-zone redundancy
+- **VPC peering with private endpoint** — the Airflow UI is reachable
+  only via private IP; master, Cloud SQL, and Composer components get
+  dedicated CIDR ranges
+- **ipAllocationPolicy with named secondary ranges** — pods and services
+  land on ranges your network team pre-carved on the subnetwork (per
+  range, a name and a CIDR are mutually exclusive)
+- **masterAuthorizedNetworksConfig** — only listed CIDR blocks reach the
+  GKE control plane that runs the Airflow workloads
+- **Scaled workloads** — 2 schedulers, 2 triggerers, 2-6 autoscaling
+  workers
+- **Weekend maintenance window** — 12-hour windows on Saturday/Sunday
 
-## Placeholders to Replace
+## What to Customize
 
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<your-gcp-project-id>` | GCP project ID | GCP Console > Project Settings |
-| `<your-vpc-network-name>` | VPC network name (e.g., "projects/PROJECT_ID/global/networks/NETWORK_NAME") | GCP Console > VPC Network > VPC Networks |
-| `<your-vpc-subnetwork-name>` | VPC subnetwork name (e.g., "projects/PROJECT_ID/regions/REGION/subnetworks/SUBNET_NAME") | GCP Console > VPC Network > VPC Networks > Subnets |
-| `<your-service-account-email>` | Service account email for Composer nodes | GCP Console > IAM & Admin > Service Accounts |
-| `<composer-2-latest-airflow-version>` | Latest Composer 2 image version (e.g., "composer-2.9.7-airflow-2.9.3") | GCP Console > Cloud Composer > Environments > Create > Image Version dropdown |
-
-## Prerequisites
-
-1. A VPC network with a subnetwork in the target region
-2. VPC peering configured between Composer and your VPC (or use Private Service Connect)
-3. Service account with appropriate permissions for Composer nodes
-4. Cloud Composer API enabled
-5. Required IAM roles for creating Composer environments
+- `projectId`, `nodeConfig.network`, `nodeConfig.subnetwork`,
+  `nodeConfig.serviceAccount` — point at your project, VPC resources,
+  and node identity (the service account must hold
+  `roles/composer.worker`)
+- `ipAllocationPolicy` — use your subnetwork's secondary range names, or
+  swap to `clusterIpv4CidrBlock`/`servicesIpv4CidrBlock` if GKE should
+  carve ranges itself
+- `masterAuthorizedNetworksConfig.cidrBlocks` — your corporate/VPN
+  ranges
+- CIDR blocks under `privateEnvironmentConfig` — must not overlap
+  anything else in your network
 
 ## Important Notes
 
-- Private endpoint means the Airflow web UI is only accessible via private IP
-- VPC peering requires proper firewall rules to allow traffic
-- HIGH_RESILIENCE mode distributes components across multiple zones
-- Maintenance window is set to weekends (Saturday-Sunday) - adjust recurrence as needed
-- Worker autoscaling (2-6) adjusts based on workload demand
-- Consider adding CMEK encryption for additional security (see 03-enterprise-encrypted preset)
+- Environment creation takes 25-45 minutes.
+- Networking (network, subnetwork, ranges, private config) is immutable
+  after creation — plan the CIDRs before deploying.
+- VPC peering requires firewall rules that allow the Composer ranges to
+  reach your subnetwork.
 
 ## Related Presets
 
-- **01-dev-small**: Minimal development environment
-- **03-enterprise-encrypted**: Enterprise setup with CMEK encryption and web server access control
+- **01-dev-small** — minimal development environment
+- **03-enterprise-encrypted** — adds CMEK, data retention, and disaster
+  recovery

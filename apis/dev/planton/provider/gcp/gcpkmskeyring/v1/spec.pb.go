@@ -28,27 +28,36 @@ const (
 // A key ring is an organizational grouping of cryptographic keys in Cloud KMS.
 // Key rings belong to a GCP project and reside in a specific location (region,
 // multi-region, or "global"). Once created, a key ring cannot be deleted — it
-// is a permanent container whose name and location are immutable.
+// is a permanent container whose name and location are immutable, and whose
+// name can never be reused within the project+location.
 //
 // Key rings do not carry any encryption policy themselves; they exist solely to
 // group and scope CryptoKeys. A single key ring can hold any number of
-// CryptoKeys with different purposes (ENCRYPT_DECRYPT, ASYMMETRIC_SIGN, etc.).
+// CryptoKeys with different purposes (ENCRYPT_DECRYPT, ASYMMETRIC_SIGN, etc.),
+// and IAM granted at the ring level flows down to every key inside it — which
+// makes the ring the natural blast-radius boundary: one ring per environment
+// or per data domain, not one ring per key.
 //
-// All fields in this spec are immutable after creation — any change destroys
-// and recreates the resource (which actually creates a new key ring, since GCP
-// does not support deletion of the original).
+// All fields in this spec are immutable after creation — any change abandons
+// the old ring (GCP does not support deletion) and creates a new one.
 type GcpKmsKeyRingSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The GCP project in which to create this key ring.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
 	// Example: "my-prod-project-123"
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Name of the key ring in GCP. Immutable after creation.
 	// Must be 1-63 characters: letters (upper or lower), digits, hyphens, or underscores.
 	// This is the GCP resource name, distinct from the Planton metadata.name.
+	// Because key rings are permanent, a name can never be reused within its
+	// project and location — pick names that will not need recycling.
 	// Example: "prod-encryption", "data-keys-us-central1"
 	KeyRingName string `protobuf:"bytes,2,opt,name=key_ring_name,json=keyRingName,proto3" json:"key_ring_name,omitempty"`
-	// GCP location (region, multi-region, or "global") where the key ring resides.
-	// Immutable after creation. Choose based on latency, data residency, and
+	// GCP location (region, multi-region, or "global") where the key ring
+	// resides. Immutable after creation. Keys must live in the same location
+	// as the resources they protect for most CMEK integrations, so choose
+	// based on where the encrypted data lives — plus data-residency and
 	// redundancy requirements.
 	//
 	// Common values:
@@ -118,10 +127,10 @@ var File_dev_planton_provider_gcp_gcpkmskeyring_v1_spec_proto protoreflect.FileD
 
 const file_dev_planton_provider_gcp_gcpkmskeyring_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4dev/planton/provider/gcp/gcpkmskeyring/v1/spec.proto\x12)dev.planton.provider.gcp.gcpkmskeyring.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf9\x01\n" +
-	"\x11GcpKmsKeyRingSpec\x12{\n" +
+	"4dev/planton/provider/gcp/gcpkmskeyring/v1/spec.proto\x12)dev.planton.provider.gcp.gcpkmskeyring.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf3\x01\n" +
+	"\x11GcpKmsKeyRingSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12C\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12C\n" +
 	"\rkey_ring_name\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-zA-Z0-9_-]{1,63}$R\vkeyRingName\x12\"\n" +
 	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocationB\xe2\x02\n" +
 	"-com.dev.planton.provider.gcp.gcpkmskeyring.v1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskeyring/v1;gcpkmskeyringv1\xa2\x02\x05DPPGG\xaa\x02)Dev.Planton.Provider.Gcp.Gcpkmskeyring.V1\xca\x02)Dev\\Planton\\Provider\\Gcp\\Gcpkmskeyring\\V1\xe2\x025Dev\\Planton\\Provider\\Gcp\\Gcpkmskeyring\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Gcp::Gcpkmskeyring::V1b\x06proto3"

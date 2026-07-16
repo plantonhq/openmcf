@@ -23,21 +23,53 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// GkeWorkloadIdentityBindingSpec describes an IAM policy binding that
-// allows a Kubernetes ServiceAccount (KSA) to impersonate a Google
-// ServiceAccount (GSA) via Workload Identity Federation.
+// GcpGkeWorkloadIdentityBindingSpec defines one ADDITIVE IAM grant on a
+// Google Service Account (GSA): it gives a Kubernetes ServiceAccount (KSA)
+// the roles/iam.workloadIdentityUser role on that GSA, which is exactly what
+// GKE Workload Identity needs for the KSA to mint tokens as the GSA — keyless
+// impersonation, no exported key material.
+//
+// The IAM member principal is constructed from its parts —
+//
+//	serviceAccount:<pool-project>.svc.id.goog[<ksa-namespace>/<ksa-name>]
+//
+// — so a typo'd principal string is impossible by construction. The pool
+// project is the project that hosts the GKE cluster (every project has one
+// implicit workload-identity pool named <project>.svc.id.goog).
+//
+// Completing the workload-identity handshake also requires the KSA to carry
+// the iam.gke.io/gcp-service-account=<gsa-email> annotation. That annotation
+// lives on the Kubernetes object and belongs to the workload's own
+// deployment (chart or manifest) — this component owns only the GCP side.
+//
+// Additive semantics: this grant merges into the GSA's IAM policy without
+// touching any other principal's bindings, and removal subtracts only this
+// exact grant. Every field is immutable, mirroring the underlying API: an
+// IAM grant has no update — any change replaces the grant atomically.
 type GcpGkeWorkloadIdentityBindingSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The GCP project that hosts the GKE cluster (and therefore the
-	// Workload-Identity pool <project>.svc.id.goog).
+	// The GCP project that hosts the GKE cluster — and therefore the implicit
+	// workload-identity pool <project>.svc.id.goog the principal lives in.
+	// This may differ from the GSA's own project in cross-project setups; the
+	// GSA's project is derived from its email.
+	// If omitted, the provider's default project is used — the common case
+	// when the cluster lives in the credentials' project.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	// The email of the Google Service Account to impersonate.
+	// The email of the Google Service Account the KSA impersonates. The grant
+	// is attached to THIS service account's IAM policy.
 	// Example: "cert-manager@my-project.iam.gserviceaccount.com"
 	ServiceAccountEmail *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=service_account_email,json=serviceAccountEmail,proto3" json:"service_account_email,omitempty"`
 	// Kubernetes namespace of the ServiceAccount running in the cluster.
+	// Validated as an RFC 1123 label — a typo here would otherwise produce a
+	// syntactically valid but permanently broken principal.
 	KsaNamespace string `protobuf:"bytes,3,opt,name=ksa_namespace,json=ksaNamespace,proto3" json:"ksa_namespace,omitempty"`
-	// Name of the Kubernetes ServiceAccount.
-	KsaName       string `protobuf:"bytes,4,opt,name=ksa_name,json=ksaName,proto3" json:"ksa_name,omitempty"`
+	// Name of the Kubernetes ServiceAccount. Validated as an RFC 1123 DNS
+	// subdomain (Kubernetes object-name rules).
+	KsaName string `protobuf:"bytes,4,opt,name=ksa_name,json=ksaName,proto3" json:"ksa_name,omitempty"`
+	// Optional IAM Condition restricting when this grant applies. The
+	// condition is part of the grant's identity: the same grant with and
+	// without a condition are two independent grants that do not interfere.
+	Condition     *GcpGkeWorkloadIdentityBindingCondition `protobuf:"bytes,5,opt,name=condition,proto3" json:"condition,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -100,17 +132,100 @@ func (x *GcpGkeWorkloadIdentityBindingSpec) GetKsaName() string {
 	return ""
 }
 
+func (x *GcpGkeWorkloadIdentityBindingSpec) GetCondition() *GcpGkeWorkloadIdentityBindingCondition {
+	if x != nil {
+		return x.Condition
+	}
+	return nil
+}
+
+// An IAM Condition — a CEL expression that must evaluate true for the grant
+// to apply. See https://cloud.google.com/iam/docs/conditions-overview for
+// the attribute reference and expression language.
+type GcpGkeWorkloadIdentityBindingCondition struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Short human-readable title identifying the condition's intent,
+	// e.g. "expires-2026-12-31".
+	Title string `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
+	// The CEL condition expression, e.g.
+	// request.time < timestamp("2027-01-01T00:00:00Z").
+	Expression string `protobuf:"bytes,2,opt,name=expression,proto3" json:"expression,omitempty"`
+	// Optional longer explanation of what the condition does and why it exists.
+	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeWorkloadIdentityBindingCondition) Reset() {
+	*x = GcpGkeWorkloadIdentityBindingCondition{}
+	mi := &file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeWorkloadIdentityBindingCondition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeWorkloadIdentityBindingCondition) ProtoMessage() {}
+
+func (x *GcpGkeWorkloadIdentityBindingCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeWorkloadIdentityBindingCondition.ProtoReflect.Descriptor instead.
+func (*GcpGkeWorkloadIdentityBindingCondition) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GcpGkeWorkloadIdentityBindingCondition) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *GcpGkeWorkloadIdentityBindingCondition) GetExpression() string {
+	if x != nil {
+		return x.Expression
+	}
+	return ""
+}
+
+func (x *GcpGkeWorkloadIdentityBindingCondition) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/gcp/gcpgkeworkloadidentitybinding/v1/spec.proto\x129dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xfe\x02\n" +
-	"!GcpGkeWorkloadIdentityBindingSpec\x12{\n" +
+	"Ddev/planton/provider/gcp/gcpgkeworkloadidentitybinding/v1/spec.proto\x129dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc5\x04\n" +
+	"!GcpGkeWorkloadIdentityBindingSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x8b\x01\n" +
-	"\x15service_account_email\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\x12+\n" +
-	"\rksa_namespace\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fksaNamespace\x12!\n" +
-	"\bksa_name\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aksaNameB\xd2\x03\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x8b\x01\n" +
+	"\x15service_account_email\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\x12P\n" +
+	"\rksa_namespace\x18\x03 \x01(\tB+\xbaH(\xc8\x01\x01r#\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\fksaNamespace\x12H\n" +
+	"\bksa_name\x18\x04 \x01(\tB-\xbaH*\xc8\x01\x01r%\x18\xfd\x012 ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$R\aksaName\x12\x7f\n" +
+	"\tcondition\x18\x05 \x01(\v2a.dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1.GcpGkeWorkloadIdentityBindingConditionR\tcondition\"\x9e\x01\n" +
+	"&GcpGkeWorkloadIdentityBindingCondition\x12 \n" +
+	"\x05title\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x18dR\x05title\x12&\n" +
+	"\n" +
+	"expression\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"expression\x12*\n" +
+	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescriptionB\xd2\x03\n" +
 	"=com.dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1B\tSpecProtoP\x01Z{github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkeworkloadidentitybinding/v1;gcpgkeworkloadidentitybindingv1\xa2\x02\x05DPPGG\xaa\x029Dev.Planton.Provider.Gcp.Gcpgkeworkloadidentitybinding.V1\xca\x029Dev\\Planton\\Provider\\Gcp\\Gcpgkeworkloadidentitybinding\\V1\xe2\x02EDev\\Planton\\Provider\\Gcp\\Gcpgkeworkloadidentitybinding\\V1\\GPBMetadata\xea\x02>Dev::Planton::Provider::Gcp::Gcpgkeworkloadidentitybinding::V1b\x06proto3"
 
 var (
@@ -125,19 +240,21 @@ func file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_r
 	return file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_goTypes = []any{
-	(*GcpGkeWorkloadIdentityBindingSpec)(nil), // 0: dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1.GcpGkeWorkloadIdentityBindingSpec
-	(*v1.StringValueOrRef)(nil),               // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpGkeWorkloadIdentityBindingSpec)(nil),      // 0: dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1.GcpGkeWorkloadIdentityBindingSpec
+	(*GcpGkeWorkloadIdentityBindingCondition)(nil), // 1: dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1.GcpGkeWorkloadIdentityBindingCondition
+	(*v1.StringValueOrRef)(nil),                    // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1.GcpGkeWorkloadIdentityBindingSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1.GcpGkeWorkloadIdentityBindingSpec.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 0: dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1.GcpGkeWorkloadIdentityBindingSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 1: dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1.GcpGkeWorkloadIdentityBindingSpec.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 2: dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1.GcpGkeWorkloadIdentityBindingSpec.condition:type_name -> dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1.GcpGkeWorkloadIdentityBindingCondition
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_init() }
@@ -151,7 +268,7 @@ func file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_i
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpgkeworkloadidentitybinding_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

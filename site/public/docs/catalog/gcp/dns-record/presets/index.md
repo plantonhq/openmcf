@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "CNAME Record"
     excerpt: "This preset creates a DNS CNAME record that aliases one hostname to another. CNAME records are used when you want a subdomain to resolve to the same address as another domain without hardcoding an IP..."
+  - slug: "03-weighted-canary"
+    rank: "03"
+    title: "Weighted Canary"
+    excerpt: "This preset creates an A record with a weighted round-robin routing policy — 95% of DNS answers point at the stable target, 5% at the canary. Shifting the weights progresses the rollout without..."
 ---
 
 # DNS Record Presets

@@ -146,6 +146,31 @@ message GcpCloudTasksQueueHttpTarget {
   GcpCloudTasksQueueUriOverride uri_override = 5;
 }
 
+// GcpCloudTasksQueueAppEngineRoutingOverride overrides task-level App Engine
+// routing for every App Engine task in this queue. Use it to pin an entire
+// queue's tasks to a specific App Engine service, version, or instance
+// instead of relying on each task's own routing.
+//
+// These settings apply ONLY to App Engine tasks; HTTP tasks are routed by
+// http_target instead. The resolved hostname that tasks are actually sent to
+// is computed by GCP from these values.
+message GcpCloudTasksQueueAppEngineRoutingOverride {
+  // The App Engine service to route queue tasks to.
+  // If not specified, the task is sent to the service that is the default
+  // service when the task is attempted.
+  string service = 1;
+
+  // The App Engine version to route queue tasks to.
+  // If not specified, the task is sent to the version that is the default
+  // version when the task is attempted.
+  string version = 2;
+
+  // The App Engine instance to route queue tasks to.
+  // If not specified, the task is sent to an instance which is available
+  // when the task is attempted (subject to the service/version's scaling).
+  string instance = 3;
+}
+
 // GcpCloudTasksQueueRateLimits controls the rate at which tasks are dispatched
 // from the queue. The actual dispatch rate is determined by the combination of
 // these settings, the number of tasks in the queue, and system throttling
@@ -221,20 +246,25 @@ message GcpCloudTasksQueueLoggingConfig {
 // Important behavioral notes:
 //
 //   - The queue_name and location fields are immutable after creation.
-//     Changing them requires destroying and recreating the queue.
+//     Changing them requires destroying and recreating the queue. Queue names
+//     are deliberately explicit (never derived from metadata) because the
+//     Cloud Tasks API reserves a deleted queue's ID for up to 7 days after
+//     deletion — an accidental name change burns the old identifier for that
+//     window.
 //
 //   - Cloud Tasks queues do NOT support GCP labels.
 //
-//   - The desired_state field controls whether the queue actively dispatches
-//     tasks (RUNNING) or holds them without dispatching (PAUSED). Tasks can
-//     still be added to a paused queue.
+//   - Pause/resume (the API's queue state) is a runtime operation, not part
+//     of this declarative surface. Use the gcloud CLI or the Cloud Tasks API
+//     to pause or resume dispatch on a provisioned queue.
 //
 //   - Rate limits and retry config have GCP-computed defaults when not specified.
 //     For most workloads, the defaults are reasonable starting points.
 message GcpCloudTasksQueueSpec {
   // GCP project where the queue will be created.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
@@ -242,7 +272,9 @@ message GcpCloudTasksQueueSpec {
   // Name of the Cloud Tasks queue.
   // Must start with a letter, contain only letters, numbers, and hyphens,
   // and be between 1 and 63 characters.
-  // Immutable after creation.
+  // Immutable after creation, and deliberately required: a deleted queue's
+  // ID is reserved by the API for up to 7 days, so the name deserves an
+  // explicit, stable choice rather than a derived default.
   string queue_name = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -254,23 +286,19 @@ message GcpCloudTasksQueueSpec {
   // Immutable after creation.
   string location = 3 [(buf.validate.field).required = true];
 
-  // Desired state of the queue. Controls whether tasks are actively dispatched.
-  // RUNNING: Tasks are dispatched normally (default).
-  // PAUSED: Tasks are held in the queue without being dispatched. New tasks
-  //   can still be added. Resume by setting back to RUNNING.
-  string desired_state = 4 [(buf.validate.field).cel = {
-    id: "valid_desired_state"
-    expression: "this == '' || this in ['RUNNING', 'PAUSED']"
-    message: "desired_state must be RUNNING or PAUSED"
-  }];
-
   // Queue-level HTTP target configuration. When set, these settings apply
   // to all HTTP tasks dispatched from this queue, overriding task-level
   // HTTP configuration.
   //
   // This is the recommended pattern for microservices: configure auth and
   // routing at the queue level, then enqueue tasks with just a request body.
-  GcpCloudTasksQueueHttpTarget http_target = 5;
+  GcpCloudTasksQueueHttpTarget http_target = 4;
+
+  // App Engine routing override for App Engine tasks in this queue.
+  // When set, overrides each task's own App Engine routing so the whole
+  // queue targets one service/version/instance. Only relevant for queues
+  // dispatching App Engine tasks; ignored for HTTP tasks.
+  GcpCloudTasksQueueAppEngineRoutingOverride app_engine_routing_override = 5;
 
   // Rate limits for task dispatches. Controls how fast and how many tasks
   // are dispatched concurrently.

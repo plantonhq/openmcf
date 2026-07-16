@@ -1,6 +1,3 @@
-name: gcp-cloud-armor-policy
+name: planton-gcp-cloud-armor-policy
 runtime:
   name: go
-  options:
-    binary: ./pulumi
-description: Planton GcpCloudArmorPolicy Pulumi module

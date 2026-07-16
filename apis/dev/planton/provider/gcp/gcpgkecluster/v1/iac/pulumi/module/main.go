@@ -7,24 +7,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources is the Pulumi program entry‑point invoked by the Planton
-func Resources(
-	ctx *pulumi.Context,
-	stackInput *gcpgkeclusterv1.GcpGkeClusterStackInput,
-) error {
-	// gather locals (Terraform‑style “locals”)
-	locals := initializeLocals(stackInput)
+func Resources(ctx *pulumi.Context, stackInput *gcpgkeclusterv1.GcpGkeClusterStackInput) error {
+	locals := initializeLocals(ctx, stackInput)
 
-	// configure a GCP provider from the given credential
 	gcpProvider, err := pulumigoogleprovider.Get(ctx, stackInput.ProviderConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup google provider")
 	}
 
-	// Cluster.
-	_, err = cluster(ctx, locals, gcpProvider)
-	if err != nil {
-		return errors.Wrap(err, "cluster creation failed")
+	if err := cluster(ctx, locals, gcpProvider); err != nil {
+		return errors.Wrap(err, "failed to create gke cluster")
 	}
 
 	return nil

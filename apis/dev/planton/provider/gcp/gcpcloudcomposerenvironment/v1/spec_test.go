@@ -54,6 +54,20 @@ var _ = ginkgo.Describe("GcpCloudComposerEnvironmentSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should accept an omitted project_id (ambient project)", func() {
+		msg := minimal()
+		msg.Spec.ProjectId = nil
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a multi-digit region", func() {
+		msg := minimal()
+		msg.Spec.Region = "europe-west12"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
 	ginkgo.It("should accept environment_name with valid format", func() {
 		msg := minimal()
 		msg.Spec.EnvironmentName = "my-airflow-prod-2026"
@@ -85,6 +99,53 @@ var _ = ginkgo.Describe("GcpCloudComposerEnvironmentSpec", func() {
 		msg.Spec.NodeConfig = &GcpCloudComposerNodeConfig{
 			ComposerNetworkAttachment:     "projects/my-project/regions/us-central1/networkAttachments/my-attachment",
 			ComposerInternalIpv4CidrBlock: "10.0.0.0/20",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept node_config with enable_ip_masq_agent", func() {
+		msg := minimal()
+		msg.Spec.NodeConfig = &GcpCloudComposerNodeConfig{
+			Network:           svr("projects/my-project/global/networks/my-vpc"),
+			Subnetwork:        svr("projects/my-project/regions/us-central1/subnetworks/my-subnet"),
+			EnableIpMasqAgent: true,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept ip_allocation_policy with named secondary ranges", func() {
+		msg := minimal()
+		msg.Spec.NodeConfig = &GcpCloudComposerNodeConfig{
+			IpAllocationPolicy: &GcpCloudComposerIpAllocationPolicy{
+				ClusterSecondaryRangeName:  "composer-pods",
+				ServicesSecondaryRangeName: "composer-services",
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept ip_allocation_policy with CIDR blocks", func() {
+		msg := minimal()
+		msg.Spec.NodeConfig = &GcpCloudComposerNodeConfig{
+			IpAllocationPolicy: &GcpCloudComposerIpAllocationPolicy{
+				ClusterIpv4CidrBlock:  "10.4.0.0/14",
+				ServicesIpv4CidrBlock: "10.8.0.0/20",
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept ip_allocation_policy mixing a named pod range with a services CIDR", func() {
+		msg := minimal()
+		msg.Spec.NodeConfig = &GcpCloudComposerNodeConfig{
+			IpAllocationPolicy: &GcpCloudComposerIpAllocationPolicy{
+				ClusterSecondaryRangeName: "composer-pods",
+				ServicesIpv4CidrBlock:     "10.8.0.0/20",
+			},
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -122,6 +183,17 @@ var _ = ginkgo.Describe("GcpCloudComposerEnvironmentSpec", func() {
 		msg := minimal()
 		msg.Spec.SoftwareConfig = &GcpCloudComposerSoftwareConfig{
 			WebServerPluginsMode: "DISABLED",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept cloud_data_lineage_integration", func() {
+		msg := minimal()
+		msg.Spec.SoftwareConfig = &GcpCloudComposerSoftwareConfig{
+			CloudDataLineageIntegration: &GcpCloudComposerCloudDataLineageIntegration{
+				Enabled: true,
+			},
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -167,6 +239,13 @@ var _ = ginkgo.Describe("GcpCloudComposerEnvironmentSpec", func() {
 	ginkgo.It("should accept environment_size ENVIRONMENT_SIZE_LARGE", func() {
 		msg := minimal()
 		msg.Spec.EnvironmentSize = "ENVIRONMENT_SIZE_LARGE"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept environment_size ENVIRONMENT_SIZE_EXTRA_LARGE", func() {
+		msg := minimal()
+		msg.Spec.EnvironmentSize = "ENVIRONMENT_SIZE_EXTRA_LARGE"
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
@@ -288,6 +367,87 @@ var _ = ginkgo.Describe("GcpCloudComposerEnvironmentSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should accept master_authorized_networks_config with cidr_blocks", func() {
+		msg := minimal()
+		msg.Spec.MasterAuthorizedNetworksConfig = &GcpCloudComposerMasterAuthorizedNetworksConfig{
+			Enabled: true,
+			CidrBlocks: []*GcpCloudComposerCidrBlock{
+				{CidrBlock: "10.0.0.0/8", DisplayName: "corp-network"},
+				{CidrBlock: "203.0.113.0/24"},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept data_retention_config with valid modes", func() {
+		msg := minimal()
+		msg.Spec.DataRetentionConfig = &GcpCloudComposerDataRetentionConfig{
+			TaskLogsStorageMode:          "CLOUD_LOGGING_ONLY",
+			AirflowMetadataRetentionMode: "RETENTION_MODE_ENABLED",
+			AirflowMetadataRetentionDays: 90,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept airflow_metadata_retention_days at the 30-day floor", func() {
+		msg := minimal()
+		msg.Spec.DataRetentionConfig = &GcpCloudComposerDataRetentionConfig{
+			AirflowMetadataRetentionMode: "RETENTION_MODE_ENABLED",
+			AirflowMetadataRetentionDays: 30,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept airflow_metadata_retention_days at the 730-day ceiling", func() {
+		msg := minimal()
+		msg.Spec.DataRetentionConfig = &GcpCloudComposerDataRetentionConfig{
+			AirflowMetadataRetentionMode: "RETENTION_MODE_ENABLED",
+			AirflowMetadataRetentionDays: 730,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept an unset airflow_metadata_retention_days", func() {
+		msg := minimal()
+		msg.Spec.DataRetentionConfig = &GcpCloudComposerDataRetentionConfig{
+			TaskLogsStorageMode: "CLOUD_LOGGING_AND_CLOUD_STORAGE",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a storage_bucket literal", func() {
+		msg := minimal()
+		msg.Spec.StorageBucket = svr("my-composer-dags-bucket")
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a reference-shaped storage_bucket", func() {
+		msg := minimal()
+		msg.Spec.StorageBucket = &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+				ValueFrom: &foreignkeyv1.ValueFromRef{Name: "composer-dags"},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept user labels", func() {
+		msg := minimal()
+		msg.Spec.Labels = map[string]string{
+			"team":        "data-platform",
+			"cost-center": "cc-1234",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
 	ginkgo.It("should accept Composer 3 private environment flags", func() {
 		msg := minimal()
 		msg.Spec.EnablePrivateEnvironment = true
@@ -352,22 +512,42 @@ var _ = ginkgo.Describe("GcpCloudComposerEnvironmentSpec", func() {
 				{Value: "10.0.0.0/8", Description: "VPN"},
 			},
 		}
+		msg.Spec.MasterAuthorizedNetworksConfig = &GcpCloudComposerMasterAuthorizedNetworksConfig{
+			Enabled: true,
+			CidrBlocks: []*GcpCloudComposerCidrBlock{
+				{CidrBlock: "10.0.0.0/8", DisplayName: "corp-network"},
+			},
+		}
+		msg.Spec.DataRetentionConfig = &GcpCloudComposerDataRetentionConfig{
+			TaskLogsStorageMode:          "CLOUD_LOGGING_ONLY",
+			AirflowMetadataRetentionMode: "RETENTION_MODE_ENABLED",
+			AirflowMetadataRetentionDays: 90,
+		}
+		msg.Spec.StorageBucket = svr("my-composer-dags-bucket")
+		msg.Spec.Labels = map[string]string{"team": "data-platform"}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
 	// ──────────────── Negative Cases ────────────────
 
-	ginkgo.It("should reject missing project_id", func() {
+	ginkgo.It("should reject missing region", func() {
 		msg := minimal()
-		msg.Spec.ProjectId = nil
+		msg.Spec.Region = ""
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject missing region", func() {
+	ginkgo.It("should reject a malformed region", func() {
 		msg := minimal()
-		msg.Spec.Region = ""
+		msg.Spec.Region = "US-Central1"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a zone-shaped region", func() {
+		msg := minimal()
+		msg.Spec.Region = "us-central1-a"
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
@@ -494,6 +674,92 @@ var _ = ginkgo.Describe("GcpCloudComposerEnvironmentSpec", func() {
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject ip_allocation_policy with both cluster range name and CIDR", func() {
+		msg := minimal()
+		msg.Spec.NodeConfig = &GcpCloudComposerNodeConfig{
+			IpAllocationPolicy: &GcpCloudComposerIpAllocationPolicy{
+				ClusterSecondaryRangeName: "composer-pods",
+				ClusterIpv4CidrBlock:      "10.4.0.0/14",
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("mutually exclusive"))
+	})
+
+	ginkgo.It("should reject ip_allocation_policy with both services range name and CIDR", func() {
+		msg := minimal()
+		msg.Spec.NodeConfig = &GcpCloudComposerNodeConfig{
+			IpAllocationPolicy: &GcpCloudComposerIpAllocationPolicy{
+				ServicesSecondaryRangeName: "composer-services",
+				ServicesIpv4CidrBlock:      "10.8.0.0/20",
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("mutually exclusive"))
+	})
+
+	ginkgo.It("should reject master_authorized_networks cidr_block missing its CIDR", func() {
+		msg := minimal()
+		msg.Spec.MasterAuthorizedNetworksConfig = &GcpCloudComposerMasterAuthorizedNetworksConfig{
+			Enabled: true,
+			CidrBlocks: []*GcpCloudComposerCidrBlock{
+				{DisplayName: "missing-cidr"},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid task_logs_storage_mode", func() {
+		msg := minimal()
+		msg.Spec.DataRetentionConfig = &GcpCloudComposerDataRetentionConfig{
+			TaskLogsStorageMode: "LOCAL_DISK",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid airflow_metadata_retention_mode", func() {
+		msg := minimal()
+		msg.Spec.DataRetentionConfig = &GcpCloudComposerDataRetentionConfig{
+			AirflowMetadataRetentionMode: "RETENTION_FOREVER",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject airflow_metadata_retention_days below the 30-day floor", func() {
+		msg := minimal()
+		msg.Spec.DataRetentionConfig = &GcpCloudComposerDataRetentionConfig{
+			AirflowMetadataRetentionMode: "RETENTION_MODE_ENABLED",
+			AirflowMetadataRetentionDays: 29,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject airflow_metadata_retention_days above the 730-day ceiling", func() {
+		msg := minimal()
+		msg.Spec.DataRetentionConfig = &GcpCloudComposerDataRetentionConfig{
+			AirflowMetadataRetentionMode: "RETENTION_MODE_ENABLED",
+			AirflowMetadataRetentionDays: 731,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject airflow_metadata_retention_days without a retention mode", func() {
+		msg := minimal()
+		msg.Spec.DataRetentionConfig = &GcpCloudComposerDataRetentionConfig{
+			AirflowMetadataRetentionDays: 90,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("airflow_metadata_retention_mode"))
 	})
 
 	ginkgo.It("should reject allowed_ip_range missing value", func() {

@@ -1,0 +1,21 @@
+# Consumer-scoped GcpVpcNetwork install profile for the service connection
+# policy chain. Cloud-side network names carry ${E2E_RUN_ID} so parallel
+# runs and stale orphans from a half-finished teardown never collide;
+# metadata.name stays fixed for FK resolution across the prerequisite chain.
+apiVersion: gcp.planton.dev/v1
+kind: GcpVpcNetwork
+metadata:
+  name: planton-oss-e2e-gcpvpcnetwork-prereq
+  id: planton-oss-e2e-gcpvpcnetwork-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpvpcnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  networkName: e2e-scp-vpc-${E2E_RUN_ID}
+  autoCreateSubnetworks: false

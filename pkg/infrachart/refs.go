@@ -2,6 +2,7 @@ package infrachart
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
@@ -10,69 +11,53 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-// RefError is one valueFrom reference in a rendered manifest that cannot resolve against
-// the referenced kind -- a composition that would fail at deploy time.
-type RefError struct {
-	// FieldPath is the proto field-name dot path of the referencing field in the manifest.
-	FieldPath string
-	// TargetKind is the referenced kind as written in the manifest.
-	TargetKind string
-	// RefPath is the fieldPath written in the manifest's valueFrom block.
-	RefPath string
-	// Reason is why the reference does not resolve.
-	Reason string
+const stringValueOrRefFullName = "dev.planton.shared.foreignkey.v1.StringValueOrRef"
+
+// refUse is one populated valueFrom reference found in a rendered manifest:
+// the spec field it sits on (whose descriptor carries the FK annotations) and
+// the reference itself.
+type refUse struct {
+	// fieldPath is the proto field-name dot path to the reference,
+	// e.g. "spec.kms_key_name" or "spec.iam_members[0].member".
+	fieldPath string
+
+	// fd is the field declaring the StringValueOrRef — the carrier of the
+	// default_kind / default_kind_field_path annotations.
+	fd protoreflect.FieldDescriptor
+
+	// ref is the populated reference.
+	ref *foreignkeyv1.ValueFromRef
 }
 
-func (e RefError) Error() string {
-	return fmt.Sprintf("%s -> %s %q: %s", e.FieldPath, e.TargetKind, e.RefPath, e.Reason)
+// refTarget is a fully resolved reference: which kind and which resource name
+// this refUse points at. Used to build the chart's dependency graph.
+type refTarget struct {
+	kind cloudresourcekind.CloudResourceKind
+	name string
 }
 
-// CheckValueFromRefs walks a loaded manifest and validates every populated
-// StringValueOrRef.valueFrom: the referenced kind must be registered and the fieldPath
-// must resolve to a string field on it. The walk mirrors the control plane's reference
-// validator (recurse into every message, repeated message, and map value; treat
-// StringValueOrRef as a leaf) so a chart accepted offline is accepted at publish time.
-func CheckValueFromRefs(manifest proto.Message) []RefError {
-	var errs []RefError
-	walkRefs(manifest.ProtoReflect(), "", func(path string, vf *foreignkeyv1.ValueFromRef) {
-		checkRef(vf, path, &errs)
-	})
-	return errs
+// collectRefUses walks every populated field of a loaded manifest and returns
+// each StringValueOrRef that carries a valueFrom reference. Literal values
+// are not references and are skipped.
+func collectRefUses(msg proto.Message) []refUse {
+	var out []refUse
+	walkPopulated(msg.ProtoReflect(), "", &out)
+	return out
 }
 
-// collectValueFromRefs returns every populated valueFrom reference in a loaded
-// manifest with its field path -- the raw sites, unvalidated, for checks that need
-// to see the reference targets themselves (e.g. intra-chart target resolution).
-func collectValueFromRefs(manifest proto.Message) []refSite {
-	var sites []refSite
-	walkRefs(manifest.ProtoReflect(), "", func(path string, vf *foreignkeyv1.ValueFromRef) {
-		sites = append(sites, refSite{FieldPath: path, Ref: vf})
-	})
-	return sites
-}
-
-// refSite is one populated valueFrom reference at a field path in a manifest.
-type refSite struct {
-	FieldPath string
-	Ref       *foreignkeyv1.ValueFromRef
-}
-
-// walkRefs visits every populated StringValueOrRef.valueFrom in the message tree,
-// recursing into nested messages, repeated messages, and map values.
-func walkRefs(m protoreflect.Message, prefix string, visit func(path string, vf *foreignkeyv1.ValueFromRef)) {
+func walkPopulated(m protoreflect.Message, prefix string, out *[]refUse) {
 	m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
 		path := string(fd.Name())
 		if prefix != "" {
 			path = prefix + "." + path
 		}
-
 		switch {
 		case fd.IsMap():
 			if fd.MapValue().Kind() != protoreflect.MessageKind {
 				return true
 			}
-			v.Map().Range(func(mk protoreflect.MapKey, mv protoreflect.Value) bool {
-				visitMessageValue(mv.Message(), path+"."+mk.String(), visit)
+			v.Map().Range(func(k protoreflect.MapKey, mv protoreflect.Value) bool {
+				visitMessage(fd, mv.Message(), path+"."+k.String(), out)
 				return true
 			})
 		case fd.IsList():
@@ -81,43 +66,91 @@ func walkRefs(m protoreflect.Message, prefix string, visit func(path string, vf 
 			}
 			list := v.List()
 			for i := 0; i < list.Len(); i++ {
-				visitMessageValue(list.Get(i).Message(), fmt.Sprintf("%s[%d]", path, i), visit)
+				visitMessage(fd, list.Get(i).Message(), fmt.Sprintf("%s[%d]", path, i), out)
 			}
 		case fd.Kind() == protoreflect.MessageKind:
-			visitMessageValue(v.Message(), path, visit)
+			visitMessage(fd, v.Message(), path, out)
 		}
 		return true
 	})
 }
 
-// visitMessageValue visits a message value: a StringValueOrRef leaf's populated
-// valueFrom is handed to the visitor, any other message is recursed into.
-func visitMessageValue(m protoreflect.Message, path string, visit func(path string, vf *foreignkeyv1.ValueFromRef)) {
-	if svor, ok := m.Interface().(*foreignkeyv1.StringValueOrRef); ok {
-		if vf := svor.GetValueFrom(); vf != nil {
-			visit(path, vf)
+// visitMessage either records a populated StringValueOrRef reference (the
+// annotation is read off the declaring field fd) or recurses.
+func visitMessage(fd protoreflect.FieldDescriptor, m protoreflect.Message, path string, out *[]refUse) {
+	md := m.Descriptor()
+	if string(md.FullName()) == stringValueOrRefFullName {
+		svor, ok := m.Interface().(*foreignkeyv1.StringValueOrRef)
+		if !ok || svor.GetValueFrom() == nil {
+			return
 		}
+		*out = append(*out, refUse{fieldPath: path, fd: fd, ref: svor.GetValueFrom()})
 		return
 	}
-	walkRefs(m, path, visit)
+	walkPopulated(m, path, out)
 }
 
-func checkRef(vf *foreignkeyv1.ValueFromRef, path string, out *[]RefError) {
-	if vf.GetKind() == cloudresourcekind.CloudResourceKind_unspecified {
-		*out = append(*out, RefError{
-			FieldPath:  path,
-			TargetKind: vf.GetKind().String(),
-			RefPath:    vf.GetFieldPath(),
-			Reason:     "valueFrom.kind is missing or not a known kind",
-		})
-		return
+// checkRef validates one valueFrom reference against the FK annotations on
+// its declaring field and the referenced kind's proto surface. It returns the
+// resolved target (for dependency-graph construction) and any problems found.
+//
+// The rules, in order:
+//
+//  1. A reference must have a target kind: an explicit valueFrom.kind, or the
+//     field's default_kind annotation.
+//  2. A reference must have a field path: an explicit valueFrom.fieldPath, or
+//     — only when the target IS the field's default kind — the annotated
+//     default_kind_field_path.
+//  3. When the target is the field's default kind and the reference spells
+//     out a DIFFERENT field path than the annotation, that is an error: the
+//     annotated path is the composition key the modules are proven to accept,
+//     and overriding it is the id/name/self-link mismatch class that
+//     otherwise only surfaces at deploy time. A path that EXTENDS the
+//     annotated path is not an override: map-typed composition keys are
+//     addressed by entry key (`status.outputs.backend_pool_ids.web`), and
+//     the entry key is chart data the annotation cannot name.
+//  4. The effective field path must resolve against the target kind's actual
+//     proto surface (stack outputs, spec, or metadata).
+func checkRef(use refUse) (refTarget, []string) {
+	var problems []string
+
+	var annotatedKind cloudresourcekind.CloudResourceKind
+	var annotatedPath string
+	if opts := use.fd.Options(); opts != nil {
+		annotatedKind, _ = proto.GetExtension(opts, foreignkeyv1.E_DefaultKind).(cloudresourcekind.CloudResourceKind)
+		annotatedPath, _ = proto.GetExtension(opts, foreignkeyv1.E_DefaultKindFieldPath).(string)
 	}
-	if reason := refcheck.ResolveValueFromPath(vf.GetKind(), vf.GetFieldPath()); reason != "" {
-		*out = append(*out, RefError{
-			FieldPath:  path,
-			TargetKind: vf.GetKind().String(),
-			RefPath:    vf.GetFieldPath(),
-			Reason:     reason,
-		})
+
+	targetKind := use.ref.GetKind()
+	if targetKind == cloudresourcekind.CloudResourceKind_unspecified {
+		targetKind = annotatedKind
 	}
+	if targetKind == cloudresourcekind.CloudResourceKind_unspecified {
+		problems = append(problems,
+			fmt.Sprintf("%s: valueFrom does not name a kind and the field declares no default kind — add an explicit `kind:`", use.fieldPath))
+		return refTarget{}, problems
+	}
+
+	effectivePath := use.ref.GetFieldPath()
+	if effectivePath == "" {
+		if targetKind == annotatedKind && annotatedPath != "" {
+			effectivePath = annotatedPath
+		} else {
+			problems = append(problems,
+				fmt.Sprintf("%s: valueFrom targets %s but has no fieldPath, and no annotated default applies — add an explicit `fieldPath:`", use.fieldPath, targetKind))
+			return refTarget{kind: targetKind, name: use.ref.GetName()}, problems
+		}
+	} else if targetKind == annotatedKind && annotatedPath != "" && effectivePath != annotatedPath &&
+		!strings.HasPrefix(effectivePath, annotatedPath+".") {
+		problems = append(problems,
+			fmt.Sprintf("%s: valueFrom overrides the annotated composition key for %s — the field's contract is %q but the chart references %q (id/name/self-link format mismatches only surface at deploy time; use the annotated path)",
+				use.fieldPath, targetKind, annotatedPath, effectivePath))
+	}
+
+	if reason := refcheck.ResolveValueFromPath(targetKind, effectivePath); reason != "" {
+		problems = append(problems,
+			fmt.Sprintf("%s: valueFrom fieldPath %q does not resolve on %s: %s", use.fieldPath, effectivePath, targetKind, reason))
+	}
+
+	return refTarget{kind: targetKind, name: use.ref.GetName()}, problems
 }

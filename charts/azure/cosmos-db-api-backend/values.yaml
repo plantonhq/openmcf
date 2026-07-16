@@ -25,7 +25,7 @@ params:
   - name: autoscale_max_throughput
     description: The container's autoscale ceiling in RU/s (multiples of 1000). Cosmos scales between 10% and this ceiling on demand -- the ceiling is the cost guardrail, and the throttle alert fires when demand presses against it
     value: 1000
-    type: int
+    type: number
 
   # ─── Consistency and availability ────────────────────────────────────────────
   - name: consistency_level
@@ -64,4 +64,4 @@ params:
   - name: log_retention_days
     description: Log Analytics workspace retention in days
     value: 30
-    type: int
+    type: number

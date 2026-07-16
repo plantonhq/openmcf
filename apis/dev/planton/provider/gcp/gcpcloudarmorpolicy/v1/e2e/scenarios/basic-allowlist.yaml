@@ -1,0 +1,34 @@
+# GcpCloudArmorPolicy leaf: corporate allowlist + explicit default deny.
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudArmorPolicy
+metadata:
+  name: planton-oss-e2e-cap-allowlist
+  id: planton-oss-e2e-cap-allowlist
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcloudarmorpolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  policyName: planton-oss-e2e-cap-${E2E_RUN_ID}
+  description: Ephemeral allowlist policy for Planton OSS E2E
+  rules:
+    - action: allow
+      priority: 1000
+      description: Allow RFC1918 ranges
+      match:
+        versionedExpr: SRC_IPS_V1
+        srcIpRanges:
+          - 10.0.0.0/8
+          - 172.16.0.0/12
+    - action: deny(403)
+      priority: 2147483647
+      description: Default deny
+      match:
+        versionedExpr: SRC_IPS_V1
+        srcIpRanges:
+          - "*"

@@ -1,15 +1,42 @@
-variable "spec" {
-  description = "GcpCloudSchedulerJob spec"
+variable "metadata" {
+  description = "Metadata for the resource, including name and labels"
   type = object({
-    project_id = object({ value = string })
-    job_name   = optional(string, "")
-    location   = string
-    schedule   = string
-    time_zone  = optional(string, "")
+    name    = string,
+    id      = optional(string),
+    org     = optional(string),
+    env     = optional(string),
+    labels  = optional(map(string)),
+    tags    = optional(list(string)),
+    version = optional(object({ id = string, message = string }))
+  })
+}
+
+variable "spec" {
+  description = "Specification for the GCP Cloud Scheduler job"
+  type = object({
+    # StringValueOrRef fields arrive from the proto→tfvars converter as
+    # plain strings (already resolved), never as object({value}). If
+    # project_id is empty, the provider's default project is used
+    # (see locals.tf).
+    project_id = optional(string, "")
+
+    # Job name (the GCP resource name). Empty falls back to metadata.name
+    # (see locals.tf). Immutable (ForceNew).
+    job_name = optional(string, "")
+
+    # Region the job runs in. Immutable (ForceNew).
+    location = string
+
+    # Unix-cron schedule, interpreted in time_zone (default Etc/UTC).
+    schedule = string
+
+    time_zone        = optional(string, "")
     description      = optional(string, "")
     attempt_deadline = optional(string, "")
     paused           = optional(bool, false)
 
+    # Exactly one of http_target / pubsub_target / app_engine_http_target
+    # is set — enforced pre-deploy by the spec's CEL rule.
     http_target = optional(object({
       uri         = string
       http_method = optional(string, "")
@@ -17,18 +44,22 @@ variable "spec" {
       headers     = optional(map(string), {})
 
       oauth_token = optional(object({
-        service_account_email = object({ value = string })
+        # Resolved from a GcpServiceAccount reference to the SA email.
+        service_account_email = string
         scope                 = optional(string, "")
       }), null)
 
       oidc_token = optional(object({
-        service_account_email = object({ value = string })
+        # Resolved from a GcpServiceAccount reference to the SA email.
+        service_account_email = string
         audience              = optional(string, "")
       }), null)
     }), null)
 
     pubsub_target = optional(object({
-      topic_name = object({ value = string })
+      # Resolved from a GcpPubSubTopic reference to the fully qualified
+      # projects/{project}/topics/{name} path.
+      topic_name = string
       data       = optional(string, "")
       attributes = optional(map(string), {})
     }), null)
@@ -54,12 +85,14 @@ variable "spec" {
       max_doublings        = optional(number, 0)
     }), null)
   })
-}
 
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = optional(string, "")
-  })
-  default = { service_account_key = "" }
+  validation {
+    condition     = var.spec.location != ""
+    error_message = "location is required."
+  }
+
+  validation {
+    condition     = var.spec.schedule != ""
+    error_message = "schedule is required."
+  }
 }

@@ -1,16 +1,18 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpGlobalAddress
 metadata:
-  name: test-global-address
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.GcpGlobalAddress.test-global-address
+  name: my-sample-global-address
 spec:
+  # GCP project that owns the reservation.
+  # Omit to use the provider's default project.
   projectId:
     value: my-gcp-project-123
-  addressName: test-lb-external-ip
+
+  # Cloud-side name of the reservation (RFC1035).
+  addressName: lb-external-ip
+
+  # Public static IP for a global load balancer frontend.
   addressType: EXTERNAL
   ipVersion: IPV4
-  description: Test static IP for load balancer
+
+  description: Static IP for the production HTTPS load balancer

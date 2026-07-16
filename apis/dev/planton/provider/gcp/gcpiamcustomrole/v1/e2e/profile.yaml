@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpiamcustomrole
+spec:
+  # Leaf role-definition scenario: deploy -> iam roles.get verify (must be
+  # live, not soft-deleted) -> destroy -> verify soft-deleted-or-gone, on both
+  # provisioners. Custom-role destroy is a soft delete in GCP (the id stays
+  # reserved for up to 14 days); re-running the scenario within that window
+  # converges because create-on-a-soft-deleted-id undeletes and patches.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

@@ -19,6 +19,7 @@ go_library(
         "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_gcp_sdk_v9//go/gcp",
         "@com_github_pulumi_pulumi_gcp_sdk_v9//go/gcp/dataproc",
+        "@com_github_pulumi_pulumi_gcp_sdk_v9//go/gcp/projects",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
     ],
 )

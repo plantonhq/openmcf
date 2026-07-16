@@ -1,0 +1,34 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpDataprocAutoscalingPolicy
+metadata:
+  name: test-autoscaling-policy
+spec:
+  projectId:
+    value: my-gcp-project-123 # replace with your project ID
+  policyId: test-etl-autoscaling
+  location: us-central1
+
+  # Primary workers: the stable, HDFS-carrying base.
+  workerConfig:
+    maxInstances: 10
+    minInstances: 2
+    weight: 1
+
+  # Secondary (spot) workers: the burst arm — weighted 3:1, so ~75% of
+  # new capacity lands here; scales to zero when idle.
+  secondaryWorkerConfig:
+    maxInstances: 20
+    minInstances: 0
+    weight: 3
+
+  basicAlgorithm:
+    # Wait 2 minutes between scaling evaluations.
+    cooldownPeriod: "120s"
+    yarnConfig:
+      # Running tasks get an hour to finish before a scale-down
+      # forcefully removes their worker.
+      gracefulDecommissionTimeout: "3600s"
+      # Add ~50% of the suggested capacity per evaluation on the way up;
+      # remove everything idle on the way down.
+      scaleUpFactor: 0.5
+      scaleDownFactor: 1.0

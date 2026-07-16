@@ -276,6 +276,20 @@ e2e-test-auth0-pulumi:  ## Run Auth0 Pulumi E2E tests only
 e2e-test-auth0-terraform:  ## Run Auth0 Terraform E2E tests only
 	go test -tags=e2e -timeout=20m -v -count=1 -run ".*_Terraform" ./e2e/auth0/...
 
+# ── GCP E2E targets ──────────────────────────────────────────────────────────
+
+.PHONY: e2e-test-gcp
+e2e-test-gcp:  ## Run all GCP E2E tests (requires ADC; test project via E2E_GCP_PROJECT/GOOGLE_PROJECT)
+	go test -tags=e2e -timeout=30m -v -count=1 ./e2e/gcp/...
+
+.PHONY: e2e-test-gcp-pulumi
+e2e-test-gcp-pulumi:  ## Run GCP Pulumi E2E tests only
+	go test -tags=e2e -timeout=30m -v -count=1 -run ".*_Pulumi" ./e2e/gcp/...
+
+.PHONY: e2e-test-gcp-terraform
+e2e-test-gcp-terraform:  ## Run GCP Terraform E2E tests only
+	go test -tags=e2e -timeout=30m -v -count=1 -run ".*_Terraform" ./e2e/gcp/...
+
 # ── Generic component E2E targets ────────────────────────────────────────────
 
 .PHONY: e2e-test-component

@@ -4,7 +4,9 @@ Provisions a Google Cloud Scheduler job using the Pulumi GCP provider.
 
 ## Architecture
 
-The module creates a single `cloudscheduler.Job` resource with conditional configuration for the selected target type (HTTP, Pub/Sub, or App Engine) and optional retry configuration.
+The module enables the Cloud Scheduler API (`projects.Service`), then creates a
+`cloudscheduler.Job` resource with conditional configuration for the selected
+target type (HTTP, Pub/Sub, or App Engine) and optional retry configuration.
 
 ## Files
 
@@ -30,5 +32,8 @@ make destroy # Tear down resources
 - Cloud Scheduler jobs do **not** support GCP labels
 - The `state` output is computed by GCP (ENABLED, PAUSED, DISABLED, UPDATE_FAILED)
 - Job name defaults to `metadata.name` if `job_name` is not specified
+- If `project_id` is empty, the job lands in the provider's default project
 - The `paused` field creates the job in PAUSED state; omitting it creates ENABLED
 - Body fields are passed through as-is (expected to be base64-encoded by the user)
+- The bridged provider's client-side `deletion_policy` is pinned to `DELETE` — see
+  the PARITY comment in `cloud_scheduler_job.go`

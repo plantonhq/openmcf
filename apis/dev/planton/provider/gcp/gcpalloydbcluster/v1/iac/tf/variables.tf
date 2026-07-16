@@ -19,10 +19,17 @@ variable "metadata" {
 variable "spec" {
   description = "GcpAlloydbCluster specification"
   type = object({
-    project_id         = string
+    project_id         = optional(string, "")
     cluster_name       = string
     location           = string
-    network            = string
+    network            = optional(string, "")
+    psc_config = optional(object({
+      psc_enabled = optional(bool, false)
+    }), null)
+    cluster_type = optional(string, "")
+    secondary_config = optional(object({
+      primary_cluster_name = string
+    }), null)
     allocated_ip_range = optional(string, "")
     database_version   = optional(string, "")
     display_name       = optional(string, "")
@@ -52,7 +59,9 @@ variable "spec" {
       day        = string
       start_hour = number
     }), null)
-    deletion_protection = optional(bool, true)
+    annotations = optional(map(string), {})
+    subscription_type = optional(string, "")
+    skip_await_major_version_upgrade = optional(bool, false)
     primary_instance = object({
       instance_id   = string
       cpu_count     = optional(number, 0)

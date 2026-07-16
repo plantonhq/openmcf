@@ -16,12 +16,12 @@ This component exists to give platform engineers a declarative, infrastructure-a
 - **Memory sizing**: Configurable from 1 GiB upward
 - **Redis AUTH**: Optional AUTH string for client authentication (GCP-managed, auto-rotated)
 - **TLS in transit**: Optional `SERVER_AUTHENTICATION` for encrypted client connections
-- **Read replicas**: Scale read throughput with 1–5 replicas (STANDARD_HA only)
-- **RDB persistence**: Optional periodic snapshots for durability
-- **Maintenance windows**: Schedule weekly maintenance (day + hour UTC)
+- **Read replicas**: Scale read throughput with 1–5 replicas (STANDARD_HA only), with `secondary_ip_range` to grow an existing instance's address space in place
+- **Zone pinning**: `location_id` for the primary and `alternative_location_id` for the STANDARD_HA replica — co-locate the cache with zonal workloads
+- **RDB persistence**: Optional periodic snapshots, with a schedule anchor (`rdb_snapshot_start_time`) to place snapshot I/O in a low-traffic window
+- **Maintenance control**: Weekly window to the exact minute (day + hour + minute UTC), plus `maintenance_version` for applying a security patch on your schedule
 - **CMEK**: Customer-managed encryption keys for data at rest
-- **Deletion protection**: Prevent accidental destruction of production instances
-- **VPC integration**: Connect via DIRECT_PEERING or PRIVATE_SERVICE_ACCESS
+- **VPC integration**: Connect via DIRECT_PEERING or PRIVATE_SERVICE_ACCESS (composing GcpGlobalAddress + GcpServiceNetworkingConnection)
 
 ## Use Cases
 
@@ -51,22 +51,22 @@ For STANDARD_HA, GCP automatically places the primary and replica in different z
 | **Memory** | `memory_size_gb` (min 1) |
 | **Auth** | `auth_enabled: true` — AUTH string exported in outputs |
 | **TLS** | `transit_encryption_mode: SERVER_AUTHENTICATION` or `DISABLED` |
-| **Persistence** | `persistence_config` with `RDB` mode and `rdb_snapshot_period` (ONE_HOUR, SIX_HOURS, TWELVE_HOURS, TWENTY_FOUR_HOURS) |
-| **Read replicas** | `read_replicas_mode: READ_REPLICAS_ENABLED`, `replica_count` 1–5 (STANDARD_HA only) |
-| **Maintenance** | `maintenance_window.day` (MONDAY–SUNDAY), `maintenance_window.hour` (0–23 UTC) |
+| **Persistence** | `persistence_config` with `RDB` mode, `rdb_snapshot_period` (ONE_HOUR, SIX_HOURS, TWELVE_HOURS, TWENTY_FOUR_HOURS), and `rdb_snapshot_start_time` (RFC3339 schedule anchor) |
+| **Read replicas** | `read_replicas_mode: READ_REPLICAS_ENABLED`, `replica_count` 1–5 (STANDARD_HA only); `secondary_ip_range` when enabling replicas on an existing instance |
+| **Maintenance** | `maintenance_window.day` (MONDAY–SUNDAY), `.hour` (0–23) + `.minute` (0–59) UTC; `maintenance_version` for self-service patching |
 | **CMEK** | `customer_managed_key` — full KMS key resource name or reference to GcpKmsKey |
-| **Networking** | `authorized_network`, `connect_mode`, `reserved_ip_range` |
-| **Other** | `redis_version`, `display_name`, `location_id`, `redis_configs`, `deletion_protection` |
+| **Networking** | `authorized_network`, `connect_mode`, `reserved_ip_range`, `secondary_ip_range` |
+| **Placement** | `location_id` (primary zone), `alternative_location_id` (STANDARD_HA replica zone) |
+| **Other** | `redis_version`, `display_name`, `redis_configs` |
 
-**Immutable fields** (require instance replacement if changed): `instance_name`, `tier`, `connect_mode`, `transit_encryption_mode`, `authorized_network`, `reserved_ip_range`, `customer_managed_key`.
+**Immutable fields** (require instance replacement if changed): `instance_name`, `tier`, `connect_mode`, `transit_encryption_mode`, `authorized_network`, `reserved_ip_range`, `location_id`, `alternative_location_id`, `customer_managed_key`, `region`.
 
 ## Security
 
 - **Encryption at rest**: Google-managed keys by default; use `customer_managed_key` for CMEK
-- **Encryption in transit**: Enable `transit_encryption_mode: SERVER_AUTHENTICATION` for TLS
+- **Encryption in transit**: Enable `transit_encryption_mode: SERVER_AUTHENTICATION` for TLS — clients install the `server_ca_certs` output as trust anchors
 - **AUTH**: Enable `auth_enabled` and use the `auth_string` output — treat as a secret
 - **Network isolation**: Attach to a private VPC via `authorized_network`; avoid public exposure
-- **Deletion protection**: Enable for production to prevent accidental deletion
 
 ## Stack Outputs
 
@@ -78,20 +78,25 @@ For STANDARD_HA, GCP automatically places the primary and replica in different z
 | `read_endpoint_port` | int32 | Read replica port |
 | `current_location_id` | string | Zone where the primary is running |
 | `auth_string` | string | Redis AUTH string (when `auth_enabled` is true) |
+| `server_ca_certs` | string[] | PEM CA certificates clients trust for TLS (when transit encryption is on) |
+| `persistence_iam_identity` | string | Service identity (`serviceAccount:<email>`) to grant on GCS buckets for RDB import/export |
+| `effective_reserved_ip_range` | string | The CIDR actually in use — explicit or GCP-selected |
+| `instance_name` | string | Instance name in GCP — the handle API callers address the instance by |
+| `region` | string | Plain region name hosting the instance |
 
-## Future Enhancements
+## Deliberately not modeled (recorded reasons)
 
-- Support for Redis Cluster mode (sharding)
-- Automated backup and restore workflows
-- Integration with Secret Manager for AUTH string injection
-- Metrics and alerting presets
-- Cross-region replication
+| Excluded Feature | Why |
+|---|---|
+| `deletion_protection` | Exists only on provider lines newer than the released major the GCP Terraform modules pin, so it would guard on one engine and silently do nothing on the other — false security. Returns when the GCP modules adopt the next provider major. |
+| Redis Cluster mode (sharded, PSC-based) | A structurally different resource (`google_redis_cluster`); a separate kind if demand appears. Valkey-based clusters are covered by GcpMemorystoreInstance. |
 
 ## Related Components
 
 - **GcpProject** — provides the GCP project
-- **GcpVpc** — provides the VPC network for `authorized_network`
-- **GcpGlobalAddress** — reserve a /20 range for VPC peering with managed services
+- **GcpVpcNetwork** — provides the VPC network for `authorized_network`
+- **GcpGlobalAddress** — reserves the VPC_PEERING range named by `reserved_ip_range` in PRIVATE_SERVICE_ACCESS mode
+- **GcpServiceNetworkingConnection** — the private services access peering PRIVATE_SERVICE_ACCESS instances ride on
 - **GcpKmsKey** — provides a CMEK key for `customer_managed_key`
 
 ## Additional Resources

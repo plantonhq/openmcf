@@ -1,19 +1,23 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerInstance
 metadata:
-  name: my-autoscale-spanner
+  name: autoscale-spanner
 spec:
-  projectId:
-    value: "<gcp-project-id>"
-  instanceName: <instance-name>
-  config: <instance-config>
-  displayName: <display-name>
+  # project_id omitted: falls back to the provider's default project.
+  config: nam6 # multi-region North America; replace to match your topology
+  displayName: Autoscaling Spanner
   edition: ENTERPRISE
   defaultBackupScheduleType: AUTOMATIC
   autoscalingConfig:
     autoscalingLimits:
       minNodes: 1
-      maxNodes: 3
+      maxNodes: 5
     autoscalingTargets:
-      highPriorityCpuUtilizationPercent: 65
+      highPriorityCpuUtilizationPercent: 45 # multi-region guidance; use 65 for regional
       storageUtilizationPercent: 80
+    # Scale a read-heavy replica region independently of the rest.
+    asymmetricAutoscalingOptions:
+      - replicaLocation: us-east1 # replace with the read-heavy replica region
+        overrides:
+          minNodes: 2
+          maxNodes: 10

@@ -11,15 +11,15 @@ presets:
   - slug: "01-basic-database"
     rank: "01"
     title: "Basic Database"
-    excerpt: "This preset creates a minimal Cloud Spanner database with the default GoogleSQL dialect and 1-hour version retention. It is the simplest starting point for any Spanner workload."
+    excerpt: "Provisions a Spanner database on an existing instance with Google's SQL dialect and a 24-hour point-in-time recovery window. The database is named after `metadata.name`; schema management belongs to..."
   - slug: "02-postgresql-database"
     rank: "02"
-    title: "PostgreSQL Database"
-    excerpt: "This preset creates a Cloud Spanner database with the PostgreSQL-compatible dialect and a 7-day version retention period for extended point-in-time recovery. Ideal for teams with PostgreSQL expertise..."
+    title: "PostgreSQL-Dialect Database"
+    excerpt: "Provisions a Spanner database with the PostgreSQL interface — PostgreSQL syntax and tooling on Spanner's globally distributed, strongly consistent storage. The dialect choice is permanent."
   - slug: "03-cmek-encrypted"
     rank: "03"
     title: "CMEK-Encrypted Database"
-    excerpt: "This preset creates a Cloud Spanner database with customer-managed encryption (CMEK), GCP API-level drop protection, a 3-day version retention period, and an explicit UTC time zone. Designed for..."
+    excerpt: "Provisions a compliance-grade Spanner database: customer-managed encryption (CMEK) by reference to a `GcpKmsKey`, GCP API-side drop protection, point-in-time recovery, and an explicit UTC time zone."
 ---
 
 # Spanner Database Presets

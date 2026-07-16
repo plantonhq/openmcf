@@ -1,0 +1,30 @@
+# GcpCloudComposerUserWorkloadsSecret scenario: an Airflow connection
+# URI delivered into the prerequisite Composer environment. project_id
+# is deliberately omitted (ambient project). Values are base64-encoded
+# throwaway material (no real credential anywhere in this manifest).
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudComposerUserWorkloadsSecret
+metadata:
+  name: planton-oss-e2e-gcpcuws-smoke
+  id: planton-oss-e2e-gcpcuws-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcloudcomposeruserworkloadssecret
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-central1
+  environment:
+    valueFrom:
+      kind: GcpCloudComposerEnvironment
+      name: planton-oss-e2e-gcpcce-prereq
+      fieldPath: status.outputs.environment_name
+  secretName: e2e-airflow-connection
+  data:
+    # base64 of "postgresql://e2e-user:e2e-throwaway@10.0.0.5:5432/e2e" —
+    # throwaway material that authenticates to nothing.
+    airflow-conn-uri: cG9zdGdyZXNxbDovL2UyZS11c2VyOmUyZS10aHJvd2F3YXlAMTAuMC4wLjU6NTQzMi9lMmU=

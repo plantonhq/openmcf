@@ -1,155 +1,47 @@
-# GCP KMS Key Ring — Research & Design Documentation
+# GcpKmsKeyRing — Deep Dive
 
-## Overview
+## The problem this resource solves
 
-Cloud Key Management Service (Cloud KMS) is Google Cloud's centralized key management service that lets you create, use, rotate, and destroy cryptographic keys. Cloud KMS integrates with virtually every GCP service that supports customer-managed encryption keys (CMEK), including BigQuery, Cloud SQL, Spanner, GKE, Compute Engine, Cloud Storage, and more.
+Every customer-managed encryption story on GCP starts with a container decision: where do the keys live, and who can touch them? The key ring is that container — a permanent, location-anchored grouping whose IAM flows down to every key inside it. Getting the ring layout right (one per environment or data domain, in the location where the protected data lives) is what keeps CMEK manageable at fleet scale; getting it wrong cannot be quietly fixed later, because rings can never be deleted or renamed.
 
-A **key ring** is the top-level organizational unit in Cloud KMS. It serves as a logical grouping of cryptographic keys within a specific GCP project and location. Key rings have no cryptographic properties themselves — they exist purely for organization and access control scoping.
+## Where it sits in the composition
 
-## GCP Resource Hierarchy
+- **GcpKmsKeyRing** — this resource: the permanent container, owning project + location.
+- **GcpKmsKey** — the keys inside the ring; each references the ring's `status.outputs.key_ring_id` (the fully qualified `projects/{p}/locations/{l}/keyRings/{name}` path) and inherits its project and location.
+- **CMEK consumers** — BigQuery datasets/tables, Spanner, Cloud SQL, AlloyDB, GKE, Cloud Run/Functions, Pub/Sub, Vertex AI, Filestore, Bigtable, Firestore, Memorystore, Dataproc, Composer — reference the *keys*, not the ring.
+- **Bare-name consumers** — components that take a ring name plus a separately supplied project/location (for example OpenBao's GCP KMS seal) compose from `key_ring_name` + `location`.
 
-```
-GCP Project
-  └── KMS Location (region / multi-region / global)
-        └── Key Ring (organizational container)
-              ├── CryptoKey (ENCRYPT_DECRYPT)
-              ├── CryptoKey (ASYMMETRIC_SIGN)
-              ├── CryptoKey (MAC)
-              └── CryptoKey (ASYMMETRIC_DECRYPT)
-                    └── CryptoKeyVersion (actual key material)
-```
+## Lifecycle contract
 
-## Key Architectural Decisions
+| Property | Behavior |
+|---|---|
+| `keyRingName`, `location`, `projectId` | Immutable (ForceNew) — any change abandons the old ring and creates a new one |
+| Deletion | **No delete API exists.** Destroy removes the ring from IaC state only; the ring remains in GCP permanently, at no cost |
+| Name reuse | Never possible within a project+location — the original ring still occupies the name |
 
-### Why Key Ring Is a Separate Resource (Not Bundled with CryptoKey)
+The permanence is by design: a deleted ring would strand every key inside it, and destroyed key material is unrecoverable. GCP chose to make the container immortal instead.
 
-Key rings and crypto keys have fundamentally different lifecycles:
+## Design guidance
 
-1. **One-to-many relationship**: A single key ring typically contains multiple CryptoKeys with different purposes (data encryption, signing, MAC).
-2. **IAM scoping**: Key rings are an IAM boundary. You can grant `roles/cloudkms.cryptoKeyEncrypterDecrypter` at the key ring level to allow access to all keys within it, or at the individual key level.
-3. **Permanence**: Key rings cannot be deleted. They are permanent fixtures. CryptoKeys can be scheduled for destruction (with recovery windows).
-4. **Different creation frequency**: You create a key ring once per project/location/purpose combination, then create many keys within it over time.
+- **One ring per environment or data domain.** IAM granted on the ring reaches every key inside it, so the ring is the unit of access review. A `prod-data` ring and a `staging-data` ring keep those worlds separable; per-key rings multiply permanent objects for no isolation gain (key-level IAM exists for the exceptions).
+- **Location follows data.** Regional CMEK integrations require the key (hence the ring) in the data's region; multi-region BigQuery/Spanner require the matching multi-region (`us`, `europe`, `asia`); `global` suits signing keys consumed from everywhere.
+- **Name for forever.** `prod-encryption`, `us-compliance-keys` — names that stay correct as the fleet grows, because they cannot be recycled.
 
-Bundling them would force users to declare all keys upfront, which is impractical.
+## 90/10 coverage vs the provider resource
 
-### Immutability
+| Provider field (`google_kms_key_ring`) | Modeled | Notes |
+|---|---|---|
+| `name` | ✅ `keyRingName` | ForceNew |
+| `location` | ✅ `location` | ForceNew |
+| `project` | ✅ `projectId` (ref → GcpProject, ambient fallback) | ForceNew |
 
-All three fields (`project`, `name`, `location`) are immutable after creation. This is enforced by the GCP API — there is no update endpoint for key rings. In Terraform/Pulumi, all fields are `ForceNew`.
+The released provider resource has exactly these three fields — this kind models 100% of its surface.
 
-If a user changes any field, the IaC engine will attempt to destroy and recreate. Since key rings cannot be deleted, this creates a new key ring alongside the original (which becomes orphaned from IaC state but still exists in GCP).
+## Deliberately not modeled (recorded reasons)
 
-### No Deletion Support
+- **Per-ring IAM (`google_kms_key_ring_iam_*`)** — resource-scoped IAM stays out of the catalog pending concrete pull (the additive project-level grant, `GcpProjectIamMember`, covers the real cases).
+- **`google_kms_key_ring_import_job`** — the BYOK import ceremony handles raw key material interactively (wrapping keys expire in 3 days); it is an operational act, not durable infrastructure. The import-only *key* container is modeled on `GcpKmsKey`.
 
-This is a critical and unusual property of KMS key rings:
+## Provider mapping
 
-- The GCP API has no `DELETE` endpoint for key rings
-- Terraform's `Delete` function only removes the resource from state
-- Pulumi's `Delete` function only removes the resource from state
-- The key ring continues to exist in GCP permanently
-
-This means:
-- Key ring names are consumed permanently within a project+location
-- Reusing a name will reference the existing key ring (Terraform import / Pulumi refresh)
-- There is no way to "clean up" unused key rings except by deleting the entire GCP project
-
-### No Labels Support
-
-Unlike most GCP resources, KMS key rings do not support resource labels. This is a GCP API limitation. The Pulumi module still computes Planton-standard labels in `locals.go` for internal tracking, but they are not applied to the GCP resource.
-
-## Deployment Landscape
-
-### Methods Compared
-
-| Method | Maturity | Planton Value-Add |
-|--------|----------|-------------------|
-| `gcloud kms keyrings create` | Stable CLI | Planton provides declarative YAML, cross-resource references, and infra-chart composition |
-| Terraform `google_kms_key_ring` | Stable, widely used | Planton adds validation, presets, and dependency-aware deployment |
-| Pulumi `kms.KeyRing` | Stable Go SDK | Planton wraps with consistent KRM API and cross-provider patterns |
-| GCP Console | Point-and-click | No IaC, no reproducibility |
-
-### When to Use Planton for Key Rings
-
-- You need declarative, version-controlled key ring management
-- Your key rings are part of a larger infrastructure setup (infra charts)
-- You want consistent cross-resource references (project IDs via `valueFrom`)
-- You want validation before deployment (CEL rules catch naming errors early)
-
-## 80/20 Scoping Rationale
-
-KMS key rings are intentionally minimal — only 3 fields. This reflects the GCP API exactly:
-
-**Included (100% of key ring functionality):**
-- Project ID
-- Key ring name
-- Location
-
-**Not applicable / excluded:**
-- Labels (not supported by GCP API)
-- Access control (managed via IAM, not the key ring resource itself)
-- Crypto keys (separate resource with independent lifecycle)
-- Key ring metadata/description (not supported by GCP API)
-
-There are no "80/20" cuts here — the spec covers the complete surface area of the `google_kms_key_ring` resource.
-
-## Location Strategy
-
-GCP KMS supports three categories of locations:
-
-### Regional Locations
-Keys stored in a single GCP region. Data at rest never leaves that region.
-
-**Best for:** Regulatory compliance (GDPR, HIPAA data residency), co-location with regional workloads, lowest latency.
-
-**Examples:** `us-central1`, `europe-west1`, `asia-east1`, `us-east4`
-
-### Multi-Region Locations
-Keys replicated across multiple regions within a geographic boundary.
-
-**Best for:** High availability with continental data residency, disaster recovery.
-
-**Examples:** `us` (all US regions), `europe` (all EU regions), `asia` (all Asia regions)
-
-### Global Location
-Keys accessible from any region without geographic restrictions.
-
-**Best for:** Cross-region workloads, global services, applications without data residency requirements.
-
-**Example:** `global`
-
-## Integration with CMEK (Customer-Managed Encryption Keys)
-
-The primary purpose of creating key rings is to eventually create CryptoKeys within them for CMEK. The dependency chain:
-
-```
-GcpKmsKeyRing → GcpKmsCryptoKey → CMEK consumers (BigQuery, Spanner, GKE, etc.)
-```
-
-Services that support CMEK and would reference CryptoKeys in this key ring:
-
-| Service | Field That Takes CryptoKey |
-|---------|---------------------------|
-| BigQuery Dataset | `encryption_configuration.kms_key_name` |
-| Cloud SQL Instance | `encryption_key_name` |
-| Spanner Database | `encryption_config.kms_key_name` |
-| GKE Cluster | `database_encryption.key_name` |
-| Compute Engine Disk | `disk_encryption_key.kms_key_self_link` |
-| Cloud Storage Bucket | `encryption.default_kms_key_name` |
-| Pub/Sub Topic | `kms_key_name` |
-| Filestore Instance | `kms_key_name` |
-
-## Best Practices
-
-1. **Use a dedicated project for encryption keys** — separation of duties between key management and workload management.
-2. **Co-locate key rings with workloads** — use regional locations that match your workload regions for lowest latency.
-3. **Use descriptive, permanent names** — since key rings cannot be deleted, choose names that will make sense long-term.
-4. **One key ring per environment per region** — e.g., `prod-encryption-us-central1`, `staging-encryption-europe-west1`.
-5. **Grant IAM at the key ring level** — simpler to manage than per-key IAM for most use cases.
-
-## References
-
-- [Cloud KMS Documentation](https://cloud.google.com/kms/docs)
-- [Creating Key Rings](https://cloud.google.com/kms/docs/create-key-ring)
-- [KMS Locations](https://cloud.google.com/kms/docs/locations)
-- [CMEK Overview](https://cloud.google.com/kms/docs/cmek)
-- [Terraform google_kms_key_ring](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/kms_key_ring)
-- [Pulumi gcp.kms.KeyRing](https://www.pulumi.com/registry/packages/gcp/api-docs/kms/keyring/)
+Maps to `google_kms_key_ring` (`google/services/kms/resource_kms_key_ring.go`): `keyRingName` → `name` (ForceNew), `location` → `location` (ForceNew), `projectId` → `project` (ForceNew, ambient fallback when empty). The provider's Delete is a state-only removal with a warning — mirrored in both engines' behavior and taught in every doc surface of this kind.

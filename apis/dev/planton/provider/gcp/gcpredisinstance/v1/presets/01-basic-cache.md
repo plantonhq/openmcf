@@ -1,29 +1,31 @@
 # Basic Cache
 
-This preset provisions a minimal Memorystore for Redis instance using the BASIC tier with 1 GB memory. It is ideal for development, testing, or lightweight caching workloads where high availability and authentication are not required.
+This preset deploys a single-node BASIC tier Redis instance — the smallest, cheapest Memorystore shape — peered to your VPC over direct peering.
 
 ## When to Use
 
-- Local development and integration testing
-- CI/CD pipelines that need a temporary Redis instance
-- Lightweight application caching with minimal cost
-- Proof-of-concept or prototyping environments
+- Development and staging environments
+- Ephemeral caches where losing the data on a restart is acceptable (BASIC has no replication and no SLA)
+- Rate limiters, short-lived session data, and computed-value caches that rebuild themselves
 
-## Key Configuration
+## Key Configuration Choices
 
-- **BASIC tier** — single-node instance with no replication or SLA
-- **1 GB memory** — smallest available size; increase for larger datasets
-- **Minimal fields** — only project, instance name, region, tier, and memory; no auth, TLS, or VPC attachment
+- **BASIC tier, 1 GiB** — one node, no failover; a restart or maintenance event flushes the cache
+- **VPC by reference** — `authorizedNetwork` resolves the `GcpVpcNetwork` node's self link, so the cache lands on the same network as its consumers
+- **Direct peering** (the default `connectMode`) — the simplest connectivity; GCP picks an unused /29 automatically
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 |---|---|---|
-| `<gcp-project-id>` | GCP project ID where the instance will be created | GCP Console or `GcpProject` outputs |
-| `<instance-name>` | Name for this Redis instance (2-40 chars, lowercase, hyphens) | Choose a descriptive name (e.g., `dev-cache`) |
-| `<gcp-region>` | GCP region for the instance (e.g., `us-central1`) | [GCP regions](https://cloud.google.com/about/locations) |
+| `my-gcp-project-123` | GCP project ID | GCP Console or `GcpProject` outputs |
+| `my-app-vpc` | Your `GcpVpcNetwork` resource name | Your VPC manifest |
 
 ## Related Presets
 
-- **02-ha-production** — STANDARD_HA with auth, TLS, persistence, and deletion protection
-- **03-ha-read-replicas** — STANDARD_HA with read replicas for read-heavy workloads
+- **02-ha-production** — when the cache becoming unavailable is an incident
+- **03-private-services-access** — Shared VPC / PSA connectivity with read replicas and CMEK
+
+## Related Components
+
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network the cache attaches to

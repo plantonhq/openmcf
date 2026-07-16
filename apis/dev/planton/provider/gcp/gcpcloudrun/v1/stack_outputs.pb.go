@@ -24,12 +24,21 @@ const (
 // GcpCloudRunStackOutputs captures values returned after provisioning.
 type GcpCloudRunStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Public or internal URL of the Cloud Run service.
+	// Canonical serving URL of the service (https://<service>-<hash>-<region>.run.app).
 	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
-	// Name of the Cloud Run service.
+	// Name of the Cloud Run service as created in GCP — the handle serverless
+	// network endpoint groups and gcloud commands reference.
 	ServiceName string `protobuf:"bytes,2,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	// Name of the deployed revision.
-	Revision      string `protobuf:"bytes,3,opt,name=revision,proto3" json:"revision,omitempty"`
+	// Name of the latest ready revision — the revision serving LATEST traffic.
+	Revision string `protobuf:"bytes,3,opt,name=revision,proto3" json:"revision,omitempty"`
+	// Region the service is deployed in (plain region name).
+	Location string `protobuf:"bytes,4,opt,name=location,proto3" json:"location,omitempty"`
+	// Server-assigned unique identifier of the service, stable across its
+	// lifetime and never reused after deletion.
+	Uid string `protobuf:"bytes,5,opt,name=uid,proto3" json:"uid,omitempty"`
+	// Every URL serving this service: the canonical run.app URL plus any
+	// deterministic URLs.
+	Urls          []string `protobuf:"bytes,6,rep,name=urls,proto3" json:"urls,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -85,15 +94,39 @@ func (x *GcpCloudRunStackOutputs) GetRevision() string {
 	return ""
 }
 
+func (x *GcpCloudRunStackOutputs) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+func (x *GcpCloudRunStackOutputs) GetUid() string {
+	if x != nil {
+		return x.Uid
+	}
+	return ""
+}
+
+func (x *GcpCloudRunStackOutputs) GetUrls() []string {
+	if x != nil {
+		return x.Urls
+	}
+	return nil
+}
+
 var File_dev_planton_provider_gcp_gcpcloudrun_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpcloudrun_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	";dev/planton/provider/gcp/gcpcloudrun/v1/stack_outputs.proto\x12'dev.planton.provider.gcp.gcpcloudrun.v1\"j\n" +
+	";dev/planton/provider/gcp/gcpcloudrun/v1/stack_outputs.proto\x12'dev.planton.provider.gcp.gcpcloudrun.v1\"\xac\x01\n" +
 	"\x17GcpCloudRunStackOutputs\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12!\n" +
 	"\fservice_name\x18\x02 \x01(\tR\vserviceName\x12\x1a\n" +
-	"\brevision\x18\x03 \x01(\tR\brevisionB\xdc\x02\n" +
+	"\brevision\x18\x03 \x01(\tR\brevision\x12\x1a\n" +
+	"\blocation\x18\x04 \x01(\tR\blocation\x12\x10\n" +
+	"\x03uid\x18\x05 \x01(\tR\x03uid\x12\x12\n" +
+	"\x04urls\x18\x06 \x03(\tR\x04urlsB\xdc\x02\n" +
 	"+com.dev.planton.provider.gcp.gcpcloudrun.v1B\x11StackOutputsProtoP\x01ZWgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudrun/v1;gcpcloudrunv1\xa2\x02\x05DPPGG\xaa\x02'Dev.Planton.Provider.Gcp.Gcpcloudrun.V1\xca\x02'Dev\\Planton\\Provider\\Gcp\\Gcpcloudrun\\V1\xe2\x023Dev\\Planton\\Provider\\Gcp\\Gcpcloudrun\\V1\\GPBMetadata\xea\x02,Dev::Planton::Provider::Gcp::Gcpcloudrun::V1b\x06proto3"
 
 var (

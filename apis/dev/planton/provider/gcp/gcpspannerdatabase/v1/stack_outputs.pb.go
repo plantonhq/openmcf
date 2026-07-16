@@ -30,8 +30,8 @@ type GcpSpannerDatabaseStackOutputs struct {
 	// This is the canonical identifier used for IAM bindings, API calls,
 	// and connection strings.
 	DatabaseId string `protobuf:"bytes,1,opt,name=database_id,json=databaseId,proto3" json:"database_id,omitempty"`
-	// Short database name. This is the value passed during creation and
-	// can be used for display or logging purposes.
+	// Short database name. This is the value that GcpSpannerBackupSchedule
+	// and other downstream resources use to reference this database.
 	DatabaseName string `protobuf:"bytes,2,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
 	// Database state: CREATING or READY.
 	// CREATING indicates the database is being provisioned.

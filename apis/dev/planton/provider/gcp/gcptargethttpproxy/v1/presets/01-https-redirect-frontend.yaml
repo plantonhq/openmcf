@@ -1,0 +1,10 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpTargetHttpProxy
+metadata:
+  name: https-redirect-frontend
+spec:
+  projectId:
+    value: "<gcp-project-id>"
+  description: Port-80 frontend serving the http-to-https redirect URL map
+  urlMap:
+    value: "<redirect-url-map-self-link>" # replace: a URL map whose default is an https redirect

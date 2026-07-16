@@ -18,20 +18,23 @@ Uses `pulumi-gcp/sdk/v9/go/gcp/cloudtasks` for the `cloudtasks.NewQueue` resourc
 
 ## Features
 
+- Cloud Tasks API enablement (fresh projects work first try)
 - Queue-level HTTP target with OIDC/OAuth authentication
 - URI overrides (scheme, host, port, path, query params)
 - Header overrides for all tasks
+- App Engine routing override (service/version/instance pinning)
 - Configurable rate limits and retry behavior
 - Stackdriver logging with sampling ratio
-- Desired state control (RUNNING/PAUSED)
-- Queue state exported as output
 
 ## Notes
 
 - Cloud Tasks queues do NOT support GCP labels. No labels are computed or applied.
-- The `state` output is available via Pulumi but not via Terraform.
-- `max_burst_size` is computed by GCP and exported via Pulumi's rate_limits output.
+- If `project_id` is empty, the queue lands in the provider's default project.
+- `max_burst_size` is computed by GCP from the dispatch rate and exported as an output.
 - Flattened URI path/query overrides are mapped back to the SDK's nested structure.
+- The bridged provider's client-side `deletion_policy` is pinned to `DELETE`, and its
+  `desired_state` (pause/resume) surface is deliberately unused — see the PARITY
+  comments in `cloud_tasks_queue.go`.
 
 ## Debug
 

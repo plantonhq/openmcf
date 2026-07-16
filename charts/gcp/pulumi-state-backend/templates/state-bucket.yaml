@@ -1,0 +1,78 @@
+# The state bucket. Every posture below exists to protect one property:
+# Pulumi's state (checkpoints, stack history, and the encrypted secrets
+# inside them) is the single source of truth for what your stacks look like
+# — so it must be recoverable after mistakes and unreadable to everyone but
+# the state identity. Pulumi's DIY GCS backend lays its files out under
+# .pulumi/ in this bucket; nothing else is required.
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpGcsBucket
+metadata:
+  name: "{{ values.bucket_name }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  bucketName: "{{ values.bucket_name }}"
+  location: "{{ values.location }}"
+
+  # All access through IAM only — object ACLs are a second, easily-forgotten
+  # permission surface that state buckets must not have.
+  uniformBucketLevelAccessEnabled: true
+
+  # State can never be public, regardless of what any future IAM grant says.
+  publicAccessPrevention: enforced
+
+  # Versioning is the recovery mechanism for the checkpoint objects Pulumi
+  # overwrites in place — and it protects Pulumi's own .pulumi/history/
+  # files from accidental deletion too.
+  versioningEnabled: true
+
+  # Bound what versioning accumulates: keep the most recent N noncurrent
+  # versions of each object, delete older ones. withState ARCHIVED scopes
+  # the rule to noncurrent versions only — live objects are never
+  # lifecycle-deleted.
+  lifecycleRules:
+    - action:
+        type: Delete
+      condition:
+        numNewerVersions: {{ values.noncurrent_versions_to_keep }}
+        withState: ARCHIVED
+
+  # Keep deleted objects recoverable for 7 days (GCP's default, made
+  # explicit because for THIS bucket it is a deliberate safety decision,
+  # not a default we happened to inherit). Soft delete covers the case
+  # versioning cannot: the bucket-level "someone deleted the object AND its
+  # versions" accident.
+  softDeletePolicy:
+    retentionDurationSeconds: 604800
+
+{% if values.kmsEnabled | bool %}
+  # Encrypt checkpoint and history objects under the customer-managed key
+  # from encryption.yaml — referenced THROUGH the storage-agent grant, whose
+  # crypto_key_id output echoes the key's resolved path. Chaining through
+  # the grant makes the permission a dependency: the bucket deploys only
+  # after the Cloud Storage service agent can already use the key, so a
+  # first CMEK-enabled deploy never races IAM propagation.
+  kmsKeyName:
+    valueFrom:
+      kind: GcpKmsKeyIamMember
+      name: "{{ values.bucket_name }}-gcs-agent-kms"
+      fieldPath: status.outputs.crypto_key_id
+{% endif %}
+
+{% if values.serviceAccountEnabled | bool %}
+  # Additive grant: full object read/write for the dedicated state identity
+  # from state-access.yaml — everything Pulumi's GCS backend needs (it
+  # creates, reads, and deletes checkpoint, history, and lock objects).
+  # Additive means it composes with grants made elsewhere and its removal
+  # never clobbers them.
+  iamMembers:
+    - role: roles/storage.objectAdmin
+      member:
+        valueFrom:
+          name: "{{ values.service_account_id }}"
+{% endif %}
+
+  # force_destroy stays at its default (false) on purpose: destroying this
+  # bucket while it still holds stack state should fail. Empty the bucket
+  # deliberately before ever deleting a state backend.

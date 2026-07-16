@@ -1,31 +1,89 @@
+# Enable the Compute Engine API so a fresh project can host security
+# policies. disable_on_destroy is false: tearing down one policy must never
+# disable the API for everything else in the project.
+resource "google_project_service" "compute_api" {
+  project = local.project_id
+  service = "compute.googleapis.com"
+
+  disable_dependent_services = true
+  disable_on_destroy         = false
+}
+
+# One Cloud Armor security policy. The default-rule contract: creating with
+# NO rules lets the API add a default "allow all" rule at priority
+# 2147483647 automatically; providing ANY rules requires the set to include
+# that default explicitly (the spec enforces it pre-deploy, mirroring the
+# API's own rejection).
 resource "google_compute_security_policy" "this" {
   name        = local.policy_name
   project     = local.project_id
   description = var.spec.description != "" ? var.spec.description : null
   type        = var.spec.type != "" ? var.spec.type : null
 
-  # Adaptive Protection configuration.
+  depends_on = [google_project_service.compute_api]
+
+  # Adaptive Protection (CAAP): Layer 7 DDoS detection with optional
+  # per-granularity detection/auto-deploy threshold overrides.
   dynamic "adaptive_protection_config" {
     for_each = var.spec.adaptive_protection_config != null ? [var.spec.adaptive_protection_config] : []
     content {
       layer_7_ddos_defense_config {
         enable          = adaptive_protection_config.value.enable_layer_7_ddos_defense
         rule_visibility = adaptive_protection_config.value.rule_visibility != "" ? adaptive_protection_config.value.rule_visibility : null
+
+        dynamic "threshold_configs" {
+          for_each = adaptive_protection_config.value.threshold_configs
+          content {
+            name                                    = threshold_configs.value.name
+            auto_deploy_confidence_threshold        = threshold_configs.value.auto_deploy_confidence_threshold
+            auto_deploy_impacted_baseline_threshold = threshold_configs.value.auto_deploy_impacted_baseline_threshold
+            auto_deploy_load_threshold              = threshold_configs.value.auto_deploy_load_threshold
+            auto_deploy_expiration_sec              = threshold_configs.value.auto_deploy_expiration_sec
+            detection_absolute_qps                  = threshold_configs.value.detection_absolute_qps
+            detection_load_threshold                = threshold_configs.value.detection_load_threshold
+            detection_relative_to_baseline_qps      = threshold_configs.value.detection_relative_to_baseline_qps
+
+            dynamic "traffic_granularity_configs" {
+              for_each = threshold_configs.value.traffic_granularity_configs
+              content {
+                type                     = traffic_granularity_configs.value.type
+                value                    = traffic_granularity_configs.value.value != "" ? traffic_granularity_configs.value.value : null
+                enable_each_unique_value = traffic_granularity_configs.value.enable_each_unique_value ? true : null
+              }
+            }
+          }
+        }
       }
     }
   }
 
-  # Advanced options configuration.
+  # Advanced options: JSON body parsing (with custom content types),
+  # logging verbosity, and true-client-IP resolution headers.
   dynamic "advanced_options_config" {
     for_each = var.spec.advanced_options_config != null ? [var.spec.advanced_options_config] : []
     content {
       json_parsing            = advanced_options_config.value.json_parsing != "" ? advanced_options_config.value.json_parsing : null
       log_level               = advanced_options_config.value.log_level != "" ? advanced_options_config.value.log_level : null
       user_ip_request_headers = length(advanced_options_config.value.user_ip_request_headers) > 0 ? advanced_options_config.value.user_ip_request_headers : null
+
+      dynamic "json_custom_config" {
+        for_each = advanced_options_config.value.json_custom_config != null ? [advanced_options_config.value.json_custom_config] : []
+        content {
+          content_types = json_custom_config.value.content_types
+        }
+      }
     }
   }
 
-  # Security rules.
+  # Policy-level reCAPTCHA site key for GOOGLE_RECAPTCHA redirect rules.
+  dynamic "recaptcha_options_config" {
+    for_each = var.spec.recaptcha_options_config != null ? [var.spec.recaptcha_options_config] : []
+    content {
+      redirect_site_key = recaptcha_options_config.value.redirect_site_key
+    }
+  }
+
+  # Security rules, evaluated in priority order (lowest number first).
   dynamic "rule" {
     for_each = var.spec.rules
     content {
@@ -34,7 +92,8 @@ resource "google_compute_security_policy" "this" {
       description = rule.value.description != "" ? rule.value.description : null
       preview     = rule.value.preview ? true : null
 
-      # Match condition: versioned_expr + config OR expr.
+      # Match condition: versioned_expr + config OR a CEL expr (with
+      # optional reCAPTCHA site-key options).
       match {
         versioned_expr = rule.value.match.versioned_expr != "" ? rule.value.match.versioned_expr : null
 
@@ -51,20 +110,40 @@ resource "google_compute_security_policy" "this" {
             expression = rule.value.match.expression
           }
         }
+
+        dynamic "expr_options" {
+          for_each = rule.value.match.expr_options != null ? [rule.value.match.expr_options] : []
+          content {
+            recaptcha_options {
+              action_token_site_keys  = length(expr_options.value.action_token_site_keys) > 0 ? expr_options.value.action_token_site_keys : null
+              session_token_site_keys = length(expr_options.value.session_token_site_keys) > 0 ? expr_options.value.session_token_site_keys : null
+            }
+          }
+        }
       }
 
       # Rate limit options (for throttle and rate_based_ban actions).
       dynamic "rate_limit_options" {
         for_each = rule.value.rate_limit_options != null ? [rule.value.rate_limit_options] : []
         content {
-          conform_action       = rate_limit_options.value.conform_action
-          exceed_action        = rate_limit_options.value.exceed_action
-          enforce_on_key       = rate_limit_options.value.enforce_on_key != "" ? rate_limit_options.value.enforce_on_key : null
-          enforce_on_key_name  = rate_limit_options.value.enforce_on_key_name != "" ? rate_limit_options.value.enforce_on_key_name : null
-          ban_duration_sec     = rate_limit_options.value.ban_duration_sec > 0 ? rate_limit_options.value.ban_duration_sec : null
+          conform_action      = rate_limit_options.value.conform_action
+          exceed_action       = rate_limit_options.value.exceed_action
+          enforce_on_key      = rate_limit_options.value.enforce_on_key != "" ? rate_limit_options.value.enforce_on_key : null
+          enforce_on_key_name = rate_limit_options.value.enforce_on_key_name != "" ? rate_limit_options.value.enforce_on_key_name : null
+          ban_duration_sec    = rate_limit_options.value.ban_duration_sec > 0 ? rate_limit_options.value.ban_duration_sec : null
+
+          # Composite rate-limit key: component values concatenate to form
+          # the key requests are counted against.
+          dynamic "enforce_on_key_configs" {
+            for_each = rate_limit_options.value.enforce_on_key_configs
+            content {
+              enforce_on_key_type = enforce_on_key_configs.value.enforce_on_key_type
+              enforce_on_key_name = enforce_on_key_configs.value.enforce_on_key_name != "" ? enforce_on_key_configs.value.enforce_on_key_name : null
+            }
+          }
 
           rate_limit_threshold {
-            count       = rate_limit_options.value.rate_limit_threshold.count
+            count        = rate_limit_options.value.rate_limit_threshold.count
             interval_sec = rate_limit_options.value.rate_limit_threshold.interval_sec
           }
 

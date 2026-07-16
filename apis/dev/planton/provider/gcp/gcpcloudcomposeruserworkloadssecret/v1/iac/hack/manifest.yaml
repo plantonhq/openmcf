@@ -1,0 +1,26 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudComposerUserWorkloadsSecret
+metadata:
+  name: test-airflow-secret
+spec:
+  # GCP project of the Composer environment. Replace with your project ID.
+  projectId:
+    value: my-gcp-project-123
+
+  # Region of the Composer environment.
+  region: us-central1
+
+  # The Composer environment the Secret is delivered into — its
+  # environment_name. Replace with your environment.
+  environment:
+    value: test-composer
+
+  # Kubernetes Secret name — what DAGs reference.
+  secretName: test-db-credentials
+
+  # Values MUST be base64-encoded (echo -n 'value' | base64).
+  data:
+    # base64 of "postgresql://airflow:pass@10.0.0.5/mydb"
+    connection: cG9zdGdyZXNxbDovL2FpcmZsb3c6cGFzc0AxMC4wLjAuNS9teWRi
+    # base64 of "sk-live-4f9a2b7c8d1e"
+    api-token: c2stbGl2ZS00ZjlhMmI3YzhkMWU=

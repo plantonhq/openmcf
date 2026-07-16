@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpfirestorebackupschedule.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// GcpFirestoreBackupScheduleWeeklyRecurrence pins a weekly backup to a
+// day of the week.
+message GcpFirestoreBackupScheduleWeeklyRecurrence {
+  // Day of the week the weekly backup runs.
+  string day = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "MONDAY",
+        "TUESDAY",
+        "WEDNESDAY",
+        "THURSDAY",
+        "FRIDAY",
+        "SATURDAY",
+        "SUNDAY"
+      ]
+    }
+  ];
+}
+
+// GcpFirestoreBackupScheduleSpec defines a backup schedule for a
+// Firestore database — Firestore's own managed, periodic backups with
+// retention, distinct from point-in-time recovery (PITR covers the last
+// 7 days of versions; backups extend protection to 14 weeks and survive
+// database deletion).
+//
+// A database supports one daily and one weekly schedule — the
+// daily-plus-weekly pattern (short-retention daily backups beside
+// longer-retention weekly ones) is exactly two of these resources on the
+// same database.
+//
+// Important behavioral notes:
+//
+//   - The recurrence (daily or weekly, and the weekly day) is immutable;
+//     only retention updates in place.
+//   - Backups already taken OUTLIVE the schedule: deleting this resource
+//     stops future backups but never deletes existing ones — they age
+//     out per their retention.
+//   - Backup timing within the day is chosen by Firestore; only weekly
+//     schedules pin a day.
+message GcpFirestoreBackupScheduleSpec {
+  // GCP project owning the database. Can be a literal project ID or a
+  // reference to a GcpProject resource. If omitted, the provider's
+  // default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The Firestore database to back up — the database name (a
+  // GcpFirestoreDatabase reference resolves to it). Immutable after
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef database = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpFirestoreDatabase,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.database_name"
+  ];
+
+  // How long each backup is kept, as a seconds duration string (e.g.
+  // "604800s" for 7 days). Maximum 14 weeks ("8467200s"). The only
+  // mutable field — extend or shorten protection in place.
+  string retention = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9]+s$"
+  ];
+
+  // Take a backup every day. Exactly one of daily or weekly_recurrence
+  // must be set. Immutable after creation.
+  bool daily = 4;
+
+  // Take a backup every week on the given day. Exactly one of daily or
+  // weekly_recurrence must be set. Immutable after creation.
+  GcpFirestoreBackupScheduleWeeklyRecurrence weekly_recurrence = 5;
+
+  // The API accepts exactly one recurrence shape per schedule — a
+  // database gets the daily-plus-weekly pattern by composing two
+  // schedule resources.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_recurrence"
+    expression: "(this.daily && !has(this.weekly_recurrence)) || (!this.daily && has(this.weekly_recurrence))"
+    message: "set exactly one recurrence: daily true, or a weekly_recurrence day"
+  };
+}

@@ -8,18 +8,18 @@ provider: "gcp"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-postgresql-production"
+  - slug: "01-postgres-production-private"
     rank: "01"
-    title: "PostgreSQL Production Instance"
-    excerpt: "This preset creates a production-grade Cloud SQL PostgreSQL instance with high availability, private IP networking, automated backups with point-in-time recovery, query insights, and deletion..."
-  - slug: "02-mysql-production"
+    title: "Production PostgreSQL (Private IP)"
+    excerpt: "This preset deploys a production-grade PostgreSQL 16 instance reachable only over private IP inside your VPC — no public address at all — with regional high availability, point-in-time recovery,..."
+  - slug: "02-mysql-high-availability"
     rank: "02"
-    title: "MySQL Production Instance"
-    excerpt: "This preset creates a production-grade Cloud SQL MySQL 8.0 instance with the same security and reliability posture as the PostgreSQL production preset: high availability, private IP, automated..."
-  - slug: "03-postgresql-development"
+    title: "High-Availability MySQL (Auth Proxy Access)"
+    excerpt: "This preset deploys a MySQL 8.0 instance with regional high availability and binary logging, exposed through a public IP that has **zero authorized networks** — so the only way in is the..."
+  - slug: "03-postgres-read-replica"
     rank: "03"
-    title: "PostgreSQL Development Instance"
-    excerpt: "This preset creates a minimal Cloud SQL PostgreSQL instance for development and testing. It uses the smallest available tier, public IP access (via Cloud SQL Proxy), and basic backups. No high..."
+    title: "PostgreSQL Read Replica"
+    excerpt: "This preset attaches a read replica to an existing PostgreSQL primary. A replica is a full `GcpCloudSql` node of its own — same kind, own manifest — that references its primary through..."
 ---
 
 # Cloud SQL Presets

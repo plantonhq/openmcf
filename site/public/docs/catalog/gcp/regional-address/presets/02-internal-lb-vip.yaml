@@ -1,0 +1,13 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpAddress
+metadata:
+  name: my-internal-lb-vip
+spec:
+  projectId:
+    value: my-gcp-project-123
+  addressName: ilb-vip
+  region: us-central1
+  addressType: INTERNAL
+  purpose: SHARED_LOADBALANCER_VIP
+  ipVersion: IPV4
+  description: Internal shared VIP for regional internal load balancer

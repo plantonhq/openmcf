@@ -1,0 +1,240 @@
+params:
+  # ─── GCP placement ──────────────────────────────────────────────────────
+  - name: gcp_project_id
+    description: >
+      GCP project every resource in this chart lands in. One project per
+      application environment is the posture this chart assumes — the
+      database grants below are project-scoped, so the blast radius of the
+      runtime identity ends at this project's boundary.
+    value: my-gcp-project
+
+  - name: region
+    description: >
+      Region for the service and everything regional beside it (registry,
+      database, cache, connector, serverless NEG). Cloud Run is regional;
+      keeping its dependencies in the same region avoids cross-region
+      latency on every request and egress charges on every byte.
+    value: us-central1
+
+  # ─── The service ─────────────────────────────────────────────────────────
+  - name: service_name
+    description: >
+      Name of the Cloud Run service, and the prefix every derived resource
+      name builds on (runtime identity, database, cache, connector, front
+      door). 1-63 lowercase letters, digits, and hyphens.
+    value: my-app
+
+  - name: image
+    description: >
+      Container image the service runs. The default is Google's public
+      hello image so the chart deploys before your first build exists —
+      replace it with your image path (typically in the registry this chart
+      creates: <region>-docker.pkg.dev/<project>/<repository>/<image>:<tag>)
+      once CI pushes it.
+    value: us-docker.pkg.dev/cloudrun/container/hello
+
+  - name: container_port
+    description: >
+      Port the container listens on. Cloud Run routes all traffic to this
+      single port and sets $PORT to it — the app must bind to it.
+    value: "8080"
+
+  - name: cpu
+    description: >
+      vCPUs per instance ("1", "2", "4", or fractional "0.5" with
+      concurrency caveats). CPU is the knob for request latency; memory
+      below is the knob for footprint. Changing either rolls a new revision.
+    value: "1"
+
+  - name: memory
+    description: >
+      Memory per instance (e.g. 512Mi, 1Gi). Undersizing shows up as
+      instance OOM kills in the logs; oversizing just costs money.
+    value: 512Mi
+
+  - name: min_instances
+    description: >
+      Minimum warm instances. "0" scales to zero — the service costs
+      nothing while idle, at the price of cold starts on the first request.
+      Set "1" (or more) when the service sits on a hot path where cold
+      starts are user-visible.
+    value: "0"
+
+  - name: max_instances
+    description: >
+      Maximum instances — the cost and overload circuit breaker. Size it
+      from peak traffic divided by per-instance concurrency, with headroom;
+      hitting the cap surfaces as 429s rather than runaway spend.
+    value: "20"
+
+  - name: allowUnauthenticated
+    description: >
+      Allow unauthenticated invocations (a public HTTP API). Keep true for
+      anything internet-facing — including behind the front door below,
+      which forwards public traffic without adding IAM identity. Turn off
+      for service-to-service backends where callers authenticate with IAM
+      identity tokens and hold roles/run.invoker.
+    type: bool
+    value: true
+
+  # ─── Image registry ──────────────────────────────────────────────────────
+  - name: registryEnabled
+    description: >
+      Also create the Artifact Registry Docker repository this service's
+      images live in. Turn off when images come from a registry that
+      already exists (for example one created by a CI/CD deployer chart) —
+      the service pulls from any repository its project can read.
+    type: bool
+    value: true
+
+  - name: registry_repository_id
+    description: >
+      Repository ID within Artifact Registry (lowercase letters, digits,
+      hyphens). Becomes part of every image path:
+      <region>-docker.pkg.dev/<project>/<repository-id>/<image>. Immutable.
+    value: app-images
+
+  # ─── Shared network (used by the private arms below) ─────────────────────
+  - name: network_resource_name
+    description: >
+      Planton resource name of the EXISTING GcpVpcNetwork the private arms
+      attach to — typically the network a landing-zone chart such as
+      project-foundation deployed in this environment (its default network
+      name is app-network). Only used when cloudSqlEnabled,
+      memorystoreEnabled, or vpcConnectorEnabled is true: an application
+      chart consumes the shared network, it never creates one.
+    value: app-network
+
+  - name: subnet_resource_name
+    description: >
+      Planton resource name of the EXISTING GcpSubnetwork the Memorystore
+      service-connection policy places PSC endpoints in (project-foundation
+      names its subnet <network>-<region>). Only used when
+      memorystoreEnabled is true.
+    value: app-network-us-central1
+
+  # ─── Cloud SQL Postgres (private, passwordless) ──────────────────────────
+  - name: cloudSqlEnabled
+    description: >
+      Add a private Cloud SQL Postgres instance, an application database,
+      and passwordless IAM authentication for the runtime identity — no
+      database password exists anywhere in this chart. Requires the shared
+      network to already carry private services access (project-foundation
+      deploys it by default); the instance gets a private IP inside that
+      network and the service reaches it over the mounted /cloudsql socket.
+    type: bool
+    value: false
+
+  - name: db_version
+    description: >
+      PostgreSQL major version. Pick the newest your extensions support —
+      major-version upgrades are a planned operation, not a config edit.
+    value: POSTGRES_16
+
+  - name: db_tier
+    description: >
+      Machine tier for the database (db-custom-<vCPUs>-<memoryMb>). The
+      default is a modest 2-vCPU/7.5GB production starter; resize in place
+      later (a short restart applies it).
+    value: db-custom-2-7680
+
+  - name: db_disk_size_gb
+    description: >
+      Initial SSD size in GB. The instance auto-resizes upward as data
+      grows, so start realistic rather than large — disk never shrinks.
+    value: "20"
+
+  - name: db_availability_type
+    description: >
+      ZONAL runs one instance; REGIONAL adds a synchronous standby in a
+      second zone with automatic failover, at roughly double the instance
+      cost. Choose REGIONAL when the business cost of database downtime
+      exceeds that premium.
+    type: string_enum
+    enumValues:
+      - ZONAL
+      - REGIONAL
+    value: ZONAL
+
+  - name: db_name
+    description: >
+      Name of the application database created inside the instance. The
+      service's DB_NAME environment variable carries it.
+    value: app
+
+  # ─── Memorystore for Valkey cache ────────────────────────────────────────
+  - name: memorystoreEnabled
+    description: >
+      Add a Memorystore for Valkey cache reachable from the shared network
+      over Private Service Connect. The default shape is a single-shard
+      standalone instance any Redis-compatible client can use; scale shards
+      and node types on the resource as the working set grows.
+    type: bool
+    value: false
+
+  - name: cache_node_type
+    description: >
+      Node type for the cache. SHARED_CORE_NANO is the smallest (right for
+      dev and small caches); move to STANDARD_SMALL and beyond for
+      production working sets.
+    value: SHARED_CORE_NANO
+
+  - name: serviceConnectionPolicyEnabled
+    description: >
+      Also create the service connection policy that authorizes Memorystore
+      to place PSC endpoints on the shared network in this region. Exactly
+      one policy per (network, service class, region) may exist — turn this
+      off when the network already carries one (for example created by
+      another deployment of this chart in the same region and network).
+    type: bool
+    value: true
+
+  # ─── Serverless VPC Access connector ─────────────────────────────────────
+  - name: vpcConnectorEnabled
+    description: >
+      Route the service's outbound traffic into the shared network through
+      a Serverless VPC Access connector — required for the service to reach
+      private-IP resources (the private database and cache above, internal
+      services). Egress is set to private ranges only, so internet-bound
+      traffic still leaves directly.
+    type: bool
+    value: false
+
+  - name: connector_cidr
+    description: >
+      Unused /28 range inside the shared network the connector instances
+      occupy. Must not overlap any subnet or reserved range; each connector
+      in a network needs its own /28.
+    value: 10.8.0.0/28
+
+  # ─── Global HTTPS front door ─────────────────────────────────────────────
+  - name: frontDoorEnabled
+    description: >
+      Put the service behind a global external HTTPS load balancer on your
+      own domain: a reserved global IP, a Google-managed certificate,
+      HTTP-to-HTTPS redirect, and a serverless NEG routing to the service.
+      Off by default — the run.app URL serves production traffic fine until
+      a custom domain, CDN, WAF, or multi-service routing calls for the LB.
+      Requires the domain below to be real and pointable: the managed
+      certificate only activates once the domain's A record resolves to the
+      chart's reserved IP.
+    type: bool
+    value: false
+
+  - name: domain
+    description: >
+      Fully-qualified domain the front door serves (no trailing dot). After
+      deployment, point this domain's A record at the reserved IP the chart
+      outputs — the managed certificate stays PROVISIONING until DNS
+      resolves, then traffic flows.
+    value: app.example.com
+
+  - name: cloudArmorEnabled
+    description: >
+      Attach a Cloud Armor security policy to the front door's backend.
+      The chart ships it wide open (allow all) so attaching it is a no-op
+      for traffic — the value is the attachment point: WAF rules, IP
+      allowlists, and rate limits become an edit to the policy resource
+      instead of a load-balancer rework. Only used with frontDoorEnabled.
+    type: bool
+    value: false

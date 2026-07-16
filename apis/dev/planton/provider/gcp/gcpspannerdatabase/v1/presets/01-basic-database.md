@@ -1,30 +1,26 @@
 # Basic Database
 
-This preset creates a minimal Cloud Spanner database with the default GoogleSQL dialect and 1-hour version retention. It is the simplest starting point for any Spanner workload.
+Provisions a Spanner database on an existing instance with Google's SQL dialect and a 24-hour point-in-time recovery window. The database is named after `metadata.name`; schema management belongs to your migration tooling.
 
 ## When to Use
 
-- Getting started with Cloud Spanner
-- Development and testing databases
-- Applications that will manage schema via migration tools
-- Quick prototyping where schema is not yet defined
+- The standard starting point for a new application database
+- Teams using Google Standard SQL (interleaved tables, STRUCT types)
+- When schema DDL is owned by migration tools (Liquibase, Flyway), not IaC
 
 ## Key Configuration
 
-- **GoogleSQL dialect** -- default dialect with full Spanner feature support (interleaved tables, STRUCT types)
-- **1-hour version retention** -- default point-in-time recovery window
-- **No CMEK** -- uses Google-managed encryption (default)
-- **No drop protection** -- database can be deleted freely during development
+- **Instance by reference** — composes against a `GcpSpannerInstance` resource's `instance_name` output
+- **24h version retention** — a full day of point-in-time recovery (GCP default is 1h; maximum is 7d)
+- **Deletion protection ON by default** — both IaC engines refuse to destroy the database until `deletionProtection: false` is set explicitly
 
-## Placeholders to Replace
+## Customization Notes
 
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<gcp-project-id>` | GCP project ID where the Spanner instance lives | GCP Console or `GcpProject` outputs |
-| `<spanner-instance-name>` | Name of the existing Spanner instance | `GcpSpannerInstance` outputs (`instance_name`) |
-| `<database-name>` | Name for this database (2-30 chars, lowercase, hyphens/underscores allowed) | Choose a descriptive name (e.g., `app-db`) |
+- `metadata.name` doubles as the database name when `databaseName` is omitted (2-30 chars; letters, digits, underscores, hyphens)
+- Add initial schema via `ddl` (append-only after creation — editing an existing statement recreates the database)
+- `project_id` falls back to the provider's default project
 
 ## Related Presets
 
-- **02-postgresql-database** -- PostgreSQL dialect with extended retention
-- **03-cmek-encrypted** -- GoogleSQL with customer-managed encryption and drop protection
+- **02-postgresql-database** — PostgreSQL-dialect database
+- **03-cmek-encrypted** — customer-managed encryption + drop protection

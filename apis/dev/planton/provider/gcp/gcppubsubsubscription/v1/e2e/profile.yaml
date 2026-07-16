@@ -1,0 +1,13 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcppubsubsubscription
+spec:
+  # Fast control-plane object composed on the GcpPubSubTopic prerequisite
+  # chain (schema -> topic -> subscription): the transitive-FK proof.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

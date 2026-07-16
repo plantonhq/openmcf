@@ -61,7 +61,7 @@ The `group` value directly maps to the `apiVersion` in manifests. A resource wit
 | **Kubernetes** | 51 | `kubernetes.planton.dev` | KubernetesPostgres, KubernetesRedis, KubernetesDeployment, KubernetesHelmRelease |
 | **OpenStack** | 27 | `openstack.planton.dev` | OpenStackInstance, OpenStackNetwork, OpenStackLoadBalancer, OpenStackVolume |
 | **AWS** | 25 | `aws.planton.dev` | AwsS3Bucket, AwsEksCluster, AwsRdsInstance, AwsLambda, AwsVpc |
-| **GCP** | 19 | `gcp.planton.dev` | GcpCloudSql, GcpGkeCluster, GcpGcsBucket, GcpCloudRun, GcpVpc |
+| **GCP** | 19 | `gcp.planton.dev` | GcpCloudSql, GcpGkeCluster, GcpGcsBucket, GcpCloudRun, GcpVpcNetwork |
 | **Scaleway** | 19 | `scaleway.planton.dev` | ScalewayInstance, ScalewayKapsuleCluster, ScalewayRdbInstance, ScalewayVpc |
 | **DigitalOcean** | 15 | `digital-ocean.planton.dev` | DigitalOceanDroplet, DigitalOceanKubernetesCluster, DigitalOceanDatabaseCluster |
 | **Azure** | 10 | `azure.planton.dev` | AzureAksCluster, AzureKeyVault, AzureStorageAccount, AzureVpc |

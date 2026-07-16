@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpworkloadidentitypool.v1;
+
+// Outputs produced after provisioning a GCP Workload Identity Pool.
+message GcpWorkloadIdentityPoolStackOutputs {
+  // The full resource name:
+  // projects/<project_number>/locations/global/workloadIdentityPools/<pool_id>.
+  // This is the handle IAM principals are built from —
+  // principal://iam.googleapis.com/<name>/subject/<subject> and
+  // principalSet://iam.googleapis.com/<name>/attribute.<attr>/<value> — and
+  // the parent under which providers are created.
+  string name = 1;
+
+  // The bare pool ID (the spec's workload_identity_pool_id, echoed for
+  // composing tooling that addresses the pool by short ID — providers
+  // reference the pool through this output).
+  string workload_identity_pool_id = 2;
+
+  // The pool lifecycle state: ACTIVE, or DELETED while soft-deleted (GCP
+  // retains deleted pools for ~30 days; a DELETED pool rejects all token
+  // exchanges and blocks reuse of its ID).
+  string state = 3;
+}

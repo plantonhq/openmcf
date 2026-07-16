@@ -11,7 +11,7 @@ When you deploy a GcpCloudArmorPolicy resource, Planton provisions:
 - **Adaptive Protection** — optional Layer 7 DDoS defense configuration on the policy
 - **Advanced Options** — optional JSON body parsing, logging verbosity, and client IP resolution settings
 
-If no rule with priority 2147483647 is specified, the IaC modules auto-add a default "allow all" rule matching the native behavior of the GCP Terraform and Pulumi providers.
+Every policy carries a default rule at priority 2147483647: leave `rules` empty to get the API's automatic "allow all" default, or include the default rule explicitly in any non-empty rule set (validated before deploy).
 
 ## Prerequisites
 
@@ -78,7 +78,7 @@ This creates a Cloud Armor policy that allows traffic from the `10.0.0.0/8` rang
 | `type` | `string` | `CLOUD_ARMOR` | Policy type. `CLOUD_ARMOR` for HTTP(S) LB, `CLOUD_ARMOR_EDGE` for CDN/backend buckets, `CLOUD_ARMOR_INTERNAL_SERVICE` for Traffic Director. Immutable. |
 | `adaptiveProtectionConfig` | `object` | — | Layer 7 DDoS defense configuration. See below. |
 | `advancedOptionsConfig` | `object` | — | JSON parsing, logging, and IP resolution settings. See below. |
-| `rules` | `object[]` | `[]` | Security rules evaluated in priority order. If empty, a default "allow all" rule is auto-added. |
+| `rules` | `object[]` | `[]` | Security rules evaluated in priority order. If empty, the API auto-adds the default "allow all" rule; a non-empty set must include the priority-2147483647 default. |
 
 ### Adaptive Protection Config
 
@@ -94,7 +94,7 @@ This creates a Cloud Armor policy that allows traffic from the `10.0.0.0/8` rang
 | `jsonParsing` | `string` | `DISABLED` | `DISABLED`, `STANDARD`, or `STANDARD_WITH_GRAPHQL`. |
 | `logLevel` | `string` | `NORMAL` | `NORMAL` or `VERBOSE` (includes matched rule details). |
 | `userIpRequestHeaders` | `string[]` | `[]` | Custom headers for client IP resolution behind CDN/proxy. |
-| `requestBodyInspectionSize` | `string` | `8KB` | `8KB`, `16KB`, `32KB`, `48KB`, or `64KB`. Pulumi only — not supported in Terraform. |
+| `jsonCustomConfig.contentTypes` | `string[]` | — | Additional Content-Type values parsed as JSON (requires `jsonParsing: STANDARD` or `STANDARD_WITH_GRAPHQL`). |
 
 ### Rule Fields
 
@@ -271,7 +271,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the network context for CLOUD_ARMOR_INTERNAL_SERVICE policies
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the network context for CLOUD_ARMOR_INTERNAL_SERVICE policies
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project referenced by `projectId`
 - [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) — provides encryption keys if needed for related services
 - [GcpFirewallRule](/docs/catalog/gcp/gcpfirewallrule) — complements Cloud Armor with network-level firewall rules

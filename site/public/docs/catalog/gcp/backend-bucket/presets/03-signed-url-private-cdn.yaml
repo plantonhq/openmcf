@@ -1,0 +1,24 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpBackendBucket
+metadata:
+  name: my-private-media
+spec:
+  projectId:
+    value: "<gcp-project-id>"
+  bucketName:
+    value: "<gcs-bucket-name>"  # or reference a GcpGcsBucket resource
+  description: Serves private media through CDN with signed URLs only
+  enableCdn: true
+  cdnPolicy:
+    # Origin-controlled lifetimes: private content decides its own caching.
+    cacheMode: USE_ORIGIN_HEADERS
+    # Responses to signed requests stay fresh at the edge for 5 minutes;
+    # the signature's own expiry still governs access.
+    signedUrlCacheMaxAgeSec: 300
+  signedUrlKeys:
+    # The key VALUE is secret material — supply it as a managed-secret
+    # reference ($secret/...), never plaintext. Generate a value with:
+    #   head -c 16 /dev/urandom | base64 | tr '+/' '-_'
+    # The value below is a placeholder — REPLACE it.
+    - name: media-signing-key
+      keyValue: "AAAAAAAAAAAAAAAAAAAAAA=="

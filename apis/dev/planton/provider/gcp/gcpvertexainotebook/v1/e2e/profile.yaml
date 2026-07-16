@@ -1,0 +1,14 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpvertexainotebook
+spec:
+  # Composed scenario: VPC -> subnetwork chain before the notebook create.
+  # Workbench instances take ~5-15 minutes per engine; batch runs with a
+  # go test -timeout of at least 60m.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

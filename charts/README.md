@@ -57,17 +57,23 @@ components in this repo.
 
 ## Design principles
 
-- **Every chart earns its place.** A chart is a complete, production-shaped
-  environment for one real scenario — something that would take a skilled
-  engineer days to compose by hand. No filler charts, no demo charts, no
-  single-resource wrappers.
-- **Each provider's charts stand on their own merit.** A chart is designed
-  from its cloud's own architectural grain — the architectures that cloud's
+- **Every chart is a real-world architecture.** A chart earns its slot by
+  being a complete, production-shaped environment for one real scenario —
+  something teams recognize and want, that would take a skilled engineer days
+  to compose by hand — and by removing genuinely hard wiring (dependency
+  ordering, reference plumbing, posture decisions). No filler charts, no demo
+  charts; a single resource is not a chart — that is what presets are for.
+- **Each provider's charts stand on their own merit.** Chart anatomy is
+  shared structure; which charts exist for a provider and how each is designed
+  comes only from that cloud's own architectural grain — the architectures its
   services are actually shaped for — never by mirroring how another provider's
-  chart composed something similar.
+  catalog composed something similar.
 - **Composability first.** Charts compose first-class, independently ownable
   resources by reference (`valueFrom`), so a chart is a starting point you can
   extend and recombine — not a monolith.
+- **Defaults deploy.** Rendering any chart with its `values.yaml` defaults
+  produces valid, deployable manifests. Feature toggles render valid in both
+  positions.
 - **Secure by default.** Where the composed components offer a hardened path
   (private networking, identity-based auth, RBAC-only data planes,
   customer-managed keys), the chart defaults to it and makes relaxation the
@@ -76,23 +82,36 @@ components in this repo.
   descriptions, and READMEs render publicly and are held to the same bar as
   the component schemas' field comments.
 - **No hardcoded provisioner.** Chart resources must not carry a
-  `planton.dev/provisioner` label. The IaC provisioner (OpenTofu vs Pulumi) is a
-  property of the deployment target, resolved from the organization's mapping,
-  not baked into the chart. Omit the label and let each resource inherit the
-  deploying organization's choice.
+  `planton.dev/provisioner` annotation. The IaC provisioner (OpenTofu vs
+  Pulumi) is a property of the deployment target, resolved from the
+  organization's mapping, not baked into the chart. Omit the annotation and
+  let each resource inherit the deploying organization's choice.
 
-## Validating charts
+## Validating a chart
 
-- `planton chart validate <chart-dir>` (built from this tree) renders every
-  template with its default values — flipping each bool toggle once so
-  conditional manifests are exercised in both branches — and validates each
-  rendered manifest against the schemas compiled into the binary: the kind
-  must exist, every field must exist on the spec, the spec must pass its
-  validation rules, and every `valueFrom` reference must resolve. No backend
-  required; `make build` from `charts/` runs it across the whole catalog.
-- `planton chart build` (Platform CLI) is the authoritative proof against a
-  running control plane.
+Two gates, one offline and one server-side:
 
-Authoring guidance for these charts lives in [`_rules/charts/`](../_rules/charts) —
-start with `forge-planton-infra-chart.mdc`, the authoring bar every chart in this
-catalog is held to.
+```bash
+# Offline (this repo's CLI): renders every template with its default values —
+# flipping each bool toggle once so conditional manifests are exercised in
+# both branches — and validates each rendered manifest against the compiled-in
+# protos: the kind must exist, every field must exist on the spec, the spec
+# must pass its validation rules, and every valueFrom reference must resolve.
+# No control plane needed.
+planton chart validate charts/<provider>/<chart>
+
+# Exercise a specific parameter combination beyond the automatic toggle flips:
+planton chart validate charts/<provider>/<chart> --set dnsEnabled=false
+
+# Every chart in the tree (run from charts/):
+make validate
+
+# Server-side (Planton Platform CLI): renders and validates through the live
+# control plane, exactly as the console does — the authoritative gate before
+# publishing.
+planton chart build <provider>/<chart> --no-browser
+```
+
+The full authoring standard — the catalog design method, the per-file quality
+bar, and the template-language contract — lives in
+[`_rules/charts/forge-planton-infra-chart.mdc`](../_rules/charts/forge-planton-infra-chart.mdc).

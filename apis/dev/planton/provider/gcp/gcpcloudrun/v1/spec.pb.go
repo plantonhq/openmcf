@@ -24,17 +24,19 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// GcpCloudRunIngress controls which traffic sources can reach the service.
+// GcpCloudRunIngress controls which network paths may reach the service.
 type GcpCloudRunIngress int32
 
 const (
-	// Unspecified, defaults to INGRESS_TRAFFIC_ALL
+	// Unspecified — GCP defaults to INGRESS_TRAFFIC_ALL.
 	GcpCloudRunIngress_INGRESS_TRAFFIC_UNSPECIFIED GcpCloudRunIngress = 0
-	// Accept traffic from all sources (public internet)
+	// Accept traffic from all sources, including the public internet.
 	GcpCloudRunIngress_INGRESS_TRAFFIC_ALL GcpCloudRunIngress = 1
-	// Accept traffic only from other Cloud Run services and Eventarc events
+	// Accept only internal traffic (VPC, internal load balancers in the
+	// project/VPC-SC perimeter, Pub/Sub push, Eventarc).
 	GcpCloudRunIngress_INGRESS_TRAFFIC_INTERNAL_ONLY GcpCloudRunIngress = 2
-	// Accept traffic from internal sources and Cloud Load Balancing
+	// Accept internal traffic plus traffic arriving through Cloud Load
+	// Balancing — the right setting behind the composed HTTPS load balancer.
 	GcpCloudRunIngress_INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER GcpCloudRunIngress = 3
 )
 
@@ -81,15 +83,17 @@ func (GcpCloudRunIngress) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-// GcpCloudRunExecutionEnvironment defines the execution environment generation.
+// GcpCloudRunExecutionEnvironment selects the instance sandbox generation.
 type GcpCloudRunExecutionEnvironment int32
 
 const (
-	// Unspecified, defaults to GEN2
+	// Unspecified — GCP selects per workload.
 	GcpCloudRunExecutionEnvironment_EXECUTION_ENVIRONMENT_UNSPECIFIED GcpCloudRunExecutionEnvironment = 0
-	// First generation execution environment
+	// First generation: fastest cold starts, gVisor-restricted syscall
+	// surface, no network file systems.
 	GcpCloudRunExecutionEnvironment_EXECUTION_ENVIRONMENT_GEN1 GcpCloudRunExecutionEnvironment = 1
-	// Second generation execution environment (full Linux compatibility)
+	// Second generation: full Linux compatibility; required for GCS and NFS
+	// volumes.
 	GcpCloudRunExecutionEnvironment_EXECUTION_ENVIRONMENT_GEN2 GcpCloudRunExecutionEnvironment = 2
 )
 
@@ -134,49 +138,164 @@ func (GcpCloudRunExecutionEnvironment) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-// GcpCloudRunSpec defines the configuration for deploying an HTTP service on
-// Google Cloud Run.  Container-related knobs are grouped under the
-// GcpCloudRunContainer message to keep naming and structure consistent with
-// MicroserviceKubernetes and AwsEcsService resources.
+// GcpCloudRunSpec defines a Cloud Run service (`google_cloud_run_v2_service`) —
+// a fully managed, request-serving container deployment that scales from zero
+// to thousands of instances.
+//
+// A Cloud Run service is two things at once: a stable serving endpoint
+// (ingress, invoker policy, traffic splitting across revisions) and a revision
+// template (containers, volumes, scaling, networking) that describes the next
+// revision to stamp out. Every spec change that touches the template creates a
+// new immutable revision; the traffic block decides how requests are split
+// between revisions, which is what makes blue/green and canary rollouts a
+// first-class, declarative operation.
+//
+// Sidecar containers are first-class: a service can run an application
+// container alongside collectors, proxies, or auth helpers, with explicit
+// startup ordering (depends_on) and shared volumes. Private egress uses
+// Direct VPC (network_interfaces) — no connector infrastructure needed.
+//
+// Custom domains are deliberately not part of this resource. The
+// production-grade path is composition: a serverless network endpoint group
+// (GcpRegionNetworkEndpointGroup) bridges the service into a backend service,
+// URL map, target proxy, and forwarding rule, with DNS managed by
+// GcpDnsRecord.
 type GcpCloudRunSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// GCP project ID where the Cloud Run service will be created.
-	// Can be a direct value or a reference to a GcpProject resource.
+	// The GCP project the service is created in. Accepts a literal project ID
+	// or a reference to a GcpProject resource. If omitted, the provider's
+	// default project is used.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	// Region where the service is deployed, for example "us-central1".
+	// Region the service is deployed in, e.g. "us-central1". Immutable.
+	// Cloud Run is regional: multi-region serving is achieved by deploying
+	// one service per region behind a global load balancer.
 	Region string `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
-	// Name of the Cloud Run service to create on GCP.
-	// If not specified, defaults to metadata.name.
-	ServiceName string `protobuf:"bytes,7,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	// Service account email that the Cloud Run service runs as.
-	// If not specified, uses the default Compute Engine service account.
-	ServiceAccount string `protobuf:"bytes,8,opt,name=service_account,json=serviceAccount,proto3" json:"service_account,omitempty"`
-	// Container configuration for the Cloud Run service.
-	Container *GcpCloudRunContainer `protobuf:"bytes,3,opt,name=container,proto3" json:"container,omitempty"`
-	// Maximum concurrent requests handled by one instance.
-	MaxConcurrency int32 `protobuf:"varint,4,opt,name=max_concurrency,json=maxConcurrency,proto3" json:"max_concurrency,omitempty"`
-	// Request timeout in seconds (1-3600). Default is 300 (5 minutes).
-	TimeoutSeconds int32 `protobuf:"varint,9,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
-	// Ingress settings control which traffic sources can reach the service.
-	Ingress GcpCloudRunIngress `protobuf:"varint,10,opt,name=ingress,proto3,enum=dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunIngress" json:"ingress,omitempty"`
-	// If true, the service is publicly invokable by unauthenticated callers.
-	AllowUnauthenticated bool `protobuf:"varint,5,opt,name=allow_unauthenticated,json=allowUnauthenticated,proto3" json:"allow_unauthenticated,omitempty"`
-	// VPC access configuration for private resource access.
-	VpcAccess *GcpCloudRunVpcAccess `protobuf:"bytes,11,opt,name=vpc_access,json=vpcAccess,proto3" json:"vpc_access,omitempty"`
-	// Execution environment generation (GEN1 or GEN2).
-	// GEN2 offers full Linux compatibility but slower cold starts.
-	ExecutionEnvironment GcpCloudRunExecutionEnvironment `protobuf:"varint,12,opt,name=execution_environment,json=executionEnvironment,proto3,enum=dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunExecutionEnvironment" json:"execution_environment,omitempty"`
-	// Custom DNS mapping for the Cloud Run service.
-	Dns *GcpCloudRunDns `protobuf:"bytes,6,opt,name=dns,proto3" json:"dns,omitempty"`
-	// If true, prevents accidental deletion of the Cloud Run service.
-	// When enabled, the service cannot be deleted until this flag is set to false.
-	DeleteProtection bool `protobuf:"varint,13,opt,name=delete_protection,json=deleteProtection,proto3" json:"delete_protection,omitempty"`
-	// Cloud SQL connectivity configuration.
-	// Provides secure, IAM-authenticated access to Cloud SQL instances.
-	// Two modes: native volume mount (connection) or Auth Proxy sidecar (auth_proxy).
-	CloudSql      *GcpCloudRunCloudSqlConnection `protobuf:"bytes,14,opt,name=cloud_sql,json=cloudSql,proto3" json:"cloud_sql,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Name of the Cloud Run service in GCP. Immutable. If not specified,
+	// defaults to metadata.name. Must be 1-63 characters: lowercase letters,
+	// digits, and hyphens; starting with a letter.
+	ServiceName string `protobuf:"bytes,3,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
+	// Human-readable description of the service, shown in the console.
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	// Labels applied to the service object. User labels are shared with
+	// Google's billing system, so they can filter or break down billing
+	// charges by team, component, or environment. Keys and values in the
+	// `run.googleapis.com`, `cloud.googleapis.com`, `serving.knative.dev`,
+	// and `autoscaling.knative.dev` namespaces are rejected by the API.
+	Labels map[string]string `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The containers that make up one instance of the service. The first
+	// container conventionally serves requests; additional containers are
+	// sidecars (log collectors, auth proxies, service meshes) that share the
+	// instance's network namespace (localhost) and volumes. Exactly one
+	// container may expose a port. Use depends_on for startup ordering.
+	Containers []*GcpCloudRunContainer `protobuf:"bytes,6,rep,name=containers,proto3" json:"containers,omitempty"`
+	// Named volumes instances can mount: Cloud SQL sockets, Secret Manager
+	// material, in-memory or disk scratch space, GCS buckets (FUSE), and NFS
+	// shares. A volume is inert until a container mounts it by name via
+	// volume_mounts.
+	Volumes []*GcpCloudRunVolume `protobuf:"bytes,7,rep,name=volumes,proto3" json:"volumes,omitempty"`
+	// Email of the IAM service account the revisions run as — the identity
+	// whose permissions the code exercises when calling other GCP APIs.
+	// Accepts a literal email or a reference to a GcpServiceAccount resource.
+	// If omitted, the project's Compute Engine default service account is
+	// used — fine for experiments, too broad for production; give real
+	// services a dedicated least-privilege identity.
+	ServiceAccount *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=service_account,json=serviceAccount,proto3" json:"service_account,omitempty"`
+	// Per-revision instance bounds: how far a single revision scales in and
+	// out. If omitted, the service scales zero-to-100. min_instance_count > 0
+	// keeps instances warm to eliminate cold starts — at idle cost.
+	Scaling *GcpCloudRunRevisionScaling `protobuf:"bytes,9,opt,name=scaling,proto3" json:"scaling,omitempty"`
+	// Service-level scaling posture across ALL revisions. The MANUAL mode
+	// pins total instance count regardless of traffic — an emergency brake
+	// or a load-test lever. Distinct from the per-revision bounds in
+	// `scaling`.
+	ServiceScaling *GcpCloudRunServiceScaling `protobuf:"bytes,10,opt,name=service_scaling,json=serviceScaling,proto3" json:"service_scaling,omitempty"`
+	// Maximum concurrent requests one instance serves before Cloud Run scales
+	// out (1-1000). If unset, GCP defaults to 80 for instances with >= 1 CPU
+	// and 1 below that. Lower values isolate requests (memory-heavy or
+	// CPU-bound work); higher values improve utilization for I/O-bound
+	// services.
+	MaxInstanceRequestConcurrency *int32 `protobuf:"varint,11,opt,name=max_instance_request_concurrency,json=maxInstanceRequestConcurrency,proto3,oneof" json:"max_instance_request_concurrency,omitempty"`
+	// Maximum time a request may run before Cloud Run cancels it, in seconds
+	// (1-3600). If unset, GCP defaults to 300 (5 minutes). Also bounds
+	// startup: an instance that cannot serve within this window is killed.
+	TimeoutSeconds *int32 `protobuf:"varint,12,opt,name=timeout_seconds,json=timeoutSeconds,proto3,oneof" json:"timeout_seconds,omitempty"`
+	// Sandbox generation the revisions execute in. GEN2 (recommended) offers
+	// full Linux compatibility (required for GCS/NFS volumes and network file
+	// systems) at slightly slower cold starts; GEN1 starts faster with a
+	// gVisor-restricted syscall surface. If unset, GCP picks per workload.
+	ExecutionEnvironment GcpCloudRunExecutionEnvironment `protobuf:"varint,13,opt,name=execution_environment,json=executionEnvironment,proto3,enum=dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunExecutionEnvironment" json:"execution_environment,omitempty"`
+	// Routes requests from the same client to the same instance on a
+	// best-effort basis (session affinity cookie). Useful for local caches;
+	// never a correctness guarantee — instances still scale in.
+	SessionAffinity bool `protobuf:"varint,14,opt,name=session_affinity,json=sessionAffinity,proto3" json:"session_affinity,omitempty"`
+	// Customer-managed encryption key (CMEK) used to encrypt the deployed
+	// container images. Accepts a full crypto key ID
+	// (projects/*/locations/*/keyRings/*/cryptoKeys/*) or a reference to a
+	// GcpKmsKey resource. The key must be in the same region as the service,
+	// and the Cloud Run service agent needs encrypter/decrypter on it.
+	EncryptionKey *v1.StringValueOrRef `protobuf:"bytes,15,opt,name=encryption_key,json=encryptionKey,proto3" json:"encryption_key,omitempty"`
+	// Explicit name for the next revision. Must be prefixed with the service
+	// name (e.g. "my-api-v42"). If omitted (recommended), Cloud Run
+	// auto-generates revision names. Pin revision names only when the traffic
+	// block routes by revision name — deterministic names make declarative
+	// blue/green possible, but each template change then REQUIRES a new
+	// unique value here.
+	Revision string `protobuf:"bytes,16,opt,name=revision,proto3" json:"revision,omitempty"`
+	// Private networking for OUTBOUND traffic: route egress into a VPC either
+	// through Direct VPC egress (network_interfaces — no extra infrastructure,
+	// recommended) or a Serverless VPC Access connector. Inbound restriction
+	// is `ingress`, not this.
+	VpcAccess *GcpCloudRunVpcAccess `protobuf:"bytes,17,opt,name=vpc_access,json=vpcAccess,proto3" json:"vpc_access,omitempty"`
+	// Hardware requirements for GPU inference workloads. Setting an
+	// accelerator (e.g. "nvidia-l4") gives every instance one GPU; the
+	// containers' resource limits must then meet Cloud Run's GPU minimums
+	// (4 CPU / 16Gi recommended).
+	NodeSelector *GcpCloudRunNodeSelector `protobuf:"bytes,18,opt,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty"`
+	// Opts a GPU service out of zonal redundancy: instances may be served
+	// from a single zone, which lowers the price of GPU capacity in exchange
+	// for zonal-failure risk. Only meaningful when node_selector is set.
+	GpuZonalRedundancyDisabled bool `protobuf:"varint,19,opt,name=gpu_zonal_redundancy_disabled,json=gpuZonalRedundancyDisabled,proto3" json:"gpu_zonal_redundancy_disabled,omitempty"`
+	// Which network paths may reach the service: everything, only internal
+	// traffic, or internal plus Cloud Load Balancing. Services behind the
+	// composed HTTPS load balancer should use INTERNAL_LOAD_BALANCER so the
+	// default run.app URL stops accepting public traffic.
+	Ingress GcpCloudRunIngress `protobuf:"varint,20,opt,name=ingress,proto3,enum=dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunIngress" json:"ingress,omitempty"`
+	// If true, grants roles/run.invoker to allUsers so unauthenticated
+	// callers can reach the service — the standard shape for public HTTP
+	// APIs and websites. If false, callers must present an IAM-authorized
+	// identity token.
+	AllowUnauthenticated bool `protobuf:"varint,21,opt,name=allow_unauthenticated,json=allowUnauthenticated,proto3" json:"allow_unauthenticated,omitempty"`
+	// Disables the IAM run.routes.invoke permission check entirely. Unlike
+	// allow_unauthenticated (which grants access THROUGH IAM), this switches
+	// the check off — required by some org policies that forbid allUsers
+	// grants while still serving public traffic. Set at most one of the two.
+	InvokerIamDisabled bool `protobuf:"varint,22,opt,name=invoker_iam_disabled,json=invokerIamDisabled,proto3" json:"invoker_iam_disabled,omitempty"`
+	// Additional audience values accepted in the OAuth/OIDC tokens of
+	// authenticated callers (beyond the default service URL). Lets callers
+	// mint one token for a stable custom audience instead of the run.app URL.
+	CustomAudiences []string `protobuf:"bytes,23,rep,name=custom_audiences,json=customAudiences,proto3" json:"custom_audiences,omitempty"`
+	// How traffic is split across revisions. If empty, 100% of traffic goes
+	// to the latest ready revision — the right default for most services.
+	// Populate for gradual rollouts: percentages must sum to 100 (enforced
+	// by the API at deploy time), and tagged entries get stable
+	// <tag>---<host> preview URLs that receive no percentage-based traffic
+	// unless assigned some.
+	Traffic []*GcpCloudRunTrafficTarget `protobuf:"bytes,24,rep,name=traffic,proto3" json:"traffic,omitempty"`
+	// Launch-stage gate for the service. Set BETA (or ALPHA) only when the
+	// spec uses preview Cloud Run features that GCP rejects at the default
+	// GA stage; the value is a declaration, not a feature switch.
+	LaunchStage string `protobuf:"bytes,25,opt,name=launch_stage,json=launchStage,proto3" json:"launch_stage,omitempty"`
+	// Binary Authorization: only container images that pass the policy's
+	// attestation checks may deploy. Use the project default policy or name
+	// a specific one.
+	BinaryAuthorization *GcpCloudRunBinaryAuthorization `protobuf:"bytes,26,opt,name=binary_authorization,json=binaryAuthorization,proto3" json:"binary_authorization,omitempty"`
+	// Prevents the service from being destroyed while true. Defaults to true
+	// (matching GCP's posture): a delete of this resource fails until this is
+	// set to false. Deleting a service tears down its endpoint and every
+	// revision; keep this on for anything real.
+	DeletionProtection *bool `protobuf:"varint,27,opt,name=deletion_protection,json=deletionProtection,proto3,oneof" json:"deletion_protection,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *GcpCloudRunSpec) Reset() {
@@ -230,32 +349,116 @@ func (x *GcpCloudRunSpec) GetServiceName() string {
 	return ""
 }
 
-func (x *GcpCloudRunSpec) GetServiceAccount() string {
+func (x *GcpCloudRunSpec) GetDescription() string {
 	if x != nil {
-		return x.ServiceAccount
+		return x.Description
 	}
 	return ""
 }
 
-func (x *GcpCloudRunSpec) GetContainer() *GcpCloudRunContainer {
+func (x *GcpCloudRunSpec) GetLabels() map[string]string {
 	if x != nil {
-		return x.Container
+		return x.Labels
 	}
 	return nil
 }
 
-func (x *GcpCloudRunSpec) GetMaxConcurrency() int32 {
+func (x *GcpCloudRunSpec) GetContainers() []*GcpCloudRunContainer {
 	if x != nil {
-		return x.MaxConcurrency
+		return x.Containers
+	}
+	return nil
+}
+
+func (x *GcpCloudRunSpec) GetVolumes() []*GcpCloudRunVolume {
+	if x != nil {
+		return x.Volumes
+	}
+	return nil
+}
+
+func (x *GcpCloudRunSpec) GetServiceAccount() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ServiceAccount
+	}
+	return nil
+}
+
+func (x *GcpCloudRunSpec) GetScaling() *GcpCloudRunRevisionScaling {
+	if x != nil {
+		return x.Scaling
+	}
+	return nil
+}
+
+func (x *GcpCloudRunSpec) GetServiceScaling() *GcpCloudRunServiceScaling {
+	if x != nil {
+		return x.ServiceScaling
+	}
+	return nil
+}
+
+func (x *GcpCloudRunSpec) GetMaxInstanceRequestConcurrency() int32 {
+	if x != nil && x.MaxInstanceRequestConcurrency != nil {
+		return *x.MaxInstanceRequestConcurrency
 	}
 	return 0
 }
 
 func (x *GcpCloudRunSpec) GetTimeoutSeconds() int32 {
-	if x != nil {
-		return x.TimeoutSeconds
+	if x != nil && x.TimeoutSeconds != nil {
+		return *x.TimeoutSeconds
 	}
 	return 0
+}
+
+func (x *GcpCloudRunSpec) GetExecutionEnvironment() GcpCloudRunExecutionEnvironment {
+	if x != nil {
+		return x.ExecutionEnvironment
+	}
+	return GcpCloudRunExecutionEnvironment_EXECUTION_ENVIRONMENT_UNSPECIFIED
+}
+
+func (x *GcpCloudRunSpec) GetSessionAffinity() bool {
+	if x != nil {
+		return x.SessionAffinity
+	}
+	return false
+}
+
+func (x *GcpCloudRunSpec) GetEncryptionKey() *v1.StringValueOrRef {
+	if x != nil {
+		return x.EncryptionKey
+	}
+	return nil
+}
+
+func (x *GcpCloudRunSpec) GetRevision() string {
+	if x != nil {
+		return x.Revision
+	}
+	return ""
+}
+
+func (x *GcpCloudRunSpec) GetVpcAccess() *GcpCloudRunVpcAccess {
+	if x != nil {
+		return x.VpcAccess
+	}
+	return nil
+}
+
+func (x *GcpCloudRunSpec) GetNodeSelector() *GcpCloudRunNodeSelector {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *GcpCloudRunSpec) GetGpuZonalRedundancyDisabled() bool {
+	if x != nil {
+		return x.GpuZonalRedundancyDisabled
+	}
+	return false
 }
 
 func (x *GcpCloudRunSpec) GetIngress() GcpCloudRunIngress {
@@ -272,57 +475,99 @@ func (x *GcpCloudRunSpec) GetAllowUnauthenticated() bool {
 	return false
 }
 
-func (x *GcpCloudRunSpec) GetVpcAccess() *GcpCloudRunVpcAccess {
+func (x *GcpCloudRunSpec) GetInvokerIamDisabled() bool {
 	if x != nil {
-		return x.VpcAccess
-	}
-	return nil
-}
-
-func (x *GcpCloudRunSpec) GetExecutionEnvironment() GcpCloudRunExecutionEnvironment {
-	if x != nil {
-		return x.ExecutionEnvironment
-	}
-	return GcpCloudRunExecutionEnvironment_EXECUTION_ENVIRONMENT_UNSPECIFIED
-}
-
-func (x *GcpCloudRunSpec) GetDns() *GcpCloudRunDns {
-	if x != nil {
-		return x.Dns
-	}
-	return nil
-}
-
-func (x *GcpCloudRunSpec) GetDeleteProtection() bool {
-	if x != nil {
-		return x.DeleteProtection
+		return x.InvokerIamDisabled
 	}
 	return false
 }
 
-func (x *GcpCloudRunSpec) GetCloudSql() *GcpCloudRunCloudSqlConnection {
+func (x *GcpCloudRunSpec) GetCustomAudiences() []string {
 	if x != nil {
-		return x.CloudSql
+		return x.CustomAudiences
 	}
 	return nil
 }
 
-// GcpCloudRunContainer groups image, resources, environment, and port settings
-// for the Cloud Run container.
+func (x *GcpCloudRunSpec) GetTraffic() []*GcpCloudRunTrafficTarget {
+	if x != nil {
+		return x.Traffic
+	}
+	return nil
+}
+
+func (x *GcpCloudRunSpec) GetLaunchStage() string {
+	if x != nil {
+		return x.LaunchStage
+	}
+	return ""
+}
+
+func (x *GcpCloudRunSpec) GetBinaryAuthorization() *GcpCloudRunBinaryAuthorization {
+	if x != nil {
+		return x.BinaryAuthorization
+	}
+	return nil
+}
+
+func (x *GcpCloudRunSpec) GetDeletionProtection() bool {
+	if x != nil && x.DeletionProtection != nil {
+		return *x.DeletionProtection
+	}
+	return false
+}
+
+// GcpCloudRunContainer is one container of the instance: the serving
+// container or a sidecar. Containers in one instance share the network
+// namespace (reach each other on localhost) and any mounted volumes.
 type GcpCloudRunContainer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Container image URI, for example "us-docker.pkg.dev/prj/registry/app:1.0.0".
-	Image *GcpCloudRunContainerImage `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
-	// Environment variables and secrets injected into the container.
-	Env *GcpCloudRunContainerEnv `protobuf:"bytes,2,opt,name=env,proto3" json:"env,omitempty"`
-	// Container port that receives HTTP traffic.  Defaults to 8080 if unset.
-	Port int32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
-	// vCPU units allocated per instance.  Allowed values: 1, 2, 4.
-	Cpu int32 `protobuf:"varint,4,opt,name=cpu,proto3" json:"cpu,omitempty"`
-	// Memory in MiB allocated per instance.  Valid range 128 – 32768.
-	Memory int32 `protobuf:"varint,5,opt,name=memory,proto3" json:"memory,omitempty"`
-	// Minimum and maximum number of container instances.
-	Replicas      *GcpCloudRunContainerReplicas `protobuf:"bytes,6,opt,name=replicas,proto3" json:"replicas,omitempty"`
+	// Name of the container. Required when the service runs more than one
+	// container (depends_on refers to these names). If omitted for a
+	// single-container service, Cloud Run assigns one.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Container image URL, e.g. "us-docker.pkg.dev/project/repo/app:1.0.0".
+	// Pin a digest or immutable tag for repeatable deploys — Cloud Run
+	// resolves the image to a digest at revision creation, so a moving tag
+	// only takes effect on the NEXT deploy anyway.
+	Image string `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
+	// Entrypoint array — overrides the image's ENTRYPOINT. Not executed in a
+	// shell; variable references are not expanded.
+	Command []string `protobuf:"bytes,3,rep,name=command,proto3" json:"command,omitempty"`
+	// Arguments to the entrypoint — overrides the image's CMD.
+	Args []string `protobuf:"bytes,4,rep,name=args,proto3" json:"args,omitempty"`
+	// Environment variables. Each entry carries either a literal value or a
+	// Secret Manager reference resolved at instance start.
+	Env []*GcpCloudRunEnvVar `protobuf:"bytes,5,rep,name=env,proto3" json:"env,omitempty"`
+	// The port this container listens on for requests. At most ONE container
+	// in the service may declare a port (that container receives traffic).
+	// If no container declares one, Cloud Run injects PORT=8080 into the
+	// first container.
+	Ports *GcpCloudRunContainerPort `protobuf:"bytes,6,opt,name=ports,proto3" json:"ports,omitempty"`
+	// CPU and memory for this container, plus the CPU-allocation levers.
+	// If omitted, Cloud Run defaults apply (1 CPU, 512Mi).
+	Resources *GcpCloudRunContainerResources `protobuf:"bytes,7,opt,name=resources,proto3" json:"resources,omitempty"`
+	// Volumes (declared at the service level) mounted into this container's
+	// filesystem.
+	VolumeMounts []*GcpCloudRunVolumeMount `protobuf:"bytes,8,rep,name=volume_mounts,json=volumeMounts,proto3" json:"volume_mounts,omitempty"`
+	// Working directory for the entrypoint. If omitted, the image's WORKDIR
+	// is used.
+	WorkingDir string `protobuf:"bytes,9,opt,name=working_dir,json=workingDir,proto3" json:"working_dir,omitempty"`
+	// Probe that gates instance start: the container receives no traffic
+	// (and depends_on waiters stay blocked) until this succeeds. Supports
+	// HTTP, TCP, and gRPC checks. If omitted, Cloud Run performs a default
+	// TCP check on the container port.
+	StartupProbe *GcpCloudRunProbe `protobuf:"bytes,10,opt,name=startup_probe,json=startupProbe,proto3" json:"startup_probe,omitempty"`
+	// Probe that monitors a running instance: on failure_threshold
+	// consecutive failures the container is restarted. Supports HTTP and
+	// gRPC checks (TCP is startup-only). If omitted, instances are never
+	// health-restarted.
+	LivenessProbe *GcpCloudRunProbe `protobuf:"bytes,11,opt,name=liveness_probe,json=livenessProbe,proto3" json:"liveness_probe,omitempty"`
+	// Names of containers this one waits for: this container starts only
+	// after the listed containers pass their startup probes. The mechanism
+	// that makes proxy/collector sidecars start before (and stop after) the
+	// serving container.
+	DependsOn     []string `protobuf:"bytes,12,rep,name=depends_on,json=dependsOn,proto3" json:"depends_on,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -357,477 +602,1516 @@ func (*GcpCloudRunContainer) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GcpCloudRunContainer) GetImage() *GcpCloudRunContainerImage {
+func (x *GcpCloudRunContainer) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GcpCloudRunContainer) GetImage() string {
 	if x != nil {
 		return x.Image
+	}
+	return ""
+}
+
+func (x *GcpCloudRunContainer) GetCommand() []string {
+	if x != nil {
+		return x.Command
 	}
 	return nil
 }
 
-func (x *GcpCloudRunContainer) GetEnv() *GcpCloudRunContainerEnv {
+func (x *GcpCloudRunContainer) GetArgs() []string {
+	if x != nil {
+		return x.Args
+	}
+	return nil
+}
+
+func (x *GcpCloudRunContainer) GetEnv() []*GcpCloudRunEnvVar {
 	if x != nil {
 		return x.Env
 	}
 	return nil
 }
 
-func (x *GcpCloudRunContainer) GetPort() int32 {
+func (x *GcpCloudRunContainer) GetPorts() *GcpCloudRunContainerPort {
 	if x != nil {
-		return x.Port
-	}
-	return 0
-}
-
-func (x *GcpCloudRunContainer) GetCpu() int32 {
-	if x != nil {
-		return x.Cpu
-	}
-	return 0
-}
-
-func (x *GcpCloudRunContainer) GetMemory() int32 {
-	if x != nil {
-		return x.Memory
-	}
-	return 0
-}
-
-func (x *GcpCloudRunContainer) GetReplicas() *GcpCloudRunContainerReplicas {
-	if x != nil {
-		return x.Replicas
+		return x.Ports
 	}
 	return nil
 }
 
-// / GcpCloudRunContainerReplicas defines the minimum and maximum number of container instances
-type GcpCloudRunContainerReplicas struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Minimum number of container instances that remain warm.
-	Min int32 `protobuf:"varint,1,opt,name=min,proto3" json:"min,omitempty"`
-	// Maximum number of container instances Cloud Run may scale out to.
-	Max           int32 `protobuf:"varint,2,opt,name=max,proto3" json:"max,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GcpCloudRunContainerReplicas) Reset() {
-	*x = GcpCloudRunContainerReplicas{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GcpCloudRunContainerReplicas) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GcpCloudRunContainerReplicas) ProtoMessage() {}
-
-func (x *GcpCloudRunContainerReplicas) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[2]
+func (x *GcpCloudRunContainer) GetResources() *GcpCloudRunContainerResources {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+		return x.Resources
 	}
-	return mi.MessageOf(x)
+	return nil
 }
 
-// Deprecated: Use GcpCloudRunContainerReplicas.ProtoReflect.Descriptor instead.
-func (*GcpCloudRunContainerReplicas) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *GcpCloudRunContainerReplicas) GetMin() int32 {
+func (x *GcpCloudRunContainer) GetVolumeMounts() []*GcpCloudRunVolumeMount {
 	if x != nil {
-		return x.Min
+		return x.VolumeMounts
 	}
-	return 0
+	return nil
 }
 
-func (x *GcpCloudRunContainerReplicas) GetMax() int32 {
+func (x *GcpCloudRunContainer) GetWorkingDir() string {
 	if x != nil {
-		return x.Max
-	}
-	return 0
-}
-
-// GcpCloudRunContainerImage specifies the repository and tag of the container
-// image.
-type GcpCloudRunContainerImage struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Image repository, for example "us-docker.pkg.dev/prj/registry/app".
-	Repo string `protobuf:"bytes,1,opt,name=repo,proto3" json:"repo,omitempty"`
-	// Image tag, for example "1.0.0".  Using a fixed tag improves repeatability.
-	Tag           string `protobuf:"bytes,2,opt,name=tag,proto3" json:"tag,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GcpCloudRunContainerImage) Reset() {
-	*x = GcpCloudRunContainerImage{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GcpCloudRunContainerImage) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GcpCloudRunContainerImage) ProtoMessage() {}
-
-func (x *GcpCloudRunContainerImage) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GcpCloudRunContainerImage.ProtoReflect.Descriptor instead.
-func (*GcpCloudRunContainerImage) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *GcpCloudRunContainerImage) GetRepo() string {
-	if x != nil {
-		return x.Repo
+		return x.WorkingDir
 	}
 	return ""
 }
 
-func (x *GcpCloudRunContainerImage) GetTag() string {
+func (x *GcpCloudRunContainer) GetStartupProbe() *GcpCloudRunProbe {
+	if x != nil {
+		return x.StartupProbe
+	}
+	return nil
+}
+
+func (x *GcpCloudRunContainer) GetLivenessProbe() *GcpCloudRunProbe {
+	if x != nil {
+		return x.LivenessProbe
+	}
+	return nil
+}
+
+func (x *GcpCloudRunContainer) GetDependsOn() []string {
+	if x != nil {
+		return x.DependsOn
+	}
+	return nil
+}
+
+// GcpCloudRunEnvVar is one environment variable: a literal value or a
+// Secret Manager reference, never both.
+type GcpCloudRunEnvVar struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Variable name, e.g. "DATABASE_URL". Must not start with a digit.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Literal value. Fine for configuration; never place credentials here —
+	// use value_from_secret so the material stays in Secret Manager.
+	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	// Secret Manager reference resolved into the variable at instance start.
+	ValueFromSecret *GcpCloudRunSecretEnvSource `protobuf:"bytes,3,opt,name=value_from_secret,json=valueFromSecret,proto3" json:"value_from_secret,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunEnvVar) Reset() {
+	*x = GcpCloudRunEnvVar{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunEnvVar) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunEnvVar) ProtoMessage() {}
+
+func (x *GcpCloudRunEnvVar) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunEnvVar.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunEnvVar) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GcpCloudRunEnvVar) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GcpCloudRunEnvVar) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *GcpCloudRunEnvVar) GetValueFromSecret() *GcpCloudRunSecretEnvSource {
+	if x != nil {
+		return x.ValueFromSecret
+	}
+	return nil
+}
+
+// GcpCloudRunSecretEnvSource points an environment variable at a Secret
+// Manager secret version. The revision's service account needs
+// roles/secretmanager.secretAccessor on the secret.
+type GcpCloudRunSecretEnvSource struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The secret: a short name for a secret in the same project ("my-secret")
+	// or a full resource name (projects/*/secrets/*) for cross-project reads.
+	Secret string `protobuf:"bytes,1,opt,name=secret,proto3" json:"secret,omitempty"`
+	// Secret version to resolve: a version number or "latest". If unset,
+	// GCP requires an explicit version for env vars — "latest" is the common
+	// choice, at the cost of new instances silently picking up rotations.
+	Version       string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunSecretEnvSource) Reset() {
+	*x = GcpCloudRunSecretEnvSource{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunSecretEnvSource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunSecretEnvSource) ProtoMessage() {}
+
+func (x *GcpCloudRunSecretEnvSource) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunSecretEnvSource.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunSecretEnvSource) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GcpCloudRunSecretEnvSource) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
+func (x *GcpCloudRunSecretEnvSource) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+// GcpCloudRunContainerPort declares the single traffic-serving port of the
+// service.
+type GcpCloudRunContainerPort struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Port number the container listens on. Cloud Run injects it as $PORT.
+	ContainerPort *int32 `protobuf:"varint,1,opt,name=container_port,json=containerPort,proto3,oneof" json:"container_port,omitempty"`
+	// Protocol selector: "http1" (default) or "h2c" for end-to-end HTTP/2
+	// (required for serving gRPC streams).
+	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunContainerPort) Reset() {
+	*x = GcpCloudRunContainerPort{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunContainerPort) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunContainerPort) ProtoMessage() {}
+
+func (x *GcpCloudRunContainerPort) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunContainerPort.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunContainerPort) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GcpCloudRunContainerPort) GetContainerPort() int32 {
+	if x != nil && x.ContainerPort != nil {
+		return *x.ContainerPort
+	}
+	return 0
+}
+
+func (x *GcpCloudRunContainerPort) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+// GcpCloudRunContainerResources sets this container's share of the
+// instance's CPU and memory, and the two CPU-allocation levers that most
+// affect cost.
+type GcpCloudRunContainerResources struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// CPU limit, e.g. "1", "2", "4", "8" or a fraction like "0.5"/"500m"
+	// (fractions below 1 require max_instance_request_concurrency <= 1 for
+	// some features). GPU services need at least "4".
+	Cpu string `protobuf:"bytes,1,opt,name=cpu,proto3" json:"cpu,omitempty"`
+	// Memory limit with unit suffix, e.g. "512Mi", "2Gi". Minimums scale
+	// with CPU (1 CPU >= 128Mi, 4 CPU >= 2Gi, GPU >= 16Gi).
+	Memory string `protobuf:"bytes,2,opt,name=memory,proto3" json:"memory,omitempty"`
+	// Keep CPU allocated only while requests are in flight (true — the
+	// default, request-based billing) or allocate it for the instance's
+	// whole lifetime (false — instance-based billing, required for real
+	// background work between requests).
+	CpuIdle *bool `protobuf:"varint,3,opt,name=cpu_idle,json=cpuIdle,proto3,oneof" json:"cpu_idle,omitempty"`
+	// Temporarily boost CPU during instance startup, cutting cold-start
+	// latency for JIT-heavy runtimes (JVM, .NET) at no idle cost.
+	StartupCpuBoost bool `protobuf:"varint,4,opt,name=startup_cpu_boost,json=startupCpuBoost,proto3" json:"startup_cpu_boost,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunContainerResources) Reset() {
+	*x = GcpCloudRunContainerResources{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunContainerResources) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunContainerResources) ProtoMessage() {}
+
+func (x *GcpCloudRunContainerResources) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunContainerResources.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunContainerResources) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GcpCloudRunContainerResources) GetCpu() string {
+	if x != nil {
+		return x.Cpu
+	}
+	return ""
+}
+
+func (x *GcpCloudRunContainerResources) GetMemory() string {
+	if x != nil {
+		return x.Memory
+	}
+	return ""
+}
+
+func (x *GcpCloudRunContainerResources) GetCpuIdle() bool {
+	if x != nil && x.CpuIdle != nil {
+		return *x.CpuIdle
+	}
+	return false
+}
+
+func (x *GcpCloudRunContainerResources) GetStartupCpuBoost() bool {
+	if x != nil {
+		return x.StartupCpuBoost
+	}
+	return false
+}
+
+// GcpCloudRunProbe is a startup or liveness check against one container.
+type GcpCloudRunProbe struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Seconds to wait after container start before the first probe (0-240).
+	InitialDelaySeconds *int32 `protobuf:"varint,1,opt,name=initial_delay_seconds,json=initialDelaySeconds,proto3,oneof" json:"initial_delay_seconds,omitempty"`
+	// Seconds after which a single probe attempt times out (1-240; GCP
+	// default 1). Must not exceed period_seconds.
+	TimeoutSeconds *int32 `protobuf:"varint,2,opt,name=timeout_seconds,json=timeoutSeconds,proto3,oneof" json:"timeout_seconds,omitempty"`
+	// Seconds between probe attempts (1-240; GCP default 10).
+	PeriodSeconds *int32 `protobuf:"varint,3,opt,name=period_seconds,json=periodSeconds,proto3,oneof" json:"period_seconds,omitempty"`
+	// Consecutive failures after which the probe is considered failed (GCP
+	// default 3). For startup probes the instance is killed; for liveness
+	// probes the container is restarted.
+	FailureThreshold *int32 `protobuf:"varint,4,opt,name=failure_threshold,json=failureThreshold,proto3,oneof" json:"failure_threshold,omitempty"`
+	// The check to perform.
+	//
+	// Types that are valid to be assigned to Handler:
+	//
+	//	*GcpCloudRunProbe_HttpGet
+	//	*GcpCloudRunProbe_TcpSocket
+	//	*GcpCloudRunProbe_Grpc
+	Handler       isGcpCloudRunProbe_Handler `protobuf_oneof:"handler"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunProbe) Reset() {
+	*x = GcpCloudRunProbe{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunProbe) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunProbe) ProtoMessage() {}
+
+func (x *GcpCloudRunProbe) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunProbe.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunProbe) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GcpCloudRunProbe) GetInitialDelaySeconds() int32 {
+	if x != nil && x.InitialDelaySeconds != nil {
+		return *x.InitialDelaySeconds
+	}
+	return 0
+}
+
+func (x *GcpCloudRunProbe) GetTimeoutSeconds() int32 {
+	if x != nil && x.TimeoutSeconds != nil {
+		return *x.TimeoutSeconds
+	}
+	return 0
+}
+
+func (x *GcpCloudRunProbe) GetPeriodSeconds() int32 {
+	if x != nil && x.PeriodSeconds != nil {
+		return *x.PeriodSeconds
+	}
+	return 0
+}
+
+func (x *GcpCloudRunProbe) GetFailureThreshold() int32 {
+	if x != nil && x.FailureThreshold != nil {
+		return *x.FailureThreshold
+	}
+	return 0
+}
+
+func (x *GcpCloudRunProbe) GetHandler() isGcpCloudRunProbe_Handler {
+	if x != nil {
+		return x.Handler
+	}
+	return nil
+}
+
+func (x *GcpCloudRunProbe) GetHttpGet() *GcpCloudRunHttpGetAction {
+	if x != nil {
+		if x, ok := x.Handler.(*GcpCloudRunProbe_HttpGet); ok {
+			return x.HttpGet
+		}
+	}
+	return nil
+}
+
+func (x *GcpCloudRunProbe) GetTcpSocket() *GcpCloudRunTcpSocketAction {
+	if x != nil {
+		if x, ok := x.Handler.(*GcpCloudRunProbe_TcpSocket); ok {
+			return x.TcpSocket
+		}
+	}
+	return nil
+}
+
+func (x *GcpCloudRunProbe) GetGrpc() *GcpCloudRunGrpcAction {
+	if x != nil {
+		if x, ok := x.Handler.(*GcpCloudRunProbe_Grpc); ok {
+			return x.Grpc
+		}
+	}
+	return nil
+}
+
+type isGcpCloudRunProbe_Handler interface {
+	isGcpCloudRunProbe_Handler()
+}
+
+type GcpCloudRunProbe_HttpGet struct {
+	// HTTP GET against a path on the container; 2xx is success.
+	HttpGet *GcpCloudRunHttpGetAction `protobuf:"bytes,5,opt,name=http_get,json=httpGet,proto3,oneof"`
+}
+
+type GcpCloudRunProbe_TcpSocket struct {
+	// TCP connect to a port; a successful connection is success.
+	// Startup probes only — Cloud Run rejects TCP liveness probes.
+	TcpSocket *GcpCloudRunTcpSocketAction `protobuf:"bytes,6,opt,name=tcp_socket,json=tcpSocket,proto3,oneof"`
+}
+
+type GcpCloudRunProbe_Grpc struct {
+	// Standard gRPC health-check protocol (grpc.health.v1.Health/Check).
+	Grpc *GcpCloudRunGrpcAction `protobuf:"bytes,7,opt,name=grpc,proto3,oneof"`
+}
+
+func (*GcpCloudRunProbe_HttpGet) isGcpCloudRunProbe_Handler() {}
+
+func (*GcpCloudRunProbe_TcpSocket) isGcpCloudRunProbe_Handler() {}
+
+func (*GcpCloudRunProbe_Grpc) isGcpCloudRunProbe_Handler() {}
+
+// GcpCloudRunHttpGetAction is an HTTP GET probe check.
+type GcpCloudRunHttpGetAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Path to probe, e.g. "/healthz". Defaults to "/".
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// Port to probe. If unset, the container's serving port is used.
+	Port *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	// Custom headers sent with the probe request (e.g. an auth header for a
+	// protected health endpoint).
+	HttpHeaders   []*GcpCloudRunHttpHeader `protobuf:"bytes,3,rep,name=http_headers,json=httpHeaders,proto3" json:"http_headers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunHttpGetAction) Reset() {
+	*x = GcpCloudRunHttpGetAction{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunHttpGetAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunHttpGetAction) ProtoMessage() {}
+
+func (x *GcpCloudRunHttpGetAction) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunHttpGetAction.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunHttpGetAction) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GcpCloudRunHttpGetAction) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *GcpCloudRunHttpGetAction) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+func (x *GcpCloudRunHttpGetAction) GetHttpHeaders() []*GcpCloudRunHttpHeader {
+	if x != nil {
+		return x.HttpHeaders
+	}
+	return nil
+}
+
+// GcpCloudRunHttpHeader is one custom header on an HTTP probe.
+type GcpCloudRunHttpHeader struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Header name.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Header value.
+	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunHttpHeader) Reset() {
+	*x = GcpCloudRunHttpHeader{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunHttpHeader) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunHttpHeader) ProtoMessage() {}
+
+func (x *GcpCloudRunHttpHeader) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunHttpHeader.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunHttpHeader) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GcpCloudRunHttpHeader) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GcpCloudRunHttpHeader) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+// GcpCloudRunTcpSocketAction is a TCP connect probe check.
+type GcpCloudRunTcpSocketAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Port to connect to. If unset, the container's serving port is used.
+	Port          *int32 `protobuf:"varint,1,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunTcpSocketAction) Reset() {
+	*x = GcpCloudRunTcpSocketAction{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunTcpSocketAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunTcpSocketAction) ProtoMessage() {}
+
+func (x *GcpCloudRunTcpSocketAction) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunTcpSocketAction.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunTcpSocketAction) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GcpCloudRunTcpSocketAction) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+// GcpCloudRunGrpcAction is a gRPC health-check probe.
+type GcpCloudRunGrpcAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Port the gRPC health service listens on. If unset, the container's
+	// serving port is used.
+	Port *int32 `protobuf:"varint,1,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	// Service name passed to the health check, letting one server report
+	// per-service health. If empty, overall server health is checked.
+	Service       string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunGrpcAction) Reset() {
+	*x = GcpCloudRunGrpcAction{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunGrpcAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunGrpcAction) ProtoMessage() {}
+
+func (x *GcpCloudRunGrpcAction) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunGrpcAction.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunGrpcAction) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GcpCloudRunGrpcAction) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+func (x *GcpCloudRunGrpcAction) GetService() string {
+	if x != nil {
+		return x.Service
+	}
+	return ""
+}
+
+// GcpCloudRunVolume is a named volume with exactly one source. Mount it
+// into containers via volume_mounts.
+type GcpCloudRunVolume struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Volume name referenced by volume_mounts entries.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The volume's backing source.
+	//
+	// Types that are valid to be assigned to Source:
+	//
+	//	*GcpCloudRunVolume_CloudSqlInstance
+	//	*GcpCloudRunVolume_Secret
+	//	*GcpCloudRunVolume_EmptyDir
+	//	*GcpCloudRunVolume_Gcs
+	//	*GcpCloudRunVolume_Nfs
+	Source        isGcpCloudRunVolume_Source `protobuf_oneof:"source"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunVolume) Reset() {
+	*x = GcpCloudRunVolume{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunVolume) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunVolume) ProtoMessage() {}
+
+func (x *GcpCloudRunVolume) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunVolume.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunVolume) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GcpCloudRunVolume) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GcpCloudRunVolume) GetSource() isGcpCloudRunVolume_Source {
+	if x != nil {
+		return x.Source
+	}
+	return nil
+}
+
+func (x *GcpCloudRunVolume) GetCloudSqlInstance() *GcpCloudRunVolumeCloudSql {
+	if x != nil {
+		if x, ok := x.Source.(*GcpCloudRunVolume_CloudSqlInstance); ok {
+			return x.CloudSqlInstance
+		}
+	}
+	return nil
+}
+
+func (x *GcpCloudRunVolume) GetSecret() *GcpCloudRunVolumeSecret {
+	if x != nil {
+		if x, ok := x.Source.(*GcpCloudRunVolume_Secret); ok {
+			return x.Secret
+		}
+	}
+	return nil
+}
+
+func (x *GcpCloudRunVolume) GetEmptyDir() *GcpCloudRunVolumeEmptyDir {
+	if x != nil {
+		if x, ok := x.Source.(*GcpCloudRunVolume_EmptyDir); ok {
+			return x.EmptyDir
+		}
+	}
+	return nil
+}
+
+func (x *GcpCloudRunVolume) GetGcs() *GcpCloudRunVolumeGcs {
+	if x != nil {
+		if x, ok := x.Source.(*GcpCloudRunVolume_Gcs); ok {
+			return x.Gcs
+		}
+	}
+	return nil
+}
+
+func (x *GcpCloudRunVolume) GetNfs() *GcpCloudRunVolumeNfs {
+	if x != nil {
+		if x, ok := x.Source.(*GcpCloudRunVolume_Nfs); ok {
+			return x.Nfs
+		}
+	}
+	return nil
+}
+
+type isGcpCloudRunVolume_Source interface {
+	isGcpCloudRunVolume_Source()
+}
+
+type GcpCloudRunVolume_CloudSqlInstance struct {
+	// Cloud SQL Unix sockets, one per instance, under the mount path
+	// (mount at "/cloudsql"; connect via
+	// "/cloudsql/<project:region:instance>"). GCP manages the proxying —
+	// no sidecar, no VPC needed.
+	CloudSqlInstance *GcpCloudRunVolumeCloudSql `protobuf:"bytes,2,opt,name=cloud_sql_instance,json=cloudSqlInstance,proto3,oneof"`
+}
+
+type GcpCloudRunVolume_Secret struct {
+	// Secret Manager secret versions exposed as files.
+	Secret *GcpCloudRunVolumeSecret `protobuf:"bytes,3,opt,name=secret,proto3,oneof"`
+}
+
+type GcpCloudRunVolume_EmptyDir struct {
+	// Ephemeral scratch space, in-memory (counts against the instance's
+	// memory limit) or disk-backed.
+	EmptyDir *GcpCloudRunVolumeEmptyDir `protobuf:"bytes,4,opt,name=empty_dir,json=emptyDir,proto3,oneof"`
+}
+
+type GcpCloudRunVolume_Gcs struct {
+	// A GCS bucket mounted via Cloud Storage FUSE. Requires the GEN2
+	// execution environment; object storage semantics apply (no POSIX
+	// locking; renames are copies).
+	Gcs *GcpCloudRunVolumeGcs `protobuf:"bytes,5,opt,name=gcs,proto3,oneof"`
+}
+
+type GcpCloudRunVolume_Nfs struct {
+	// An NFS share (e.g. Filestore) mounted into the instance. Requires
+	// the GEN2 execution environment and VPC access to reach the server.
+	Nfs *GcpCloudRunVolumeNfs `protobuf:"bytes,6,opt,name=nfs,proto3,oneof"`
+}
+
+func (*GcpCloudRunVolume_CloudSqlInstance) isGcpCloudRunVolume_Source() {}
+
+func (*GcpCloudRunVolume_Secret) isGcpCloudRunVolume_Source() {}
+
+func (*GcpCloudRunVolume_EmptyDir) isGcpCloudRunVolume_Source() {}
+
+func (*GcpCloudRunVolume_Gcs) isGcpCloudRunVolume_Source() {}
+
+func (*GcpCloudRunVolume_Nfs) isGcpCloudRunVolume_Source() {}
+
+// GcpCloudRunVolumeCloudSql exposes Cloud SQL instances as Unix sockets.
+type GcpCloudRunVolumeCloudSql struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Cloud SQL instance connection names (project:region:instance).
+	// Accepts literal values or references to GcpCloudSql resources.
+	Instances     []*v1.StringValueOrRef `protobuf:"bytes,1,rep,name=instances,proto3" json:"instances,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunVolumeCloudSql) Reset() {
+	*x = GcpCloudRunVolumeCloudSql{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunVolumeCloudSql) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunVolumeCloudSql) ProtoMessage() {}
+
+func (x *GcpCloudRunVolumeCloudSql) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunVolumeCloudSql.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunVolumeCloudSql) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GcpCloudRunVolumeCloudSql) GetInstances() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.Instances
+	}
+	return nil
+}
+
+// GcpCloudRunVolumeSecret projects Secret Manager secret versions as files
+// under the mount path. The revision's service account needs
+// roles/secretmanager.secretAccessor on the secret.
+type GcpCloudRunVolumeSecret struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The secret: a short name for a secret in the same project or a full
+	// resource name (projects/*/secrets/*).
+	Secret string `protobuf:"bytes,1,opt,name=secret,proto3" json:"secret,omitempty"`
+	// Default Unix permission mode for projected files, in decimal (e.g. 292
+	// = 0444). If unset, GCP defaults to 0444 (read-only for all).
+	DefaultMode *int32 `protobuf:"varint,2,opt,name=default_mode,json=defaultMode,proto3,oneof" json:"default_mode,omitempty"`
+	// Which versions land at which relative paths. If empty, the "latest"
+	// version is projected at a file named after the secret.
+	Items         []*GcpCloudRunVolumeSecretItem `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunVolumeSecret) Reset() {
+	*x = GcpCloudRunVolumeSecret{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunVolumeSecret) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunVolumeSecret) ProtoMessage() {}
+
+func (x *GcpCloudRunVolumeSecret) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunVolumeSecret.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunVolumeSecret) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GcpCloudRunVolumeSecret) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
+func (x *GcpCloudRunVolumeSecret) GetDefaultMode() int32 {
+	if x != nil && x.DefaultMode != nil {
+		return *x.DefaultMode
+	}
+	return 0
+}
+
+func (x *GcpCloudRunVolumeSecret) GetItems() []*GcpCloudRunVolumeSecretItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// GcpCloudRunVolumeSecretItem maps one secret version to one file.
+type GcpCloudRunVolumeSecretItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Relative path of the file under the volume's mount path.
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// Secret version to project: a version number or "latest".
+	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	// Unix permission mode for this file, in decimal. Overrides default_mode.
+	Mode          *int32 `protobuf:"varint,3,opt,name=mode,proto3,oneof" json:"mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunVolumeSecretItem) Reset() {
+	*x = GcpCloudRunVolumeSecretItem{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunVolumeSecretItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunVolumeSecretItem) ProtoMessage() {}
+
+func (x *GcpCloudRunVolumeSecretItem) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunVolumeSecretItem.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunVolumeSecretItem) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GcpCloudRunVolumeSecretItem) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *GcpCloudRunVolumeSecretItem) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *GcpCloudRunVolumeSecretItem) GetMode() int32 {
+	if x != nil && x.Mode != nil {
+		return *x.Mode
+	}
+	return 0
+}
+
+// GcpCloudRunVolumeEmptyDir is per-instance ephemeral scratch space, gone
+// when the instance stops.
+type GcpCloudRunVolumeEmptyDir struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Backing medium: MEMORY (default — tmpfs; usage counts against the
+	// containers' memory limits) or DISK.
+	Medium string `protobuf:"bytes,1,opt,name=medium,proto3" json:"medium,omitempty"`
+	// Capacity limit with unit suffix, e.g. "512Mi", "2Gi". For MEMORY
+	// volumes, leave unset to let GCP cap it sensibly relative to instance
+	// memory.
+	SizeLimit     string `protobuf:"bytes,2,opt,name=size_limit,json=sizeLimit,proto3" json:"size_limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunVolumeEmptyDir) Reset() {
+	*x = GcpCloudRunVolumeEmptyDir{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunVolumeEmptyDir) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunVolumeEmptyDir) ProtoMessage() {}
+
+func (x *GcpCloudRunVolumeEmptyDir) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunVolumeEmptyDir.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunVolumeEmptyDir) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GcpCloudRunVolumeEmptyDir) GetMedium() string {
+	if x != nil {
+		return x.Medium
+	}
+	return ""
+}
+
+func (x *GcpCloudRunVolumeEmptyDir) GetSizeLimit() string {
+	if x != nil {
+		return x.SizeLimit
+	}
+	return ""
+}
+
+// GcpCloudRunVolumeGcs mounts a GCS bucket via Cloud Storage FUSE.
+type GcpCloudRunVolumeGcs struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The bucket to mount. Accepts a literal bucket name or a reference to a
+	// GcpGcsBucket resource.
+	Bucket *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	// Mount read-only. Recommended unless the service genuinely writes —
+	// concurrent writers through FUSE are easy to get wrong.
+	ReadOnly      bool `protobuf:"varint,2,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunVolumeGcs) Reset() {
+	*x = GcpCloudRunVolumeGcs{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunVolumeGcs) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunVolumeGcs) ProtoMessage() {}
+
+func (x *GcpCloudRunVolumeGcs) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunVolumeGcs.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunVolumeGcs) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GcpCloudRunVolumeGcs) GetBucket() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Bucket
+	}
+	return nil
+}
+
+func (x *GcpCloudRunVolumeGcs) GetReadOnly() bool {
+	if x != nil {
+		return x.ReadOnly
+	}
+	return false
+}
+
+// GcpCloudRunVolumeNfs mounts an NFS share (e.g. a Filestore instance).
+type GcpCloudRunVolumeNfs struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Hostname or IP of the NFS server, e.g. a Filestore instance's IP.
+	Server string `protobuf:"bytes,1,opt,name=server,proto3" json:"server,omitempty"`
+	// Exported path on the server, e.g. "/share1".
+	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	// Mount read-only.
+	ReadOnly      bool `protobuf:"varint,3,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunVolumeNfs) Reset() {
+	*x = GcpCloudRunVolumeNfs{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunVolumeNfs) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunVolumeNfs) ProtoMessage() {}
+
+func (x *GcpCloudRunVolumeNfs) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunVolumeNfs.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunVolumeNfs) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GcpCloudRunVolumeNfs) GetServer() string {
+	if x != nil {
+		return x.Server
+	}
+	return ""
+}
+
+func (x *GcpCloudRunVolumeNfs) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *GcpCloudRunVolumeNfs) GetReadOnly() bool {
+	if x != nil {
+		return x.ReadOnly
+	}
+	return false
+}
+
+// GcpCloudRunVolumeMount attaches a declared volume to a container path.
+type GcpCloudRunVolumeMount struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of a volume declared in spec.volumes.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Absolute path in the container to mount at. Cloud SQL volumes must
+	// mount at "/cloudsql".
+	MountPath     string `protobuf:"bytes,2,opt,name=mount_path,json=mountPath,proto3" json:"mount_path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunVolumeMount) Reset() {
+	*x = GcpCloudRunVolumeMount{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunVolumeMount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunVolumeMount) ProtoMessage() {}
+
+func (x *GcpCloudRunVolumeMount) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunVolumeMount.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunVolumeMount) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GcpCloudRunVolumeMount) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GcpCloudRunVolumeMount) GetMountPath() string {
+	if x != nil {
+		return x.MountPath
+	}
+	return ""
+}
+
+// GcpCloudRunRevisionScaling bounds how many instances one revision runs.
+type GcpCloudRunRevisionScaling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Instances kept warm even with zero traffic. 0 (default) scales to
+	// zero — cheapest, with cold starts; 1+ eliminates cold starts at idle
+	// cost.
+	MinInstanceCount *int32 `protobuf:"varint,1,opt,name=min_instance_count,json=minInstanceCount,proto3,oneof" json:"min_instance_count,omitempty"`
+	// Upper bound on instances for this revision — the cost/overload
+	// circuit breaker. If unset, GCP's default cap (100) applies.
+	MaxInstanceCount *int32 `protobuf:"varint,2,opt,name=max_instance_count,json=maxInstanceCount,proto3,oneof" json:"max_instance_count,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunRevisionScaling) Reset() {
+	*x = GcpCloudRunRevisionScaling{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunRevisionScaling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunRevisionScaling) ProtoMessage() {}
+
+func (x *GcpCloudRunRevisionScaling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunRevisionScaling.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunRevisionScaling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GcpCloudRunRevisionScaling) GetMinInstanceCount() int32 {
+	if x != nil && x.MinInstanceCount != nil {
+		return *x.MinInstanceCount
+	}
+	return 0
+}
+
+func (x *GcpCloudRunRevisionScaling) GetMaxInstanceCount() int32 {
+	if x != nil && x.MaxInstanceCount != nil {
+		return *x.MaxInstanceCount
+	}
+	return 0
+}
+
+// GcpCloudRunServiceScaling is the service-wide scaling posture across all
+// revisions.
+type GcpCloudRunServiceScaling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// AUTOMATIC (default): Cloud Run scales with traffic. MANUAL: the
+	// service runs exactly manual_instance_count instances regardless of
+	// traffic — a load-test lever or emergency brake.
+	ScalingMode string `protobuf:"bytes,1,opt,name=scaling_mode,json=scalingMode,proto3" json:"scaling_mode,omitempty"`
+	// Exact total instance count in MANUAL mode.
+	ManualInstanceCount *int32 `protobuf:"varint,2,opt,name=manual_instance_count,json=manualInstanceCount,proto3,oneof" json:"manual_instance_count,omitempty"`
+	// Service-level minimum instances, distributed across serving revisions
+	// (unlike scaling.min_instance_count, which is per revision). Useful
+	// during gradual rollouts so warm capacity follows the traffic split.
+	MinInstanceCount *int32 `protobuf:"varint,3,opt,name=min_instance_count,json=minInstanceCount,proto3,oneof" json:"min_instance_count,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunServiceScaling) Reset() {
+	*x = GcpCloudRunServiceScaling{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunServiceScaling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunServiceScaling) ProtoMessage() {}
+
+func (x *GcpCloudRunServiceScaling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunServiceScaling.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunServiceScaling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GcpCloudRunServiceScaling) GetScalingMode() string {
+	if x != nil {
+		return x.ScalingMode
+	}
+	return ""
+}
+
+func (x *GcpCloudRunServiceScaling) GetManualInstanceCount() int32 {
+	if x != nil && x.ManualInstanceCount != nil {
+		return *x.ManualInstanceCount
+	}
+	return 0
+}
+
+func (x *GcpCloudRunServiceScaling) GetMinInstanceCount() int32 {
+	if x != nil && x.MinInstanceCount != nil {
+		return *x.MinInstanceCount
+	}
+	return 0
+}
+
+// GcpCloudRunTrafficTarget assigns a share of traffic (and/or a tag) to a
+// revision.
+type GcpCloudRunTrafficTarget struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Route to the latest ready revision (LATEST) or a specific named
+	// revision (REVISION).
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// Revision name for REVISION targets (see spec.revision for
+	// deterministic naming).
+	Revision string `protobuf:"bytes,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	// Percent of traffic for this target (0-100). All percents in the
+	// traffic block must sum to 100 — GCP enforces this at deploy time.
+	Percent *int32 `protobuf:"varint,3,opt,name=percent,proto3,oneof" json:"percent,omitempty"`
+	// Tag that gives this target a stable preview URL
+	// (https://<tag>---<service-host>) receiving only requests addressed to
+	// it — how a canary is smoke-tested before percent-based traffic moves.
+	Tag           string `protobuf:"bytes,4,opt,name=tag,proto3" json:"tag,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunTrafficTarget) Reset() {
+	*x = GcpCloudRunTrafficTarget{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunTrafficTarget) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunTrafficTarget) ProtoMessage() {}
+
+func (x *GcpCloudRunTrafficTarget) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunTrafficTarget.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunTrafficTarget) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GcpCloudRunTrafficTarget) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *GcpCloudRunTrafficTarget) GetRevision() string {
+	if x != nil {
+		return x.Revision
+	}
+	return ""
+}
+
+func (x *GcpCloudRunTrafficTarget) GetPercent() int32 {
+	if x != nil && x.Percent != nil {
+		return *x.Percent
+	}
+	return 0
+}
+
+func (x *GcpCloudRunTrafficTarget) GetTag() string {
 	if x != nil {
 		return x.Tag
 	}
 	return ""
 }
 
-// GcpCloudRunContainerEnv defines plain environment variables and secrets.
-type GcpCloudRunContainerEnv struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Plain environment variables injected as KEY=VALUE pairs.
-	Variables map[string]string `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Secret Manager references injected as KEY=projects/*/secrets/*:version.
-	Secrets       map[string]string `protobuf:"bytes,2,rep,name=secrets,proto3" json:"secrets,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GcpCloudRunContainerEnv) Reset() {
-	*x = GcpCloudRunContainerEnv{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GcpCloudRunContainerEnv) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GcpCloudRunContainerEnv) ProtoMessage() {}
-
-func (x *GcpCloudRunContainerEnv) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GcpCloudRunContainerEnv.ProtoReflect.Descriptor instead.
-func (*GcpCloudRunContainerEnv) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *GcpCloudRunContainerEnv) GetVariables() map[string]string {
-	if x != nil {
-		return x.Variables
-	}
-	return nil
-}
-
-func (x *GcpCloudRunContainerEnv) GetSecrets() map[string]string {
-	if x != nil {
-		return x.Secrets
-	}
-	return nil
-}
-
-// GcpCloudRunDns configures optional custom-domain mapping.
-type GcpCloudRunDns struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Enables or disables custom-domain mapping.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// Fully-qualified hostnames routed to the Cloud Run service.
-	Hostnames []string `protobuf:"bytes,2,rep,name=hostnames,proto3" json:"hostnames,omitempty"`
-	// Cloud DNS managed zone used for domain-verification records.
-	// Can be a direct value (the Cloud DNS zone name) or a reference to a
-	// GcpDnsZone resource, in which case it resolves to that zone's exported
-	// zone_name output.
-	ManagedZone   *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=managed_zone,json=managedZone,proto3" json:"managed_zone,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GcpCloudRunDns) Reset() {
-	*x = GcpCloudRunDns{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GcpCloudRunDns) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GcpCloudRunDns) ProtoMessage() {}
-
-func (x *GcpCloudRunDns) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GcpCloudRunDns.ProtoReflect.Descriptor instead.
-func (*GcpCloudRunDns) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *GcpCloudRunDns) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *GcpCloudRunDns) GetHostnames() []string {
-	if x != nil {
-		return x.Hostnames
-	}
-	return nil
-}
-
-func (x *GcpCloudRunDns) GetManagedZone() *v1.StringValueOrRef {
-	if x != nil {
-		return x.ManagedZone
-	}
-	return nil
-}
-
-// GcpCloudRunCloudSqlConnection configures Cloud SQL connectivity for the Cloud Run service.
-// Exactly one of connection or auth_proxy must be set.
-//
-//   - connection: Native Cloud Run volume mount. GCP manages the proxy internally.
-//     Creates Unix sockets at /cloudsql/<connection_name>.
-//     Application DATABASE_URL uses: ?host=/cloudsql/<connection_name>
-//
-//   - auth_proxy: Explicit Cloud SQL Auth Proxy sidecar container.
-//     Creates a TCP proxy on localhost:<port>.
-//     Application DATABASE_URL uses: @localhost:<port>
-type GcpCloudRunCloudSqlConnection struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Native Cloud SQL connection via Cloud Run managed volume mount.
-	// No VPC or Private Services Access required.
-	Connection *GcpCloudRunCloudSqlDirectConnection `protobuf:"bytes,1,opt,name=connection,proto3" json:"connection,omitempty"`
-	// Cloud SQL Auth Proxy sidecar for TCP-based connectivity.
-	// No VPC required unless use_private_ip is true.
-	AuthProxy     *GcpCloudRunCloudSqlAuthProxy `protobuf:"bytes,2,opt,name=auth_proxy,json=authProxy,proto3" json:"auth_proxy,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GcpCloudRunCloudSqlConnection) Reset() {
-	*x = GcpCloudRunCloudSqlConnection{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GcpCloudRunCloudSqlConnection) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GcpCloudRunCloudSqlConnection) ProtoMessage() {}
-
-func (x *GcpCloudRunCloudSqlConnection) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GcpCloudRunCloudSqlConnection.ProtoReflect.Descriptor instead.
-func (*GcpCloudRunCloudSqlConnection) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *GcpCloudRunCloudSqlConnection) GetConnection() *GcpCloudRunCloudSqlDirectConnection {
-	if x != nil {
-		return x.Connection
-	}
-	return nil
-}
-
-func (x *GcpCloudRunCloudSqlConnection) GetAuthProxy() *GcpCloudRunCloudSqlAuthProxy {
-	if x != nil {
-		return x.AuthProxy
-	}
-	return nil
-}
-
-// GcpCloudRunCloudSqlDirectConnection configures the native Cloud Run volume mount
-// for Cloud SQL. GCP automatically creates Unix sockets at /cloudsql/<connection_name>
-// for each instance. No sidecar container needed.
-type GcpCloudRunCloudSqlDirectConnection struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Cloud SQL instance connection names (format: project:region:instance).
-	// Can be literal values or references to GcpCloudSql resources.
-	Instances     []*v1.StringValueOrRef `protobuf:"bytes,1,rep,name=instances,proto3" json:"instances,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GcpCloudRunCloudSqlDirectConnection) Reset() {
-	*x = GcpCloudRunCloudSqlDirectConnection{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GcpCloudRunCloudSqlDirectConnection) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GcpCloudRunCloudSqlDirectConnection) ProtoMessage() {}
-
-func (x *GcpCloudRunCloudSqlDirectConnection) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GcpCloudRunCloudSqlDirectConnection.ProtoReflect.Descriptor instead.
-func (*GcpCloudRunCloudSqlDirectConnection) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *GcpCloudRunCloudSqlDirectConnection) GetInstances() []*v1.StringValueOrRef {
-	if x != nil {
-		return x.Instances
-	}
-	return nil
-}
-
-// GcpCloudRunCloudSqlAuthProxy configures a Cloud SQL Auth Proxy sidecar container.
-// The proxy runs alongside the application container and provides a TCP endpoint
-// at localhost:<port> for each Cloud SQL instance.
-type GcpCloudRunCloudSqlAuthProxy struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Cloud SQL instance connection names (format: project:region:instance).
-	// Can be literal values or references to GcpCloudSql resources.
-	Instances []*v1.StringValueOrRef `protobuf:"bytes,1,rep,name=instances,proto3" json:"instances,omitempty"`
-	// Port the proxy listens on for the first instance. Default: 5432.
-	// Additional instances get sequential ports (5433, 5434, ...).
-	Port int32 `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
-	// Whether to route proxy connections through the VPC private network.
-	// Requires vpc_access to be configured on the Cloud Run service.
-	UsePrivateIp  bool `protobuf:"varint,3,opt,name=use_private_ip,json=usePrivateIp,proto3" json:"use_private_ip,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GcpCloudRunCloudSqlAuthProxy) Reset() {
-	*x = GcpCloudRunCloudSqlAuthProxy{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GcpCloudRunCloudSqlAuthProxy) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GcpCloudRunCloudSqlAuthProxy) ProtoMessage() {}
-
-func (x *GcpCloudRunCloudSqlAuthProxy) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GcpCloudRunCloudSqlAuthProxy.ProtoReflect.Descriptor instead.
-func (*GcpCloudRunCloudSqlAuthProxy) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *GcpCloudRunCloudSqlAuthProxy) GetInstances() []*v1.StringValueOrRef {
-	if x != nil {
-		return x.Instances
-	}
-	return nil
-}
-
-func (x *GcpCloudRunCloudSqlAuthProxy) GetPort() int32 {
-	if x != nil {
-		return x.Port
-	}
-	return 0
-}
-
-func (x *GcpCloudRunCloudSqlAuthProxy) GetUsePrivateIp() bool {
-	if x != nil {
-		return x.UsePrivateIp
-	}
-	return false
-}
-
-// GcpCloudRunVpcAccess configures Direct VPC Egress for accessing private resources.
+// GcpCloudRunVpcAccess routes the service's OUTBOUND traffic into a VPC —
+// either directly (recommended) or through a Serverless VPC Access
+// connector. Exactly one mechanism.
 type GcpCloudRunVpcAccess struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// VPC network name for Direct VPC Egress.
-	// Can be a direct value or a reference to a GcpVpc resource.
-	Network *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
-	// VPC subnet name for Direct VPC Egress.
-	// Can be a direct value or a reference to a GcpSubnetwork resource.
-	Subnet *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=subnet,proto3" json:"subnet,omitempty"`
-	// Egress setting: "ALL_TRAFFIC" or "PRIVATE_RANGES_ONLY"
-	// If "ALL_TRAFFIC", all egress goes through VPC
-	// If "PRIVATE_RANGES_ONLY", only private IP traffic uses VPC
+	// Serverless VPC Access connector to route egress through — the legacy
+	// mechanism, still required for some org constraints. Full resource name
+	// (projects/*/locations/*/connectors/*) or a reference to a
+	// GcpServerlessVpcConnector resource.
+	Connector *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=connector,proto3" json:"connector,omitempty"`
+	// Direct VPC egress: instances get IPs in the subnetwork and reach VPC
+	// resources with no connector infrastructure. The subnetwork needs free
+	// address space for the instance fleet.
+	NetworkInterfaces []*GcpCloudRunNetworkInterface `protobuf:"bytes,2,rep,name=network_interfaces,json=networkInterfaces,proto3" json:"network_interfaces,omitempty"`
+	// Which egress traffic uses the VPC path: everything (ALL_TRAFFIC) or
+	// only RFC1918/private destinations (PRIVATE_RANGES_ONLY — the default;
+	// public egress keeps Cloud Run's own path).
 	Egress        string `protobuf:"bytes,3,opt,name=egress,proto3" json:"egress,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -835,7 +2119,7 @@ type GcpCloudRunVpcAccess struct {
 
 func (x *GcpCloudRunVpcAccess) Reset() {
 	*x = GcpCloudRunVpcAccess{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -847,7 +2131,7 @@ func (x *GcpCloudRunVpcAccess) String() string {
 func (*GcpCloudRunVpcAccess) ProtoMessage() {}
 
 func (x *GcpCloudRunVpcAccess) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -860,19 +2144,19 @@ func (x *GcpCloudRunVpcAccess) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunVpcAccess.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunVpcAccess) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{22}
 }
 
-func (x *GcpCloudRunVpcAccess) GetNetwork() *v1.StringValueOrRef {
+func (x *GcpCloudRunVpcAccess) GetConnector() *v1.StringValueOrRef {
 	if x != nil {
-		return x.Network
+		return x.Connector
 	}
 	return nil
 }
 
-func (x *GcpCloudRunVpcAccess) GetSubnet() *v1.StringValueOrRef {
+func (x *GcpCloudRunVpcAccess) GetNetworkInterfaces() []*GcpCloudRunNetworkInterface {
 	if x != nil {
-		return x.Subnet
+		return x.NetworkInterfaces
 	}
 	return nil
 }
@@ -884,78 +2168,391 @@ func (x *GcpCloudRunVpcAccess) GetEgress() string {
 	return ""
 }
 
+// GcpCloudRunNetworkInterface places instances into a VPC subnetwork for
+// direct VPC egress.
+type GcpCloudRunNetworkInterface struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The VPC network. Accepts a literal network name or a reference to a
+	// GcpVpcNetwork resource. May be omitted when subnetwork is set (the
+	// network is inferred).
+	Network *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
+	// The subnetwork instances draw IPs from. Accepts a literal subnetwork
+	// name or a reference to a GcpSubnetwork resource. Must be in the
+	// service's region.
+	Subnetwork *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=subnetwork,proto3" json:"subnetwork,omitempty"`
+	// Network tags applied to the instances — how VPC firewall rules select
+	// Cloud Run egress traffic.
+	Tags          []string `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunNetworkInterface) Reset() {
+	*x = GcpCloudRunNetworkInterface{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunNetworkInterface) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunNetworkInterface) ProtoMessage() {}
+
+func (x *GcpCloudRunNetworkInterface) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunNetworkInterface.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunNetworkInterface) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *GcpCloudRunNetworkInterface) GetNetwork() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Network
+	}
+	return nil
+}
+
+func (x *GcpCloudRunNetworkInterface) GetSubnetwork() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Subnetwork
+	}
+	return nil
+}
+
+func (x *GcpCloudRunNetworkInterface) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+// GcpCloudRunNodeSelector states the hardware the service's instances need.
+type GcpCloudRunNodeSelector struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// GPU accelerator type each instance gets, e.g. "nvidia-l4". GPU
+	// services need GEN2-class resources (at least "4" CPU / "16Gi" memory)
+	// and regional GPU quota.
+	Accelerator   string `protobuf:"bytes,1,opt,name=accelerator,proto3" json:"accelerator,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunNodeSelector) Reset() {
+	*x = GcpCloudRunNodeSelector{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunNodeSelector) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunNodeSelector) ProtoMessage() {}
+
+func (x *GcpCloudRunNodeSelector) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunNodeSelector.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunNodeSelector) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GcpCloudRunNodeSelector) GetAccelerator() string {
+	if x != nil {
+		return x.Accelerator
+	}
+	return ""
+}
+
+// GcpCloudRunBinaryAuthorization gates deploys on image attestation policy.
+type GcpCloudRunBinaryAuthorization struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Evaluate deploys against the project's default Binary Authorization
+	// policy.
+	UseDefault bool `protobuf:"varint,1,opt,name=use_default,json=useDefault,proto3" json:"use_default,omitempty"`
+	// Evaluate deploys against a specific platform policy
+	// (projects/*/platforms/cloudRun/policies/*).
+	Policy string `protobuf:"bytes,2,opt,name=policy,proto3" json:"policy,omitempty"`
+	// Justification recorded when a break-glass deploy bypasses the policy.
+	BreakglassJustification string `protobuf:"bytes,3,opt,name=breakglass_justification,json=breakglassJustification,proto3" json:"breakglass_justification,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunBinaryAuthorization) Reset() {
+	*x = GcpCloudRunBinaryAuthorization{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunBinaryAuthorization) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunBinaryAuthorization) ProtoMessage() {}
+
+func (x *GcpCloudRunBinaryAuthorization) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunBinaryAuthorization.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunBinaryAuthorization) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *GcpCloudRunBinaryAuthorization) GetUseDefault() bool {
+	if x != nil {
+		return x.UseDefault
+	}
+	return false
+}
+
+func (x *GcpCloudRunBinaryAuthorization) GetPolicy() string {
+	if x != nil {
+		return x.Policy
+	}
+	return ""
+}
+
+func (x *GcpCloudRunBinaryAuthorization) GetBreakglassJustification() string {
+	if x != nil {
+		return x.BreakglassJustification
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2dev/planton/provider/gcp/gcpcloudrun/v1/spec.proto\x12'dev.planton.provider.gcp.gcpcloudrun.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x87\n" +
+	"2dev/planton/provider/gcp/gcpcloudrun/v1/spec.proto\x12'dev.planton.provider.gcp.gcpcloudrun.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd4\x17\n" +
+	"\x0fGcpCloudRunSpec\x12u\n" +
 	"\n" +
-	"\x0fGcpCloudRunSpec\x12{\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
+	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12K\n" +
+	"\fservice_name\x18\x03 \x01(\tB(\xbaH%\xd8\x01\x01r \x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\vserviceName\x12-\n" +
+	"\vdescription\x18\x04 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\x18\x80\x04R\vdescription\x12\\\n" +
+	"\x06labels\x18\x05 \x03(\v2D.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.LabelsEntryR\x06labels\x12g\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x126\n" +
-	"\x06region\x18\x02 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x14^[a-z]+-[a-z]+[0-9]$R\x06region\x12N\n" +
-	"\fservice_name\x18\a \x01(\tB+\xbaH(\xd8\x01\x01r#\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\vserviceName\x12x\n" +
-	"\x0fservice_account\x18\b \x01(\tBO\xbaHL\xd8\x01\x01rG2E^[a-z0-9]([-a-z0-9]*[a-z0-9])?@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$R\x0eserviceAccount\x12c\n" +
-	"\tcontainer\x18\x03 \x01(\v2=.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12<\n" +
-	"\x0fmax_concurrency\x18\x04 \x01(\x05B\x13\xbaH\n" +
-	"\xd8\x01\x01\x1a\x05\x18\xe8\a(\x01\x92\xa6\x1d\x0280R\x0emaxConcurrency\x12=\n" +
-	"\x0ftimeout_seconds\x18\t \x01(\x05B\x14\xbaH\n" +
-	"\xd8\x01\x01\x1a\x05\x18\x90\x1c(\x01\x92\xa6\x1d\x03300R\x0etimeoutSeconds\x12n\n" +
-	"\aingress\x18\n" +
-	" \x01(\x0e2;.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunIngressB\x17\x92\xa6\x1d\x13INGRESS_TRAFFIC_ALLR\aingress\x12=\n" +
-	"\x15allow_unauthenticated\x18\x05 \x01(\bB\b\x92\xa6\x1d\x04trueR\x14allowUnauthenticated\x12\\\n" +
+	"containers\x18\x06 \x03(\v2=.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerB\b\xbaH\x05\x92\x01\x02\b\x01R\n" +
+	"containers\x12T\n" +
+	"\avolumes\x18\a \x03(\v2:.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeR\avolumes\x12z\n" +
+	"\x0fservice_account\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12]\n" +
+	"\ascaling\x18\t \x01(\v2C.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunRevisionScalingR\ascaling\x12k\n" +
+	"\x0fservice_scaling\x18\n" +
+	" \x01(\v2B.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunServiceScalingR\x0eserviceScaling\x12X\n" +
+	" max_instance_request_concurrency\x18\v \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xe8\a(\x01H\x00R\x1dmaxInstanceRequestConcurrency\x88\x01\x01\x128\n" +
+	"\x0ftimeout_seconds\x18\f \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\x90\x1c(\x01H\x01R\x0etimeoutSeconds\x88\x01\x01\x12\x9d\x01\n" +
+	"\x15execution_environment\x18\r \x01(\x0e2H.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunExecutionEnvironmentB\x1e\x92\xa6\x1d\x1aEXECUTION_ENVIRONMENT_GEN2R\x14executionEnvironment\x12)\n" +
+	"\x10session_affinity\x18\x0e \x01(\bR\x0fsessionAffinity\x12\xbd\x01\n" +
+	"\x0eencryption_key\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBb\xaa\xa6\x1d@KMS crypto key resource ID/reference only — never key material\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\rencryptionKey\x12D\n" +
+	"\brevision\x18\x10 \x01(\tB(\xbaH%\xd8\x01\x01r \x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\brevision\x12\\\n" +
 	"\n" +
-	"vpc_access\x18\v \x01(\v2=.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVpcAccessR\tvpcAccess\x12\x9d\x01\n" +
-	"\x15execution_environment\x18\f \x01(\x0e2H.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunExecutionEnvironmentB\x1e\x92\xa6\x1d\x1aEXECUTION_ENVIRONMENT_GEN2R\x14executionEnvironment\x12I\n" +
-	"\x03dns\x18\x06 \x01(\v27.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunDnsR\x03dns\x126\n" +
-	"\x11delete_protection\x18\r \x01(\bB\t\x92\xa6\x1d\x05falseR\x10deleteProtection\x12c\n" +
-	"\tcloud_sql\x18\x0e \x01(\v2F.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlConnectionR\bcloudSql\"\xa7\x03\n" +
-	"\x14GcpCloudRunContainer\x12X\n" +
-	"\x05image\x18\x01 \x01(\v2B.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerImageR\x05image\x12R\n" +
-	"\x03env\x18\x02 \x01(\v2@.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerEnvR\x03env\x12\x1f\n" +
-	"\x04port\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01R\x04port\x12%\n" +
-	"\x03cpu\x18\x04 \x01(\x05B\x13\xbaH\v\xc8\x01\x01\x1a\x060\x010\x020\x04\x92\xa6\x1d\x011R\x03cpu\x12.\n" +
-	"\x06memory\x18\x05 \x01(\x05B\x16\xbaH\f\xc8\x01\x01\x1a\a\x18\x80\x80\x02(\x80\x01\x92\xa6\x1d\x03512R\x06memory\x12i\n" +
-	"\breplicas\x18\x06 \x01(\v2E.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerReplicasB\x06\xbaH\x03\xc8\x01\x01R\breplicas\"Y\n" +
-	"\x1cGcpCloudRunContainerReplicas\x12\x1e\n" +
-	"\x03min\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x92\xa6\x1d\x010R\x03min\x12\x19\n" +
-	"\x03max\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x03max\"Y\n" +
-	"\x19GcpCloudRunContainerImage\x12\x1e\n" +
-	"\x04repo\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04repo\x12\x1c\n" +
-	"\x03tag\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x03tag\"\xeb\x02\n" +
-	"\x17GcpCloudRunContainerEnv\x12m\n" +
-	"\tvariables\x18\x01 \x03(\v2O.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerEnv.VariablesEntryR\tvariables\x12g\n" +
-	"\asecrets\x18\x02 \x03(\v2M.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerEnv.SecretsEntryR\asecrets\x1a<\n" +
-	"\x0eVariablesEntry\x12\x10\n" +
+	"vpc_access\x18\x11 \x01(\v2=.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVpcAccessR\tvpcAccess\x12e\n" +
+	"\rnode_selector\x18\x12 \x01(\v2@.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunNodeSelectorR\fnodeSelector\x12A\n" +
+	"\x1dgpu_zonal_redundancy_disabled\x18\x13 \x01(\bR\x1agpuZonalRedundancyDisabled\x12n\n" +
+	"\aingress\x18\x14 \x01(\x0e2;.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunIngressB\x17\x92\xa6\x1d\x13INGRESS_TRAFFIC_ALLR\aingress\x12=\n" +
+	"\x15allow_unauthenticated\x18\x15 \x01(\bB\b\x92\xa6\x1d\x04trueR\x14allowUnauthenticated\x120\n" +
+	"\x14invoker_iam_disabled\x18\x16 \x01(\bR\x12invokerIamDisabled\x12<\n" +
+	"\x10custom_audiences\x18\x17 \x03(\tB\x11\xbaH\x0e\xd8\x01\x01\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\x0fcustomAudiences\x12[\n" +
+	"\atraffic\x18\x18 \x03(\v2A.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunTrafficTargetR\atraffic\x12>\n" +
+	"\flaunch_stage\x18\x19 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x13R\x00R\x05ALPHAR\x04BETAR\x02GAR\vlaunchStage\x12z\n" +
+	"\x14binary_authorization\x18\x1a \x01(\v2G.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunBinaryAuthorizationR\x13binaryAuthorization\x12>\n" +
+	"\x13deletion_protection\x18\x1b \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x12deletionProtection\x88\x01\x01\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a:\n" +
-	"\fSecretsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x96\x04\n" +
-	"\x0eGcpCloudRunDns\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12p\n" +
-	"\thostnames\x18\x02 \x03(\tBR\xbaHO\xd8\x01\x01\x92\x01I\x18\x01\"ErC2A^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\thostnames\x12x\n" +
-	"\fmanaged_zone\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdd\x04\x92\xd4a\x18status.outputs.zone_nameR\vmanagedZone:\xfd\x01\xbaH\xf9\x01\x1a\xf6\x01\n" +
-	"\x1bdns.enabled-requires-fields\x12?hostnames and managed_zone must be set when dns.enabled is true\x1a\x95\x01!this.enabled || (size(this.hostnames) > 0 && ((has(this.managed_zone.value) && this.managed_zone.value != '') || has(this.managed_zone.value_from)))\"\xbc\x03\n" +
-	"\x1dGcpCloudRunCloudSqlConnection\x12l\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xbe\x03\xbaH\xba\x03\x1a\xf1\x01\n" +
+	"/auth.allow_unauthenticated_xor_invoker_disabled\x12\x81\x01allow_unauthenticated grants public access through IAM; invoker_iam_disabled turns the IAM check off entirely — set at most one\x1a:!(this.allow_unauthenticated && this.invoker_iam_disabled)\x1a\xc3\x01\n" +
+	"#gpu.redundancy_requires_accelerator\x12\\gpu_zonal_redundancy_disabled only applies to GPU services — set node_selector.accelerator\x1a>!this.gpu_zonal_redundancy_disabled || has(this.node_selector)B#\n" +
+	"!_max_instance_request_concurrencyB\x12\n" +
+	"\x10_timeout_secondsB\x16\n" +
+	"\x14_deletion_protection\"\xe9\a\n" +
+	"\x14GcpCloudRunContainer\x12<\n" +
+	"\x04name\x18\x01 \x01(\tB(\xbaH%\xd8\x01\x01r \x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x04name\x12 \n" +
+	"\x05image\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05image\x12\x18\n" +
+	"\acommand\x18\x03 \x03(\tR\acommand\x12\x12\n" +
+	"\x04args\x18\x04 \x03(\tR\x04args\x12L\n" +
+	"\x03env\x18\x05 \x03(\v2:.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunEnvVarR\x03env\x12W\n" +
+	"\x05ports\x18\x06 \x01(\v2A.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerPortR\x05ports\x12d\n" +
+	"\tresources\x18\a \x01(\v2F.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerResourcesR\tresources\x12d\n" +
+	"\rvolume_mounts\x18\b \x03(\v2?.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeMountR\fvolumeMounts\x12\x1f\n" +
+	"\vworking_dir\x18\t \x01(\tR\n" +
+	"workingDir\x12^\n" +
+	"\rstartup_probe\x18\n" +
+	" \x01(\v29.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunProbeR\fstartupProbe\x12`\n" +
+	"\x0eliveness_probe\x18\v \x01(\v29.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunProbeR\rlivenessProbe\x120\n" +
 	"\n" +
-	"connection\x18\x01 \x01(\v2L.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlDirectConnectionR\n" +
-	"connection\x12d\n" +
+	"depends_on\x18\f \x03(\tB\x11\xbaH\x0e\xd8\x01\x01\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\tdependsOn:\xba\x01\xbaH\xb6\x01\x1a\xb3\x01\n" +
+	"\x15liveness_probe.no_tcp\x12WCloud Run liveness probes support HTTP and gRPC only — TCP is valid on startup probes\x1aA!has(this.liveness_probe) || !has(this.liveness_probe.tcp_socket)\"\xff\x02\n" +
+	"\x11GcpCloudRunEnvVar\x128\n" +
+	"\x04name\x18\x01 \x01(\tB$\xbaH!\xc8\x01\x01r\x1c2\x1a^[A-Za-z_][A-Za-z0-9_.-]*$R\x04name\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x12o\n" +
+	"\x11value_from_secret\x18\x03 \x01(\v2C.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSecretEnvSourceR\x0fvalueFromSecret:\xa8\x01\xbaH\xa4\x01\x1a\xa1\x01\n" +
+	"\x14env.value_xor_secret\x12Uan environment variable takes a literal value or a Secret Manager reference, not both\x1a2!(this.value != '' && has(this.value_from_secret))\"\xce\x01\n" +
+	"\x1aGcpCloudRunSecretEnvSource\x12\x89\x01\n" +
+	"\x06secret\x18\x01 \x01(\tBq\xbaH\a\xc8\x01\x01r\x02\x10\x01\xaa\xa6\x1dcSecret Manager secret NAME/identifier only — the secret material itself never appears in the specR\x06secret\x12$\n" +
+	"\aversion\x18\x02 \x01(\tB\n" +
+	"\x92\xa6\x1d\x06latestR\aversion\"\x9a\x01\n" +
+	"\x18GcpCloudRunContainerPort\x12?\n" +
+	"\x0econtainer_port\x18\x01 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x048080H\x00R\rcontainerPort\x88\x01\x01\x12*\n" +
+	"\x04name\x18\x02 \x01(\tB\x16\xbaH\x13\xd8\x01\x01r\x0eR\x00R\x05http1R\x03h2cR\x04nameB\x11\n" +
+	"\x0f_container_port\"\xfe\x01\n" +
+	"\x1dGcpCloudRunContainerResources\x129\n" +
+	"\x03cpu\x18\x01 \x01(\tB'\xbaH$\xd8\x01\x01r\x1f2\x1d^([0-9]+m|[0-9]+(\\.[0-9]+)?)$R\x03cpu\x12?\n" +
+	"\x06memory\x18\x02 \x01(\tB'\xbaH$\xd8\x01\x01r\x1f2\x1d^[0-9]+(Ki|Mi|Gi|Ti|K|M|G|T)$R\x06memory\x12(\n" +
+	"\bcpu_idle\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\acpuIdle\x88\x01\x01\x12*\n" +
+	"\x11startup_cpu_boost\x18\x04 \x01(\bR\x0fstartupCpuBoostB\v\n" +
+	"\t_cpu_idle\"\xc9\x06\n" +
+	"\x10GcpCloudRunProbe\x12C\n" +
+	"\x15initial_delay_seconds\x18\x01 \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xf0\x01(\x00H\x01R\x13initialDelaySeconds\x88\x01\x01\x128\n" +
+	"\x0ftimeout_seconds\x18\x02 \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xf0\x01(\x01H\x02R\x0etimeoutSeconds\x88\x01\x01\x126\n" +
+	"\x0eperiod_seconds\x18\x03 \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xf0\x01(\x01H\x03R\rperiodSeconds\x88\x01\x01\x129\n" +
+	"\x11failure_threshold\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x04R\x10failureThreshold\x88\x01\x01\x12^\n" +
+	"\bhttp_get\x18\x05 \x01(\v2A.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunHttpGetActionH\x00R\ahttpGet\x12d\n" +
 	"\n" +
-	"auth_proxy\x18\x02 \x01(\v2E.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlAuthProxyR\tauthProxy:\xc6\x01\xbaH\xc2\x01\x1a\xbf\x01\n" +
-	"\x1acloud_sql.mutual_exclusion\x12=exactly one of connection or auth_proxy must be set, not both\x1ab(has(this.connection) && !has(this.auth_proxy)) || (!has(this.connection) && has(this.auth_proxy))\"\xa6\x01\n" +
-	"#GcpCloudRunCloudSqlDirectConnection\x12\x7f\n" +
-	"\tinstances\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xdc\x04\x92\xd4a\x1estatus.outputs.connection_nameR\tinstances\"\xf1\x01\n" +
-	"\x1cGcpCloudRunCloudSqlAuthProxy\x12\x7f\n" +
-	"\tinstances\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xdc\x04\x92\xd4a\x1estatus.outputs.connection_nameR\tinstances\x12*\n" +
-	"\x04port\x18\x02 \x01(\x05B\x16\xbaH\v\xd8\x01\x01\x1a\x06\x18\xff\xff\x03(\x01\x92\xa6\x1d\x045432R\x04port\x12$\n" +
-	"\x0euse_private_ip\x18\x03 \x01(\bR\fusePrivateIp\"\xc5\x02\n" +
-	"\x14GcpCloudRunVpcAccess\x12r\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xe2\x04\x92\xd4a\x1bstatus.outputs.network_nameR\anetwork\x12s\n" +
-	"\x06subnet\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xe3\x04\x92\xd4a\x1estatus.outputs.subnetwork_nameR\x06subnet\x12D\n" +
-	"\x06egress\x18\x03 \x01(\tB,\xbaH)\xd8\x01\x01r$R\x00R\vALL_TRAFFICR\x13PRIVATE_RANGES_ONLYR\x06egress*\x9d\x01\n" +
+	"tcp_socket\x18\x06 \x01(\v2C.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunTcpSocketActionH\x00R\ttcpSocket\x12T\n" +
+	"\x04grpc\x18\a \x01(\v2>.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunGrpcActionH\x00R\x04grpc:\xbd\x01\xbaH\xb9\x01\x1a\xb6\x01\n" +
+	"\x18probe.timeout_lte_period\x122probe timeout_seconds cannot exceed period_seconds\x1af!has(this.timeout_seconds) || !has(this.period_seconds) || this.timeout_seconds <= this.period_secondsB\x10\n" +
+	"\ahandler\x12\x05\xbaH\x02\b\x01B\x18\n" +
+	"\x16_initial_delay_secondsB\x12\n" +
+	"\x10_timeout_secondsB\x11\n" +
+	"\x0f_period_secondsB\x14\n" +
+	"\x12_failure_threshold\"\xd1\x01\n" +
+	"\x18GcpCloudRunHttpGetAction\x12#\n" +
+	"\x04path\x18\x01 \x01(\tB\x0f\xbaH\f\xd8\x01\x01r\a2\x05^/.*$R\x04path\x12$\n" +
+	"\x04port\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x00R\x04port\x88\x01\x01\x12a\n" +
+	"\fhttp_headers\x18\x03 \x03(\v2>.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunHttpHeaderR\vhttpHeadersB\a\n" +
+	"\x05_port\"M\n" +
+	"\x15GcpCloudRunHttpHeader\x12\x1e\n" +
+	"\x04name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"K\n" +
+	"\x1aGcpCloudRunTcpSocketAction\x12$\n" +
+	"\x04port\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x00R\x04port\x88\x01\x01B\a\n" +
+	"\x05_port\"`\n" +
+	"\x15GcpCloudRunGrpcAction\x12$\n" +
+	"\x04port\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x00R\x04port\x88\x01\x01\x12\x18\n" +
+	"\aservice\x18\x02 \x01(\tR\aserviceB\a\n" +
+	"\x05_port\"\xbe\x04\n" +
+	"\x11GcpCloudRunVolume\x12?\n" +
+	"\x04name\x18\x01 \x01(\tB+\xbaH(\xc8\x01\x01r#\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\x04name\x12r\n" +
+	"\x12cloud_sql_instance\x18\x02 \x01(\v2B.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeCloudSqlH\x00R\x10cloudSqlInstance\x12Z\n" +
+	"\x06secret\x18\x03 \x01(\v2@.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeSecretH\x00R\x06secret\x12a\n" +
+	"\tempty_dir\x18\x04 \x01(\v2B.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeEmptyDirH\x00R\bemptyDir\x12Q\n" +
+	"\x03gcs\x18\x05 \x01(\v2=.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeGcsH\x00R\x03gcs\x12Q\n" +
+	"\x03nfs\x18\x06 \x01(\v2=.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeNfsH\x00R\x03nfsB\x0f\n" +
+	"\x06source\x12\x05\xbaH\x02\b\x01\"\x9f\x01\n" +
+	"\x19GcpCloudRunVolumeCloudSql\x12\x81\x01\n" +
+	"\tinstances\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xdc\x04\x92\xd4a\x1estatus.outputs.connection_nameR\tinstances\"\xc6\x02\n" +
+	"\x17GcpCloudRunVolumeSecret\x12\x89\x01\n" +
+	"\x06secret\x18\x01 \x01(\tBq\xbaH\a\xc8\x01\x01r\x02\x10\x01\xaa\xa6\x1dcSecret Manager secret NAME/identifier only — the secret material itself never appears in the specR\x06secret\x122\n" +
+	"\fdefault_mode\x18\x02 \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xff\x03(\x00H\x00R\vdefaultMode\x88\x01\x01\x12Z\n" +
+	"\x05items\x18\x03 \x03(\v2D.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeSecretItemR\x05itemsB\x0f\n" +
+	"\r_default_mode\"\x91\x01\n" +
+	"\x1bGcpCloudRunVolumeSecretItem\x12\x1e\n" +
+	"\x04path\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04path\x12$\n" +
+	"\aversion\x18\x02 \x01(\tB\n" +
+	"\x92\xa6\x1d\x06latestR\aversion\x12#\n" +
+	"\x04mode\x18\x03 \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xff\x03(\x00H\x00R\x04mode\x88\x01\x01B\a\n" +
+	"\x05_mode\"\x95\x01\n" +
+	"\x19GcpCloudRunVolumeEmptyDir\x120\n" +
+	"\x06medium\x18\x01 \x01(\tB\x18\xbaH\x15\xd8\x01\x01r\x10R\x00R\x06MEMORYR\x04DISKR\x06medium\x12F\n" +
+	"\n" +
+	"size_limit\x18\x02 \x01(\tB'\xbaH$\xd8\x01\x01r\x1f2\x1d^[0-9]+(Ki|Mi|Gi|Ti|K|M|G|T)$R\tsizeLimit\"\xa8\x01\n" +
+	"\x14GcpCloudRunVolumeGcs\x12s\n" +
+	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x1b\n" +
+	"\tread_only\x18\x02 \x01(\bR\breadOnly\"|\n" +
+	"\x14GcpCloudRunVolumeNfs\x12\"\n" +
+	"\x06server\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06server\x12#\n" +
+	"\x04path\x18\x02 \x01(\tB\x0f\xbaH\f\xc8\x01\x01r\a2\x05^/.*$R\x04path\x12\x1b\n" +
+	"\tread_only\x18\x03 \x01(\bR\breadOnly\"h\n" +
+	"\x16GcpCloudRunVolumeMount\x12\x1e\n" +
+	"\x04name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12.\n" +
+	"\n" +
+	"mount_path\x18\x02 \x01(\tB\x0f\xbaH\f\xc8\x01\x01r\a2\x05^/.*$R\tmountPath\"\x8c\x03\n" +
+	"\x1aGcpCloudRunRevisionScaling\x12:\n" +
+	"\x12min_instance_count\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x10minInstanceCount\x88\x01\x01\x12:\n" +
+	"\x12max_instance_count\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x01R\x10maxInstanceCount\x88\x01\x01:\xc7\x01\xbaH\xc3\x01\x1a\xc0\x01\n" +
+	"\x13scaling.min_lte_max\x123min_instance_count cannot exceed max_instance_count\x1at!has(this.min_instance_count) || !has(this.max_instance_count) || this.min_instance_count <= this.max_instance_countB\x15\n" +
+	"\x13_min_instance_countB\x15\n" +
+	"\x13_max_instance_count\"\xcc\x03\n" +
+	"\x19GcpCloudRunServiceScaling\x12@\n" +
+	"\fscaling_mode\x18\x01 \x01(\tB\x1d\xbaH\x1a\xd8\x01\x01r\x15R\x00R\tAUTOMATICR\x06MANUALR\vscalingMode\x12@\n" +
+	"\x15manual_instance_count\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x13manualInstanceCount\x88\x01\x01\x12:\n" +
+	"\x12min_instance_count\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x01R\x10minInstanceCount\x88\x01\x01:\xbd\x01\xbaH\xb9\x01\x1a\xb6\x01\n" +
+	"1service_scaling.manual_count_requires_manual_mode\x12>manual_instance_count only applies when scaling_mode is MANUAL\x1aA!has(this.manual_instance_count) || this.scaling_mode == 'MANUAL'B\x18\n" +
+	"\x16_manual_instance_countB\x15\n" +
+	"\x13_min_instance_count\"\xd0\x04\n" +
+	"\x18GcpCloudRunTrafficTarget\x12l\n" +
+	"\x04type\x18\x01 \x01(\tBX\xbaHU\xc8\x01\x01rPR%TRAFFIC_TARGET_ALLOCATION_TYPE_LATESTR'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISIONR\x04type\x12D\n" +
+	"\brevision\x18\x02 \x01(\tB(\xbaH%\xd8\x01\x01r \x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\brevision\x12(\n" +
+	"\apercent\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00H\x00R\apercent\x88\x01\x01\x12:\n" +
+	"\x03tag\x18\x04 \x01(\tB(\xbaH%\xd8\x01\x01r \x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x03tag:\x8d\x02\xbaH\x89\x02\x1a\x86\x02\n" +
+	"\x1ftraffic.revision_type_coherence\x12>REVISION targets must name a revision; LATEST targets must not\x1a\xa2\x01(this.type == 'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION' && this.revision != '') || (this.type != 'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION' && this.revision == '')B\n" +
+	"\n" +
+	"\b_percent\"\xd8\x04\n" +
+	"\x14GcpCloudRunVpcAccess\x12s\n" +
+	"\tconnector\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd1\x05\x92\xd4a\x18status.outputs.self_linkR\tconnector\x12s\n" +
+	"\x12network_interfaces\x18\x02 \x03(\v2D.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunNetworkInterfaceR\x11networkInterfaces\x12D\n" +
+	"\x06egress\x18\x03 \x01(\tB,\xbaH)\xd8\x01\x01r$R\x00R\vALL_TRAFFICR\x13PRIVATE_RANGES_ONLYR\x06egress:\x8f\x02\xbaH\x8b\x02\x1a\x88\x02\n" +
+	"#vpc_access.connector_xor_interfaces\x12Yuse direct VPC egress (network_interfaces) or a Serverless VPC Access connector, not both\x1a\x85\x01!(((has(this.connector.value) && this.connector.value != '') || has(this.connector.value_from)) && size(this.network_interfaces) > 0)\"\xd1\x02\n" +
+	"\x1bGcpCloudRunNetworkInterface\x12r\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xe2\x04\x92\xd4a\x1bstatus.outputs.network_nameR\anetwork\x12{\n" +
+	"\n" +
+	"subnetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xe3\x04\x92\xd4a\x1estatus.outputs.subnetwork_nameR\n" +
+	"subnetwork\x12A\n" +
+	"\x04tags\x18\x03 \x03(\tB-\xbaH*\xd8\x01\x01\x92\x01$\x18\x01\" r\x1e2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x04tags\"G\n" +
+	"\x17GcpCloudRunNodeSelector\x12,\n" +
+	"\vaccelerator\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vaccelerator\"\xcb\x02\n" +
+	"\x1eGcpCloudRunBinaryAuthorization\x12\x1f\n" +
+	"\vuse_default\x18\x01 \x01(\bR\n" +
+	"useDefault\x12\x1e\n" +
+	"\x06policy\x18\x02 \x01(\tB\x06\xbaH\x03\xd8\x01\x01R\x06policy\x129\n" +
+	"\x18breakglass_justification\x18\x03 \x01(\tR\x17breakglassJustification:\xac\x01\xbaH\xa8\x01\x1a\xa5\x01\n" +
+	"'binary_authorization.default_xor_policy\x12Puse the project default policy (use_default) or name a specific policy, not both\x1a(!(this.use_default && this.policy != '')*\x9d\x01\n" +
 	"\x12GcpCloudRunIngress\x12\x1f\n" +
 	"\x1bINGRESS_TRAFFIC_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13INGRESS_TRAFFIC_ALL\x10\x01\x12!\n" +
@@ -980,49 +2577,82 @@ func file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDescGZIP() []byt
 }
 
 var file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_goTypes = []any{
-	(GcpCloudRunIngress)(0),                     // 0: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunIngress
-	(GcpCloudRunExecutionEnvironment)(0),        // 1: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunExecutionEnvironment
-	(*GcpCloudRunSpec)(nil),                     // 2: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec
-	(*GcpCloudRunContainer)(nil),                // 3: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer
-	(*GcpCloudRunContainerReplicas)(nil),        // 4: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerReplicas
-	(*GcpCloudRunContainerImage)(nil),           // 5: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerImage
-	(*GcpCloudRunContainerEnv)(nil),             // 6: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerEnv
-	(*GcpCloudRunDns)(nil),                      // 7: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunDns
-	(*GcpCloudRunCloudSqlConnection)(nil),       // 8: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlConnection
-	(*GcpCloudRunCloudSqlDirectConnection)(nil), // 9: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlDirectConnection
-	(*GcpCloudRunCloudSqlAuthProxy)(nil),        // 10: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlAuthProxy
-	(*GcpCloudRunVpcAccess)(nil),                // 11: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVpcAccess
-	nil,                                         // 12: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerEnv.VariablesEntry
-	nil,                                         // 13: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerEnv.SecretsEntry
-	(*v1.StringValueOrRef)(nil),                 // 14: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(GcpCloudRunIngress)(0),                // 0: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunIngress
+	(GcpCloudRunExecutionEnvironment)(0),   // 1: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunExecutionEnvironment
+	(*GcpCloudRunSpec)(nil),                // 2: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec
+	(*GcpCloudRunContainer)(nil),           // 3: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer
+	(*GcpCloudRunEnvVar)(nil),              // 4: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunEnvVar
+	(*GcpCloudRunSecretEnvSource)(nil),     // 5: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSecretEnvSource
+	(*GcpCloudRunContainerPort)(nil),       // 6: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerPort
+	(*GcpCloudRunContainerResources)(nil),  // 7: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerResources
+	(*GcpCloudRunProbe)(nil),               // 8: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunProbe
+	(*GcpCloudRunHttpGetAction)(nil),       // 9: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunHttpGetAction
+	(*GcpCloudRunHttpHeader)(nil),          // 10: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunHttpHeader
+	(*GcpCloudRunTcpSocketAction)(nil),     // 11: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunTcpSocketAction
+	(*GcpCloudRunGrpcAction)(nil),          // 12: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunGrpcAction
+	(*GcpCloudRunVolume)(nil),              // 13: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolume
+	(*GcpCloudRunVolumeCloudSql)(nil),      // 14: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeCloudSql
+	(*GcpCloudRunVolumeSecret)(nil),        // 15: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeSecret
+	(*GcpCloudRunVolumeSecretItem)(nil),    // 16: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeSecretItem
+	(*GcpCloudRunVolumeEmptyDir)(nil),      // 17: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeEmptyDir
+	(*GcpCloudRunVolumeGcs)(nil),           // 18: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeGcs
+	(*GcpCloudRunVolumeNfs)(nil),           // 19: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeNfs
+	(*GcpCloudRunVolumeMount)(nil),         // 20: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeMount
+	(*GcpCloudRunRevisionScaling)(nil),     // 21: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunRevisionScaling
+	(*GcpCloudRunServiceScaling)(nil),      // 22: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunServiceScaling
+	(*GcpCloudRunTrafficTarget)(nil),       // 23: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunTrafficTarget
+	(*GcpCloudRunVpcAccess)(nil),           // 24: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVpcAccess
+	(*GcpCloudRunNetworkInterface)(nil),    // 25: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunNetworkInterface
+	(*GcpCloudRunNodeSelector)(nil),        // 26: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunNodeSelector
+	(*GcpCloudRunBinaryAuthorization)(nil), // 27: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunBinaryAuthorization
+	nil,                                    // 28: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),            // 29: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_depIdxs = []int32{
-	14, // 0: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 1: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.container:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer
-	0,  // 2: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.ingress:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunIngress
-	11, // 3: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.vpc_access:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVpcAccess
-	1,  // 4: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.execution_environment:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunExecutionEnvironment
-	7,  // 5: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.dns:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunDns
-	8,  // 6: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.cloud_sql:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlConnection
-	5,  // 7: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer.image:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerImage
-	6,  // 8: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer.env:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerEnv
-	4,  // 9: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer.replicas:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerReplicas
-	12, // 10: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerEnv.variables:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerEnv.VariablesEntry
-	13, // 11: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerEnv.secrets:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerEnv.SecretsEntry
-	14, // 12: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunDns.managed_zone:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 13: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlConnection.connection:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlDirectConnection
-	10, // 14: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlConnection.auth_proxy:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlAuthProxy
-	14, // 15: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlDirectConnection.instances:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 16: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunCloudSqlAuthProxy.instances:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 17: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVpcAccess.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 18: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVpcAccess.subnet:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	29, // 0: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	28, // 1: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.labels:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.LabelsEntry
+	3,  // 2: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.containers:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer
+	13, // 3: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.volumes:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolume
+	29, // 4: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // 5: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.scaling:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunRevisionScaling
+	22, // 6: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.service_scaling:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunServiceScaling
+	1,  // 7: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.execution_environment:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunExecutionEnvironment
+	29, // 8: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.encryption_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 9: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.vpc_access:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVpcAccess
+	26, // 10: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.node_selector:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunNodeSelector
+	0,  // 11: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.ingress:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunIngress
+	23, // 12: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.traffic:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunTrafficTarget
+	27, // 13: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSpec.binary_authorization:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunBinaryAuthorization
+	4,  // 14: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer.env:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunEnvVar
+	6,  // 15: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer.ports:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerPort
+	7,  // 16: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer.resources:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerResources
+	20, // 17: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer.volume_mounts:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeMount
+	8,  // 18: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer.startup_probe:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunProbe
+	8,  // 19: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainer.liveness_probe:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunProbe
+	5,  // 20: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunEnvVar.value_from_secret:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunSecretEnvSource
+	9,  // 21: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunProbe.http_get:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunHttpGetAction
+	11, // 22: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunProbe.tcp_socket:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunTcpSocketAction
+	12, // 23: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunProbe.grpc:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunGrpcAction
+	10, // 24: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunHttpGetAction.http_headers:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunHttpHeader
+	14, // 25: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolume.cloud_sql_instance:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeCloudSql
+	15, // 26: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolume.secret:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeSecret
+	17, // 27: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolume.empty_dir:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeEmptyDir
+	18, // 28: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolume.gcs:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeGcs
+	19, // 29: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolume.nfs:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeNfs
+	29, // 30: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeCloudSql.instances:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 31: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeSecret.items:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeSecretItem
+	29, // 32: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeGcs.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // 33: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVpcAccess.connector:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 34: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVpcAccess.network_interfaces:type_name -> dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunNetworkInterface
+	29, // 35: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunNetworkInterface.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // 36: dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunNetworkInterface.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	37, // [37:37] is the sub-list for method output_type
+	37, // [37:37] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_init() }
@@ -1030,13 +2660,36 @@ func file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_init() {
 	if File_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[6].OneofWrappers = []any{
+		(*GcpCloudRunProbe_HttpGet)(nil),
+		(*GcpCloudRunProbe_TcpSocket)(nil),
+		(*GcpCloudRunProbe_Grpc)(nil),
+	}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[10].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[11].OneofWrappers = []any{
+		(*GcpCloudRunVolume_CloudSqlInstance)(nil),
+		(*GcpCloudRunVolume_Secret)(nil),
+		(*GcpCloudRunVolume_EmptyDir)(nil),
+		(*GcpCloudRunVolume_Gcs)(nil),
+		(*GcpCloudRunVolume_Nfs)(nil),
+	}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[14].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[19].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[20].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_msgTypes[21].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   12,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

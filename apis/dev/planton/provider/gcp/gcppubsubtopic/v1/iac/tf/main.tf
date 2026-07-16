@@ -1,10 +1,33 @@
+# Enable the Pub/Sub API — the control plane that owns the topic.
+# disable_on_destroy is false: tearing down one topic must never disable
+# the API for everything else in the project.
+resource "google_project_service" "pubsub_api" {
+  project = local.project_id
+  service = "pubsub.googleapis.com"
+
+  disable_dependent_services = true
+  disable_on_destroy         = false
+}
+
+# The Pub/Sub topic — the named channel publishers send to. The topic name
+# is ForceNew: renaming replaces the topic (and orphans its subscriptions),
+# so treat names as permanent.
 resource "google_pubsub_topic" "this" {
   name    = local.topic_name
   project = local.project_id
+  labels  = local.final_labels
 
-  kms_key_name               = local.kms_key_name
+  # CMEK: the Pub/Sub service agent must hold
+  # cloudkms.cryptoKeyEncrypterDecrypter on the key or publishes fail.
+  kms_key_name = local.kms_key_name
+
+  # Topic-level retention is independent of subscription retention, and
+  # the lever that lets any subscription seek back within the window.
   message_retention_duration = local.message_retention_duration
 
+  # Region pinning is enforced at publish time; enforce_in_transit
+  # additionally rejects publishes from non-allowed regions instead of
+  # rerouting them.
   dynamic "message_storage_policy" {
     for_each = var.spec.message_storage_policy != null ? [var.spec.message_storage_policy] : []
     content {
@@ -13,6 +36,8 @@ resource "google_pubsub_topic" "this" {
     }
   }
 
+  # Schema validation: the schema arrives resolved to the fully qualified
+  # projects/{project}/schemas/{name} path.
   dynamic "schema_settings" {
     for_each = var.spec.schema_settings != null ? [var.spec.schema_settings] : []
     content {
@@ -61,10 +86,11 @@ resource "google_pubsub_topic" "this" {
       dynamic "cloud_storage" {
         for_each = ingestion_data_source_settings.value.cloud_storage != null ? [ingestion_data_source_settings.value.cloud_storage] : []
         content {
-          bucket                     = cloud_storage.value.bucket.value
+          bucket                     = cloud_storage.value.bucket
           match_glob                 = cloud_storage.value.match_glob != "" ? cloud_storage.value.match_glob : null
           minimum_object_create_time = cloud_storage.value.minimum_object_create_time != "" ? cloud_storage.value.minimum_object_create_time : null
 
+          # Format selection: exactly one should be set (API-enforced).
           dynamic "avro_format" {
             for_each = cloud_storage.value.avro_format ? [1] : []
             content {}
@@ -103,4 +129,22 @@ resource "google_pubsub_topic" "this" {
       }
     }
   }
+
+  # Ordered transform pipeline: transforms run in list order on every
+  # published message; a disabled transform keeps its position (the
+  # staging lever) without being applied.
+  dynamic "message_transforms" {
+    for_each = var.spec.message_transforms
+    content {
+      disabled = message_transforms.value.disabled
+      javascript_udf {
+        function_name = message_transforms.value.javascript_udf.function_name
+        code          = message_transforms.value.javascript_udf.code
+      }
+    }
+  }
+
+  depends_on = [
+    google_project_service.pubsub_api,
+  ]
 }

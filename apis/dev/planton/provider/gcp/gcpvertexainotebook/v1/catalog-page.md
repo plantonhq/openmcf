@@ -7,20 +7,20 @@ Deploys a managed Vertex AI Workbench instance (JupyterLab notebook) on a Comput
 When you deploy a GcpVertexAiNotebook resource, Planton provisions:
 
 - **Workbench Instance** — a `google_workbench_instance` resource configured with the specified machine type, disks, networking, and image
+- **API Enablement** — the Notebooks API (`notebooks.googleapis.com`) and Compute API (`compute.googleapis.com`) are enabled in the target project (never disabled on destroy)
 - **Boot Disk** (optional configuration) — persistent disk for the OS and JupyterLab runtime, with optional CMEK encryption via a KMS key
 - **Data Disk** (optional configuration) — persistent disk for user notebooks and datasets, with optional CMEK encryption
 - **GPU Accelerator** (created only when `acceleratorConfig` is set) — an NVIDIA GPU attached to the VM for ML training workloads
-- **Framework Labels** — Planton resource labels applied automatically to the instance for tracking and governance
+- **Labels** — your `labels` merged beneath the platform's attribution labels, identically on both provisioning engines
 
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** with the Notebooks API enabled (`notebooks.googleapis.com`)
 - **A zone** in a region that supports Workbench instances (most GCP zones)
 - **A VPC network and subnet** if deploying with `disablePublicIp: true` (private networking)
 - **A service account** if specifying a custom VM identity (recommended for production)
 - **A KMS key** if using CMEK encryption for boot or data disks — the key must be in the same region as the instance
-- **GPU quota** in the target zone if using `acceleratorConfig`
+- **GPU quota** in the target zone if using `acceleratorConfig`; a Compute reservation if using `reservationAffinity`
 
 ## Quick Start
 
@@ -57,15 +57,16 @@ This creates a CPU-only Workbench instance with a default deep learning VM image
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project where the instance is created. Can reference a GcpProject resource via `valueFrom`. | Required |
-| `location` | `string` | GCP zone for the instance (e.g., `us-central1-a`). Immutable after creation. | Required. Pattern: `^[a-z]+-[a-z]+[0-9]-[a-z]$` |
+| `location` | `string` | GCP zone for the instance (e.g., `us-central1-a`). Immutable after creation. | Required. Pattern: `^[a-z]+-[a-z]+[0-9]+-[a-z]$` |
 | `machineType` | `string` | Compute Engine machine type (e.g., `e2-standard-4`, `n1-standard-8`). | Required. Min length: 1 |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
+| `projectId` | `StringValueOrRef` | provider default project | GCP project where the instance is created. Can reference a GcpProject resource via `valueFrom`. |
 | `instanceName` | `string` | `metadata.name` | Explicit GCP instance name. Immutable. Must be a valid RFC1035 hostname. |
+| `labels` | `map(string)` | `{}` | User labels for cost attribution and ownership; merged beneath platform labels. Mutable. |
 | `instanceOwners` | `list(string)` | `[]` | Owner email(s). Currently GCP supports one owner. Sets Single User access mode. Immutable. |
 | `desiredState` | `string` | `ACTIVE` | Instance state: `ACTIVE` (running) or `STOPPED` (suspended, no compute charges). |
 | `disableProxyAccess` | `bool` | `false` | If `true`, no JupyterLab proxy URL is generated. Immutable. |
@@ -78,21 +79,28 @@ This creates a CPU-only Workbench instance with a default deep learning VM image
 | `dataDisk.kmsKey` | `StringValueOrRef` | — | KMS key for CMEK encryption. Can reference GcpKmsKey via `valueFrom`. Immutable. |
 | `acceleratorConfig.type` | `string` | — | GPU type: `NVIDIA_TESLA_T4`, `NVIDIA_L4`, `NVIDIA_TESLA_A100`, `NVIDIA_A100_80GB`, etc. |
 | `acceleratorConfig.coreCount` | `int` | — | Number of GPU cores (typically 1, 2, 4, or 8). |
-| `networkInterface.network` | `StringValueOrRef` | default VPC | VPC network. Can reference GcpVpc via `valueFrom`. Immutable. |
+| `networkInterface.network` | `StringValueOrRef` | default VPC | VPC network. Can reference GcpVpcNetwork via `valueFrom`. Immutable. |
 | `networkInterface.subnet` | `StringValueOrRef` | — | Subnet. Can reference GcpSubnetwork via `valueFrom`. Immutable. |
 | `networkInterface.nicType` | `string` | `VIRTIO_NET` | NIC type: `VIRTIO_NET` or `GVNIC`. Immutable. |
+| `networkInterface.externalIp` | `StringValueOrRef` | ephemeral IP | Static external IP for the instance. Can reference a GcpAddress via `valueFrom`. Cannot combine with `disablePublicIp`. Immutable. |
 | `disablePublicIp` | `bool` | `false` | If `true`, no external IP. Instance accessible only via proxy or VPN. Immutable. |
 | `enableIpForwarding` | `bool` | `false` | Enable IP forwarding on the VM. Immutable. |
 | `serviceAccount` | `StringValueOrRef` | compute default SA | Service account email for VM identity. Can reference GcpServiceAccount via `valueFrom`. Immutable. |
 | `tags` | `list(string)` | `[]` | Network tags for firewall rule targeting. Immutable. |
-| `vmImage.project` | `string` | `deeplearning-platform-release` | Image project. |
-| `vmImage.family` | `string` | — | Image family (e.g., `common-cpu-notebooks`, `tf-latest-gpu`). Mutually exclusive with `vmImage.name`. Immutable. |
+| `vmImage.project` | `string` | — | Image project. GCP's Workbench images live in `cloud-notebooks-managed`. Omit the whole `vmImage` block to use the service default (latest Workbench image). |
+| `vmImage.family` | `string` | — | Image family (GCP's maintained family is `workbench-instances`). Mutually exclusive with `vmImage.name`. Immutable. |
 | `vmImage.name` | `string` | — | Specific image name. Mutually exclusive with `vmImage.family`. Immutable. |
 | `containerImage.repository` | `string` | — | Container image repo (e.g., `gcr.io/project/image`). Required if `containerImage` is set. Mutually exclusive with `vmImage`. |
 | `containerImage.tag` | `string` | `latest` | Container image tag. |
 | `shieldedInstanceConfig.enableSecureBoot` | `bool` | `false` | Enable Secure Boot. |
 | `shieldedInstanceConfig.enableVtpm` | `bool` | `true` (GCP default) | Enable Virtual Trusted Platform Module. |
 | `shieldedInstanceConfig.enableIntegrityMonitoring` | `bool` | `true` (GCP default) | Enable integrity monitoring. |
+| `confidentialInstanceConfig.confidentialInstanceType` | `string` | `SEV` | Confidential Computing technology (AMD SEV). Requires an n2d machine type. Immutable. |
+| `reservationAffinity.consumeReservationType` | `string` | `RESERVATION_ANY` | `RESERVATION_ANY`, `RESERVATION_SPECIFIC`, or `RESERVATION_NONE`. Immutable. |
+| `reservationAffinity.key` | `string` | — | Reservation label key (`compute.googleapis.com/reservation-name` for named reservations). Only with `RESERVATION_SPECIFIC`. |
+| `reservationAffinity.values` | `list(string)` | `[]` | Reservation name(s). Only with `RESERVATION_SPECIFIC`. |
+| `enableManagedEuc` | `bool` | `false` | Managed end-user credentials: JupyterLab acts as the signed-in user's identity. Mutable. |
+| `enableThirdPartyIdentity` | `bool` | `false` | Allow access through a third-party identity provider (workforce identity federation). Mutable. |
 
 ## Examples
 
@@ -149,8 +157,8 @@ spec:
     diskType: PD_SSD
     diskSizeGb: 500
   vmImage:
-    project: deeplearning-platform-release
-    family: tf-latest-gpu
+    project: cloud-notebooks-managed
+    family: workbench-instances
 ```
 
 ### Private Encrypted Notebook with Foreign Key References
@@ -178,7 +186,7 @@ spec:
   networkInterface:
     network:
       valueFrom:
-        kind: GcpVpc
+        kind: GcpVpcNetwork
         name: ml-vpc
     subnet:
       valueFrom:
@@ -206,10 +214,15 @@ spec:
     enableSecureBoot: true
     enableVtpm: true
     enableIntegrityMonitoring: true
+  confidentialInstanceConfig:
+    confidentialInstanceType: SEV
+  enableManagedEuc: true
   tags:
     - notebook
     - no-public-ip
 ```
+
+Note: Confidential Computing (SEV) requires an AMD machine type such as `n2d-standard-4`.
 
 ## Stack Outputs
 
@@ -223,11 +236,13 @@ After deployment, the following outputs are available in `status.outputs`:
 | `state` | `string` | Current instance state: `ACTIVE`, `STOPPED`, `INITIALIZING`, `STARTING`, `STOPPING`, etc. |
 | `creator` | `string` | Email address of the entity that created the instance |
 | `create_time` | `string` | RFC3339 timestamp of instance creation |
+| `health_state` | `string` | Instance health: `HEALTHY`, `UNHEALTHY`, `AGENT_NOT_INSTALLED`, `AGENT_NOT_RUNNING` |
+| `update_time` | `string` | RFC3339 timestamp of the most recent instance update |
 
 ## Related Components
 
 - [GcpProject](/docs/catalog/gcp/gcpproject) — project where the notebook is created
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — VPC network for private notebook deployments
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — VPC network for private notebook deployments
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — subnet for VPC-connected notebooks
 - [GcpServiceAccount](/docs/catalog/gcp/gcpserviceaccount) — VM identity for accessing GCP resources
 - [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) — encryption key for CMEK-encrypted disks

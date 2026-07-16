@@ -1,0 +1,4 @@
+name: gcpdataprocautoscalingpolicy-pulumi-project
+runtime:
+  name: go
+description: Planton GcpDataprocAutoscalingPolicy Pulumi module

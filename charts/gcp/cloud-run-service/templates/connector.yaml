@@ -1,0 +1,31 @@
+# The private-egress arm (vpcConnectorEnabled=true): a Serverless VPC
+# Access connector bridging the service into the shared network. Required
+# for the service to reach anything by private IP — the private database
+# socket works without it (Cloud SQL volumes ride Google's connector
+# infrastructure), but direct connections to the cache's PSC endpoint or to
+# internal services need this path.
+#
+# The connector is a small always-on instance fleet: it scales OUT with
+# traffic but never back in, and shrinking the instance band later
+# REPLACES the connector — so the modest 2-instance floor here is also the
+# cost floor while the arm is on.
+{% if values.vpcConnectorEnabled | bool %}
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpServerlessVpcConnector
+metadata:
+  name: "{{ values.service_name }}-connector"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  region: "{{ values.region }}"
+  network:
+    valueFrom:
+      name: "{{ values.network_resource_name }}"
+  # A dedicated /28 the connector instances occupy — must be unused by any
+  # subnet or reserved range in the network.
+  ipCidrRange: "{{ values.connector_cidr }}"
+  machineType: e2-micro
+  minInstances: 2
+  maxInstances: 4
+{% endif %}

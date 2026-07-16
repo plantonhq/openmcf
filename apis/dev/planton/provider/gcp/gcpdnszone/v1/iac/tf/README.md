@@ -1,21 +1,28 @@
-# Terraform Module to Deploy AWS DynamoDB table
+# Terraform Module: GcpDnsZone
 
-```shell
-planton tofu init --manifest hack/manifest.yaml --backend-type s3 \
-  --backend-config="bucket=planton-tf-state-backend" \
-  --backend-config="dynamodb_table=planton-tf-state-backend-lock" \
-  --backend-config="region=ap-south-2" \
-  --backend-config="key=planton/gcp-stacks/test-gcp-dns-zone.tfstate"
-```
+Provisions `google_dns_managed_zone` plus `google_project_service` for `dns.googleapis.com`.
 
-```shell
-planton tofu plan --manifest hack/manifest.yaml
-```
+## Resources
 
-```shell
-planton tofu apply --manifest hack/manifest.yaml --auto-approve
-```
+| Resource | Purpose |
+|----------|---------|
+| `google_project_service.dns_api` | Enables Cloud DNS API |
+| `google_dns_managed_zone.managed_zone` | The managed zone |
 
-```shell
-planton tofu destroy --manifest hack/manifest.yaml --auto-approve
-```
+## Inputs
+
+See `variables.tf`. Key spec fields map 1:1 to the protobuf spec.
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `zone_id` | Managed zone ID |
+| `zone_name` | Zone name for GcpDnsRecord FK |
+| `nameservers` | Delegation NS set |
+
+## Notes
+
+- Provider pin: `~> 6.0`
+- `dns_name` defaults to `${metadata.name}.` when spec.dns_name is empty
+- No `google_dns_record_set` or `google_project_iam_binding` in this module

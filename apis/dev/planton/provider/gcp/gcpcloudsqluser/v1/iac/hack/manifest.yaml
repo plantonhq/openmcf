@@ -1,0 +1,16 @@
+# Exercises the user surface offline: a BUILT_IN app user with a hardening
+# policy, referencing its instance by literal name.
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSqlUser
+metadata:
+  name: hack-orders-app
+spec:
+  # project_id omitted — falls back to the provider's default project.
+  instance:
+    value: hack-postgres
+  userName: orders-app
+  password: HackAppPassword123!  # replace before applying anywhere real
+  type: BUILT_IN
+  passwordPolicy:
+    allowedFailedAttempts: 5
+    enableFailedAttemptsCheck: true

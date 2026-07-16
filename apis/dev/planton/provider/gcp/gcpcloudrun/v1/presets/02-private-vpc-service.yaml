@@ -1,0 +1,70 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudRun
+metadata:
+  name: private-backend
+spec:
+  region: us-central1
+  serviceAccount:
+    valueFrom:
+      kind: GcpServiceAccount
+      name: backend-runtime # replace with your GcpServiceAccount resource name
+      fieldPath: status.outputs.email
+  containers:
+    - image: us-docker.pkg.dev/my-project/my-repo/backend:1.0.0 # replace with your image
+      env:
+        - name: LOG_LEVEL
+          value: info
+        # Credentials stay in Secret Manager; the runtime identity needs
+        # roles/secretmanager.secretAccessor on the secret.
+        - name: DATABASE_PASSWORD
+          valueFromSecret:
+            secret: backend-db-password # replace with your Secret Manager secret name
+            version: latest
+      ports:
+        containerPort: 8080
+      resources:
+        cpu: "1"
+        memory: 1Gi
+      volumeMounts:
+        # Cloud SQL volumes must mount at /cloudsql; the app connects via
+        # the Unix socket /cloudsql/<project:region:instance>.
+        - name: cloudsql
+          mountPath: /cloudsql
+      startupProbe:
+        periodSeconds: 5
+        httpGet:
+          path: /healthz
+      livenessProbe:
+        httpGet:
+          path: /livez
+  volumes:
+    - name: cloudsql
+      cloudSqlInstance:
+        instances:
+          - valueFrom:
+              kind: GcpCloudSql
+              name: backend-db # replace with your GcpCloudSql resource name
+              fieldPath: status.outputs.connection_name
+  scaling:
+    minInstanceCount: 1 # one warm instance — no cold starts on the hot path
+    maxInstanceCount: 50
+  # Direct VPC egress: instances get IPs in the subnetwork and reach VPC
+  # resources (private Cloud SQL, Redis, internal services) with no
+  # connector infrastructure.
+  vpcAccess:
+    networkInterfaces:
+      - network:
+          valueFrom:
+            kind: GcpVpcNetwork
+            name: my-vpc # replace with your GcpVpcNetwork resource name
+            fieldPath: status.outputs.network_name
+        subnetwork:
+          valueFrom:
+            kind: GcpSubnetwork
+            name: my-subnet # replace with your GcpSubnetwork resource name
+            fieldPath: status.outputs.subnetwork_name
+    egress: PRIVATE_RANGES_ONLY
+  # Only internal traffic and Cloud Load Balancing reach this service; the
+  # run.app URL stops accepting public requests.
+  ingress: INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER
+  executionEnvironment: EXECUTION_ENVIRONMENT_GEN2

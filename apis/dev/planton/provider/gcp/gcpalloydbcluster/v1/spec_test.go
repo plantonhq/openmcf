@@ -9,6 +9,7 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestSuite(t *testing.T) {
@@ -53,6 +54,16 @@ var _ = ginkgo.Describe("GcpAlloydbClusterSpec", func() {
 		}
 	}
 
+	// Helper for PSC-only connectivity (no PSA network).
+	pscOnly := func() *GcpAlloydbCluster {
+		msg := minimal()
+		msg.Spec.Network = nil
+		msg.Spec.PscConfig = &GcpAlloydbClusterPscConfig{
+			PscEnabled: true,
+		}
+		return msg
+	}
+
 	// Helper for StringValueOrRef with a literal value.
 	svr := func(v string) *foreignkeyv1.StringValueOrRef {
 		return &foreignkeyv1.StringValueOrRef{
@@ -66,6 +77,43 @@ var _ = ginkgo.Describe("GcpAlloydbClusterSpec", func() {
 		msg := minimal()
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept PSA connectivity with network only", func() {
+		msg := minimal()
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept PSC connectivity with psc_config only", func() {
+		msg := pscOnly()
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept valid cluster_type values", func() {
+		for _, clusterType := range []string{"PRIMARY", "SECONDARY"} {
+			msg := minimal()
+			msg.Spec.ClusterType = proto.String(clusterType)
+			if clusterType == "SECONDARY" {
+				msg.Spec.Network = nil
+				msg.Spec.PscConfig = &GcpAlloydbClusterPscConfig{PscEnabled: true}
+				msg.Spec.SecondaryConfig = &GcpAlloydbClusterSecondaryConfig{
+					PrimaryClusterName: "projects/p/locations/us-central1/clusters/primary",
+				}
+			}
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "cluster_type: %s", clusterType)
+		}
+	})
+
+	ginkgo.It("should accept valid subscription_type values", func() {
+		for _, subscriptionType := range []string{"TRIAL", "STANDARD"} {
+			msg := minimal()
+			msg.Spec.SubscriptionType = subscriptionType
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "subscription_type: %s", subscriptionType)
+		}
 	})
 
 	ginkgo.It("should accept a cluster with database_version set", func() {
@@ -270,7 +318,6 @@ var _ = ginkgo.Describe("GcpAlloydbClusterSpec", func() {
 		msg.Spec.DatabaseVersion = "POSTGRES_16"
 		msg.Spec.DisplayName = "Production AlloyDB"
 		msg.Spec.AllocatedIpRange = "my-ip-range"
-		msg.Spec.DeletionProtection = true
 		msg.Spec.KmsKeyName = svr("projects/p/locations/l/keyRings/kr/cryptoKeys/k")
 		msg.Spec.InitialUser = &GcpAlloydbClusterInitialUser{
 			Password: "securepassword123",
@@ -332,11 +379,11 @@ var _ = ginkgo.Describe("GcpAlloydbClusterSpec", func() {
 
 	// ──────────────── Negative Cases ────────────────
 
-	ginkgo.It("should reject missing project_id", func() {
+	ginkgo.It("should accept missing project_id for ambient project contract", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject missing cluster_name", func() {
@@ -381,11 +428,46 @@ var _ = ginkgo.Describe("GcpAlloydbClusterSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject missing network", func() {
+	ginkgo.It("should reject missing connectivity (neither network nor psc)", func() {
 		msg := minimal()
 		msg.Spec.Network = nil
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("set network for Private Service Access OR enable psc_config.psc_enabled"))
+	})
+
+	ginkgo.It("should reject both network and psc_config", func() {
+		msg := minimal()
+		msg.Spec.PscConfig = &GcpAlloydbClusterPscConfig{
+			PscEnabled: true,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("set network for Private Service Access OR enable psc_config.psc_enabled"))
+	})
+
+	ginkgo.It("should reject SECONDARY cluster_type without secondary_config", func() {
+		msg := pscOnly()
+		msg.Spec.ClusterType = proto.String("SECONDARY")
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("cluster_type SECONDARY requires secondary_config.primary_cluster_name"))
+	})
+
+	ginkgo.It("should reject invalid cluster_type", func() {
+		msg := minimal()
+		msg.Spec.ClusterType = proto.String("REPLICA")
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("cluster_type"))
+	})
+
+	ginkgo.It("should reject invalid subscription_type", func() {
+		msg := minimal()
+		msg.Spec.SubscriptionType = "PREMIUM"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("subscription_type"))
 	})
 
 	ginkgo.It("should reject missing primary_instance", func() {

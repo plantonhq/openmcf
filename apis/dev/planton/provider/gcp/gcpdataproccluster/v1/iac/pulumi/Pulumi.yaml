@@ -1,6 +1,4 @@
-name: gcp-dataproc-cluster
+name: gcpdataproccluster-pulumi-project
 runtime:
   name: go
-  options:
-    binary: ./pulumi
 description: Planton GcpDataprocCluster Pulumi module

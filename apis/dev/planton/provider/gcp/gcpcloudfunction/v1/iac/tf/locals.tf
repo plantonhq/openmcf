@@ -1,135 +1,58 @@
 locals {
-  # Derive function name: use spec.function_name if provided, otherwise metadata.name
-  function_name = coalesce(
-    var.spec.function_name,
-    var.metadata.name
-  )
+  # Honor the spec contract: an empty project_id falls back to the provider's
+  # default project. Passing null (instead of "") lets the google provider
+  # resolve its own project from configuration or the GOOGLE_PROJECT /
+  # GOOGLE_CLOUD_PROJECT environment chain.
+  project_id = var.spec.project_id != "" ? var.spec.project_id : null
 
-  # Derive stable resource ID for labels
-  resource_id = coalesce(
-    var.metadata.id,
-    var.metadata.name
-  )
+  # Function name defaults to metadata.name.
+  function_name = var.spec.function_name != "" ? var.spec.function_name : var.metadata.name
 
-  # Base GCP labels
-  base_gcp_labels = {
-    "resource"      = "true"
-    "resource_kind" = "gcp-cloud-function"
-    "resource_name" = var.metadata.name
-    "resource_id"   = local.resource_id
+  # Platform attribution labels. User labels merge BENEATH them so the
+  # platform's keys always win — the same order the Pulumi module applies.
+  base_labels = {
+    "planton-ai_resource" = "true"
+    "planton-ai_name"     = local.function_name
+    "planton-ai_kind"     = "gcpcloudfunction"
   }
 
-  # Organization label (only if non-empty)
   org_label = (
     var.metadata.org != null && var.metadata.org != ""
-    ? { "organization" = var.metadata.org }
-    : {}
-  )
+  ) ? { "planton-ai_organization" = var.metadata.org } : {}
 
-  # Environment label (only if non-empty)
   env_label = (
     var.metadata.env != null && var.metadata.env != ""
-    ? { "environment" = var.metadata.env }
-    : {}
-  )
+  ) ? { "planton-ai_environment" = var.metadata.env } : {}
 
-  # User-provided labels from metadata (only if non-null)
-  user_labels = var.metadata.labels != null ? var.metadata.labels : {}
+  id_label = (
+    var.metadata.id != null && var.metadata.id != ""
+  ) ? { "planton-ai_id" = var.metadata.id } : {}
 
-  # Merge all labels
-  final_gcp_labels = merge(
-    local.base_gcp_labels,
+  final_labels = merge(
+    var.spec.labels,
+    local.base_labels,
     local.org_label,
     local.env_label,
-    local.user_labels
+    local.id_label,
   )
 
-  # Determine if trigger is HTTP or Event-driven
-  # Default to HTTP (0) if not specified
-  is_http_trigger = (
-    var.spec.trigger == null
-    || var.spec.trigger.trigger_type == null
-    || var.spec.trigger.trigger_type == 0
-  )
+  # Enum fields arrive from the converter as enum-name strings; empty means
+  # "not set" and defers to the API default.
+  is_http_trigger = var.spec.trigger == null || var.spec.trigger.trigger_type == "" || var.spec.trigger.trigger_type == "HTTP"
 
-  # Service config with defaults
-  service_config = var.spec.service_config != null ? var.spec.service_config : {}
+  service_config = var.spec.service_config
 
-  # Memory: default 256MB if not specified
-  available_memory_mb = coalesce(
-    try(local.service_config.available_memory_mb, null),
-    256
-  )
+  # The Gen 2 API takes memory as a quantity string ("256M", "1Gi"); the
+  # spec carries it verbatim. Empty defers to the API default (256M).
+  available_memory = try(local.service_config.available_memory, "") != "" ? local.service_config.available_memory : null
+  available_cpu    = try(local.service_config.available_cpu, "") != "" ? local.service_config.available_cpu : null
 
-  # Timeout: default 60 seconds if not specified
-  timeout_seconds = coalesce(
-    try(local.service_config.timeout_seconds, null),
-    60
-  )
+  vpc_connector = try(local.service_config.vpc_connector, "") != "" ? local.service_config.vpc_connector : null
+  # Egress settings only make sense with a connector attached; sending them
+  # without one is an API error.
+  vpc_egress = local.vpc_connector != null && try(local.service_config.vpc_connector_egress_settings, "") != "" ? local.service_config.vpc_connector_egress_settings : null
 
-  # Concurrency: default 80 if not specified
-  max_instance_request_concurrency = coalesce(
-    try(local.service_config.max_instance_request_concurrency, null),
-    80
-  )
+  ingress_settings = try(local.service_config.ingress_settings, "") != "" ? local.service_config.ingress_settings : null
 
-  # Ingress settings: default to ALLOW_ALL
-  ingress_settings_map = {
-    0 = "ALLOW_ALL"
-    1 = "ALLOW_INTERNAL_ONLY"
-    2 = "ALLOW_INTERNAL_AND_GCLB"
-  }
-
-  ingress_settings = try(
-    local.ingress_settings_map[local.service_config.ingress_settings],
-    "ALLOW_ALL"
-  )
-
-  # VPC egress settings: default to PRIVATE_RANGES_ONLY
-  vpc_egress_settings_map = {
-    0 = "PRIVATE_RANGES_ONLY"
-    1 = "ALL_TRAFFIC"
-  }
-
-  vpc_egress_settings = try(
-    local.vpc_egress_settings_map[local.service_config.vpc_connector_egress_settings],
-    "PRIVATE_RANGES_ONLY"
-  )
-
-  # Scaling config
-  min_instance_count = try(
-    local.service_config.scaling.min_instance_count,
-    0
-  )
-
-  max_instance_count = try(
-    local.service_config.scaling.max_instance_count,
-    100
-  )
-
-  # Secret environment variables formatted for Terraform
-  # Converts map to list of objects with key, project_id, secret, version
-  secret_environment_variables = try(
-    [
-      for key, secret_name in local.service_config.secret_environment_variables : {
-        key        = key
-        project_id = var.spec.project_id
-        secret     = secret_name
-        version    = "latest"
-      }
-    ],
-    []
-  )
-
-  # Retry policy mapping
-  retry_policy_map = {
-    0 = "RETRY_POLICY_DO_NOT_RETRY"
-    1 = "RETRY_POLICY_RETRY"
-  }
-
-  event_retry_policy = try(
-    local.retry_policy_map[var.spec.trigger.event_trigger.retry_policy],
-    "RETRY_POLICY_DO_NOT_RETRY"
-  )
+  build_update_policy = var.spec.build_config.update_policy
 }
-

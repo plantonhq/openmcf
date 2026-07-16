@@ -3,15 +3,17 @@ kind: GcpProject
 metadata:
   name: my-dev-project
 spec:
-  projectId: <your-project-id>
-  addSuffix: true  # appends random suffix to avoid ID collisions across dev environments
+  # Realistic sample values for pattern-validated fields (projectId,
+  # parentId, billingAccountId) — replace with your own. Project IDs are
+  # globally unique and reserved ~30 days after deletion, so bake the
+  # uniqueness into the ID itself (e.g. a team or ticket suffix).
+  projectId: acme-dev-payments-01
   parentType: folder
-  parentId: "<your-folder-id>"
-  billingAccountId: "<AAAAAA-BBBBBB-CCCCCC>"
+  parentId: "123456789012"
+  billingAccountId: 0123AB-4567CD-89EFGH
   labels:
     environment: development
     managed-by: planton
-  disableDefaultNetwork: true  # default from spec
   enabledApis:
     - compute.googleapis.com
     - container.googleapis.com

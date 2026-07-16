@@ -110,6 +110,23 @@ Search codebase for references to the component:
 - Component enum value references
 - Component in documentation
 
+**Inbound-link sweep (mandatory — links INTO the component, not just its own
+files):** deleting the component's folder and site-catalog directory removes
+its pages, but every OTHER page that links to those pages becomes a dead
+link. Grep for the kind name AND its catalog slugs (both the apis-side
+`/docs/catalog/<provider>/<kind>` form and the site-side directory-name
+form) across:
+- `site/public/docs/catalog/**` — sibling kinds' index pages, provider
+  index lists, and preset pages routinely cross-link retired kinds
+- sibling kinds' `presets/*.md`, `catalog-page.md`, `README.md`, and
+  `docs/README.md` under `apis/` — prose like "pair this with X" outlives X
+- `charts/**` templates and READMEs
+
+Fix each hit: remove the dead link, or repoint the prose to the replacing
+component(s). Prose that names the cloud provider's own product/feature
+(which still exists) is fine — only pointers to the retired Planton kind
+are defects.
+
 **If references found:**
 ```
 ⚠️  Warning: MongodbAtlas is referenced in other files

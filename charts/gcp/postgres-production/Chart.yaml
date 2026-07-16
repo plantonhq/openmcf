@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: GCP Postgres Production
+spec:
+  selector:
+    kind: platform
+  description: The Cloud SQL Postgres a production checklist actually asks for — regional high availability with automatic failover, private IP only inside your existing VPC, daily backups with point-in-time recovery, Query Insights, and passwordless application access where the database user IS a service account authenticated through IAM. Optional arms add a read replica for scale-out or cross-region DR. No public address, no password, and three deliberate locks between your data and an accidental destroy.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/gcp/gcpcloudsql/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/gcp/postgres-production
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/gcp/postgres-production/README.md

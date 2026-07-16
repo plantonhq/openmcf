@@ -23,7 +23,8 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// GcpProjectParentType defines the type of parent resource under which
+// GcpProjectParentType selects the resource-hierarchy node a project is
+// created under.
 type GcpProjectParentType int32
 
 const (
@@ -73,58 +74,66 @@ func (GcpProjectParentType) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_gcp_gcpproject_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-// GcpProjectSpec captures the minimal configuration required to create
-// a Google Cloud project, attach it to your resource hierarchy, link a
-// billing account, apply standard labels, (optionally) remove the default
-// network, and pre-enable a set of Google Cloud APIs.
+// GcpProjectSpec creates one Google Cloud project — the Layer-0 container
+// every other GCP resource lives in. It attaches the project to the
+// resource hierarchy (organization or folder), links a billing account,
+// applies labels and resource-manager tags, controls the default-network
+// behavior, pre-enables Cloud APIs, and sets the deletion policy.
 //
-// This definition intentionally limits itself to the 80-20 use-case surface.
-// Advanced concerns—shared-VPC attachment, complex IAM matrices, org-policy
-// constraints, etc.—should be handled by dedicated resources.
+// IAM grants on the project are deliberately NOT bundled here — model them
+// as first-class GcpProjectIamMember resources, one additive grant each.
 type GcpProjectSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Unique project ID for the GCP project. Must be 6-30 characters long,
 	// contain only lowercase letters, digits, and hyphens, must start with
-	// a letter, and cannot end with a hyphen. This ID is globally unique
-	// across all GCP projects.
+	// a letter, and cannot end with a hyphen. Globally unique across all of
+	// GCP and IMMUTABLE — deleted project IDs stay reserved for up to 30
+	// days, so they cannot be reused quickly.
 	ProjectId string `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	// If true, a random 3-character suffix will be appended to the project_id
-	// to ensure uniqueness across multiple deployments. This is useful when
-	// creating temporary or test projects. Defaults to false.
-	AddSuffix *bool `protobuf:"varint,2,opt,name=add_suffix,json=addSuffix,proto3,oneof" json:"add_suffix,omitempty"`
-	// The type of parent resource under which the project is created.
+	// Human-readable display name shown in the console (4-30 characters).
+	// Mutable, unlike project_id. If not specified, defaults to
+	// metadata.name.
+	DisplayName string `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	// The type of parent node the project is created under. Changing the
+	// parent migrates the project within the hierarchy.
 	ParentType GcpProjectParentType `protobuf:"varint,3,opt,name=parent_type,json=parentType,proto3,enum=dev.planton.provider.gcp.gcpproject.v1.GcpProjectParentType" json:"parent_type,omitempty"`
-	// Organization ID/Folder ID (numeric string) under which the project is created.
+	// Organization ID or Folder ID (numeric string) matching parent_type.
 	ParentId string `protobuf:"bytes,4,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
 	// Billing account ID in the form "0123AB-4567CD-89EFGH".
 	// Strongly recommended for any project that will use billable services.
+	// The deploying identity needs roles/billing.user on the account.
 	BillingAccountId string `protobuf:"bytes,5,opt,name=billing_account_id,json=billingAccountId,proto3" json:"billing_account_id,omitempty"`
-	// Key/value metadata labels for cost allocation and governance.
-	// GCP label keys must be <= 63 chars, lowercase letters, digits, or underscores.
+	// User labels merged onto the project beneath the platform's attribution
+	// labels (platform keys win on conflicts). Project labels are the
+	// primary cost-allocation dimension in billing exports.
+	// Keys/values: lowercase letters, digits, underscores, hyphens.
 	Labels map[string]string `protobuf:"bytes,6,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// If true, the auto-created "default" VPC network is deleted immediately
-	// after project creation. Disabling the default network is a common
-	// security hardening step.
-	DisableDefaultNetwork *bool `protobuf:"varint,7,opt,name=disable_default_network,json=disableDefaultNetwork,proto3,oneof" json:"disable_default_network,omitempty"`
-	// List of Cloud APIs to enable (e.g. "compute.googleapis.com").
-	// Each entry must end with ".googleapis.com".
-	EnabledApis []string `protobuf:"bytes,8,rep,name=enabled_apis,json=enabledApis,proto3" json:"enabled_apis,omitempty"`
-	// Optional IAM member (user / group / serviceAccount) to be granted
-	// the Owner role at project creation.
-	// Examples:
+	// Resource Manager tags bound to the project at CREATE TIME only
+	// (tagKeys/{id} -> tagValues/{id}). Tags drive org policies and IAM
+	// conditions. Changing this after creation recreates the project — for
+	// tags on an existing project, bind tag values out-of-band instead.
+	Tags map[string]string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Whether GCP auto-creates the "default" VPC network in the new project.
+	// Defaults to false: deleting the auto-created network is a standard
+	// security-hardening step, and explicit GcpVpcNetwork resources are the
+	// composable path. Note the project still needs one network slot of
+	// quota available even when false (the network exists momentarily).
+	AutoCreateNetwork *bool `protobuf:"varint,8,opt,name=auto_create_network,json=autoCreateNetwork,proto3,oneof" json:"auto_create_network,omitempty"`
+	// List of Cloud APIs to enable at project creation
+	// (e.g. "compute.googleapis.com"). Individual component kinds also
+	// enable the APIs they need, so this is a convenience for pre-warming a
+	// known set. Each entry must end with ".googleapis.com".
+	EnabledApis []string `protobuf:"bytes,9,rep,name=enabled_apis,json=enabledApis,proto3" json:"enabled_apis,omitempty"`
+	// What destroying this resource does to the project:
 	//
-	//	"group:devops-admins@example.com"
-	//	"user:alice@example.com"
-	//	"serviceAccount:ci-automation@example.iam.gserviceaccount.com"
-	OwnerMember string `protobuf:"bytes,9,opt,name=owner_member,json=ownerMember,proto3" json:"owner_member,omitempty"`
-	// If true, enables deletion protection on the GCP project.
-	// When enabled, the project cannot be deleted until this flag is set to false.
-	// This is a GCP-native feature (not a Pulumi/Terraform lifecycle option)
-	// that provides an additional layer of protection against accidental deletion.
-	// Defaults to false.
-	DeleteProtection *bool `protobuf:"varint,10,opt,name=delete_protection,json=deleteProtection,proto3,oneof" json:"delete_protection,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	//	DELETE (default): the project is shut down (30-day pending-deletion
+	//	  window during which it can be restored).
+	//	PREVENT: destroy fails — protection for shared foundation projects.
+	//	ABANDON: the resource is removed from state and the project lives
+	//	  on unmanaged — the safe hand-off when ownership moves elsewhere.
+	DeletionPolicy string `protobuf:"bytes,10,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpProjectSpec) Reset() {
@@ -164,11 +173,11 @@ func (x *GcpProjectSpec) GetProjectId() string {
 	return ""
 }
 
-func (x *GcpProjectSpec) GetAddSuffix() bool {
-	if x != nil && x.AddSuffix != nil {
-		return *x.AddSuffix
+func (x *GcpProjectSpec) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
 	}
-	return false
+	return ""
 }
 
 func (x *GcpProjectSpec) GetParentType() GcpProjectParentType {
@@ -199,9 +208,16 @@ func (x *GcpProjectSpec) GetLabels() map[string]string {
 	return nil
 }
 
-func (x *GcpProjectSpec) GetDisableDefaultNetwork() bool {
-	if x != nil && x.DisableDefaultNetwork != nil {
-		return *x.DisableDefaultNetwork
+func (x *GcpProjectSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *GcpProjectSpec) GetAutoCreateNetwork() bool {
+	if x != nil && x.AutoCreateNetwork != nil {
+		return *x.AutoCreateNetwork
 	}
 	return false
 }
@@ -213,47 +229,41 @@ func (x *GcpProjectSpec) GetEnabledApis() []string {
 	return nil
 }
 
-func (x *GcpProjectSpec) GetOwnerMember() string {
+func (x *GcpProjectSpec) GetDeletionPolicy() string {
 	if x != nil {
-		return x.OwnerMember
+		return x.DeletionPolicy
 	}
 	return ""
-}
-
-func (x *GcpProjectSpec) GetDeleteProtection() bool {
-	if x != nil && x.DeleteProtection != nil {
-		return *x.DeleteProtection
-	}
-	return false
 }
 
 var File_dev_planton_provider_gcp_gcpproject_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpproject_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1dev/planton/provider/gcp/gcpproject/v1/spec.proto\x12&dev.planton.provider.gcp.gcpproject.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xb7\x06\n" +
+	"1dev/planton/provider/gcp/gcpproject/v1/spec.proto\x12&dev.planton.provider.gcp.gcpproject.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xd4\b\n" +
 	"\x0eGcpProjectSpec\x12F\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\tB'\xbaH$\xc8\x01\x01r\x1f\x10\x06\x18\x1e2\x19^[a-z][a-z0-9-]*[a-z0-9]$R\tprojectId\x12-\n" +
-	"\n" +
-	"add_suffix\x18\x02 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\taddSuffix\x88\x01\x01\x12]\n" +
+	"project_id\x18\x01 \x01(\tB'\xbaH$\xc8\x01\x01r\x1f\x10\x06\x18\x1e2\x19^[a-z][a-z0-9-]*[a-z0-9]$R\tprojectId\x12!\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12]\n" +
 	"\vparent_type\x18\x03 \x01(\x0e2<.dev.planton.provider.gcp.gcpproject.v1.GcpProjectParentTypeR\n" +
-	"parentType\x12\x1b\n" +
-	"\tparent_id\x18\x04 \x01(\tR\bparentId\x12Z\n" +
-	"\x12billing_account_id\x18\x05 \x01(\tB,\xbaH)r'2%^[A-Z0-9]{6}-[A-Z0-9]{6}-[A-Z0-9]{6}$R\x10billingAccountId\x12Z\n" +
-	"\x06labels\x18\x06 \x03(\v2B.dev.planton.provider.gcp.gcpproject.v1.GcpProjectSpec.LabelsEntryR\x06labels\x12E\n" +
-	"\x17disable_default_network\x18\a \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x15disableDefaultNetwork\x88\x01\x01\x12K\n" +
-	"\fenabled_apis\x18\b \x03(\tB(\xbaH%\x92\x01\"\" r\x1e2\x1c^[a-z0-9]+\\.googleapis\\.com$R\venabledApis\x12-\n" +
-	"\fowner_member\x18\t \x01(\tB\n" +
-	"\xbaH\a\xd8\x01\x01r\x02`\x01R\vownerMember\x12;\n" +
-	"\x11delete_protection\x18\n" +
-	" \x01(\bB\t\x8a\xa6\x1d\x05falseH\x02R\x10deleteProtection\x88\x01\x01\x1a9\n" +
+	"parentType\x12\x94\x01\n" +
+	"\tparent_id\x18\x04 \x01(\tBw\xbaHt\xba\x01q\n" +
+	"\x11parent_id.numeric\x124parent_id must be the numeric organization/folder ID\x1a&this == '' || this.matches('^[0-9]+$')R\bparentId\x12]\n" +
+	"\x12billing_account_id\x18\x05 \x01(\tB/\xbaH,\xd8\x01\x01r'2%^[A-Z0-9]{6}-[A-Z0-9]{6}-[A-Z0-9]{6}$R\x10billingAccountId\x12Z\n" +
+	"\x06labels\x18\x06 \x03(\v2B.dev.planton.provider.gcp.gcpproject.v1.GcpProjectSpec.LabelsEntryR\x06labels\x12T\n" +
+	"\x04tags\x18\a \x03(\v2@.dev.planton.provider.gcp.gcpproject.v1.GcpProjectSpec.TagsEntryR\x04tags\x12>\n" +
+	"\x13auto_create_network\x18\b \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x11autoCreateNetwork\x88\x01\x01\x12K\n" +
+	"\fenabled_apis\x18\t \x03(\tB(\xbaH%\x92\x01\"\" r\x1e2\x1c^[a-z0-9]+\\.googleapis\\.com$R\venabledApis\x12\xb6\x01\n" +
+	"\x0fdeletion_policy\x18\n" +
+	" \x01(\tB\x8c\x01\xbaH\x88\x01\xba\x01\x84\x01\n" +
+	"\x15deletion_policy.valid\x123deletion_policy must be DELETE, PREVENT, or ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\r\n" +
-	"\v_add_suffixB\x1a\n" +
-	"\x18_disable_default_networkB\x14\n" +
-	"\x12_delete_protection*]\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x16\n" +
+	"\x14_auto_create_network*]\n" +
 	"\x14GcpProjectParentType\x12'\n" +
 	"#gcp_project_parent_type_unspecified\x10\x00\x12\x10\n" +
 	"\forganization\x10\x01\x12\n" +
@@ -274,20 +284,22 @@ func file_dev_planton_provider_gcp_gcpproject_v1_spec_proto_rawDescGZIP() []byte
 }
 
 var file_dev_planton_provider_gcp_gcpproject_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_gcp_gcpproject_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_gcp_gcpproject_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_gcp_gcpproject_v1_spec_proto_goTypes = []any{
 	(GcpProjectParentType)(0), // 0: dev.planton.provider.gcp.gcpproject.v1.GcpProjectParentType
 	(*GcpProjectSpec)(nil),    // 1: dev.planton.provider.gcp.gcpproject.v1.GcpProjectSpec
 	nil,                       // 2: dev.planton.provider.gcp.gcpproject.v1.GcpProjectSpec.LabelsEntry
+	nil,                       // 3: dev.planton.provider.gcp.gcpproject.v1.GcpProjectSpec.TagsEntry
 }
 var file_dev_planton_provider_gcp_gcpproject_v1_spec_proto_depIdxs = []int32{
 	0, // 0: dev.planton.provider.gcp.gcpproject.v1.GcpProjectSpec.parent_type:type_name -> dev.planton.provider.gcp.gcpproject.v1.GcpProjectParentType
 	2, // 1: dev.planton.provider.gcp.gcpproject.v1.GcpProjectSpec.labels:type_name -> dev.planton.provider.gcp.gcpproject.v1.GcpProjectSpec.LabelsEntry
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: dev.planton.provider.gcp.gcpproject.v1.GcpProjectSpec.tags:type_name -> dev.planton.provider.gcp.gcpproject.v1.GcpProjectSpec.TagsEntry
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpproject_v1_spec_proto_init() }
@@ -302,7 +314,7 @@ func file_dev_planton_provider_gcp_gcpproject_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpproject_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpproject_v1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

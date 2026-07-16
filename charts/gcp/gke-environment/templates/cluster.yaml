@@ -1,0 +1,93 @@
+# The cluster. Regional (three control-plane replicas), private nodes,
+# Workload Identity, Dataplane V2 — the posture decisions made once, here,
+# instead of rediscovered per team:
+#
+#   - Private nodes: nothing on this cluster is reachable from the internet
+#     by construction; ingress is a deliberate act (a load balancer or
+#     Gateway), never a side effect of scheduling a pod.
+#   - Workload Identity (the kind's default, kept): pods authenticate to
+#     GCP APIs as IAM service accounts through the cluster's identity pool
+#     — no exported keys, no node-scope inheritance.
+#   - Dataplane V2 (eBPF): NetworkPolicy enforced natively, no Calico
+#     addon, and the dataplane GKE builds its newest networking features on.
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpGkeCluster
+metadata:
+  name: "{{ values.cluster_name }}"
+{% if values.natEnabled | bool %}
+  # No spec field consumes a NAT output, but private nodes need egress the
+  # moment they boot (image pulls beyond Google's registries) — an explicit
+  # relationship gives the dependency graph the edge the data flow doesn't.
+  relationships:
+    - kind: GcpRouterNat
+      name: "{{ values.cluster_name }}-nat"
+      type: depends_on
+{% endif %}
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  clusterName: "{{ values.cluster_name }}"
+  # A region here means REGIONAL: control-plane replicas across three
+  # zones, and node zones defaulting to all zones in the region.
+  location: "{{ values.region }}"
+  network:
+    valueFrom:
+      name: "{{ values.network_name }}"
+  subnetwork:
+    valueFrom:
+      name: "{{ values.cluster_name }}-{{ values.region }}"
+  # Pod/service space comes from the PLANNED ranges on the subnet above.
+  # The names are chart-internal contracts (the subnet defines them, this
+  # selects them); the subnetwork reference above is what orders the
+  # cluster after the subnet exists.
+  ipAllocation:
+    clusterSecondaryRangeName:
+      value: pods
+    servicesSecondaryRangeName:
+      value: services
+{% if values.autopilotEnabled | bool %}
+  # Autopilot: GKE provisions and manages nodes, bills per pod, and
+  # enforces a hardened posture. No GcpGkeNodePool attaches, and the
+  # node-management surface (NAP, Calico, the shielded-nodes flag) is
+  # rejected pre-deploy by the spec's own validation rules.
+  enableAutopilot: true
+{% else %}
+  # Dataplane V2. Standard-mode opt-in (Autopilot always runs it):
+  # NetworkPolicy without Calico, eBPF observability, FQDN policy support.
+  datapathProvider: ADVANCED_DATAPATH
+{% endif %}
+  privateCluster:
+    # Nodes get internal IPs only. The control plane keeps its public
+    # endpoint (IAM-authenticated, optionally CIDR-restricted below), so
+    # kubectl works on day one without a bastion or VPN.
+    enablePrivateNodes: true
+    # The /28 the control plane occupies on the cluster's peering. Must not
+    # overlap any range in the VPC; each cluster needs its own.
+    masterIpv4CidrBlock: "{{ values.master_ipv4_cidr_block }}"
+{% if values.master_authorized_cidr %}
+  masterAuthorizedNetworks:
+    cidrBlocks:
+      - cidrBlock: "{{ values.master_authorized_cidr }}"
+        displayName: authorized-network
+{% endif %}
+  # Nightly window (UTC): GKE performs control-plane and node maintenance
+  # only inside it, so upgrade churn stays out of business hours.
+  maintenancePolicy:
+    dailyWindow:
+      startTime: "03:00"
+  # Per-namespace cost attribution in the billing export — free to enable,
+  # and the difference between "the cluster costs X" and knowing which
+  # team's workloads cost X.
+  enableCostManagement: true
+  # releaseChannel stays on the kind's REGULAR default: fresh-but-soaked
+  # Kubernetes minors, upgraded inside the window above.
+  # workloadIdentityEnabled stays on the kind's default (true) — see the
+  # header comment for why turning it off is almost never right.
+{% if values.deletionProtectionEnabled | bool %}
+  # While true, a destroy plan fails until this is flipped — deleting a
+  # cluster deletes every workload on it.
+  deletionProtection: true
+{% else %}
+  deletionProtection: false
+{% endif %}

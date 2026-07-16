@@ -3,20 +3,24 @@ kind: GcpBigtableInstance
 metadata:
   name: my-prod-bigtable
 spec:
-  projectId:
-    value: "<gcp-project-id>"
-  instanceName: <instance-name>
-  displayName: <display-name>
+  instanceName: my-prod-bigtable
+  displayName: Production Bigtable
   deletionProtection: true
+  labels:
+    team: data-platform
   clusters:
-    - clusterId: <cluster-id-zone-a>
-      zone: <gcp-zone-a>
+    # Two replicating clusters in different zones: automatic replication
+    # and failover, handled transparently by the client library. Each
+    # autoscales on CPU — Bigtable adds nodes above the target and
+    # removes them below it.
+    - clusterId: my-prod-bigtable-c1
+      zone: us-central1-a
       autoscalingConfig:
         minNodes: 3
         maxNodes: 30
         cpuTarget: 65
-    - clusterId: <cluster-id-zone-b>
-      zone: <gcp-zone-b>
+    - clusterId: my-prod-bigtable-c2
+      zone: us-central1-b
       autoscalingConfig:
         minNodes: 3
         maxNodes: 30

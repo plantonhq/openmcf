@@ -1,0 +1,30 @@
+# Subnet-placement GcpServerlessVpcConnector scenario: the connector
+# occupies an existing dedicated /28 subnetwork (the Shared-VPC-capable
+# mode), exercising the second placement arm. The subnetwork comes from the
+# consumer-scoped prerequisite profile (e2e/prerequisites/gcpsubnetwork.yaml).
+apiVersion: gcp.planton.dev/v1
+kind: GcpServerlessVpcConnector
+metadata:
+  name: planton-oss-e2e-gcpvpcconn-subnet
+  id: planton-oss-e2e-gcpvpcconn-subnet
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpserverlessvpcconnector
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-central1
+  connectorName: e2e-conns-${E2E_RUN_ID}
+  subnet:
+    name:
+      valueFrom:
+        kind: GcpSubnetwork
+        name: planton-oss-e2e-gcpsnw-vpcconn-prereq
+        fieldPath: status.outputs.subnetwork_name
+  machineType: e2-micro
+  minInstances: 2
+  maxInstances: 3

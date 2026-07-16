@@ -11,7 +11,7 @@ presets:
   - slug: "01-custom-mode-regional"
     rank: "01"
     title: "Custom Mode VPC with Regional Routing"
-    excerpt: "This preset creates a VPC in custom subnet mode with regional routing and Private Services Access enabled. Custom mode gives full control over subnet CIDR ranges and regions. Private Services Access..."
+    excerpt: "This preset creates a VPC in custom subnet mode with regional routing. Custom mode gives full control over subnet CIDR ranges and regions."
   - slug: "02-custom-mode-global"
     rank: "02"
     title: "Custom Mode VPC with Global Routing"

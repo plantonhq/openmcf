@@ -7,4 +7,6 @@ const (
 	OpState        = "state"
 	OpCreator      = "creator"
 	OpCreateTime   = "create_time"
+	OpHealthState  = "health_state"
+	OpUpdateTime   = "update_time"
 )

@@ -1,184 +1,183 @@
 params:
-  # ─── GCP project & billing ─────────────────────────────────────────────────────
-  - name: create_project                # NEW
-    description: Create a brand‑new GCP project; false uses existing project_id
+  # ─── Placement ───────────────────────────────────────────────────────────
+  - name: gcp_project_id
+    description: >
+      GCP project the environment lands in. Every resource in this chart pins
+      its project explicitly, so the deploying credential's default project
+      never silently decides where a cluster lives.
+    value: my-gcp-project
+
+  - name: region
+    description: >
+      Region for the whole environment — the subnet, the NAT, the cluster's
+      control plane, and the image repository. A region here creates a
+      REGIONAL cluster (control-plane replicas across three zones); that is
+      the right call for anything real, and this chart deliberately does not
+      offer the zonal shortcut.
+    value: us-central1
+
+  - name: cluster_name
+    description: >
+      Name of the GKE cluster and the prefix most derived resource names
+      build on (node pool, node service account, NAT). Lowercase letters,
+      digits, and hyphens, starting with a letter; keep it to 24 characters
+      or fewer so the derived node service-account ID ("<name>-nodes")
+      stays inside GCP's 30-character account-ID limit. Immutable.
+    value: app-cluster
+
+  # ─── Network ─────────────────────────────────────────────────────────────
+  - name: useExistingNetwork
+    description: >
+      Drop the cluster onto a VPC that already exists in this environment —
+      typically the one a landing-zone chart deployed — instead of creating a
+      new one. The chart still creates its own GKE subnet on that network:
+      pod and service secondary ranges are a GKE-specific address-plan
+      decision that general-purpose subnets deliberately do not carry, and
+      subnets are additive per network so nothing collides. With this on,
+      set network_name to the EXISTING GcpVpcNetwork resource's name and
+      consider turning natEnabled off if the landing zone's NAT already
+      covers this region.
     type: bool
     value: false
 
-  - name: project_id
-    description: GCP project ID (created or reused)
-    value: my-gke-demo-123
+  - name: network_name
+    description: >
+      Name of the VPC network. With useExistingNetwork false (the default)
+      the chart creates a custom-mode VPC under this name; with it true,
+      this must be the Planton resource name of the existing GcpVpcNetwork
+      in the target environment — the cluster, subnet, and NAT resolve it by
+      reference at deploy time.
+    value: gke-network
 
-  - name: parent_type
-    description: Parent resource type – organization | folder
-    value: organization
+  - name: subnet_ip_cidr_range
+    description: >
+      Primary IPv4 range of the GKE subnet — the addresses NODES get (e.g.
+      10.20.0.0/20 is ~4k nodes' worth of headroom). Expandable in place
+      later, never shrinkable. Must not overlap the pod/service ranges below
+      or any other range in the VPC.
+    value: 10.20.0.0/20
 
-  - name: parent_id
-    description: Numeric org / folder ID
-    value: "123456789012"
+  - name: pods_ip_cidr_range
+    description: >
+      Secondary range PODS draw from. Pod space disappears faster than
+      anything else in a cluster address plan — GKE slices a /24 per node by
+      default — so this is deliberately the biggest allocation (/14 is ~256k
+      pod IPs). The primary pod range is immutable once the cluster exists;
+      undersizing it means adding ranges later instead of resizing.
+    value: 10.24.0.0/14
 
-  - name: billing_account_id
-    description: Billing account in form 0123AB‑4567CD‑89EFGH
-    value: 0123AB-4567CD-89EFGH
+  - name: services_ip_cidr_range
+    description: >
+      Secondary range ClusterIP SERVICES draw from. Services are cheap on
+      address space compared to pods — a /20 (~4k services) is comfortable
+      for a large environment. Immutable once the cluster exists.
+    value: 10.28.0.0/20
 
-  # ─── Network ───────────────────────────────────────────────────────────────────
-  - name: vpc_name
-    description: VPC name
-    value: gke-vpc
+  - name: natEnabled
+    description: >
+      Deploy a Cloud NAT gateway on the network. Private nodes have no
+      public IPs, so pulls from registries outside Google (Docker Hub,
+      GitHub) and calls to third-party APIs need NAT to leave the VPC —
+      without it, only Google-hosted endpoints are reachable (via Private
+      Google Access). Turn off when composing onto a landing zone whose NAT
+      already covers this region: NAT with all-subnets coverage picks up the
+      GKE subnet automatically, and a second gateway would just double the
+      hourly cost.
+    type: bool
+    value: true
 
-  - name: vpc_auto_create_subnetworks
-    description: true to use auto‑mode VPC (not recommended)
-    value: "false"
-
-  - name: region
-    description: GCP region for subnet / NAT
-    value: us-central1
-
-  - name: subnet_name
-    description: Subnetwork name
-    value: gke-subnet
-
-  - name: subnet_primary_cidr
-    description: Primary CIDR for subnet
-    value: 10.0.0.0/17
-
-  - name: pods_secondary_range_name
-    description: Secondary range name for Pods
-    value: pods
-
-  - name: pods_secondary_cidr
-    description: CIDR for Pods secondary range
-    value: 10.1.0.0/17
-
-  - name: services_secondary_range_name
-    description: Secondary range name for Services
-    value: services
-
-  - name: services_secondary_cidr
-    description: CIDR for Services secondary range
-    value: 10.3.0.0/22
-
-  - name: private_ip_google_access
-    description: Enable Private Google Access on subnet
-    value: "true"
-
-  - name: router_nat_name
-    description: Cloud NAT / Router name
-    value: gke-nat
-
-  # ─── GKE cluster core ──────────────────────────────────────────────────────────
-  - name: cluster_name
-    description: GKE cluster name
-    value: gke-demo
-
-  - name: cluster_location
-    description: Cluster location (region for regional, zone for zonal)
-    value: us-central1
-
-  - name: master_ipv4_cidr
-    description: /28 CIDR block for master endpoint
+  # ─── Cluster posture ─────────────────────────────────────────────────────
+  - name: master_ipv4_cidr_block
+    description: >
+      RFC1918 /28 reserved for the cluster's control plane on the peering
+      that private clusters use. Must not overlap ANY range in the VPC (or
+      networks you peer with) — 172.16.x.x space usually stays clear of
+      10.x workload plans. Immutable; every cluster on the same network
+      needs its own /28.
     value: 172.16.0.16/28
 
-  - name: enable_public_nodes
-    description: true if nodes need external IPs
-    value: "false"
+  - name: master_authorized_cidr
+    description: >
+      Optional CIDR allowlisted to reach the cluster's public control-plane
+      endpoint (your office or VPN egress range, e.g. 203.0.113.0/24). Leave
+      empty to accept connections from any IP that presents valid IAM
+      credentials — fine to start, but locking the API server to known
+      networks is cheap defense-in-depth once you know your egress ranges.
+    value: ""
 
-  - name: release_channel
-    description: RAPID | REGULAR | STABLE | NONE
-    value: REGULAR
+  - name: autopilotEnabled
+    description: >
+      Create the cluster in Autopilot mode: GKE provisions and manages
+      nodes, bills per pod, and enforces a hardened posture. The node pool,
+      the node service account, and its role grants all drop out of the
+      composition — Autopilot owns node identity and lifecycle itself. Off
+      by default: Standard mode with an explicit node pool is the shape most
+      teams want to own, and switching modes later means a new cluster.
+    type: bool
+    value: false
 
-  - name: disable_network_policy
-    description: Disable Calico network policy
-    value: "false"
+  - name: deletionProtectionEnabled
+    description: >
+      While true, both IaC engines refuse to destroy the cluster — a plan
+      that would delete it fails until this is flipped to false. Deleting a
+      cluster destroys every workload on it, so keep this on for anything
+      real and flip it deliberately, as its own change, when the environment
+      is genuinely being retired.
+    type: bool
+    value: true
 
-  - name: disable_workload_identity
-    description: Disable Workload‑Identity
-    value: "false"
+  # ─── Node pool (Standard mode only) ──────────────────────────────────────
+  - name: node_machine_type
+    description: >
+      Machine type for the general-purpose node pool. n2-standard-4
+      (4 vCPU / 16 GB) is a real production baseline — big enough that
+      system daemonsets don't eat a meaningful slice of every node, small
+      enough that the autoscaler bin-packs efficiently. Specialized pools
+      (Spot, GPU, high-memory) are added as further GcpGkeNodePool
+      resources, not by resizing this one.
+    value: n2-standard-4
 
-  # ─── Node‑pool ─────────────────────────────────────────────────────────────────
-  - name: node_pool_name
-    description: Node‑pool name
-    value: default-pool
-
-  - name: node_pool_machine_type
-    description: Compute engine machine type
-    value: e2-medium
-
-  - name: node_pool_disk_size_gb
-    description: Boot disk size (GB)
-    value: "100"
-
-  - name: node_pool_disk_type
-    description: pd-standard | pd-ssd | pd-balanced
-    value: pd-standard
-
-  - name: node_pool_image_type
-    description: COS_CONTAINERD | COS | UBUNTU | …
-    value: COS_CONTAINERD
-
-  - name: node_pool_spot
-    description: true for Spot (pre‑emptible) nodes
-    value: "false"
-
-  - name: node_pool_min_nodes
-    description: Autoscaler minimum
+  - name: node_min_nodes
+    description: >
+      Autoscaler minimum PER ZONE. A regional cluster spans three zones, so
+      the default of 1 keeps at least three nodes alive. Set 0 only for
+      pools that should scale away entirely when idle.
     value: "1"
 
-  - name: node_pool_max_nodes
-    description: Autoscaler maximum
+  - name: node_max_nodes
+    description: >
+      Autoscaler maximum PER ZONE — the cost ceiling. The default of 3
+      caps a three-zone regional cluster at nine nodes; raise it as
+      workloads grow rather than pre-authorizing capacity you have not
+      budgeted.
     value: "3"
 
-  # ─── Cloud DNS ────────────────────────────────────────────────────────────────
-  - name: dns_zone_name
-    description: Cloud DNS managed‑zone name
-    value: demo-example-com
+  - name: node_sa_roles
+    description: >
+      Project roles granted to the dedicated node service account, one
+      additive grant per role. The default trio is exactly what nodes need
+      to ship logs and metrics — nothing more, because workload permissions
+      belong to Workload Identity, not to node scopes. Add roles here only
+      for genuinely node-level needs.
+    type: list
+    value:
+      - roles/logging.logWriter
+      - roles/monitoring.metricWriter
+      - roles/stackdriver.resourceMetadata.writer
 
-  - name: dns_domain_name
-    description: FQDN the zone manages (must end with a dot)
-    value: demo.example.com.
-
-  # ─── Kubernetes Cluster Addons ────────────────────────────────────────────────────────────────
-  - name: certManagerEnabled
-    description: Install Cert‑Manager add‑on
+  # ─── Image registry ──────────────────────────────────────────────────────
+  - name: registryEnabled
+    description: >
+      Create an Artifact Registry Docker repository beside the cluster and
+      grant the node service account read access to it. Turn off when
+      images live in a repository another chart (or team) owns — then bring
+      your own reader grant for the node account.
     type: bool
     value: true
 
-  - name: elasticOperatorEnabled
-    description: Install Elastic Operator add‑on
-    type: bool
-    value: true
-
-  - name: externalDnsEnabled
-    description: Install External‑DNS add‑on
-    type: bool
-    value: true
-
-  - name: externalSecretsEnabled
-    description: Install External‑Secrets add‑on
-    type: bool
-    value: true
-
-  - name: ingressNginxEnabled
-    description: Install Ingress‑NGINX add‑on
-    type: bool
-    value: true
-
-  - name: istioEnabled
-    description: Install Istio (Ingress) add‑on
-    type: bool
-    value: true
-
-  - name: kafkaOperatorEnabled
-    description: Install Kafka Operator add‑on
-    type: bool
-    value: true
-
-  - name: postgresOperatorEnabled
-    description: Install PostgreSQL Operator add‑on
-    type: bool
-    value: true
-
-  - name: solrOperatorEnabled
-    description: Install Solr Operator add‑on
-    type: bool
-    value: true
+  - name: registry_repository_id
+    description: >
+      Repository ID for the environment's images. Lowercase letters,
+      digits, and hyphens; immutable. The full pull path becomes
+      <region>-docker.pkg.dev/<project>/<this-id>/<image>.
+    value: app-images

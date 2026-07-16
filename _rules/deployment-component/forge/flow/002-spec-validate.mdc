@@ -52,6 +52,34 @@ Quick checklist for every `message:` string:
 
 Reject and rewrite any message that is terse, generic, or exposes implementation details.
 
+CEL ON `StringValueOrRef` FIELDS (REFERENCE-SAFE PRESENCE CHECKS)
+
+A `StringValueOrRef` field can arrive as a literal (`value`) OR a reference
+(`value_from`). A CEL presence check written as `this.field.value != ''` silently
+REJECTS valid manifests that use `valueFrom` — the reference branch has no `value`,
+so the expression is false even though the field is set. This shipped as a real
+defect (GcpGlobalAddress `internal_requires_network` rejected VPC-ref manifests
+before it was caught and fixed).
+
+- Correct presence check: `has(this.field) && (has(this.field.value) || has(this.field.value_from))`
+- Worked examples: `gcpcloudsql/v1/spec.proto` (`private_ip_requires_vpc`),
+  `gcpaddress/v1/spec.proto` (`peering_purpose_requires_network`).
+- `this.field.value != ''` is only safe when the rule really is about the LITERAL
+  branch specifically (rare; document why in a comment if so).
+
+GCP REGION/ZONE PATTERNS MUST ACCEPT MULTI-DIGIT REGIONS
+
+GCP region numbers are not single digits: `europe-west12`, `me-central2`, and
+their zones (`europe-west12-a`) are real locations. A pattern written as
+`^[a-z]+-[a-z]+[0-9]$` (or `...[0-9]-[a-z]$` for zones) silently rejects them.
+This shipped as a real defect across six GCP kinds before a review caught it.
+
+- Region: `^[a-z]+-[a-z]+[0-9]+$`
+- Zone: `^[a-z]+-[a-z]+[0-9]+-[a-z]$`
+- Region-or-zone (one field spanning both): `^[a-z]+-[a-z]+[0-9]+(-[a-z])?$`
+- Include a multi-digit case (e.g. `europe-west12`) in the spec test whenever a
+  location pattern is introduced.
+
 RequiredWith MIRRORS ARGUMENT PRESENCE, NOT VALUE PRESENCE
 When mirroring a provider schema's `RequiredWith` pairing as a CEL, remember it
 requires the paired ARGUMENT to be present in configuration -- an EMPTY value can

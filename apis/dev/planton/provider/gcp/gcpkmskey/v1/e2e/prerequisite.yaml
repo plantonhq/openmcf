@@ -1,0 +1,27 @@
+# Published install profile: consumers (a GcpKmsKeyIamMember's crypto_key_id
+# reference, CMEK chains) attach in their scenarios. The key composes onto the
+# ring prerequisite by reference — the harness installs the ring first (kind
+# registry prerequisite order) and resolves key_ring_id from its outputs.
+# Keys are permanent (destroy destroys versions only), so the cloud-side
+# key_name carries ${E2E_RUN_ID}; metadata.name stays fixed for FK resolution.
+apiVersion: gcp.planton.dev/v1
+kind: GcpKmsKey
+metadata:
+  name: planton-oss-e2e-gcpkms-prereq
+  id: planton-oss-e2e-gcpkms-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpkmskey
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  keyRingId:
+    valueFrom:
+      kind: GcpKmsKeyRing
+      name: planton-oss-e2e-gcpkr-prereq
+      fieldPath: status.outputs.key_ring_id
+  keyName: e2e-cmek-pre-${E2E_RUN_ID}

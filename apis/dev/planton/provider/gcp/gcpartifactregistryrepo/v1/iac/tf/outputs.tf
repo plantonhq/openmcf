@@ -1,47 +1,35 @@
-#############################
-# Repository Outputs
-#############################
-
-output "repo_name" {
-  description = "The repository ID for the repository"
-  value       = google_artifact_registry_repository.repo.repository_id
+# Short name of the repository (the repository ID).
+output "name" {
+  description = "Short name of the repository"
+  value       = google_artifact_registry_repository.this.name
 }
 
-# Example: us-west2-docker.pkg.dev
-output "repo_hostname" {
-  description = "The Repository hostname (region-docker.pkg.dev)"
-  value       = "${google_artifact_registry_repository.repo.location}-docker.pkg.dev"
+# The resource ID is the fully qualified repository path
+# (projects/{project}/locations/{location}/repositories/{repository_id}) —
+# the exact string every composing resource consumes: a Cloud Function's
+# docker_repository, a virtual repository's upstream policy, and a remote
+# repository's common upstream.
+output "repository_path" {
+  description = "Fully qualified repository resource path"
+  value       = google_artifact_registry_repository.this.id
 }
 
-# Example: us-west2-docker.pkg.dev/<project>/<repo-id>
-output "repo_url" {
-  description = "Full Repository URL"
-  value       = "${google_artifact_registry_repository.repo.location}-docker.pkg.dev/${google_artifact_registry_repository.repo.project}/${google_artifact_registry_repository.repo.repository_id}"
+# The registry endpoint clients push to and pull from. Constructed from
+# resolved attributes ({location}-{format}.pkg.dev/{project}/{repo}) because
+# the released 6.x provider does not export a registry URI attribute — the
+# Pulumi module builds the identical string.
+output "registry_uri" {
+  description = "Registry endpoint (e.g. us-central1-docker.pkg.dev/my-project/my-repo)"
+  value = format(
+    "%s-%s.pkg.dev/%s/%s",
+    lower(google_artifact_registry_repository.this.location),
+    lower(google_artifact_registry_repository.this.format),
+    google_artifact_registry_repository.this.project,
+    google_artifact_registry_repository.this.name,
+  )
 }
 
-#############################
-# Service Account Outputs
-#############################
-
-output "reader_service_account_email" {
-  description = "Email address of the reader service account"
-  value       = google_service_account.reader.email
+output "location" {
+  description = "Location of the repository (region or multi-region)"
+  value       = google_artifact_registry_repository.this.location
 }
-
-output "reader_service_account_key_base64" {
-  description = "Base64-encoded private key of the reader service account"
-  value       = google_service_account_key.reader_key.private_key
-  sensitive   = true
-}
-
-output "writer_service_account_email" {
-  description = "Email address of the writer service account"
-  value       = google_service_account.writer.email
-}
-
-output "writer_service_account_key_base64" {
-  description = "Base64-encoded private key of the writer service account"
-  value       = google_service_account_key.writer_key.private_key
-  sensitive   = true
-}
-

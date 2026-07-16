@@ -24,9 +24,23 @@ const (
 // gcp-gcs-bucket stack outputs
 type GcpGcsBucketStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// id of the GCS bucket created on Google Cloud.
-	// reference via status.outputs.bucket_id.
-	BucketId      string `protobuf:"bytes,1,opt,name=bucket_id,json=bucketId,proto3" json:"bucket_id,omitempty"`
+	// ID of the bucket. For GCS this equals the globally unique bucket name —
+	// the value every consumer (backend buckets, function sources, Dataproc
+	// staging, Pub/Sub sinks) references.
+	BucketId string `protobuf:"bytes,1,opt,name=bucket_id,json=bucketId,proto3" json:"bucket_id,omitempty"`
+	// Name of the bucket (identical to bucket_id; exported under both keys so
+	// consumers can use whichever reads naturally).
+	BucketName string `protobuf:"bytes,2,opt,name=bucket_name,json=bucketName,proto3" json:"bucket_name,omitempty"`
+	// The base URI of the bucket, in the form gs://<bucket_name>.
+	Url string `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+	// The API self link of the bucket,
+	// e.g. https://www.googleapis.com/storage/v1/b/<bucket_name>.
+	SelfLink string `protobuf:"bytes,4,opt,name=self_link,json=selfLink,proto3" json:"self_link,omitempty"`
+	// Location of the bucket as reported by GCS (upper-cased region,
+	// dual-region, or multi-region, e.g. "US-EAST1", "US").
+	Location string `protobuf:"bytes,5,opt,name=location,proto3" json:"location,omitempty"`
+	// Numeric project number of the project that owns the bucket.
+	ProjectNumber int64 `protobuf:"varint,6,opt,name=project_number,json=projectNumber,proto3" json:"project_number,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -68,13 +82,54 @@ func (x *GcpGcsBucketStackOutputs) GetBucketId() string {
 	return ""
 }
 
+func (x *GcpGcsBucketStackOutputs) GetBucketName() string {
+	if x != nil {
+		return x.BucketName
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketStackOutputs) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketStackOutputs) GetSelfLink() string {
+	if x != nil {
+		return x.SelfLink
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketStackOutputs) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketStackOutputs) GetProjectNumber() int64 {
+	if x != nil {
+		return x.ProjectNumber
+	}
+	return 0
+}
+
 var File_dev_planton_provider_gcp_gcpgcsbucket_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpgcsbucket_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/gcp/gcpgcsbucket/v1/stack_outputs.proto\x12(dev.planton.provider.gcp.gcpgcsbucket.v1\"7\n" +
+	"<dev/planton/provider/gcp/gcpgcsbucket/v1/stack_outputs.proto\x12(dev.planton.provider.gcp.gcpgcsbucket.v1\"\xca\x01\n" +
 	"\x18GcpGcsBucketStackOutputs\x12\x1b\n" +
-	"\tbucket_id\x18\x01 \x01(\tR\bbucketIdB\xe3\x02\n" +
+	"\tbucket_id\x18\x01 \x01(\tR\bbucketId\x12\x1f\n" +
+	"\vbucket_name\x18\x02 \x01(\tR\n" +
+	"bucketName\x12\x10\n" +
+	"\x03url\x18\x03 \x01(\tR\x03url\x12\x1b\n" +
+	"\tself_link\x18\x04 \x01(\tR\bselfLink\x12\x1a\n" +
+	"\blocation\x18\x05 \x01(\tR\blocation\x12%\n" +
+	"\x0eproject_number\x18\x06 \x01(\x03R\rprojectNumberB\xe3\x02\n" +
 	",com.dev.planton.provider.gcp.gcpgcsbucket.v1B\x11StackOutputsProtoP\x01ZYgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgcsbucket/v1;gcpgcsbucketv1\xa2\x02\x05DPPGG\xaa\x02(Dev.Planton.Provider.Gcp.Gcpgcsbucket.V1\xca\x02(Dev\\Planton\\Provider\\Gcp\\Gcpgcsbucket\\V1\xe2\x024Dev\\Planton\\Provider\\Gcp\\Gcpgcsbucket\\V1\\GPBMetadata\xea\x02-Dev::Planton::Provider::Gcp::Gcpgcsbucket::V1b\x06proto3"
 
 var (

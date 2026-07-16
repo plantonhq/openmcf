@@ -1,9 +1,9 @@
 package module
 
 import (
-	"strconv"
 	"strings"
 
+	gcpprovider "github.com/plantonhq/planton/apis/dev/planton/provider/gcp"
 	gcpgcsbucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgcsbucket/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/gcp/gcplabelkeys"
@@ -11,42 +11,35 @@ import (
 )
 
 type Locals struct {
-	GcpLabels    map[string]string
-	GcpGcsBucket *gcpgcsbucketv1.GcpGcsBucket
+	GcpProviderConfig *gcpprovider.GcpProviderConfig
+	GcpGcsBucket      *gcpgcsbucketv1.GcpGcsBucket
+	GcpLabels         map[string]string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *gcpgcsbucketv1.GcpGcsBucketStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, stackInput *gcpgcsbucketv1.GcpGcsBucketStackInput) *Locals {
 	locals := &Locals{}
-
 	locals.GcpGcsBucket = stackInput.Target
 
-	target := stackInput.Target
+	// User labels first so platform attribution labels win on key
+	// conflicts — identical merge order to the Terraform module.
+	locals.GcpLabels = map[string]string{}
+	for key, value := range locals.GcpGcsBucket.Spec.Labels {
+		locals.GcpLabels[key] = value
+	}
+	locals.GcpLabels[gcplabelkeys.Resource] = "true"
+	locals.GcpLabels[gcplabelkeys.ResourceName] = locals.GcpGcsBucket.Spec.BucketName
+	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpGcsBucket.String())
 
-	// Initialize standard GCP labels
-	locals.GcpLabels = map[string]string{
-		gcplabelkeys.Resource:     strconv.FormatBool(true),
-		gcplabelkeys.ResourceName: target.Spec.BucketName,
-		gcplabelkeys.ResourceKind: strings.ToLower(cloudresourcekind.CloudResourceKind_GcpGcsBucket.String()),
+	if locals.GcpGcsBucket.Metadata.Org != "" {
+		locals.GcpLabels[gcplabelkeys.Organization] = locals.GcpGcsBucket.Metadata.Org
+	}
+	if locals.GcpGcsBucket.Metadata.Env != "" {
+		locals.GcpLabels[gcplabelkeys.Environment] = locals.GcpGcsBucket.Metadata.Env
+	}
+	if locals.GcpGcsBucket.Metadata.Id != "" {
+		locals.GcpLabels[gcplabelkeys.ResourceId] = locals.GcpGcsBucket.Metadata.Id
 	}
 
-	if target.Metadata.Id != "" {
-		locals.GcpLabels[gcplabelkeys.ResourceId] = target.Metadata.Id
-	}
-
-	if target.Metadata.Org != "" {
-		locals.GcpLabels[gcplabelkeys.Organization] = target.Metadata.Org
-	}
-
-	if target.Metadata.Env != "" {
-		locals.GcpLabels[gcplabelkeys.Environment] = target.Metadata.Env
-	}
-
-	// Merge user-provided labels from spec (user labels take precedence for conflicts)
-	if target.Spec.GcpLabels != nil {
-		for key, value := range target.Spec.GcpLabels {
-			locals.GcpLabels[key] = value
-		}
-	}
-
+	locals.GcpProviderConfig = stackInput.ProviderConfig
 	return locals
 }

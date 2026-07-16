@@ -1,48 +1,107 @@
-# Overview
+# GcpProject
 
-The GCP Project API resource offers a consistent and streamlined interface for creating and managing DNS zones and records within Google Cloud DNS, Google's scalable, reliable, and managed authoritative Domain Name System (DNS) service. By abstracting the complexities of DNS configurations, this resource allows you to define your DNS settings effortlessly while ensuring consistency and compliance across different environments.
+## Overview
 
-## Why We Created This API Resource
+`GcpProject` manages one Google Cloud project — the Layer-0 container every
+other GCP resource lives in. Every other GCP kind's `projectId` field can
+reference a `GcpProject` resource, making the project the root node of the
+GCP composition graph.
 
-Managing DNS zones and records can be intricate due to the complexities of DNS protocols, record types, and best practices. To simplify this process and promote a standardized approach, we developed this API resource. It enables you to:
-
-- **Simplify DNS Management**: Easily create and manage DNS zones and records without dealing with low-level GCP DNS configurations.
-- **Ensure Consistency**: Maintain uniform DNS settings across different environments and applications.
-- **Enhance Security**: Control access to DNS records by specifying IAM service accounts with the necessary permissions.
-- **Improve Productivity**: Reduce the time and effort required to manage DNS configurations, allowing you to focus on application development and deployment.
+The component owns exactly what the project resource owns: identity
+(`projectId`), hierarchy placement (organization or folder), billing
+linkage, labels and resource-manager tags, the default-network decision,
+pre-enabled Cloud APIs, and the deletion policy. IAM grants are
+deliberately NOT bundled here — model each grant as a first-class
+`GcpProjectIamMember` resource.
 
 ## Key Features
 
-### Environment Integration
+- **Hierarchy placement**: create under an organization or a folder;
+  changing the parent migrates the project.
+- **Billing linkage**: attach a billing account at creation (the deploying
+  identity needs `roles/billing.user` on the account).
+- **Honest deletion semantics**: `deletionPolicy` is the provider's real
+  three-way switch — `DELETE` (default), `PREVENT` (destroy fails), or
+  `ABANDON` (remove from state, project lives on) — instead of a boolean
+  that hides the ABANDON path.
+- **Hardened by default**: the auto-created "default" VPC network is
+  suppressed unless `autoCreateNetwork: true`; explicit `GcpVpcNetwork`
+  resources are the composable path.
+- **Cost attribution**: user labels merge beneath the platform's
+  attribution labels identically on both engines; labels are the primary
+  cost-allocation dimension in billing exports.
+- **Create-time tags**: resource-manager tags (`tagKeys/… → tagValues/…`)
+  bind at creation for org-policy and IAM-condition targeting.
 
-- **Environment Info**: Integrates seamlessly with our environment management system to deploy DNS configurations within specific environments.
-- **Stack Job Settings**: Supports custom stack-update settings for infrastructure-as-code deployments.
+## Example Usage
 
-### GCP Credential Management
+```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpProject
+metadata:
+  name: prod-workloads
+spec:
+  projectId: acme-prod-workloads
+  parentType: folder
+  parentId: "123456789012"
+  billingAccountId: 0123AB-4567CD-89EFGH
+  deletionPolicy: PREVENT
+  enabledApis:
+    - compute.googleapis.com
+    - container.googleapis.com
+```
 
-- **GCP Credential ID**: Utilizes specified GCP credentials to ensure secure and authorized operations within Google Cloud DNS.
-- **Project ID**: Automatically computes and uses the GCP project ID where the managed DNS zone will be created, ensuring resources are correctly organized.
+Grant access with first-class IAM members:
 
-### Simplified DNS Zone and Record Management
+```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpProjectIamMember
+metadata:
+  name: platform-admins
+spec:
+  projectId:
+    valueFrom:
+      kind: GcpProject
+      name: prod-workloads
+      fieldPath: status.outputs.project_id
+  role:
+    value: roles/editor
+  member:
+    value: group:platform-admins@acme.com
+```
 
-- **IAM Service Accounts**: Specify a list of GCP service accounts (`iam_service_accounts`) to be granted permissions to manage DNS records within the managed zone. This is particularly useful for workload identities like cert-manager.
-- **DNS Records Management**: Define DNS records within the zone, specifying record types, names, values, and TTLs.
-    - **Record Types Supported**: Supports various DNS record types as defined in the `DnsRecordType` enum, such as `A`, `AAAA`, `CNAME`, `MX`, `TXT`, etc.
-    - **Record Names**: Specify the fully qualified domain name (FQDN) for each record. The name should end with a dot (e.g., `example.com.`).
-    - **Record Values**: Provide the values for each DNS record. For `CNAME` records, each value should also end with a dot.
-    - **TTL Configuration**: Set the Time-To-Live (TTL) for each DNS record in seconds, controlling how long the record is cached by DNS resolvers.
+### Deploy with CLI
 
-### Validation and Compliance
+```bash
+planton pulumi up --manifest project.yaml
+# or
+planton tofu apply --manifest project.yaml
+```
 
-- **Input Validation**: Implements validation rules to ensure that DNS names and record values conform to DNS standards.
-    - **DNS Name Validation**: Ensures that the domain names provided are valid DNS domain names using regular expressions.
-    - **Required Fields**: Enforces the presence of essential fields like `record_type` and `name`.
+## Best Practices
 
-## Benefits
+1. **Project IDs are permanent, globally-unique identity** — deleted IDs
+   stay reserved for ~30 days. Choose them deliberately; uniqueness
+   belongs in the ID itself.
+2. **Use `PREVENT` on foundation projects** and flip to `DELETE`
+   deliberately when decommissioning; use `ABANDON` when ownership moves
+   out of IaC.
+3. **Keep IAM out of the project resource** — one `GcpProjectIamMember`
+   per grant composes without clobbering anyone else's grants.
+4. **Reference, don't repeat**: downstream kinds resolve
+   `status.outputs.project_id` via `valueFrom`, so a project rename never
+   ripples.
 
-- **Simplified Deployment**: Abstracts the complexities of Google Cloud DNS configurations into an easy-to-use API.
-- **Consistency**: Ensures all DNS zones and records adhere to organizational standards and best practices.
-- **Scalability**: Allows for efficient management of DNS settings as your application and infrastructure grow.
-- **Security**: Manages DNS configurations securely using specified GCP credentials and IAM service accounts, reducing the risk of unauthorized changes.
-- **Flexibility**: Customize DNS records extensively to meet specific application requirements without compromising on best practices.
-- **Compliance**: Helps maintain compliance with DNS standards and organizational policies through input validation and enforced field requirements.
+## Stack Outputs
+
+| Output | Description |
+|--------|-------------|
+| `project_id` | The unique project ID — the value every other kind's `projectId` reference resolves |
+| `project_number` | The numeric identifier assigned by Google |
+| `name` | The display name |
+
+## Related Components
+
+- **GcpProjectIamMember** — additive IAM grants on the project
+- **GcpVpcNetwork** — explicit networks (instead of the default network)
+- **GcpServiceAccount** — workload identities inside the project

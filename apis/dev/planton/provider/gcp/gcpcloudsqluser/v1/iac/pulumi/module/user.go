@@ -1,0 +1,72 @@
+package module
+
+import (
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/sql"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+// user provisions a database user on a Cloud SQL instance. Users are
+// first-class nodes: one per application/service with its own credential,
+// instead of sharing the instance's admin user.
+//
+// No API enablement here: the instance this user lives on cannot exist
+// without sqladmin.googleapis.com already enabled (its own module enables
+// it).
+//
+// BUILT_IN users authenticate with the spec password (rotatable in place —
+// updating the field updates the credential without recreating the user).
+// CLOUD_IAM_* users authenticate through IAM and carry no password at all;
+// on PostgreSQL the instance must first set the database flag
+// "cloudsql.iam_authentication" = "on".
+func user(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
+	spec := locals.GcpCloudSqlUser.Spec
+
+	args := &sql.UserArgs{
+		Name:     pulumi.String(spec.UserName),
+		Instance: pulumi.String(spec.Instance.GetValue()),
+		Type:     pulumi.StringPtr(spec.GetType()),
+	}
+
+	// An empty project falls back to the provider's default project — the
+	// ambient-project contract every GCP kind honors.
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+
+	// Marked secret so the credential is encrypted in Pulumi state; never
+	// exported in outputs.
+	if spec.Password != "" {
+		args.Password = pulumi.ToSecret(pulumi.String(spec.Password)).(pulumi.StringOutput)
+	}
+
+	// MySQL-only user@host scoping; omitted on other engines.
+	if spec.Host != "" {
+		args.Host = pulumi.StringPtr(spec.Host)
+	}
+
+	if pp := spec.PasswordPolicy; pp != nil {
+		ppArgs := &sql.UserPasswordPolicyArgs{
+			EnableFailedAttemptsCheck:  pulumi.BoolPtr(pp.EnableFailedAttemptsCheck),
+			EnablePasswordVerification: pulumi.BoolPtr(pp.EnablePasswordVerification),
+		}
+		if pp.AllowedFailedAttempts != nil {
+			ppArgs.AllowedFailedAttempts = pulumi.IntPtr(int(*pp.AllowedFailedAttempts))
+		}
+		if pp.PasswordExpirationDuration != "" {
+			ppArgs.PasswordExpirationDuration = pulumi.StringPtr(pp.PasswordExpirationDuration)
+		}
+		args.PasswordPolicy = ppArgs
+	}
+
+	createdUser, err := sql.NewUser(ctx, "user", args, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to create user")
+	}
+
+	ctx.Export(OpUserName, createdUser.Name)
+	ctx.Export(OpInstanceName, createdUser.Instance)
+
+	return nil
+}

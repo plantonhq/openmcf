@@ -33,9 +33,10 @@ This preset creates a GCP service account designed for GKE Workload Identity. No
 
 | Placeholder | Description | Where to Find |
 |---|---|---|
-| `<your-sa-id>` | Service account ID (6-30 chars, lowercase) | Choose a descriptive ID (e.g., `my-app-workload`) |
+| `my-app-workload` (serviceAccountId) | Service account ID (6-30 chars, lowercase) | Replace with a descriptive ID for your workload |
 | `<gcp-project-id>` | GCP project ID | `GcpProject` outputs |
 
 ## Related Presets
 
 - **02-ci-cd-pipeline** -- Use for CI/CD service accounts that need a JSON key for external authentication
+- **03-identity-with-first-class-grants** -- Pure identity whose access lives entirely in GcpProjectIamMember nodes

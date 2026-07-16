@@ -21,16 +21,16 @@ func init() {
 
 	Tofu.PersistentFlags().String(string(flag.Manifest), "", "path of the deployment-component manifest file")
 
+	// The shared manifest resolver reads this flag on every source-resolution
+	// path, so every IaC command group must register it (the pulumi group does
+	// the same); without it, `tofu <cmd> --manifest ...` fails before running.
+	Tofu.PersistentFlags().StringP(string(flag.StackInput), "i", "", "path to a YAML file containing the stack input (extracts manifest from target field)")
+
 	Tofu.PersistentFlags().String(string(flag.InputDir), "", "directory containing target.yaml and credential yaml files")
 	Tofu.PersistentFlags().String(string(flag.KustomizeDir), "", "directory containing kustomize configuration")
 	Tofu.PersistentFlags().String(string(flag.Overlay), "", "kustomize overlay to use (e.g., prod, dev, staging)")
 	Tofu.PersistentFlags().String(string(flag.ModuleDir), pwd, "directory containing the terraform module")
 	Tofu.PersistentFlags().StringToString(string(flag.Set), map[string]string{}, "override resource manifest values using key=value pairs")
-
-	// Stack input file flag: the shared manifest resolver reads this on every
-	// command, so it must be registered here (as on the pulumi command group)
-	// or resolution fails before --manifest is even considered.
-	Tofu.PersistentFlags().StringP(string(flag.StackInput), "i", "", "path to a YAML file containing the stack input (bypasses building stack input from manifest)")
 
 	// Provider config flag (unified)
 	Tofu.PersistentFlags().StringP(string(flag.ProviderConfig), "p", "", "path to provider credentials file")

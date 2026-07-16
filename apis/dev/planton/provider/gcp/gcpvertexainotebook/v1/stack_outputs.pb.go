@@ -41,7 +41,13 @@ type GcpVertexAiNotebookStackOutputs struct {
 	// Email address of the entity that sent the original CreateInstance request.
 	Creator string `protobuf:"bytes,5,opt,name=creator,proto3" json:"creator,omitempty"`
 	// RFC3339 timestamp of when the instance was created.
-	CreateTime    string `protobuf:"bytes,6,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime string `protobuf:"bytes,6,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	// Instance health as reported by the Workbench health service.
+	// Possible values: HEALTHY, UNHEALTHY, AGENT_NOT_INSTALLED,
+	// AGENT_NOT_RUNNING, HEALTH_STATE_UNSPECIFIED.
+	HealthState string `protobuf:"bytes,7,opt,name=health_state,json=healthState,proto3" json:"health_state,omitempty"`
+	// RFC3339 timestamp of the most recent instance update.
+	UpdateTime    string `protobuf:"bytes,8,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -118,11 +124,25 @@ func (x *GcpVertexAiNotebookStackOutputs) GetCreateTime() string {
 	return ""
 }
 
+func (x *GcpVertexAiNotebookStackOutputs) GetHealthState() string {
+	if x != nil {
+		return x.HealthState
+	}
+	return ""
+}
+
+func (x *GcpVertexAiNotebookStackOutputs) GetUpdateTime() string {
+	if x != nil {
+		return x.UpdateTime
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpvertexainotebook_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpvertexainotebook_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/gcp/gcpvertexainotebook/v1/stack_outputs.proto\x12/dev.planton.provider.gcp.gcpvertexainotebook.v1\"\xd5\x01\n" +
+	"Cdev/planton/provider/gcp/gcpvertexainotebook/v1/stack_outputs.proto\x12/dev.planton.provider.gcp.gcpvertexainotebook.v1\"\x99\x02\n" +
 	"\x1fGcpVertexAiNotebookStackOutputs\x12\x1f\n" +
 	"\vinstance_id\x18\x01 \x01(\tR\n" +
 	"instanceId\x12#\n" +
@@ -131,7 +151,10 @@ const file_dev_planton_provider_gcp_gcpvertexainotebook_v1_stack_outputs_proto_r
 	"\x05state\x18\x04 \x01(\tR\x05state\x12\x18\n" +
 	"\acreator\x18\x05 \x01(\tR\acreator\x12\x1f\n" +
 	"\vcreate_time\x18\x06 \x01(\tR\n" +
-	"createTimeB\x94\x03\n" +
+	"createTime\x12!\n" +
+	"\fhealth_state\x18\a \x01(\tR\vhealthState\x12\x1f\n" +
+	"\vupdate_time\x18\b \x01(\tR\n" +
+	"updateTimeB\x94\x03\n" +
 	"3com.dev.planton.provider.gcp.gcpvertexainotebook.v1B\x11StackOutputsProtoP\x01Zggithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexainotebook/v1;gcpvertexainotebookv1\xa2\x02\x05DPPGG\xaa\x02/Dev.Planton.Provider.Gcp.Gcpvertexainotebook.V1\xca\x02/Dev\\Planton\\Provider\\Gcp\\Gcpvertexainotebook\\V1\xe2\x02;Dev\\Planton\\Provider\\Gcp\\Gcpvertexainotebook\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Gcp::Gcpvertexainotebook::V1b\x06proto3"
 
 var (

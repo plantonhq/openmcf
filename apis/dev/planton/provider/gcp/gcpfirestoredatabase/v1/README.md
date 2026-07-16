@@ -55,11 +55,14 @@ Firestore databases do **not** support GCP labels.
 | `uid` | Server-generated UUID4 |
 | `create_time` | Creation timestamp (RFC3339) |
 | `earliest_version_time` | Earliest PITR recovery timestamp (RFC3339) |
+| `version_retention_period` | Version history window (`3600s` without PITR, `604800s` with) |
+| `key_prefix` | Datastore Mode App Engine key prefix (empty otherwise) |
+| `update_time` | Last configuration-change timestamp (RFC3339) |
 
 ## Relationships
 
 - **Depends on**: GcpProject (project_id), optionally GcpKmsKey (kms_key_name)
-- **Referenced by**: Application connection strings, Firebase client libraries
+- **Referenced by**: GcpFirestoreIndex (composite indexes) and GcpFirestoreBackupSchedule (managed backups) — both many-per-database, composing against the `database_name` output — plus application connection strings and Firebase client libraries
 
 ## Deployment
 

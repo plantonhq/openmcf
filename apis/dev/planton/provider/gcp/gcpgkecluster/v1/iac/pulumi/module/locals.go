@@ -1,34 +1,72 @@
 package module
 
 import (
+	"strings"
+
+	gcpprovider "github.com/plantonhq/planton/apis/dev/planton/provider/gcp"
 	gcpgkeclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkecluster/v1"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/gcp/gcplabelkeys"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Locals groups commonly accessed input data.
 type Locals struct {
+	GcpProviderConfig *gcpprovider.GcpProviderConfig
 	GcpGkeCluster     *gcpgkeclusterv1.GcpGkeCluster
-	ReleaseChannelStr string
+	GcpLabels         map[string]string
+	// ClusterName is the cloud-side cluster name: spec.cluster_name when
+	// set, otherwise metadata.name (the spec-level contract).
+	ClusterName string
+	// ReleaseChannel is the provider's literal channel string. The spec's
+	// NONE (opt out of channel-based upgrades) is spelled UNSPECIFIED on the
+	// provider — the API has no literal NONE value.
+	ReleaseChannel string
 }
 
-// initializeLocals converts the raw stack input into a Locals struct.
-func initializeLocals(stackInput *gcpgkeclusterv1.GcpGkeClusterStackInput) *Locals {
-	l := &Locals{
-		GcpGkeCluster: stackInput.Target,
+func initializeLocals(_ *pulumi.Context, stackInput *gcpgkeclusterv1.GcpGkeClusterStackInput) *Locals {
+	locals := &Locals{}
+	locals.GcpGkeCluster = stackInput.Target
+
+	locals.ClusterName = locals.GcpGkeCluster.Spec.ClusterName
+	if locals.ClusterName == "" {
+		locals.ClusterName = locals.GcpGkeCluster.Metadata.Name
 	}
 
-	// Map the proto enum to the literal string Google expects.
-	switch l.GcpGkeCluster.Spec.GetReleaseChannel() {
+	switch locals.GcpGkeCluster.Spec.GetReleaseChannel() {
 	case gcpgkeclusterv1.GkeReleaseChannel_RAPID:
-		l.ReleaseChannelStr = "RAPID"
-	case gcpgkeclusterv1.GkeReleaseChannel_REGULAR:
-		l.ReleaseChannelStr = "REGULAR"
+		locals.ReleaseChannel = "RAPID"
 	case gcpgkeclusterv1.GkeReleaseChannel_STABLE:
-		l.ReleaseChannelStr = "STABLE"
+		locals.ReleaseChannel = "STABLE"
+	case gcpgkeclusterv1.GkeReleaseChannel_EXTENDED:
+		locals.ReleaseChannel = "EXTENDED"
 	case gcpgkeclusterv1.GkeReleaseChannel_NONE:
-		l.ReleaseChannelStr = "UNSPECIFIED"
+		locals.ReleaseChannel = "UNSPECIFIED"
 	default:
-		l.ReleaseChannelStr = "REGULAR" // sensible default
+		locals.ReleaseChannel = "REGULAR"
 	}
 
-	return l
+	// User labels merge in first so the platform attribution labels can never
+	// be clobbered by a spec label with the same key. The cluster name (not
+	// metadata.name) keys the name label so the label matches what is
+	// visible in the GCP console.
+	locals.GcpLabels = map[string]string{}
+	for key, value := range locals.GcpGkeCluster.Spec.ResourceLabels {
+		locals.GcpLabels[key] = value
+	}
+	locals.GcpLabels[gcplabelkeys.Resource] = "true"
+	locals.GcpLabels[gcplabelkeys.ResourceName] = locals.ClusterName
+	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpGkeCluster.String())
+
+	if locals.GcpGkeCluster.Metadata.Org != "" {
+		locals.GcpLabels[gcplabelkeys.Organization] = locals.GcpGkeCluster.Metadata.Org
+	}
+	if locals.GcpGkeCluster.Metadata.Env != "" {
+		locals.GcpLabels[gcplabelkeys.Environment] = locals.GcpGkeCluster.Metadata.Env
+	}
+	if locals.GcpGkeCluster.Metadata.Id != "" {
+		locals.GcpLabels[gcplabelkeys.ResourceId] = locals.GcpGkeCluster.Metadata.Id
+	}
+
+	locals.GcpProviderConfig = stackInput.ProviderConfig
+	return locals
 }

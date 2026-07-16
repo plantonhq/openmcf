@@ -39,6 +39,8 @@ const (
 type GcpGlobalAddressSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The GCP project in which to create this global address reservation.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
 	// Example: "my-prod-project-123"
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Name of the global address resource in GCP.
@@ -176,10 +178,10 @@ var File_dev_planton_provider_gcp_gcpglobaladdress_v1_spec_proto protoreflect.Fi
 
 const file_dev_planton_provider_gcp_gcpglobaladdress_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7dev/planton/provider/gcp/gcpglobaladdress/v1/spec.proto\x12,dev.planton.provider.gcp.gcpglobaladdress.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x84\v\n" +
-	"\x14GcpGlobalAddressSpec\x12{\n" +
+	"7dev/planton/provider/gcp/gcpglobaladdress/v1/spec.proto\x12,dev.planton.provider.gcp.gcpglobaladdress.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb6\v\n" +
+	"\x14GcpGlobalAddressSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
 	"\faddress_name\x18\x02 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\vaddressName\x12\x18\n" +
 	"\aaddress\x18\x03 \x01(\tR\aaddress\x12\x9b\x01\n" +
 	"\faddress_type\x18\x04 \x01(\tBs\xbaHd\xba\x01a\n" +
@@ -191,10 +193,10 @@ const file_dev_planton_provider_gcp_gcpglobaladdress_v1_spec_proto_rawDesc = "" 
 	"\anetwork\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x123\n" +
 	"\rprefix_length\x18\b \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x1d(\bH\x02R\fprefixLength\x88\x01\x01\x12\xaa\x01\n" +
 	"\apurpose\x18\t \x01(\tB\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
-	"\rpurpose_valid\x12>purpose must be empty, VPC_PEERING, or PRIVATE_SERVICE_CONNECT\x1a6this in ['', 'VPC_PEERING', 'PRIVATE_SERVICE_CONNECT']R\apurpose:\xb6\x03\xbaH\xb2\x03\x1a\x89\x01\n" +
+	"\rpurpose_valid\x12>purpose must be empty, VPC_PEERING, or PRIVATE_SERVICE_CONNECT\x1a6this in ['', 'VPC_PEERING', 'PRIVATE_SERVICE_CONNECT']R\apurpose:\xee\x03\xbaH\xea\x03\x1a\x89\x01\n" +
 	"\x19purpose_requires_internal\x125purpose can only be set when address_type is INTERNAL\x1a5this.purpose == '' || this.address_type == 'INTERNAL'\x1a\x95\x01\n" +
-	"\"vpc_peering_requires_prefix_length\x125prefix_length is required when purpose is VPC_PEERING\x1a8this.purpose != 'VPC_PEERING' || has(this.prefix_length)\x1a\x8b\x01\n" +
-	"\x19internal_requires_network\x121network is required when address_type is INTERNAL\x1a;this.address_type != 'INTERNAL' || this.network.value != ''B\x0f\n" +
+	"\"vpc_peering_requires_prefix_length\x125prefix_length is required when purpose is VPC_PEERING\x1a8this.purpose != 'VPC_PEERING' || has(this.prefix_length)\x1a\xc3\x01\n" +
+	"\x19internal_requires_network\x121network is required when address_type is INTERNAL\x1asthis.address_type != 'INTERNAL' || (has(this.network) && (has(this.network.value) || has(this.network.value_from)))B\x0f\n" +
 	"\r_address_typeB\r\n" +
 	"\v_ip_versionB\x10\n" +
 	"\x0e_prefix_lengthB\xf7\x02\n" +

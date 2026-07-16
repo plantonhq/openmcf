@@ -22,22 +22,22 @@ params:
   - name: max_throughput_units
     description: The auto-inflate ceiling (1-40 TUs). Each TU carries 1 MB/s or 1000 events/s ingress -- the ceiling is the cost guard, so size it to the budget, not the dream
     value: 10
-    type: int
+    type: number
 
   - name: ingest_partition_count
     description: Partitions on the raw ingest hub -- the parallelism ceiling for consumers, fixed for life on a shared namespace (size for peak up front). 8 suits typical production ingestion
     value: 8
-    type: int
+    type: number
 
   - name: processed_partition_count
     description: Partitions on the processed (post-enrichment) hub. Downstream fan-out is usually narrower than raw ingestion
     value: 4
-    type: int
+    type: number
 
   - name: retention_days
     description: Days events stay replayable on both hubs (STANDARD tier caps at 7). Capture below is the long-term archive; stream retention only needs to cover reprocessing windows
     value: 7
-    type: int
+    type: number
 
   # ─── Capture (the streaming-to-batch bridge) ─────────────────────────────────
   - name: capture_enabled
@@ -60,4 +60,4 @@ params:
   - name: log_retention_days
     description: Log Analytics workspace retention in days
     value: 30
-    type: int
+    type: number

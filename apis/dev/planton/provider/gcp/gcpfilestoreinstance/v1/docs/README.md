@@ -1,98 +1,75 @@
-# GcpFilestoreInstance Research Document
+# GcpFilestoreInstance — Deep Dive
 
-## Service Overview
+## The problem this resource solves
 
-Google Cloud Filestore is a managed NFS file storage service built on ZFS (for newer tiers) and NetApp-derived technology (for legacy tiers). It provides high-performance file storage that mounts natively on Compute Engine VMs, GKE nodes, and any NFS-compatible client within the connected VPC.
+Filestore fills the gap between block storage (Persistent Disks, which attach to one VM) and object storage (Cloud Storage, which speaks HTTP): a managed POSIX filesystem shared across many clients over NFS. This kind models the instance as a first-class node so the network attachment, the encryption key, the replication peer, and the target project are all explicit references to reviewable resources — and so the dangerous decisions (deletion protection, immutable replacements, capacity growth) are deliberate spec choices rather than tool defaults.
 
-Filestore fills the gap between block storage (Persistent Disks, which attach to individual VMs) and object storage (Cloud Storage, which uses an HTTP API). When applications need a POSIX filesystem interface with shared access across multiple clients, Filestore is the standard GCP answer.
+## Where it sits in the composition
 
-## Deployment Landscape
+Outbound references the instance makes: `projectId` → GcpProject, `networkConfig.network` → GcpVpcNetwork, `kmsKeyName` → GcpKmsKey, `initialReplication.peerInstances[]` → other GcpFilestoreInstance resources (via `status.outputs.instance_id`).
 
-### Terraform
+Inbound, consumers use `ip_addresses` and `file_share_name` to construct the NFS mount path: GKE workloads through the Filestore CSI driver (ReadWriteMany PersistentVolumes), Compute Engine VMs through a plain `mount` command. The instance sits above the network foundation and below the workloads that mount it.
 
-The Terraform resource `google_filestore_instance` manages the instance, its single file share, and its network attachment as a single resource. Provider version `~> 6.0` is required for the full feature set including `performance_config`, `deletion_protection_enabled`, and `protocol` fields.
+## Lifecycle contract
 
-Key characteristics:
-- `file_shares` block: MaxItems 1 (only one share per instance)
-- `networks` block: MaxItems 1 (only one network per instance)
-- `tier` and `location` are ForceNew (immutable after creation)
-- `capacity_gb` can be increased but not decreased
-- `nfs_export_options` can be updated after creation
+| Property | Behavior |
+|---|---|
+| `instanceName`, `location`, `tier`, `protocol`, `networkConfig` (all of it), `kmsKeyName`, `initialReplication` | Immutable (ForceNew) — replacement destroys the instance and its data |
+| `fileShare.name` | Immutable — the export path is fixed at creation |
+| `fileShare.capacityGb` | Grows in place, never shrinks |
+| `fileShare.sourceBackup`, `tags` | Create-time only |
+| `fileShare.nfsExportOptions`, `description`, `labels`, deletion protection, `performanceConfig` | Mutable in place |
+| Deletion | Blocked while `deletionProtectionEnabled: true` — the flag must be flipped false first |
 
-### Pulumi
+`instanceName` is optional: when empty, `metadata.name` becomes the cloud-side name. Both IaC engines derive the identical name via the same explicit conditional.
 
-The Pulumi resource `filestore.Instance` mirrors the Terraform schema. The Go SDK uses `InstanceFileSharesArgs` (singular struct, not array) for the file share and `InstanceNetworkArray` for networks.
+## One file share, one network
 
-### GCP Tiers Explained
+GCP Filestore supports exactly one file share and one VPC attachment per instance. The spec models both as singular sub-messages rather than repeated fields — a repeated field would promise a flexibility the API does not have.
 
-| Tier | Storage | Availability | Min Capacity | Performance Tuning | Location Type |
-|------|---------|-------------|-------------|-------------------|---------------|
-| STANDARD (fka BASIC_HDD) | HDD | Single-zone | 1 TiB | No | Zone |
-| PREMIUM (fka BASIC_SSD) | SSD | Single-zone | 2.5 TiB | No | Zone |
-| HIGH_SCALE_SSD | SSD | Single-zone | 10 TiB | No | Zone |
-| ZONAL | SSD | Single-zone | 1 TiB | Yes (fixed_iops, iops_per_tb) | Zone |
-| REGIONAL | SSD | Multi-zone | 1 TiB | Yes | Region |
-| ENTERPRISE | SSD | Multi-zone | 1 TiB | Yes | Region |
+## Tiers
 
-STANDARD/PREMIUM are the rebranded names for BASIC_HDD/BASIC_SSD. Both names are accepted by the API. ZONAL is the modern replacement for BASIC_SSD and HIGH_SCALE_SSD, offering better performance tuning and lower minimum capacity.
+| Tier | Storage | Availability | Min capacity | IOPS tuning | Location | NFSv4.1 |
+|------|---------|--------------|--------------|-------------|----------|---------|
+| STANDARD / BASIC_HDD | HDD | Single-zone | 1 TiB | No | Zone | No |
+| PREMIUM / BASIC_SSD | SSD | Single-zone | 2.5 TiB | No | Zone | No |
+| HIGH_SCALE_SSD | SSD | Single-zone | 10 TiB | No | Zone | Yes |
+| ZONAL | SSD | Single-zone | 1 TiB | Yes | Zone | Yes |
+| REGIONAL | SSD | Multi-zone | 1 TiB | Yes | Region | Yes |
+| ENTERPRISE | SSD | Multi-zone | 1 TiB | Yes | Region | Yes |
 
-## 80/20 Scoping Rationale
+STANDARD/PREMIUM are the rebranded names for BASIC_HDD/BASIC_SSD; the API accepts both. ZONAL is the modern replacement for BASIC_SSD and HIGH_SCALE_SSD. `location` is a zone for the zonal tiers and a region for REGIONAL/ENTERPRISE — one unified field, because the underlying `zone` attribute is deprecated in both providers.
 
-### What We Include
+## Connectivity: the three connect modes
 
-1. **All 8 tiers**: Users need the full range from cost-effective HDD to enterprise HA.
-2. **File share configuration**: Name, capacity, NFS export options cover 100% of share config.
-3. **Network configuration**: VPC attachment with connect_mode and reserved IP range cover the three standard connectivity patterns.
-4. **Protocol selection**: NFS_V3 and NFS_V4_1 are both widely used.
-5. **CMEK encryption**: Required for compliance in regulated industries.
-6. **Deletion protection**: Safety guard for production instances.
-7. **Performance configuration**: Fixed IOPS and per-TB IOPS are the primary tuning knobs.
-8. **Description**: Standard metadata field.
+- **DIRECT_PEERING** (default) — VPC peering. The simplest setup; right for a standalone VPC.
+- **PRIVATE_SERVICE_ACCESS** — rides an existing service-networking connection on the VPC. Required for Shared VPC consumers and common in enterprise network topologies. The connection must already exist; this module does not create it.
+- **PRIVATE_SERVICE_CONNECT** — PSC endpoints.
 
-### What We Exclude (and Why)
+`reservedIpRange` pins the instance's `/29` block when address planning matters; left empty, GCP picks an unused range — and either way the resolved block surfaces in the `reserved_ip_range` output. `modes` selects IP versions; empty means `["MODE_IPV4"]`, the standard NFS posture, and both engines send that default explicitly so the realized instance is identical.
 
-1. **Directory services (LDAP)**: Only valid with NFSv4.1. Requires external LDAP infrastructure we don't model. Niche use case. Defer to v2.
-2. **Initial replication**: Cross-instance replication is an advanced DR feature that creates circular dependencies. Same exclusion rationale as AlloyDB SECONDARY clusters.
-3. **Source backup restoration**: Operational restore concern, not infrastructure definition. Same exclusion as GcpMemorystoreInstance's managed_backup_source.
-4. **Resource Manager tags**: Not GCP labels. Advanced organizational feature excluded by all other components.
-5. **IP modes configuration**: MODE_IPV4 is the overwhelming default (99%+). IPv6 for NFS is extremely niche. Hardcoded in IaC modules.
-6. **PSC config (endpoint_project)**: Only relevant for shared VPC setups. Niche. Can add in v2 if demanded.
+## Replication (`initialReplication`)
 
-### Design Decisions
+ENTERPRISE and REGIONAL instances support cross-instance replication, fixed at create time. The common DR posture: the ACTIVE (source) instance already exists, and this spec creates the STANDBY replica pointing at it — `role` empty or `STANDBY`, with the peer referenced as a `GcpFilestoreInstance` (its `status.outputs.instance_id` is exactly the full resource path the API wants) or as a literal path. Backups cannot be taken from a STANDBY replica, and the peer relationship cannot be changed later without replacing the instance.
 
-**Singular file_share and network_config (not repeated)**: GCP Filestore supports exactly one file share and one network per instance. Making these repeated fields would be dishonest and confuse users. We use singular sub-messages that accurately reflect the API constraint.
+## The safety posture
 
-**location instead of zone**: The `zone` field is deprecated in both Terraform and Pulumi. The `location` field accepts either a zone or region depending on the tier, providing a single unified field.
+- **`deletionProtectionEnabled` is the destroy guard.** A protected instance cannot be deleted — by Planton or anyone else — until the flag is flipped false in a deliberate, reviewable change. Production presets set it.
+- **Capacity is a ratchet.** Growth applies in place; shrinking is impossible. Start at the tier minimum and grow on demand.
+- **The API enablement never disables on destroy** — tearing down one instance must not break every other Filestore user in the project.
 
-**Performance config as optional sub-message**: Most users don't need IOPS tuning (tier defaults are reasonable). Making it optional keeps the common case clean while enabling advanced tuning for ZONAL/REGIONAL/ENTERPRISE users.
+## Labels and tags
 
-**No ip_modes exposure**: MODE_IPV4 is hardcoded in both IaC modules. IPv6 NFS is not a realistic use case for our target audience.
+User `labels` merge beneath the platform attribution labels (`planton-ai_*`), which win on key conflicts — identically in both engines. Resource Manager `tags` are a different mechanism entirely: org-policy and IAM-condition bindings in the form `tagKeys/{id}` → `tagValues/{id}`, applied at create time only.
 
-## StringValueOrRef Fields
+## Deliberately not modeled
 
-| Field | Default Kind | Field Path | Purpose |
-|-------|-------------|------------|---------|
-| `projectId` | GcpProject | `status.outputs.project_id` | GCP project for instance creation |
-| `networkConfig.network` | GcpVpc | `status.outputs.network_self_link` | VPC network attachment |
-| `kmsKeyName` | GcpKmsKey | `status.outputs.key_id` | CMEK encryption key |
+All of the following were verified absent from the released `google` `~> 6.x` provider line (schema-probe verified); revisit when the floor moves:
 
-## Stack Outputs
+- **`psc_config.endpoint_project`** — PSC endpoint project selection.
+- **`nfs_export_options.network`** — per-export source network for PSC.
+- **LDAP `directory_services`** — NFSv4.1 LDAP integration.
+- **`source_backupdr_backup`** — restore from a Backup and DR Service backup (`fileShare.sourceBackup` covers Filestore-native backups).
+- **`deletion_policy`** — a client-side flag, not a server field; destroy semantics ride on `deletionProtectionEnabled` identically on both engines (the Pulumi module pins the bridged provider's extra flag to `DELETE` for parity).
 
-| Output | Source | Downstream Use |
-|--------|--------|----------------|
-| `instanceId` | Pulumi: `instance.ID()`, TF: `this.id` | Fully qualified path for API references |
-| `instanceName` | Pulumi: `instance.Name`, TF: `this.name` | Short name for display and logging |
-| `ipAddresses` | Pulumi: `instance.Networks[0].IpAddresses`, TF: `this.networks[0].ip_addresses` | NFS mount point IP addresses |
-| `fileShareName` | Spec passthrough | NFS mount path construction |
-| `createTime` | Pulumi: `instance.CreateTime`, TF: `this.create_time` | Instance creation timestamp |
-
-## Infra-Chart Composition
-
-Filestore instances are commonly composed with:
-
-- **GcpGkeCluster**: GKE pods mount Filestore via PersistentVolume/PersistentVolumeClaim using the NFS CSI driver
-- **GcpComputeInstance**: VMs mount Filestore shares directly via `mount` command
-- **GcpVpc + GcpSubnetwork**: Network foundation for Filestore connectivity
-- **GcpKmsKey + GcpKmsKeyRing**: CMEK encryption chain
-
-Filestore sits at DAG layer 2 (depends on VPC/network at layer 1, consumed by compute/workloads at layer 3+).
+Also not modeled as kinds: **`GcpFilestoreBackup`** and **`GcpFilestoreSnapshot`**. Both are one-shot point-in-time resources — a poor fit for continuously-reconciled IaC, where every re-apply would either do nothing or silently redefine what "the backup" means — and GCP offers no schedule resource for Filestore that would make them declarative. Revisit on concrete pull.

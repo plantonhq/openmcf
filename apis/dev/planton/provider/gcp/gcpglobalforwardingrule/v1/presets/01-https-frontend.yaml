@@ -1,0 +1,16 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpGlobalForwardingRule
+metadata:
+  name: https-frontend
+spec:
+  projectId:
+    value: "<gcp-project-id>"
+  description: Port-443 VIP for the global external HTTPS load balancer
+  target:
+    value: "<target-https-proxy-self-link>" # replace: a GcpTargetHttpsProxy self_link
+  ipAddress:
+    value: "<reserved-static-ip>" # replace: a GcpGlobalAddress reserved IP
+  portRange: "443"
+  loadBalancingScheme: EXTERNAL_MANAGED
+  labels:
+    env: production

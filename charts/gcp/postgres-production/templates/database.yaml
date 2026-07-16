@@ -1,0 +1,91 @@
+# The primary instance and the application database. Every posture below
+# serves one property: the data survives zone loss, operator mistakes,
+# and curious networks — private IP only, synchronous HA standby,
+# point-in-time recovery, and three deliberate locks on destroy.
+#
+# The instance takes its private IP inside the shared network, which must
+# already carry private services access (a landing-zone concern:
+# project-foundation deploys the reserved range + peering by default).
+# This chart deliberately does NOT create the peering — GCP allows exactly
+# one service-networking connection per network, so an application chart
+# creating its own would collide with the foundation's and with every
+# other deployment on the network.
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSql
+metadata:
+  name: "{{ values.instance_name }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  instanceName: "{{ values.instance_name }}"
+  region: "{{ values.region }}"
+  databaseEngine: POSTGRESQL
+  databaseVersion: "{{ values.db_version }}"
+  tier: "{{ values.db_tier }}"
+  edition: ENTERPRISE
+  # REGIONAL = synchronous standby in a second zone with automatic
+  # failover. GCP requires backups to be enabled for it — they are,
+  # below, unconditionally.
+  availabilityType: {{ values.availability_type }}
+  disk:
+    type: PD_SSD
+    sizeGb: {{ values.disk_size_gb }}
+    # Disks only grow. Auto-resize means a full disk never takes the
+    # database down — the growth shows up in billing, not in an outage.
+    autoResize: true
+  network:
+    # Private IP only — no public address exists to protect. The reference
+    # targets the shared network by its Planton resource name (an
+    # environment-level resource deployed by the landing zone, not by this
+    # chart).
+    privateNetwork:
+      valueFrom:
+        name: "{{ values.network_resource_name }}"
+    sslMode: ENCRYPTED_ONLY
+  # IAM database authentication is what makes the passwordless design
+  # work: the flag must be on before IAM-type users can be created. On
+  # even when the identity arm is off, so enabling the arm later never
+  # needs an instance restart.
+  databaseFlags:
+    cloudsql.iam_authentication: "on"
+  backup:
+    enabled: true
+    startTime: "03:00"
+    # PITR replays the transaction log to any second inside the window —
+    # the recovery for "a bad migration ran at 14:32".
+    pointInTimeRecoveryEnabled: true
+    transactionLogRetentionDays: 7
+    # Daily backups kept for a month; PITR covers the recent window at
+    # second granularity, these cover everything older.
+    retainedBackups: 30
+  maintenanceWindow:
+    day: 7 # Sunday
+    hour: 3
+    updateTrack: stable
+  insightsConfig:
+    queryInsightsEnabled: true
+    # Tag-aware insights: applications that annotate queries (e.g. with
+    # sqlcommenter) get per-endpoint attribution for free.
+    recordApplicationTags: true
+  # Production data fails safe: destroy is refused until BOTH guards are
+  # deliberately lifted (the IaC-side flag and the API-side flag), and
+  # even then the final backups outlive the instance.
+  deletionProtection: true
+  deletionProtectionEnabled: true
+  retainBackupsOnDelete: true
+
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSqlDatabase
+metadata:
+  name: "{{ values.instance_name }}-{{ values.database_name }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  # The instance reference — resolves to its instance_name output and
+  # orders the database after the instance exists.
+  instance:
+    valueFrom:
+      name: "{{ values.instance_name }}"
+  databaseName: "{{ values.database_name }}"

@@ -1,0 +1,66 @@
+# Customer-managed encryption for state objects (kmsEnabled=true).
+#
+# Three nodes: a key ring (the permanent container and IAM boundary), the
+# state key itself, and the IAM grant that lets Cloud Storage encrypt with
+# it. State files embed every secret your stacks touch, so organizations
+# with key-custody requirements put them under a key THEY control — enabling
+# audit of every decrypt, instant revocation, and rotation on their terms.
+{% if values.kmsEnabled | bool %}
+---
+# Key rings cannot be deleted from GCP — the ring is a permanent, named
+# container whose IAM flows down to every key inside it. One ring per
+# purpose (here: this state backend) keeps that blast radius honest.
+# CMEK requires the key and the bucket to share a location, so the ring is
+# pinned to the bucket's location (KMS spells locations in lowercase).
+apiVersion: gcp.planton.dev/v1
+kind: GcpKmsKeyRing
+metadata:
+  name: "{{ values.bucket_name }}-keyring"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  keyRingName: "{{ values.bucket_name }}"
+  location: "{{ values.location | lower }}"
+
+---
+# The state-encryption key. 90-day automatic rotation limits how much data
+# any single key version protects going forward (old versions remain able
+# to decrypt what they encrypted — rotation is blast-radius control, not
+# re-encryption). Like its ring, the key object is permanent in GCP; on
+# destroy its versions are destroyed (data becomes unrecoverable after the
+# scheduled window) but the name is never reusable.
+apiVersion: gcp.planton.dev/v1
+kind: GcpKmsKey
+metadata:
+  name: "{{ values.bucket_name }}-key"
+spec:
+  keyRingId:
+    valueFrom:
+      name: "{{ values.bucket_name }}-keyring"
+  keyName: "{{ values.bucket_name }}-state"
+  rotationPeriod: "7776000s"
+
+---
+# Cloud Storage does the actual encrypt/decrypt calls, acting as the
+# project's Storage service agent — so THAT identity (not you, not the
+# state service account) needs permission to use the key. Granted ON the
+# key itself: the agent can use exactly this key and nothing else in the
+# project, and the bucket references this grant (state-bucket.yaml), so
+# deployment orders the bucket after the permission it depends on exists.
+# Additive, so it never disturbs other grants on the same key.
+apiVersion: gcp.planton.dev/v1
+kind: GcpKmsKeyIamMember
+metadata:
+  name: "{{ values.bucket_name }}-gcs-agent-kms"
+spec:
+  cryptoKeyId:
+    valueFrom:
+      name: "{{ values.bucket_name }}-key"
+  role:
+    value: roles/cloudkms.cryptoKeyEncrypterDecrypter
+  member:
+    # The agent is created by GCP, not by any resource here — its email
+    # embeds the project NUMBER (not ID), which is why the chart asks for
+    # gcp_project_number when this toggle is on.
+    value: "serviceAccount:service-{{ values.gcp_project_number }}@gs-project-accounts.iam.gserviceaccount.com"
+{% endif %}
