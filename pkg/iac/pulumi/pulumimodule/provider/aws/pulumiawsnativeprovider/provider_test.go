@@ -111,58 +111,11 @@ func TestBuildProviderArgs_WebIdentity_SingleHop_InjectsResolvedCreds(t *testing
 	assert.NotEqual(t, pulumi.String(stubCreds.SessionToken), args.Token)
 }
 
-func TestBuildProviderArgs_WebIdentity_TwoHop_PassesChainToResolver(t *testing.T) {
-	cfg := &awsprovider.AwsProviderConfig{
-		Region: "us-west-2",
-		WebIdentity: &awsprovider.AwsWebIdentityProviderConfig{
-			WebIdentityToken: "eyJhbGciOiJSUzI1NiJ9.payload.sig",
-			RoleArn:          "arn:aws:iam::066380525333:role/planton-base",
-			ChainedAssumeRoles: []*awsprovider.AwsAssumeRoleConfig{
-				{
-					RoleArn:    "arn:aws:iam::123456789012:role/customer-cat",
-					ExternalId: "ext-secret-123",
-					Duration:   "1h",
-				},
-			},
-		},
-	}
-
-	var gotWebIdentity *awsprovider.AwsWebIdentityProviderConfig
-	resolve := func(_ context.Context, _ string,
-		wi *awsprovider.AwsWebIdentityProviderConfig) (awssdk.Credentials, error) {
-		gotWebIdentity = wi
-		return stubCreds, nil
-	}
-
-	args, err := buildProviderArgs(context.Background(), cfg, "us-west-2", resolve)
-	require.NoError(t, err)
-
-	require.Len(t, gotWebIdentity.GetChainedAssumeRoles(), 1)
-	assert.Equal(t, "arn:aws:iam::123456789012:role/customer-cat",
-		gotWebIdentity.GetChainedAssumeRoles()[0].GetRoleArn())
-	assert.Equal(t, "ext-secret-123", gotWebIdentity.GetChainedAssumeRoles()[0].GetExternalId())
-	assert.Equal(t, pulumi.String(stubCreds.AccessKeyID), args.AccessKey)
-}
-
 func TestBuildProviderArgs_WebIdentity_MissingToken_Errors(t *testing.T) {
 	cfg := &awsprovider.AwsProviderConfig{
 		Region: "us-west-2",
 		WebIdentity: &awsprovider.AwsWebIdentityProviderConfig{
 			RoleArn: "arn:aws:iam::123456789012:role/customer-oidc",
-		},
-	}
-
-	_, err := buildProviderArgs(context.Background(), cfg, "us-west-2", failingResolver(t))
-	assert.Error(t, err)
-}
-
-func TestBuildProviderArgs_WebIdentity_ChainedHopMissingRoleArn_Errors(t *testing.T) {
-	cfg := &awsprovider.AwsProviderConfig{
-		Region: "us-west-2",
-		WebIdentity: &awsprovider.AwsWebIdentityProviderConfig{
-			WebIdentityToken:   "eyJhbGciOiJSUzI1NiJ9.payload.sig",
-			RoleArn:            "arn:aws:iam::066380525333:role/planton-base",
-			ChainedAssumeRoles: []*awsprovider.AwsAssumeRoleConfig{{ExternalId: "ext-only"}},
 		},
 	}
 

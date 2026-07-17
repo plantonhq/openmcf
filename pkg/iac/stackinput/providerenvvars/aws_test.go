@@ -69,34 +69,6 @@ func TestLoadAwsEnvVars_WebIdentity_Resolve_EmitsTempCreds(t *testing.T) {
 	assert.Equal(t, stubCreds.SessionToken, env["AWS_SESSION_TOKEN"])
 }
 
-func TestLoadAwsEnvVars_WebIdentity_TwoHop_PassesChainToResolver(t *testing.T) {
-	cfg := &awsprovider.AwsProviderConfig{
-		WebIdentity: &awsprovider.AwsWebIdentityProviderConfig{
-			WebIdentityToken: "eyJhbGciOiJSUzI1NiJ9.payload.sig",
-			RoleArn:          "arn:aws:iam::066380525333:role/planton-base",
-			ChainedAssumeRoles: []*awsprovider.AwsAssumeRoleConfig{
-				{RoleArn: "arn:aws:iam::123456789012:role/customer-cat", ExternalId: "ext-secret-123", Duration: "1h"},
-			},
-		},
-	}
-
-	var gotChain []*awsprovider.AwsAssumeRoleConfig
-	resolve := func(_ context.Context, _ string,
-		wi *awsprovider.AwsWebIdentityProviderConfig) (awssdk.Credentials, error) {
-		gotChain = wi.GetChainedAssumeRoles()
-		return stubCreds, nil
-	}
-
-	env, err := loadAwsEnvVars(awsConfigYaml(t, cfg), true, "eu-west-1",
-		Options{ResolveAwsWebIdentity: true}, resolve)
-	require.NoError(t, err)
-
-	require.Len(t, gotChain, 1)
-	assert.Equal(t, "arn:aws:iam::123456789012:role/customer-cat", gotChain[0].GetRoleArn())
-	assert.Equal(t, "ext-secret-123", gotChain[0].GetExternalId())
-	assert.Equal(t, stubCreds.AccessKeyID, env["AWS_ACCESS_KEY_ID"])
-}
-
 func TestLoadAwsEnvVars_WebIdentity_NotResolved_RegionOnly(t *testing.T) {
 	// The pulumi path (ResolveAwsWebIdentity=false): the in-program builder owns the exchange,
 	// so the loader must NOT call STS and must emit region only.

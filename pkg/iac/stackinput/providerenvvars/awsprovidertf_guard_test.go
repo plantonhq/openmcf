@@ -19,7 +19,7 @@ import (
 const canonicalAwsProviderBlock = `provider "aws" {
   # Region and credentials are injected by the runtime as environment variables
   # (AWS_REGION + AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN), resolved
-  # from the stack input's provider_config. For keyless (oidc / cross_account_trust)
+  # from the stack input's provider_config. For keyless (oidc)
   # connections the runtime performs the STS web-identity exchange and injects the resulting
   # short-lived credentials. Keep this block empty -- do not wire region or static keys here.
 }`
@@ -41,7 +41,7 @@ func TestAwsProviderTfConvergence(t *testing.T) {
 	require.NoError(t, err)
 
 	// Sized assertion: a new AWS tofu kind must adopt the canonical block (bump this with intent).
-	assert.Len(t, matches, 71, "unexpected number of AWS tofu provider.tf files")
+	assert.Len(t, matches, 112, "unexpected number of AWS tofu provider.tf files")
 
 	forbidden := []string{
 		"region =", "access_key", "secret_key", "session_token", "var.provider_config",

@@ -28,7 +28,7 @@ type Options struct {
 	FileCacheLoc string
 
 	// ResolveAwsWebIdentity, when true, makes the AWS loader perform the STS
-	// AssumeRoleWithWebIdentity exchange for keyless (oidc / cross_account_trust) provider
+	// AssumeRoleWithWebIdentity exchange for keyless (oidc) provider
 	// configs and emit the resulting short-lived credentials as AWS_* env vars. The
 	// tofu/terraform execution path sets this (its HCL `provider "aws" {}` block is empty, so
 	// credentials must arrive via env vars); the pulumi path leaves it false because its

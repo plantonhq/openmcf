@@ -1,10 +1,9 @@
 // Package awswebidentity is the engine-neutral place that exchanges an OIDC web-identity
 // JWT for temporary AWS credentials via STS. All three AWS keyless paths -- the pulumi-aws
 // "classic" builder, the pulumi-aws-native builder, and the OpenTofu/Terraform provider-env
-// path -- resolve credentials here, so the security-critical STS dance --
-// AssumeRoleWithWebIdentity (single hop for `oidc`) plus any chained AssumeRole hops (the
-// `cross_account_trust` second hop) -- lives in one tested place instead of being copied per
-// engine.
+// path -- resolve credentials here, so the security-critical STS
+// AssumeRoleWithWebIdentity exchange lives in one tested place instead of being
+// copied per engine.
 //
 // Why a builder/runner-side exchange exists at all (rather than letting each provider plugin
 // exchange the JWT natively):
@@ -15,8 +14,7 @@
 //   - pulumi-aws-native has no web-identity field at all (upstream pulumi-aws-native#1042), so
 //     it cannot exchange the JWT itself -- the caller must hand it temporary credentials.
 //   - the OpenTofu AWS provider block is deliberately empty (region + credentials are
-//     injected as env vars from the stack input), and a two-hop chained assume-role is not
-//     expressible as a single set of SDK env vars -- so the runtime performs the exchange
+//     injected as env vars from the stack input) -- so the runtime performs the exchange
 //     and injects the resulting short-lived credentials.
 //
 // Each consumer documents its own switch-back trigger (when its upstream gap is fixed) in its
@@ -43,9 +41,8 @@ import (
 type CredentialResolver func(ctx context.Context, region string,
 	webIdentity *awsprovider.AwsWebIdentityProviderConfig) (awssdk.Credentials, error)
 
-// ResolveCredentials performs the STS exchange: AssumeRoleWithWebIdentity into the first-hop
-// role (oidc single hop), then any chained AssumeRole hops in order (cross_account_trust
-// second hop into the customer role), returning the final temporary credentials.
+// ResolveCredentials performs the STS exchange: AssumeRoleWithWebIdentity into the
+// target role, returning the temporary credentials.
 //
 // AssumeRoleWithWebIdentity needs no ambient credentials -- the JWT itself is the credential
 // -- so the base config supplies only the region and the SDK's HTTP client; it does not read
@@ -58,7 +55,7 @@ func ResolveCredentials(ctx context.Context, region string,
 		return awssdk.Credentials{}, errors.Wrap(err, "loading base AWS config")
 	}
 
-	var provider awssdk.CredentialsProvider = stscreds.NewWebIdentityRoleProvider(
+	provider := stscreds.NewWebIdentityRoleProvider(
 		sts.NewFromConfig(baseCfg),
 		webIdentity.GetRoleArn(),
 		identityToken(webIdentity.GetWebIdentityToken()),
@@ -72,46 +69,18 @@ func ResolveCredentials(ctx context.Context, region string,
 		},
 	)
 
-	// Each chained hop assumes the next role using the previous hop's credentials. Role
-	// chaining caps the session at 1h (enforced by AWS, encoded by callers via Duration).
-	for _, hop := range webIdentity.GetChainedAssumeRoles() {
-		hopCfg := baseCfg.Copy()
-		hopCfg.Credentials = awssdk.NewCredentialsCache(provider)
-		h := hop
-		provider = stscreds.NewAssumeRoleProvider(
-			sts.NewFromConfig(hopCfg),
-			h.GetRoleArn(),
-			func(o *stscreds.AssumeRoleOptions) {
-				if h.GetExternalId() != "" {
-					o.ExternalID = awssdk.String(h.GetExternalId())
-				}
-				if h.GetSessionName() != "" {
-					o.RoleSessionName = h.GetSessionName()
-				}
-				if d := parseDuration(h.GetDuration()); d > 0 {
-					o.Duration = d
-				}
-			},
-		)
-	}
-
 	return awssdk.NewCredentialsCache(provider).Retrieve(ctx)
 }
 
 // Validate checks the invariants every consumer shares before attempting an exchange:
-// a non-nil web identity with both a token and a first-hop role, and a role on every
-// chained hop. Keeping it here means both engines reject malformed configs identically.
+// a non-nil web identity with both a token and a role. Keeping it here means both
+// engines reject malformed configs identically.
 func Validate(webIdentity *awsprovider.AwsWebIdentityProviderConfig) error {
 	if webIdentity == nil {
 		return errors.New("web_identity is nil")
 	}
 	if webIdentity.GetWebIdentityToken() == "" || webIdentity.GetRoleArn() == "" {
 		return errors.New("web_identity requires both web_identity_token and role_arn")
-	}
-	for i, hop := range webIdentity.GetChainedAssumeRoles() {
-		if hop.GetRoleArn() == "" {
-			return errors.Errorf("chained_assume_roles[%d] requires role_arn", i)
-		}
 	}
 	return nil
 }

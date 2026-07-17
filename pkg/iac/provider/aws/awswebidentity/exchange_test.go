@@ -32,15 +32,4 @@ func TestValidate(t *testing.T) {
 			t.Fatal("expected an error for missing token and role")
 		}
 	})
-
-	t.Run("chained hop missing role_arn is rejected", func(t *testing.T) {
-		err := Validate(&awsprovider.AwsWebIdentityProviderConfig{
-			WebIdentityToken:   token,
-			RoleArn:            roleArn,
-			ChainedAssumeRoles: []*awsprovider.AwsAssumeRoleConfig{{ExternalId: "ext-only"}},
-		})
-		if err == nil {
-			t.Fatal("expected an error for a chained hop missing role_arn")
-		}
-	})
 }

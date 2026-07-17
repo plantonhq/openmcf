@@ -6,8 +6,7 @@
 // It dispatches on which fields of AwsProviderConfig are populated, supporting every auth mode
 // with a single seam:
 //   - web_identity set            -> keyless OIDC federation. The minted JWT is exchanged for
-//     temporary AWS credentials via STS AssumeRoleWithWebIdentity (single hop for `oidc`;
-//     web-identity + chained AssumeRole for `cross_account_trust`) and the result is injected as
+//     temporary AWS credentials via STS AssumeRoleWithWebIdentity and the result is injected as
 //     static credentials. See "Why a builder-side exchange" below.
 //   - static access keys set      -> long-lived/temporary access-key credentials.
 //   - neither                     -> region only (the provider falls back to the SDK's ambient
@@ -31,18 +30,16 @@
 // Freshness: the exchanged credentials do not auto-refresh, so each pulumi operation must run on a
 // freshly minted token. The runner re-mints the web_identity_token before every operation and the
 // module program re-runs per operation, so the exchange here always sees a fresh token whose
-// assumed-role session (up to 1h; chained cross_account_trust capped at 1h by AWS) covers that one
-// operation. No token is ever written to disk.
+// assumed-role session (up to 1h) covers that one operation. No token is ever written to disk.
 //
 // SWITCH BACK TO PROVIDER-NATIVE WEB IDENTITY once pulumi-aws#6228 is fixed: verify the fix with a
 // real keyless apply that reaches STS (CloudTrail shows AssumeRoleWithWebIdentity), then replace
 // the awswebidentity.ResolveCredentials call in the web_identity arm of buildProviderArgs with the
 // provider-native form -- set providerArgs.AssumeRoleWithWebIdentity to an
-// aws.ProviderAssumeRoleWithWebIdentityArgs{RoleArn, WebIdentityToken, SessionName, Duration} and
-// providerArgs.AssumeRoles to the chained hops (the cross_account_trust second hop) -- and drop the
-// awswebidentity dependency. The provider then refreshes credentials itself, which lets the
-// runner's per-operation re-mint relax to per-job. (The aws-native builder carries the analogous
-// note for its own upstream gap, pulumi-aws-native#1042.)
+// aws.ProviderAssumeRoleWithWebIdentityArgs{RoleArn, WebIdentityToken, SessionName, Duration} --
+// and drop the awswebidentity dependency. The provider then refreshes credentials itself, which
+// lets the runner's per-operation re-mint relax to per-job. (The aws-native builder carries the
+// analogous note for its own upstream gap, pulumi-aws-native#1042.)
 //
 // It deliberately never passes empty-string AccessKey/SecretKey to aws.NewProvider -- doing so is
 // what produced "Invalid credentials configured." for keyless connections before this builder
@@ -108,8 +105,8 @@ func buildProviderArgs(goCtx context.Context, awsProviderConfig *awsprovider.Aws
 		}
 
 		// We exchange the JWT ourselves (rather than letting the provider plugin do it) to bypass
-		// pulumi-aws#6228; see the package doc. resolve performs the single-hop oidc exchange plus
-		// any chained cross_account_trust hops and returns the final temporary credentials.
+		// pulumi-aws#6228; see the package doc. resolve performs the STS exchange and returns
+		// the temporary credentials.
 		creds, err := resolve(goCtx, region, webIdentity)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to resolve web-identity credentials via STS")

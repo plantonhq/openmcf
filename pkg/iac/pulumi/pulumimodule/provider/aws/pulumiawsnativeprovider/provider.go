@@ -17,8 +17,8 @@
 // same inline-token model the classic builder uses and delete the builder-side exchange.
 //
 // Dispatch on which fields of AwsProviderConfig are populated:
-//   - web_identity set       -> exchange the JWT for temporary creds (single hop for oidc;
-//     web-identity + chained AssumeRole for cross_account_trust) and inject them statically.
+//   - web_identity set       -> exchange the JWT for temporary creds via STS
+//     AssumeRoleWithWebIdentity and inject them statically.
 //   - static access keys set -> long-lived/temporary access-key credentials.
 //   - neither                -> region only (the provider falls back to the SDK's ambient
 //     credential chain).

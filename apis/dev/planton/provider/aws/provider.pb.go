@@ -144,13 +144,9 @@ func (x *AwsProviderConfig) GetWebIdentity() *AwsWebIdentityProviderConfig {
 
 // AwsWebIdentityProviderConfig holds the inputs for keyless OIDC federation: the caller mints
 // a short-lived OIDC JWT from an issuer it controls, and the AWS provider exchanges it for
-// credentials via STS AssumeRoleWithWebIdentity. The token is opaque to Planton, which is
-// agnostic to the issuer (a platform-owned issuer, GitHub Actions, GitLab CI, etc.).
-//
-// It powers two auth modes with one mechanism:
-//   - single hop: assume the target role directly with the web identity.
-//   - two hops: assume a base role with the web identity (role_arn below), then role-chain
-//     into the target role via chained_assume_roles (capped at a 1h session by AWS).
+// credentials via STS AssumeRoleWithWebIdentity into the target role. The token is opaque to
+// Planton, which is agnostic to the issuer (a platform-owned issuer, GitHub Actions, GitLab
+// CI, etc.).
 //
 // The token is carried in memory (web_identity_token) and never written to disk: each pulumi
 // operation re-mints a fresh JWT before it runs, so a stack job's runtime is never bound by a
@@ -169,20 +165,14 @@ type AwsWebIdentityProviderConfig struct {
 	// The minted OIDC JWT presented to STS, supplied inline (in memory). Maps to pulumi-aws
 	// ProviderAssumeRoleWithWebIdentity.WebIdentityToken.
 	WebIdentityToken string `protobuf:"bytes,1,opt,name=web_identity_token,json=webIdentityToken,proto3" json:"web_identity_token,omitempty"`
-	// ARN of the first-hop role assumed with the web identity:
-	//   - single hop: the target (customer) role.
-	//   - two hops: the base role (in cross-account-trust, a role in the platform's account),
-	//     from which chained_assume_roles reaches the target role.
+	// ARN of the target (customer) role assumed with the web identity.
 	RoleArn string `protobuf:"bytes,2,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
 	// Optional session name for the web-identity assumption. Provider default applies when empty.
 	SessionName string `protobuf:"bytes,3,opt,name=session_name,json=sessionName,proto3" json:"session_name,omitempty"`
 	// Optional session duration string (e.g. "1h"). Provider default applies when empty.
-	Duration string `protobuf:"bytes,4,opt,name=duration,proto3" json:"duration,omitempty"`
-	// Optional chained role hops applied after the web-identity assumption, in order.
-	// Used by cross_account_trust for the second hop into the customer role; empty for oidc.
-	ChainedAssumeRoles []*AwsAssumeRoleConfig `protobuf:"bytes,5,rep,name=chained_assume_roles,json=chainedAssumeRoles,proto3" json:"chained_assume_roles,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	Duration      string `protobuf:"bytes,4,opt,name=duration,proto3" json:"duration,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsWebIdentityProviderConfig) Reset() {
@@ -243,88 +233,6 @@ func (x *AwsWebIdentityProviderConfig) GetDuration() string {
 	return ""
 }
 
-func (x *AwsWebIdentityProviderConfig) GetChainedAssumeRoles() []*AwsAssumeRoleConfig {
-	if x != nil {
-		return x.ChainedAssumeRoles
-	}
-	return nil
-}
-
-// AwsAssumeRoleConfig describes a single STS AssumeRole hop chained off an already-assumed
-// identity (e.g. the cross-account-trust hop from a base role into the target role).
-type AwsAssumeRoleConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// ARN of the role to assume in this hop.
-	RoleArn string `protobuf:"bytes,1,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
-	// Optional external ID for confused-deputy prevention, embedded in the target role's
-	// trust policy as an sts:ExternalId condition.
-	ExternalId string `protobuf:"bytes,2,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
-	// Optional session name for this hop. Provider default applies when empty.
-	SessionName string `protobuf:"bytes,3,opt,name=session_name,json=sessionName,proto3" json:"session_name,omitempty"`
-	// Optional session duration string (e.g. "1h"). Role chaining caps the session at 1h.
-	Duration      string `protobuf:"bytes,4,opt,name=duration,proto3" json:"duration,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AwsAssumeRoleConfig) Reset() {
-	*x = AwsAssumeRoleConfig{}
-	mi := &file_dev_planton_provider_aws_provider_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AwsAssumeRoleConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AwsAssumeRoleConfig) ProtoMessage() {}
-
-func (x *AwsAssumeRoleConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_provider_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AwsAssumeRoleConfig.ProtoReflect.Descriptor instead.
-func (*AwsAssumeRoleConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_provider_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *AwsAssumeRoleConfig) GetRoleArn() string {
-	if x != nil {
-		return x.RoleArn
-	}
-	return ""
-}
-
-func (x *AwsAssumeRoleConfig) GetExternalId() string {
-	if x != nil {
-		return x.ExternalId
-	}
-	return ""
-}
-
-func (x *AwsAssumeRoleConfig) GetSessionName() string {
-	if x != nil {
-		return x.SessionName
-	}
-	return ""
-}
-
-func (x *AwsAssumeRoleConfig) GetDuration() string {
-	if x != nil {
-		return x.Duration
-	}
-	return ""
-}
-
 var File_dev_planton_provider_aws_provider_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_provider_proto_rawDesc = "" +
@@ -341,19 +249,12 @@ const file_dev_planton_provider_aws_provider_proto_rawDesc = "" +
 	"\x1aspec.aws.secret_access_key\x12\xdb\x01The provided AWS Secret Access Key is invalid. It must contain exactly 40 characters consisting of numbers, lowercase and uppercase letters, slashes (/), and plus signs (+). Please double-check your input and try again.\x1a#this.matches('^[0-9a-zA-Z/+]{40}$')\xd8\x01\x01r\x03\x98\x01(R\x0fsecretAccessKey\x12\x1e\n" +
 	"\x06region\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12#\n" +
 	"\rsession_token\x18\x05 \x01(\tR\fsessionToken\x12Y\n" +
-	"\fweb_identity\x18\x06 \x01(\v26.dev.planton.provider.aws.AwsWebIdentityProviderConfigR\vwebIdentity\"\x97\x02\n" +
+	"\fweb_identity\x18\x06 \x01(\v26.dev.planton.provider.aws.AwsWebIdentityProviderConfigR\vwebIdentity\"\xd2\x01\n" +
 	"\x1cAwsWebIdentityProviderConfig\x124\n" +
 	"\x12web_identity_token\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x10webIdentityToken\x12!\n" +
 	"\brole_arn\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aroleArn\x12!\n" +
 	"\fsession_name\x18\x03 \x01(\tR\vsessionName\x12\x1a\n" +
-	"\bduration\x18\x04 \x01(\tR\bduration\x12_\n" +
-	"\x14chained_assume_roles\x18\x05 \x03(\v2-.dev.planton.provider.aws.AwsAssumeRoleConfigR\x12chainedAssumeRoles\"\x98\x01\n" +
-	"\x13AwsAssumeRoleConfig\x12!\n" +
-	"\brole_arn\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aroleArn\x12\x1f\n" +
-	"\vexternal_id\x18\x02 \x01(\tR\n" +
-	"externalId\x12!\n" +
-	"\fsession_name\x18\x03 \x01(\tR\vsessionName\x12\x1a\n" +
-	"\bduration\x18\x04 \x01(\tR\bdurationB\xed\x01\n" +
+	"\bduration\x18\x04 \x01(\tR\bdurationJ\x04\b\x05\x10\x06R\x14chained_assume_rolesB\xed\x01\n" +
 	"\x1ccom.dev.planton.provider.awsB\rProviderProtoP\x01Z:github.com/plantonhq/planton/apis/dev/planton/provider/aws\xa2\x02\x04DPPA\xaa\x02\x18Dev.Planton.Provider.Aws\xca\x02\x18Dev\\Planton\\Provider\\Aws\xe2\x02$Dev\\Planton\\Provider\\Aws\\GPBMetadata\xea\x02\x1bDev::Planton::Provider::Awsb\x06proto3"
 
 var (
@@ -368,20 +269,18 @@ func file_dev_planton_provider_aws_provider_proto_rawDescGZIP() []byte {
 	return file_dev_planton_provider_aws_provider_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_provider_aws_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_dev_planton_provider_aws_provider_proto_goTypes = []any{
 	(*AwsProviderConfig)(nil),            // 0: dev.planton.provider.aws.AwsProviderConfig
 	(*AwsWebIdentityProviderConfig)(nil), // 1: dev.planton.provider.aws.AwsWebIdentityProviderConfig
-	(*AwsAssumeRoleConfig)(nil),          // 2: dev.planton.provider.aws.AwsAssumeRoleConfig
 }
 var file_dev_planton_provider_aws_provider_proto_depIdxs = []int32{
 	1, // 0: dev.planton.provider.aws.AwsProviderConfig.web_identity:type_name -> dev.planton.provider.aws.AwsWebIdentityProviderConfig
-	2, // 1: dev.planton.provider.aws.AwsWebIdentityProviderConfig.chained_assume_roles:type_name -> dev.planton.provider.aws.AwsAssumeRoleConfig
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_provider_proto_init() }
@@ -395,7 +294,7 @@ func file_dev_planton_provider_aws_provider_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_provider_proto_rawDesc), len(file_dev_planton_provider_aws_provider_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

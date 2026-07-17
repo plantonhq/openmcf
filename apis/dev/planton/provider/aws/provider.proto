@@ -87,13 +87,9 @@ message AwsProviderConfig {
 
 // AwsWebIdentityProviderConfig holds the inputs for keyless OIDC federation: the caller mints
 // a short-lived OIDC JWT from an issuer it controls, and the AWS provider exchanges it for
-// credentials via STS AssumeRoleWithWebIdentity. The token is opaque to Planton, which is
-// agnostic to the issuer (a platform-owned issuer, GitHub Actions, GitLab CI, etc.).
-//
-// It powers two auth modes with one mechanism:
-//   - single hop: assume the target role directly with the web identity.
-//   - two hops: assume a base role with the web identity (role_arn below), then role-chain
-//     into the target role via chained_assume_roles (capped at a 1h session by AWS).
+// credentials via STS AssumeRoleWithWebIdentity into the target role. The token is opaque to
+// Planton, which is agnostic to the issuer (a platform-owned issuer, GitHub Actions, GitLab
+// CI, etc.).
 //
 // The token is carried in memory (web_identity_token) and never written to disk: each pulumi
 // operation re-mints a fresh JWT before it runs, so a stack job's runtime is never bound by a
@@ -108,40 +104,21 @@ message AwsProviderConfig {
 // (upstream pulumi/pulumi-aws-native#1042) so its builder performs the STS exchange and injects
 // the resulting temporary credentials.
 message AwsWebIdentityProviderConfig {
+  // Retired field slot. Reserved so the wire number and name are never reused
+  // for a different meaning.
+  reserved 5;
+  reserved "chained_assume_roles";
+
   // The minted OIDC JWT presented to STS, supplied inline (in memory). Maps to pulumi-aws
   // ProviderAssumeRoleWithWebIdentity.WebIdentityToken.
   string web_identity_token = 1 [(buf.validate.field).required = true];
 
-  // ARN of the first-hop role assumed with the web identity:
-  //   - single hop: the target (customer) role.
-  //   - two hops: the base role (in cross-account-trust, a role in the platform's account),
-  //     from which chained_assume_roles reaches the target role.
+  // ARN of the target (customer) role assumed with the web identity.
   string role_arn = 2 [(buf.validate.field).required = true];
 
   // Optional session name for the web-identity assumption. Provider default applies when empty.
   string session_name = 3;
 
   // Optional session duration string (e.g. "1h"). Provider default applies when empty.
-  string duration = 4;
-
-  // Optional chained role hops applied after the web-identity assumption, in order.
-  // Used by cross_account_trust for the second hop into the customer role; empty for oidc.
-  repeated AwsAssumeRoleConfig chained_assume_roles = 5;
-}
-
-// AwsAssumeRoleConfig describes a single STS AssumeRole hop chained off an already-assumed
-// identity (e.g. the cross-account-trust hop from a base role into the target role).
-message AwsAssumeRoleConfig {
-  // ARN of the role to assume in this hop.
-  string role_arn = 1 [(buf.validate.field).required = true];
-
-  // Optional external ID for confused-deputy prevention, embedded in the target role's
-  // trust policy as an sts:ExternalId condition.
-  string external_id = 2;
-
-  // Optional session name for this hop. Provider default applies when empty.
-  string session_name = 3;
-
-  // Optional session duration string (e.g. "1h"). Role chaining caps the session at 1h.
   string duration = 4;
 }

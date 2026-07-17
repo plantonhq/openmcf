@@ -10,7 +10,7 @@ import (
 )
 
 // awsWebIdentityExchangeTimeout bounds the synchronous STS exchange done on the tofu path.
-// The exchange is a single AssumeRoleWithWebIdentity (+ optional chained AssumeRole) run once,
+// The exchange is a single AssumeRoleWithWebIdentity run once,
 // before any tofu command; this ceiling protects the stack job from a hung STS endpoint. We use
 // a fresh context.Background() rather than threading a caller context so the public
 // providerenvvars/tofumodule signatures stay stable (keeping this change wholly within
