@@ -12,6 +12,15 @@
 
 platform:
   spec:
+    # -- Storage (see the README's "Storage" section). RKE2 ships no storage
+    # provisioner and enterprise backends often mark no class as default --
+    # name yours explicitly. If your backend enforces a minimum volume size
+    # (some NAS systems refuse anything under 800Gi), one size here covers
+    # every volume; per-component settings override it.
+    # storage:
+    #   storageClassName: your-class
+    #   size: 800Gi
+
     ingress:
       enabled: true
       # RKE2's bundled controller; also the cluster default, stated

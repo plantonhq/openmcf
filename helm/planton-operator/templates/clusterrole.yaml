@@ -42,6 +42,16 @@ rules:
       - list
       - watch
   - apiGroups:
+      - ""
+    resources:
+      # events: read-only, so a stuck volume's status can relay the storage
+      # provisioner's own ProvisioningFailed message (e.g. a backend's
+      # minimum-size rejection) instead of a generic wait.
+      - events
+    verbs:
+      - get
+      - list
+  - apiGroups:
       - acid.zalan.do
     resources:
       - operatorconfigurations
@@ -236,3 +246,16 @@ rules:
       - solrclouds/status
     verbs:
       - get
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      # Read-only: the operator never installs storage drivers or mutates
+      # classes (that would need cloud credentials the platform deliberately
+      # never holds). It reads these to explain a stuck volume -- naming the
+      # missing default class or the class whose CSI driver is not installed.
+      - csidrivers
+      - storageclasses
+    verbs:
+      - get
+      - list
+      - watch

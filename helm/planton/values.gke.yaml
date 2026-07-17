@@ -13,6 +13,12 @@
 
 platform:
   spec:
+    # -- Storage: GKE ships working default classes (the PD CSI driver is a
+    # standard addon). To pin a specific class or override volume sizes:
+    # storage:
+    #   storageClassName: premium-rwo
+    #   size: 20Gi   # optional: one size for every volume
+
     ingress:
       enabled: true
       # GKE's built-in controller; stated explicitly so this file works on

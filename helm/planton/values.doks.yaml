@@ -12,6 +12,12 @@
 
 platform:
   spec: {}
+    # -- Storage: DOKS ships a working default class (do-block-storage). To
+    # pin a specific class or override volume sizes:
+    # storage:
+    #   storageClassName: do-block-storage
+    #   size: 20Gi   # optional: one size for every volume
+
     # -- Publish at your own URL. Install ingress-nginx first (it provisions
     # a DigitalOcean Load Balancer), then point your domain's DNS at it:
     # ingress:

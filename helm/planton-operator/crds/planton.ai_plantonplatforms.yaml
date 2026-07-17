@@ -199,13 +199,18 @@ spec:
                         default: false
                         description: enabled controls whether Neo4j is deployed.
                         type: boolean
+                      storageClassName:
+                        description: |-
+                          storageClassName pins the Neo4j data volume to a StorageClass.
+                          Defaults to spec.storage.storageClassName, then the cluster default.
+                        type: string
                       storageSize:
                         anyOf:
                         - type: integer
                         - type: string
-                        default: 10Gi
-                        description: storageSize is the persistent volume size for
-                          Neo4j data.
+                        description: |-
+                          storageSize is the persistent volume size for Neo4j data. Defaults to
+                          spec.storage.size, then 10Gi.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -236,13 +241,18 @@ spec:
                             ZooKeeper. The Solr Operator is deployed automatically unless
                             spec.prerequisites.solrOperator is set to "skip".
                         type: string
+                      storageClassName:
+                        description: |-
+                          storageClassName pins the Solr volumes to a StorageClass. Defaults to
+                          spec.storage.storageClassName, then the cluster default.
+                        type: string
                       storageSize:
                         anyOf:
                         - type: integer
                         - type: string
-                        default: 10Gi
-                        description: storageSize is the persistent volume size for
-                          Solr data.
+                        description: |-
+                          storageSize is the persistent volume size for Solr data. Defaults to
+                          spec.storage.size, then 10Gi.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       zookeeper:
@@ -257,13 +267,18 @@ spec:
                             format: int32
                             minimum: 1
                             type: integer
+                          storageClassName:
+                            description: |-
+                              storageClassName pins the ZooKeeper volumes to a StorageClass.
+                              Defaults to spec.storage.storageClassName, then the cluster default.
+                            type: string
                           storageSize:
                             anyOf:
                             - type: integer
                             - type: string
-                            default: 5Gi
-                            description: storageSize is the persistent volume size
-                              for each ZooKeeper instance.
+                            description: |-
+                              storageSize is the persistent volume size for each ZooKeeper instance.
+                              Defaults to spec.storage.size, then 5Gi.
                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                             x-kubernetes-int-or-string: true
                         type: object
@@ -303,13 +318,18 @@ spec:
                             to the user. The component reports Deploying until manually
                             initialized and unsealed.
                         type: string
+                      storageClassName:
+                        description: |-
+                          storageClassName pins the OpenBAO volume to a StorageClass. Defaults
+                          to spec.storage.storageClassName, then the cluster default.
+                        type: string
                       storageSize:
                         anyOf:
                         - type: integer
                         - type: string
-                        default: 10Gi
-                        description: storageSize is the persistent volume size for
-                          OpenBAO data.
+                        description: |-
+                          storageSize is the persistent volume size for OpenBAO data. Defaults
+                          to spec.storage.size, then 10Gi.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -397,8 +417,29 @@ spec:
                     type: object
                 type: object
               database:
-                description: database configures storage sizing for the data layer.
+                description: |-
+                  database configures storage for the data-layer components
+                  (PostgreSQL, Redis, and the NATS JetStream message store).
                 properties:
+                  nats:
+                    description: nats configures storage for the NATS JetStream message
+                      store.
+                    properties:
+                      storageClassName:
+                        description: |-
+                          storageClassName pins the JetStream volume to a StorageClass.
+                          Defaults to spec.storage.storageClassName, then the cluster default.
+                        type: string
+                      storageSize:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          storageSize is the persistent volume size for the JetStream file
+                          store. Defaults to spec.storage.size, then 10Gi.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
                   postgresql:
                     description: |-
                       postgresql configures storage for the three PostgreSQL instances
@@ -431,13 +472,20 @@ spec:
                         format: int32
                         minimum: 1
                         type: integer
+                      storageClassName:
+                        description: |-
+                          storageClassName pins the PostgreSQL volumes to a StorageClass.
+                          Defaults to spec.storage.storageClassName, then the cluster default.
+                        type: string
                       storageSize:
                         anyOf:
                         - type: integer
                         - type: string
-                        default: 10Gi
-                        description: storageSize is the persistent volume size for
-                          each PostgreSQL instance.
+                        description: |-
+                          storageSize is the persistent volume size for each PostgreSQL
+                          instance. Defaults to spec.storage.size, then 10Gi. (Defaults resolve
+                          in the operator, not in this schema, so the platform-wide size can
+                          tell "unset" apart from "chosen".)
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -447,13 +495,18 @@ spec:
                       field keeps the protocol-role name every consumer speaks; the engine
                       serving it is Valkey (see the valkey resources for the rationale).
                     properties:
+                      storageClassName:
+                        description: |-
+                          storageClassName pins the cache volume to a StorageClass. Defaults to
+                          spec.storage.storageClassName, then the cluster default.
+                        type: string
                       storageSize:
                         anyOf:
                         - type: integer
                         - type: string
-                        default: 1Gi
-                        description: storageSize is the persistent volume size for
-                          the cache instance.
+                        description: |-
+                          storageSize is the persistent volume size for the cache instance.
+                          Defaults to spec.storage.size, then 1Gi.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -692,19 +745,48 @@ spec:
                       and the runner's deploys use that ambient identity -- no cloud keys
                       stored anywhere, in the platform or the cluster.
                     type: object
+                  storageClassName:
+                    description: |-
+                      storageClassName pins the IaC-state volume to a StorageClass. Defaults
+                      to spec.storage.storageClassName, then the cluster default. Applied
+                      when the volume is first created; an existing volume keeps its class.
+                    type: string
                   storageSize:
                     anyOf:
                     - type: integer
                     - type: string
-                    default: 2Gi
                     description: |-
                       storageSize is the persistent volume holding IaC state: the default
-                      state backend keeps each resource's OpenTofu state file here. Honest
-                      limits: state durability equals this volume's durability -- back it up
-                      like you would any state file, or graduate to an S3/GCS/Azure
-                      StateBackend through the console for bucket-grade durability.
+                      state backend keeps each resource's OpenTofu state file here. Defaults
+                      to spec.storage.size, then 2Gi. Honest limits: state durability equals
+                      this volume's durability -- back it up like you would any state file,
+                      or graduate to an S3/GCS/Azure StateBackend through the console for
+                      bucket-grade durability.
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
+                type: object
+              storage:
+                description: |-
+                  storage sets platform-wide storage defaults for every persistent
+                  volume the operator creates: the StorageClass volumes are provisioned
+                  from and one size applied across all of them. Component settings
+                  (e.g. spec.database.postgresql.storageSize) override these per volume.
+                properties:
+                  size:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: |-
+                      size is applied to every persistent volume unless a component sets
+                      its own storageSize.
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  storageClassName:
+                    description: |-
+                      storageClassName is the StorageClass every persistent volume is
+                      provisioned from unless a component names its own. When empty, volumes
+                      use the cluster's default StorageClass.
+                    type: string
                 type: object
               version:
                 description: |-

@@ -12,6 +12,12 @@
 
 platform:
   spec: {}
+    # -- Storage: AKS ships working default classes (the disk CSI driver is
+    # enabled by default). To pin a specific class or override volume sizes:
+    # storage:
+    #   storageClassName: managed-csi-premium
+    #   size: 20Gi   # optional: one size for every volume
+
     # -- Publish at your own URL. Enable the AKS application routing add-on
     # (class "webapprouting.kubernetes.azure.com") or install ingress-nginx,
     # then point your domain's DNS at the controller:

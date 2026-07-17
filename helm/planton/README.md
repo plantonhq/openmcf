@@ -63,6 +63,53 @@ helm install planton oci://ghcr.io/plantonhq/charts/planton \
   --values https://raw.githubusercontent.com/plantonhq/planton/main/helm/planton/values.rke2.yaml
 ```
 
+## Storage
+
+Planton's data services (PostgreSQL, Valkey, NATS JetStream, the runner's
+IaC-state volume, and any optional components you enable) all request
+persistent volumes. Two prerequisites decide whether an install works out of
+the box on your cluster:
+
+1. **A StorageClass Planton can provision from.** Either your cluster has a
+   default StorageClass whose storage driver is actually installed, or you
+   pin one explicitly. A default class that merely *exists* is not enough --
+   on some managed clusters (fresh EKS is the famous case) the default class
+   points at a CSI driver nobody installed, and every volume request hangs.
+2. **Volume sizes at or above your backend's minimum.** Some enterprise
+   backends enforce large minimum volume sizes (some NAS systems refuse
+   anything under 800Gi). Planton's defaults (1-10Gi per volume) are sized
+   for ordinary clusters; on such backends set sizes explicitly.
+
+Both are one block in the values -- the class and one size for every volume,
+with per-component overrides when volumes should differ:
+
+```yaml
+platform:
+  spec:
+    storage:
+      storageClassName: your-class   # every volume; omit to use the cluster default
+      size: 800Gi                    # every volume; omit for per-component defaults
+    # Per-component settings win over the storage block:
+    # database:
+    #   postgresql: {storageSize: 2Ti, storageClassName: fast-ssd}
+    #   redis:      {storageSize: 1Gi}
+    #   nats:       {storageSize: 10Gi}
+    # runner:
+    #   storageSize: 2Gi
+    #   storageClassName: your-class
+```
+
+Set storage before installing: Kubernetes fixes a volume's class and size at
+creation, so changing them on a running install requires recreating the
+volume (scale the component down, delete its PersistentVolumeClaim, let the
+operator recreate it -- destroying that volume's data). The install preflight
+checks the default class can provision, and if a volume ever sticks, the
+`PlantonPlatform` component status names the exact problem and fix:
+
+```bash
+kubectl get plantonplatform planton -n planton -o jsonpath='{.status.components}' | jq
+```
+
 ## One operator per cluster
 
 Run exactly one Planton operator per cluster. If this cluster already runs
