@@ -170,8 +170,8 @@ spec:
                     - message: awsSecretsManager.region and awsSecretsManager.kmsKeyArn
                         are required when type is awsSecretsManager
                       rule: self.type != 'awsSecretsManager' || (has(self.awsSecretsManager)
-                        && self.awsSecretsManager.region != '' && self.awsSecretsManager.kmsKeyArn
-                        != '')
+                        && size(self.awsSecretsManager.region) > 0 && size(self.awsSecretsManager.kmsKeyArn)
+                        > 0)
                 type: object
               components:
                 description: |-
@@ -442,7 +442,10 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   redis:
-                    description: redis configures storage for the Redis instance.
+                    description: |-
+                      redis configures storage for the redis-protocol cache instance. The
+                      field keeps the protocol-role name every consumer speaks; the engine
+                      serving it is Valkey (see the valkey resources for the rationale).
                     properties:
                       storageSize:
                         anyOf:
@@ -450,7 +453,7 @@ spec:
                         - type: string
                         default: 1Gi
                         description: storageSize is the persistent volume size for
-                          the Redis instance.
+                          the cache instance.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object

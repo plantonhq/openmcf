@@ -91,7 +91,7 @@ kubectl delete namespace planton
 
 `helm uninstall` removes the `PlantonPlatform` resource, the operator, and
 the platform's own workloads (control plane, console, front door, identity,
-runner). The data services (PostgreSQL, Redis, NATS, Temporal) and their
+runner). The data services (PostgreSQL, Valkey, NATS, Temporal) and their
 volumes deliberately do not vanish with it -- your data outlives an
 accidental uninstall -- so deleting the namespace is the step that reclaims
 them. To REINSTALL, always delete the namespace first: an uninstall removes

@@ -3,7 +3,7 @@
 Deploy the [Planton Operator](https://github.com/plantonhq/planton) to any Kubernetes cluster.
 
 The Planton Operator watches for `PlantonPlatform` custom resources and deploys the full
-Planton platform stack: PostgreSQL, Redis, NATS, OpenFGA, Temporal, the control plane
+Planton platform stack: PostgreSQL, Valkey, NATS, OpenFGA, Temporal, the control plane
 monolith, and the web console. A single YAML file is all it takes to go from an empty cluster
 to a running Planton instance.
 
@@ -98,7 +98,7 @@ cert-manager not installed).
 The operator runs as a single Deployment and watches for `PlantonPlatform` resources
 in any namespace. When a resource is created, the operator:
 
-1. Deploys the data layer (PostgreSQL, Redis, NATS)
+1. Deploys the data layer (PostgreSQL, Valkey, NATS)
 2. Deploys supporting services (OpenFGA with authorization model, Temporal with schema)
 3. Deploys the application layer (control plane monolith, web console)
 
