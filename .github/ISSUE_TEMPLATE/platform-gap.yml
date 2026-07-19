@@ -1,0 +1,46 @@
+name: Platform gap
+description: Planton fell short of something you needed to accomplish
+title: "[Gap] "
+labels: ["platform-gap", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Something you needed wasn't possible with Planton — a missing resource kind, a missing
+        field, a behavior that blocked a legitimate architecture. The more context you give,
+        the faster it becomes a plan; these reports are often handed directly to a coding
+        agent to scope the fix.
+  - type: textarea
+    id: goal
+    attributes:
+      label: What were you trying to accomplish?
+      description: The goal in product terms — what you were building or enabling, not just which resources.
+      placeholder: e.g. Deploy Istio with a Gateway onto an EKS cluster created by the same chart
+    validations:
+      required: true
+  - type: textarea
+    id: attempt
+    attributes:
+      label: What did you try?
+      description: Chart/manifest snippets and the commands you ran, verbatim. Remove anything sensitive (tokens, keys, account IDs).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: shortfall
+    attributes:
+      label: Where did Planton fall short?
+      description: What happened — errors and output verbatim — and what you expected instead. If the cloud provider supports the capability natively, link its docs.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: CLI version (`planton version`), app version, OS.
+      placeholder: |
+        CLI: 0.3.11
+        App: 0.4.2 (macOS 15.5, Apple Silicon)
+    validations:
+      required: false

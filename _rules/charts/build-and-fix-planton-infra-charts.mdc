@@ -280,11 +280,17 @@ tags). Two conventions matter for cluster-composing charts:
 
 - **`planton.dev/connection` on Kubernetes-provider addons.** The value is
   the org-scoped Kubernetes connection slug. When the chart also deploys the
-  cluster, the platform publishes that cluster's connection at the
-  env-qualified slug `<env>-<cluster resource name>` — so addons template
-  `planton.dev/connection: "{{ values.env }}-{{ values.cluster_name }}"`
-  and the chart names the cluster resource WITHOUT an env prefix (the
-  qualification lives on the connection, not the resource).
+  cluster, the preferred pattern names the published connection explicitly:
+  the cluster carries `planton.dev/connection-name` and every addon carries
+  `planton.dev/connection` with the IDENTICAL values expression (one
+  `connection_name` param serves both ends, e.g.
+  `"{{ values.env }}-{{ values.connection_name }}"` — always embed the env;
+  connections are org-scoped). Absent the override, the platform publishes at
+  the default formula `<env>-<cluster resource name>` — legacy charts on that
+  formula template
+  `planton.dev/connection: "{{ values.env }}-{{ values.cluster_name }}"` and
+  name the cluster resource WITHOUT an env prefix (the qualification lives on
+  the connection, not the resource).
 - **`planton.dev/runner` on cluster resources.** The value names the
   sibling in-VPC runner RESOURCE (its `metadata.name`, same environment) —
   never a registration slug. Charts with a private-endpoint variant include
