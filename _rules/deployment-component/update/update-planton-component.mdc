@@ -19,8 +19,10 @@ the entire platform existed **solely** to give the best possible self-service ex
 that one resource. Breadth — of providers, or of components within a provider — is never a
 reason to leave a single component's experience shallow. Decisions are never driven by
 implementation complexity or by how another component or provider modeled a similar concept;
-derive design only from the target provider's own authoritative API, and judge every choice
-by the experience a user of this one component will come to expect.
+derive design only from the target provider's own authoritative API (for cloud providers: the
+local Terraform provider clone; for Kubernetes: the pinned upstream Helm chart / CRD schema /
+core API types — never web memory), and judge every choice by the experience a user of this
+one component will come to expect.
 
 ## Improve this workflow as you use it (NON-NEGOTIABLE)
 

@@ -26,11 +26,16 @@ The bar for every component:
 > experience for this resource that exists anywhere?"* If not, it is not done.
 
 - **Derive scope from the source of truth, not from a sibling.** Determine the field set,
-  defaults, required/immutable (ForceNew) attributes, and behavior from the cloud's
-  authoritative reference — the official Terraform provider source (cloned into the workspace
-  where available, e.g. `terraform-provider-aws` `internal/service/<service>/`) and the
-  provider's API docs — read **first**, via local search, not from memory or the web. Design
-  to the **90/10 standard**: expose what real advanced use needs, not just the surface knobs.
+  defaults, required/immutable (ForceNew) attributes, and behavior from the provider's
+  authoritative reference — read **first**, via local search, not from memory or the web.
+  For cloud providers with an official Terraform provider, that clone is the floor
+  (e.g. `terraform-provider-aws` `internal/service/<service>/`, and the matching Pulumi SDK).
+  For Kubernetes, there is no single Terraform-provider floor: the authoritative reference is
+  the pinned upstream artifact for that component (Helm chart `values.yaml`/templates, CRD
+  schemas, or core Kubernetes API types), cloned locally for search — never designed from web
+  memory or assumptions. Upstream validators/docs are the floor for the field *set*, not
+  automatic truth for every constraint; live rejection wins. Design for complete, typed
+  coverage of what real advanced use needs — not a generic map passthrough of upstream knobs.
 - **Mirror a sibling's STRUCTURE, never its DEPTH.** Copying the nearest sibling's *shape*
   (the four protos, FK refs, output naming, file layout) is correct and required. Copying its
   *field coverage or quality ceiling* is NOT — much of the existing surface was authored
