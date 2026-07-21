@@ -9,6 +9,7 @@ package kuberneteshelmreleasev1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -23,28 +24,173 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **KubernetesHelmReleaseSpec** defines the configuration for deploying a Helm release on a Kubernetes cluster.
-// This message specifies the parameters needed to create and manage a Helm chart deployment within a Kubernetes environment.
-// By configuring the Helm chart specifications, you can deploy applications packaged as Helm charts with customized values.
+// *
+// **KubernetesHelmReleaseSpec** installs an upstream Helm chart as a real
+// Helm release — the catalog's sole intentional passthrough. Both engines
+// perform an actual `helm install`: hooks run, the release secret is
+// written, and `helm list` shows the release exactly as if installed by the
+// Helm CLI.
+//
+// WHEN NOT TO USE THIS: a first-class catalog component always wins. Typed
+// components validate their configuration before deploy, export composable
+// outputs, and teach their trade-offs field by field — a generic chart
+// install does none of that. Reach for KubernetesHelmRelease only when the
+// catalog has no component for the chart you need.
+//
+// VALUES MODEL (Helm's own): `values_yaml` is the values file; `set`,
+// `set_string`, and `set_sensitive` are the `--set`-style overrides applied
+// on top. Both engines merge these layers with identical precedence
+// (values_yaml, then set, then set_string, then set_sensitive) and hand Helm
+// one final values map — the same manifest installs byte-identical releases
+// on either engine.
 type KubernetesHelmReleaseSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// The repository URL where the Helm chart is hosted.
-	// For example, "https://charts.helm.sh/stable".
-	// an example for chart-repo (redis chart) can be found in https://artifacthub.io/packages/helm/bitnami/redis?modal=install
-	Repo string `protobuf:"bytes,4,opt,name=repo,proto3" json:"repo,omitempty"`
-	// The name of the Helm chart to deploy.
-	// For example, "nginx-ingress".
-	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
-	// The version of the Helm chart to deploy.
-	// For example, "1.41.3".
-	Version string `protobuf:"bytes,6,opt,name=version,proto3" json:"version,omitempty"`
-	// A map of key-value pairs representing custom values for the Helm chart.
-	// These values override the default settings in the chart's values.yaml file.
-	Values        map[string]string `protobuf:"bytes,7,rep,name=values,proto3" json:"values,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// The namespace to install the release into. Accepts a literal namespace
+	// name or a reference to a KubernetesNamespace resource.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before the release is installed, and deleted with the
+	// resource. When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// The chart repository: an HTTP(S) Helm repository URL (e.g.
+	// "https://stefanprodan.github.io/podinfo") or an OCI registry reference
+	// (e.g. "oci://ghcr.io/stefanprodan/charts"). For OCI, the chart is pulled
+	// as `<repo>/<chart>:<version>`.
+	Repo string `protobuf:"bytes,3,opt,name=repo,proto3" json:"repo,omitempty"`
+	// *
+	// The chart name within the repository (e.g. "podinfo", "cert-manager").
+	Chart string `protobuf:"bytes,4,opt,name=chart,proto3" json:"chart,omitempty"`
+	// *
+	// The exact chart version to install (e.g. "6.9.2"). Required — an
+	// unpinned "latest" install is not reproducible, and reproducibility is
+	// the point of declaring the release here.
+	Version string `protobuf:"bytes,5,opt,name=version,proto3" json:"version,omitempty"`
+	// *
+	// Overrides the Helm release name. When omitted, the release is named
+	// after the resource (`metadata.name`). Helm limits release names to 53
+	// characters (DNS label rules with dots allowed by Helm, kept strict here:
+	// lowercase alphanumerics and hyphens).
+	ReleaseName string `protobuf:"bytes,6,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
+	// *
+	// Chart values as a YAML document — the equivalent of a Helm values file
+	// passed with `-f`. Full YAML expressiveness: nested maps, lists, numbers,
+	// booleans. Applied first; `set*` overrides layer on top. Do not put
+	// secrets here — use `set_sensitive`.
+	//
+	// Example:
+	// ```yaml
+	// replicaCount: 2
+	// resources:
+	//
+	//	requests:
+	//	  cpu: 100m
+	//
+	// ```
+	ValuesYaml string `protobuf:"bytes,7,opt,name=values_yaml,json=valuesYaml,proto3" json:"values_yaml,omitempty"`
+	// *
+	// Targeted value overrides in Helm `--set` form: the key is a dotted path
+	// (e.g. "image.tag", "ingress.hosts[0].host"), the value is parsed with
+	// Helm's own coercion — "true"/"false" become booleans, digits become
+	// numbers, "null" removes the key. For values that must stay literal
+	// strings (version-like tags such as "1.30"), use `set_string` instead.
+	// Applied after `values_yaml`.
+	Set map[string]string `protobuf:"bytes,8,rep,name=set,proto3" json:"set,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Targeted value overrides in Helm `--set-string` form: same dotted-path
+	// keys as `set`, but the value is always kept as a literal string — no
+	// type coercion. Applied after `set`.
+	SetString map[string]string `protobuf:"bytes,9,rep,name=set_string,json=setString,proto3" json:"set_string,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Secret value overrides in Helm `--set-string` form (always literal
+	// strings): same dotted-path keys, for credentials and other sensitive
+	// chart values. Kept out of rendered plans and state where each engine
+	// supports it. Applied last — highest precedence.
+	SetSensitive map[string]string `protobuf:"bytes,10,rep,name=set_sensitive,json=setSensitive,proto3" json:"set_sensitive,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Username for a private chart repository (HTTP basic auth or OCI registry
+	// login). Set together with `repository_password`.
+	RepositoryUsername string `protobuf:"bytes,11,opt,name=repository_username,json=repositoryUsername,proto3" json:"repository_username,omitempty"`
+	// *
+	// Password or token for a private chart repository. Set together with
+	// `repository_username`.
+	RepositoryPassword string `protobuf:"bytes,12,opt,name=repository_password,json=repositoryPassword,proto3" json:"repository_password,omitempty"`
+	// *
+	// When true, a failed install or upgrade rolls everything back and purges
+	// new resources — the release is never left half-deployed. Atomic implies
+	// waiting for readiness, so it cannot be combined with `skip_await`.
+	Atomic bool `protobuf:"varint,13,opt,name=atomic,proto3" json:"atomic,omitempty"`
+	// *
+	// When true, a failed upgrade deletes the resources that upgrade newly
+	// created (a lighter cleanup than `atomic`, which also rolls back).
+	CleanupOnFail bool `protobuf:"varint,14,opt,name=cleanup_on_fail,json=cleanupOnFail,proto3" json:"cleanup_on_fail,omitempty"`
+	// *
+	// When true, the deploy returns as soon as Helm records the release —
+	// without waiting for the chart's resources to become ready. When false
+	// (the default), both engines wait for readiness. Cannot be combined with
+	// `atomic` (atomic must wait to know whether to roll back).
+	SkipAwait bool `protobuf:"varint,15,opt,name=skip_await,json=skipAwait,proto3" json:"skip_await,omitempty"`
+	// *
+	// When true (and awaiting readiness), also wait until all Jobs the chart
+	// creates have completed. Ignored when `skip_await` is true.
+	WaitForJobs bool `protobuf:"varint,16,opt,name=wait_for_jobs,json=waitForJobs,proto3" json:"wait_for_jobs,omitempty"`
+	// *
+	// Maximum seconds to wait for each Kubernetes operation (and for readiness
+	// when awaiting). Helm's default is 300.
+	TimeoutSeconds *int32 `protobuf:"varint,17,opt,name=timeout_seconds,json=timeoutSeconds,proto3,oneof" json:"timeout_seconds,omitempty"`
+	// *
+	// When true, CRDs shipped in the chart's `crds/` directory are NOT
+	// installed. By default Helm installs chart CRDs when they are absent.
+	SkipCrds bool `protobuf:"varint,18,opt,name=skip_crds,json=skipCrds,proto3" json:"skip_crds,omitempty"`
+	// *
+	// When true, run `helm dependency update` before installing — fetches the
+	// chart's declared subchart dependencies. Charts published with bundled
+	// dependencies (the common case) do not need this.
+	DependencyUpdate bool `protobuf:"varint,19,opt,name=dependency_update,json=dependencyUpdate,proto3" json:"dependency_update,omitempty"`
+	// *
+	// Maximum number of release revisions Helm keeps for rollback history.
+	// 0 means no limit. Helm's default is 10.
+	MaxHistory *int32 `protobuf:"varint,20,opt,name=max_history,json=maxHistory,proto3,oneof" json:"max_history,omitempty"`
+	// *
+	// When true, re-use the release name even if it is already taken by a
+	// failed/uninstalled release that left history behind. Helm marks this
+	// unsafe in production — prefer cleaning up the old release.
+	Replace bool `protobuf:"varint,21,opt,name=replace,proto3" json:"replace,omitempty"`
+	// *
+	// When true, force resource updates through delete-and-recreate when a
+	// field cannot be patched in place. Disruptive — pods are replaced, not
+	// rolled.
+	ForceUpdate bool `protobuf:"varint,22,opt,name=force_update,json=forceUpdate,proto3" json:"force_update,omitempty"`
+	// *
+	// On upgrade, when true, reuse the last release's values and merge these
+	// on top (Helm `--reuse-values`). Mutually exclusive with `reset_values`.
+	ReuseValues bool `protobuf:"varint,23,opt,name=reuse_values,json=reuseValues,proto3" json:"reuse_values,omitempty"`
+	// *
+	// On upgrade, when true, reset the values to the chart's built-in defaults
+	// before applying these (Helm `--reset-values`). Mutually exclusive with
+	// `reuse_values`.
+	ResetValues bool `protobuf:"varint,24,opt,name=reset_values,json=resetValues,proto3" json:"reset_values,omitempty"`
+	// *
+	// When true, chart hooks (pre/post install, upgrade, delete) do not run.
+	DisableWebhooks bool `protobuf:"varint,25,opt,name=disable_webhooks,json=disableWebhooks,proto3" json:"disable_webhooks,omitempty"`
+	// *
+	// When true, skip validating the rendered manifests against the cluster's
+	// OpenAPI schema before applying. Only needed for charts that render
+	// fields newer than the cluster's schema.
+	DisableOpenapiValidation bool `protobuf:"varint,26,opt,name=disable_openapi_validation,json=disableOpenapiValidation,proto3" json:"disable_openapi_validation,omitempty"`
+	// *
+	// When true, install/upgrade skips existing-resource conflict checks and
+	// adopts matching resources into the release (Helm `--take-ownership`).
+	// The migration knob: point a release at resources an earlier tool
+	// created. Currently honored by the terraform provisioner only — the
+	// pulumi engine's pinned SDK predates the flag and rejects it loudly
+	// rather than silently ignoring it.
+	TakeOwnership bool `protobuf:"varint,27,opt,name=take_ownership,json=takeOwnership,proto3" json:"take_ownership,omitempty"`
+	// *
+	// Free-form note stored with the release (visible in `helm status`).
+	Description   string `protobuf:"bytes,28,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -100,9 +246,9 @@ func (x *KubernetesHelmReleaseSpec) GetRepo() string {
 	return ""
 }
 
-func (x *KubernetesHelmReleaseSpec) GetName() string {
+func (x *KubernetesHelmReleaseSpec) GetChart() string {
 	if x != nil {
-		return x.Name
+		return x.Chart
 	}
 	return ""
 }
@@ -114,28 +260,222 @@ func (x *KubernetesHelmReleaseSpec) GetVersion() string {
 	return ""
 }
 
-func (x *KubernetesHelmReleaseSpec) GetValues() map[string]string {
+func (x *KubernetesHelmReleaseSpec) GetReleaseName() string {
 	if x != nil {
-		return x.Values
+		return x.ReleaseName
+	}
+	return ""
+}
+
+func (x *KubernetesHelmReleaseSpec) GetValuesYaml() string {
+	if x != nil {
+		return x.ValuesYaml
+	}
+	return ""
+}
+
+func (x *KubernetesHelmReleaseSpec) GetSet() map[string]string {
+	if x != nil {
+		return x.Set
 	}
 	return nil
+}
+
+func (x *KubernetesHelmReleaseSpec) GetSetString() map[string]string {
+	if x != nil {
+		return x.SetString
+	}
+	return nil
+}
+
+func (x *KubernetesHelmReleaseSpec) GetSetSensitive() map[string]string {
+	if x != nil {
+		return x.SetSensitive
+	}
+	return nil
+}
+
+func (x *KubernetesHelmReleaseSpec) GetRepositoryUsername() string {
+	if x != nil {
+		return x.RepositoryUsername
+	}
+	return ""
+}
+
+func (x *KubernetesHelmReleaseSpec) GetRepositoryPassword() string {
+	if x != nil {
+		return x.RepositoryPassword
+	}
+	return ""
+}
+
+func (x *KubernetesHelmReleaseSpec) GetAtomic() bool {
+	if x != nil {
+		return x.Atomic
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetCleanupOnFail() bool {
+	if x != nil {
+		return x.CleanupOnFail
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetSkipAwait() bool {
+	if x != nil {
+		return x.SkipAwait
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetWaitForJobs() bool {
+	if x != nil {
+		return x.WaitForJobs
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetTimeoutSeconds() int32 {
+	if x != nil && x.TimeoutSeconds != nil {
+		return *x.TimeoutSeconds
+	}
+	return 0
+}
+
+func (x *KubernetesHelmReleaseSpec) GetSkipCrds() bool {
+	if x != nil {
+		return x.SkipCrds
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetDependencyUpdate() bool {
+	if x != nil {
+		return x.DependencyUpdate
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetMaxHistory() int32 {
+	if x != nil && x.MaxHistory != nil {
+		return *x.MaxHistory
+	}
+	return 0
+}
+
+func (x *KubernetesHelmReleaseSpec) GetReplace() bool {
+	if x != nil {
+		return x.Replace
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetForceUpdate() bool {
+	if x != nil {
+		return x.ForceUpdate
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetReuseValues() bool {
+	if x != nil {
+		return x.ReuseValues
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetResetValues() bool {
+	if x != nil {
+		return x.ResetValues
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetDisableWebhooks() bool {
+	if x != nil {
+		return x.DisableWebhooks
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetDisableOpenapiValidation() bool {
+	if x != nil {
+		return x.DisableOpenapiValidation
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetTakeOwnership() bool {
+	if x != nil {
+		return x.TakeOwnership
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseSpec) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
 }
 
 var File_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kuberneteshelmrelease/v1/spec.proto\x128dev.planton.provider.kubernetes.kuberneteshelmrelease.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc0\x03\n" +
+	"Cdev/planton/provider/kubernetes/kuberneteshelmrelease/v1/spec.proto\x128dev.planton.provider.kubernetes.kuberneteshelmrelease.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe1\x14\n" +
 	"\x19KubernetesHelmReleaseSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x1a\n" +
-	"\x04repo\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04repo\x12\x1a\n" +
-	"\x04name\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12 \n" +
-	"\aversion\x18\x06 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aversion\x12w\n" +
-	"\x06values\x18\a \x03(\v2_.dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.ValuesEntryR\x06values\x1a9\n" +
-	"\vValuesEntry\x12\x10\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\xab\x01\n" +
+	"\x04repo\x18\x03 \x01(\tB\x96\x01\xbaH\x92\x01\xba\x01\x8b\x01\n" +
+	"\vrepo.scheme\x12ZChart repository must be an http(s):// Helm repository URL or an oci:// registry reference\x1a this.matches('^(https?|oci)://')\xc8\x01\x01R\x04repo\x12\x1c\n" +
+	"\x05chart\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05chart\x12 \n" +
+	"\aversion\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aversion\x12\xf2\x01\n" +
+	"\frelease_name\x18\x06 \x01(\tB\xce\x01\xbaH\xca\x01\xba\x01\xc6\x01\n" +
+	"\x13release_name.format\x12kRelease name must be lowercase alphanumeric with hyphens, at most 53 characters (Helm's release-name limit)\x1aBthis == '' || this.matches('^[a-z0-9]([a-z0-9-]{0,51}[a-z0-9])?$')R\vreleaseName\x12\x1f\n" +
+	"\vvalues_yaml\x18\a \x01(\tR\n" +
+	"valuesYaml\x12n\n" +
+	"\x03set\x18\b \x03(\v2\\.dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.SetEntryR\x03set\x12\x81\x01\n" +
+	"\n" +
+	"set_string\x18\t \x03(\v2b.dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.SetStringEntryR\tsetString\x12\x90\x01\n" +
+	"\rset_sensitive\x18\n" +
+	" \x03(\v2e.dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.SetSensitiveEntryB\x04\xa0\xa6\x1d\x01R\fsetSensitive\x12/\n" +
+	"\x13repository_username\x18\v \x01(\tR\x12repositoryUsername\x125\n" +
+	"\x13repository_password\x18\f \x01(\tB\x04\xa0\xa6\x1d\x01R\x12repositoryPassword\x12\x16\n" +
+	"\x06atomic\x18\r \x01(\bR\x06atomic\x12&\n" +
+	"\x0fcleanup_on_fail\x18\x0e \x01(\bR\rcleanupOnFail\x12\x1d\n" +
+	"\n" +
+	"skip_await\x18\x0f \x01(\bR\tskipAwait\x12\"\n" +
+	"\rwait_for_jobs\x18\x10 \x01(\bR\vwaitForJobs\x12<\n" +
+	"\x0ftimeout_seconds\x18\x11 \x01(\x05B\x0e\xbaH\x04\x1a\x02 \x00\x8a\xa6\x1d\x03300H\x00R\x0etimeoutSeconds\x88\x01\x01\x12\x1b\n" +
+	"\tskip_crds\x18\x12 \x01(\bR\bskipCrds\x12+\n" +
+	"\x11dependency_update\x18\x13 \x01(\bR\x10dependencyUpdate\x123\n" +
+	"\vmax_history\x18\x14 \x01(\x05B\r\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x0210H\x01R\n" +
+	"maxHistory\x88\x01\x01\x12\x18\n" +
+	"\areplace\x18\x15 \x01(\bR\areplace\x12!\n" +
+	"\fforce_update\x18\x16 \x01(\bR\vforceUpdate\x12!\n" +
+	"\freuse_values\x18\x17 \x01(\bR\vreuseValues\x12!\n" +
+	"\freset_values\x18\x18 \x01(\bR\vresetValues\x12)\n" +
+	"\x10disable_webhooks\x18\x19 \x01(\bR\x0fdisableWebhooks\x12<\n" +
+	"\x1adisable_openapi_validation\x18\x1a \x01(\bR\x18disableOpenapiValidation\x12%\n" +
+	"\x0etake_ownership\x18\x1b \x01(\bR\rtakeOwnership\x12 \n" +
+	"\vdescription\x18\x1c \x01(\tR\vdescription\x1a6\n" +
+	"\bSetEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xc4\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a<\n" +
+	"\x0eSetStringEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a?\n" +
+	"\x11SetSensitiveEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe9\x04\xbaH\xe5\x04\x1a\xbb\x01\n" +
+	"\x19spec.atomic_vs_skip_await\x12{atomic and skip_await cannot both be set: atomic must wait for readiness to know whether to roll back. Drop one of the two.\x1a!!(this.atomic && this.skip_await)\x1a\xd2\x01\n" +
+	"\x1aspec.reuse_vs_reset_values\x12\x88\x01reuse_values and reset_values are mutually exclusive: one keeps the previous release's values, the other discards them. Set at most one.\x1a)!(this.reuse_values && this.reset_values)\x1a\xcf\x01\n" +
+	"\x13spec.repo_auth_pair\x12rrepository_username and repository_password must be set together (both or neither) for private chart repositories.\x1aD(this.repository_username == '') == (this.repository_password == '')B\x12\n" +
+	"\x10_timeout_secondsB\x0e\n" +
+	"\f_max_historyB\xc4\x03\n" +
 	"<com.dev.planton.provider.kubernetes.kuberneteshelmrelease.v1B\tSpecProtoP\x01Zrgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteshelmrelease/v1;kuberneteshelmreleasev1\xa2\x02\x05DPPKK\xaa\x028Dev.Planton.Provider.Kubernetes.Kuberneteshelmrelease.V1\xca\x028Dev\\Planton\\Provider\\Kubernetes\\Kuberneteshelmrelease\\V1\xe2\x02DDev\\Planton\\Provider\\Kubernetes\\Kuberneteshelmrelease\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Kubernetes::Kuberneteshelmrelease::V1b\x06proto3"
 
 var (
@@ -150,20 +490,24 @@ func file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_ra
 	return file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_goTypes = []any{
 	(*KubernetesHelmReleaseSpec)(nil), // 0: dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec
-	nil,                               // 1: dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.ValuesEntry
-	(*v1.StringValueOrRef)(nil),       // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                               // 1: dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.SetEntry
+	nil,                               // 2: dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.SetStringEntry
+	nil,                               // 3: dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.SetSensitiveEntry
+	(*v1.StringValueOrRef)(nil),       // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.values:type_name -> dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.ValuesEntry
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	4, // 0: dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.set:type_name -> dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.SetEntry
+	2, // 2: dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.set_string:type_name -> dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.SetStringEntry
+	3, // 3: dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.set_sensitive:type_name -> dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.SetSensitiveEntry
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_init() }
@@ -171,13 +515,14 @@ func file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_in
 	if File_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

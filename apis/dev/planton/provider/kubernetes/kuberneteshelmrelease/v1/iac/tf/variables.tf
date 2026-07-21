@@ -1,55 +1,46 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
-
 variable "spec" {
-  description = "spec"
+  description = "KubernetesHelmRelease specification"
   type = object({
-
-    # Kubernetes namespace for the Helm release
-    namespace = optional(object({
-      value = optional(string)
-      ref = optional(object({
-        kind = optional(string)
-        name = optional(string)
-      }))
-    }))
-
-    # Flag to indicate if the namespace should be created
+    namespace = string
     create_namespace = optional(bool, false)
-
-    # The repository URL where the Helm chart is hosted.
-    # For example, "https://charts.helm.sh/stable".
-    # an example for chart-repo (redis chart) can be found in https://artifacthub.io/packages/helm/bitnami/redis?modal=install
-    repo = optional(string)
-
-    # The name of the Helm chart to deploy.
-    # For example, "nginx-ingress".
-    name = string
-
-    # The version of the Helm chart to deploy.
-    # For example, "1.41.3".
-    version = optional(string)
-
-    # A map of key-value pairs representing custom values for the Helm chart.
-    # These values override the default settings in the chart's values.yaml file.
-    # values = object({
-    #
-    #   # Description for key
-    #   key = string
-    #
-    #   # Description for value
-    #   value = string
-    # })
+    repo = string
+    chart = string
+    version = string
+    release_name = optional(string, "")
+    values_yaml = optional(string, "")
+    set = optional(map(string), {})
+    set_string = optional(map(string), {})
+    set_sensitive = optional(map(string), {})
+    repository_username = optional(string, "")
+    repository_password = optional(string, "")
+    atomic = optional(bool, false)
+    cleanup_on_fail = optional(bool, false)
+    skip_await = optional(bool, false)
+    wait_for_jobs = optional(bool, false)
+    timeout_seconds = optional(number)
+    skip_crds = optional(bool, false)
+    dependency_update = optional(bool, false)
+    max_history = optional(number)
+    replace = optional(bool, false)
+    force_update = optional(bool, false)
+    reuse_values = optional(bool, false)
+    reset_values = optional(bool, false)
+    disable_webhooks = optional(bool, false)
+    disable_openapi_validation = optional(bool, false)
+    take_ownership = optional(bool, false)
+    description = optional(string, "")
   })
 }

@@ -3,9 +3,9 @@ kind: ComponentE2EProfile
 metadata:
   name: kuberneteshelmrelease
 spec:
-  tier: 4
-  status: skip
-  deferred_reason: "generic chart deployer -- needs design session for test chart selection"
+  tier: 1
+  status: green
   validated_provisioners:
     - pulumi
+    - terraform
   timeout_minutes: 15

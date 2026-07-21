@@ -7,27 +7,41 @@ import "dev/planton/provider/kubernetes/kubernetesmanifest/v1/spec.proto";
 import "dev/planton/provider/kubernetes/kubernetesmanifest/v1/stack_outputs.proto";
 import "dev/planton/shared/metadata.proto";
 
-// KubernetesManifest is a generic deployment component for deploying raw Kubernetes manifests.
-// It supports single or multi-document YAML manifests containing any valid Kubernetes resources.
+/**
+ * **KubernetesManifest** applies raw Kubernetes YAML following the Kubernetes
+ * Resource Model (KRM) — the catalog's bring-your-own-manifest escape hatch
+ * for resources no first-class component covers yet. Single or
+ * multi-document manifests, core kinds or custom resources, applied
+ * identically by both engines.
+ */
 message KubernetesManifest {
-  // api-version
-  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1'];
+  // API version for this resource.
+  // Always set to "kubernetes.planton.dev/v1".
+  string api_version = 1 [(buf.validate.field).string.const = "kubernetes.planton.dev/v1"];
 
-  // resource-kind
-  string kind = 2 [(buf.validate.field).string.const = 'KubernetesManifest'];
+  // Resource kind identifier.
+  // Always set to "KubernetesManifest".
+  string kind = 2 [(buf.validate.field).string.const = "KubernetesManifest"];
 
-  // metadata
+  // Metadata for the manifest resource.
+  // Includes standard fields like name, organization, environment, etc.
   dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
 
-  // spec
+  // Specification of the manifest to apply: the anchor namespace, the raw
+  // YAML, and the await behavior.
   KubernetesManifestSpec spec = 4 [(buf.validate.field).required = true];
 
-  // status
+  // Status of the manifest resource.
+  // Contains outputs populated after deployment.
   KubernetesManifestStatus status = 5;
 }
 
-// KubernetesManifestStatus contains the status of the Kubernetes manifest deployment.
+/**
+ * **KubernetesManifestStatus** captures the runtime status of an applied
+ * manifest, including the outputs generated after the apply.
+ */
 message KubernetesManifestStatus {
-  // stack-outputs
+  // Outputs from the manifest apply.
+  // Contains the anchor namespace and the applied-resource inventory.
   KubernetesManifestStackOutputs outputs = 1;
 }

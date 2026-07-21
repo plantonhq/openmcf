@@ -111,6 +111,43 @@ spec:
       pulumi_type: kubernetes:policy/v1:PodDisruptionBudget
       id_format: "{pdb_namespace}/{pdb_name}"
 
+    # --- Helm ------------------------------------------------------------------
+    - terraform_type: helm_release
+      pulumi_type: kubernetes:helm.sh/v3:Release
+      id_format: "{release_namespace}/{release_name}"
+      # Helm persists the release manifest and values in the release secret,
+      # but NOT how it was installed: the provider documents that on import
+      # the repository is left unset and every other provider-specific
+      # attribute is filled with its DEFAULT, so any configured non-default
+      # value re-appears in the first post-import plan as an in-place update
+      # (a server-side no-op — the release was installed from those same
+      # values). All such install-time attributes are config-only.
+      config_only_attributes:
+        - repository
+        - repository_username
+        - repository_password
+        - values
+        - set
+        - set_sensitive
+        - wait
+        - wait_for_jobs
+        - timeout
+        - atomic
+        - cleanup_on_fail
+        - create_namespace
+        - dependency_update
+        - disable_openapi_validation
+        - disable_webhooks
+        - force_update
+        - max_history
+        - replace
+        - reset_values
+        - reuse_values
+        - skip_crds
+        - take_ownership
+        - description
+        - lint
+
     # --- RBAC ----------------------------------------------------------------
     - terraform_type: kubernetes_role_v1
       pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:Role

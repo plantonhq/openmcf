@@ -2,8 +2,20 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesmanifest.v1;
 
-// KubernetesManifestStackOutputs contains the outputs from the Kubernetes manifest deployment.
+/**
+ * **KubernetesManifestStackOutputs** captures the observable handles of an
+ * applied raw manifest. The resource inventory is derived by parsing the
+ * input YAML — identically on both engines — so downstream tooling can see
+ * WHAT was applied without re-parsing the manifest itself.
+ */
 message KubernetesManifestStackOutputs {
-  // The Kubernetes namespace where the manifest resources were deployed.
+  // The anchor namespace: where namespaced documents without an explicit
+  // metadata.namespace were applied.
   string namespace = 1;
+
+  // One entry per applied document, in manifest order, formatted as
+  // "<apiVersion>/<Kind>/<name>" (e.g. "apps/v1/Deployment/app",
+  // "v1/ConfigMap/app-config"). Documents keep the name they declare; the
+  // entry does not include the namespace (see `namespace` for the anchor).
+  repeated string applied_resources = 2;
 }

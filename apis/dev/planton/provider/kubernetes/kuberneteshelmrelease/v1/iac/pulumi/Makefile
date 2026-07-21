@@ -1,20 +1,15 @@
-.PHONY: deps
-deps:
-	go mod download
-	go mod tidy
+.PHONY: preview
+preview:
+	planton pulumi preview --manifest $(manifest)
 
-.PHONY: vet
-vet:
-	go vet ./...
+.PHONY: up
+up:
+	planton pulumi up --manifest $(manifest)
 
-.PHONY: fmt
-fmt:
-	go fmt ./...
+.PHONY: down
+down:
+	planton pulumi down --manifest $(manifest)
 
-.PHONY: build
-build:deps vet fmt
-
-.PHONY: update-deps
-update-deps:
-	go get github.com/plantonhq/planton@latest
-	
+.PHONY: refresh
+refresh:
+	planton pulumi refresh --manifest $(manifest)

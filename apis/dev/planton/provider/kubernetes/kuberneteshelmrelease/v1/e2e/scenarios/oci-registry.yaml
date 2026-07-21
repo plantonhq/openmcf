@@ -1,0 +1,15 @@
+# Proves the OCI registry form live: the same podinfo chart pulled as an OCI
+# artifact from GHCR. Terraform joins repo+chart into the OCI reference
+# inside the provider; the Pulumi module performs the identical join
+# client-side — this scenario proves both paths against a real registry.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesHelmRelease
+metadata:
+  name: e2e-helm-oci
+spec:
+  namespace:
+    value: e2e-helm-oci-ns
+  create_namespace: true
+  repo: oci://ghcr.io/stefanprodan/charts
+  chart: podinfo
+  version: 6.9.2

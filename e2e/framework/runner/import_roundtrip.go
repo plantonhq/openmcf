@@ -199,7 +199,20 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 				rc.Change.Actions, address, asidePath)
 		}
 		changed := changedTopLevelAttributes(rc.Change.Before, rc.Change.After)
+		// Plugin-framework providers mark COMPUTED attributes (id, metadata,
+		// status objects) as unknown on every in-place update -- the plan
+		// cannot state their post-apply values, so they surface here as
+		// "known before, absent after". That is a property of how the
+		// framework plans recomputation, never evidence of a wrong import,
+		// and no catalog declaration can cover it (computed attributes are
+		// not config-only). Prune exactly the attributes the plan itself
+		// marks after_unknown as a WHOLE; partially-unknown objects and all
+		// known drift stay under the oracle.
+		unknownAfter := wholeAttributeAfterUnknown(rc.Change.AfterUnknown)
 		for _, attribute := range changed {
+			if unknownAfter[attribute] {
+				continue
+			}
 			if toleratedAttributes[rc.Type][attribute] {
 				continue
 			}
@@ -339,6 +352,25 @@ func pruneSubPaths(value interface{}, paths [][]string) interface{} {
 	default:
 		return value
 	}
+}
+
+// wholeAttributeAfterUnknown returns the top-level attributes the plan marks
+// entirely unknown post-apply (after_unknown value is literal true). Only a
+// WHOLLY unknown attribute is returned: an object with some unknown members
+// (a map value in after_unknown) is not pruned, so known sibling drift
+// inside it still fails the oracle.
+func wholeAttributeAfterUnknown(afterUnknown interface{}) map[string]bool {
+	result := map[string]bool{}
+	unknownMap, ok := afterUnknown.(map[string]interface{})
+	if !ok {
+		return result
+	}
+	for k, v := range unknownMap {
+		if b, isBool := v.(bool); isBool && b {
+			result[k] = true
+		}
+	}
+	return result
 }
 
 // changedTopLevelAttributes diffs a plan change's before/after objects and

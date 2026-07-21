@@ -28,7 +28,12 @@ profiles.
   `PLANTON_E2E_IMPORT_ROUNDTRIP=1`): deploy the fixture, set its state
   aside, re-import every resource *blind* through these recipes, and
   require the follow-up plan to propose no real change — in-place updates
-  are tolerated only for declared `config_only_attributes`
+  are tolerated only for declared `config_only_attributes`. One
+  framework-owned pruning happens before declarations apply: attributes the
+  plan itself marks WHOLLY unknown post-apply (`after_unknown` literal true —
+  plugin-framework providers recompute `id`/`metadata`-class computed
+  attributes on every in-place update) are never treated as drift; partially
+  unknown objects and all known drift stay under the oracle
   (e.g. `aws_s3_bucket.force_destroy`, engine delete behavior with no
   cloud-side existence) and `write_normalized_attributes`. A tolerance may
   be a dotted sub-path (`"spec.update_strategy"`) when a provider's importer
@@ -89,6 +94,14 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `kubernetespriorityclass` | 2026-07-22, both scenarios | — |
 | `kubernetespoddisruptionbudget` | 2026-07-22, both scenarios | — |
 | `kuberneteshorizontalpodautoscaler` | 2026-07-22, all 3 scenarios (incl. the composed Deployment target fixture) | — |
+| `kuberneteshelmrelease` | 2026-07-22, all 3 scenarios (HTTPS repo, OCI registry, values-override) | `helm_release` install-time attributes (repository, values/set/set_sensitive, lifecycle knobs — Helm does not persist how a release was installed; provider-documented, declared config-only). Computed attributes the plan marks wholly after-unknown (id, metadata) are pruned by the oracle itself, not declared. |
+
+Kinds where an import map is **deliberately not applicable** (recorded so
+absence is never mistaken for an oversight):
+
+| Component | Why no import map |
+|-----------|-------------------|
+| `kubernetesmanifest` | The kind's state is arbitrary user YAML — there is no per-kind resource schema for a blind round-trip oracle to compare against; each deployment's resource set is defined by the manifest itself. Adopting existing raw resources is done by pasting their YAML into `spec.manifest_yaml` and applying (server-side apply takes ownership of unmanaged fields). |
 
 ## Adding a kind
 

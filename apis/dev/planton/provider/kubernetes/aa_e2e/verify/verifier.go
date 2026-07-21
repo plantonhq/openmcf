@@ -291,6 +291,16 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			ManifestPath: manifestPath,
 		}, nil
 
+	// A real Helm release of an arbitrary chart: the Helm verifier's
+	// namespace + running-pods + service assertions hold for any chart that
+	// deploys a workload (the e2e chart, podinfo, deploys one pod and one
+	// service).
+	case "kuberneteshelmrelease":
+		return &HelmComponentVerifier{
+			Namespace:     info.Namespace,
+			ComponentName: info.Name,
+		}, nil
+
 	// Fixed-namespace components: the proto spec has no namespace field because
 	// the upstream tooling (Tekton, etc.) uses hardcoded namespaces. The manifest
 	// YAML cannot carry a namespace hint because protojson.Unmarshal rejects

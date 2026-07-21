@@ -1,100 +1,69 @@
-# KubernetesManifest Pulumi Module
+# Kubernetes Manifest - Pulumi Module
 
-## Key Features
+## Overview
 
-- **Raw YAML Deployment**  
-  Deploys any valid Kubernetes manifest YAML directly to a cluster. Supports single resources and multi-document YAML separated by `---`.
+This Pulumi module applies raw Kubernetes YAML — the KubernetesManifest component's escape-hatch contract — through the Kubernetes provider's `yaml/v2` ConfigGroup, with an optional anchor namespace created first. The manifest content is applied exactly as written: no injected labels, no rewritten fields; the only defaulting is the anchor namespace, and only for namespaced documents that declare none.
 
-- **Smart Resource Ordering**  
-  Uses Pulumi's `yaml/v2` module which provides intelligent CRD-aware resource ordering. CRDs are applied before Custom Resources that depend on them.
+## Architecture
 
-- **Namespace Management**  
-  Optionally creates the target namespace with appropriate labels, or uses an existing namespace.
+```
+iac/pulumi/
+├── main.go              # Entrypoint: loads stack input, calls module
+├── Pulumi.yaml          # Pulumi project configuration
+├── Makefile             # Make targets for preview/up/down/refresh
+└── module/
+    ├── main.go          # Orchestrator: provider init, namespace, ConfigGroup, output export
+    ├── locals.go        # Derived values: labels, anchor namespace, applied-resource inventory
+    ├── inventory.go     # Parses manifest_yaml into the applied-resource inventory
+    ├── namespace.go     # Conditionally creates the anchor namespace
+    └── outputs.go       # Exports namespace, applied_resources
+```
 
-- **Provider Integration**  
-  Seamlessly integrates with Planton's Kubernetes provider configuration for secure cluster access.
+## How It Works
 
-- **Output Exports**  
-  Exports the namespace where resources were deployed for downstream automation.
+1. **Stack Input Loading**: the entrypoint loads `KubernetesManifestStackInput` from Pulumi config
+2. **Locals Initialization**: `locals.go` resolves the anchor namespace from the spec's value-or-ref, computes the standard Planton identity labels (stamped on the created namespace only — never injected into the manifest's documents), and parses the applied-resource inventory from `manifest_yaml`
+3. **Provider Creation**: the Kubernetes provider is initialized from `provider_config` **with `spec.namespace` as its default namespace** — this is the anchoring mechanism. The provider resolves each kind's scope before defaulting, so namespaced documents without an explicit `metadata.namespace` land in the anchor, documents with one keep it, and cluster-scoped documents are never touched
+4. **Namespace**: when `create_namespace` is `true`, the anchor namespace is created with the identity labels, and the ConfigGroup depends on it
+5. **Manifest Application**: the whole manifest goes to a `yaml/v2` ConfigGroup, which splits multi-document YAML and **orders CRDs before the custom resources that use them** — a CRD and its custom resources apply in one pass. `SkipAwait` is wired to `spec.skip_await`; by default the deploy blocks until readiness (workload rollouts complete, other kinds pass the provider's readiness checks)
+6. **Output Export**: the anchor namespace and the applied-resource inventory (`apiVersion/Kind/name` per document, manifest order) are exported
+
+## Semantics Preserved by the Module
+
+- **The manifest is never mutated** — no label injection, no field rewriting; only the provider-level namespace default described above
+- **Namespace anchoring is scope-aware** — explicit namespaces always win; cluster-scoped documents (CRDs, ClusterRoles, ...) are applied as-is
+- **The inventory comes from the input, not from engine state** — `applied_resources` is parsed from `manifest_yaml` with the same document-split rule as the Terraform module (split on lines starting with `---`, newline prepended so a leading `---` loses nothing, blank and comment-only chunks dropped, invalid documents rejected loudly), so both engines export identical values by construction
+
+The Terraform module reaches the same anchoring outcome with a per-document `override_namespace` and the same await default with `wait`/`wait_for_rollout`. One benign breadth difference: when awaiting, this engine also readiness-checks non-workload kinds like Services, while the Terraform engine's kubectl await covers workload rollouts only — the applied objects are identical either way.
+
+## Field Mapping
+
+| Spec Field | Module Behavior |
+|------------|-----------------|
+| `namespace` | Provider default namespace (the anchor); exported as the `namespace` output |
+| `create_namespace` | Conditionally creates the anchor namespace with Planton identity labels; documents depend on it |
+| `manifest_yaml` | Applied verbatim through `yaml/v2` ConfigGroup; also parsed into `applied_resources` |
+| `skip_await` | `SkipAwait` on the ConfigGroup; default is to await readiness |
 
 ## Usage
 
-See [examples.md](../../examples.md) for usage details and step-by-step examples. In general:
+Wrap your raw YAML in a KubernetesManifest resource (see `../hack/manifest.yaml` for a full-surface example) and deploy through the CLI:
 
-1. Define a YAML resource describing your manifest using the **KubernetesManifest** API.
-2. Run:
-   ```bash
-   planton pulumi up --stack-input <your-manifest-file.yaml>
-   ```
+```bash
+planton apply -f manifest.yaml
+```
 
-## Getting Started
+## Debug
 
-1. **Prepare Your Manifest YAML**  
-   Write the Kubernetes resources you want to deploy. This can be a single resource or multiple resources separated by `---`.
+```bash
+# Download deps, vet, and format
+make build
 
-2. **Create the KubernetesManifest Resource**  
-   Wrap your manifest YAML in a KubernetesManifest API resource, specifying the namespace and whether to create it.
+# Build the module
+go build ./module/...
 
-3. **Apply via CLI**  
-   Execute `planton pulumi up --stack-input <manifest-spec.yaml>`. The Pulumi module applies your manifest to the cluster.
+# Build the entrypoint
+go build .
+```
 
-4. **Validate**  
-   Check that resources were created using `kubectl get` commands or the Kubernetes dashboard.
-
-## Module Structure
-
-1. **Initialization**  
-   Reads your `KubernetesManifestStackInput` (containing cluster credentials and resource definitions), sets up local variables and labels.
-
-2. **Provider Setup**  
-   Establishes a Pulumi Kubernetes Provider for your target cluster using the provided credentials.
-
-3. **Namespace Management**  
-   Creates the Kubernetes namespace if `create_namespace: true`, with appropriate Planton labels.
-
-4. **Manifest Application**  
-   Uses `yaml/v2.ConfigGroup` to apply the manifest YAML. This provides:
-   - Automatic CRD ordering (CRDs before Custom Resources)
-   - Proper await behavior for resource readiness
-   - Multi-document YAML support
-
-5. **Output Exports**  
-   Publishes the namespace where resources were deployed.
-
-## Benefits
-
-- **Zero Transformation**  
-  Your YAML is applied exactly as written—no interpretation or modification.
-
-- **CRD Safety**  
-  The yaml/v2 module ensures CRDs are fully registered before Custom Resources are created, avoiding timing issues.
-
-- **Flexibility**  
-  Deploy anything from a single ConfigMap to a complete application stack with dozens of resources.
-
-- **Consistency**  
-  Uses the same provider and namespace patterns as all other Planton Kubernetes components.
-
-## Technical Details
-
-### Why yaml/v2?
-
-The module uses Pulumi's `yaml/v2.ConfigGroup` instead of the older `yaml.ConfigFile` for several reasons:
-
-1. **CRD Ordering**: Automatically applies CRDs before Custom Resources
-2. **Await Behavior**: Properly waits for resource reconciliation
-3. **Error Handling**: Better error messages for invalid manifests
-4. **Performance**: More efficient handling of large manifest files
-
-### Resource Dependencies
-
-When `create_namespace: true`, the namespace is created first and all manifest resources depend on it, ensuring proper ordering.
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request to add features, fix bugs, or improve documentation.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
+> **Note**: reach for KubernetesManifest only when no first-class catalog component covers what you need to apply — typed components validate configuration before deploy and export composable outputs. This module deliberately validates nothing about the manifest's content beyond YAML well-formedness; the API server is what judges the kinds, exactly as with `kubectl apply`.

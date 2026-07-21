@@ -1,57 +1,86 @@
-# Helm Release Kubernetes Pulumi Module
+# Kubernetes Helm Release - Pulumi Module
 
-## Key Features
+## Overview
 
-- **Declarative Helm Management**: The module provides a declarative way to define and manage Helm releases through the `HelmRelease` API resource. Users can specify details like chart name, version, repository, and custom Helm values in a YAML configuration file.
+This Pulumi (Go) module installs an upstream Helm chart as a **real Helm release** via `helm.v3.Release`: hooks run, the release secret is written, and `helm list` shows the release exactly as if the Helm CLI had installed it. The render-only `helm.v3.Chart` resource is deliberately NOT used — it template-renders client-side without creating a release, which silently skips hooks and leaves nothing for Helm tooling to manage.
 
-- **Kubernetes Native Integration**: The module is fully integrated with Kubernetes, automating the provisioning of Helm releases and ensuring they are deployed to the correct Kubernetes cluster using the credentials provided in the API resource.
+The module is the semantic twin of the component's Terraform module: every lifecycle knob maps 1:1 onto a `helm_release` argument, and both engines merge the values layers with identical precedence.
 
-- **Pulumi-Driven Infrastructure Management**: Built on Pulumi’s infrastructure-as-code capabilities, the module ensures that any changes to the `HelmRelease` resource are reflected automatically in the Kubernetes cluster. Pulumi manages the lifecycle of the Helm release, from creation to updates and deletion.
+This component is the catalog's sole intentional passthrough — for charts no first-class component covers. Where a typed component exists for the workload, it always wins.
 
-- **Custom Helm Values**: The `HelmRelease` API resource allows users to pass custom key-value pairs as Helm chart values. This feature provides flexibility in configuring Helm charts according to specific application requirements.
+## Architecture
 
-- **Namespace Management**: The module supports both creating new namespaces and using existing ones based on the `create_namespace` flag. When set to `true`, a new namespace is created with appropriate labels. When set to `false`, the specified namespace name is used, assuming it already exists in the cluster.
+```
+iac/pulumi/
+├── main.go             # Entrypoint: loads stack input, calls the module
+├── Pulumi.yaml         # Pulumi project configuration
+└── module/
+    ├── main.go         # Orchestration: provider, namespace, helm.v3.Release, outputs
+    ├── values.go       # Module-side values merge (Helm's own strvals parser)
+    ├── locals.go       # Release name, namespace, labels, Helm defaults
+    ├── namespace.go    # Optional labeled namespace resource
+    └── outputs.go      # Exports the release's observable handles
+```
 
-- **Helm Chart Versioning**: Users can specify exact versions of Helm charts, ensuring compatibility and control over application deployments. This enables precise management of application lifecycle and infrastructure as versions of Helm charts change.
+## How It Works
 
-- **Environment-Specific Deployments**: The module integrates well with multi-environment setups. By specifying environment details in the API resource, Helm releases can be isolated and deployed in different environments, such as production, staging, or development, within the same Kubernetes cluster or across multiple clusters.
+1. **Provider**: A Kubernetes provider is built from the credential in the stack input
+2. **Namespace**: When `create_namespace` is true, the namespace is created as an explicit, module-owned resource stamped with the standard Planton governance labels — never via Helm's own create-namespace flag, which would create it unlabeled. The release depends on it explicitly
+3. **Identity resolution**: `locals.go` resolves the release name (`spec.release_name`, else `metadata.name`) and Helm's own defaults for the optional knobs (`timeout_seconds` 300, `max_history` 10) so both engines send identical values whether or not the spec set the fields
+4. **Values merge** (`values.go`): the layers merge module-side with the documented precedence — `values_yaml` is parsed as YAML, then `set` entries apply with Helm's own `strvals` `--set` parser (coercion: `"true"` → bool, digits → number, `"null"` deletes), then `set_string` and `set_sensitive` apply with the `--set-string` parser (literal strings). Entries apply in sorted-key order, matching Terraform's lexical map iteration, so even same-path collisions resolve identically on both engines. The Release receives one final merged map
+5. **Chart resolution**: for `oci://` repositories the chart reference is joined client-side as `<repo>/<chart>`; for HTTP(S) repositories the bare chart name plus the repo URL ride the repository options. Private-repo credentials ride the repository options in both forms, with the password marked secret
+6. **Release**: `helm.v3.Release` installs the chart with every lifecycle knob mapped 1:1 with the Terraform module's `helm_release` arguments (`SkipAwait` maps directly; Terraform inverts it as `wait`)
+7. **Output export**: the release's observable handles are read from the Release resource's status — what Helm actually recorded, not what the spec asked for
 
-- **Output Management**: After deploying the Helm release, the module captures critical information such as:
-  - The Kubernetes namespace where the Helm release is deployed.
-  - Relevant details about the release, which can be used for monitoring or further configuration.
+## Semantics Preserved by the Module
+
+- **A real release** — hooks, history, the release secret; `helm status`, `helm history`, and `helm rollback` all work on it
+- **Identical values merge to the Terraform module** — both paths run Helm's own `strvals` parser on override entries in the same order
+- **Secret handling** — when any `set_sensitive` entry is present, the whole merged values map is marked secret in Pulumi state. This is coarser than Terraform's per-entry masking but errs on the safe side; a documented behavioral difference, not a parity exception — the release Helm installs is identical
+
+> **PARITY-EXCEPTION**: `take_ownership` (Helm `--take-ownership`, the migration knob for adopting resources an earlier tool created) is not expressible at the module's pinned pulumi-kubernetes SDK — `helm.v3.ReleaseArgs` gained the flag only in a later release. A set field must never be silently dropped, so the module **fails the deploy loudly** when `take_ownership: true`, with an error that routes you to the Terraform provisioner (which honors it) or to dropping the flag. The exception dissolves at the next pulumi-kubernetes SDK upgrade.
 
 ## Usage
 
-To deploy Helm charts using this module, create a `HelmRelease` API resource in YAML format that specifies the desired Helm chart and configuration values. Once the YAML is created, you can deploy the Helm release in your Kubernetes cluster using the following command:
+Deploy with the CLI:
 
-```bash
-planton pulumi up --stack-input <api-resource.yaml>
+```shell
+planton pulumi up --manifest <manifest.yaml>
 ```
 
-Refer to the **Examples** section for detailed usage instructions.
+Example manifest:
 
-## Pulumi Integration
+```yaml
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesHelmRelease
+metadata:
+  name: podinfo
+spec:
+  namespace:
+    value: podinfo
+  create_namespace: true
+  repo: https://stefanprodan.github.io/podinfo
+  chart: podinfo
+  version: 6.9.2
+  values_yaml: |
+    replicaCount: 2
+  set_string:
+    image.tag: "6.9.2"
+  atomic: true
+  cleanup_on_fail: true
+```
 
-This module is fully integrated with Pulumi’s Go SDK, enabling Helm release management as infrastructure code. By processing the `HelmRelease` API resource, the module provisions the necessary Kubernetes resources and Helm charts based on the specified configuration. Pulumi ensures that any updates to the Helm release configuration are reflected automatically in the cluster, simplifying Helm chart updates and management.
+## Outputs
 
-### Key Pulumi Components
+Exported to `status.outputs`, read from what Helm actually recorded:
 
-1. **Kubernetes Provider**: The module configures the Kubernetes provider using the `kubernetes_credential_id` provided in the `HelmRelease` API resource. This ensures that all Helm releases are deployed in the correct Kubernetes cluster with the appropriate credentials.
+| Name | Description |
+|------|-------------|
+| `namespace` | The namespace the release is installed in |
+| `release_name` | The Helm release name (`helm list` NAME column) |
+| `version` | The installed chart version |
+| `app_version` | The chart's appVersion (the packaged application's upstream version) |
+| `status` | The release status as Helm records it (e.g. `deployed`) |
+| `revision` | The release revision number (1 on install, incremented by upgrades/rollbacks) |
 
-2. **Namespace Management**: The module handles the creation or reuse of Kubernetes namespaces for the Helm release. It ensures that the release is properly isolated from other deployments in the cluster and stores the namespace information in the outputs.
-
-3. **Helm Chart Management**: The module automates the installation and upgrade of Helm charts based on the `HelmRelease` specification. Users can define chart repositories, versions, and custom values to ensure the Helm release is configured according to the application's needs.
-
-4. **Custom Helm Values**: The module allows passing custom key-value pairs to Helm charts. This is particularly useful for configuring Helm charts for different environments or fine-tuning application settings.
-
-5. **Version Control**: By allowing users to specify the Helm chart version, the module ensures compatibility and provides precise control over the application lifecycle, allowing easy rollbacks or upgrades as necessary.
-
-6. **Output Management**: Once the Helm release is deployed, the module captures essential details about the deployment, including the namespace where the release is created. These outputs can be used to monitor the release or configure additional resources.
-
-## Status and Monitoring
-
-All deployment outputs are captured in the `status.outputs` field, providing easy access to the namespace and other key information about the Helm release. This information is crucial for managing and monitoring the state of the Helm release in the Kubernetes cluster.
-
-## Conclusion
-
-The `helm-release-pulumi-module` provides a powerful, automated solution for managing Helm releases in Kubernetes. By using a declarative `HelmRelease` API resource and leveraging Pulumi’s infrastructure-as-code capabilities, the module simplifies Helm release management and ensures consistent deployments across different environments. With features like custom Helm values, version control, and namespace management, this module offers flexibility and control, making it suitable for both development and production environments.
+> **Note**: Chart values pass through to the chart unvalidated — the chart's values surface is the contract, and a typo'd value surfaces when the chart renders or its resources misbehave, not at preview. `version` is required by the spec: unpinned installs are not reproducible.

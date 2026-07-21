@@ -352,6 +352,39 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesManifest: the anchor namespace + the applied-resource
+			// inventory (a repeated string derived from the input YAML) from
+			// both engines must land on the StackOutputs proto.
+			name: "KubernetesManifest",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesManifest,
+			rawOutputs: map[string]interface{}{
+				"namespace":         "team-alpha",
+				"applied_resources": []interface{}{"v1/ConfigMap/app-config", "apps/v1/Deployment/app"},
+			},
+			mustPopulate: []string{
+				"namespace", "applied_resources",
+			},
+		},
+		{
+			// KubernetesHelmRelease: release identity + Helm-recorded state
+			// (chart/app versions, status, revision int32) from both engines
+			// must land on the StackOutputs proto.
+			name: "KubernetesHelmRelease",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesHelmRelease,
+			rawOutputs: map[string]interface{}{
+				"namespace":    "podinfo",
+				"release_name": "podinfo",
+				"version":      "6.9.2",
+				"app_version":  "6.9.2",
+				"status":       "deployed",
+				"revision":     1,
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "version", "app_version",
+				"status", "revision",
+			},
+		},
+		{
 			// AwsSubnet: flat scalar outputs from both engines (subnet id/arn, AZ,
 			// CIDR, route table id, region) must each land on the StackOutputs proto.
 			name: "AwsSubnet",

@@ -358,6 +358,15 @@ Based on scenario:
   behavior per engine; a loud plan failure routes the user before anything
   ships. (Keep the kind's hack manifest free of those fields — the offline
   plan proof runs through both engines from one manifest.)
+  The same discipline runs in the OTHER direction: when the PULUMI side is
+  the one that cannot express a field (the pinned SDK predates a provider
+  argument the Terraform provider already ships), the Pulumi module returns
+  a loud error when the field is set — naming the gap, the working engine,
+  and that the exception dissolves at the next SDK upgrade — instead of
+  omitting the argument silently. Verify expressibility against the PINNED
+  SDK version in go.mod (`$(go env GOMODCACHE)/...@<pinned>/...`), never
+  against an upstream clone's newer branch: the clone shows where the
+  provider is going, the pin decides what the module can do today.
 - **Verify the Pulumi module sets the cloud name argument explicitly**
   (`Name`/`AlarmName`/equivalent from `metadata.name`): modules authored
   before the explicit-naming mandate rely on Pulumi auto-naming, which

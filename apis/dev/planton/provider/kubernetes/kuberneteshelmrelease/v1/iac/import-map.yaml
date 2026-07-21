@@ -1,0 +1,28 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kuberneteshelmrelease
+spec:
+  # A Helm release's identity is its namespace/name pair — derivable from a
+  # prior deploy's outputs, or from the spec (release_name overrides the
+  # resource name, so both spec paths are listed in precedence order).
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_spec_field: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -A` (NAME column).
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column).
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the release's namespace.

@@ -235,11 +235,11 @@ e2e-test-kubernetes:  ## Run all Kubernetes E2E tests -- Tier 1 + Tier 2 + Tier 
 
 .PHONY: e2e-test-kubernetes-tier1
 e2e-test-kubernetes-tier1:  ## Run Kubernetes Tier 1 (native K8s) E2E tests only
-	go test -tags=e2e -timeout=60m -v -count=1 -run "Test(KubernetesNamespace|KubernetesConfigMap|KubernetesServiceAccount|KubernetesRbac|KubernetesDeployment|KubernetesStatefulSet|KubernetesSecret|KubernetesService|KubernetesIngress|KubernetesNetworkPolicy|KubernetesCronJob|KubernetesJob|KubernetesDaemonSet|KubernetesManifest|KubernetesPersistentVolumeClaim|KubernetesStorageClass|KubernetesResourceQuota|KubernetesPriorityClass|KubernetesPodDisruptionBudget|KubernetesHorizontalPodAutoscaler)_" ./e2e/
+	go test -tags=e2e -timeout=60m -v -count=1 -run "Test(KubernetesNamespace|KubernetesConfigMap|KubernetesServiceAccount|KubernetesRbac|KubernetesDeployment|KubernetesStatefulSet|KubernetesSecret|KubernetesService|KubernetesIngress|KubernetesNetworkPolicy|KubernetesCronJob|KubernetesJob|KubernetesDaemonSet|KubernetesManifest|KubernetesHelmRelease|KubernetesPersistentVolumeClaim|KubernetesStorageClass|KubernetesResourceQuota|KubernetesPriorityClass|KubernetesPodDisruptionBudget|KubernetesHorizontalPodAutoscaler)_" ./e2e/
 
 .PHONY: e2e-test-kubernetes-tier2
 e2e-test-kubernetes-tier2:  ## Run Kubernetes Tier 2 (Helm-based) E2E tests only
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesRedis|KubernetesGrafana|KubernetesOpenBao|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesJenkins|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesPerconaPostgresOperator|KubernetesGitlab)_" ./e2e/
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesRedis|KubernetesGrafana|KubernetesOpenBao|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesJenkins|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesPerconaPostgresOperator)_" ./e2e/
 
 .PHONY: e2e-test-kubernetes-tier3
 e2e-test-kubernetes-tier3:  ## Run Kubernetes Tier 3 (operator-dependent) E2E tests -- fixtures deployed automatically
@@ -253,7 +253,7 @@ e2e-test-kubernetes-tier4:  ## Run Kubernetes Tier 4 (operators, addons, cluster
 
 .PHONY: e2e-test-kubernetes-terraform-tier1
 e2e-test-kubernetes-terraform-tier1:  ## Run Kubernetes Tier 1 Terraform E2E tests only
-	go test -tags=e2e -timeout=60m -v -count=1 -run "Test(KubernetesNamespace|KubernetesConfigMap|KubernetesServiceAccount|KubernetesRbac|KubernetesDeployment|KubernetesStatefulSet|KubernetesSecret|KubernetesService|KubernetesIngress|KubernetesNetworkPolicy|KubernetesCronJob|KubernetesJob|KubernetesDaemonSet|KubernetesManifest|KubernetesPersistentVolumeClaim|KubernetesStorageClass|KubernetesResourceQuota|KubernetesPriorityClass|KubernetesPodDisruptionBudget|KubernetesHorizontalPodAutoscaler)_Terraform" ./e2e/
+	go test -tags=e2e -timeout=60m -v -count=1 -run "Test(KubernetesNamespace|KubernetesConfigMap|KubernetesServiceAccount|KubernetesRbac|KubernetesDeployment|KubernetesStatefulSet|KubernetesSecret|KubernetesService|KubernetesIngress|KubernetesNetworkPolicy|KubernetesCronJob|KubernetesJob|KubernetesDaemonSet|KubernetesManifest|KubernetesHelmRelease|KubernetesPersistentVolumeClaim|KubernetesStorageClass|KubernetesResourceQuota|KubernetesPriorityClass|KubernetesPodDisruptionBudget|KubernetesHorizontalPodAutoscaler)_Terraform" ./e2e/
 
 .PHONY: e2e-test-kubernetes-terraform-tier2
 e2e-test-kubernetes-terraform-tier2:  ## Run Kubernetes Tier 2 Terraform (Helm-based) E2E tests only

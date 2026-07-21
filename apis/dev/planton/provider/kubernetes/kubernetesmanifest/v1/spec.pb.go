@@ -24,46 +24,52 @@ const (
 )
 
 // *
-// **KubernetesManifestSpec** defines the configuration for deploying raw Kubernetes manifests.
-// This is a generic deployment component that can deploy any valid Kubernetes manifest YAML,
-// including multi-document manifests containing multiple resources.
+// **KubernetesManifestSpec** deploys raw Kubernetes YAML — the catalog's
+// bring-your-own-manifest escape hatch. Hand it any valid manifest (single or
+// multi-document, core kinds or custom resources) and both engines apply it
+// to the cluster exactly as written.
+//
+// WHEN NOT TO USE THIS: a first-class catalog component always wins. Typed
+// components validate configuration before deploy, export composable outputs
+// other resources can reference, and document their trade-offs field by
+// field — raw YAML does none of that. Reach for KubernetesManifest only when
+// the catalog has no component for what you need to apply (a vendor's
+// install manifest, a CRD bundle, an exotic custom resource).
+//
+// NAMESPACE SEMANTICS (identical on both engines): documents that declare
+// their own `metadata.namespace` keep it; namespaced documents that declare
+// none land in `spec.namespace`. Cluster-scoped documents (CRDs,
+// ClusterRoles, ...) are applied as-is — the anchor namespace never distorts
+// them. The manifest content itself is never otherwise mutated: no injected
+// labels, no rewritten fields.
 type KubernetesManifestSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	// The namespace where the manifest resources will be deployed.
-	// Note: Resources in the manifest that specify their own namespace will use their specified namespace.
-	// Resources without a namespace specified will use this namespace.
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Flag to indicate if the namespace should be created.
-	// When true, the namespace will be created before applying the manifest.
-	// When false, the namespace must already exist.
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// The raw Kubernetes manifest YAML to deploy.
-	// This can be a single manifest or multiple manifests separated by "---".
-	// All valid Kubernetes resources are supported: Deployments, Services, ConfigMaps,
-	// Secrets, CRDs, Custom Resources, and any other Kubernetes resource types.
+	// *
+	// The anchor namespace for this manifest: namespaced documents that do not
+	// declare their own `metadata.namespace` are applied here. Accepts a
+	// literal namespace name or a reference to a KubernetesNamespace resource.
+	// Documents with an explicit namespace, and cluster-scoped documents, are
+	// unaffected.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the anchor namespace is created (with the standard Planton
+	// governance labels) before the manifest is applied, and deleted with the
+	// resource. When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// The raw Kubernetes manifest YAML to apply. A single document or multiple
+	// documents separated by `---`. Every valid Kubernetes resource is
+	// accepted: core kinds, CRDs, and custom resources — including a CRD and
+	// its custom resources in the same manifest (both engines order the CRD
+	// install first).
 	//
-	// Example single manifest:
+	// Example multi-document manifest:
 	// ```yaml
 	// apiVersion: v1
 	// kind: ConfigMap
 	// metadata:
 	//
-	//	name: my-config
-	//
-	// data:
-	//
-	//	key: value
-	//
-	// ```
-	//
-	// Example multi-manifest:
-	// ```yaml
-	// apiVersion: v1
-	// kind: ConfigMap
-	// metadata:
-	//
-	//	name: my-config
+	//	name: app-config
 	//
 	// data:
 	//
@@ -74,14 +80,24 @@ type KubernetesManifestSpec struct {
 	// kind: Deployment
 	// metadata:
 	//
-	//	name: my-app
+	//	name: app
 	//
 	// spec:
 	//
 	//	...
 	//
 	// ```
-	ManifestYaml  string `protobuf:"bytes,4,opt,name=manifest_yaml,json=manifestYaml,proto3" json:"manifest_yaml,omitempty"`
+	ManifestYaml string `protobuf:"bytes,3,opt,name=manifest_yaml,json=manifestYaml,proto3" json:"manifest_yaml,omitempty"`
+	// *
+	// When true, neither engine waits for the applied resources to become
+	// ready — the deploy returns as soon as the API server accepts every
+	// document. When false (the default), both engines block until readiness:
+	// Deployments/DaemonSets/StatefulSets complete their rollout, and other
+	// kinds pass their engine's readiness checks. Skip the await for manifests
+	// whose readiness depends on something deployed later (e.g. a webhook
+	// configuration waiting on its service) or that intentionally stay
+	// not-ready at install time.
+	SkipAwait     bool `protobuf:"varint,4,opt,name=skip_await,json=skipAwait,proto3" json:"skip_await,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -137,15 +153,25 @@ func (x *KubernetesManifestSpec) GetManifestYaml() string {
 	return ""
 }
 
+func (x *KubernetesManifestSpec) GetSkipAwait() bool {
+	if x != nil {
+		return x.SkipAwait
+	}
+	return false
+}
+
 var File_dev_planton_provider_kubernetes_kubernetesmanifest_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesmanifest_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/kubernetes/kubernetesmanifest/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetesmanifest.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdc\x01\n" +
+	"@dev/planton/provider/kubernetes/kubernetesmanifest/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetesmanifest.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x85\x03\n" +
 	"\x16KubernetesManifestSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12+\n" +
-	"\rmanifest_yaml\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fmanifestYamlB\xaf\x03\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\xb4\x01\n" +
+	"\rmanifest_yaml\x18\x03 \x01(\tB\x8e\x01\xbaH\x8a\x01\xba\x01\x83\x01\n" +
+	"\x17manifest_yaml.not_blank\x12SManifest YAML must contain at least one Kubernetes document (a non-empty YAML body)\x1a\x13this.matches('\\\\S')\xc8\x01\x01R\fmanifestYaml\x12\x1d\n" +
+	"\n" +
+	"skip_await\x18\x04 \x01(\bR\tskipAwaitB\xaf\x03\n" +
 	"9com.dev.planton.provider.kubernetes.kubernetesmanifest.v1B\tSpecProtoP\x01Zlgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmanifest/v1;kubernetesmanifestv1\xa2\x02\x05DPPKK\xaa\x025Dev.Planton.Provider.Kubernetes.Kubernetesmanifest.V1\xca\x025Dev\\Planton\\Provider\\Kubernetes\\Kubernetesmanifest\\V1\xe2\x02ADev\\Planton\\Provider\\Kubernetes\\Kubernetesmanifest\\V1\\GPBMetadata\xea\x02:Dev::Planton::Provider::Kubernetes::Kubernetesmanifest::V1b\x06proto3"
 
 var (

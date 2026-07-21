@@ -1,31 +1,39 @@
 package module
 
-// Output constants define the keys for stack outputs exported by the Helm Release deployment.
-// These outputs are exported via Pulumi and can be retrieved using `pulumi stack output <key>`.
-//
-// The outputs correspond to the fields defined in KubernetesHelmReleaseStackOutputs proto message.
-const (
-	// OpNamespace is the Kubernetes namespace where the Helm release is deployed.
-	// This namespace is created by the module and contains all resources from the Helm chart.
-	//
-	// Example usage:
-	//   pulumi stack output namespace
-	//
-	// The namespace value is determined by (in priority order):
-	//   1. Default: metadata.name from the KubernetesHelmRelease resource
-	//   2. Override: custom label "planton.ai/kubernetes-namespace" if provided
-	//   3. Override: kubernetes_namespace from KubernetesHelmReleaseStackInput if provided
-	OpNamespace = "namespace"
+import (
+	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Output keys that may be added in future versions:
-// - release_name: The name of the deployed Helm release
-// - chart_name: The name of the Helm chart that was deployed
-// - chart_version: The version of the Helm chart that was deployed
-// - chart_repo: The repository URL from which the chart was fetched
-// - release_status: The status of the Helm release (deployed, failed, etc.)
-// - release_revision: The revision number of the Helm release
-// - manifest: The rendered Kubernetes manifests from the Helm chart
-//
-// Note: These additional outputs would require corresponding fields to be added
-// to the KubernetesHelmReleaseStackOutputs proto message first.
+// Output constants define the keys for stack outputs exported by this
+// module, mirroring KubernetesHelmReleaseStackOutputs. The Terraform module
+// exports the identical set from the helm_release resource's metadata.
+const (
+	// OpNamespace is the namespace the release is installed in.
+	OpNamespace = "namespace"
+	// OpReleaseName is the Helm release name (`helm list` NAME column).
+	OpReleaseName = "release_name"
+	// OpVersion is the installed chart version.
+	OpVersion = "version"
+	// OpAppVersion is the chart's appVersion (the packaged application's
+	// upstream version).
+	OpAppVersion = "app_version"
+	// OpStatus is the release status as Helm records it (e.g. "deployed").
+	OpStatus = "status"
+	// OpRevision is the release revision number (1 on install, incremented
+	// by upgrades/rollbacks).
+	OpRevision = "revision"
+)
+
+// exportOutputs exports the release's observable handles. Values come from
+// the Release resource's status (populated by the provider after install),
+// so they reflect what Helm actually recorded — not what the spec asked for.
+func exportOutputs(ctx *pulumi.Context, locals *Locals, createdRelease *helmv3.Release) {
+	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
+	ctx.Export(OpReleaseName, pulumi.String(locals.ReleaseName))
+	ctx.Export(OpVersion, createdRelease.Status.Version().Elem())
+	ctx.Export(OpAppVersion, createdRelease.Status.AppVersion().Elem())
+	// Status() is a plain StringOutput at the pinned SDK (not a Ptr).
+	ctx.Export(OpStatus, createdRelease.Status.Status())
+	ctx.Export(OpRevision, createdRelease.Status.Revision().Elem())
+}

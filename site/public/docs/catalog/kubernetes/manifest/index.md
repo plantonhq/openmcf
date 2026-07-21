@@ -8,76 +8,28 @@ componentName: "kubernetesmanifest"
 
 # Kubernetes Manifest
 
-Deploys arbitrary Kubernetes YAML manifests -- single or multi-document -- through Planton's lifecycle management, giving raw Kubernetes resources the same declarative apply/update/destroy workflow as any other Planton component. The module handles namespace creation, multi-document ordering, and CRD dependency resolution automatically.
+**Check the catalog before using this component: a first-class component always wins.** Typed components validate configuration before deploy, export composable outputs, and document their trade-offs — raw YAML does none of that. KubernetesManifest is the escape hatch for resources no component covers: a vendor's install manifest, a CRD bundle, an exotic custom resource.
+
+What it does: applies raw Kubernetes YAML — single or multi-document, core kinds or custom resources, even a CRD and its custom resources together — to a target cluster **exactly as written** (no injected labels, no rewritten fields), wrapped in Planton's declarative apply/update/destroy lifecycle. Both IaC engines handle CRD-before-custom-resource ordering in one pass and await readiness by default.
 
 ## What Gets Created
 
 When you deploy a KubernetesManifest resource, Planton provisions:
 
-- **Namespace** — created only when `createNamespace` is `true`
-- **All resources defined in `manifestYaml`** — every Kubernetes resource in the provided YAML (single or multi-document) is applied through Pulumi's `yaml/v2.ConfigGroup`, which handles CRD ordering, multi-document splitting, and dependency tracking automatically
+- **Namespace** — the anchor namespace, created only when `create_namespace` is `true` (with standard Planton governance labels on the namespace object; your manifest's documents are never labeled)
+- **Every document in `manifest_yaml`** — applied server-side, exactly as written
+
+**Namespace anchoring** (identical on both engines): documents that declare their own `metadata.namespace` keep it; namespaced documents that declare none land in `spec.namespace`; cluster-scoped documents (CRDs, ClusterRoles, ...) are applied as-is — the anchor never distorts them.
 
 ## Prerequisites
 
 - **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists, or set `createNamespace` to `true`
-- **Valid Kubernetes manifest YAML** containing one or more resource definitions separated by `---`
-- **CRD definitions available on the cluster** if the manifest references custom resource types
+- **The anchor namespace** must already exist, or set `create_namespace` to `true`
+- **Valid Kubernetes YAML** — content is applied as-is; the API server is what validates your kinds
 
 ## Quick Start
 
-Create a file `manifest.yaml`:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesManifest
-metadata:
-  name: my-manifest
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesManifest.my-manifest
-spec:
-  namespace:
-    value: my-namespace
-  manifestYaml: |
-    apiVersion: v1
-    kind: ConfigMap
-    metadata:
-      name: my-config
-    data:
-      key: value
-```
-
-Deploy:
-
-```shell
-planton apply -f manifest.yaml
-```
-
-This applies the ConfigMap to the `my-namespace` namespace. Resources in the manifest that specify their own namespace use that namespace; resources without one use the namespace from `spec.namespace`.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespace` | `StringValueOrRef` | Kubernetes namespace for resources that do not specify their own namespace. Can reference a KubernetesNamespace resource via `valueFrom`. | Required |
-| `manifestYaml` | `string` | Raw Kubernetes manifest YAML to deploy. Supports single or multi-document YAML separated by `---`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `createNamespace` | `bool` | `false` | When `true`, creates the namespace before applying the manifest. When `false`, the namespace must already exist. |
-
-## Examples
-
-### Basic ConfigMap
-
-A single ConfigMap deployed through Planton lifecycle management:
+Create a file `manifest.yaml` — a ConfigMap and Secret anchored in one namespace:
 
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
@@ -91,138 +43,160 @@ metadata:
     pulumi.planton.dev/stack.name: dev.KubernetesManifest.app-config
 spec:
   namespace:
-    value: default
-  manifestYaml: |
+    value: my-app
+  create_namespace: true
+  manifest_yaml: |
     apiVersion: v1
     kind: ConfigMap
     metadata:
       name: app-settings
     data:
-      LOG_LEVEL: "info"
-      MAX_CONNECTIONS: "100"
+      LOG_LEVEL: info
+    ---
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: app-credentials
+    type: Opaque
+    stringData:
+      api-key: replace-me
 ```
 
-### Multi-Document Manifest with Namespace Creation
+Deploy:
 
-A RBAC setup deploying a ServiceAccount, Role, and RoleBinding in a newly created namespace:
+```shell
+planton apply -f manifest.yaml
+```
+
+Neither document declares a namespace, so both land in `my-app`, which is created first and deleted with the resource.
+
+## Configuration Reference
+
+### Required Fields
+
+| Field | Type | Description | Validation |
+|-------|------|-------------|------------|
+| `spec.namespace` | `StringValueOrRef` | The anchor namespace: where namespaced documents without an explicit `metadata.namespace` are applied. A literal name (`value: my-ns`) or a reference to a KubernetesNamespace resource. | required, non-empty |
+| `spec.manifest_yaml` | `string` | The raw Kubernetes manifest YAML — a single document or multiple separated by `---`. Every valid Kubernetes resource is accepted, including a CRD and its custom resources in the same manifest. | required, at least one non-blank document |
+
+### Optional Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `spec.create_namespace` | `bool` | `false` | When `true`, the anchor namespace is created (with standard Planton governance labels) before the manifest applies and deleted with the resource. When `false`, it must already exist. |
+| `spec.skip_await` | `bool` | `false` | When `true`, the deploy returns as soon as the API server accepts every document. When `false`, both engines block until readiness (workload rollouts complete; other kinds pass the engine's readiness checks). Skip for manifests whose readiness depends on something deployed later — e.g. a webhook configuration waiting on its service. |
+
+## Examples
+
+### CRD and Custom Resource in One Manifest
+
+Both engines order the CRD install before the custom resource that uses it — one apply, no two-pass workaround. The CRD is cluster-scoped and untouched by the anchor; the custom resource declares no namespace, so it lands in `crontab-demo`:
 
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesManifest
 metadata:
-  name: rbac-setup
+  name: crontab-operator-config
   annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.KubernetesManifest.rbac-setup
+    pulumi.planton.dev/stack.name: dev.KubernetesManifest.crontab-operator-config
 spec:
   namespace:
-    value: monitoring
-  createNamespace: true
-  manifestYaml: |
+    value: crontab-demo
+  create_namespace: true
+  manifest_yaml: |
+    apiVersion: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    metadata:
+      name: crontabs.stable.example.com
+    spec:
+      group: stable.example.com
+      scope: Namespaced
+      names:
+        plural: crontabs
+        singular: crontab
+        kind: CronTab
+      versions:
+        - name: v1
+          served: true
+          storage: true
+          schema:
+            openAPIV3Schema:
+              type: object
+              properties:
+                spec:
+                  type: object
+                  properties:
+                    cronSpec:
+                      type: string
+    ---
+    apiVersion: stable.example.com/v1
+    kind: CronTab
+    metadata:
+      name: sample-crontab
+    spec:
+      cronSpec: "*/5 * * * *"
+```
+
+### Vendor Install Manifest
+
+The "paste the vendor's install YAML" pattern: the manifest is applied byte-for-byte as published. `skip_await: true` because install bundles often contain resources (webhook configurations, custom resources awaiting their operator) that are not ready until the whole bundle settles:
+
+```yaml
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesManifest
+metadata:
+  name: vendor-install
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: my-org
+    pulumi.planton.dev/project: my-project
+    pulumi.planton.dev/stack.name: dev.KubernetesManifest.vendor-install
+spec:
+  namespace:
+    value: vendor-system
+  create_namespace: true
+  skip_await: true
+  manifest_yaml: |
+    # Paste the vendor's published install.yaml here, exactly as downloaded.
     apiVersion: v1
     kind: ServiceAccount
     metadata:
-      name: prometheus
-      namespace: monitoring
-    ---
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: Role
-    metadata:
-      name: prometheus-reader
-      namespace: monitoring
-    rules:
-      - apiGroups: [""]
-        resources: ["pods", "services", "endpoints"]
-        verbs: ["get", "list", "watch"]
-    ---
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: RoleBinding
-    metadata:
-      name: prometheus-reader-binding
-      namespace: monitoring
-    roleRef:
-      apiGroup: rbac.authorization.k8s.io
-      kind: Role
-      name: prometheus-reader
-    subjects:
-      - kind: ServiceAccount
-        name: prometheus
-        namespace: monitoring
+      name: replace-with-vendor-manifest
 ```
 
-### Full Application Stack with CRDs and Cross-Namespace Resources
+Documents in a vendor bundle that hard-code their namespace keep it; only unanchored namespaced documents land in `vendor-system`.
 
-A complete application manifest deploying a CronJob, a NetworkPolicy, and a PriorityClass (cluster-scoped), referencing a namespace managed by another Planton resource:
+### Anchoring Into an Existing Namespace by Reference
+
+The anchor can reference a KubernetesNamespace resource instead of naming a literal, so the namespace and the manifest compose in one deployment graph:
 
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesManifest
 metadata:
-  name: batch-stack
+  name: team-quotas
   annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesManifest.batch-stack
+    pulumi.planton.dev/stack.name: dev.KubernetesManifest.team-quotas
 spec:
   namespace:
-    valueFrom:
+    value_from:
       kind: KubernetesNamespace
-      name: batch-ns
-      field: spec.name
-  manifestYaml: |
-    apiVersion: scheduling.k8s.io/v1
-    kind: PriorityClass
+      name: team-a-namespace
+  manifest_yaml: |
+    apiVersion: v1
+    kind: ResourceQuota
     metadata:
-      name: batch-high-priority
-    value: 1000000
-    globalDefault: false
-    description: "Priority class for batch jobs"
-    ---
-    apiVersion: networking.k8s.io/v1
-    kind: NetworkPolicy
-    metadata:
-      name: batch-network-policy
+      name: team-quota
     spec:
-      podSelector:
-        matchLabels:
-          app: batch-worker
-      policyTypes:
-        - Ingress
-        - Egress
-      egress:
-        - to:
-            - namespaceSelector:
-                matchLabels:
-                  name: database
-          ports:
-            - protocol: TCP
-              port: 5432
-    ---
-    apiVersion: batch/v1
-    kind: CronJob
-    metadata:
-      name: data-sync
-    spec:
-      schedule: "0 */6 * * *"
-      jobTemplate:
-        spec:
-          template:
-            spec:
-              priorityClassName: batch-high-priority
-              containers:
-                - name: sync
-                  image: gcr.io/my-project/data-sync:v1.2.0
-                  resources:
-                    limits:
-                      cpu: "2000m"
-                      memory: "4Gi"
-                    requests:
-                      cpu: "500m"
-                      memory: "1Gi"
-              restartPolicy: OnFailure
+      hard:
+        requests.cpu: "10"
+        requests.memory: 20Gi
 ```
 
 ## Stack Outputs
@@ -231,10 +205,11 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `namespace` | `string` | Kubernetes namespace where the manifest resources were deployed |
+| `namespace` | `string` | The anchor namespace — where namespaced documents without an explicit `metadata.namespace` were applied |
+| `appliedResources` | `list(string)` | One entry per applied document, in manifest order, formatted as `<apiVersion>/<Kind>/<name>` (e.g. `apps/v1/Deployment/app`). Derived from the input YAML, identical on both engines |
 
 ## Related Components
 
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace via `valueFrom` reference
-- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — preferred for deploying containerized applications with built-in Service, ingress, and autoscaling support
-- [KubernetesHelmRelease](/docs/catalog/kubernetes/helm-release) — preferred when deploying packaged Helm charts rather than raw YAML
+- [KubernetesHelmRelease](/docs/catalog/kubernetes/helm-release) — when the vendor ships a Helm chart, use it instead of pasting rendered YAML here
+- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — a governed namespace this component's anchor can reference
+- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — the first-class path for workloads; always prefer it over a raw Deployment document
