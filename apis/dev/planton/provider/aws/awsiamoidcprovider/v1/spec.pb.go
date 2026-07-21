@@ -51,6 +51,7 @@ type AwsIamOidcProviderSpec struct {
 	// query or fragment (e.g. "https://oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED"
 	// for EKS, or "https://token.actions.githubusercontent.com" for GitHub Actions).
 	// AWS allows at most one OIDC provider per unique URL per account.
+	// This field is ForceNew: changing it requires replacing the provider.
 	//
 	// Reference an AwsEksCluster to enable IRSA without copying the issuer by hand:
 	// this defaults to that cluster's status.outputs.oidc_issuer_url.

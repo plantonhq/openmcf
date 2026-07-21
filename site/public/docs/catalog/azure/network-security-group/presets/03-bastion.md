@@ -34,7 +34,6 @@ This preset creates a Network Security Group for bastion or jump-host subnets, a
 | --- | --- | --- |
 | `<azure-region>` | Azure region (must match the associated subnet) | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-nsg-name>` | Name for the NSG (unique within resource group) | Your naming convention |
 | `<your-trusted-cidr>` | CIDR range of trusted source IPs (e.g., `203.0.113.0/24`) | Your network team or VPN configuration |
 
 ## Related Presets

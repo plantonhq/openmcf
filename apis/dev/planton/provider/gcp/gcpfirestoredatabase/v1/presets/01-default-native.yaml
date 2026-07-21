@@ -8,3 +8,6 @@ spec:
   databaseName: (default)
   locationId: nam5 # US multi-region; use eur3 for Europe
   type: FIRESTORE_NATIVE
+  # GCP's default is unprotected — the preset takes the production-safe
+  # position the moment the primary database exists.
+  deleteProtectionState: DELETE_PROTECTION_ENABLED
