@@ -21,7 +21,6 @@ This preset creates a Network Security Group for database subnets, allowing only
 | --- | --- | --- |
 | `<azure-region>` | Azure region (must match the associated subnet) | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-nsg-name>` | Name for the NSG (unique within resource group) | Your naming convention |
 
 ## Related Presets
 
