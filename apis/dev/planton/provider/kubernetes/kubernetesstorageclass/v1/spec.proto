@@ -94,6 +94,8 @@ message KubernetesStorageClassSpec {
 
   /**
    * Reclaim policy stamped onto volumes this class provisions.
+   * IMMUTABLE after creation (like provisioner and parameters): changing it
+   * replaces the class.
    * Default: delete
    */
   optional KubernetesStorageClassReclaimPolicy reclaim_policy = 6 [
@@ -123,6 +125,8 @@ message KubernetesStorageClassSpec {
 
   /**
    * When claims of this class are bound and volumes provisioned.
+   * IMMUTABLE after creation (like provisioner and parameters): changing it
+   * replaces the class.
    * Default: immediate
    */
   optional KubernetesStorageClassVolumeBindingMode volume_binding_mode = 7 [

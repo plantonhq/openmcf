@@ -69,12 +69,17 @@ func initializeLocals(ctx *pulumi.Context, stackInput *kubernetespersistentvolum
 		}
 	}
 
-	annotations := map[string]string{
-		skipAwaitAnnotation: "true",
-	}
+	// The skip-await opt-out is module-managed and set AFTER the user map so
+	// it can never be overridden: re-enabling the bind-await through an
+	// annotation would deadlock WaitForFirstConsumer claims on this engine
+	// only (the Terraform module hardcodes wait_until_bound=false with no
+	// override), which is exactly the cross-engine divergence the modules
+	// exist to prevent.
+	annotations := make(map[string]string)
 	for k, v := range spec.GetAnnotations() {
 		annotations[k] = v
 	}
+	annotations[skipAwaitAnnotation] = "true"
 
 	// namespace is a StringValueOrRef foreign key. References are resolved to
 	// literal strings before the module runs, so GetValue() returns the final

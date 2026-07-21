@@ -194,10 +194,14 @@ type KubernetesStorageClassSpec struct {
 	Parameters map[string]string `protobuf:"bytes,5,rep,name=parameters,proto3" json:"parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// *
 	// Reclaim policy stamped onto volumes this class provisions.
+	// IMMUTABLE after creation (like provisioner and parameters): changing it
+	// replaces the class.
 	// Default: delete
 	ReclaimPolicy *KubernetesStorageClassSpec_KubernetesStorageClassReclaimPolicy `protobuf:"varint,6,opt,name=reclaim_policy,json=reclaimPolicy,proto3,enum=dev.planton.provider.kubernetes.kubernetesstorageclass.v1.KubernetesStorageClassSpec_KubernetesStorageClassReclaimPolicy,oneof" json:"reclaim_policy,omitempty"`
 	// *
 	// When claims of this class are bound and volumes provisioned.
+	// IMMUTABLE after creation (like provisioner and parameters): changing it
+	// replaces the class.
 	// Default: immediate
 	VolumeBindingMode *KubernetesStorageClassSpec_KubernetesStorageClassVolumeBindingMode `protobuf:"varint,7,opt,name=volume_binding_mode,json=volumeBindingMode,proto3,enum=dev.planton.provider.kubernetes.kubernetesstorageclass.v1.KubernetesStorageClassSpec_KubernetesStorageClassVolumeBindingMode,oneof" json:"volume_binding_mode,omitempty"`
 	// *

@@ -33,6 +33,8 @@ terraform.tfplan
 # the glob covers every clone name. The tracked wrapper `bazelw` has no hyphen and
 # is not matched.
 bazel-*
+# All Pulumi stack files, including transient E2E stacks (Pulumi.e2e-*.yaml)
+# left behind by aborted harness runs. Only the project file Pulumi.yaml is tracked.
 Pulumi.*.yaml
 !Pulumi.yaml
 test-*.log

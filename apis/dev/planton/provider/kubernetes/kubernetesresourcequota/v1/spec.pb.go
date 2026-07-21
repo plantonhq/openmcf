@@ -36,7 +36,10 @@ const (
 	// Pods WITHOUT an active deadline — long-running workloads.
 	KubernetesResourceQuotaSpec_not_terminating KubernetesResourceQuotaSpec_KubernetesResourceQuotaScope = 2
 	// Pods with BestEffort quality of service (no requests or limits at
-	// all). A best_effort-scoped quota may cap only "pods".
+	// all). A best_effort-scoped quota can only meter pod counts — "pods"
+	// or generic "count/..." object-count entries; the API rejects standard
+	// compute resources under this scope (BestEffort pods have nothing to
+	// meter).
 	KubernetesResourceQuotaSpec_best_effort KubernetesResourceQuotaSpec_KubernetesResourceQuotaScope = 3
 	// Pods with Burstable or Guaranteed QoS (i.e. anything but BestEffort).
 	KubernetesResourceQuotaSpec_not_best_effort KubernetesResourceQuotaSpec_KubernetesResourceQuotaScope = 4
@@ -514,7 +517,7 @@ var File_dev_planton_provider_kubernetes_kubernetesresourcequota_v1_spec_proto p
 
 const file_dev_planton_provider_kubernetes_kubernetesresourcequota_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/kubernetes/kubernetesresourcequota/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesresourcequota.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc8\x11\n" +
+	"Edev/planton/provider/kubernetes/kubernetesresourcequota/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesresourcequota.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xef\x11\n" +
 	"\x1bKubernetesResourceQuotaSpec\x12d\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\xe5\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc1\x01\n" +
@@ -542,10 +545,10 @@ const file_dev_planton_provider_kubernetes_kubernetesresourcequota_v1_spec_proto
 	"\x0fnot_best_effort\x10\x04\x12\x12\n" +
 	"\x0epriority_class\x10\x05\x12 \n" +
 	"\x1ccross_namespace_pod_affinity\x10\x06\x12\x1b\n" +
-	"\x17volume_attributes_class\x10\a:\xe4\x04\xbaH\xe0\x04\x1a\xbb\x01\n" +
+	"\x17volume_attributes_class\x10\a:\x8b\x05\xbaH\x87\x05\x1a\xbb\x01\n" +
 	"\x1escopes.conflicting_best_effort\x12Vbest_effort and not_best_effort are conflicting scopes — a quota cannot require both\x1aA!(this.scopes.exists(s, s == 3) && this.scopes.exists(s, s == 4))\x1a\xbb\x01\n" +
-	"\x1escopes.conflicting_terminating\x12Vterminating and not_terminating are conflicting scopes — a quota cannot require both\x1aA!(this.scopes.exists(s, s == 1) && this.scopes.exists(s, s == 2))\x1a\xe1\x01\n" +
-	"\x1cscopes.best_effort_resources\x12fa best_effort-scoped quota can only cap \"pods\" — BestEffort pods have no requests or limits to meter\x1aY!this.scopes.exists(s, s == 3) || this.hard.all(k, k == 'pods' || k.startsWith('count/'))\"\x83\a\n" +
+	"\x1escopes.conflicting_terminating\x12Vterminating and not_terminating are conflicting scopes — a quota cannot require both\x1aA!(this.scopes.exists(s, s == 1) && this.scopes.exists(s, s == 2))\x1a\x88\x02\n" +
+	"\x1cscopes.best_effort_resources\x12\x8c\x01a best_effort-scoped quota can only meter pod counts (\"pods\" or \"count/...\" entries) — BestEffort pods have no requests or limits to meter\x1aY!this.scopes.exists(s, s == 3) || this.hard.all(k, k == 'pods' || k.startsWith('count/'))\"\x83\a\n" +
 	"/KubernetesResourceQuotaScopeSelectorRequirement\x12\x9f\x01\n" +
 	"\n" +
 	"scope_name\x18\x01 \x01(\x0e2t.dev.planton.provider.kubernetes.kubernetesresourcequota.v1.KubernetesResourceQuotaSpec.KubernetesResourceQuotaScopeB\n" +

@@ -1,9 +1,9 @@
 # Kubernetes StorageClass Terraform module.
 #
-# provisioner and parameters are immutable upstream: the provider forces
-# replacement on change, matching the Pulumi module's DeleteBeforeReplace
-# semantics (StorageClass names are cluster-unique, so delete-then-create is
-# the only safe order).
+# provisioner, parameters, reclaim_policy, and volume_binding_mode are all
+# immutable upstream: the provider forces replacement on change, matching
+# the Pulumi module's DeleteBeforeReplace semantics (StorageClass names are
+# cluster-unique, so delete-then-create is the only safe order).
 
 resource "kubernetes_storage_class_v1" "storage_class" {
   metadata {

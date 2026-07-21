@@ -101,7 +101,10 @@ message KubernetesResourceQuotaSpec {
     not_terminating = 2;
 
     // Pods with BestEffort quality of service (no requests or limits at
-    // all). A best_effort-scoped quota may cap only "pods".
+    // all). A best_effort-scoped quota can only meter pod counts — "pods"
+    // or generic "count/..." object-count entries; the API rejects standard
+    // compute resources under this scope (BestEffort pods have nothing to
+    // meter).
     best_effort = 3;
 
     // Pods with Burstable or Guaranteed QoS (i.e. anything but BestEffort).
@@ -158,11 +161,13 @@ message KubernetesResourceQuotaSpec {
     expression: "!(this.scopes.exists(s, s == 1) && this.scopes.exists(s, s == 2))"
   };
 
-  // A best_effort-scoped quota may cap only object counts of pods — compute
-  // resources cannot exist on BestEffort pods (the API rejects the combination).
+  // A best_effort-scoped quota can only meter pod counts — the API rejects
+  // STANDARD resource names other than "pods" under this scope (compute
+  // resources cannot exist on BestEffort pods), while generic "count/..."
+  // object-count entries bypass the scope-compatibility check at admission.
   option (buf.validate.message).cel = {
     id: "scopes.best_effort_resources"
-    message: "a best_effort-scoped quota can only cap \"pods\" — BestEffort pods have no requests or limits to meter"
+    message: "a best_effort-scoped quota can only meter pod counts (\"pods\" or \"count/...\" entries) — BestEffort pods have no requests or limits to meter"
     expression: "!this.scopes.exists(s, s == 3) || this.hard.all(k, k == 'pods' || k.startsWith('count/'))"
   };
 }

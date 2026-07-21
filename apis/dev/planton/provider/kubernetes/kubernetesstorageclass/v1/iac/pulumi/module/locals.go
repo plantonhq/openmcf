@@ -61,8 +61,9 @@ func initializeLocals(ctx *pulumi.Context, stackInput *kubernetesstorageclassv1.
 		annotations[k] = v
 	}
 	// The default-class marker is a first-class spec field; the annotation is
-	// only the wire form. Setting "false" explicitly (rather than omitting)
-	// makes a demotion an in-place update instead of an ambiguous absence.
+	// only the wire form. Written only when true (identical to the Terraform
+	// module): demotion works by the annotation leaving the desired state,
+	// and setting it after the user map keeps it from being overridden.
 	if spec.GetIsDefaultClass() {
 		annotations[isDefaultClassAnnotation] = "true"
 	}
