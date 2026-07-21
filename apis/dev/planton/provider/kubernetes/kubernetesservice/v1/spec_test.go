@@ -203,6 +203,16 @@ var _ = ginkgo.Describe("KubernetesServiceSpec validations", func() {
 			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
+		ginkgo.It("rejects external IPs on an ExternalName service", func() {
+			spec := &KubernetesServiceSpec{
+				Name:            "ext",
+				Type:            svcType(KubernetesServiceSpec_external_name),
+				ExternalDnsName: "db.example.com",
+				ExternalIps:     []string{"198.51.100.7"},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
 		ginkgo.It("rejects a selector on an ExternalName service", func() {
 			spec := &KubernetesServiceSpec{
 				Name:            "ext",

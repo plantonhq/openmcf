@@ -972,7 +972,7 @@ var File_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto protore
 
 const file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetesservice/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesservice.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe17\n" +
+	"?dev/planton/provider/kubernetes/kubernetesservice/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesservice.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x888\n" +
 	"\x15KubernetesServiceSpec\x12d\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x8b\x02\n" +
 	"\x04name\x18\x02 \x01(\tB\xf6\x01\xbaH\xf2\x01\xba\x01\xe8\x01\n" +
@@ -1046,13 +1046,13 @@ const file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDe
 	"\x1cip_family_policy_unspecified\x10\x00\x12\x10\n" +
 	"\fsingle_stack\x10\x01\x12\x15\n" +
 	"\x11prefer_dual_stack\x10\x02\x12\x16\n" +
-	"\x12require_dual_stack\x10\x03:\x85\x13\xbaH\x81\x13\x1a\x9e\x01\n" +
+	"\x12require_dual_stack\x10\x03:\xac\x13\xbaH\xa8\x13\x1a\x9e\x01\n" +
 	"\x1fexternal_name_requires_dns_name\x128external_dns_name must be set when type is external_name\x1aA!has(this.type) || this.type != 4 || this.external_dns_name != ''\x1a\xb1\x01\n" +
 	"-external_dns_name_only_for_external_name_type\x12<external_dns_name can only be set when type is external_name\x1aBthis.external_dns_name == '' || (has(this.type) && this.type == 4)\x1a\xbc\x01\n" +
 	"0headless_incompatible_with_nodeport_loadbalancer\x12?headless cannot be true when type is node_port or load_balancer\x1aG!this.headless || !has(this.type) || (this.type != 2 && this.type != 3)\x1a\xb0\x01\n" +
 	"#headless_excludes_static_cluster_ip\x12Xcluster_ip_address cannot be set on a headless service (headless means clusterIP \"None\")\x1a/!this.headless || this.cluster_ip_address == ''\x1a\xb0\x01\n" +
-	" non_external_name_requires_ports\x12Oat least one port must be specified for every service type except external_name\x1a;(has(this.type) && this.type == 4) || this.ports.size() > 0\x1a\x93\x02\n" +
-	".external_name_excludes_selector_and_cluster_ip\x12~selector and cluster_ip_address cannot be set when type is external_name (an ExternalName service is a DNS alias, not a proxy)\x1aa!has(this.type) || this.type != 4 || (this.selector.size() == 0 && this.cluster_ip_address == '')\x1a\xa5\x02\n" +
+	" non_external_name_requires_ports\x12Oat least one port must be specified for every service type except external_name\x1a;(has(this.type) && this.type == 4) || this.ports.size() > 0\x1a\xba\x02\n" +
+	"#external_name_excludes_proxy_fields\x12\x8d\x01selector, cluster_ip_address, and external_ips cannot be set when type is external_name (an ExternalName service is a DNS alias, not a proxy)\x1a\x82\x01!has(this.type) || this.type != 4 || (this.selector.size() == 0 && this.cluster_ip_address == '' && this.external_ips.size() == 0)\x1a\xa5\x02\n" +
 	"(health_check_node_port_requires_local_lb\x12fhealth_check_node_port can only be set when type is load_balancer and external_traffic_policy is local\x1a\x90\x01this.health_check_node_port == 0 || (has(this.type) && this.type == 3 && has(this.external_traffic_policy) && this.external_traffic_policy == 2)\x1a\xed\x01\n" +
 	"+session_affinity_timeout_requires_client_ip\x12Ssession_affinity_timeout_seconds can only be set when session_affinity is client_ip\x1ai!has(this.session_affinity_timeout_seconds) || (has(this.session_affinity) && this.session_affinity == 2)\x1a\xdf\x02\n" +
 	"/load_balancer_fields_require_load_balancer_type\x12\x82\x01load_balancer_source_ranges, load_balancer_class, and allocate_load_balancer_node_ports can only be set when type is load_balancer\x1a\xa6\x01(has(this.type) && this.type == 3) || (this.load_balancer_source_ranges.size() == 0 && this.load_balancer_class == '' && !has(this.allocate_load_balancer_node_ports))\x1a\xa7\x01\n" +

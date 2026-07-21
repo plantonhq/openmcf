@@ -46,7 +46,10 @@ func createService(ctx *pulumi.Context, locals *Locals, provider pulumi.Provider
 		serviceSpecArgs.ExternalName = pulumi.String(spec.GetExternalDnsName())
 	}
 
-	if len(spec.GetExternalIps()) > 0 {
+	// external IPs are a proxying concept the API rejects on ExternalName —
+	// gated like ports/selector even though the CEL rule already blocks the
+	// combination at validation time.
+	if !isExternalName && len(spec.GetExternalIps()) > 0 {
 		serviceSpecArgs.ExternalIPs = pulumi.ToStringArray(spec.GetExternalIps())
 	}
 

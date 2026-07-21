@@ -437,11 +437,12 @@ message KubernetesServiceSpec {
     expression: "(has(this.type) && this.type == 4) || this.ports.size() > 0"
   };
 
-  // ExternalName is pure DNS — the API rejects selectors and cluster IPs on it.
+  // ExternalName is pure DNS — the API rejects selectors, cluster IPs, and
+  // external IPs on it (all verified live rejections).
   option (buf.validate.message).cel = {
-    id: "external_name_excludes_selector_and_cluster_ip"
-    message: "selector and cluster_ip_address cannot be set when type is external_name (an ExternalName service is a DNS alias, not a proxy)"
-    expression: "!has(this.type) || this.type != 4 || (this.selector.size() == 0 && this.cluster_ip_address == '')"
+    id: "external_name_excludes_proxy_fields"
+    message: "selector, cluster_ip_address, and external_ips cannot be set when type is external_name (an ExternalName service is a DNS alias, not a proxy)"
+    expression: "!has(this.type) || this.type != 4 || (this.selector.size() == 0 && this.cluster_ip_address == '' && this.external_ips.size() == 0)"
   };
 
   // health_check_node_port exists only for Local-policy LoadBalancers.

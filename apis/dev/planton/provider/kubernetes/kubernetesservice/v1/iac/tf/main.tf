@@ -32,7 +32,10 @@ resource "kubernetes_service_v1" "service" {
     # CNAME target for ExternalName services.
     external_name = local.is_external_name ? var.spec.external_dns_name : null
 
-    external_ips = length(try(var.spec.external_ips, [])) > 0 ? var.spec.external_ips : null
+    # External IPs are a proxying concept the API rejects on ExternalName —
+    # gated like ports/selector even though the CEL rule already blocks the
+    # combination at validation time.
+    external_ips = (!local.is_external_name && length(try(var.spec.external_ips, [])) > 0) ? var.spec.external_ips : null
 
     # Traffic policies are type-gated by the API: external only for
     # externally-reachable types, internal never for ExternalName.
