@@ -444,6 +444,7 @@ import (
 	kubernetesgrpcroutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgrpcroute/v1"
 	kubernetesharborv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesharbor/v1"
 	kuberneteshelmreleasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteshelmrelease/v1"
+	kuberneteshorizontalpodautoscalerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteshorizontalpodautoscaler/v1"
 	kuberneteshttproutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteshttproute/v1"
 	kubernetesingressv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesingress/v1"
 	kubernetesingressnginxv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesingressnginx/v1"
@@ -467,12 +468,16 @@ import (
 	kubernetesperconamongooperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesperconamongooperator/v1"
 	kubernetesperconamysqloperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesperconamysqloperator/v1"
 	kubernetesperconapostgresoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesperconapostgresoperator/v1"
+	kubernetespersistentvolumeclaimv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespersistentvolumeclaim/v1"
+	kubernetespoddisruptionbudgetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespoddisruptionbudget/v1"
 	kubernetespostgresv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespostgres/v1"
+	kubernetespriorityclassv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespriorityclass/v1"
 	kubernetesprometheusv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesprometheus/v1"
 	kubernetesrbacv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrbac/v1"
 	kubernetesredisv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesredis/v1"
 	kubernetesreferencegrantv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesreferencegrant/v1"
 	kubernetesrequestauthenticationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrequestauthentication/v1"
+	kubernetesresourcequotav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesresourcequota/v1"
 	kubernetesrookcephclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrookcephcluster/v1"
 	kubernetesrookcephoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrookcephoperator/v1"
 	kubernetessecretv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessecret/v1"
@@ -483,6 +488,7 @@ import (
 	kubernetessolrv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessolr/v1"
 	kubernetessolroperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessolroperator/v1"
 	kubernetesstatefulsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstatefulset/v1"
+	kubernetesstorageclassv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstorageclass/v1"
 	kubernetesstrimzikafkaoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstrimzikafkaoperator/v1"
 	kubernetestcproutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestcproute/v1"
 	kubernetestektonv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestekton/v1"
@@ -1061,6 +1067,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesGrpcRoute:                   &kubernetesgrpcroutev1.KubernetesGrpcRoute{},
 	cloudresourcekind.CloudResourceKind_KubernetesHarbor:                      &kubernetesharborv1.KubernetesHarbor{},
 	cloudresourcekind.CloudResourceKind_KubernetesHelmRelease:                 &kuberneteshelmreleasev1.KubernetesHelmRelease{},
+	cloudresourcekind.CloudResourceKind_KubernetesHorizontalPodAutoscaler:     &kuberneteshorizontalpodautoscalerv1.KubernetesHorizontalPodAutoscaler{},
 	cloudresourcekind.CloudResourceKind_KubernetesHttpRoute:                   &kuberneteshttproutev1.KubernetesHttpRoute{},
 	cloudresourcekind.CloudResourceKind_KubernetesIngress:                     &kubernetesingressv1.KubernetesIngress{},
 	cloudresourcekind.CloudResourceKind_KubernetesIngressNginx:                &kubernetesingressnginxv1.KubernetesIngressNginx{},
@@ -1084,12 +1091,16 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaMongoOperator:        &kubernetesperconamongooperatorv1.KubernetesPerconaMongoOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaMysqlOperator:        &kubernetesperconamysqloperatorv1.KubernetesPerconaMysqlOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaPostgresOperator:     &kubernetesperconapostgresoperatorv1.KubernetesPerconaPostgresOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesPersistentVolumeClaim:       &kubernetespersistentvolumeclaimv1.KubernetesPersistentVolumeClaim{},
+	cloudresourcekind.CloudResourceKind_KubernetesPodDisruptionBudget:         &kubernetespoddisruptionbudgetv1.KubernetesPodDisruptionBudget{},
 	cloudresourcekind.CloudResourceKind_KubernetesPostgres:                    &kubernetespostgresv1.KubernetesPostgres{},
+	cloudresourcekind.CloudResourceKind_KubernetesPriorityClass:               &kubernetespriorityclassv1.KubernetesPriorityClass{},
 	cloudresourcekind.CloudResourceKind_KubernetesPrometheus:                  &kubernetesprometheusv1.KubernetesPrometheus{},
 	cloudresourcekind.CloudResourceKind_KubernetesRbac:                        &kubernetesrbacv1.KubernetesRbac{},
 	cloudresourcekind.CloudResourceKind_KubernetesRedis:                       &kubernetesredisv1.KubernetesRedis{},
 	cloudresourcekind.CloudResourceKind_KubernetesReferenceGrant:              &kubernetesreferencegrantv1.KubernetesReferenceGrant{},
 	cloudresourcekind.CloudResourceKind_KubernetesRequestAuthentication:       &kubernetesrequestauthenticationv1.KubernetesRequestAuthentication{},
+	cloudresourcekind.CloudResourceKind_KubernetesResourceQuota:               &kubernetesresourcequotav1.KubernetesResourceQuota{},
 	cloudresourcekind.CloudResourceKind_KubernetesRookCephCluster:             &kubernetesrookcephclusterv1.KubernetesRookCephCluster{},
 	cloudresourcekind.CloudResourceKind_KubernetesRookCephOperator:            &kubernetesrookcephoperatorv1.KubernetesRookCephOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesSecret:                      &kubernetessecretv1.KubernetesSecret{},
@@ -1100,6 +1111,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesSolr:                        &kubernetessolrv1.KubernetesSolr{},
 	cloudresourcekind.CloudResourceKind_KubernetesSolrOperator:                &kubernetessolroperatorv1.KubernetesSolrOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesStatefulSet:                 &kubernetesstatefulsetv1.KubernetesStatefulSet{},
+	cloudresourcekind.CloudResourceKind_KubernetesStorageClass:                &kubernetesstorageclassv1.KubernetesStorageClass{},
 	cloudresourcekind.CloudResourceKind_KubernetesStrimziKafkaOperator:        &kubernetesstrimzikafkaoperatorv1.KubernetesStrimziKafkaOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesTcpRoute:                    &kubernetestcproutev1.KubernetesTcpRoute{},
 	cloudresourcekind.CloudResourceKind_KubernetesTekton:                      &kubernetestektonv1.KubernetesTekton{},

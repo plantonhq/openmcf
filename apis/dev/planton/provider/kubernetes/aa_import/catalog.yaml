@@ -44,6 +44,13 @@ spec:
       # Same provider-side lifecycle knob as kubernetes_service_v1: exists only
       # in configuration, never in the cluster, so import can never carry it.
       config_only_attributes: [wait_for_load_balancer]
+    - terraform_type: kubernetes_persistent_volume_claim_v1
+      pulumi_type: kubernetes:core/v1:PersistentVolumeClaim
+      id_format: "{pvc_namespace}/{pvc_name}"
+      # Provider lifecycle knob (block apply until the claim binds);
+      # configuration-only, never cluster-side -- and deliberately false in
+      # the module (WaitForFirstConsumer claims are correctly Pending).
+      config_only_attributes: [wait_until_bound]
 
     # --- Core (cluster-scoped) ----------------------------------------------
     - terraform_type: kubernetes_namespace_v1
@@ -54,6 +61,12 @@ spec:
     - terraform_type: kubernetes_namespace
       pulumi_type: kubernetes:core/v1:Namespace
       id_format: "{namespace_name}"
+    - terraform_type: kubernetes_storage_class_v1
+      pulumi_type: kubernetes:storage.k8s.io/v1:StorageClass
+      id_format: "{storage_class_name}"
+    - terraform_type: kubernetes_priority_class_v1
+      pulumi_type: kubernetes:scheduling.k8s.io/v1:PriorityClass
+      id_format: "{priority_class_name}"
 
     # --- Workloads (namespace-scoped) ----------------------------------------
     # wait_for_rollout on the workload types is a Terraform-provider lifecycle

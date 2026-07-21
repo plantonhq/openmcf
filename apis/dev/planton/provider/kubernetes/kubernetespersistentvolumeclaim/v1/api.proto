@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetespersistentvolumeclaim.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetespersistentvolumeclaim/v1/spec.proto";
+import "dev/planton/provider/kubernetes/kubernetespersistentvolumeclaim/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+/**
+ * **KubernetesPersistentVolumeClaim** defines a Kubernetes
+ * PersistentVolumeClaim resource following the Kubernetes Resource Model
+ * (KRM). A claim requests persistent storage — size, access modes, and
+ * StorageClass — and the cluster binds it to a PersistentVolume that
+ * satisfies the request. Workloads mount the claim by name.
+ */
+message KubernetesPersistentVolumeClaim {
+  // API version for this resource.
+  // Always set to "kubernetes.planton.dev/v1".
+  string api_version = 1 [(buf.validate.field).string.const = "kubernetes.planton.dev/v1"];
+
+  // Resource kind identifier.
+  // Always set to "KubernetesPersistentVolumeClaim".
+  string kind = 2 [(buf.validate.field).string.const = "KubernetesPersistentVolumeClaim"];
+
+  // Metadata for the PersistentVolumeClaim resource.
+  // Includes standard fields like name, organization, environment, etc.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Specification of the desired state for the PersistentVolumeClaim.
+  // Defines the storage request, access modes, and provisioning class.
+  KubernetesPersistentVolumeClaimSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Status of the PersistentVolumeClaim resource.
+  // Contains outputs populated after deployment.
+  KubernetesPersistentVolumeClaimStatus status = 5;
+}
+
+/**
+ * **KubernetesPersistentVolumeClaimStatus** captures the runtime status of a
+ * PersistentVolumeClaim deployment, including the outputs generated after the
+ * claim is created.
+ */
+message KubernetesPersistentVolumeClaimStatus {
+  // Outputs from the PersistentVolumeClaim deployment.
+  // Contains the claim name and namespace workloads mount by.
+  KubernetesPersistentVolumeClaimStackOutputs outputs = 1;
+}

@@ -1,0 +1,12 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPodDisruptionBudget
+metadata:
+  name: protect-workload
+spec:
+  name: protect-workload
+  namespace:
+    value: "<your-namespace>"
+  selector:
+    match_labels:
+      app: "<your-workload-name>"
+  min_available: "1"

@@ -83,6 +83,12 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `kubernetesservice` | 2026-07-21, all 13 scenarios | `kubernetes_service_v1.wait_for_load_balancer` (config-only) |
 | `kubernetesingress` | 2026-07-21, all 4 scenarios (incl. the composed real-backend fixture) | `kubernetes_ingress_v1.wait_for_load_balancer` (config-only) |
 | `kubernetesnetworkpolicy` | 2026-07-21, all 4 scenarios | — |
+| `kubernetespersistentvolumeclaim` | 2026-07-22, all 3 scenarios (incl. the composed StorageClass fixture and the pinned-empty-class static-binding shape) | `kubernetes_persistent_volume_claim_v1.wait_until_bound` (config-only; deliberately false in the module) |
+| `kubernetesstorageclass` | 2026-07-22, both scenarios | — |
+| `kubernetesresourcequota` | 2026-07-22, all 3 scenarios (governed-namespace proves the quota + companion LimitRange pair) | — |
+| `kubernetespriorityclass` | 2026-07-22, both scenarios | — |
+| `kubernetespoddisruptionbudget` | 2026-07-22, both scenarios | — |
+| `kuberneteshorizontalpodautoscaler` | 2026-07-22, all 3 scenarios (incl. the composed Deployment target fixture) | — |
 
 ## Adding a kind
 

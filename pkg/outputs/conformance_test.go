@@ -263,6 +263,95 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesPersistentVolumeClaim: object identity + the requested
+			// size from both engines must land on the StackOutputs proto.
+			name: "KubernetesPersistentVolumeClaim",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPersistentVolumeClaim,
+			rawOutputs: map[string]interface{}{
+				"pvc_name":        "shared-cache",
+				"namespace":       "team-alpha",
+				"storage_request": "10Gi",
+			},
+			mustPopulate: []string{
+				"pvc_name", "namespace", "storage_request",
+			},
+		},
+		{
+			// KubernetesStorageClass: cluster-scoped identity + provisioner +
+			// the default-class flag (bool) from both engines must land on the
+			// StackOutputs proto.
+			name: "KubernetesStorageClass",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesStorageClass,
+			rawOutputs: map[string]interface{}{
+				"storage_class_name": "fast-ssd",
+				"provisioner":        "ebs.csi.aws.com",
+				"is_default_class":   true,
+			},
+			mustPopulate: []string{
+				"storage_class_name", "provisioner", "is_default_class",
+			},
+		},
+		{
+			// KubernetesResourceQuota: the governance pair's identities; the
+			// LimitRange name is empty when no limit_defaults were configured,
+			// so only the always-present fields are required to populate.
+			name: "KubernetesResourceQuota",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesResourceQuota,
+			rawOutputs: map[string]interface{}{
+				"resource_quota_name": "team-quota",
+				"namespace":           "team-alpha",
+				"limit_range_name":    "team-quota",
+			},
+			mustPopulate: []string{
+				"resource_quota_name", "namespace", "limit_range_name",
+			},
+		},
+		{
+			// KubernetesPriorityClass: cluster-scoped identity + the priority
+			// integer (int32) from both engines must land on the StackOutputs
+			// proto.
+			name: "KubernetesPriorityClass",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPriorityClass,
+			rawOutputs: map[string]interface{}{
+				"priority_class_name": "critical",
+				"value":               1000000,
+			},
+			mustPopulate: []string{
+				"priority_class_name", "value",
+			},
+		},
+		{
+			// KubernetesPodDisruptionBudget: object identity — a budget has no
+			// runtime handles beyond it (the eviction API enforces by selector).
+			name: "KubernetesPodDisruptionBudget",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPodDisruptionBudget,
+			rawOutputs: map[string]interface{}{
+				"pod_disruption_budget_name": "checkout-pdb",
+				"namespace":                  "team-alpha",
+			},
+			mustPopulate: []string{
+				"pod_disruption_budget_name", "namespace",
+			},
+		},
+		{
+			// KubernetesHorizontalPodAutoscaler: object identity + the scale
+			// target handle + the replica bounds (int32s) from both engines
+			// must land on the StackOutputs proto.
+			name: "KubernetesHorizontalPodAutoscaler",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesHorizontalPodAutoscaler,
+			rawOutputs: map[string]interface{}{
+				"horizontal_pod_autoscaler_name": "checkout-hpa",
+				"namespace":                      "team-alpha",
+				"scale_target":                   "Deployment/checkout",
+				"min_replicas":                   2,
+				"max_replicas":                   20,
+			},
+			mustPopulate: []string{
+				"horizontal_pod_autoscaler_name", "namespace", "scale_target",
+				"min_replicas", "max_replicas",
+			},
+		},
+		{
 			// AwsSubnet: flat scalar outputs from both engines (subnet id/arn, AZ,
 			// CIDR, route table id, region) must each land on the StackOutputs proto.
 			name: "AwsSubnet",

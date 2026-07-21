@@ -124,6 +124,12 @@ func TestKubernetesCronJob_Pulumi(t *testing.T)    { runAllScenariosForComponent
 func TestKubernetesJob_Pulumi(t *testing.T)        { runAllScenariosForComponent(t, "kubernetesjob", "pulumi") }
 func TestKubernetesDaemonSet_Pulumi(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesdaemonset", "pulumi") }
 func TestKubernetesManifest_Pulumi(t *testing.T)   { runAllScenariosForComponent(t, "kubernetesmanifest", "pulumi") }
+func TestKubernetesPersistentVolumeClaim_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetespersistentvolumeclaim", "pulumi") }
+func TestKubernetesStorageClass_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesstorageclass", "pulumi") }
+func TestKubernetesResourceQuota_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesresourcequota", "pulumi") }
+func TestKubernetesPriorityClass_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetespriorityclass", "pulumi") }
+func TestKubernetesPodDisruptionBudget_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetespoddisruptionbudget", "pulumi") }
+func TestKubernetesHorizontalPodAutoscaler_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kuberneteshorizontalpodautoscaler", "pulumi") }
 
 // ─── Tier 1 Terraform ───────────────────────────────────────────────────────
 
@@ -141,6 +147,12 @@ func TestKubernetesCronJob_Terraform(t *testing.T)    { runAllScenariosForCompon
 func TestKubernetesJob_Terraform(t *testing.T)        { runAllScenariosForComponent(t, "kubernetesjob", "terraform") }
 func TestKubernetesDaemonSet_Terraform(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesdaemonset", "terraform") }
 func TestKubernetesManifest_Terraform(t *testing.T)   { runAllScenariosForComponent(t, "kubernetesmanifest", "terraform") }
+func TestKubernetesPersistentVolumeClaim_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetespersistentvolumeclaim", "terraform") }
+func TestKubernetesStorageClass_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesstorageclass", "terraform") }
+func TestKubernetesResourceQuota_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesresourcequota", "terraform") }
+func TestKubernetesPriorityClass_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetespriorityclass", "terraform") }
+func TestKubernetesPodDisruptionBudget_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetespoddisruptionbudget", "terraform") }
+func TestKubernetesHorizontalPodAutoscaler_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kuberneteshorizontalpodautoscaler", "terraform") }
 
 // ─── Tier 2 Pulumi (Helm-based) ─────────────────────────────────────────────
 

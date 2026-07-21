@@ -1,0 +1,14 @@
+# Full-surface test manifest for the offline plan proofs. Exercises the
+# priority value, global default, description, and non-preempting policy.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPriorityClass
+metadata:
+  name: test-priority-class
+spec:
+  name: test-priority-class
+  labels:
+    team: platform-engineering
+  value: 1000000
+  global_default: false
+  description: High priority for revenue-path services; preempts lower tiers under pressure.
+  preemption_policy: preempt_lower_priority

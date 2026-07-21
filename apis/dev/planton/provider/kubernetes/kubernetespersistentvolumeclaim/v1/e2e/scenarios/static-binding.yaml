@@ -1,0 +1,20 @@
+# The adopt-existing-volume shape: dynamic provisioning explicitly disabled
+# (storageClassName pinned to ""), a selector narrowing candidate volumes.
+# No matching PersistentVolume exists on the test cluster, so the claim
+# correctly stays Pending — the scenario proves the empty-vs-absent class
+# distinction deploys and round-trips intact.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPersistentVolumeClaim
+metadata:
+  name: e2e-pvc-static
+spec:
+  namespace:
+    value: default
+  name: e2e-pvc-static
+  access_modes:
+    - ReadWriteOnce
+  storage_request: 5Gi
+  disable_dynamic_provisioning: true
+  selector:
+    match_labels:
+      tier: archive

@@ -1,0 +1,284 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetespersistentvolumeclaim.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesPersistentVolumeClaimSpec** requests persistent storage from the
+ * cluster — the durable-disk primitive. A claim names how much storage it
+ * needs, how it will be accessed, and (optionally) which StorageClass
+ * provisions it; the cluster binds it to a PersistentVolume that satisfies the
+ * request.
+ *
+ * A standalone claim is the right shape for storage whose lifecycle is
+ * independent of any one workload: a volume shared by several pods
+ * (ReadWriteMany), a data volume a Deployment mounts (via the workload's
+ * volume mounts referencing the claim by name), or a pre-provisioned volume
+ * being adopted. Per-replica storage for a StatefulSet should use the
+ * workload's own `volume_claim_templates` instead — those claims are stamped
+ * and tracked by the StatefulSet controller.
+ *
+ * BINDING TIMING: with a wait_for_first_consumer StorageClass (the norm for
+ * zonal cloud disks and kind's local-path), a claim stays **Pending until a
+ * pod uses it** — that is correct behavior, not a failure. Neither engine
+ * blocks on the claim reaching Bound (deliberate, both engines, so deploys
+ * never hang waiting for a consumer that arrives later).
+ *
+ * The spec covers the complete core/v1 PersistentVolumeClaimSpec surface.
+ * (The feature-gated `volumeAttributesClassName` and cross-namespace data
+ * sources are deliberately unmodeled until they graduate.)
+ */
+message KubernetesPersistentVolumeClaimSpec {
+  /**
+   * The namespace the claim lives in. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource. When omitted, the claim
+   * lands in the cluster's `default` namespace.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * The name of the PersistentVolumeClaim (its `metadata.name` in the
+   * cluster) — the value workloads reference in their PVC volume mounts.
+   * Must be a valid DNS subdomain: lowercase alphanumeric characters,
+   * hyphens, and dots, at most 253 characters.
+   */
+  string name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "name.dns_subdomain"
+      message: "Name must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)"
+      expression: "this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * Additional labels to apply to the PersistentVolumeClaim object.
+   * Merged with the standard Planton governance labels.
+   */
+  map<string, string> labels = 3;
+
+  /**
+   * Annotations to apply to the PersistentVolumeClaim object.
+   */
+  map<string, string> annotations = 4;
+
+  /**
+   * How the volume may be mounted. Defaults to ["ReadWriteOnce"] — one node
+   * at a time, the mode every block-storage driver supports. The other modes
+   * need driver support: "ReadWriteMany" (shared filesystems like EFS/
+   * Filestore/Azure Files), "ReadOnlyMany" (many readers), and
+   * "ReadWriteOncePod" (exactly one pod, the strictest isolation).
+   * Uses the exact vocabulary workload volume-claim templates use.
+   */
+  repeated string access_modes = 5 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "ReadWriteOnce",
+      "ReadOnlyMany",
+      "ReadWriteMany",
+      "ReadWriteOncePod"
+    ]
+  }];
+
+  /**
+   * Requested storage, as a Kubernetes quantity (e.g. "10Gi", "500Mi").
+   * Growing later requires the claim's StorageClass to allow volume
+   * expansion (and Kubernetes never shrinks a volume).
+   */
+  string storage_request = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "storage_request.quantity"
+      message: "Storage request must be a Kubernetes quantity (e.g. \"10Gi\", \"500Mi\")"
+      expression: "this.matches('^[0-9]+(\\\\.[0-9]+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$')"
+    }
+  ];
+
+  /**
+   * Upper bound on the volume's size, as a Kubernetes quantity. Rarely
+   * needed — only meaningful to drivers that honor limits; most provision
+   * exactly the request.
+   */
+  string storage_limit = 7 [(buf.validate.field).cel = {
+    id: "storage_limit.quantity"
+    message: "Storage limit must be a Kubernetes quantity (e.g. \"20Gi\") or empty"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$')"
+  }];
+
+  /**
+   * The StorageClass provisioning this claim. Accepts a literal class name or
+   * a reference to a KubernetesStorageClass resource. When omitted, the
+   * cluster's DEFAULT StorageClass applies. To opt out of dynamic
+   * provisioning entirely (bind only to pre-provisioned volumes), set
+   * `disable_dynamic_provisioning` instead — an empty class name and an
+   * omitted one mean different things to Kubernetes.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class_name = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_class_name"
+  ];
+
+  /**
+   * Opts the claim OUT of dynamic provisioning by pinning its StorageClass to
+   * the empty string (`storageClassName: ""`) — the claim then binds only to
+   * a matching pre-provisioned PersistentVolume. This exists as its own field
+   * because Kubernetes distinguishes an EMPTY class name (no provisioning)
+   * from an ABSENT one (use the cluster default), a distinction a single
+   * string field cannot carry. Mutually exclusive with `storage_class_name`.
+   */
+  bool disable_dynamic_provisioning = 9;
+
+  /**
+   * **KubernetesPersistentVolumeClaimVolumeMode** is how the volume is
+   * exposed to containers.
+   */
+  enum KubernetesPersistentVolumeClaimVolumeMode {
+    // Unspecified. Defaults to filesystem.
+    kubernetes_persistent_volume_claim_volume_mode_unspecified = 0;
+
+    // A mounted filesystem — the default, what nearly every workload wants.
+    filesystem = 1;
+
+    // A raw block device, for workloads that manage their own on-disk format
+    // (some databases, storage systems). Requires driver support.
+    block = 2;
+  }
+
+  /**
+   * How the volume is exposed to containers.
+   * Default: filesystem
+   */
+  optional KubernetesPersistentVolumeClaimVolumeMode volume_mode = 10 [
+    (dev.planton.shared.options.default) = "filesystem",
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  /**
+   * Binds this claim to one specific pre-provisioned PersistentVolume by
+   * name, skipping dynamic provisioning — the adopt-existing-data path.
+   * The volume's capacity, access modes, and class must still satisfy the
+   * claim.
+   */
+  string volume_name = 11;
+
+  /**
+   * Label selector narrowing which pre-provisioned PersistentVolumes this
+   * claim may bind to. Only meaningful for static binding — dynamically
+   * provisioned volumes are created for the claim, not selected.
+   */
+  KubernetesPersistentVolumeClaimLabelSelector selector = 12;
+
+  /**
+   * Populates the new volume from an existing source instead of provisioning
+   * it empty: clone a PersistentVolumeClaim or restore a VolumeSnapshot.
+   * Requires a CSI driver that implements the operation. Sources are
+   * same-namespace only (cross-namespace sources are feature-gated upstream
+   * and deliberately unmodeled).
+   */
+  KubernetesPersistentVolumeClaimDataSource data_source = 13;
+
+  // The empty-class opt-out and a named class contradict each other.
+  option (buf.validate.message).cel = {
+    id: "storage_class.conflict"
+    message: "disable_dynamic_provisioning pins the StorageClass to the empty string and cannot be combined with storage_class_name — set one or the other"
+    expression: "!this.disable_dynamic_provisioning || !has(this.storage_class_name)"
+  };
+}
+
+/**
+ * **KubernetesPersistentVolumeClaimDataSource** names the object the new
+ * volume is populated from.
+ */
+message KubernetesPersistentVolumeClaimDataSource {
+  /**
+   * **KubernetesPersistentVolumeClaimDataSourceKind** is the type of source
+   * object.
+   */
+  enum KubernetesPersistentVolumeClaimDataSourceKind {
+    // Unspecified.
+    kubernetes_persistent_volume_claim_data_source_kind_unspecified = 0;
+
+    // Clone an existing PersistentVolumeClaim in the same namespace.
+    persistent_volume_claim = 1;
+
+    // Restore a VolumeSnapshot (snapshot.storage.k8s.io) in the same
+    // namespace.
+    volume_snapshot = 2;
+  }
+
+  /**
+   * The kind of the source object.
+   */
+  KubernetesPersistentVolumeClaimDataSourceKind kind = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  /**
+   * The name of the source object, in the claim's own namespace.
+   */
+  string name = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+/**
+ * **KubernetesPersistentVolumeClaimLabelSelector** is a standard Kubernetes
+ * label selector: exact-match labels and/or set-based expressions. Both parts
+ * must match (they AND together).
+ */
+message KubernetesPersistentVolumeClaimLabelSelector {
+  /**
+   * Exact-match label requirements: every key/value pair listed must be
+   * present on the PersistentVolume.
+   */
+  map<string, string> match_labels = 1;
+
+  /**
+   * Set-based label requirements, for selections exact-match cannot express
+   * (key existence, value-in-set).
+   */
+  repeated KubernetesPersistentVolumeClaimLabelSelectorRequirement match_expressions = 2;
+}
+
+/**
+ * **KubernetesPersistentVolumeClaimLabelSelectorRequirement** is one set-based
+ * label requirement.
+ */
+message KubernetesPersistentVolumeClaimLabelSelectorRequirement {
+  /**
+   * The label key the requirement applies to.
+   */
+  string key = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * The relationship between the key and the values: "In" (value must be one
+   * of `values`), "NotIn" (must not be), "Exists" (key present, `values` must
+   * be empty), or "DoesNotExist" (key absent, `values` must be empty).
+   */
+  string operator = 2 [(buf.validate.field).string = {
+    in: [
+      "In",
+      "NotIn",
+      "Exists",
+      "DoesNotExist"
+    ]
+  }];
+
+  /**
+   * The values compared against the label's value. Required (non-empty) for
+   * In/NotIn; must be empty for Exists/DoesNotExist.
+   */
+  repeated string values = 3;
+
+  // Enforce the values-vs-operator contract the Kubernetes API applies at admission.
+  option (buf.validate.message).cel = {
+    id: "operator_values_contract"
+    message: "values must be non-empty for In/NotIn and empty for Exists/DoesNotExist"
+    expression: "((this.operator == 'In' || this.operator == 'NotIn') && this.values.size() > 0) || ((this.operator == 'Exists' || this.operator == 'DoesNotExist') && this.values.size() == 0)"
+  };
+}

@@ -113,6 +113,15 @@ type ResourceTypeImportId struct {
 	// separately because the classes genuinely differ -- config-only values
 	// never exist cloud-side at all, normalized values do -- and future drift
 	// surfaces will want to explain them differently.
+	//
+	// Entries in BOTH tolerance lists may be a dotted sub-path
+	// (e.g. "spec.update_strategy") when a provider's importer fails to read
+	// back ONE nested block: the round-trip oracle then tolerates drift only
+	// under that sub-path (pruning it from both plan sides and requiring the
+	// remainder identical), so sibling drift inside the same top-level
+	// attribute still fails. Prefer a dotted path over declaring a broad
+	// attribute like "spec" -- a whole-attribute tolerance on a structural
+	// attribute blinds the proof.
 	WriteNormalizedAttributes []string `protobuf:"bytes,6,rep,name=write_normalized_attributes,json=writeNormalizedAttributes,proto3" json:"write_normalized_attributes,omitempty"`
 	// CloudFormation type name for the same provider resource
 	// (e.g. "AWS::S3::Bucket") -- the declared correspondence between what a

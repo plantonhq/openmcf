@@ -403,9 +403,9 @@ A new kind is only exercised once it is registered in the provider harness:
   `pkg/e2e/profile/discover.go` maps component directory names (e.g. `awslambda`) to
   Go test `-run` regexes via `crkreflect.KindFromString` +
   `ExtractKindNameByKind` — **do not** add hand-maintained PascalCase entries per
-  kind. Kubernetes components still fall back to the legacy prefix table until the
-  registry covers them. Add a unit test in `discover_test.go` when forging a kind
-  whose directory name would naive-fallback incorrectly.
+  kind. The only exceptions live in the small `testNameOverrides` map, reserved for
+  genuine, verified deviations where the test entrypoint spelling differs from the
+  enum name; a new kind whose entrypoints follow the enum name needs no entry.
 
 **Composed scenarios are registry-driven, with a scenario-level extension for
 optional composition.** The harness resolves a component's E2E dependencies

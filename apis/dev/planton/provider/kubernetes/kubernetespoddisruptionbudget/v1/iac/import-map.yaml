@@ -1,0 +1,21 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetespoddisruptionbudget
+spec:
+  # A budget's identity is fully carried by its namespace/name pair --
+  # derivable from a prior deploy's outputs or from the spec itself.
+  values:
+    - name: pdb_name
+      derivations:
+        - from_stack_output: pod_disruption_budget_name
+        - from_spec_field: name
+      where_to_find: >-
+        `kubectl get pdb -A` (NAME column).
+    - name: pdb_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `kubectl get pdb -A` (NAMESPACE column); "default" when the spec
+        omits the namespace.

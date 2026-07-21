@@ -214,6 +214,57 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Name:      info.Name,
 		}, nil
 
+	// A claim under a WaitForFirstConsumer StorageClass is correctly Pending
+	// until a pod consumes it, so existence (not Bound) is the verifiable
+	// contract; the composed consumer scenario proves real binding.
+	case "kubernetespersistentvolumeclaim":
+		return &ResourceExistenceVerifier{
+			Namespace: info.Namespace,
+			Kind:      "pvc",
+			Name:      info.Name,
+		}, nil
+
+	// Cluster-scoped: kubectl ignores the empty namespace argument.
+	case "kubernetesstorageclass":
+		return &ResourceExistenceVerifier{
+			Kind: "storageclass",
+			Name: info.Name,
+		}, nil
+
+	// The quota object is the verifiable contract; the companion LimitRange
+	// shares its name and is asserted by the with-limit-defaults scenario's
+	// import round-trip (both resources ride the same state).
+	case "kubernetesresourcequota":
+		return &ResourceExistenceVerifier{
+			Namespace: info.Namespace,
+			Kind:      "resourcequota",
+			Name:      info.Name,
+		}, nil
+
+	// Cluster-scoped; preemption BEHAVIOR needs scheduling pressure and
+	// rides the real-cluster lanes — the object is the verifiable contract.
+	case "kubernetespriorityclass":
+		return &ResourceExistenceVerifier{
+			Kind: "priorityclass",
+			Name: info.Name,
+		}, nil
+
+	case "kubernetespoddisruptionbudget":
+		return &ResourceExistenceVerifier{
+			Namespace: info.Namespace,
+			Kind:      "pdb",
+			Name:      info.Name,
+		}, nil
+
+	// Scaling BEHAVIOR needs a metrics source (kind has no metrics-server);
+	// the object is the verifiable contract on the kind lane.
+	case "kuberneteshorizontalpodautoscaler":
+		return &ResourceExistenceVerifier{
+			Namespace: info.Namespace,
+			Kind:      "hpa",
+			Name:      info.Name,
+		}, nil
+
 	case "kubernetescronjob":
 		return &ResourceExistenceVerifier{
 			Namespace: info.Namespace,

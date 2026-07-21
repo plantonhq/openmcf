@@ -280,4 +280,4 @@ After deployment, the following outputs are available in `status.outputs`:
 - [KubernetesConfigMap](/docs/catalog/kubernetes/configmap) — configuration consumed via env or volume mounts
 - [KubernetesSecret](/docs/catalog/kubernetes/secret) — confidential values referenced from container env
 - [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace; reference it from `spec.namespace`
-- [KubernetesStorageClass](/docs/catalog/kubernetes/kubernetesstorageclass) — pin volume performance characteristics for claim templates
+- [KubernetesStorageClass](/docs/catalog/kubernetes/storage-class) — pin volume performance characteristics for claim templates

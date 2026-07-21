@@ -2627,6 +2627,39 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8snp"
   }];
+  KubernetesPersistentVolumeClaim = 815 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8spvc"
+  }];
+  KubernetesStorageClass = 816 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8ssc"
+  }];
+  // Manages the namespace-governance pair: the ResourceQuota plus an
+  // optional companion LimitRange (per-object defaults/bounds) — two API
+  // objects, one governance story.
+  KubernetesResourceQuota = 817 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8srq"
+  }];
+  KubernetesPriorityClass = 818 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8spc"
+  }];
+  KubernetesPodDisruptionBudget = 819 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8spdb"
+  }];
+  KubernetesHorizontalPodAutoscaler = 820 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8shpa"
+  }];
   // 830–859: Kubernetes foundation addons (certs, DNS, secrets, ingress, Gateway API, mesh)
   KubernetesCertManager = 830 [(kind_meta) = {
     provider: kubernetes

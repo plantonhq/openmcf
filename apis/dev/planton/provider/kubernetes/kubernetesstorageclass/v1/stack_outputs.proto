@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesstorageclass.v1;
+
+/**
+ * **KubernetesStorageClassStackOutputs** captures the observable handles of a
+ * deployed StorageClass. `storage_class_name` is the composition handle:
+ * PersistentVolumeClaims (and workload volume-claim templates) reference it to
+ * pin their storage characteristics to this class.
+ */
+message KubernetesStorageClassStackOutputs {
+  // The name of the StorageClass object as created in the cluster — the value
+  // claims put in their `storage_class_name`.
+  string storage_class_name = 1;
+
+  // The provisioner (CSI driver) backing this class.
+  string provisioner = 2;
+
+  // Whether this class is annotated as the cluster's default StorageClass.
+  bool is_default_class = 3;
+}

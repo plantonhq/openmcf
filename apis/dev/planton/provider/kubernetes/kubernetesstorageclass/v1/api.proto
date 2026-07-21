@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesstorageclass.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetesstorageclass/v1/spec.proto";
+import "dev/planton/provider/kubernetes/kubernetesstorageclass/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+/**
+ * **KubernetesStorageClass** defines a Kubernetes StorageClass resource
+ * following the Kubernetes Resource Model (KRM). A StorageClass is a
+ * cluster-scoped class of storage — a named provisioner plus parameters and
+ * volume lifecycle policies — that PersistentVolumeClaims request by name.
+ */
+message KubernetesStorageClass {
+  // API version for this resource.
+  // Always set to "kubernetes.planton.dev/v1".
+  string api_version = 1 [(buf.validate.field).string.const = "kubernetes.planton.dev/v1"];
+
+  // Resource kind identifier.
+  // Always set to "KubernetesStorageClass".
+  string kind = 2 [(buf.validate.field).string.const = "KubernetesStorageClass"];
+
+  // Metadata for the StorageClass resource.
+  // Includes standard fields like name, organization, environment, etc.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Specification of the desired state for the StorageClass.
+  // Defines the provisioner, parameters, and volume lifecycle policies.
+  KubernetesStorageClassSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Status of the StorageClass resource.
+  // Contains outputs populated after deployment.
+  KubernetesStorageClassStatus status = 5;
+}
+
+/**
+ * **KubernetesStorageClassStatus** captures the runtime status of a
+ * StorageClass deployment, including the outputs generated after the class is
+ * created.
+ */
+message KubernetesStorageClassStatus {
+  // Outputs from the StorageClass deployment.
+  // Contains the class name claims reference for composition.
+  KubernetesStorageClassStackOutputs outputs = 1;
+}

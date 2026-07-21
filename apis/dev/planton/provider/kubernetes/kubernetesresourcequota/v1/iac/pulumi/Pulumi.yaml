@@ -1,0 +1,3 @@
+name: kubernetes-resource-quota
+runtime: go
+description: Kubernetes namespace resource governance - ResourceQuota with an optional companion LimitRange

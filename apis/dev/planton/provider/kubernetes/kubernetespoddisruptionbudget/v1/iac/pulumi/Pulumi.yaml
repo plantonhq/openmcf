@@ -1,0 +1,3 @@
+name: kubernetes-pod-disruption-budget
+runtime: go
+description: Kubernetes PodDisruptionBudget deployment protecting pod availability during voluntary disruptions
